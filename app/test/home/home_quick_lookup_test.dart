@@ -208,6 +208,48 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  testWidgets('on a phone, tapping the emptied field again puts the keyboard away', (tester) async {
+    // Enter keeps focus (above), and on iOS a touch outside a field does not
+    // unfocus it — without this opt-in the keyboard stays over the home
+    // screen until the operator navigates away.
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(tester.view.reset);
+    try {
+      final HaLoHarness(:services) = await makeHaLoServices(extensions: _CannedCommandExtensions());
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(body: HomeQuickLookup(services: services)),
+          ),
+        ),
+      );
+      final focusNode = tester.widget<TextField>(find.byType(TextField)).focusNode!;
+
+      await tester.tap(find.byType(TextField));
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), 'DEVMODE');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      await tester.pump();
+      expect(focusNode.hasFocus, isTrue, reason: 'test setup: emptied and still focused');
+
+      // At finger speed (see keyboard_dismiss_test.dart).
+      final gesture = await tester.startGesture(tester.getCenter(find.byType(TextField)));
+      await tester.pump(const Duration(milliseconds: 120));
+      await gesture.up(timeStamp: const Duration(milliseconds: 120));
+      await tester.pump();
+      await tester.pump();
+      expect(focusNode.hasFocus, isFalse);
+
+      await tester.pump(const Duration(seconds: 5));
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   group('spaces and case in the command field (HALO-156)', () {
     Future<HaLoServices> makeServices() async {
       return (await makeHaLoServices(extensions: _CannedCommandExtensions())).services;

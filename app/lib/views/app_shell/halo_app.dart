@@ -391,30 +391,25 @@ class _HaLoAppState extends State<HaLoApp> {
                   child: _LayoutDensityFromWindow(
                     settings: widget.services.settings,
                     scale: scale,
-                    // Outermost so it covers every field in the app — the gates'
-                    // own overlays and anything pushed on the Navigator (which is
-                    // `content`, i.e. dialogs and panes) included.
-                    child: TapToDismissEmptyField(
-                      // Outermost of the startup gates: the tester overlay
-                      // paints above even the onboarding flow — a tester's
-                      // fresh install gets the caution warning before
-                      // anything else.
-                      child: TesterOverlayGate(
+                    // Outermost of the startup gates: the tester overlay
+                    // paints above even the onboarding flow — a tester's
+                    // fresh install gets the caution warning before
+                    // anything else.
+                    child: TesterOverlayGate(
+                      services: widget.services,
+                      child: OnboardingGate(
                         services: widget.services,
-                        child: OnboardingGate(
+                        child: ReleaseOverlayGate(
                           services: widget.services,
-                          child: ReleaseOverlayGate(
+                          // Innermost of the startup gates. Its offer is
+                          // a dialog on the Navigator below, so the release
+                          // notes (an overlay above it) paint over the
+                          // offer on a launch that has both; the offer
+                          // waits underneath and returns next launch if
+                          // it is dismissed unseen.
+                          child: ExtensionUpgradeGate(
                             services: widget.services,
-                            // Innermost of the startup gates. Its offer is
-                            // a dialog on the Navigator below, so the release
-                            // notes (an overlay above it) paint over the
-                            // offer on a launch that has both; the offer
-                            // waits underneath and returns next launch if
-                            // it is dismissed unseen.
-                            child: ExtensionUpgradeGate(
-                              services: widget.services,
-                              child: StatusBarOverlay(services: widget.services, child: content),
-                            ),
+                            child: StatusBarOverlay(services: widget.services, child: content),
                           ),
                         ),
                       ),

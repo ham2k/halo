@@ -53,7 +53,7 @@ import 'platform_chrome.dart';
 /// — and a claim taken elsewhere on the route (a text field in another
 /// pane) ends that. And a panel field that loses focus to nothing while the
 /// route stays current is the operator closing the keyboard — Done, Back,
-/// tap-to-dismiss on an empty field — which is exactly the "nothing
+/// tap-to-dismiss on the empty callsign field — which is exactly the "nothing
 /// focused" they asked for: it is left alone and it ends the claim too, so
 /// a dialog opened and closed after it leaves the keyboard down. The one
 /// blur that is not that is the sheet's on its way in, and it tells itself

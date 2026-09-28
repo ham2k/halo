@@ -100,9 +100,9 @@ class LoggingFocusLadder {
   ///
   /// Tracked continuously, NOT sampled when a chip is tapped: by the time
   /// the tap reaches [selectControl] the field has usually already been
-  /// blurred (the app root's TapToDismissEmptyField drops focus on any tap
-  /// outside a field), so "which field has focus right now" reads as none
-  /// and every collapse fell back to Call.
+  /// blurred (on desktop and web a TextField's own tap-outside drops focus
+  /// on any tap outside it), so "which field has focus right now" reads as
+  /// none and every collapse would fall back to Call.
   FocusNode? _lastPrimaryFocus;
 
   /// Where the next primary field to gain focus should put its caret, and

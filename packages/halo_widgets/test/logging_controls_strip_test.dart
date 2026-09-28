@@ -86,10 +86,10 @@ void main() {
     });
 
     testWidgets('collapsing returns to the last primary field even if the tap blurred it first', (tester) async {
-      // The real failure this guards: in the app the root TapToDismissEmptyField
-      // drops focus on any tap outside a field, so by the time the chip's
-      // handler runs NOTHING is focused — sampling "what has focus now" read as
-      // none and every collapse fell back to Call. The field the operator was
+      // The trap: on desktop and web a TextField's own tap-outside drops focus
+      // on any tap outside it, so by the time the chip's handler runs NOTHING
+      // is focused — sampling "what has focus now" reads as none and every
+      // collapse would fall back to Call. The field the operator was
       // last in is what has to be remembered, not what happens to hold focus
       // at the moment of the tap.
       await tester.pumpWidget(host());

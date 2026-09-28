@@ -191,12 +191,18 @@ asking for it to go — and a claim taken elsewhere on the route (a text
 field in another pane) ends that. And **a panel field that loses focus to
 nothing while the route stays current is the operator closing the
 keyboard**: Done or Back in a secondary field (those keep Flutter's default,
-which blurs), or tapping a focused, still-empty field a second time, which
-blurs it as a way to dismiss the keyboard — a field you focused but haven't
-typed into is the one case where there's nothing to lose by closing it
-(implemented app-wide, not just for the logging fields, by
-`TapToDismissEmptyField` in `keyboard_dismiss.dart`, since a per-field
-opt-in would be silently missing from every field added later). That blur
+which blurs), or tapping the focused, still-empty callsign field a second
+time, which blurs it as a way to dismiss the keyboard — a field you focused
+but haven't typed into is the one case where there's nothing to lose by
+closing it (`TapToDismissEmptyField` in `keyboard_dismiss.dart`). Only the
+callsign fields do this — this one and the home screen's Quick Lookup, each
+the field focus comes to rest in, emptied, after a log, a wipe or a command.
+On iOS, where a touch outside a field does not unfocus it, that is the way
+to put the keyboard away; the panel's other main fields, which keep focus
+after Enter too, have none, and the keyboard stays up from them until the
+QSO is logged or wiped. In any other field a second tap places the caret,
+and an operator filling in a form — account credentials, a settings dialog
+— who loses the keyboard to it reads that as the app misbehaving. That blur
 is exactly the "nothing focused" the operator asked for: it is left alone,
 and it ends the panel's claim, so a dialog opened and closed after it leaves
 the keyboard down. The one blur that is not that is a sheet's on its way in
@@ -411,7 +417,7 @@ Two consequences worth knowing:
 
 - **On mobile the on-screen keyboard stays up** after Enter, including on the
   paths that keep the typed input (a rejected command). The only dismissal
-  gesture, tap-to-dismiss, needs the field to be *empty* — see the mobile
+  gesture, tap-to-dismiss, needs the callsign field to be *empty* — see the mobile
   carve-out above.
 - **A test that drives Enter with `sendKeyEvent` is not testing this.** That
   route reaches the logging code through the panel's shortcut bindings without

@@ -335,7 +335,7 @@ void main() {
         // on-screen one regardless; an iPad in a keyboard case can do the
         // same. The operator dismissed the keyboard: a dialog closing after
         // that must not bring it back on the strength of the flag.
-        await tester.pumpWidget(TapToDismissEmptyField(child: host()));
+        await tester.pumpWidget(host());
         await tester.pump();
         expect(callHasFocus(tester), isTrue, reason: 'test setup: autofocus with a keyboard');
         tester.view.devicePixelRatio = 1.0;
@@ -488,7 +488,7 @@ void main() {
         debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
         addTearDown(tester.view.reset);
         try {
-          await tester.pumpWidget(TapToDismissEmptyField(child: host()));
+          await tester.pumpWidget(host());
           await tester.tap(find.widgetWithText(TextField, 'Their call'));
           await tester.pump();
           setKeyboard(tester, up: true);
@@ -514,7 +514,7 @@ void main() {
         debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
         addTearDown(tester.view.reset);
         try {
-          await tester.pumpWidget(TapToDismissEmptyField(child: host()));
+          await tester.pumpWidget(host());
           await tester.tap(find.widgetWithText(TextField, 'Their call'));
           await tester.pump();
           setKeyboard(tester, up: true);

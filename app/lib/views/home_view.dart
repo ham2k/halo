@@ -1566,38 +1566,44 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
               // beside it reads as one of them being misaligned.
               child: SizedBox(
                 height: LayoutDensity.chromeHeightOf(context),
-                child: TextField(
-                  selectAllOnFocus: false,
-                  controller: _controller,
+                // A callsign field that keeps focus after Enter — see
+                // keyboard_dismiss.dart.
+                child: TapToDismissEmptyField(
                   focusNode: _focusNode,
-                  style: haloMonoStyle(context, fontSize: 15),
-                  // The formatters own casing, not the keyboard: a soft keyboard's
-                  // capitalization is fixed when the input connection opens and is not
-                  // re-sent on rebuild, so a mode chosen here could never follow the
-                  // text turning from a callsign into a command mid-typing.
-                  textCapitalization: TextCapitalization.none,
-                  inputFormatters: commandFieldFormatters,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                    prefixIcon: const Icon(MdiIcons.magnify),
-                    suffixIcon: _controller.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(MdiIcons.close, semanticLabel: context.t.common.clear),
-                            onPressed: () {
-                              _controller.clear();
-                            },
-                          )
-                        : null,
-                    hintText: context.t.home.quickLookup,
-                    isDense: true,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24.0), borderSide: BorderSide.none),
+                  controller: _controller,
+                  child: TextField(
+                    selectAllOnFocus: false,
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    style: haloMonoStyle(context, fontSize: 15),
+                    // The formatters own casing, not the keyboard: a soft keyboard's
+                    // capitalization is fixed when the input connection opens and is not
+                    // re-sent on rebuild, so a mode chosen here could never follow the
+                    // text turning from a callsign into a command mid-typing.
+                    textCapitalization: TextCapitalization.none,
+                    inputFormatters: commandFieldFormatters,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: theme.colorScheme.surface,
+                      prefixIcon: const Icon(MdiIcons.magnify),
+                      suffixIcon: _controller.text.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(MdiIcons.close, semanticLabel: context.t.common.clear),
+                              onPressed: () {
+                                _controller.clear();
+                              },
+                            )
+                          : null,
+                      hintText: context.t.home.quickLookup,
+                      isDense: true,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24.0), borderSide: BorderSide.none),
+                    ),
+                    // Not onSubmitted: the default TextInputAction.done handling
+                    // unfocuses (closing the keyboard) before onSubmitted even
+                    // runs. onEditingComplete replaces that default entirely, so
+                    // the field keeps focus for the next command.
+                    onEditingComplete: _submit,
                   ),
-                  // Not onSubmitted: the default TextInputAction.done handling
-                  // unfocuses (closing the keyboard) before onSubmitted even
-                  // runs. onEditingComplete replaces that default entirely, so
-                  // the field keeps focus for the next command.
-                  onEditingComplete: _submit,
                 ),
               ),
             ),

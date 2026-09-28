@@ -22,15 +22,21 @@ void main() {
   /// asserting against `TextField.focusNode` instead would read null (the
   /// field makes its own internal node), and `node?.hasFocus ?? false` then
   /// silently reports "not focused" for every case.
-  Widget host(_Fields f) => TapToDismissEmptyField(
-    child: MaterialApp(
-      home: Scaffold(
-        body: Column(
-          children: [
-            TextField(key: const Key('first'), controller: f.firstText, focusNode: f.first),
-            TextField(key: const Key('second'), controller: f.secondText, focusNode: f.second),
-          ],
-        ),
+  Widget host(_Fields f) => MaterialApp(
+    home: Scaffold(
+      body: Column(
+        children: [
+          TapToDismissEmptyField(
+            focusNode: f.first,
+            controller: f.firstText,
+            child: TextField(key: const Key('first'), controller: f.firstText, focusNode: f.first),
+          ),
+          TapToDismissEmptyField(
+            focusNode: f.second,
+            controller: f.secondText,
+            child: TextField(key: const Key('second'), controller: f.secondText, focusNode: f.second),
+          ),
+        ],
       ),
     ),
   );
@@ -127,16 +133,17 @@ void main() {
       addTearDown(f.dispose);
       addTearDown(tester.view.reset);
 
-      // A field shaped like every real one in the app: floating label plus
-      // content padding, per poloFieldDecoration. Its editable strip is a
-      // fraction of its height (measured: 24pt inside 88pt), and the rest is
-      // decoration the field still focuses from — so the dismissal has to use
-      // the field's tap target, not the editable's box.
+      // A floating label plus content padding: the editable strip is a
+      // fraction of the field's height, and the rest is decoration the field
+      // still focuses from — so the dismissal has to hear taps on the whole
+      // field, not just its text line.
       await tester.pumpWidget(
-        TapToDismissEmptyField(
-          child: MaterialApp(
-            home: Scaffold(
-              body: TextField(
+        MaterialApp(
+          home: Scaffold(
+            body: TapToDismissEmptyField(
+              focusNode: f.first,
+              controller: f.firstText,
+              child: TextField(
                 key: const Key('first'),
                 controller: f.firstText,
                 focusNode: f.first,
@@ -205,34 +212,6 @@ void main() {
     });
   });
 
-  testWidgets('the field going away between tap and dismissal does not throw', (tester) async {
-    await asPlatform(TargetPlatform.android, () async {
-      final f = _Fields();
-      addTearDown(f.dispose);
-      addTearDown(tester.view.reset);
-
-      await tester.pumpWidget(host(f));
-      await tester.tap(find.byKey(const Key('first')));
-      await tester.pumpAndSettle();
-      setKeyboard(tester, up: true);
-      await tester.pump();
-
-      // Routine here: the operation stream re-emits on every QSO write, and a
-      // dialog or pane can close under the tap.
-      final gesture = await tester.startGesture(tester.getCenter(find.byKey(const Key('first'))));
-      await tester.pump(const Duration(milliseconds: 120));
-      await gesture.up();
-      await tester.pumpWidget(
-        TapToDismissEmptyField(
-          child: MaterialApp(home: Scaffold(body: Container())),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(tester.takeException(), isNull, reason: 'reading a deactivated context\'s ancestors would throw');
-    });
-  });
-
   testWidgets('tapping a focused field that HAS TEXT keeps focus, so the tap can move the caret', (tester) async {
     await asPlatform(TargetPlatform.android, () async {
       final f = _Fields(firstValue: 'KI2D');
@@ -266,7 +245,9 @@ void main() {
       setKeyboard(tester, up: true);
       await tester.pump();
 
-      // Both fields are empty — only the tap landing on the FOCUSED one counts.
+      // Both fields are empty and both opted in — only a tap on a field that
+      // was ALREADY focused counts, or the first tap on any field would
+      // dismiss the keyboard it just raised.
       await tester.tap(find.byKey(const Key('second')));
       await tester.pumpAndSettle();
 

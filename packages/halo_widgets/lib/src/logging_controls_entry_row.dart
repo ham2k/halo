@@ -15,6 +15,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'call_field_text.dart';
+import 'keyboard_dismiss.dart';
 import 'logging_controls_command.dart';
 import 'logging_controls_exchange.dart';
 import 'logging_controls_metrics.dart';
@@ -395,60 +396,65 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
             // #236: stable id for agent/browser tooling.
             child: semanticId(
               'field.call',
-              TextField(
-                controller: widget.call.controller,
+              // See keyboard_dismiss.dart for which fields opt in.
+              TapToDismissEmptyField(
                 focusNode: widget.call.focus,
-                // Desktop platforms (see selectAllOnFocus's default)
-                // select-all on focus by default, which runs *after* the
-                // panel's own focus listener and silently overwrites its
-                // cursor-at-end placement — this is the only way to
-                // actually suppress it.
-                selectAllOnFocus: false,
-                enabled: widget.enabled,
-                // The callsign field is the default focus — except on
-                // mobile with no physical keyboard, where the view starts
-                // unfocused so the operator isn't met with a virtual
-                // keyboard covering half the screen
-                // (docs/design/logging-fields.md). Read per build, not
-                // watched: the channel's answer normally beats navigation
-                // into an operation, and losing that race only costs one
-                // tap.
-                autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
-                autocorrect: command.mixedCase,
-                enableSuggestions: command.mixedCase,
-                // A command awaiting parameters (expectsParams) switches
-                // the field to free-text entry — spaces allowed, no
-                // callsign character restriction — but stays
-                // uppercase-only unless the command itself declared
-                // `mixedCase: true` (e.g. NOTE, whose parameter is free
-                // prose): all logging input is uppercase unless explicitly
-                // mixed-case.
-                textCapitalization: command.mixedCase ? TextCapitalization.sentences : TextCapitalization.characters,
-                // In command free-text modes a space is a literal parameter
-                // character, so those modes take the narrower interceptor:
-                // it stands aside for every space but the double-space that
-                // leaves the field. Normal callsign mode routes every space
-                // to focus/command handling. Asked via
-                // [CommandInterpretationModel.fieldAcceptsSpaces], the same
-                // getter the panel's Space handler uses to decide the exit —
-                // the two must never disagree about the field's mode.
-                inputFormatters: !command.fieldAcceptsSpaces
-                    ? [
-                        widget.virtualSpace,
-                        FilteringTextInputFormatter.allow(RegExp('[$callsignCharacters]')),
-                        if (isMobilePlatform) MobileDotToSlashFormatter(),
-                        const UpperCaseTextFormatter(),
-                      ]
-                    : command.mixedCase
-                    ? [widget.commandVirtualSpace]
-                    : [widget.commandVirtualSpace, const UpperCaseTextFormatter()],
-                style: mainFieldStyle(context, fontWeight: FontWeight.w500),
-                decoration: mainFieldDecoration(context, t.loggingControls.theirCall, horizontalPadding: fieldLayout.fieldPadding),
-                // `onChanged`, not the controller: it hears only what the
-                // operator entered, never the panel's own writes.
-                onChanged: widget.onCallTyped == null ? null : (_) => widget.onCallTyped!(),
-                onEditingComplete: () => finishEditingWithoutBlur(widget.call.controller),
-                onSubmitted: (_) => widget.onSubmitted(),
+                controller: widget.call.controller,
+                child: TextField(
+                  controller: widget.call.controller,
+                  focusNode: widget.call.focus,
+                  // Desktop platforms (see selectAllOnFocus's default)
+                  // select-all on focus by default, which runs *after* the
+                  // panel's own focus listener and silently overwrites its
+                  // cursor-at-end placement — this is the only way to
+                  // actually suppress it.
+                  selectAllOnFocus: false,
+                  enabled: widget.enabled,
+                  // The callsign field is the default focus — except on
+                  // mobile with no physical keyboard, where the view starts
+                  // unfocused so the operator isn't met with a virtual
+                  // keyboard covering half the screen
+                  // (docs/design/logging-fields.md). Read per build, not
+                  // watched: the channel's answer normally beats navigation
+                  // into an operation, and losing that race only costs one
+                  // tap.
+                  autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
+                  autocorrect: command.mixedCase,
+                  enableSuggestions: command.mixedCase,
+                  // A command awaiting parameters (expectsParams) switches
+                  // the field to free-text entry — spaces allowed, no
+                  // callsign character restriction — but stays
+                  // uppercase-only unless the command itself declared
+                  // `mixedCase: true` (e.g. NOTE, whose parameter is free
+                  // prose): all logging input is uppercase unless explicitly
+                  // mixed-case.
+                  textCapitalization: command.mixedCase ? TextCapitalization.sentences : TextCapitalization.characters,
+                  // In command free-text modes a space is a literal parameter
+                  // character, so those modes take the narrower interceptor:
+                  // it stands aside for every space but the double-space that
+                  // leaves the field. Normal callsign mode routes every space
+                  // to focus/command handling. Asked via
+                  // [CommandInterpretationModel.fieldAcceptsSpaces], the same
+                  // getter the panel's Space handler uses to decide the exit —
+                  // the two must never disagree about the field's mode.
+                  inputFormatters: !command.fieldAcceptsSpaces
+                      ? [
+                          widget.virtualSpace,
+                          FilteringTextInputFormatter.allow(RegExp('[$callsignCharacters]')),
+                          if (isMobilePlatform) MobileDotToSlashFormatter(),
+                          const UpperCaseTextFormatter(),
+                        ]
+                      : command.mixedCase
+                      ? [widget.commandVirtualSpace]
+                      : [widget.commandVirtualSpace, const UpperCaseTextFormatter()],
+                  style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+                  decoration: mainFieldDecoration(context, t.loggingControls.theirCall, horizontalPadding: fieldLayout.fieldPadding),
+                  // `onChanged`, not the controller: it hears only what the
+                  // operator entered, never the panel's own writes.
+                  onChanged: widget.onCallTyped == null ? null : (_) => widget.onCallTyped!(),
+                  onEditingComplete: () => finishEditingWithoutBlur(widget.call.controller),
+                  onSubmitted: (_) => widget.onSubmitted(),
+                ),
               ),
             ),
           ),

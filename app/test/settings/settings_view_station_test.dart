@@ -764,9 +764,7 @@ void main() {
     await tester.pumpWidget(
       TranslationProvider(
         child: MaterialApp(
-          builder: (context, child) => TapToDismissEmptyField(
-            child: StatusBarOverlay(services: services, child: child!),
-          ),
+          builder: (context, child) => StatusBarOverlay(services: services, child: child!),
           home: SettingsView(services: services),
         ),
       ),

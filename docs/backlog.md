@@ -110,8 +110,9 @@ work:
   is enforced at first build and after specific actions (log, wipe, collapsing
   a secondary control, Space in the frequency field) rather than as an
   invariant. Making it standing means deciding what should happen when focus
-  is dropped deliberately — including by the empty-field tap-to-blur
-  (`TapToDismissEmptyField`), which would otherwise fight it on mobile.
+  is dropped deliberately — including by the empty callsign field's
+  tap-to-blur (`TapToDismissEmptyField`), which would otherwise fight it on
+  mobile.
 
 ## The QSO list has no "goto" search
 
