@@ -234,7 +234,7 @@ building — the header comment in each \`src/index.ts\` says what it leaves out
 | \`k2hrc-llota\` | An award program: references, an offline list, activation scoring |
 | \`k2hrc-cqww\` | A contest: an exchange to type, and a score to keep |
 | \`k2hrc-radio\` | An HTML panel, and why you should probably write markdown instead |
-| \`k2hrc-svg-scenes\` | Experimental SVG controls and animations, with simulated radio and weather panels |
+| \`k2hrc-panel-scenes\` | Experimental panel scenes: SVG artwork, controls and animations, with simulated radio and weather panels |
 
 ## Running one
 
@@ -269,7 +269,7 @@ See \`../AGENTS.md\` for the map, and \`../docs/\` for the references.
 /// SDK and the tools through workspace paths; an author's copy reaches them
 /// through npm, and shipping the workspace form would hand every reader a
 /// build script that cannot resolve its own imports.
-const shippedSamples = ["k2hrc-hamqth", "k2hrc-llota", "k2hrc-cqww", "k2hrc-radio", "k2hrc-svg-scenes"]
+const shippedSamples = ["k2hrc-hamqth", "k2hrc-llota", "k2hrc-cqww", "k2hrc-radio", "k2hrc-panel-scenes"]
 
 const samplesOut = join(here, "samples")
 await rm(samplesOut, { recursive: true, force: true })

@@ -30,8 +30,9 @@ import yazl from "yazl"
 /// without it — not for every addition. 2 adds `host.webSocket` and the
 /// manifest's `webSockets` grant; 3 adds timers and `onShow`/`onHide`; 4 lets
 /// `host.fetch` reach an http-only host the app fronts with its https proxy
-/// (the QSO Party Hub).
-export const H2KEXT_API_VERSION = 4
+/// (the QSO Party Hub); 5 adds panel scenes' `scene` kind and what came with
+/// it — native controls, `strings`, `layout`, `after` and control `opacity`.
+export const H2KEXT_API_VERSION = 5
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -136,6 +137,7 @@ export const SHARED_MODULES_BY_API = {
 SHARED_MODULES_BY_API[2] = SHARED_MODULES_BY_API[1]
 SHARED_MODULES_BY_API[3] = SHARED_MODULES_BY_API[2]
 SHARED_MODULES_BY_API[4] = SHARED_MODULES_BY_API[3]
+SHARED_MODULES_BY_API[5] = SHARED_MODULES_BY_API[4]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

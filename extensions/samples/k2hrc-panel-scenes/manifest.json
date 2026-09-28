@@ -1,13 +1,13 @@
 {
-  "key": "k2hrc-svg-scenes",
-  "name": "SVG Scene Prototypes",
-  "shortName": "SVG Scenes",
+  "key": "k2hrc-panel-scenes",
+  "name": "Panel Scene Prototypes",
+  "shortName": "Panel Scenes",
   "version": "0.1.0",
-  "description": "Experimental radio front face and weather chart; simulated data only",
+  "description": "Experimental radio front face, weather chart and native controls; simulated data only",
   "category": "dashboard",
   "icon": "radio-tower",
   "accentColor": "#4C6EF5",
-  "api": 1,
+  "api": 5,
   "keywords": ["svg", "panel", "sample", "weather", "radio"],
   "hooks": ["panel"],
   "sharedDependencies": {

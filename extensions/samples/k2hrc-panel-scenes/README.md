@@ -1,7 +1,7 @@
-# SVG Scene Prototypes
+# Panel Scene Prototypes
 
-Experimental radio front face and weather inspection chart, using the public
-`svgScene` / `PanelHook.onEvent` contracts. Requires a host with SVG scene support.
+Experimental radio front face, weather inspection chart and native controls form, using the public
+`scene` / `PanelHook.onEvent` contracts. Requires a host with panel scene support.
 All data is simulated; this extension does not fetch weather or control a radio.
 
 The radio keeps requested frequency separate from reported frequency, simulates
@@ -16,9 +16,9 @@ In this repository:
 
 ```sh
 node build.mjs
-node ../../tools/h2kext-pack.mjs build -o /tmp/k2hrc-svg-scenes.h2kext
+node ../../tools/h2kext-pack.mjs build -o /tmp/k2hrc-panel-scenes.h2kext
 ```
 
-For the contract and migration plan, see `docs/design/svg-scenes.md` in the
+For the contract and migration plan, see `docs/design/panel-scenes.md` in the
 logger repository. This is an API experiment,
 not a replacement for the production weather/solar panels yet.

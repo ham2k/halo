@@ -1,4 +1,4 @@
-# SVG scene prototype
+# Panel scenes
 
 Status: experimental contract with three independently packaged reference panels.
 Their source and tests live in [ham2k/extensions](https://github.com/ham2k/extensions/tree/main/extensions/dashboard);
@@ -50,10 +50,11 @@ every fifteen minutes, primary-source failures retry no faster than once per
 minute, and the larger wind history is requested at most every six hours after
 success (failed history requests are limited to once per fifteen minutes).
 
-The `k2hrc-svg-scenes` SDK sample is a test fixture: the build writes it to
-`extensions/build/fixtures/`, outside the app's assets, which ship wholesale, and
-only the host's bridge tests load it. To try it in a development build, pack
-`extensions/samples/k2hrc-svg-scenes` like any other sample and install the
+The `k2hrc-panel-scenes` SDK sample holds a simulated radio, a weather chart, and
+a **Native Controls** panel that uses every native kind in a layout. It is a test
+fixture: the build writes it to `extensions/build/fixtures/`, outside the app's
+assets, which ship wholesale, and only the host's bridge tests load it. To try it in a development build, pack
+`extensions/samples/k2hrc-panel-scenes` like any other sample and install the
 `.h2kext`.
 
 ## What the prototype establishes
@@ -83,9 +84,14 @@ only the host's bridge tests load it. To try it in a development build, pack
 
 ## Bridge and state contract
 
-`render` returns `{kind: 'svgScene', scene: {version: 1, width, height, values,
-layers, controls}, title?, triggers?}`. Ordinary content kinds are unchanged.
-See `extensions/sdk/src/svgScene.ts` for the precise experimental schema.
+`render` returns `{kind: 'scene', scene: {version: 1, width, height, values,
+strings?, layers, controls, layout?}, title?, triggers?}`. Ordinary content kinds are
+unchanged. `svgScene` is the kind's name through SDK 0.9; hosts read it as `scene`, so
+packages built against that SDK — KI2D's three panels among them — keep working.
+The reverse does not hold: apps before extension API 5 know only `svgScene`, so
+`scene` and everything added with it are API 5, and the SDK deprecates
+`svgScene` rather than dropping it.
+See `extensions/sdk/src/panelScene.ts` for the precise experimental schema.
 
 The host adds `instanceId` to render/event arguments. State belongs to the placement,
 not the panel descriptor. Interactive controls optionally name an `event`; the host
@@ -106,13 +112,61 @@ already sent to hardware; real CAT integration must reconcile against telemetry.
 Runtime replacement remounts scene state and invalidates old results. Removal drops
 queued actions and ignores late responses.
 
-The simulated radio in the `k2hrc-svg-scenes` sample deliberately keeps
+The simulated radio in the `k2hrc-panel-scenes` sample deliberately keeps
 `requested` and `reported` frequency separate. It simulates a two-second CAT acknowledgment on subsequent telemetry ticks, offers
 external tuning and connection toggles, and rejects tuning when disconnected.
 Its knob and slider bind to requested frequency; the needle follows reported
 frequency. It sends **no real CAT commands**; KI2D’s Radio Panel is the one that
 does. LED flicker is explicitly decorative,
 not a claim that a radio emitted individual activity events.
+
+## Native controls and layout
+
+The drawn controls are hit areas over artwork the extension paints; the
+`native…` kinds are Material widgets the app paints and themes, so a panel that
+needs a form — a callsign to spot, a band to pick — does not have to draw one.
+The public contract is in [the panel hook](../extensions/hooks.md) and
+`PanelSceneControl`; the choices behind it:
+
+- **String state is a second map.** `strings` beside `values`, with a key in one
+  or the other, so bindings and ramps stay numeric-only and a patch or event
+  names a value without saying which map holds it. Toggles (switch, checkbox,
+  a chip with a value) stay numbers, 1 or 0.
+- **One queue.** Native controls report through the same change/commit pair as
+  the drawn ones, so coalescing, the pending state on actions, stale-response
+  handling and failure rollback apply to strings unchanged.
+- **Typing is local until committed.** A text field's edits are active state —
+  a render cannot overwrite them — from the first keystroke to Enter or blur.
+  Focus alone is not an edit: clicking into a field and out commits nothing.
+- **Placement is a rect or the layout, never both.** A rect places a native
+  control over the artwork, scaling with it; the layout places it at true size.
+  The layout's vocabulary is Flutter's own (Row, Column, Wrap, Flexible,
+  Spacer, SizedBox), checked when the scene is parsed wherever Flutter would
+  otherwise assert in layout: `flex` outside a row or column, a control placed
+  twice, layers with nowhere to draw. Two traps are absorbed at build time
+  instead, since a static check cannot see the constraints: a field with no
+  width gets 200, `stretch` on an unbounded cross axis falls back to
+  `center`, and a `flex` in a row or column with no room to share is dropped.
+- **An action commits pending typing first.** A button tap on touch neither
+  blurs the field nor takes focus, so without it an action would reach the
+  extension ahead of the text it acts on.
+- **Controls can sit among the layers.** A rect-placed control's `after` names
+  the layer it paints directly after; without one it paints above them all. A
+  field on the control, not an entry in `layers`, so the layer type stays one
+  shape for SDK readers. Layers are click-through, because the reason to paint
+  over a control is a highlight or a frame, and a hit-testing one would silently
+  make the control dead; `blocksPointer` is the opt-in for covering it, and only
+  while the layer is visible. A control's `opacity` at 0 removes it from clicks,
+  focus and semantics, so an unseen control cannot act.
+- **Only a pending action disables action controls.** On desktop, pressing a
+  button blurs the text field before the click completes, and the field sends
+  its text; if any event in flight disabled buttons, that commit would swallow
+  the click it came from.
+  The opacity wrappers are present at every value and the Stack's children are
+  keyed by id, so fading a control or adding a layer never remounts one mid-edit.
+- **Focus follows the Operation view's contract**
+  ([logging-fields.md](logging-fields.md)): a text field or dropdown keeps what
+  it is given, and a clicked button hands focus back to the callsign field.
 
 ## Comparable systems and reuse decision
 

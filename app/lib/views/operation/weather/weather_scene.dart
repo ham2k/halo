@@ -5,7 +5,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import '../svg_scene/scene_model.dart';
+import '../panel_scene/scene_model.dart';
 import 'weather_chart.dart';
 import 'weather_reading.dart';
 
@@ -14,7 +14,7 @@ String _rgb(Color color) => '#${(color.toARGB32() & 0xffffff).toRadixString(16).
 /// Production forecast expressed entirely in the public scene protocol.
 /// Data fetching, localization and layout remain the panel's responsibility.
 /// Inspection is local: no weather request or extension event per pointer move.
-SvgScene weatherScene({
+PanelScene weatherScene({
   required Size size,
   required List<WeatherHour> hours,
   required String unit,
@@ -67,7 +67,7 @@ SvgScene weatherScene({
   };
   // Keep inspection available in short charts through adjustable semantics;
   // only show its caption when there is room above the curve.
-  return SvgScene({
+  return PanelScene({
     'version': 1,
     'width': width,
     'height': height,

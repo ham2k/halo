@@ -26,7 +26,7 @@ import '../../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../../services/panel_service.dart';
 import '../../../services/settings_service.dart';
-import '../svg_scene/scene_view.dart';
+import '../panel_scene/scene_view.dart';
 import 'weather_scene.dart';
 import 'weather_codes.dart';
 import 'weather_reading.dart';
@@ -691,7 +691,7 @@ class _WeatherReadout extends StatelessWidget {
                     // laid out.
                     builder: (context, chartBox) => chartBox.maxHeight < _chartFloor
                         ? const SizedBox.shrink()
-                        : SvgSceneView(
+                        : PanelSceneView(
                             // A changed location/hour window must not retain an
                             // inspection index that referred to another forecast.
                             key: ValueKey('${hours.first.utc}:${reading.units.temperature}'),

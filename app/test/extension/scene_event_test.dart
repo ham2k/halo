@@ -19,11 +19,12 @@ class _ScenePanels extends PanelService {
   _ScenePanels() : super(FakePanelExtensions());
 
   bool configUnreadable = false;
+  Map<String, dynamic>? reply = const {'values': <String, dynamic>{}};
   final events = <Map<String, dynamic>>[];
 
   @override
   Future<Map<String, dynamic>?> render(PanelDefinition panel, Map<String, dynamic> args) async => {
-    'kind': 'svgScene',
+    'kind': 'scene',
     'scene': {
       'version': 1,
       'width': 400,
@@ -45,7 +46,7 @@ class _ScenePanels extends PanelService {
   @override
   Future<Map<String, dynamic>?> event(PanelDefinition panel, Map<String, dynamic> args) async {
     events.add(args);
-    return const {'values': <String, dynamic>{}};
+    return reply;
   }
 }
 
@@ -71,6 +72,36 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(seconds: 2));
     await tester.pump();
+  }
+
+  // A hook that forgets to return answers null (or an object with neither
+  // field). Read as an empty patch, the control would keep the operator's
+  // value on screen as if the extension had taken it.
+  for (final (name, reply) in [
+    ('nothing', null),
+    ('neither values nor strings', <String, dynamic>{}),
+    // A scene refuses a key in both maps; a patch taking one silently
+    // would apply whichever map the merge happened to list last.
+    (
+      'a key as both a number and a string',
+      <String, dynamic>{
+        'values': {'mode': 1},
+        'strings': {'mode': 'CW'},
+      },
+    ),
+  ]) {
+    testWidgets('an event answered with $name fails the action', (tester) async {
+      final panels = _ScenePanels()..reply = reply;
+      addTearDown(panels.dispose);
+      await withErrorHooks(() async {
+        await show(tester, panels);
+        await tester.tap(find.bySemanticsLabel('Tune'));
+        await tester.pump();
+        await tester.pump();
+        expect(panels.events, hasLength(1));
+        expect(find.text(t.operation.layout.panelActionFailed), findsOneWidget);
+      });
+    });
   }
 
   testWidgets('an action is sent with the panel\'s config', (tester) async {

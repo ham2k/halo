@@ -163,7 +163,7 @@ export const bundles = [
   { key: "qp", entry: "contests/qp/src/index.ts", kind: "extension" },
   { key: "parksnpeaks", entry: "spots/parksnpeaks/src/index.ts", kind: "extension" },
   // Built for the host's bridge tests, into [fixturesDir]; never shipped.
-  { key: "k2hrc-svg-scenes", entry: "samples/k2hrc-svg-scenes/src/index.ts", kind: "fixture" },
+  { key: "k2hrc-panel-scenes", entry: "samples/k2hrc-panel-scenes/src/index.ts", kind: "fixture" },
   { key: "custom-text", entry: "dashboard/custom-text/src/index.ts", kind: "extension" },
   { key: "ham2k-lofi", entry: "sync/ham2k-lofi/src/index.ts", kind: "extension" },
 ]

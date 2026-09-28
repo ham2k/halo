@@ -1389,17 +1389,25 @@ interface PanelHook {
 // PanelDescriptor: {key, title, description?, icon?, preview?, on?, form?}
 // PanelRenderArgs: {panelKey, operation, qso?, qsoCount, config, reason}
 // PanelContent:    {kind: 'markdown' | 'svg' | 'html', content, title?, triggers?}
+//                | {kind: 'scene', scene, title?, triggers?}   (see Panel scene reference)
 ```
 
 The host addresses a panel as `ext:<hookKey>:<key>`, and that id is stored
 inside saved layouts — renaming a `key` drops the panel out of every
 arrangement holding it.
 
-An experimental fourth kind, `svgScene`, adds native SVG layers, numeric bindings,
-local controls, and host-run animations. Its payload is `{kind: 'svgScene', scene,
-title?, triggers?}`; it does not have a `content` string. Scene-capable hosts pass
+An experimental fourth kind, the **panel scene**, adds SVG and text layers, numeric
+bindings, local controls, native Material controls, a layout, and host-run animations.
+Its payload is `{kind: 'scene', scene, title?, triggers?}`; it does not have a
+`content` string. `kind: 'svgScene'` is the same kind under its name through SDK 0.9,
+which the SDK keeps as a deprecated alias along with the `SvgScene*` type names.
+**`scene` and everything it adds are extension API 5**: native controls,
+`strings`, `layout`, `after` and control `opacity`. A bundle using any of them
+declares `"api": 5` ([distribution.md](distribution.md)), and an app speaking
+less refuses it at install rather than showing the panel as an unknown kind.
+A plain scene that must reach those apps keeps `svgScene` and its lower API. Scene-capable hosts pass
 `instanceId` on render/event calls. `onEvent` handles control events and returns
-numeric value patches; local-only controls and animation frames make no bridge
+value patches (`values`, and `strings` for string controls); local-only controls and animation frames make no bridge
 calls. Controls with `continuous: true` send `change` events during dragging and a
 final `commit` on release; pending movements are coalesced to the newest value.
 Numeric text supports `scale`, `truncate`, `modulo`, and `minIntegerDigits`
@@ -1410,8 +1418,8 @@ may hold numbers or preformatted strings; control `valueLabels` supplies accessi
 value descriptions. Transform/opacity bindings may also supply numeric `samples`,
 equally spaced over their `input` range, instead of the `output` ramp. The host
 interpolates and clamps these locally; chart markers and callouts can follow
-individual readings without bridge calls. See [the design notes and open milestones](../design/svg-scenes.md)
-and the `k2hrc-svg-scenes` sample. This API is experimental.
+individual readings without bridge calls. See [the design notes and open milestones](../design/panel-scenes.md)
+and the `k2hrc-panel-scenes` sample. This API is experimental.
 
 Scene-capable hosts also supply `args.environment` on **render and event** calls:
 
@@ -1432,7 +1440,7 @@ Scene-capable hosts also supply `args.environment` on **render and event** calls
   describe the resolved presentation context. Font names refer to host fonts;
   they are not URLs or permission to load remote fonts.
 
-For a panel showing an `svgScene`, environment changes automatically request a
+For a panel showing a scene, environment changes automatically request a
 render through the existing throttle, even with no triggers declared. Hidden
 panels catch up on reveal; repeated resize updates coalesce; a scene laid out for
 an old environment cannot overwrite a newer one. Markdown and HTML panels are
@@ -1449,6 +1457,202 @@ in native directionality, accessibility scaling and semantics.
 Button controls can supply `menu: [{label, event}]` to open a native dropdown.
 Selecting an item emits its `event` as the action with the original control ID;
 dismissing the menu emits nothing.
+
+**Native controls.** Besides the drawn `button`, `slider` and `knob` — invisible
+hit areas over the extension's own artwork — a scene can use Material widgets
+the app themes itself: `nativeButton`, `nativeSlider`, `nativeTextField`,
+`nativeDropdown`, `nativeSwitch`, `nativeCheckbox`, `nativeRadio`,
+`nativeSegmented`, `nativeChip` and `nativeText`. `PanelSceneControl` in the SDK
+lists what each kind takes. String-valued controls (text field, dropdown, radio,
+segmented) bind to the scene's `strings` map, which sits beside `values`; a key
+is in one or the other, never both; a choice's string is `""` or one of its
+`options` (each comma-separated part, for `multi`). Their events carry `text` instead of `value`,
+and an `onEvent` result may return `strings` as well as `values`. A text layer
+whose `value` names a string shows it as-is. A text field commits on Enter, or
+on leaving it after typing; a render that lands while the operator is typing
+does not overwrite the typing. Every control's `label` is its accessible name;
+the app has no tooltips. A text field or dropdown in a panel keeps keyboard
+focus; clicking any other native control hands focus back to the callsign
+field, as clicking a button anywhere else in the Operation view does.
+
+**Layout.** A native control either has an `x`/`y`/`width`/`height` rect over the
+artwork, like the drawn kinds — it takes the rect's width and its own height, up
+to the rect's, so give a field a rect tall enough for it — or omits all four and is placed by
+`scene.layout` — a tree of Flutter's `row`, `column` and `wrap`, with `flex`/`fit`
+(Expanded and Flexible), `width`/`height`, `padding`, `spacing`, the two axis
+alignments, `{spacer: flex}`, `{control: id}`, and `{scene: true}` for the
+artwork, scaled to fit. Sizes are logical pixels, like the render environment's.
+Every rect-less control appears in the layout exactly once; a layout with no
+`scene` node shows no artwork, so it may declare no layers either. A text field
+or dropdown given no width (a row child without `flex` or `width`) is 200 wide,
+and a row's children that do not fit overflow as a Flutter `Row`'s do — use
+`flex` or `wrap`. A `flex` only shares space its row or column has: in a row
+that is itself an unflexed child of a row, there is none, and its children lay
+out at their own size. The layout is at most 8 deep and 128 nodes.
+
+**Controls among the layers.** Layers paint in order, and a control with a rect
+paints above all of them unless its `after` names a layer: then it paints
+directly after that one, and later layers draw over it. Layers are
+click-through: art painted over a control does not stop it working. A layer with
+`blocksPointer: true` takes the clicks that land on it while it is visible,
+covering the controls under it (keyboard focus still reaches them; mark them
+`disabled` too to shut them off). Only a pending action disables action
+controls; a value being sent does not. Any control can take an `opacity`, fixed or bound like a layer's;
+at 0 it takes no clicks, focus or screen-reader node.
+
+### Panel scene reference
+
+The schema in one place; `panelScene.ts` in the SDK carries the same as types.
+Every rule below is checked when the scene arrives: a scene that breaks one is
+refused whole, and the pane shows the error naming what is wrong, rather than
+drawing part of it.
+
+**The scene document**
+
+| Field | |
+|---|---|
+| `version` | `1` |
+| `width`, `height` | The artwork's viewBox, in scene units. Size it to `environment.width`/`height` and a scene unit is a logical pixel. |
+| `values` | `{name: number}`: what bindings, numeric text and numeric controls read. At most 256. |
+| `strings` | `{name: string}`: what text fields and choices hold. At most 256, each up to 4096 characters. A name is in `values` or `strings`, never both. |
+| `layers` | Painted in order, each over the ones before: `svg` artwork or `text`. At most 128, and 1 MiB of artwork and text in all. |
+| `controls` | At most 64. Drawn or native; see below. |
+| `layout` | Optional. Where rect-less native controls and the artwork go; omitted, the artwork fills the pane. |
+
+**Controls.** Every control has an `id` and a `label`, which is its accessible
+name. An `event` names the action sent when it is used; without one the control
+is local-only: its value changes on screen, survives renders, and never reaches
+the extension. `value` names what it shows and sets.
+
+| Kind | Binds to | Sends | Also takes |
+|---|---|---|---|
+| `button` | — | `activate` | `menu` |
+| `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover`, `valueLabels`, `continuous` |
+| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `valueLabels`, `continuous` |
+| `nativeButton` | — | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |
+| `nativeSlider` | number | `commit` | `min`, `max`, `step`, `valueLabels`, `continuous` |
+| `nativeTextField` | string | `commit` on Enter, or on leaving it after typing | `placeholder`, `continuous` |
+| `nativeDropdown` | string | `commit` | `options`, `placeholder` |
+| `nativeRadio` | string | `commit` | `options` |
+| `nativeSegmented` | string | `commit` | `options`, `multi` |
+| `nativeSwitch`, `nativeCheckbox` | number, 1 or 0 | `commit` | — (shows `label` beside it) |
+| `nativeChip` | number, 1 or 0; or none | `commit`; `activate` without a value | `icon`; needs `event` without a value |
+| `nativeText` | number, string, or none | nothing | `style` (a typography role), `align` (`start`, `center`, `end`) |
+
+The three drawn kinds are invisible hit areas over artwork the extension paints;
+the native kinds are Material widgets the app paints and themes. Every control
+may also take:
+
+- `x`, `y`, `width`, `height`: its rect over the artwork, in scene units.
+  Required for the drawn kinds; a native control omits all four to be placed by
+  `layout` instead, and takes the rect's width and its own height when it has one.
+- `after`: with a rect, the layer it paints directly after.
+- `opacity`: 0 to 1, fixed or bound like a layer's. At 0 the control is gone.
+- `disabled`: shown, but no click, drag, key or screen-reader adjustment acts on it.
+
+`options` is `[{label, value}]`, up to 64, with each `value` unique. A choice's
+string is `""` or one of them; a `multi` choice holds its values joined with
+commas in option order, so no option may contain one. `menu` is
+`[{label, event}]`, up to 32: picking an item sends its `event` as the action.
+
+**Layout nodes.** Each is an object with exactly one of these keys:
+
+| Node | |
+|---|---|
+| `{row: [...]}`, `{column: [...]}` | Flutter's `Row` and `Column`. `mainAxisAlignment` (`start`, `center`, `end`, `spaceBetween`, `spaceAround`, `spaceEvenly`), `crossAxisAlignment` (`start`, `center`, `end`, `stretch`), `spacing`. |
+| `{wrap: [...]}` | Flutter's `Wrap`: `spacing`, `runSpacing`, the same alignments but no `stretch`. |
+| `{control: "id"}` | A native control without a rect. Each appears exactly once. |
+| `{scene: true}` | The artwork, scaled to fit. At most once. |
+| `{spacer: n}` | `Spacer(flex: n)`. |
+
+Any node may add `width`, `height` and `padding` (one number, or
+`[start, top, end, bottom]`). A row or column's direct child may add `flex`, with
+`fit: "tight"` (the default, Flutter's `Expanded`) or `"loose"` (`Flexible`). At
+most 8 deep and 128 nodes.
+
+**Events and results.** `onEvent` receives, beside the render args:
+
+```ts
+event: {
+  controlId: string      // the control's id
+  action: string         // its `event`, or the menu item's
+  phase: "activate" | "change" | "commit"
+  sequence: number       // increases with every event from this pane
+  value?: number         // for a control bound to `values`
+  text?: string          // for a control bound to `strings`
+}
+```
+
+It answers `{values, strings?}`: a patch of names already in the scene. An
+answer with neither is taken as a failure, and so is one that throws or runs out
+of time: the pane says the action failed, and the control goes back to what the
+scene last reported. The host sends one event at a time, keeps only the newest
+of a control's queued changes, ignores an answer to an event a newer one has
+superseded, and requests a render after each. Action controls are disabled while an
+action is waiting for its answer; a value being sent does not disable them. A text field's typing is sent before any action, and an
+action queued behind a value the extension refused is not sent.
+
+**An example.** A spot form over a status strip:
+
+```ts
+const state = { call: "", band: "20m", status: "Nothing spotted yet" }
+
+export const spotter: PanelHook = {
+  async getPanels() {
+    return [{ key: "spotter", title: "Spotter", icon: "bullhorn" }]
+  },
+  async render() {
+    return {
+      kind: "scene",
+      scene: {
+        version: 1,
+        width: 400,
+        height: 40,
+        values: {},
+        strings: state,
+        layers: [
+          {
+            id: "strip", x: 0, y: 0, width: 400, height: 40,
+            svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40"><rect width="400" height="40" rx="8" fill="#142337"/></svg>',
+          },
+          { id: "status", x: 12, y: 8, width: 376, height: 24, text: { value: "status", size: 14, color: "#a9efcf" } },
+        ],
+        controls: [
+          { id: "call", kind: "nativeTextField", label: "Callsign", value: "call", event: "set" },
+          {
+            id: "band", kind: "nativeDropdown", label: "Band", value: "band", event: "set",
+            options: ["40m", "20m", "15m"].map((b) => ({ label: b, value: b })),
+          },
+          { id: "spot", kind: "nativeButton", label: "Spot", icon: "bullhorn", event: "spot" },
+        ],
+        layout: {
+          column: [
+            { row: [{ control: "call", flex: 1 }, { control: "band", width: 110 }, { control: "spot" }], spacing: 8 },
+            { scene: true, flex: 1 },
+          ],
+          padding: 12,
+          spacing: 8,
+          crossAxisAlignment: "stretch",
+        },
+      },
+    }
+  },
+  async onEvent({ event }) {
+    if (event.controlId === "call" && event.text !== undefined) state.call = event.text.toUpperCase()
+    if (event.controlId === "band" && event.text !== undefined) state.band = event.text
+    if (event.action === "spot") {
+      if (!state.call) throw new Error("No callsign to spot")
+      state.status = `Spotted ${state.call} on ${state.band}`
+    }
+    return { values: {}, strings: state }
+  },
+}
+```
+
+The callsign comes back upper-cased, and the field shows the extension's
+version once the typing is committed. A bundle carrying this declares
+`"api": 5`. The `k2hrc-panel-scenes` sample in the SDK has every kind, a
+control faded in over the artwork, and a click-through layer painted over it.
 
 The `ki2d-weather-panel`, `ki2d-solar-panel` and `ki2d-radio-panel` reference
 panels live in

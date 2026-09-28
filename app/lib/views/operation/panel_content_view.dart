@@ -13,8 +13,8 @@
 
 import 'dart:convert';
 
-import 'svg_scene/scene_model.dart';
-import 'svg_scene/scene_view.dart';
+import 'panel_scene/scene_model.dart';
+import 'panel_scene/scene_view.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/material.dart';
@@ -30,12 +30,12 @@ import '../../services/windows_webview.dart';
 
 /// One rendered document from a panel's `render`.
 class PanelContent {
-  /// 'markdown' | 'svg' | 'html' — an unknown kind renders as an error
+  /// 'markdown' | 'svg' | 'html' | 'scene' — an unknown kind renders as an error
   /// rather than silently blank, since a blank pane looks like a panel that
   /// simply has nothing to say.
   final String kind;
   final String content;
-  final SvgScene? scene;
+  final PanelScene? scene;
 
   /// A tab label for this rendering, overriding the descriptor's title.
   /// Optional, and the reason it exists is panels an operator may place more
@@ -58,7 +58,7 @@ class PanelContent {
 
   const PanelContent({required this.kind, required this.content, this.title, this.triggers = const [], this.scene});
 
-  /// THROWS for an `svgScene` whose document does not validate, rather than
+  /// THROWS for a `scene` whose document does not validate, rather than
   /// answering null: the FormatException names the layer, tag or value at
   /// fault, and the caller's render `catch` is what carries it to the console
   /// and the dev client. Swallowed here, the author sees only "could not be
@@ -69,19 +69,21 @@ class PanelContent {
   /// artwork again — so an unchanged document keeps the scene it has.
   static PanelContent? fromJson(Object? json, {PanelContent? previous}) {
     if (json is! Map) return null;
-    final kind = json['kind'];
+    // `svgScene` is the same kind under its name through SDK 0.9, which published
+    // packages still send.
+    final kind = json['kind'] == 'svgScene' ? 'scene' : json['kind'];
     final Object? content;
-    SvgScene? scene;
-    if (kind == 'svgScene') {
+    PanelScene? scene;
+    if (kind == 'scene') {
       final document = json['scene'];
-      if (document is! Map) throw const FormatException('An svgScene render result needs a scene document');
+      if (document is! Map) throw const FormatException('A scene render result needs a scene document');
       try {
         content = jsonEncode(document);
       } on JsonUnsupportedObjectError catch (e) {
         throw FormatException('The scene document is not JSON: ${e.cause ?? e.unsupportedObject}');
       }
       scene = previous?.kind == kind && previous?.content == content ? previous?.scene : null;
-      scene ??= SvgScene(document);
+      scene ??= PanelScene(document);
     } else {
       content = json['content'];
     }
@@ -133,8 +135,8 @@ class PanelContentView extends StatelessWidget {
     final content = this.content;
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
-      case 'svgScene' when content.scene != null:
-        return SvgSceneView(scene: content.scene!, onEvent: onSceneEvent);
+      case 'scene' when content.scene != null:
+        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent);
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),

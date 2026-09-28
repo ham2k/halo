@@ -25,7 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/weather/weather_panel.dart';
-import 'package:ham2k_logger/views/operation/svg_scene/scene_view.dart';
+import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_panel_extensions.dart';
@@ -189,7 +189,7 @@ void main() {
     testWidgets('forecast inspection snaps to hours without refetching', (tester) async {
       final data = forecast(nowUtc());
       await pump(tester, fetch: answering(data.body));
-      expect(find.byType(SvgSceneView), findsOneWidget);
+      expect(find.byType(PanelSceneView), findsOneWidget);
       final box = tester.getRect(find.byKey(const ValueKey('forecast-hour')));
       String caption(int i) => '${localHourLabel(data.firstHour.add(Duration(hours: i)))}:00 +0545 · ${70 + i}°F · ${24 + i}%';
       expect(find.text(caption(0)), findsOneWidget);

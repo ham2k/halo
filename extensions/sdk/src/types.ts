@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 
-import type { SvgScene, PanelSceneEvent, PanelSceneEventResult } from "./svgScene.ts"
+import type { PanelScene, PanelSceneEvent, PanelSceneEventResult } from "./panelScene.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
 export type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue }
 
@@ -2727,7 +2727,7 @@ export interface PanelRadioTuneResult {
 /// panel is free to call — a render triggered by 'qsoLogged' is exactly the
 /// place for it, and a per-keystroke one is not.
 export interface PanelRenderArgs {
-  /** Present on environment-capable hosts. Changes automatically request a throttled render of an `svgScene` panel. */
+  /** Present on environment-capable hosts. Changes automatically request a throttled render of a `scene` panel. */
   environment?: PanelEnvironment
   /** Display time follows developer time travel; real time is for network retry/cache budgets. */
   clock?: { nowMillis: number; realNowMillis: number }
@@ -2779,7 +2779,12 @@ export interface PanelRenderArgs {
 /// render of a panel that asks for `qso` is answered without one; it is woken
 /// by the next change to the draft.
 export type PanelContent =
-  | { kind: "svgScene"; scene: SvgScene; title?: string; triggers?: string[] }
+  | { kind: "scene"; scene: PanelScene; title?: string; triggers?: string[] }
+  /**
+   * @deprecated The same kind as `scene`, under its name through SDK 0.9. Apps before extension
+   * API 5 know only `svgScene`; `scene` needs `"api": 5`, as do native controls, `strings` and `layout`.
+   */
+  | { kind: "svgScene"; scene: PanelScene; title?: string; triggers?: string[] }
   | { kind: "markdown"; content: string; title?: string; triggers?: string[] }
   | { kind: "svg"; content: string; title?: string; triggers?: string[] }
   | { kind: "html"; content: string; title?: string; triggers?: string[] }

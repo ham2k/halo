@@ -51,13 +51,7 @@ Map<String, dynamic> panelEnvironment(BuildContext context, Size size) {
       'error': rgb(colors.error),
       'onError': rgb(colors.onError),
     },
-    'typography': {
-      'body': type(theme.textTheme.bodyMedium),
-      'label': type(theme.textTheme.labelSmall),
-      'title': type(theme.textTheme.titleMedium),
-      'display': type(theme.textTheme.displaySmall),
-      'mono': type(haloMonoStyle(context)),
-    },
+    'typography': {for (final role in panelTextRoles) role: type(panelTextRole(context, role))},
     'locale': Localizations.localeOf(context).toLanguageTag(),
     'textDirection': Directionality.of(context).name,
     'devicePixelRatio': MediaQuery.devicePixelRatioOf(context),
@@ -65,3 +59,18 @@ Map<String, dynamic> panelEnvironment(BuildContext context, Size size) {
     'highContrast': MediaQuery.highContrastOf(context),
   };
 }
+
+/// The style behind each typography role the environment describes, so a
+/// scene's `nativeText` in a role is drawn in the style the extension was told.
+/// One table: a role advertised is a role `nativeText` accepts.
+final Map<String, TextStyle? Function(BuildContext)> _textRoles = {
+  'body': (context) => Theme.of(context).textTheme.bodyMedium,
+  'label': (context) => Theme.of(context).textTheme.labelSmall,
+  'title': (context) => Theme.of(context).textTheme.titleMedium,
+  'display': (context) => Theme.of(context).textTheme.displaySmall,
+  'mono': haloMonoStyle,
+};
+
+final panelTextRoles = List<String>.unmodifiable(_textRoles.keys);
+
+TextStyle? panelTextRole(BuildContext context, String role) => (_textRoles[role] ?? _textRoles['body']!)(context);

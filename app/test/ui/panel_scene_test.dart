@@ -8,8 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/views/operation/panel_content_view.dart';
-import 'package:ham2k_logger/views/operation/svg_scene/scene_model.dart';
-import 'package:ham2k_logger/views/operation/svg_scene/scene_view.dart';
+import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart';
+import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 
 Map<String, dynamic> document({double value = 0, bool local = false, bool pulse = false}) => {
   'version': 1,
@@ -73,7 +73,7 @@ Future<void> show(
                 data: MediaQueryData(disableAnimations: reduced),
                 child: DockPaneVisibility(
                   visible: visible,
-                  child: SvgSceneView(scene: SvgScene(doc), onEvent: onEvent),
+                  child: PanelSceneView(scene: PanelScene(doc), onEvent: onEvent),
                 ),
               ),
             ),
@@ -198,23 +198,32 @@ void main() {
       // Thrown, not null: the caller's render catch is what reports it, and a
       // null here reaches the author as "could not be displayed" with the
       // reason discarded.
-      expect(() => PanelContent.fromJson({'kind': 'svgScene', 'scene': bad}), throwsFormatException);
+      expect(() => PanelContent.fromJson({'kind': 'scene', 'scene': bad}), throwsFormatException);
     }
-    expect(() => PanelContent.fromJson({'kind': 'svgScene'}), throwsFormatException);
-    expect(PanelContent.fromJson({'kind': 'svgScene', 'scene': document()})?.scene, isNotNull);
+    expect(() => PanelContent.fromJson({'kind': 'scene'}), throwsFormatException);
+    expect(PanelContent.fromJson({'kind': 'scene', 'scene': document()})?.scene, isNotNull);
+  });
+
+  // Published packages built against SDK 0.9 or earlier send the old name. Read as
+  // anything but `scene`, their panes fall to "Unsupported panel content", and
+  // every `kind == 'scene'` check in ExtensionPanel skips them.
+  test('svgScene is read as the scene kind', () {
+    final content = PanelContent.fromJson({'kind': 'svgScene', 'scene': document()})!;
+    expect(content.kind, 'scene');
+    expect(content.scene, isNotNull);
   });
 
   // A `tick:1` scene panel answers with the same document almost every second.
   test('an unchanged scene document keeps its validated scene; a changed one is validated again', () {
-    final first = PanelContent.fromJson({'kind': 'svgScene', 'scene': document()})!;
-    final repeat = PanelContent.fromJson({'kind': 'svgScene', 'scene': document()}, previous: first)!;
+    final first = PanelContent.fromJson({'kind': 'scene', 'scene': document()})!;
+    final repeat = PanelContent.fromJson({'kind': 'scene', 'scene': document()}, previous: first)!;
     expect(repeat.scene, same(first.scene));
-    final changed = PanelContent.fromJson({'kind': 'svgScene', 'scene': document(value: 5)}, previous: first)!;
+    final changed = PanelContent.fromJson({'kind': 'scene', 'scene': document(value: 5)}, previous: first)!;
     expect(changed.scene, isNot(same(first.scene)));
     expect(changed.scene!.values['v'], 5);
     expect(
       () => PanelContent.fromJson({
-        'kind': 'svgScene',
+        'kind': 'scene',
         'scene': {...document(), 'version': 9},
       }, previous: first),
       throwsFormatException,
@@ -231,14 +240,14 @@ void main() {
     ]) {
       final doc = document(local: true);
       (doc['controls'] as List).first.addAll(fields);
-      expect(() => SvgScene(doc), throwsA(isA<FormatException>()));
+      expect(() => PanelScene(doc), throwsA(isA<FormatException>()));
     }
     final doc = document();
     (doc['layers'] as List).first['text'] = {
       'value': 'v',
       'samples': ['missing', 0, double.nan],
     };
-    expect(() => SvgScene(doc), throwsFormatException);
+    expect(() => PanelScene(doc), throwsFormatException);
   });
 
   testWidgets('scaled dragging updates locally and sends exactly one final event', (tester) async {

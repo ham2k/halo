@@ -26,7 +26,7 @@ class Source extends FakePanelExtensions {
       };
     }
     return {
-      'kind': 'svgScene',
+      'kind': 'scene',
       'scene': {
         'version': 1,
         'width': 400,

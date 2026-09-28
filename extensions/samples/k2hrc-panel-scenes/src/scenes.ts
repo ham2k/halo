@@ -1,13 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
-import type { PanelContent, PanelHook, SceneBinding, SvgSceneLayer } from "@ham2k/extension-sdk"
+import type { PanelContent, PanelHook, PanelScene, SceneBinding, PanelSceneLayer } from "@ham2k/extension-sdk"
 
 const svg = (body: string, width = 640, height = 360) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}">${body}</svg>`
 const bind = (value: string, input: [number, number], output: [number, number]): SceneBinding => ({ value, input, output })
 const label = (x: number, y: number, text: string, size = 16, color = "#9aaec6") =>
   `<text x="${x}" y="${y}" fill="${color}" font-family="sans-serif" font-size="${size}">${text}</text>`
 const button = (x: number, text: string) => `<rect x="${x}" y="298" width="172" height="38" rx="8" fill="#283b52"/>${label(x + 12, 322, text, 14, "#e7edf4")}`
-const textLayer = (id: string, value: string, x: number, y: number, width: number, size: number, prefix = "", suffix = "", decimals = 0): SvgSceneLayer => ({
+const textLayer = (id: string, value: string, x: number, y: number, width: number, size: number, prefix = "", suffix = "", decimals = 0): PanelSceneLayer => ({
   id,
   x,
   y,
@@ -17,9 +17,23 @@ const textLayer = (id: string, value: string, x: number, y: number, width: numbe
 })
 
 type RadioState = { requested: number; reported: number; connected: number; due: number; slow: number }
+type FormState = { strings: Record<string, string>; values: Record<string, number> }
 /** Inject time for deterministic tests; no timers or per-frame extension work. */
 export function createScenePanels(now: () => number = () => Date.now()): PanelHook {
   const radios = new Map<string, RadioState>()
+  const forms = new Map<string, FormState>()
+  function form(id: string): FormState {
+    let f = forms.get(id)
+    if (!f) {
+      if (forms.size >= 64) forms.delete(forms.keys().next().value!)
+      f = {
+        strings: { call: "", band: "20m", mode: "CW", antenna: "vertical", status: "Nothing spotted yet" },
+        values: { power: 100, qrp: 0, cluster: 1, cwOnly: 0, spotted: 0 },
+      }
+      forms.set(id, f)
+    }
+    return f
+  }
   function state(id: string): RadioState {
     let s = radios.get(id)
     if (!s) {
@@ -39,14 +53,16 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
       return [
         { key: "radio", title: "Radio Front Face · Simulation", icon: "radio-tower", multiple: true, on: ["tick:1"] },
         { key: "weather", title: "Weather Chart · Simulation", icon: "weather-partly-cloudy", multiple: true },
+        { key: "controls", title: "Native Controls · Simulation", icon: "form-textbox", multiple: true },
       ]
     },
     async render(args): Promise<PanelContent> {
+      if (args.panelKey === "controls") return { kind: "scene", scene: controlsScene(form(args.instanceId ?? args.panelKey)) }
       if (args.panelKey === "weather") {
         const temperatures = [17, 18, 21, 24, 25, 23, 20, 18]
         const points = temperatures.map((t, i) => `${60 + i * 74},${265 - (t - 15) * 14}`).join(" ")
         return {
-          kind: "svgScene",
+          kind: "scene",
           scene: {
             version: 1,
             width: 640,
@@ -91,7 +107,7 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
       }
       const s = state(args.instanceId ?? args.panelKey)
       return {
-        kind: "svgScene",
+        kind: "scene",
         scene: {
           version: 1,
           width: 640,
@@ -213,8 +229,25 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
       }
     },
     async onEvent(args) {
-      const s = state(args.instanceId ?? args.panelKey)
       const event = args.event
+      if (args.panelKey === "controls") {
+        const f = form(args.instanceId ?? args.panelKey)
+        if (event.text !== undefined) f.strings[event.controlId] = event.text
+        if (event.value !== undefined) f.values[event.controlId] = event.value
+        if (event.action === "spot") {
+          const call = f.strings.call.trim().toUpperCase()
+          if (!call) throw new Error("No callsign to spot")
+          f.strings.call = call
+          f.values.spotted = 1
+          f.strings.status = `Spotted ${call} on ${f.strings.band} ${f.strings.mode}, ${f.values.qrp ? 5 : f.values.power} W`
+        }
+        if (event.action === "clear") {
+          f.values.spotted = 0
+          f.strings.status = "Nothing spotted yet"
+        }
+        return { values: f.values, strings: f.strings }
+      }
+      const s = state(args.instanceId ?? args.panelKey)
       if (event.action === "connect") {
         s.connected = 1 - s.connected
         s.due = 0
@@ -238,6 +271,91 @@ export function createScenePanels(now: () => number = () => Date.now()): PanelHo
         }
       }
       return { values: { requested: s.requested, reported: s.reported, connected: s.connected, slow: s.slow } }
+    },
+  }
+}
+
+/**
+ * Every native control kind, placed by a layout around a strip of artwork. Clear sits
+ * over the strip instead: ordered among its layers, under a click-through sheen, and
+ * faded out until there is something to clear.
+ */
+function controlsScene(f: FormState): PanelScene {
+  return {
+    version: 1,
+    width: 640,
+    height: 60,
+    values: f.values,
+    strings: f.strings,
+    layers: [
+      { id: "strip", x: 0, y: 0, width: 640, height: 60, svg: svg('<rect width="640" height="60" rx="10" fill="#142337"/>', 640, 60) },
+      { id: "status", x: 16, y: 16, width: 490, height: 28, text: { value: "status", size: 16, color: "#a9efcf" } },
+      {
+        id: "sheen",
+        x: 0,
+        y: 0,
+        width: 640,
+        height: 30,
+        svg: svg('<rect width="640" height="30" rx="10" fill="#ffffff" fill-opacity="0.08"/>', 640, 30),
+      },
+    ],
+    controls: [
+      { id: "call", kind: "nativeTextField", label: "Callsign", placeholder: "W1AW", value: "call", event: "set" },
+      {
+        id: "band",
+        kind: "nativeDropdown",
+        label: "Band",
+        value: "band",
+        event: "set",
+        options: ["40m", "20m", "15m", "10m"].map((b) => ({ label: b, value: b })),
+      },
+      { id: "mode", kind: "nativeSegmented", label: "Mode", value: "mode", event: "set", options: ["CW", "SSB", "FT8"].map((m) => ({ label: m, value: m })) },
+      { id: "spot", kind: "nativeButton", label: "Spot", icon: "bullhorn", event: "spot" },
+      {
+        id: "clear",
+        kind: "nativeButton",
+        label: "Clear",
+        variant: "outlined",
+        event: "clear",
+        after: "status",
+        x: 520,
+        y: 10,
+        width: 110,
+        height: 40,
+        opacity: { value: "spotted", input: [0, 1], output: [0, 1] },
+      },
+      { id: "power", kind: "nativeSlider", label: "Power, watts", value: "power", event: "set", min: 5, max: 100, step: 5, disabled: f.values.qrp === 1 },
+      { id: "qrp", kind: "nativeSwitch", label: "QRP", value: "qrp", event: "set" },
+      { id: "cluster", kind: "nativeCheckbox", label: "Send to cluster", value: "cluster", event: "set" },
+      {
+        id: "antenna",
+        kind: "nativeRadio",
+        label: "Antenna",
+        value: "antenna",
+        event: "set",
+        options: [
+          { label: "Vertical", value: "vertical" },
+          { label: "Dipole", value: "dipole" },
+        ],
+      },
+      { id: "cw", kind: "nativeChip", label: "CW only", value: "cwOnly", icon: "filter" },
+      { id: "powerText", kind: "nativeText", label: "Power", value: "power", style: "mono", align: "end" },
+    ],
+    layout: {
+      column: [
+        { row: [{ control: "call", flex: 1 }, { control: "band", width: 110 }, { control: "mode" }], spacing: 8 },
+        { scene: true, flex: 1 },
+        {
+          wrap: [{ control: "qrp" }, { control: "cluster" }, { control: "antenna" }, { control: "cw" }],
+          spacing: 12,
+          runSpacing: 4,
+          crossAxisAlignment: "center",
+        },
+        { row: [{ control: "power", flex: 1 }, { control: "powerText", width: 48 }, { control: "spot" }], spacing: 8 },
+      ],
+      padding: 12,
+      spacing: 8,
+      crossAxisAlignment: "stretch",
     },
   }
 }

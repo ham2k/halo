@@ -33,7 +33,7 @@ import '../../services/error_reporting_service.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
-import 'svg_scene/scene_model.dart';
+import 'panel_scene/scene_model.dart';
 
 /// An operation as a hook sees it — what a panel's `render` and the
 /// `template` hook (a CW message about to be keyed) are handed, so
@@ -179,7 +179,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       _environmentScheduled = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _environmentScheduled = false;
-        if (mounted && _rendered && _content?.kind == 'svgScene') _requestRender('environment');
+        if (mounted && _rendered && _content?.kind == 'scene') _requestRender('environment');
       });
     }
   }
@@ -278,7 +278,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   }
 
   void _onSceneRuntimeChanged() {
-    if (!mounted || _content?.kind != 'svgScene') return;
+    if (!mounted || _content?.kind != 'scene') return;
     setState(() {
       _sceneGeneration++;
     });
@@ -470,7 +470,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       await _environmentReady.future;
       if (!mounted) return;
       final ctx = widget.renderContext;
-      if (_content != null && _content!.kind != 'svgScene') {
+      if (_content != null && _content!.kind != 'scene') {
         // Not watched from `build`, so resolved here. The key is dropped with
         // it: a pane that turns into a scene must see its first capture as a
         // change rather than match a key from before it stopped watching.
@@ -501,7 +501,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // A scene laid out for an environment that has since changed is not
       // shown. Owed here rather than left to [_captureEnvironment], which
       // cannot know a FIRST render is going to answer with a scene.
-      if (content?.kind == 'svgScene' && renderedEnvironment != _environmentKey) {
+      if (content?.kind == 'scene' && renderedEnvironment != _environmentKey) {
         _pending = true;
         return;
       }
@@ -596,7 +596,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     _requestRender('retry');
   }
 
-  Future<Map<String, double>> _sceneEvent(Map<String, dynamic> event) async {
+  Future<Map<String, Object>> _sceneEvent(Map<String, dynamic> event) async {
     _sceneRevision++;
     final panel = widget.panel;
     final generation = _sceneGeneration;
@@ -625,9 +625,17 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         'event': event,
       });
       if (!current()) throw StateError('Panel replaced');
-      final values = parseValues(result?['values']);
+      // An answer with neither is a hook that forgot to return. Taken as an
+      // empty patch, the operator's change would stand as if accepted.
+      if (result == null || (result['values'] == null && result['strings'] == null)) {
+        throw const FormatException('A panel event result needs values or strings');
+      }
+      final values = parseValues(result['values'] ?? const {});
+      final strings = parseStrings(result['strings'] ?? const {});
+      if (strings.keys.any(values.containsKey)) throw const FormatException('A panel event result names a value as both a number and a string');
+      final patch = <String, Object>{...values, ...strings};
       ErrorReportingService.recordSuccess('panel:event:${panel.id}');
-      return values;
+      return patch;
     } catch (error, stack) {
       if (current() && !configUnreadable) {
         ErrorReportingService.reportIfRepeated('panel:event:${panel.id}', error, stack, context: 'panel:event:${panel.id}', threshold: 1);
@@ -652,7 +660,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // `jsonEncode` to compare against, on every layout pass of a splitter
       // drag — and markdown and HTML never act on a change. They are handed
       // a fresh one when they render ([_render]).
-      if (_content == null || _content!.kind == 'svgScene') {
+      if (_content == null || _content!.kind == 'scene') {
         _captureEnvironment(panelEnvironment(context, _paneSize));
       }
       return PanelContentView(

@@ -37,7 +37,7 @@ import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTime
 
 export * from "./types.ts"
 export * from "./hookCategories.ts"
-export * from "./svgScene.ts"
+export * from "./panelScene.ts"
 export * from "./i18n.ts"
 export * from "./dxcc.ts"
 export * from "./location.ts"

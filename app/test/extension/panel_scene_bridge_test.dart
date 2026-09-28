@@ -33,10 +33,10 @@ Future<ExtensionHost> startHost() => ExtensionHost.start(
   kernelSource: File('assets/extensions/kernel.js').readAsStringSync(),
   extensions: [
     ExtensionBundle(
-      key: 'k2hrc-svg-scenes',
+      key: 'k2hrc-panel-scenes',
       // A fixture, built beside the shipped bundles but outside the app's
       // assets (extensions/build-config.mjs `fixturesDir`).
-      source: File('../extensions/build/fixtures/k2hrc-svg-scenes.js').readAsStringSync(),
+      source: File('../extensions/build/fixtures/k2hrc-panel-scenes.js').readAsStringSync(),
     ),
   ],
   onHostCall: (method, args) async => method == 'getSettings' ? {'appName': 'Test'} : null,
@@ -51,13 +51,13 @@ void main() {
     final panels = PanelService(service);
     addTearDown(panels.dispose);
     await panels.refreshExtensionPanels();
-    expect(panels.catalog.length, 2);
-    final radio = panels['ext:k2hrc-svg-scenes:radio#1']!;
-    final other = panels['ext:k2hrc-svg-scenes:radio#2']!;
-    final weather = panels['ext:k2hrc-svg-scenes:weather#1']!;
+    expect(panels.catalog.length, 3);
+    final radio = panels['ext:k2hrc-panel-scenes:radio#1']!;
+    final other = panels['ext:k2hrc-panel-scenes:radio#2']!;
+    final weather = panels['ext:k2hrc-panel-scenes:weather#1']!;
     const args = <String, dynamic>{'operation': <String, dynamic>{}, 'config': <String, dynamic>{}, 'qsoCount': 0, 'reason': 'test'};
     final content = PanelContent.fromJson(await panels.render(radio, args))!;
-    expect(content.kind, 'svgScene');
+    expect(content.kind, 'scene');
     expect(content.scene!.values['reported'], 14074);
     expect(content.scene!.controls.map((c) => c.kind), containsAll(['button', 'slider', 'knob']));
     final patch = await panels.event(radio, {
@@ -81,7 +81,7 @@ void main() {
       TranslationProvider(
         child: MaterialApp(
           home: Scaffold(
-            body: ExtensionPanel(panel: panels['ext:k2hrc-svg-scenes:radio#1']!, panels: panels, renderContext: const PanelRenderContext()),
+            body: ExtensionPanel(panel: panels['ext:k2hrc-panel-scenes:radio#1']!, panels: panels, renderContext: const PanelRenderContext()),
           ),
         ),
       ),
@@ -99,6 +99,53 @@ void main() {
     expect(service.events, 1);
     expect(find.text('14079.0 kHz'), findsOneWidget);
     // Remove the widget before stopping the runtime: no timer may invoke it later.
+    await tester.pumpWidget(const SizedBox());
+    panels.dispose();
+    await tester.runAsync(host.dispose);
+  });
+
+  // The whole string path: the field's `text` crosses the bridge, the
+  // extension keeps it, and the `strings` patch and the re-render both come
+  // back through ExtensionPanel. A patch parsed as values alone would drop
+  // the status line; an event carrying `value` would never deliver the call.
+  testWidgets('a native text field and button reach the real extension, and its strings come back', (tester) async {
+    final host = (await tester.runAsync(startHost))!;
+    final service = _SampleExtensionService(host);
+    final panels = PanelService(service);
+    await tester.runAsync(panels.refreshExtensionPanels);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 700,
+              height: 400,
+              child: ExtensionPanel(panel: panels['ext:k2hrc-panel-scenes:controls#1']!, panels: panels, renderContext: const PanelRenderContext()),
+            ),
+          ),
+        ),
+      ),
+    );
+    Future<void> bridgeSettles() async {
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+      await tester.pump();
+    }
+
+    await bridgeSettles();
+    expect(find.text('Nothing spotted yet'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'Callsign'), 'k2hrc');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await bridgeSettles();
+    await tester.tap(find.text('Spot'));
+    await bridgeSettles();
+    expect(service.events, 2);
+    expect(find.text('Spotted K2HRC on 20m CW, 100 W'), findsOneWidget);
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Callsign')).controller!.text,
+      'K2HRC',
+      reason: "the extension's normalized callsign replaced the typing",
+    );
     await tester.pumpWidget(const SizedBox());
     panels.dispose();
     await tester.runAsync(host.dispose);
