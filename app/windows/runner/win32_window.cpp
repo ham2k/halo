@@ -491,15 +491,15 @@ LRESULT CALLBACK Win32Window::ChildContentProc(HWND hwnd,
                        (pos->cx != client.right - client.left ||
                         pos->cy != client.bottom - client.top);
     if (hides || moves || sizes) {
-      char message[200];
-      std::snprintf(message, sizeof(message),
+      char line[200];
+      std::snprintf(line, sizeof(line),
                     "[window] refused a placement of the Flutter view:%s%s%s "
                     "(asked %d,%d %dx%d flags 0x%x; client %ldx%ld)",
                     hides ? " hide" : "", moves ? " move" : "",
                     sizes ? " resize" : "", pos->x, pos->y, pos->cx, pos->cy,
                     pos->flags, client.right - client.left,
                     client.bottom - client.top);
-      LogViewPlacement(message);
+      LogViewPlacement(line);
       pos->flags &= ~SWP_HIDEWINDOW;
       pos->x = client.left;
       pos->y = client.top;
@@ -535,15 +535,15 @@ void Win32Window::PutChildContentBack(const char* moment) {
   if (!hidden && !misplaced) {
     return;
   }
-  char message[200];
-  std::snprintf(message, sizeof(message),
+  char line[200];
+  std::snprintf(line, sizeof(line),
                 "[window] put the Flutter view back %s:%s%s (was %ld,%ld "
                 "%ldx%ld; client %ldx%ld)",
                 moment, hidden ? " hidden" : "", misplaced ? " misplaced" : "",
                 child.left, child.top, child.right - child.left,
                 child.bottom - child.top, client.right - client.left,
                 client.bottom - client.top);
-  LogViewPlacement(message);
+  LogViewPlacement(line);
   if (hidden) {
     ShowWindow(child_content_, SW_SHOWNA);
   }
