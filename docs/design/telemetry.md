@@ -26,10 +26,12 @@ vocabulary so both apps report comparable usage.
   `name`: a node's label, sent (capped at 60 characters) so a generic
   driver's actual make/model (which the catalogue key alone can't tell
   apart, e.g. `kenwood-generic`) is visible in the data. See "Radios"
-  below. **This bullet governs the `track` channel only.** One other path
-  sends more, to the crash backend rather than here, behind the same consent
-  — see "The first-success report"; do not read this rule as the app's whole
-  privacy model without it.
+  below. **This bullet governs the `track` channel only.** Two other paths
+  send more, to the crash backend rather than here: the first-success report,
+  behind the same consent, and an operator's own outline issue report, sent
+  only when they press Send — see "The first-success report" and "Outline
+  issue reports"; do not read this rule as the app's whole privacy model
+  without them.
 - **OSS builds are silent — and backend-free**: this repo contains only the
   generic `MetricsService` interface (no-op by default) and the consent
   gate. Any analytics backend lives in the private distribution layer
@@ -248,6 +250,26 @@ Not tracked, deliberately: per-keystroke or per-lookup activity (volume and
 privacy), spot browsing, sync round-trips, anything from extensions
 (`consentOpData` covers operation-data sharing, a separate concern from
 this app-usage channel).
+
+### Outline issue reports
+
+The one report an operator writes themselves. The credits under a map's
+reference outlines offer "Issues?" from GL zoom 8.5 in
+(`outlineIssuesFromZoom`, `ref_shapes.dart`), and only where a report can
+leave the device — a build with no reporting backend shows no link. The
+dialog (`outline_issue_dialog.dart`) asks which outline, how bad, and what is
+wrong, and Send uploads a diagnostic titled `Outline issue (<severity>):
+<reference>`.
+
+- **Nothing leaves the device without Send**, so it is not gated on
+  `consentAppData`: like stopping DEVLOGCAT, it is an upload the operator
+  asked for. It says only that it is sending — the upload runs in the
+  background — or, when no backend took it, that it could not, with the
+  report to copy.
+- **It carries a location**, the only report here that does: the map's
+  centre, zoom and view, and the operation's grid and coordinates, beside the
+  reference and the outline document's URL. An outline is wrong somewhere,
+  and the reviewer needs to see it as the operator saw it.
 
 ## Implementation
 

@@ -789,6 +789,7 @@ class Translations$map$en {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+	late final Translations$map$outlineIssue$en outlineIssue = Translations$map$outlineIssue$en.internal(_root);
 
 	/// en: 'Outlines are for reference only. Do your own research!'
 	String get outlinesDisclaimer => 'Outlines are for reference only. Do your own research!';
@@ -3313,6 +3314,57 @@ class Translations$operation$import$en {
 
 	/// en: 'Include all ${count}'
 	String gapDialogIncludeAll({required Object count}) => 'Include all ${count}';
+}
+
+// Path: map.outlineIssue
+class Translations$map$outlineIssue$en {
+	Translations$map$outlineIssue$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Issues?'
+	String get link => 'Issues?';
+
+	/// en: 'Report an outline issue'
+	String get title => 'Report an outline issue';
+
+	/// en: 'Which outline'
+	String get reference => 'Which outline';
+
+	/// en: 'How bad is it?'
+	String get severity => 'How bad is it?';
+
+	/// en: 'Minor nit'
+	String get minor => 'Minor nit';
+
+	/// en: 'Big deal'
+	String get major => 'Big deal';
+
+	/// en: 'What's wrong with it?'
+	String get explanation => 'What\'s wrong with it?';
+
+	/// en: 'What the outline gets wrong, and where'
+	String get explanationHint => 'What the outline gets wrong, and where';
+
+	/// en: 'Send'
+	String get send => 'Send';
+
+	/// en: 'Sending your report — thanks'
+	String get sending => 'Sending your report — thanks';
+
+	/// en: 'Copy report'
+	String get copy => 'Copy report';
+
+	/// en: 'Couldn't send the report'
+	String get notSent => 'Couldn\'t send the report';
+
+	/// en: 'Report copied'
+	String get copied => 'Report copied';
+
+	/// en: 'Couldn't copy the report'
+	String get notCopied => 'Couldn\'t copy the report';
 }
 
 // Path: map.postcard
@@ -7861,6 +7913,20 @@ extension on Translations {
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} more QSOs were captured earlier, before a gap in the data. Include them too?',
 			'operation.import.gapDialogRecentOnly' => 'Just the recent ones',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Include all ${count}',
+			'map.outlineIssue.link' => 'Issues?',
+			'map.outlineIssue.title' => 'Report an outline issue',
+			'map.outlineIssue.reference' => 'Which outline',
+			'map.outlineIssue.severity' => 'How bad is it?',
+			'map.outlineIssue.minor' => 'Minor nit',
+			'map.outlineIssue.major' => 'Big deal',
+			'map.outlineIssue.explanation' => 'What\'s wrong with it?',
+			'map.outlineIssue.explanationHint' => 'What the outline gets wrong, and where',
+			'map.outlineIssue.send' => 'Send',
+			'map.outlineIssue.sending' => 'Sending your report — thanks',
+			'map.outlineIssue.copy' => 'Copy report',
+			'map.outlineIssue.notSent' => 'Couldn\'t send the report',
+			'map.outlineIssue.copied' => 'Report copied',
+			'map.outlineIssue.notCopied' => 'Couldn\'t copy the report',
 			'map.outlinesDisclaimer' => 'Outlines are for reference only. Do your own research!',
 			'map.outlinesSource' => ({required Object sources}) => 'Source: ${sources}',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
@@ -8293,6 +8359,8 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmIntro' => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Your exchange: after their call when running, after they answer in S&P',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: its placeholders name the next contact, not this one',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'In S&P, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
@@ -8307,8 +8375,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.notMeasured' => 'Unknown length',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.playButton' => 'Play',
 			'settings.radio.voiceMessages.recordButton' => 'Record',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
@@ -8807,6 +8873,8 @@ extension on Translations {
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
 			'settings.station.switchLayout' => 'Layout',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'The switch refused "${command}" (error ${code})',
@@ -8821,8 +8889,6 @@ extension on Translations {
 			'settings.station.dcnAddress' => 'Device address',
 			'settings.station.dcnAddressDescription' => 'The address set on the module\'s DIP switches. A coax relay module leaves the factory at 2.',
 			'settings.station.dcnAddressRequired' => 'Must be a device address from 1 to 99',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',

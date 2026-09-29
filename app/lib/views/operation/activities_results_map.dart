@@ -33,6 +33,7 @@ import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_info_box.dart';
+import '../map/outline_issue_dialog.dart';
 import '../map/map_marker_icon.dart';
 import '../map/ref_shapes.dart';
 import '../map/map_zoom_controller.dart';
@@ -193,6 +194,13 @@ class ActivitiesResultsMap extends StatefulWidget {
   /// determining, denied, or a grid the search can't place). See
   /// activities_view.dart's `currentLocation`.
   final GridLocation? currentLocation;
+
+  /// The operation's own location and grid, as it stores them — what an
+  /// outline issue report says about where the operator is. Not
+  /// [currentLocation], which falls back to the device's live fix and would
+  /// send it without the operation ever having said where it is.
+  final GridLocation? operationLocation;
+  final String? operationGrid;
   final Color? currentLocationColor;
 
   /// The pill's own glyph and its color, mirrored into the map's dot so the
@@ -214,6 +222,8 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.onExplore,
     this.fitKey,
     this.currentLocation,
+    this.operationLocation,
+    this.operationGrid,
     this.currentLocationColor,
     this.currentLocationIcon,
     this.currentLocationIconColor,
@@ -743,7 +753,19 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
           left: Space.sm,
           right: Space.sm,
           bottom: Space.sm,
-          child: MapOutlinesNotice(shapes: shapes),
+          child: MapOutlinesNotice(
+            shapes: shapes,
+            camera: _cameraReport,
+            onReportIssue: () => reportOutlineIssue(
+              context,
+              shapes: shapes,
+              preselectedRefId: switch (_markerEntry(_selectedMarkerId)) {
+                final entry? => selectedRefMarkerId(entry),
+                null => null,
+              },
+              where: () => (camera: _cameraReport.value, operatorLocation: widget.operationLocation, operatorGrid: widget.operationGrid),
+            ),
+          ),
         ),
         Positioned(
           right: MapInfoBox.right,

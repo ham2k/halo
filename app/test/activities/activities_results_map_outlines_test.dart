@@ -16,12 +16,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/geoshape_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
+import 'package:ham2k_logger/views/map/ref_shapes.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 
+import '../support/error_reporting_fakes.dart';
 import '../support/map_tile_cache.dart';
 
 const _operationPark = {'type': 'potaActivation', 'ref': 'US-0001', 'lat': 40.0, 'lon': -75.0};
@@ -73,7 +76,7 @@ void main() {
 
   late MapZoomController camera;
 
-  Future<_FakeGeoshapes> pump(WidgetTester tester) async {
+  Future<_FakeGeoshapes> pump(WidgetTester tester, {GridLocation? currentLocation, GridLocation? operationLocation, String? operationGrid}) async {
     camera = MapZoomController();
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
@@ -90,6 +93,9 @@ void main() {
               settings: settings,
               geoshapes: geoshapes,
               onAdd: (_) {},
+              currentLocation: currentLocation,
+              operationLocation: operationLocation,
+              operationGrid: operationGrid,
             ),
           ),
         ),
@@ -223,6 +229,42 @@ void main() {
       expect(geoshapes.asked, hasLength(before), reason: 'the dashed and solid forms are one reference, one outline');
     } finally {
       debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('an outline report carries where the operation is, never the device\'s own fix', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    final backend = FakeErrorReportingBackend();
+    try {
+      await withErrorHooks(backend: backend, () async {
+        // The search band's dot is the device's GPS fix; the operation has
+        // said nowhere.
+        await pump(tester, currentLocation: const GridLocation(12.34567, -65.4321));
+        await zoomTo(tester, outlineIssuesFromZoom + 0.5);
+        tester.widget<MapOutlinesNotice>(find.byType(MapOutlinesNotice)).onReportIssue!();
+        await tester.pumpAndSettle();
+
+        final referenceField = find.descendant(of: find.byType(DropdownMenu<String>), matching: find.byType(TextField));
+        await tester.tap(referenceField);
+        await tester.pumpAndSettle();
+        // The one outline in view at this zoom.
+        await tester.tap(find.textContaining('US-0002').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Minor nit'));
+        await tester.enterText(find.byWidgetPredicate((w) => w is TextField && w.decoration?.labelText == "What's wrong with it?"), 'Off by a road.');
+        await tester.pump();
+        await tester.tap(find.text('Send'));
+        await tester.pumpAndSettle();
+
+        final body = backend.diagnostics.single.$2;
+        // Sent, the operator's live position would leave the device on the
+        // strength of a map they were looking around.
+        expect(body, isNot(contains('12.34567')));
+        expect(body, isNot(contains('Operator:')));
+      });
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+      ErrorReportingService.resetForTesting();
     }
   });
 }

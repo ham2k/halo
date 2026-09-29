@@ -2640,6 +2640,8 @@ class OperationSheetState extends State<OperationSheet> {
                                     onExplore: _explore,
                                     fitKey: '$_answeredSearches',
                                     currentLocation: currentLocation,
+                                    operationLocation: _operation.location,
+                                    operationGrid: _operation.displayGrid,
                                     currentLocationColor: locationColor,
                                     currentLocationIcon: locationIcon,
                                     currentLocationIconColor: onLocationColor,

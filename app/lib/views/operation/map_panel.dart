@@ -34,6 +34,7 @@ import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
 import '../map/map_info_box.dart';
+import '../map/outline_issue_dialog.dart';
 import '../map/map_marker_icon.dart';
 import '../map/ref_shapes.dart';
 import 'activities_results_map.dart' show activitySelectedRefMarkers;
@@ -422,7 +423,17 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
             spacing: Space.sm,
             children: [
               if (hasZoomButtons) _MapZoomButtons(controller: _zoomController),
-              Expanded(child: MapOutlinesNotice(shapes: shapes)),
+              Expanded(
+                child: MapOutlinesNotice(
+                  shapes: shapes,
+                  camera: _cameraReport,
+                  onReportIssue: () => reportOutlineIssue(
+                    context,
+                    shapes: shapes,
+                    where: () => (camera: _cameraReport.value, operatorLocation: widget.operation.location, operatorGrid: widget.operation.displayGrid),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

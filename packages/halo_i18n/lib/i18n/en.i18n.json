@@ -702,6 +702,22 @@
     }
   },
   "map": {
+    "outlineIssue": {
+      "link": "Issues?",
+      "title": "Report an outline issue",
+      "reference": "Which outline",
+      "severity": "How bad is it?",
+      "minor": "Minor nit",
+      "major": "Big deal",
+      "explanation": "What's wrong with it?",
+      "explanationHint": "What the outline gets wrong, and where",
+      "send": "Send",
+      "sending": "Sending your report — thanks",
+      "copy": "Copy report",
+      "notSent": "Couldn't send the report",
+      "copied": "Report copied",
+      "notCopied": "Couldn't copy the report"
+    },
     "outlinesDisclaimer": "Outlines are for reference only. Do your own research!",
     "outlinesSource": "Source: ${sources}",
     "emptyState": "No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.",

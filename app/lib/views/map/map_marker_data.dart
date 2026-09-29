@@ -461,9 +461,25 @@ class MapShapeData {
   /// equality: it is fixed by the id, like the rings.
   final String? sourceName;
 
-  const MapShapeData({required this.id, required this.rings, required this.color, this.isLine = false, this.dashed = false, this.sourceName});
+  /// Where the shape was fetched from, and the reference it outlines as an
+  /// operator would name it — what a report of a wrong outline needs to say.
+  /// Not part of equality either.
+  final String? sourceUrl;
+  final String? refLabel;
 
-  MapShapeData asDashed() => MapShapeData(id: id, rings: rings, color: color, isLine: isLine, dashed: true, sourceName: sourceName);
+  const MapShapeData({
+    required this.id,
+    required this.rings,
+    required this.color,
+    this.isLine = false,
+    this.dashed = false,
+    this.sourceName,
+    this.sourceUrl,
+    this.refLabel,
+  });
+
+  MapShapeData asDashed() =>
+      MapShapeData(id: id, rings: rings, color: color, isLine: isLine, dashed: true, sourceName: sourceName, sourceUrl: sourceUrl, refLabel: refLabel);
 
   /// Compared by id, color and [dashed] alone. Shapes are content-addressed —
   /// a given id is always the same fetched document, parsed the same way — so
@@ -488,7 +504,14 @@ class MapShapeData {
 ///
 /// Points are not read: a footprint is an area, or a trail or river that a
 /// park is made of, and a lone point is neither.
-List<MapShapeData> mapShapesFromGeojson(Object? document, {required String idPrefix, required Color color, String? sourceName}) {
+List<MapShapeData> mapShapesFromGeojson(
+  Object? document, {
+  required String idPrefix,
+  required Color color,
+  String? sourceName,
+  String? sourceUrl,
+  String? refLabel,
+}) {
   final shapes = <MapShapeData>[];
 
   List<GridLocation> pointsOf(Object? path) {
@@ -515,13 +538,23 @@ List<MapShapeData> mapShapesFromGeojson(Object? document, {required String idPre
       if (points.length >= 3) rings.add(points);
     }
     if (rings.isEmpty) return;
-    shapes.add(MapShapeData(id: '$idPrefix/${shapes.length}', rings: rings, color: color, sourceName: sourceName));
+    shapes.add(MapShapeData(id: '$idPrefix/${shapes.length}', rings: rings, color: color, sourceName: sourceName, sourceUrl: sourceUrl, refLabel: refLabel));
   }
 
   void addLine(Object? coordinates) {
     final points = pointsOf(coordinates);
     if (points.length < 2) return;
-    shapes.add(MapShapeData(id: '$idPrefix/${shapes.length}', rings: [points], color: color, isLine: true, sourceName: sourceName));
+    shapes.add(
+      MapShapeData(
+        id: '$idPrefix/${shapes.length}',
+        rings: [points],
+        color: color,
+        isLine: true,
+        sourceName: sourceName,
+        sourceUrl: sourceUrl,
+        refLabel: refLabel,
+      ),
+    );
   }
 
   void addGeometry(Object? geometry) {

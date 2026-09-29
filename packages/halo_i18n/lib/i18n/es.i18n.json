@@ -702,6 +702,22 @@
     }
   },
   "map": {
+    "outlineIssue": {
+      "link": "¿Problemas?",
+      "title": "Informar un problema con un contorno",
+      "reference": "Qué contorno",
+      "severity": "¿Qué tan grave es?",
+      "minor": "Detalle menor",
+      "major": "Algo serio",
+      "explanation": "¿Qué está mal?",
+      "explanationHint": "Qué tiene mal el contorno, y dónde",
+      "send": "Enviar",
+      "sending": "Enviando tu informe — gracias",
+      "copy": "Copiar informe",
+      "notSent": "No se pudo enviar el informe",
+      "copied": "Informe copiado",
+      "notCopied": "No se pudo copiar el informe"
+    },
     "outlinesDisclaimer": "Los contornos son solo orientativos. ¡Investiga por tu cuenta!",
     "outlinesSource": "Fuente: ${sources}",
     "emptyState": "Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.",

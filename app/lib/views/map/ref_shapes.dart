@@ -14,6 +14,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -23,6 +24,7 @@ import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_ref_results.dart' show RefGeojsonAnswer;
 import '../../services/geoshape_service.dart';
 import 'map_marker_data.dart';
+import 'map_zoom_controller.dart';
 
 /// The zoom, on the GL scale, from which a map fetches reference outlines it
 /// was not asked to draw at every zoom — the Map tab's, and the Activities
@@ -31,6 +33,16 @@ import 'map_marker_data.dart';
 /// its outline a fetch for a smudge.
 const refOutlinesFromZoom = 7.0;
 const refOutlinesOpaqueAtZoom = 8.0;
+
+/// The zoom, on the GL scale, from which the outline credits offer to report
+/// a wrong outline: close enough in that the operator can see what is wrong
+/// with it.
+const outlineIssuesFromZoom = 8.5;
+
+/// A reference as a report about its outline names it: its short label (or
+/// bare code) and its name — "POTA US-1234 · Catskill Park".
+String outlineRefLabel(Map<String, dynamic> ref) =>
+    [ref['shortLabel'] ?? ref['ref'], ref['name']].whereType<String>().where((part) => part.isNotEmpty).join(' · ');
 
 /// One pane's parsed outlines, and what it is still waiting on.
 ///
@@ -110,16 +122,30 @@ class RefShapeLoader {
       return;
     }
     for (final (i, item) in batch.indexed) {
-      unawaited(_land(geoshapes, sources[i], key: item.key, id: item.id, color: item.color));
+      unawaited(_land(geoshapes, sources[i], ref: item.ref, key: item.key, id: item.id, color: item.color));
     }
   }
 
-  Future<void> _land(GeoshapeService geoshapes, RefGeojsonAnswer source, {required String key, required String id, required Color color}) async {
+  Future<void> _land(
+    GeoshapeService geoshapes,
+    RefGeojsonAnswer source, {
+    required Map<String, dynamic> ref,
+    required String key,
+    required String id,
+    required Color color,
+  }) async {
     try {
       final shape = await geoshapes.shapeFromSource(source);
       final geojson = shape.geojson;
       if (geojson != null) {
-        _shapes[key] = mapShapesFromGeojson(jsonDecode(geojson), idPrefix: id, color: color, sourceName: source.source?.sourceName);
+        _shapes[key] = mapShapesFromGeojson(
+          jsonDecode(geojson),
+          idPrefix: id,
+          color: color,
+          sourceName: source.source?.sourceName,
+          sourceUrl: source.source?.url,
+          refLabel: outlineRefLabel(ref),
+        );
       } else if (shape.resolved) {
         // The program publishes none — remember that, and stop asking.
         _shapes[key] = const [];
@@ -180,9 +206,19 @@ List<MapShapeData> refShapes(
 /// own credit in the bottom-right corner is never covered — flutter_map's
 /// strip and MapLibre's control both sit there.
 class MapOutlinesNotice extends StatelessWidget {
-  const MapOutlinesNotice({super.key, required this.shapes});
+  const MapOutlinesNotice({super.key, required this.shapes, this.camera, this.onReportIssue});
 
   final List<MapShapeData> shapes;
+
+  /// The map's last camera report — what [outlineIssuesFromZoom] is checked
+  /// against. Without one, no issues link.
+  final ValueListenable<MapCameraSettled?>? camera;
+
+  /// Opens the outline-issue dialog (outline_issue_dialog.dart), from an
+  /// "Issues?" link after the credits. Offered only close in, and only where a
+  /// report can leave the device ([ErrorReportingService.reportingEnabled]):
+  /// a form whose Send can never send is worse than no form.
+  final VoidCallback? onReportIssue;
 
   @override
   Widget build(BuildContext context) {
@@ -190,24 +226,74 @@ class MapOutlinesNotice extends StatelessWidget {
     final theme = Theme.of(context);
     final sources = {for (final shape in shapes) ?shape.sourceName}.toList()..sort();
     final style = theme.textTheme.bodySmall;
+    final camera = this.camera;
+    final onReportIssue = ErrorReportingService.reportingEnabled ? this.onReportIssue : null;
+    // One line of text, the link inline on the credits' baseline — a row of
+    // two widgets centres them instead, and the smaller bold link sits off it.
+    Widget credits(bool withLink) => Text.rich(
+      TextSpan(
+        children: [
+          if (sources.isNotEmpty) TextSpan(text: context.t.map.outlinesSource(sources: sources.join(', '))),
+          if (withLink) ...[
+            if (sources.isNotEmpty) const WidgetSpan(child: SizedBox(width: Space.lg)),
+            WidgetSpan(
+              alignment: PlaceholderAlignment.baseline,
+              baseline: TextBaseline.alphabetic,
+              child: Semantics(
+                button: true,
+                child: InkWell(
+                  onTap: onReportIssue,
+                  child: Text(
+                    context.t.map.outlineIssue.link,
+                    // The span it sits in is scaled already; scaling this
+                    // too would size it by the text scale squared.
+                    textScaler: TextScaler.noScaling,
+                    style: style?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                      decorationColor: theme.colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      style: style,
+    );
     return LayoutBuilder(
       builder: (context, constraints) => Align(
         alignment: Alignment.bottomLeft,
         heightFactor: 1,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.6),
-          child: Material(
-            color: theme.colorScheme.surface.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xs),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.t.map.outlinesDisclaimer, style: style?.copyWith(fontWeight: FontWeight.bold)),
-                  if (sources.isNotEmpty) Text(context.t.map.outlinesSource(sources: sources.join(', ')), style: style),
-                ],
+          // On the web the map under it would otherwise take the link's
+          // clicks (user-interface.md, "Over a map, on the web").
+          child: PlatformViewShield(
+            child: Material(
+              color: theme.colorScheme.surface.withValues(alpha: 0.9),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xs),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(context.t.map.outlinesDisclaimer, style: style?.copyWith(fontWeight: FontWeight.bold)),
+                    if (onReportIssue == null || camera == null)
+                      if (sources.isNotEmpty) credits(false) else const SizedBox.shrink()
+                    else
+                      ValueListenableBuilder(
+                        valueListenable: camera,
+                        builder: (context, settled, _) {
+                          final close = (settled?.camera.zoom ?? 0) >= outlineIssuesFromZoom;
+                          return sources.isEmpty && !close ? const SizedBox.shrink() : credits(close);
+                        },
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

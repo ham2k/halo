@@ -382,6 +382,7 @@ class _Translations$map$es extends Translations$map$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
+	@override late final _Translations$map$outlineIssue$es outlineIssue = _Translations$map$outlineIssue$es._(_root);
 	@override String get outlinesDisclaimer => 'Los contornos son solo orientativos. ¡Investiga por tu cuenta!';
 	@override String outlinesSource({required Object sources}) => 'Fuente: ${sources}';
 	@override String get emptyState => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.';
@@ -1536,6 +1537,29 @@ class _Translations$operation$import$es extends Translations$operation$import$en
 	@override String gapDialogBody({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?';
 	@override String get gapDialogRecentOnly => 'Solo los recientes';
 	@override String gapDialogIncludeAll({required Object count}) => 'Incluir los ${count}';
+}
+
+// Path: map.outlineIssue
+class _Translations$map$outlineIssue$es extends Translations$map$outlineIssue$en {
+	_Translations$map$outlineIssue$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get link => '¿Problemas?';
+	@override String get title => 'Informar un problema con un contorno';
+	@override String get reference => 'Qué contorno';
+	@override String get severity => '¿Qué tan grave es?';
+	@override String get minor => 'Detalle menor';
+	@override String get major => 'Algo serio';
+	@override String get explanation => '¿Qué está mal?';
+	@override String get explanationHint => 'Qué tiene mal el contorno, y dónde';
+	@override String get send => 'Enviar';
+	@override String get sending => 'Enviando tu informe — gracias';
+	@override String get copy => 'Copiar informe';
+	@override String get notSent => 'No se pudo enviar el informe';
+	@override String get copied => 'Informe copiado';
+	@override String get notCopied => 'No se pudo copiar el informe';
 }
 
 // Path: map.postcard
@@ -3945,6 +3969,20 @@ extension on TranslationsEs {
 			'operation.import.gapDialogBody' => ({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?',
 			'operation.import.gapDialogRecentOnly' => 'Solo los recientes',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir los ${count}',
+			'map.outlineIssue.link' => '¿Problemas?',
+			'map.outlineIssue.title' => 'Informar un problema con un contorno',
+			'map.outlineIssue.reference' => 'Qué contorno',
+			'map.outlineIssue.severity' => '¿Qué tan grave es?',
+			'map.outlineIssue.minor' => 'Detalle menor',
+			'map.outlineIssue.major' => 'Algo serio',
+			'map.outlineIssue.explanation' => '¿Qué está mal?',
+			'map.outlineIssue.explanationHint' => 'Qué tiene mal el contorno, y dónde',
+			'map.outlineIssue.send' => 'Enviar',
+			'map.outlineIssue.sending' => 'Enviando tu informe — gracias',
+			'map.outlineIssue.copy' => 'Copiar informe',
+			'map.outlineIssue.notSent' => 'No se pudo enviar el informe',
+			'map.outlineIssue.copied' => 'Informe copiado',
+			'map.outlineIssue.notCopied' => 'No se pudo copiar el informe',
 			'map.outlinesDisclaimer' => 'Los contornos son solo orientativos. ¡Investiga por tu cuenta!',
 			'map.outlinesSource' => ({required Object sources}) => 'Fuente: ${sources}',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
@@ -4377,6 +4415,8 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpEsmIntro' => 'Con Enter envía mensajes encendido, Enter manipula los mensajes por su tecla de función, como hace N1MM. El conjunto Mensajes ESM empieza con estos:',
 			'settings.radio.cwMessages.helpEsmCq' => 'En Run, Enter con el indicativo vacío llama CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Tu intercambio: tras su indicativo en Run, tras su respuesta en S&P',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmThanks' => 'Las gracias, una vez registrado el contacto: sus marcadores nombran el siguiente contacto, no este',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'En S&P, tu indicativo a la estación que contestas',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'En Run, su indicativo antes de tu intercambio',
@@ -4391,8 +4431,6 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etiqueta de la memoria de voz ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.notMeasured' => 'Duración desconocida',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.playButton' => 'Reproducir',
 			'settings.radio.voiceMessages.recordButton' => 'Grabar',
 			'settings.radio.voiceMessages.stopButton' => 'Detener',
@@ -4891,6 +4929,8 @@ extension on TranslationsEs {
 			'settings.station.switchCurrentStateDescription' => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.',
 			'settings.station.switchWiringHeader' => 'Cableado',
 			'settings.station.switchPortInhibitedHint' => 'transmisión inhibida',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.autoConnectHeld' => 'HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.',
 			'settings.station.antennaTypes.dipole' => 'Dipolo',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
@@ -4905,8 +4945,6 @@ extension on TranslationsEs {
 			'settings.station.keyTypes.singlePaddle' => 'Paleta simple',
 			'settings.station.keyTypes.dualPaddle' => 'Paleta doble',
 			'settings.station.keyTypes.computerDriven' => 'Controlado por computadora',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyTypes.other' => 'Otro',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
