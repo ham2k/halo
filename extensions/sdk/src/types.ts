@@ -812,9 +812,12 @@ export interface ActivityHook {
 
 /// Contributes extra ADIF fields per QSO (registered under 'adifFields').
 ///
-/// A field NAME is written once per record: where two hooks answer the same
-/// one, the first to carry a value wins and the rest are dropped, the contact's
-/// own fields ahead of any hook's. Same rule app-polo applies.
+/// A field NAME is written once per record: the first to carry a value wins and
+/// the rest are dropped. Hooks come first — the export's own program, then the
+/// ones it lists in `includeFieldsFrom` — and the contact's own fields fill
+/// whatever no hook answered. A hook cannot claim the fields that identify the
+/// contact (CALL, QSO_DATE, TIME_ON, QSO_DATE_OFF, TIME_OFF, BAND, FREQ, MODE,
+/// SUBMODE, STATION_CALLSIGN, OPERATOR); an answer naming one is dropped.
 ///
 /// The full ADIF export asks this hook only about a contact whose operation or
 /// own refs carry a reference this extension claims, through a `ref:<type>` or
@@ -827,7 +830,13 @@ export interface AdifFieldsHook {
   /// ADIF generator resolves it from `ExportRequest.segments` before asking —
   /// so a rover's county or a contest's setup is what was true when the
   /// contact was made.
-  fieldsForOneQSO(args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> }, ctx: HookContext): Promise<{ name: string; value: string }[]>
+  ///
+  /// `mainHandler` is true when the file is this extension's own export — the
+  /// one place a program can write what only its own submission asks for.
+  fieldsForOneQSO(
+    args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue>; mainHandler?: boolean },
+    ctx: HookContext,
+  ): Promise<{ name: string; value: string }[]>
 }
 
 /// One imported ADIF record's contribution from one hook.

@@ -37,6 +37,30 @@ __polo.defineExtension({
 })
 ''';
 
+/// An extension answering names the contact's own record also writes: one it
+/// may take (STATE) and ones that identify the contact and it may not — one
+/// the contact left empty (FREQ) and one in lower case.
+const _overreach = '''
+__polo.defineExtension({
+  key: 'overreach',
+  name: 'overreach',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('ref:overreach', { key: 'overreach', hook: { decorateRef: async function (args) { return args.ref } } })
+    api.registerHook('adifFields', { key: 'overreach', hook: {
+      fieldsForOneQSO: async function () {
+        return [
+          { name: 'STATE', value: 'ZZ' },
+          { name: 'MODE', value: 'FT8' },
+          { name: 'FREQ', value: '14074' },
+          { name: 'call', value: 'X1X' },
+        ]
+      },
+    }})
+  },
+})
+''';
+
 void main() {
   requireBundles();
 
@@ -75,6 +99,7 @@ void main() {
           key: 'orphan',
           source: _extension('orphan', field: 'APP_TEST_ORPHAN'),
         ),
+        ExtensionBundle(key: 'overreach', source: _overreach),
       ],
     );
   });
@@ -181,6 +206,24 @@ void main() {
 
     expect(content, contains('<MY_SIG:3>ECA'));
     expect(content, contains('<MY_SIG_INFO:7>G-01234'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A program's answer outranks the contact's generic one — but a hook that
+  // could restate who was worked, when, or on what would rewrite every record
+  // of every file it is asked about, the whole-log backup included.
+  test("a hook's field outranks the contact's own, except the fields that identify the contact", () async {
+    final content = await export(
+      operationRefs: [
+        {'type': 'overreach', 'ref': 'O-1'},
+      ],
+    );
+
+    expect(content, contains('<STATE:2>ZZ'));
+    expect(content, contains('<CALL:4>W1AW'));
+    expect(content, contains('<MODE:3>SSB'));
+    expect(content, isNot(contains('X1X')));
+    expect(content, isNot(contains('FT8')));
+    expect(content, isNot(contains('14074')), reason: 'a name the contact left empty is still not the hook\'s');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('an extension whose manifest opts in is asked about every contact', () async {

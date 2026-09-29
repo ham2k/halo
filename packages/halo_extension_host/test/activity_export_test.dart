@@ -766,6 +766,165 @@ void main() {
     expect(content, isNot(contains('FN21sq55')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  // The SOTA Challenge asks for both stations' squares, so SOTA's own file
+  // carries them whatever the private-data switch says — and, being the file's
+  // own program, its answer outranks the contact's. The full export is not
+  // SOTA's file and keeps the contact's own privacy rules.
+  test('a SOTA file carries both grids, ours at six characters, and the full export does not borrow them', () async {
+    final host = await sharedHost(
+      ['adif', 'sota'],
+      cacheKey: 'sota-grids-precision-eight',
+      onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
+    );
+    final summitRun = {
+      'uuid': 'op',
+      'stationCall': 'N0DEV',
+      'grid': 'FN21sq55',
+      'refs': [
+        {'type': 'sotaActivation', 'ref': 'W1/HA-001'},
+      ],
+    };
+    final contact = {
+      ...qsos.first,
+      'their': {'call': 'W0ABC', 'sent': '59', 'grid': 'FN31pr56'},
+    };
+
+    Future<String> generate(String key, Map<String, dynamic> args) async {
+      final result =
+          await host.invokeHook(
+                'export',
+                key: key,
+                method: 'generateExport',
+                args: {
+                  'operation': summitRun,
+                  'qsos': [contact],
+                  ...args,
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
+      return result['content'] as String;
+    }
+
+    Future<String> sotaFile({required bool includePrivateData}) =>
+        generate('sota', {'exportType': 'sotaActivation-adif', 'exportKey': 'sota-adif:W1/HA-001', 'includePrivateData': includePrivateData});
+
+    final withheld = await sotaFile(includePrivateData: false);
+    expect(withheld, contains('<GRIDSQUARE:8>FN31pr56'), reason: 'their grid goes out as they sent it');
+    expect(withheld, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect(withheld, isNot(contains('FN21sq55')));
+
+    // Released, the contact's own MY_GRIDSQUARE would be eight characters at
+    // this precision; SOTA's six-character answer is the one written, once.
+    final released = await sotaFile(includePrivateData: true);
+    expect(released, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect('<MY_GRIDSQUARE:'.allMatches(released).length, 1);
+    expect('<GRIDSQUARE:'.allMatches(released).length, 1);
+
+    final full = await generate('adif', {'exportType': 'adif', 'includePrivateData': false});
+    expect(full, contains('<MY_SOTA_REF:9>W1/HA-001'), reason: 'SOTA still answered for the contact');
+    expect(full, isNot(contains('<GRIDSQUARE:')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // SOTA's grids outrank the contact's own, so they must read a location the
+  // way the rest of the file does: a real coordinate over the stored grid.
+  // Cutting the stored string instead would write an imported contact's
+  // four-character MY_GRIDSQUARE beside the fix it came with, and a station
+  // known only by its coordinate would get no GRIDSQUARE at all.
+  test('a SOTA file derives both grids from a real coordinate, not the stored string', () async {
+    final host = await sharedHost(['adif', 'sota']);
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'sota',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'stationCall': 'N0DEV',
+                  'refs': [
+                    {'type': 'sotaActivation', 'ref': 'W1/HA-001'},
+                  ],
+                },
+                'qsos': [
+                  {
+                    ...qsos.first,
+                    // What an ADIF import leaves: a coarse MY_GRIDSQUARE and the
+                    // MY_LAT/MY_LON the same record carried.
+                    'our': {'call': 'N0DEV', 'sent': '59', 'grid': 'FN21', 'lat': 41.7135, 'lon': -72.7278},
+                    'their': {'call': 'W0ABC', 'sent': '59', 'lat': 39.7589, 'lon': -84.1916},
+                  },
+                ],
+                'exportType': 'sotaActivation-adif',
+                'exportKey': 'sota-adif:W1/HA-001',
+                'includePrivateData': false,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_GRIDSQUARE:6>${locationToGrid6(41.7135, -72.7278)}'));
+    expect(content, contains('<GRIDSQUARE:6>${locationToGrid6(39.7589, -84.1916)}'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // SOTA reads the other station's location with its own copy of the rules
+  // core/adif applies, and its answer outranks the contact's — so each rule
+  // that keeps a coordinate from speaking has to hold there too, or the SOTA
+  // file states a place the rest of the log does not.
+  test('a SOTA file keeps the pairs that are no coordinate out of its grids', () async {
+    final host = await sharedHost(['adif', 'sota']);
+    Map<String, dynamic> contact(String call, Map<String, dynamic> their) => {
+      ...qsos.first,
+      'uuid': 'q-$call',
+      'their': {'call': call, 'sent': '59', ...their},
+    };
+    final result =
+        await host.invokeHook(
+              'export',
+              key: 'sota',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  'uuid': 'op',
+                  'stationCall': 'N0DEV',
+                  // Our own typed square, stored beside its center the same way.
+                  'grid': 'FN21',
+                  'lat': 41.5,
+                  'lon': -75.0,
+                  'refs': [
+                    {'type': 'sotaActivation', 'ref': 'W1/HA-001'},
+                  ],
+                },
+                'qsos': [
+                  // A typed square, stored beside its own center.
+                  contact('W1CTR', {'grid': 'FN31', 'lat': 41.5, 'lon': -73.0}),
+                  // A synced guess carrying cty.dat's west-positive DXCC centroid.
+                  contact('W2PFX', {
+                    'guess': {'grid': 'FN31pr', 'lat': 37.6, 'lon': 91.87, 'locSource': 'prefix'},
+                  }),
+                  // A typed square correcting a lookup's pair elsewhere.
+                  contact('W3FIX', {
+                    'grid': 'EM79',
+                    'guess': {'lat': 41.7135, 'lon': -72.7278},
+                  }),
+                ],
+                'exportType': 'sotaActivation-adif',
+                'exportKey': 'sota-adif:W1/HA-001',
+                'includePrivateData': false,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
+    final records = (result['content'] as String).split('<EOR>');
+    String recordFor(String call) => records.firstWhere((r) => r.contains('<CALL:${call.length}>$call'));
+
+    expect(recordFor('W1CTR'), contains('<GRIDSQUARE:4>FN31 '), reason: 'a center restates the square, it does not refine it');
+    expect(recordFor('W2PFX'), contains('<GRIDSQUARE:6>FN31pr '));
+    expect(recordFor('W3FIX'), contains('<GRIDSQUARE:4>EM79 '));
+    expect(recordFor('W1CTR'), contains('<MY_GRIDSQUARE:4>FN21 '));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   // What app-polo puts on every guess it syncs to us: lib-country-files' DXCC
   // centroid, tagged `locSource: 'prefix'` and carrying cty.dat's
   // WEST-POSITIVE longitude. The pair is neither the station's position nor

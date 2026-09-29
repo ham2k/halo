@@ -240,6 +240,12 @@ whenever its location came from a fix, so writing it verbatim would state the
 position to a few hundred metres through the very switch withholding the
 coordinate it was derived from.
 
+SOTA's own exports (activator and hunter) carry both gridsquares whatever the
+switch says, because the SOTA Challenge asks for them — app-polo does the
+same. Both follow the reading rule above: a real coordinate is written as its
+six-character square, otherwise the stored grid goes out, ours cut to six
+characters. The full export keeps the rules above for the same contacts.
+
 The coarser location fields are public on both sides, because the award
 programs are claimed on them and a callsign or an on-air exchange already
 states them: `STATE`, `COUNTRY`, `CNTY`, `DXCC`, `CQZ`, `ITUZ`, `CONT` and

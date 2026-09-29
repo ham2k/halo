@@ -48,15 +48,14 @@ export function field(name: string, value: unknown): string {
 /// A record's fields, in order, with each NAME written at most once: ADIF has
 /// no meaning for a field repeated inside one record, and a log processor
 /// reading the second copy would contradict the first. The first one to carry
-/// a value wins — so the contact's own fields outrank an activity's, and among
-/// the `adifFields` hooks the order they were asked in decides, the main
-/// handler first (see [fieldSetsPerHook]). app-polo resolves a collision the
-/// same way (`qsonToADIF.js`, "keep the first one defined").
+/// a value wins, so the caller's order decides; the exporter puts the
+/// `adifFields` hooks' answers ahead of the contact's own (see
+/// [fieldSetsPerHook]).
 ///
 /// A field that renders EMPTY doesn't claim the name — polo's list holds the
-/// undefined ones too, so there a `{ STATE: undefined }` the base row never
-/// wrote still shuts out a hook's STATE. Nothing should have to know which
-/// optional fields the row above happened to skip.
+/// undefined ones too, so there a `{ STATE: undefined }` still shuts out a
+/// later STATE. Nothing should have to know which optional fields an earlier
+/// entry happened to skip.
 export function renderRow(fields: AdifField[]): string {
   // Case-folded: ADIF field names are case-insensitive, and a third-party
   // extension answering `my_sig` beside a core hook's `MY_SIG` would otherwise

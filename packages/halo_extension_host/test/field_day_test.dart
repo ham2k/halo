@@ -273,10 +273,9 @@ void main() {
       // station attribute, entered in the More pane or supplied by a lookup.
       // A contest submission has to carry the section that was SENT instead:
       // it is what went over the air and what the log at the other end is
-      // checked against. `renderRow` keeps the first field of a given name and
-      // the contact's own are pushed ahead of every hook's, so the base row
-      // has to yield this one name — and a submission quietly carrying the
-      // wrong section is not something anything downstream can catch.
+      // checked against. A hook's field outranks the contact's own — and a
+      // submission quietly carrying the wrong section is not something
+      // anything downstream can catch.
       final host = await sharedHost(['adif', 'fd'], onHostCall: nullHostCall);
       final qso = contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY');
       (qso['their'] as Map<String, dynamic>)['arrlSection'] = 'CT';

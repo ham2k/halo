@@ -213,6 +213,25 @@ function renderTextField(textField: (typeof TEXT_FIELD_TEMPLATES)[number], conte
   return { name: textField.name, value: textField.multiline ? rendered : oneLine(rendered) }
 }
 
+/// What makes a record THIS contact — who, when, on what, from which
+/// station. A hook's fields outrank the contact's everywhere else, but not
+/// here: one that answered any of these would rewrite every record of every
+/// file it is asked for, the whole-log backup included, and a reader matching
+/// contacts on them would find a different log.
+const CONTACT_IDENTITY_FIELDS = new Set([
+  "CALL",
+  "QSO_DATE",
+  "TIME_ON",
+  "QSO_DATE_OFF",
+  "TIME_OFF",
+  "BAND",
+  "FREQ",
+  "MODE",
+  "SUBMODE",
+  "STATION_CALLSIGN",
+  "OPERATOR",
+])
+
 /// The QSO's own fields, shared by every ADIF record it produces.
 /// `timeOffsetMillis` shifts this record's timestamp off the contact's — see
 /// the caller for why.
@@ -327,12 +346,9 @@ function baseFieldsFor(
   //
   // BAND_RX has an owner elsewhere: `activities/satellites` writes the
   // transponder's downlink band, and AO-7 answers on 10m from one transponder
-  // and 2m from the other. Base fields are written first and a name goes to
-  // the first value that fills it ([renderRow]), so on an imported satellite
-  // log the measured receive frequency decides and the transponder table does
-  // not. That is the right answer for a contact that recorded what it actually
-  // heard — but it is the opposite of who owns the field, so a satellite log
-  // whose FREQ_RX is wrong now says so twice.
+  // and 2m from the other. A hook's answer outranks this one ([renderRow]), so
+  // on an imported satellite contact the file can state a BAND_RX that
+  // disagrees with its own FREQ_RX.
   const theirFreqKHz = Number(their.freq ?? 0)
   if (theirFreqKHz > 0 && theirFreqKHz !== freqKHz) {
     add("FREQ_RX", formatAdifFreq(theirFreqKHz))
@@ -371,6 +387,11 @@ function baseFieldsFor(
   add("ITUZ", their.ituZone ?? theirGuess.ituZone)
   add("CONT", their.continent ?? theirGuess.continent)
   add("REGION", their.regionCode ?? theirGuess.regionCode)
+  // An attribute of the station, entered in the More pane or supplied by a
+  // lookup. Field Day and Winter Field Day answer ARRL_SECT from the section
+  // the other station SENT, which is what a submission has to carry, and a
+  // hook's answer outranks this one ([renderRow]).
+  add("ARRL_SECT", their.arrlSection ?? theirGuess.arrlSection)
   // No PFX. ADIF's is the contacted station's WPX PREFIX — `W1` for W1AW —
   // and QSON's `entityPrefix` is its DXCC entity's, `K`. Writing one as the
   // other reads back correctly through our own importer and hands a contest
@@ -426,10 +447,7 @@ function baseFieldsFor(
   add("MY_REGION", our.regionCode)
   // The zones are NOT derived: a callsign says which entity a station is in,
   // never which zone of one. Only the contact answers — an ADIF import writes
-  // `our.cqZone`/`ituZone`, and nothing else does yet — and a contact that
-  // does not leaves them for an extension's `adifFields` hook, which can take
-  // them because a name this record never writes is a name still free to claim
-  // ([renderRow]).
+  // `our.cqZone`/`ituZone`, and nothing else does yet.
   add("MY_CQ_ZONE", our.cqZone)
   add("MY_ITU_ZONE", our.ituZone)
   // The station's own equipment, which QSON records per contact because an
@@ -487,26 +505,6 @@ function baseFieldsFor(
   return fields
 }
 
-/// The station's own ARRL section, written AFTER every hook's fields rather
-/// than with the rest of the contact's.
-///
-/// `renderRow` keeps the first field of a given name, and the contact's own
-/// fields are pushed ahead of any hook's — the right rule everywhere else,
-/// and the wrong one here. Field Day and Winter Field Day both answer
-/// `ARRL_SECT` from the section the other station SENT (their `location` on
-/// the contest ref), and that is what a contest submission has to carry: it
-/// is what went over the air, checked against the log at the other end. The
-/// value in `their.arrlSection` is an attribute of the station, entered in
-/// the More pane or supplied by a lookup, and a submission carrying it in
-/// place of the exchange is wrong in a way nothing downstream can catch.
-///
-/// So it goes last and fills the gap only when no contest claimed the field.
-function stationSectionFieldsFor(qso: Record<string, unknown>): AdifField[] {
-  const their = (qso.their ?? {}) as Record<string, unknown>
-  const theirGuess = (their.guess ?? {}) as Record<string, unknown>
-  return [{ name: "ARRL_SECT", value: their.arrlSection ?? theirGuess.arrlSection }]
-}
-
 /// The refs [record] carries — none for a row without the key, or with
 /// something other than a list under it.
 function refsOf(record: Record<string, unknown>): unknown[] {
@@ -561,7 +559,7 @@ async function fieldSetsPerHook(
   const keys = mainHandler ? [...new Set([mainHandler, ...(includeFieldsFrom ?? [])])] : undefined
   const invoke = async (method: string) =>
     keys
-      ? (await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation })))).flat()
+      ? (await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation, mainHandler: key === mainHandler })))).flat()
       : hooks.invokeForRefs("adifFields", method, { qso, operation }, [...refsOf(operation), ...refsOf(qso)])
 
   const combined = await invoke("fieldCombinationsForOneQSO")
@@ -750,26 +748,33 @@ const ExportHandler = {
         // Records split out of one contact would otherwise be identical, and a
         // log processor is entitled to read that as a duplicate. app-polo
         // shifts each by a second (`qsonToADIF.js:144`); so do we.
-        const fields = baseFieldsFor(
-          qso,
-          operation,
-          stationCall,
-          n * 1000,
-          includePrivateData === true,
-          ctx.gridPrecision ?? 6,
-          exportContext,
-          ourEntity,
-          textFields,
-          constantTextFields,
-        )
+        const fields: AdifField[] = []
         for (const sets of perHook) {
           // A hook with a single set describes the contact rather than one of
           // its records, so it belongs on all of them.
           const set = sets.length === 1 ? sets[0] : sets[n]
           if (!set) continue
-          fields.push(...set)
+          fields.push(...set.filter((f) => !CONTACT_IDENTITY_FIELDS.has(String(f.name).toUpperCase())))
         }
-        fields.push(...stationSectionFieldsFor(qso as Record<string, unknown>))
+        // After every hook's fields: a program knows what its own file needs
+        // in a field better than the contact's generic answer does — the
+        // section a Field Day station SENT, a QSO party's name from the
+        // exchange, a satellite's downlink band. [CONTACT_IDENTITY_FIELDS]
+        // are the exception, filtered out of the hooks' answers above.
+        fields.push(
+          ...baseFieldsFor(
+            qso,
+            operation,
+            stationCall,
+            n * 1000,
+            includePrivateData === true,
+            ctx.gridPrecision ?? 6,
+            exportContext,
+            ourEntity,
+            textFields,
+            constantTextFields,
+          ),
+        )
         // Assembled and then rendered, rather than appended field by field, so
         // that two hooks naming the same field — an operation activating a park
         // and a summit both answer MY_SIG — write it once ([renderRow]).

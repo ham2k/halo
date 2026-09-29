@@ -4,7 +4,7 @@
 // SOTA (Summits on the Air) Extension. Registers:
 //   ref:sota / ref:sotaActivation  — validation + summit decoration via api-db2.sota.org.uk API
 //   activity                       — SOTA hunting + activation controls
-//   adifFields                     — SOTA_REF/MY_SOTA_REF contributions for exports
+//   adifFields                     — SOTA_REF/MY_SOTA_REF, plus both grids in SOTA's own exports
 //   adifImport                     — the same fields, plus SIG_INFO, read back
 //   spots                          — SOTAWatch spots source + authenticated spot posting
 //   account                        — SOTA SSO (OAuth2) login for SOTAwatch spotting
@@ -55,6 +55,7 @@ import { tFor } from "./i18n.ts"
 import { spotModeFor } from "./spotMode.ts"
 import { spotsFromSOTAApi, type SOTAApiSpot } from "./spotMapping.ts"
 import { oauthErrorCode } from "./oauthErrors.ts"
+import { isGridCenter } from "./grid.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -458,9 +459,32 @@ async function lookupCall(
   ]
 }
 
+/// The locator SOTA's files state for one end of a contact, by the rule
+/// core/adif's `gridForExport` follows (docs/design/locations.md): a real
+/// coordinate outranks the stored grid, and is written as its six-character
+/// square; a pair that is only the stored grid's own center says nothing more,
+/// so the grid goes out as stored.
+function sotaGrid(grid: unknown, lat: unknown, lon: unknown): string | undefined {
+  if (typeof lat === "number" && typeof lon === "number" && !isGridCenter(lat, lon, grid)) return locationToGrid6(lat, lon)
+  return typeof grid === "string" && grid ? grid : undefined
+}
+
+/// The other station's coordinate, in core/adif's precedence
+/// (`theirCoordinate` there): an entered pair wins; an entered grid
+/// suppresses a guessed pair, because the operator was correcting the lookup;
+/// only then does the guess answer. A pair tagged `locSource: 'prefix'` is a
+/// DXCC entity's centroid, not the station's position.
+function theirCoordinate(their: Record<string, unknown>, theirGuess: Record<string, unknown>): [unknown, unknown] {
+  if (their.locSource !== "prefix" && their.lat != null && their.lon != null && !isGridCenter(their.lat, their.lon, their.grid)) {
+    return [their.lat, their.lon]
+  }
+  if (their.grid != null || theirGuess.locSource === "prefix") return [undefined, undefined]
+  return [theirGuess.lat, theirGuess.lon]
+}
+
 const AdifFieldsHook = {
   async fieldsForOneQSO(
-    { qso, operation }: { qso: Record<string, unknown>; operation: Record<string, unknown> },
+    { qso, operation, mainHandler }: { qso: Record<string, unknown>; operation: Record<string, unknown>; mainHandler?: boolean },
     _ctx: HookContext,
   ): Promise<{ name: string; value: string }[]> {
     const fields: { name: string; value: string }[] = []
@@ -472,6 +496,27 @@ const AdifFieldsHook = {
     }
     if (activationRefs.length > 0) {
       fields.push({ name: "MY_SOTA_REF", value: activationRefs.map((r) => r.ref).join(",") })
+    }
+
+    // Both grids, in SOTA's own files only and whether or not the export
+    // releases private data, because the SOTA Challenge asks for them —
+    // app-polo's SOTA export does the same. The full ADIF export leaves them to
+    // the contact's own fields and their privacy rules.
+    if (mainHandler && fields.length > 0) {
+      const our = (qso.our ?? {}) as Record<string, unknown>
+      const their = (qso.their ?? {}) as Record<string, unknown>
+      const theirGuess = (their.guess ?? {}) as Record<string, unknown>
+      // One source for our location, as the core exporter reads it: a contact
+      // that states any part of it replaces the operation's whole.
+      const ourLocation = our.grid != null || our.lat != null || our.lon != null ? our : operation
+      // Ours at six characters whatever the Grid Precision: an operation
+      // adopted from a fix stores eight, and this file ships without the
+      // private-data switch that would release them (docs/design/locations.md,
+      // Privacy).
+      const ourGrid = sotaGrid(ourLocation.grid, ourLocation.lat, ourLocation.lon)?.slice(0, 6)
+      const theirGrid = sotaGrid(their.grid ?? theirGuess.grid, ...theirCoordinate(their, theirGuess))
+      if (theirGrid) fields.push({ name: "GRIDSQUARE", value: theirGrid })
+      if (ourGrid) fields.push({ name: "MY_GRIDSQUARE", value: ourGrid })
     }
     return fields
   },

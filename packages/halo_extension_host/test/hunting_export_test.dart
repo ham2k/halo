@@ -263,9 +263,12 @@ void main() {
     }
 
     final withheld = await adifFor(includePrivateData: false);
-    for (final private in ['Alice', 'EM79', 'Hamvention']) {
+    for (final private in ['Alice', 'Hamvention']) {
       expect(withheld, isNot(contains(private)));
     }
+    // Not private in SOTA's own file: the SOTA Challenge asks for it
+    // (activity_export_test.dart has the activator side).
+    expect(withheld, contains('<GRIDSQUARE:4>EM79'));
 
     final released = await adifFor(includePrivateData: true);
     for (final private in ['Alice', 'EM79', 'Hamvention']) {

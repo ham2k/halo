@@ -175,9 +175,7 @@ void main() {
     expect(content, contains('<MY_ITU_ZONE:2>61'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  // Left unwritten rather than guessed, which is what keeps the name free for
-  // an extension that does know where the station was (renderRow: first to
-  // carry a value wins, and a field the base row skipped claims nothing).
+  // Left unwritten rather than guessed.
   test('an operation with no zones recorded writes none', () async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
     final bare = qso()..['our'] = {'call': 'N0DEV', 'sent': '59'};

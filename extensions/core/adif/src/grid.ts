@@ -12,6 +12,8 @@
 // src/ham/grid.dart), decoding leniently the way that one does: a malformed
 // tail yields the coarser cell it agrees on, and anything unreadable yields
 // nothing at all.
+//
+// extensions/activities/sota/src/grid.ts is a copy — keep the two in step.
 
 export interface GridCell {
   lat: number

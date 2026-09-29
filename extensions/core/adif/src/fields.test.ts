@@ -40,7 +40,7 @@ test("the first hook to name a field wins, and the later one is dropped whole", 
   assert.equal(row, "<MY_SIG:4>POTA <MY_SIG_INFO:7>US-0001 ")
 })
 
-test("the contact's own field outranks a hook that names it later", () => {
+test("an earlier field outranks a later one of the same name", () => {
   assert.equal(
     renderRow([
       { name: "MODE", value: "CW" },
@@ -51,8 +51,9 @@ test("the contact's own field outranks a hook that names it later", () => {
 })
 
 test("a name a hook skipped is still free for the next one", () => {
-  // The row above holds every optional field it considered, empty ones
-  // included; a hook must not lose SIG_INFO to a slot nothing was written to.
+  // An earlier source lists every optional field it considered, empty ones
+  // included; a later one must not lose SIG_INFO to a slot nothing was
+  // written to.
   assert.equal(
     renderRow([
       { name: "SIG_INFO", value: undefined },

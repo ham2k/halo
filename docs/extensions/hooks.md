@@ -741,11 +741,16 @@ knowing them. Called by the `adif` extension **inside the runtime** via
 
 ```ts
 interface AdifFieldsHook {
-  fieldsForOneQSO(args: { qso, operation }, ctx): Promise<{name, value}[]>
+  fieldsForOneQSO(args: { qso, operation, mainHandler? }, ctx): Promise<{name, value}[]>
   // One field set PER ADIF RECORD this contact should produce.
-  fieldCombinationsForOneQSO?(args: { qso, operation }, ctx): Promise<{name, value}[][]>
+  fieldCombinationsForOneQSO?(args: { qso, operation, mainHandler? }, ctx): Promise<{name, value}[][]>
 }
 ```
+
+`mainHandler` is true when the file is this extension's own export — app-polo's
+argument of the same name. It is how a program writes what only its own
+submission asks for: SOTA's files carry both stations' gridsquares, which the
+full export leaves to the contact's own privacy rules.
 
 POTA contributes `SIG/SIG_INFO/POTA_REF` (hunted refs on the QSO) and
 `MY_SIG/MY_SIG_INFO/MY_POTA_REF` (activation refs on the operation).
@@ -819,11 +824,18 @@ would claim no reference at all.
 **A field name is written once per record, and the first to carry a value
 wins.** ADIF gives no meaning to a repeated field, so where two hooks answer
 the same name — the full export asks every program on the contact, and a park
-and a summit both answer `MY_SIG` — the later one is dropped, and the contact's own fields
-outrank all of them. Hooks are asked main handler first, then each
-`includeFieldsFrom` key in the order given, so that order decides — whichever
-of the two methods each hook answered. app-polo resolves a collision the same
-way ("keep the first one defined"). The **full export**, which asks every
+and a summit both answer `MY_SIG` — the later one is dropped. Hooks are asked
+main handler first, then each `includeFieldsFrom` key in the order given, so
+that order decides — whichever of the two methods each hook answered. The
+contact's own fields come after every hook's: a program knows what its file
+needs in a field better than the contact's generic answer does (the section a
+Field Day station sent, a satellite's downlink band). The exception is what
+identifies the contact — `CALL`, `QSO_DATE`, `TIME_ON`, `QSO_DATE_OFF`,
+`TIME_OFF`, `BAND`, `FREQ`, `MODE`, `SUBMODE`, `STATION_CALLSIGN`,
+`OPERATOR`: a hook answering one of those is dropped, since it would rewrite
+every record it is asked about, the whole-log backup included. This is a
+deliberate divergence from app-polo, whose contact fields come first and whose
+main handler's are appended unchecked, so a name both answer is written twice. The **full export**, which asks every
 program on the contact, has no such order: hooks answering `fieldCombinationsForOneQSO` are asked as one
 group and hooks answering `fieldsForOneQSO` as another, so which of two programs
 keeps a shared `MY_SIG` there is not something either of them chose.
