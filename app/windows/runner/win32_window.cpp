@@ -6,6 +6,8 @@
 #include <shellapi.h>
 #include <windowsx.h>
 
+#include <cstdio>
+
 #include "halo_edition.h"
 #include "resource.h"
 
@@ -87,8 +89,29 @@ SIZE FrameOutsets(HWND hwnd) {
   };
 }
 
+// Whether the window is snapped (Aero Snap, Snap Layouts). Looked up at run
+// time: IsWindowArranged only exists from build 20348 (Windows 11, Server
+// 2022), and a static import would stop the app starting on Windows 10.
+// There, a snapped window keeps reopening at its pre-snap size.
+bool IsArranged(HWND hwnd) {
+  using IsWindowArrangedFn = BOOL WINAPI(HWND);
+  static auto* const is_window_arranged = reinterpret_cast<IsWindowArrangedFn*>(
+      GetProcAddress(GetModuleHandle(L"user32.dll"), "IsWindowArranged"));
+  return is_window_arranged != nullptr && is_window_arranged(hwnd);
+}
+
+// Why the Flutter view was put back, for a console launch (stderr) and for
+// DebugView or a debugger (OutputDebugString): a normal launch has neither
+// console nor crash report for this, and the view being moved is otherwise
+// invisible.
+void LogViewPlacement(const char* message) {
+  std::fprintf(stderr, "%s\n", message);
+  OutputDebugStringA(message);
+  OutputDebugStringA("\n");
+}
+
 // Identifier for the subclass installed on the Flutter child view.
-constexpr UINT_PTR kChildHitTestSubclassId = 1;
+constexpr UINT_PTR kChildContentSubclassId = 1;
 
 // Dynamically loads the |EnableNonClientDpiScaling| from the User32 module.
 // This API is only needed for PerMonitor V1 awareness mode.
@@ -217,6 +240,11 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
+  // A hide sent to the view while this window is still hidden can clear its
+  // WS_VISIBLE without a WM_WINDOWPOSCHANGING for ChildContentProc to
+  // refuse. Once this window is visible, every hide goes through that
+  // message.
+  PutChildContentBack("before showing the window");
   return ShowWindow(window_handle_,
                     restore_maximized_ ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
 }
@@ -294,7 +322,7 @@ Win32Window::MessageHandler(HWND hwnd,
       // With the caption removed, the client area reaches the window top,
       // so the default proc reports HTCLIENT there. Points in the top band
       // only arrive here after the Flutter child returns HTTRANSPARENT for
-      // them (ChildHitTestProc) — translate them to the resize grips the
+      // them (ChildContentProc) — translate them to the resize grips the
       // standard frame would have offered.
       const LRESULT hit = DefWindowProc(hwnd, WM_NCHITTEST, wparam, lparam);
       if (hit == HTCLIENT) {
@@ -345,6 +373,19 @@ Win32Window::MessageHandler(HWND hwnd,
       }
       return 0;
 
+    case WM_WINDOWPOSCHANGED: {
+      // A snapped window's placement reports its pre-snap rect as "normal",
+      // so the snapped rect is kept here for SaveWindowPlacement. Tracked
+      // while visible rather than read at close: the window is already
+      // hidden by the time WM_DESTROY arrives.
+      const auto* pos = reinterpret_cast<const WINDOWPOS*>(lparam);
+      if ((pos->flags & SWP_HIDEWINDOW) == 0 && IsWindowVisible(hwnd)) {
+        arranged_ = IsArranged(hwnd) && GetWindowRect(hwnd, &arranged_rect_);
+      }
+      // DefWindowProc turns this into WM_SIZE (below) and WM_MOVE.
+      break;
+    }
+
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
       LONG newWidth = newRectSize->right - newRectSize->left;
@@ -380,6 +421,8 @@ Win32Window::MessageHandler(HWND hwnd,
 }
 
 void Win32Window::Destroy() {
+  // Tearing the child down hides it; ChildContentProc must not refuse that.
+  child_content_ = nullptr;
   OnDestroy();
 
   if (window_handle_) {
@@ -402,25 +445,68 @@ void Win32Window::SetChildContent(HWND content) {
   // The child covers the entire client area, which in the chromeless window
   // includes the top resize band; without this subclass every hit-test up
   // there would stop at the child and the top edge couldn't be resized.
-  SetWindowSubclass(content, ChildHitTestProc, kChildHitTestSubclassId,
+  //
+  // The same subclass keeps the child visible and filling the client area
+  // (ChildContentProc).
+  SetWindowSubclass(content, ChildContentProc, kChildContentSubclassId,
                     reinterpret_cast<DWORD_PTR>(this));
   RECT frame = GetClientArea();
 
   MoveWindow(content, frame.left, frame.top, frame.right - frame.left,
              frame.bottom - frame.top, true);
+  // A hide that reached the view before the subclass did.
+  PutChildContentBack("while hosting the view");
 
   SetFocus(child_content_);
 }
 
 // static
-LRESULT CALLBACK Win32Window::ChildHitTestProc(HWND hwnd,
+LRESULT CALLBACK Win32Window::ChildContentProc(HWND hwnd,
                                                UINT message,
                                                WPARAM wparam,
                                                LPARAM lparam,
                                                UINT_PTR /* subclass_id */,
                                                DWORD_PTR ref_data) {
-  if (message == WM_NCHITTEST) {
-    auto* that = reinterpret_cast<Win32Window*>(ref_data);
+  auto* that = reinterpret_cast<Win32Window*>(ref_data);
+  if (message == WM_WINDOWPOSCHANGING && that->child_content_ == hwnd) {
+    // The child is always visible and always exactly the client area; this
+    // window never asks for anything else. Another process can: PowerToys
+    // FancyZones' "move newly created windows to their last known zone"
+    // places the Flutter view as if it were an app window, and its queued
+    // placement hides it or moves it inside the frame. With no background
+    // brush on this window, what shows then is a blank window, or a white
+    // box on black, on every launch until the saved placement is cleared.
+    // Refused here rather than repaired after the fact, because that
+    // placement can land at any point after Show(); a hide that lands before
+    // it may skip this message, and Show() puts that one back.
+    auto* pos = reinterpret_cast<WINDOWPOS*>(lparam);
+    RECT client;
+    if (!GetClientRect(that->window_handle_, &client)) {
+      return DefSubclassProc(hwnd, message, wparam, lparam);
+    }
+    const bool hides = (pos->flags & SWP_HIDEWINDOW) != 0;
+    const bool moves = (pos->flags & SWP_NOMOVE) == 0 &&
+                       (pos->x != client.left || pos->y != client.top);
+    const bool sizes = (pos->flags & SWP_NOSIZE) == 0 &&
+                       (pos->cx != client.right - client.left ||
+                        pos->cy != client.bottom - client.top);
+    if (hides || moves || sizes) {
+      char message[200];
+      std::snprintf(message, sizeof(message),
+                    "[window] refused a placement of the Flutter view:%s%s%s "
+                    "(asked %d,%d %dx%d flags 0x%x; client %ldx%ld)",
+                    hides ? " hide" : "", moves ? " move" : "",
+                    sizes ? " resize" : "", pos->x, pos->y, pos->cx, pos->cy,
+                    pos->flags, client.right - client.left,
+                    client.bottom - client.top);
+      LogViewPlacement(message);
+      pos->flags &= ~SWP_HIDEWINDOW;
+      pos->x = client.left;
+      pos->y = client.top;
+      pos->cx = client.right - client.left;
+      pos->cy = client.bottom - client.top;
+    }
+  } else if (message == WM_NCHITTEST) {
     HWND top_level = that->window_handle_;
     const POINT point = {GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam)};
     if (top_level && InTopResizeBand(top_level, point)) {
@@ -430,6 +516,41 @@ LRESULT CALLBACK Win32Window::ChildHitTestProc(HWND hwnd,
     }
   }
   return DefSubclassProc(hwnd, message, wparam, lparam);
+}
+
+void Win32Window::PutChildContentBack(const char* moment) {
+  if (child_content_ == nullptr) {
+    return;
+  }
+  RECT client;
+  RECT child;
+  if (!GetClientRect(window_handle_, &client) ||
+      !GetWindowRect(child_content_, &child)) {
+    return;
+  }
+  MapWindowPoints(nullptr, window_handle_, reinterpret_cast<POINT*>(&child), 2);
+  const bool hidden =
+      (GetWindowLongPtr(child_content_, GWL_STYLE) & WS_VISIBLE) == 0;
+  const bool misplaced = EqualRect(&child, &client) == FALSE;
+  if (!hidden && !misplaced) {
+    return;
+  }
+  char message[200];
+  std::snprintf(message, sizeof(message),
+                "[window] put the Flutter view back %s:%s%s (was %ld,%ld "
+                "%ldx%ld; client %ldx%ld)",
+                moment, hidden ? " hidden" : "", misplaced ? " misplaced" : "",
+                child.left, child.top, child.right - child.left,
+                child.bottom - child.top, client.right - client.left,
+                client.bottom - client.top);
+  LogViewPlacement(message);
+  if (hidden) {
+    ShowWindow(child_content_, SW_SHOWNA);
+  }
+  if (misplaced) {
+    MoveWindow(child_content_, client.left, client.top,
+               client.right - client.left, client.bottom - client.top, TRUE);
+  }
 }
 
 void Win32Window::SetMinimumContentSize(double width, double height) {
@@ -510,6 +631,23 @@ void Win32Window::SaveWindowPlacement() {
   placement.length = sizeof(placement);
   if (!GetWindowPlacement(window_handle_, &placement)) {
     return;
+  }
+  // A snapped window comes back at its snapped size and position, as an
+  // ordinary window; Windows has no way to restore the snap itself.
+  // rcNormalPosition is in workspace coordinates, which are offset from
+  // screen coordinates by any taskbar on the top or left of the monitor.
+  if (arranged_ && placement.showCmd == SW_SHOWNORMAL) {
+    // Without the monitor's work area there is no way to convert, and a
+    // screen rect stored as workspace reopens shifted by the taskbar; the
+    // pre-snap rect is at least in the right coordinates.
+    RECT rect = arranged_rect_;
+    MONITORINFO monitor_info = {sizeof(MONITORINFO)};
+    if (GetMonitorInfo(MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST),
+                       &monitor_info)) {
+      OffsetRect(&rect, monitor_info.rcMonitor.left - monitor_info.rcWork.left,
+                 monitor_info.rcMonitor.top - monitor_info.rcWork.top);
+      placement.rcNormalPosition = rect;
+    }
   }
   HKEY key = nullptr;
   if (RegCreateKeyEx(HKEY_CURRENT_USER, kWindowPlacementRegKey, 0, nullptr,

@@ -305,6 +305,35 @@ one press) still happens on every map click. Nothing visible depends on it
 today; if it ever does, the runner's unconditional `SetFocus` on
 `WA_INACTIVE` is where to look.
 
+## Windows: FancyZones places the Flutter view as if it were an app window
+
+**Breaks:** with PowerToys FancyZones' "Move newly created windows to their
+last known zone" on, a window that was quit while zoned launches as a pure
+white window, or a small white box on black, every time until its saved
+placement (`HKCU\Software\Ham2K\Halo\<product name>\WindowPlacement`) is
+cleared.
+
+Flutter creates its view as a separate window and the runner reparents it
+into the app window (`SetChildContent`). FancyZones treats it as one of the
+app's windows, and its queued placement lands after the reparent: the view
+loses `WS_VISIBLE` or is moved inside the frame. The app window has no
+background brush, so nothing paints it. RustDesk hit the same thing
+([rustdesk#6756](https://github.com/rustdesk/rustdesk/issues/6756),
+[rustdesk_desktop_multi_window#40](https://github.com/rustdesk-org/rustdesk_desktop_multi_window/pull/40)).
+Why the saved rect matters is not understood; the likely reading is that
+FancyZones only acts on a window whose rect matches one of its zones.
+
+**Where the fix lives:** `win32_window.cpp`. `ChildContentProc`, the subclass
+already on the Flutter view for the top resize band, refuses any
+`WM_WINDOWPOSCHANGING` that would hide the view or put it anywhere but the
+client rect. That covers everything once the window is visible. Before then, a
+hide sent to a child of a hidden window can clear `WS_VISIBLE` without that
+message at all, so `Show()` checks the view and puts it back first
+(`PutChildContentBack`). Both log a `[window] …` line with what they found, to
+a console launch and to `OutputDebugString` (DebugView). RustDesk only
+re-shows the view after the fact, which misses a placement that lands after
+the window is shown.
+
 ## `flutter_secure_storage` on Linux needs libsecret AND a Secret Service
 
 **Breaks:** two different ways, and they are worth keeping apart.

@@ -103,12 +103,18 @@ class Win32Window {
   void SaveWindowPlacement();
   void RestoreWindowPlacement();
 
+  // Shows the Flutter child view and moves it back over the client area if
+  // something else hid or moved it, logging what it found. |moment| names
+  // the caller in that log line.
+  void PutChildContentBack(const char* moment);
+
   // Subclass proc installed on the Flutter child view (SetChildContent): the
   // child covers the whole client area of the chromeless window, so it must
   // return HTTRANSPARENT in the top resize band for the parent to receive
   // the hit-test and offer the top resize grip (see MessageHandler's
-  // WM_NCHITTEST).
-  static LRESULT CALLBACK ChildHitTestProc(HWND hwnd,
+  // WM_NCHITTEST). It also holds the child visible and at the client rect
+  // against placements from other processes.
+  static LRESULT CALLBACK ChildContentProc(HWND hwnd,
                                            UINT message,
                                            WPARAM wparam,
                                            LPARAM lparam,
@@ -124,6 +130,12 @@ class Win32Window {
   // Set from a restored placement so Show() re-maximizes the window instead of
   // revealing it at the smaller restore-rect size.
   bool restore_maximized_ = false;
+
+  // Whether the window is snapped, and its snapped rect in screen
+  // coordinates — what SaveWindowPlacement stores in place of the pre-snap
+  // rect the placement reports.
+  bool arranged_ = false;
+  RECT arranged_rect_ = {};
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;
