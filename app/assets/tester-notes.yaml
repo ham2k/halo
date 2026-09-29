@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-"upcoming":
+"176":
   changes:
     - "QSO party setup suggests counties and flags unknown locations"
     - "Multi-op operations list each operator's band and mode counts"
