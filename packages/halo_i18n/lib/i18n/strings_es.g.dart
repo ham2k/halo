@@ -250,6 +250,20 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get upgradeRevertedBody => 'Las extensiones actualizadas no pudieron iniciarse, así que las que tenías están de vuelta y funcionando. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.';
 	@override String get upgradeRuntimeDeadTitle => 'Tus extensiones no están funcionando';
 	@override String get upgradeRuntimeDeadBody => 'No pudimos iniciar tus extensiones, ni siquiera después de deshacer la actualización. Reiniciar la aplicación debería recuperarlas.';
+	@override String get restoreTitle => 'Faltan algunas de tus extensiones';
+	@override String get restoreBody => 'Estas extensiones que instalaste no están en este dispositivo. Podemos descargarlas de nuevo del catálogo de extensiones de Ham2K:';
+	@override String get restoreFromFile => 'Instaladas desde un archivo. Instálalas de nuevo desde sus archivos, u olvídalas:';
+	@override String get restoreOtherCatalog => 'Instaladas desde otro catálogo de extensiones, así que no están disponibles aquí:';
+	@override String get restoreForget => 'Olvidar';
+	@override String get restoreInstall => 'Instalar';
+	@override String get restoreLater => 'Más tarde';
+	@override String get restoreInstalling => 'Instalando tus extensiones…';
+	@override String get restoreDoneTitle => 'Tus extensiones están de vuelta';
+	@override String restoreDoneBody({required Object names}) => 'Instaladas de nuevo: ${names}.';
+	@override String get restorePartialTitle => 'Algunas extensiones no se pudieron instalar';
+	@override String restoreFailed({required Object names}) => 'No se pudieron instalar: ${names}. Te las ofreceremos de nuevo la próxima vez que abras la aplicación.';
+	@override String get restoreBusyBody => 'La aplicación todavía está preparando tus extensiones. Te las ofreceremos de nuevo la próxima vez que abras la aplicación.';
+	@override String get restoreRuntimeDeadBody => 'Las instalamos de nuevo, pero tus extensiones no arrancaron. Reiniciar la aplicación debería recuperarlas.';
 	@override String revokedTitle({required Object name}) => 'Se retiró ${name}';
 	@override String get revokedBody => 'El catálogo retiró esta versión, así que fue desactivada.';
 	@override String get downloadHashMismatch => 'Esa descarga no es la extensión que describe el catálogo.';
@@ -3478,6 +3492,20 @@ extension on TranslationsEs {
 			'extensionsPanel.upgradeRevertedBody' => 'Las extensiones actualizadas no pudieron iniciarse, así que las que tenías están de vuelta y funcionando. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.',
 			'extensionsPanel.upgradeRuntimeDeadTitle' => 'Tus extensiones no están funcionando',
 			'extensionsPanel.upgradeRuntimeDeadBody' => 'No pudimos iniciar tus extensiones, ni siquiera después de deshacer la actualización. Reiniciar la aplicación debería recuperarlas.',
+			'extensionsPanel.restoreTitle' => 'Faltan algunas de tus extensiones',
+			'extensionsPanel.restoreBody' => 'Estas extensiones que instalaste no están en este dispositivo. Podemos descargarlas de nuevo del catálogo de extensiones de Ham2K:',
+			'extensionsPanel.restoreFromFile' => 'Instaladas desde un archivo. Instálalas de nuevo desde sus archivos, u olvídalas:',
+			'extensionsPanel.restoreOtherCatalog' => 'Instaladas desde otro catálogo de extensiones, así que no están disponibles aquí:',
+			'extensionsPanel.restoreForget' => 'Olvidar',
+			'extensionsPanel.restoreInstall' => 'Instalar',
+			'extensionsPanel.restoreLater' => 'Más tarde',
+			'extensionsPanel.restoreInstalling' => 'Instalando tus extensiones…',
+			'extensionsPanel.restoreDoneTitle' => 'Tus extensiones están de vuelta',
+			'extensionsPanel.restoreDoneBody' => ({required Object names}) => 'Instaladas de nuevo: ${names}.',
+			'extensionsPanel.restorePartialTitle' => 'Algunas extensiones no se pudieron instalar',
+			'extensionsPanel.restoreFailed' => ({required Object names}) => 'No se pudieron instalar: ${names}. Te las ofreceremos de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.restoreBusyBody' => 'La aplicación todavía está preparando tus extensiones. Te las ofreceremos de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.restoreRuntimeDeadBody' => 'Las instalamos de nuevo, pero tus extensiones no arrancaron. Reiniciar la aplicación debería recuperarlas.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Se retiró ${name}',
 			'extensionsPanel.revokedBody' => 'El catálogo retiró esta versión, así que fue desactivada.',
 			'extensionsPanel.downloadHashMismatch' => 'Esa descarga no es la extensión que describe el catálogo.',
@@ -3849,6 +3877,8 @@ extension on TranslationsEs {
 			'operation.spots.callsOfNote' => 'Indicativos destacados',
 			'operation.spots.yourSpots' => 'Tus spots',
 			'operation.spots.allSpots' => 'Todos los spots',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.continents.af' => 'África',
 			'operation.spots.continents.as' => 'Asia',
 			'operation.spots.continents.eu' => 'Europa',
@@ -3863,8 +3893,6 @@ extension on TranslationsEs {
 			'operation.spots.filters.sources' => 'Fuentes',
 			'operation.spots.filters.continent' => 'Continente',
 			'operation.spots.filters.sorting' => 'Orden',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
 			'operation.spots.filters.groupByBand' => 'Agrupar por banda',
@@ -4363,6 +4391,8 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etiqueta de la memoria de voz ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.notMeasured' => 'Duración desconocida',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.playButton' => 'Reproducir',
 			'settings.radio.voiceMessages.recordButton' => 'Grabar',
 			'settings.radio.voiceMessages.stopButton' => 'Detener',
@@ -4377,8 +4407,6 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Reproducir la memoria ${n}',
 			'settings.radio.voiceMessages.stop' => 'Detener',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Grabar la memoria ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.stopRecording' => 'Detener la grabación',
 			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
 			'settings.radio.voiceMessages.recording' => 'Grabando…',
@@ -4877,6 +4905,8 @@ extension on TranslationsEs {
 			'settings.station.keyTypes.singlePaddle' => 'Paleta simple',
 			'settings.station.keyTypes.dualPaddle' => 'Paleta doble',
 			'settings.station.keyTypes.computerDriven' => 'Controlado por computadora',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyTypes.other' => 'Otro',
 			'settings.offlineData.title' => 'Datos sin conexión',
 			'settings.offlineData.noFiles' => 'No hay archivos de datos',
@@ -4891,8 +4921,6 @@ extension on TranslationsEs {
 			'settings.offlineData.updatedDaysHoursAgo' => ({required Object days, required Object hours}) => 'Actualizado hace ${days}d ${hours}h',
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Actualizado hace ${hours}h',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m',
-			_ => null,
-		} ?? switch (path) {
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Actualizado hace ${minutes}m',
 			'settings.offlineData.extensionsSection' => 'Extensiones',
 			'settings.profiles.notSet' => 'Sin definir',

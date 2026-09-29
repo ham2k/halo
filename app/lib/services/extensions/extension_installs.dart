@@ -85,6 +85,45 @@ mixin _ExtensionInstalls {
     copySecrets: copyExtensionSecrets,
   );
 
+  /// The extensions the operator installed that the store does not hold
+  /// (`SettingsService.extensionsInstalled`), and where each could come
+  /// back from. None while the store cannot be read: that is a store
+  /// failing, and offering everything back into it would fail every time.
+  List<MissingExtension> missingExtensions() {
+    final currentSettings = settings;
+    final present = _installed?.storedKeys;
+    if (currentSettings == null || present == null) return const [];
+    final records = currentSettings.extensionInstalledFrom;
+    final catalogHost = catalog?.host;
+    return [
+      for (final MapEntry(:key, value: name) in currentSettings.extensionsInstalled.entries)
+        if (!present.contains(key))
+          MissingExtension(
+            key: key,
+            name: name,
+            from: switch (BundleProvenance.fromJson(records[key])?.host) {
+              null => MissingFrom.file,
+              kPreloadHost => MissingFrom.shipped,
+              final host when host == catalogHost => MissingFrom.catalog,
+              _ => MissingFrom.otherCatalog,
+            },
+          ),
+    ];
+  }
+
+  /// Installs [entry]'s release as an extension the operator already had —
+  /// never fresh, since their settings and on/off choice are still under its
+  /// key — without restarting the runtime.
+  Future<void> reinstallFromCatalog(CatalogEntry entry) =>
+      installCatalogEntry(store: _requireInstalledStore(), catalog: catalog!, entry: entry, recordInstall: _recordInstall);
+
+  /// Drops a missing extension from what the operator has installed, with
+  /// everything it stored — the uninstall of one that is already gone.
+  Future<void> forgetMissingExtension(String key) async {
+    await settings?.forgetExtension(key);
+    await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
+  }
+
   /// Installs the `.h2kext` bundles the app ships (HALO-581), and answers
   /// whether anything landed — the caller re-reads the store when it did.
   ///
@@ -95,7 +134,12 @@ mixin _ExtensionInstalls {
     final currentSettings = settings;
     final store = _installed;
     if (currentSettings == null || store == null) return false;
-    if (!currentSettings.catalogExtensionsInUse) return false;
+    final restoring = {
+      for (final missing in missingExtensions())
+        if (missing.from == MissingFrom.shipped) missing.key,
+    };
+    final offerNew = currentSettings.catalogExtensionsInUse;
+    if (!offerNew && restoring.isEmpty) return false;
     return installShippedExtensions(
       store: store,
       settings: currentSettings,
@@ -109,6 +153,8 @@ mixin _ExtensionInstalls {
       },
       recordInstall: (bundle, {required bool fresh}) => _recordInstall(bundle, fresh: fresh),
       copySecrets: copyExtensionSecrets,
+      restoring: restoring,
+      offerNew: offerNew,
     );
   }
 
@@ -182,6 +228,8 @@ mixin _ExtensionInstalls {
       await currentSettings.setExtensionInstalledFrom(records);
     }
     await liftInstallRecordsForNewVersion(currentSettings, bundle.key, bundle.version);
+    final intended = currentSettings.extensionsInstalled;
+    if (intended[bundle.key] != bundle.name) await currentSettings.setExtensionsInstalled({...intended, bundle.key: bundle.name});
     if (provenance == null || !fresh) return;
     final overrides = currentSettings.extensionOverrides;
     if (overrides.remove(bundle.key) != null) await currentSettings.setExtensionOverrides(overrides);
@@ -229,27 +277,25 @@ mixin _ExtensionInstalls {
     _hostSharedModules = ((parsed['sharedModules'] as Map?) ?? const {}).cast<String, String>();
     // Built from the asset index, because what an installed bundle may NOT
     // call itself is exactly what the app already ships.
-    // Not on web: there is no store there, and a non-null one whose every
-    // method refuses is a thing every caller has to remember about.
-    final store = InstalledExtensions.isSupported
-        ? (_installed ??= InstalledExtensions(
-            // Read live, not captured, and only what the app is OFFERING: the
-            // catalog upgrade withdraws every non-core built-in, and the
-            // bundle pre-loaded for `ham2k-lookup` is one the app also ships.
-            builtInKeys: () => {
-              for (final info in fromAssets)
-                if (isBuiltInOffered(info)) info.key,
-            },
-            hostSharedModules: _hostSharedModules,
-            // Read live too: the record is written by installBundle and
-            // cleared by uninstall, and the store outlives both.
-            reservedPrefixAllowed: (String key) => BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
-          ))
-        : null;
+    final store = _installed ??= InstalledExtensions(
+      // Read live, not captured, and only what the app is OFFERING: the
+      // catalog upgrade withdraws every non-core built-in, and the
+      // bundle pre-loaded for `ham2k-lookup` is one the app also ships.
+      builtInKeys: () => {
+        for (final info in fromAssets)
+          if (isBuiltInOffered(info)) info.key,
+      },
+      hostSharedModules: _hostSharedModules,
+      // Read live too: the record is written by installBundle and
+      // cleared by uninstall, and the store outlives both.
+      reservedPrefixAllowed: (String key) => BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
+    );
     // A damaged store must not cost the operator the app's own extensions.
     var fromDisk = const <ExtensionInfo>[];
+    var listed = false;
     try {
-      fromDisk = await store?.list() ?? const [];
+      fromDisk = await store.list();
+      listed = true;
     } catch (e, stack) {
       // Reported, not merely logged. `list` already skips a single unreadable
       // extension, so anything reaching here is the STORE failing — every
@@ -257,6 +303,14 @@ mixin _ExtensionInstalls {
       // normally. Deciding here that it doesn't matter is the ad-hoc policy
       // ErrorPolicy exists to prevent (docs/design/error-reporting.md).
       ErrorReportingService.report(e, stack, context: 'installed-extensions:list');
+    }
+    // Once, for an install that predates the record: what it holds is what
+    // its operator installed. After that only installs and uninstalls write
+    // it — a store found short is exactly what it must not follow. Never from
+    // a store that could not be read.
+    final currentSettings = settings;
+    if (listed && currentSettings != null && !currentSettings.extensionsInstalledRecorded) {
+      await currentSettings.setExtensionsInstalled({for (final info in fromDisk) info.key: info.name});
     }
     return _availableExtensions = mergeDevExtensions([...fromAssets, ...fromDisk], [for (final entry in _devBundles.values) entry.info]);
   }
@@ -274,8 +328,8 @@ mixin _ExtensionInstalls {
   /// versions to validate anything.
   InstalledExtensions? _installed;
 
-  /// The store, once the extension index has been read. Null on web, and
-  /// before the first [loadAvailableExtensions].
+  /// The store, once the extension index has been read — null before the
+  /// first [loadAvailableExtensions].
   InstalledExtensions? get installed => _installed;
 
   /// Supplies the store up front, so a test can point it at a directory of its
@@ -385,14 +439,8 @@ mixin _ExtensionInstalls {
   /// Withdrawn, not forgotten. The entry stays in [availableExtensions] so
   /// that [updateExtensionDisabledSince] does not prune the operator's on/off
   /// choice for it.
-  ///
-  /// Nothing is withdrawn where there is no store to put anything in its
-  /// place. On web an installed extension is a file on disk the platform does
-  /// not have, so the pre-loads never land — and withdrawing the built-ins
-  /// there would leave the app with the core extensions and nothing else.
   bool isBuiltInOffered(ExtensionInfo info) {
     if (info.source != ExtensionSource.asset || info.core) return true;
-    if (!InstalledExtensions.isSupported) return true;
     // MIGRATED, not merely offered: an operator who deferred the upgrade, or
     // who was offline when it was offered, keeps every extension they had.
     return !(settings?.catalogExtensionsInUse ?? false);
@@ -459,7 +507,7 @@ mixin _ExtensionInstalls {
   /// onboarding runs after `pota` is withdrawn, and a choice written under
   /// that key alone would reach nothing: `ham2k-pota` would run regardless.
   String offeredKeyFor(String key) {
-    if (!InstalledExtensions.isSupported || !(settings?.catalogExtensionsInUse ?? false)) return key;
+    if (!(settings?.catalogExtensionsInUse ?? false)) return key;
     for (final MapEntry(key: twin, value: replaces) in kPreloadReplaces.entries) {
       if (replaces == key) return twin;
     }

@@ -1231,7 +1231,6 @@ class OperationSheetState extends State<OperationSheet> {
   }
 
   void _ensureCatalogFetched() {
-    if (!CatalogTier.shownFor(widget.services)) return;
     _catalogTier.ensureFetched(widget.services, () {
       if (mounted) setState(_refreshCatalogMatches);
     });

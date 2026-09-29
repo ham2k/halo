@@ -18,6 +18,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:path/path.dart' as p;
 
@@ -36,7 +37,7 @@ void main() {
       InstalledExtensions(
         builtInKeys: () => builtIn,
         hostSharedModules: shared ?? const {'i18next': '23.11.5', '@ham2k/lib-callsigns': '1.0.2'},
-        rootOverride: root,
+        storage: FileBundleStorage(root: root),
         reservedPrefixAllowed: catalogInstalled,
       );
 
@@ -333,7 +334,11 @@ void main() {
       // fetch allowlists and hooks by the extension key — so a key that was
       // free at install time and is shipped later would otherwise be handed
       // whatever the built-in was granted.
-      final later = InstalledExtensions(builtInKeys: () => const {'ki2d-my-clock'}, hostSharedModules: const {'i18next': '23.11.5'}, rootOverride: root);
+      final later = InstalledExtensions(
+        builtInKeys: () => const {'ki2d-my-clock'},
+        hostSharedModules: const {'i18next': '23.11.5'},
+        storage: FileBundleStorage(root: root),
+      );
       expect(await later.list(), isEmpty);
     });
 
@@ -528,7 +533,11 @@ void main() {
     // Re-validated on every read, not just at install: an app update can raise
     // a library's major, and refusing at the door is the whole point of
     // declaring ranges — otherwise it loads and dies inside a hook.
-    final later = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '24.0.0'}, rootOverride: root);
+    final later = InstalledExtensions(
+      builtInKeys: () => const {},
+      hostSharedModules: const {'i18next': '24.0.0'},
+      storage: FileBundleStorage(root: root),
+    );
     expect(await later.list(), isEmpty);
   });
 
@@ -595,7 +604,7 @@ void main() {
           // A path that is a FILE, so listing it throws rather than returning
           // nothing — the difference between "none installed" and "the store
           // is broken", which must not take the app's own extensions down.
-          rootOverride: Directory(p.join(root.path, 'not-a-directory')),
+          storage: FileBundleStorage(root: Directory(p.join(root.path, 'not-a-directory'))),
         );
       File(p.join(root.path, 'not-a-directory')).writeAsStringSync('');
 

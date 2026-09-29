@@ -526,15 +526,72 @@ Beyond what the packer already refused:
 
 Each has its own message. A bundle that cannot be installed says why.
 
-## Native only, for now
+## Where installed bundles live
 
-Installed bundles are files on disk. On web the app runs from its own assets
-and, for authors, the dev server — [development.md](development.md). So on
-web there is nothing to install into: no install from a file, no install or
-update from the catalog, and none of the pre-loaded extensions above.
+Everything above is platform-neutral — the zip walk, the manifest rules, the
+consent screen, the hash check. What differs is only where the bytes are kept
+(`BundleStorage`):
 
-"For now" is a deferral, not a fact about the platform. Almost everything
-here is already platform-neutral — the zip walk, the manifest rules, the
-consent screen, the hash check — and what is left is a persistence seam of
-about six operations. `HALO-583` is the card that picks it up, and says what
-has to be decided first.
+- **natively**, one directory per key under the app's data directory, one
+  file per bundle entry;
+- **on web**, one IndexedDB record per key (database `halo-extensions`),
+  holding every entry's bytes under its own name. IndexedDB rather than the
+  Origin Private File System, which would mirror the native layout: every
+  browser HaLo runs in supports it the same way, while OPFS writes from the
+  page are newer and patchier on Safari.
+
+So the web build installs from a file, installs and updates from the catalog,
+pre-loads the shipped bundles and takes the upgrade exactly as the native ones
+do.
+
+### When the store is lost
+
+The store can go while the preferences describing it survive: a browser
+clearing IndexedDB alone, a data directory deleted by hand, a store that
+failed mid-session. (When a browser clears a whole site, preferences go with
+it, and the app starts as a new install.) So what the operator installed is
+kept apart from the store that holds it, and put back from there.
+
+`extensionsInstalled` records every extension the operator installed
+(`{key: name}`). Every install writes it; only an uninstall — or Forget, below
+— removes it. An install that predates it is seeded from its store once, and
+after that it never follows the store: a store found short is exactly what it
+must not shrink to. Whatever is recorded there and not in the store is
+**missing**, however it went — judged by the keys the store holds, not by the
+extensions the app offers, since a built-in or a dev server can stand in front
+of an installed bundle. A store that cannot be read at all has lost nothing:
+that launch offers nothing, rather than everything back into a failing store.
+Where each came from is its provenance record's answer, and a key with none
+came from a file.
+
+The operator's on/off choice for a missing extension is kept too: the boot
+cleanup that prunes settings for keys the app no longer knows treats every
+recorded key as known.
+
+Putting them back, after the app starts:
+
+- **Shipped bundles** come back at boot from the app's own assets, unasked and
+  offline. The pre-load record says they were already offered, which is true
+  and beside the point; they are installed anyway, never as a first install,
+  so their settings and on/off choice stand. An install that has not taken the
+  upgrade gets back only what it had.
+- **Everything else** is offered in a dialog once the boot has settled:
+  - extensions from the catalog in use are listed to install, at the release
+    it serves now. **Later** keeps every one for the next launch;
+  - extensions from a file are listed to install again from their files, and
+    ones from a different catalog as not available here. Neither is fetched —
+    the bytes would come from a publisher the operator never agreed to;
+  - every row has **Forget**, which drops it with everything it stored — the
+    only way out for one the catalog no longer serves, which would otherwise
+    be offered, and fail, every launch.
+- **Install** installs each on its own: one that is not listed, will not
+  download or fails the check costs only itself. The runtime restarts with
+  everything that landed; a bundle it will not evaluate is set aside, as the
+  upgrade does, and the runtime restarts without it. The result names what
+  could not be installed (offered again next launch) and what installed but
+  would not run (kept, marked in the panel, where an update is the way back);
+  says so when the runtime would not start at all, rather than calling it a
+  success; and says the app is still busy — offering them again next launch
+  — when another catalog pass holds the store.
+- The offer waits for the boot's catch-up to finish, or for an upgrade that
+  every catch-up stepped aside for to let go.

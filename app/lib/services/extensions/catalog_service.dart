@@ -744,7 +744,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Runs the check if it is due. Returns whether the catalog was asked and
-  /// answered; false for a skip (no store, nothing installed, not yet due, a check already in flight) and for a catalog
+  /// answered; false for a skip (nothing installed, not yet due, a check already in flight) and for a catalog
   /// that did not answer — which leaves the stamp alone, so the next trigger
   /// asks again.
   ///
@@ -755,7 +755,6 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// operator is looking at. A notice already up stays up, and an empty
   /// pending set still takes one down.
   Future<bool> check({bool force = false, bool announce = true}) async {
-    if (!InstalledExtensions.isSupported) return false;
     final candidates = installed().where((info) => info.isInstalled).toList();
     if (candidates.isEmpty) return false;
     final last = settings.catalogUpdateCheckedAt;

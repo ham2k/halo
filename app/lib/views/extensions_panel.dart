@@ -137,12 +137,11 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   late Listenable _listenable;
 
   /// The Catalog section shows where Install from file does — the full
-  /// panel, on a platform with a store: a hook-filtered panel is asking a
-  /// narrower question, and the web has nowhere to install into. Hidden
+  /// panel: a hook-filtered panel is asking a narrower question. Hidden
   /// entirely: no header, no status line, and no fetch — a section that is
   /// not built but still asks the catalog is a request nobody can see the
   /// reason for.
-  bool get _catalogShown => widget.onlyHook == null && InstalledExtensions.isSupported;
+  bool get _catalogShown => widget.onlyHook == null;
 
   @override
   void initState() {
@@ -872,7 +871,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   // which is asking a narrower question than "what do I
                   // have". The label survives as the icon's semantics — it is
                   // the only name a screen reader has for it.
-                  if (widget.onlyHook == null && InstalledExtensions.isSupported) ...[
+                  if (widget.onlyHook == null) ...[
                     const SizedBox(width: Space.md),
                     IconButton(
                       key: const ValueKey('extensions-install-from-file'),

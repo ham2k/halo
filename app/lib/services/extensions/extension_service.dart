@@ -559,6 +559,20 @@ class ExtensionService
   @override
   final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);
 
+  /// Completes once the first boot catch-up has settled — the pre-load and
+  /// any shipped extensions put back — so what is still missing after it is
+  /// what only the operator can decide about.
+  Future<void> get firstCatchUp => _firstCatchUp.future;
+  final _firstCatchUp = Completer<void>();
+
+  /// Settles [firstCatchUp]: called by a catch-up that ran to its end, and by
+  /// the upgrade when it lets go of the flag the catch-ups step aside for —
+  /// otherwise a boot whose catch-ups all met the upgrade in flight would
+  /// wait for one that never comes.
+  void markFirstCatchUpDone() {
+    if (!_firstCatchUp.isCompleted) _firstCatchUp.complete();
+  }
+
   /// A `command` hook pushed a later CommandInterpretation for an `input` it
   /// was already asked to interpret (SOLAR/WEATHER's fetch
   /// resolving after their own describe-preview call already returned).

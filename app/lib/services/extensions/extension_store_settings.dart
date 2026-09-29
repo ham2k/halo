@@ -17,8 +17,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'installed_extensions.dart';
-
 mixin ExtensionStoreSettings on ChangeNotifier {
   SharedPreferences get prefs;
 
@@ -103,10 +101,9 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   /// Recorded rather than defaulted, like `seedSyncEnabledDefault`, and on
   /// the same signal — so it has to run before onboarding can set a
   /// callsign. The getter's fallback stays false, so an existing install is
-  /// never moved without being asked. Nothing is recorded where there is no
-  /// store to install into.
+  /// never moved without being asked.
   Future<void> seedExtensionsMigratedDefault() async {
-    if (!InstalledExtensions.isSupported || prefs.containsKey(_extensionsMigratedKey)) return;
+    if (prefs.containsKey(_extensionsMigratedKey)) return;
     await setExtensionsMigrated(!defaultProfileCallsignDefined);
   }
 
@@ -199,6 +196,34 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
+  /// Every extension the operator has installed, whatever the store holds
+  /// right now ({key: name}).
+  ///
+  /// The operator's intent, kept apart from the store because the store can
+  /// be lost while preferences survive — a browser clearing IndexedDB alone,
+  /// a data directory deleted by hand, a store that failed mid-session.
+  /// Written by every install, removed only by an uninstall (or the operator
+  /// choosing Forget), and read as the set to put back: what is here and not
+  /// in the store is missing, however it went. The name is kept because the
+  /// manifest that carried it may be gone. Where it came from is
+  /// [extensionInstalledFrom]'s answer; a key with no record there came from
+  /// a file.
+  static const _extensionsInstalledKey = 'extensionsInstalled';
+
+  Map<String, String> get extensionsInstalled => {
+    for (final e in jsonMapPref(_extensionsInstalledKey).entries)
+      if (e.value is String) e.key: e.value as String,
+  };
+
+  /// Whether [extensionsInstalled] has ever been written — false on an
+  /// install that predates it, which is seeded from the store once.
+  bool get extensionsInstalledRecorded => prefs.containsKey(_extensionsInstalledKey);
+
+  Future<void> setExtensionsInstalled(Map<String, String> installed) async {
+    await prefs.setString(_extensionsInstalledKey, jsonEncode(installed));
+    notifyListeners();
+  }
+
   /// The installed releases the catalog has revoked (`{key: {version, note}}`,
   /// the shape of [extensionDisabledSince]). Its own bit, apart from the
   /// operator's override: a revoked version does not run whatever the
@@ -276,6 +301,11 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     final installedFrom = extensionInstalledFrom;
     if (installedFrom.remove(key) != null) {
       await prefs.setString(_extensionInstalledFromKey, jsonEncode(installedFrom));
+    }
+    // Otherwise the next launch reads it as missing and offers it back.
+    final installed = extensionsInstalled;
+    if (installed.remove(key) != null) {
+      await prefs.setString(_extensionsInstalledKey, jsonEncode(installed));
     }
     // The revocation was of a version that is no longer here; kept, it would
     // silently refuse a reinstall of that version with nothing to say why.

@@ -507,6 +507,48 @@ class Translations$extensionsPanel$en {
 	/// en: 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.'
 	String get upgradeRuntimeDeadBody => 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.';
 
+	/// en: 'Some of your extensions are missing'
+	String get restoreTitle => 'Some of your extensions are missing';
+
+	/// en: 'These extensions you installed are not on this device. We can download them again from the Ham2K extension catalog:'
+	String get restoreBody => 'These extensions you installed are not on this device. We can download them again from the Ham2K extension catalog:';
+
+	/// en: 'Installed from a file. Install these again from their files, or forget them:'
+	String get restoreFromFile => 'Installed from a file. Install these again from their files, or forget them:';
+
+	/// en: 'Installed from a different extension catalog, so they are not available here:'
+	String get restoreOtherCatalog => 'Installed from a different extension catalog, so they are not available here:';
+
+	/// en: 'Forget'
+	String get restoreForget => 'Forget';
+
+	/// en: 'Install'
+	String get restoreInstall => 'Install';
+
+	/// en: 'Later'
+	String get restoreLater => 'Later';
+
+	/// en: 'Installing your extensions…'
+	String get restoreInstalling => 'Installing your extensions…';
+
+	/// en: 'Your extensions are back'
+	String get restoreDoneTitle => 'Your extensions are back';
+
+	/// en: 'Installed again: ${names}.'
+	String restoreDoneBody({required Object names}) => 'Installed again: ${names}.';
+
+	/// en: 'Some extensions could not be installed'
+	String get restorePartialTitle => 'Some extensions could not be installed';
+
+	/// en: 'Could not install: ${names}. We will offer them again next time you open the app.'
+	String restoreFailed({required Object names}) => 'Could not install: ${names}. We will offer them again next time you open the app.';
+
+	/// en: 'The app is still setting your extensions up. We will offer these again next time you open the app.'
+	String get restoreBusyBody => 'The app is still setting your extensions up. We will offer these again next time you open the app.';
+
+	/// en: 'We installed them again, but your extensions would not start. Restarting the app should bring them back.'
+	String get restoreRuntimeDeadBody => 'We installed them again, but your extensions would not start. Restarting the app should bring them back.';
+
 	/// en: '${name} was withdrawn'
 	String revokedTitle({required Object name}) => '${name} was withdrawn';
 
@@ -7366,6 +7408,20 @@ extension on Translations {
 			'extensionsPanel.upgradeRevertedBody' => 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.',
 			'extensionsPanel.upgradeRuntimeDeadTitle' => 'Your extensions are not running',
 			'extensionsPanel.upgradeRuntimeDeadBody' => 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.',
+			'extensionsPanel.restoreTitle' => 'Some of your extensions are missing',
+			'extensionsPanel.restoreBody' => 'These extensions you installed are not on this device. We can download them again from the Ham2K extension catalog:',
+			'extensionsPanel.restoreFromFile' => 'Installed from a file. Install these again from their files, or forget them:',
+			'extensionsPanel.restoreOtherCatalog' => 'Installed from a different extension catalog, so they are not available here:',
+			'extensionsPanel.restoreForget' => 'Forget',
+			'extensionsPanel.restoreInstall' => 'Install',
+			'extensionsPanel.restoreLater' => 'Later',
+			'extensionsPanel.restoreInstalling' => 'Installing your extensions…',
+			'extensionsPanel.restoreDoneTitle' => 'Your extensions are back',
+			'extensionsPanel.restoreDoneBody' => ({required Object names}) => 'Installed again: ${names}.',
+			'extensionsPanel.restorePartialTitle' => 'Some extensions could not be installed',
+			'extensionsPanel.restoreFailed' => ({required Object names}) => 'Could not install: ${names}. We will offer them again next time you open the app.',
+			'extensionsPanel.restoreBusyBody' => 'The app is still setting your extensions up. We will offer these again next time you open the app.',
+			'extensionsPanel.restoreRuntimeDeadBody' => 'We installed them again, but your extensions would not start. Restarting the app should bring them back.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
 			'extensionsPanel.revokedBody' => 'The catalog withdrew this version, so it has been disabled.',
 			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
@@ -7737,6 +7793,8 @@ extension on Translations {
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Calls of Note',
 			'operation.spots.yourSpots' => 'Your Spots',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.allSpots' => 'All Spots',
 			'operation.spots.continents.af' => 'Africa',
 			'operation.spots.continents.as' => 'Asia',
@@ -7751,8 +7809,6 @@ extension on Translations {
 			'operation.spots.filters.age' => 'Age',
 			'operation.spots.filters.sources' => 'Sources',
 			'operation.spots.filters.continent' => 'Continent',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.filters.sorting' => 'Sorting',
 			'operation.spots.filters.sortByTime' => 'By Spot Time',
 			'operation.spots.filters.sortByFrequency' => 'By Frequency',
@@ -8251,6 +8307,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
 			'settings.radio.voiceMessages.notMeasured' => 'Unknown length',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.voiceMessages.playButton' => 'Play',
 			'settings.radio.voiceMessages.recordButton' => 'Record',
 			'settings.radio.voiceMessages.stopButton' => 'Stop',
@@ -8265,8 +8323,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Play memory ${n}',
 			'settings.radio.voiceMessages.stop' => 'Stop',
 			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Record memory ${n}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
 			'settings.radio.voiceMessages.playing' => 'Playing…',
 			'settings.radio.voiceMessages.recording' => 'Recording…',
@@ -8765,6 +8821,8 @@ extension on Translations {
 			'settings.station.dcnAddress' => 'Device address',
 			'settings.station.dcnAddressDescription' => 'The address set on the module\'s DIP switches. A coax relay module leaves the factory at 2.',
 			'settings.station.dcnAddressRequired' => 'Must be a device address from 1 to 99',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Port ${port}',
 			'settings.station.switchPortAutoHint' => 'follows band data',
 			'settings.station.switchPortTransmittingHint' => 'transmitting — cannot change now',
@@ -8779,8 +8837,6 @@ extension on Translations {
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
 			'settings.offlineData.refresh' => 'Refresh',
 			'settings.offlineData.refreshing' => 'Refreshing…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.offlineData.updateAll' => 'Update All',
 			'settings.offlineData.updatingAll' => 'Updating all data files…',
 			'settings.offlineData.neverDownloaded' => 'Never downloaded',

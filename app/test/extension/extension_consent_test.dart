@@ -15,6 +15,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/views/extension_install_flow.dart';
 
@@ -41,8 +42,11 @@ void main() {
     return ZipEncoder().encode(out);
   }
 
-  Future<InspectedBundle> inspect(List<int> bytes) =>
-      InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, rootOverride: Directory.systemTemp).inspect(bytes);
+  Future<InspectedBundle> inspect(List<int> bytes) => InstalledExtensions(
+    builtInKeys: () => const {},
+    hostSharedModules: const {'i18next': '23.11.5'},
+    storage: FileBundleStorage(root: Directory.systemTemp),
+  ).inspect(bytes);
 
   /// Pumps the dialog alone. The picker and the install are not under test
   /// here; what the operator is shown is.
@@ -249,7 +253,11 @@ void main() {
     // Two installs of one key overlapping land whichever finishes last: a
     // file dropped over a catalog update still downloading is overwritten by
     // the older catalog bytes, with no consent screen under Update all.
-    final store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, rootOverride: Directory.systemTemp);
+    final store = InstalledExtensions(
+      builtInKeys: () => const {},
+      hostSharedModules: const {'i18next': '23.11.5'},
+      storage: FileBundleStorage(root: Directory.systemTemp),
+    );
     var commits = 0;
     await tester.pumpWidget(
       TranslationProvider(

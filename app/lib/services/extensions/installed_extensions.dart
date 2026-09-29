@@ -13,16 +13,15 @@
 // one.
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:crypto/crypto.dart' show sha256;
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show debugPrint, visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 
-import '../app_storage.dart';
 import '../error_reporting_service.dart';
+import 'bundle_storage.dart';
 import 'extension_relevance.dart';
 import 'extension_service.dart';
 
@@ -32,10 +31,6 @@ import 'extension_service.dart';
 /// packer's `H2KEXT_API_VERSION` (extensions/tools/h2kext.mjs), which lists
 /// what each version adds.
 const kExtensionApiVersion = 5;
-
-/// Directory under the app's data directory holding installed extensions, one
-/// subdirectory per key.
-const kInstalledExtensionsDirName = 'extensions';
 
 /// The prefix reserved for Ham2K's own extensions. Refused to an installed
 /// bundle: there is no signing, so anyone could claim it, and the key is what
@@ -155,9 +150,6 @@ enum BundleRejection {
   /// or could not be reached at all. A sentence about this link, never a
   /// defect — the same footing as an unreadable file.
   downloadFailed,
-
-  /// Installing is not supported here (web has no store).
-  unsupportedPlatform,
 }
 
 /// The most a bundle may weigh unpacked. Generous next to a real extension —
@@ -221,11 +213,12 @@ class InspectedBundle {
 
 /// Reads, validates, installs and removes `.h2kext` bundles.
 ///
-/// Native only: installed bundles are files on disk. On web the app runs from
-/// its own assets and a dev server, and [isSupported] is false.
+/// Where the bundles are kept is [BundleStorage]'s business — files natively,
+/// IndexedDB on web.
 class InstalledExtensions {
-  InstalledExtensions({required this.builtInKeys, required this.hostSharedModules, this.rootOverride, bool Function(String key)? reservedPrefixAllowed})
-    : _reservedPrefixAllowed = reservedPrefixAllowed ?? _never;
+  InstalledExtensions({required this.builtInKeys, required this.hostSharedModules, BundleStorage? storage, bool Function(String key)? reservedPrefixAllowed})
+    : storage = storage ?? createBundleStorage(),
+      _reservedPrefixAllowed = reservedPrefixAllowed ?? _never;
 
   static bool _never(String key) => false;
 
@@ -253,31 +246,17 @@ class InstalledExtensions {
   /// checking a bundle's declared `sharedDependencies`.
   final Map<String, String> hostSharedModules;
 
-  /// Where the installed bundles live, when it isn't the app data directory —
-  /// a test needs its own, and `appDataDirectory()` reaches a plugin.
-  final Directory? rootOverride;
+  /// Where the bundles' files are kept.
+  final BundleStorage storage;
 
-  /// Installed bundles are files on disk. Web has none, and reaches its
-  /// extensions through the app's own assets and a dev server instead — the
-  /// same `kIsWeb` guard app_storage.dart uses for the rest of the app's
-  /// directories.
-  static bool get isSupported => debugTreatAsUnsupported == true ? false : !kIsWeb;
-
-  /// Forces [isSupported] false, the way web answers it.
+  /// Every key the store held at the last [list], including the ones it
+  /// skipped — null when that read failed, or before the first.
   ///
-  /// Tests run in the VM, where the one branch that only ever happens on web
-  /// — no store to put an extension in, so the catalog upgrade cannot be
-  /// offered — is otherwise unreachable, and a guard no test can fail is a
-  /// guard that can be deleted without anything noticing (ErrorPolicy's
-  /// `debugTreatAsWeb` is the same seam for the same reason).
-  @visibleForTesting
-  static bool? debugTreatAsUnsupported;
-
-  Future<Directory> _root() async {
-    final root = rootOverride ?? Directory(p.join((await appDataDirectory()).path, kInstalledExtensionsDirName));
-    if (!await root.exists()) await root.create(recursive: true);
-    return root;
-  }
+  /// What "installed" means when asking what the operator has lost. The list
+  /// leaves out a bundle a built-in or a dev server stands in front of, and a
+  /// store that cannot be read at all is not one that lost everything.
+  Set<String>? get storedKeys => _storedKeys;
+  Set<String>? _storedKeys;
 
   /// Opens [bytes] and checks everything that can be checked without writing:
   /// that it is an archive of the right shape, that the key is usable here, and
@@ -289,9 +268,6 @@ class InstalledExtensions {
   ///
   /// Throws [BundleException]; writes nothing.
   Future<InspectedBundle> inspect(List<int> bytes, {BundleProvenance? provenance}) async {
-    if (!isSupported) {
-      throw BundleException(BundleRejection.unsupportedPlatform, 'Installing extensions is not supported on the web.');
-    }
     if (provenance != null && sha256Hex(bytes) != provenance.sha256.toLowerCase()) {
       throw BundleException(BundleRejection.hashMismatch, 'That download is not the extension the catalog described, so it was not opened.');
     }
@@ -526,19 +502,11 @@ class InstalledExtensions {
   /// reinstall, and re-entering credentials on every update would make updating
   /// something people avoid.
   Future<void> install(InspectedBundle bundle) async {
-    final dir = Directory(_dirFor(await _root(), bundle.key));
-    // Replaced whole rather than merged: a file the new version dropped must
-    // not linger and keep being served.
-    if (await dir.exists()) await dir.delete(recursive: true);
-    await dir.create(recursive: true);
-
+    _checkSafeKey(bundle.key);
+    final files = <String, List<int>>{};
     var written = 0;
     for (final file in bundle.archive.files) {
       if (!file.isFile) continue;
-      final target = safeJoin(dir.path, file.name);
-      // Belt and braces — `_checkEntries` already refused the bundle over an
-      // escaping name, so reaching this is a bug rather than an attack.
-      if (target == null) continue;
       final bytes = file.content as List<int>;
       // The size actually produced, not the size the header claimed. That
       // number comes from the archive's own central directory and the decoder
@@ -549,18 +517,15 @@ class InstalledExtensions {
       // between a bomb and the heap.
       written += bytes.length;
       if (written > kMaxUnpackedBytes) {
-        await dir.delete(recursive: true);
         throw BundleException(BundleRejection.tooLarge, 'That bundle unpacks to far more than an extension should.');
       }
-      final out = File(target);
-      await out.parent.create(recursive: true);
-      await out.writeAsBytes(bytes);
+      files[file.name] = bytes;
     }
+    await storage.write(bundle.key, files);
   }
 
   /// [dir] joined with an archive entry name, or null if the result would
   /// escape it.
-  @visibleForTesting
   static String? safeJoin(String dir, String entryName) {
     if (entryName.startsWith('/') || entryName.contains('\\')) return null;
     final resolved = p.normalize(p.join(dir, entryName));
@@ -569,37 +534,35 @@ class InstalledExtensions {
   }
 
   Future<void> uninstall(String key) async {
-    final dir = Directory(_dirFor(await _root(), key));
-    if (await dir.exists()) await dir.delete(recursive: true);
+    _checkSafeKey(key);
+    await storage.remove(key);
   }
 
-  /// [root] joined with an extension key, refusing anything that could name a
-  /// directory other than that extension's own. Every caller today passes a
-  /// key that came from [list], but these are the two methods taking a raw
-  /// one, and a path built from an unchecked key is how the rest stays safe
-  /// by luck.
-  String _dirFor(Directory root, String key) {
+  /// Refuses anything that could name storage other than that extension's
+  /// own. Every caller today passes a key that came from [list], but these are
+  /// the methods taking a raw one, and a path built from an unchecked key is
+  /// how the rest stays safe by luck.
+  void _checkSafeKey(String key) {
     if (!kSafeKeyPattern.hasMatch(key)) throw ArgumentError.value(key, 'key', 'not a usable extension key');
-    return p.join(root.path, key);
   }
 
   /// Every installed extension, as the loader needs them. A directory whose
   /// manifest no longer reads is skipped rather than taking the list down:
   /// one damaged install must not cost the operator the others.
   Future<List<ExtensionInfo>> list() async {
-    if (!isSupported) return const [];
-    final root = await _root();
+    _storedKeys = null;
+    final manifests = await storage.manifests();
+    _storedKeys = manifests.keys.toSet();
     final found = <ExtensionInfo>[];
-    await for (final entry in root.list()) {
-      if (entry is! Directory) continue;
-      final key = p.basename(entry.path);
+    for (final MapEntry(key: key, value: raw) in manifests.entries) {
       try {
-        final manifest = jsonDecode(await File(p.join(entry.path, kManifestEntry)).readAsString());
+        if (raw == null) throw StateError('it has no readable $kManifestEntry');
+        final manifest = jsonDecode(raw);
         if (manifest is! Map) {
           _skip(key, 'its manifest is not an object');
           continue;
         }
-        // The directory IS the identity — it is what uninstall and sourceFor
+        // The storage key IS the identity — it is what uninstall and sourceFor
         // address, and what the loader keys the source by.
         if (manifest['key'] != key) {
           _skip(key, 'its manifest claims the key "${manifest['key']}"');
@@ -654,10 +617,13 @@ class InstalledExtensions {
   /// Whether [key] is already installed — what decides whether the operator
   /// is being asked about an install or an update.
   Future<bool> isInstalled(String key) async {
-    if (!isSupported) return false;
-    return File(p.join(_dirFor(await _root(), key), kManifestEntry)).exists();
+    _checkSafeKey(key);
+    return await storage.readText(key, kManifestEntry) != null;
   }
 
   /// The JS for an installed extension.
-  Future<String> sourceFor(String key) async => File(p.join(_dirFor(await _root(), key), kBundleEntry)).readAsString();
+  Future<String> sourceFor(String key) async {
+    _checkSafeKey(key);
+    return await storage.readText(key, kBundleEntry) ?? (throw StateError('installed extension "$key" has no $kBundleEntry'));
+  }
 }

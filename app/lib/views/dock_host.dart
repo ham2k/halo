@@ -1435,7 +1435,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                 ),
                 null => const [],
               },
-              onSearch: CatalogTier.shownFor(dockServices) ? () => catalogTier.ensureFetched(dockServices, bumpSheet) : null,
+              onSearch: () => catalogTier.ensureFetched(dockServices, bumpSheet),
               onEnableExtension: (info) => _gainPanelExtension(() async {
                 await extensions.setExtensionEnabled(info.key, true);
                 return true;

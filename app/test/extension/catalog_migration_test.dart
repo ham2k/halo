@@ -246,16 +246,6 @@ void main() {
       await settings.seedExtensionsMigratedDefault();
       expect(settings.extensionsMigrated, isTrue);
     });
-
-    test('nothing is recorded where there is no store', () async {
-      // Web: recorded there, the flag would stand for an upgrade the install
-      // never had anywhere to put.
-      InstalledExtensions.debugTreatAsUnsupported = true;
-      addTearDown(() => InstalledExtensions.debugTreatAsUnsupported = null);
-      final settings = await _settings();
-      await settings.seedExtensionsMigratedDefault();
-      expect(settings.prefs.containsKey('extensionsMigrated'), isFalse);
-    });
   });
 
   test('an upgrade taken again carries choices made while it was reverted', () async {

@@ -19,6 +19,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extensions/extension_keychain.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/services/extensions/preloaded_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -347,17 +348,6 @@ void main() {
       expect(extensions.isExtensionAvailable(llota), isTrue);
     });
 
-    test('nothing is withdrawn where no store can replace it', () async {
-      // On web there is no installed-extension store, so the pre-loads never
-      // land. Withdrawing the built-ins there would leave the app with the
-      // core extensions and nothing else — and this suite runs native, where
-      // the store exists, so the assertion is that the guard is CONSULTED.
-      final (extensions, settings) = await harness();
-      await moveToCatalog(settings);
-      expect(InstalledExtensions.isSupported, isTrue, reason: 'this suite runs where a store exists');
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'pota')), isFalse);
-    });
-
     test('once upgraded, a choice named by its built-in key lands on the twin that runs', () async {
       // Onboarding names POTA as `pota`, and a fresh install starts upgraded,
       // so its picks arrive after `pota` is withdrawn. Written under that key
@@ -464,10 +454,17 @@ void main() {
     /// whether the operator's on/off choice is thrown away.
     late Map<String, bool> freshness;
 
-    Future<bool> runPreload({Map<String, String?> installed = const {}, Map<String, bool> builtInDefaults = const {}}) => installShippedExtensions(
+    Future<bool> runPreload({
+      Map<String, String?>? installed,
+      Map<String, bool> builtInDefaults = const {},
+      Set<String> restoring = const {},
+      bool offerNew = true,
+    }) async => installShippedExtensions(
       store: store,
       settings: settings,
-      installedVersions: installed,
+      installedVersions: installed ?? {for (final info in await store.list()) info.key: info.version},
+      restoring: restoring,
+      offerNew: offerNew,
       builtInDefaults: builtInDefaults,
       recordInstall: (bundle, {required bool fresh}) async => freshness[bundle.key] = fresh,
       copySecrets: ({required String from, required String to}) async {},
@@ -488,7 +485,7 @@ void main() {
         // would refuse.
         builtInKeys: () => const {},
         hostSharedModules: ((index['sharedModules'] as Map?) ?? const {}).cast<String, String>(),
-        rootOverride: root,
+        storage: FileBundleStorage(root: root),
         // The provenance the pre-load writes is what waives the prefix.
         reservedPrefixAllowed: (_) => true,
       );
@@ -516,6 +513,24 @@ void main() {
       // The eighth renames nothing, so there is no choice to protect and the
       // ordinary rule applies.
       expect(freshness['ham2k-lookup'], isTrue);
+    });
+
+    test('a shipped bundle the store lost comes back, without its state being reset', () async {
+      // The pre-load record says it was already offered, which is true and
+      // beside the point. Read as a first install instead, `ham2k-lookup` —
+      // which replaces nothing — is recorded fresh, and a lookup the operator
+      // had switched off comes back on.
+      await runPreload();
+      await store.uninstall('ham2k-lookup');
+      freshness.clear();
+      expect(await runPreload(), isFalse, reason: 'already offered, so not pre-loaded again on its own');
+      expect(await runPreload(restoring: const {'ham2k-lookup'}), isTrue);
+      expect(freshness, {'ham2k-lookup': false});
+    });
+
+    test('an install that has not taken the upgrade gets back only what it had', () async {
+      expect(await runPreload(restoring: const {'ham2k-pota'}, offerNew: false), isTrue);
+      expect((await store.list()).map((info) => info.key), ['ham2k-pota']);
     });
 
     test('a built-in nobody switched arrives in its own default state, and a choice still beats it', () async {
@@ -567,7 +582,7 @@ void main() {
       store = InstalledExtensions(
         builtInKeys: () => const {'ham2k-lookup'},
         hostSharedModules: store.hostSharedModules,
-        rootOverride: root,
+        storage: FileBundleStorage(root: root),
         reservedPrefixAllowed: (_) => true,
       );
       await runPreload();

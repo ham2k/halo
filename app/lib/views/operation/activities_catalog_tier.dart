@@ -24,7 +24,6 @@ import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_relevance.dart';
 import '../../services/extensions/extension_info.dart' show hooksClaimRef;
 import '../../services/halo_services.dart';
-import '../../services/extensions/installed_extensions.dart';
 import '../extension_install_flow.dart';
 import '../extensions_panel.dart' show extensionCategoryIcon;
 
@@ -50,19 +49,13 @@ class CatalogTier {
 
   bool _fetchStarted = false;
 
-  /// Whether the tier appears at all. Where the Extensions panel's Catalog
-  /// section appears — a platform with a store to install into. Elsewhere the
-  /// tier is absent and nothing is fetched: a section that is not built must
-  /// not be asking the catalog anything.
-  static bool shownFor(HaLoServices services) => InstalledExtensions.isSupported;
-
   /// Catalog entries claiming any of [refs], minus [alreadyOffered]. What
   /// answers an operation opened long after the extension that wrote its
   /// references left the app — the catalog carries each entry's manifest
   /// `hooks`, so a claim is readable without a byte of its code running.
   List<CatalogEntry> matchingRefs(HaLoServices services, Iterable<({String type, String? code})> refs, {required Set<String> alreadyOffered}) {
     final listing = entries;
-    if (listing == null || refs.isEmpty || !shownFor(services)) return const [];
+    if (listing == null || refs.isEmpty) return const [];
     final available = {for (final info in services.extensions.availableExtensions) info.key};
     final matched = [
       for (final entry in listing)
@@ -78,7 +71,7 @@ class CatalogTier {
   /// candidates are read off the box exactly as the two tiers above read it.
   List<CatalogEntry> matching(HaLoServices services, ({String search, String key}) candidates, {required bool keyOnly}) {
     final listing = entries;
-    if (listing == null || !shownFor(services)) return const [];
+    if (listing == null) return const [];
     return catalogExtensionsMatching(
       listing,
       search: candidates.search,

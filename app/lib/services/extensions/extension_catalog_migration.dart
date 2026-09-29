@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:halo_i18n/halo_i18n.dart';
 
 import '../connectivity_service.dart';
+import 'catalog_service.dart';
 import '../error_reporting_service.dart';
 import 'extension_service.dart';
 import 'preloaded_extensions.dart';
@@ -218,6 +219,9 @@ Future<UpgradeOutcome> migrateToCatalogExtensions(ExtensionService service) asyn
     return UpgradeOutcome.failed;
   } finally {
     _inFlight = false;
+    // Every catch-up that ran while this held the flag stepped aside, and
+    // none may come after it this session.
+    service.markFirstCatchUpDone();
   }
 }
 
@@ -358,8 +362,12 @@ List<String> _names(ExtensionService service, bool Function(ExtensionInfo) inclu
 /// A pre-load the app update brought, and any twin a previous launch could not
 /// download. Never throws into the caller — this is fire-and-forget off the
 /// end of a boot, and an exception escaping here has no one left to catch it.
-Future<void> catchUpOnCatalogExtensions(ExtensionService service) async {
-  if (_inFlight) return;
+///
+/// Answers whether it ran: false when another catch-up, an upgrade or a
+/// restore already holds the flag — as the restart this one triggers does,
+/// re-entering from `_start` — so "done" is only ever the outermost run's.
+Future<bool> catchUpOnCatalogExtensions(ExtensionService service) async {
+  if (_inFlight) return false;
   _inFlight = true;
   try {
     var landed = await service.preloadShippedExtensions();
@@ -367,9 +375,9 @@ Future<void> catchUpOnCatalogExtensions(ExtensionService service) async {
     // of the list it reads: what the pre-load just installed would be fetched
     // from the catalog as well.
     if (landed) await service.reloadAvailableExtensions();
-    landed = (await service.adoptTwins()).landed || landed;
-    if (landed) {
-      await service.reloadAvailableExtensions();
+    final adopted = (await service.adoptTwins()).landed;
+    if (adopted) await service.reloadAvailableExtensions();
+    if (landed || adopted) {
       // Fresh: this runs unawaited from inside `_start`, so the replacement
       // that boot came through is still in flight and would be handed back —
       // leaving what was just installed unloaded until the next launch.
@@ -377,6 +385,118 @@ Future<void> catchUpOnCatalogExtensions(ExtensionService service) async {
     }
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'extensions:preload');
+  } finally {
+    _inFlight = false;
+    service.markFirstCatchUpDone();
+  }
+  return true;
+}
+
+/// What putting missing extensions back came to, by name.
+class RestoreResult {
+  const RestoreResult({this.installed = const [], this.failed = const [], this.wouldNotRun = const [], this.busy = false, this.runtimeDead = false});
+
+  final List<String> installed;
+
+  /// Not in the listing, not downloaded, or refused by the check — offered
+  /// again next launch, since they are still missing.
+  final List<String> failed;
+
+  /// Installed, and would not run: set aside so the others do, kept
+  /// installed and marked in the Extensions panel, where an update is the way
+  /// back.
+  final List<String> wouldNotRun;
+
+  /// Nothing was tried: another catalog pass held the store. Every one is
+  /// still missing, and offered again next launch.
+  final bool busy;
+
+  /// What landed is installed, and the runtime would not start with it — for
+  /// a reason no installed bundle is named in, so none could be set aside.
+  final bool runtimeDead;
+}
+
+/// Installs the [wanted] extensions the catalog can put back, each on its
+/// own: one that cannot be downloaded or checked costs only itself. The
+/// runtime restarts with everything that landed, and a bundle the engine
+/// will not evaluate is set aside — as the upgrade does — and named, rather
+/// than taking the others down.
+Future<RestoreResult> restoreMissingExtensions(ExtensionService service, List<MissingExtension> wanted) async {
+  final fetchable = [
+    for (final missing in wanted)
+      if (missing.fetchable) missing,
+  ];
+  final names = {for (final missing in fetchable) missing.key: missing.name};
+  // Held like an upgrade: a catch-up running beside this would read the store
+  // mid-write. The console is the only place that says why nothing happened.
+  if (_inFlight) {
+    debugPrint('[extensions] restore declined: a catalog pass is already running');
+    return const RestoreResult(busy: true);
+  }
+  final catalog = service.catalog;
+  if (catalog == null) {
+    ErrorReportingService.report(const CatalogNotWired(), StackTrace.current, context: 'extensions:restore');
+    return RestoreResult(failed: names.values.toList());
+  }
+  _inFlight = true;
+  try {
+    // Forced: the operator is watching this, and a listing from before they
+    // went offline and came back is the one thing that would fail every key.
+    final listing = fetchable.isEmpty ? null : await catalog.fetchCatalog(force: true);
+    final offered = {for (final entry in listing ?? const <CatalogEntry>[]) entry.key: entry};
+    final landed = <String>[];
+    final failed = <String>[];
+    for (final missing in fetchable) {
+      final entry = offered[missing.key];
+      if (entry == null) {
+        // Unreachable, or no longer served here — withdrawn, another channel,
+        // an API this build does not speak. The operator can Forget it.
+        debugPrint('[extensions] restore: ${missing.key} is not in the catalog listing${listing == null ? ' (no listing)' : ''}');
+        failed.add(missing.key);
+        continue;
+      }
+      try {
+        await service.reinstallFromCatalog(entry);
+        landed.add(missing.key);
+      } catch (e, stack) {
+        failed.add(missing.key);
+        ErrorReportingService.report(e, stack, context: 'extensions:restore');
+      }
+    }
+    var runtimeDead = false;
+    if (landed.isNotEmpty) {
+      await service.reloadAvailableExtensions();
+      await service.restartRuntime(fresh: true);
+      // A boot failure cannot be thrown at us (see _migrate), so it is asked.
+      // Each pass sets aside the bundle the boot died on; bounded by what
+      // landed, since only those are new to this runtime.
+      final settings = service.settings;
+      for (var attempt = 0; attempt < landed.length && !service.runtimeIsHealthy && settings != null; attempt++) {
+        final culprit = service.lastStartFailureKey;
+        if (culprit == null || !await _refuse(service, settings, culprit)) break;
+        await service.reloadAvailableExtensions();
+        await service.restartRuntime(fresh: true);
+      }
+      // Asked once more, because "installed again" over a runtime running
+      // nothing is the worst answer this can give.
+      if (!service.runtimeIsHealthy) {
+        runtimeDead = true;
+        ErrorReportingService.report(const UpgradeLeftNoRuntime(), StackTrace.current, context: 'extensions:restore');
+      }
+    }
+    final wouldNotRun = {
+      for (final info in service.availableExtensions)
+        if (landed.contains(info.key) && service.isExtensionRefused(info)) info.key,
+    };
+    return RestoreResult(
+      installed: [
+        for (final key in landed)
+          if (!wouldNotRun.contains(key)) names[key]!,
+      ],
+      failed: [for (final key in failed) names[key]!],
+      wouldNotRun: [for (final key in wouldNotRun) names[key]!],
+      runtimeDead: runtimeDead,
+    );
   } finally {
     _inFlight = false;
   }

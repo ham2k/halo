@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -54,7 +55,7 @@ void main() {
     final store = InstalledExtensions(
       builtInKeys: () => const {},
       hostSharedModules: const {'i18next': '23.11.5'},
-      rootOverride: root,
+      storage: FileBundleStorage(root: root),
       reservedPrefixAllowed: (key) => BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
     );
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))

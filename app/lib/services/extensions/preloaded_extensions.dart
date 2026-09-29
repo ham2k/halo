@@ -209,6 +209,15 @@ Version? _parse(String? raw) {
 /// [builtInDefaults] is each shipped built-in's `enabledByDefault`, for a
 /// predecessor the operator never switched either way.
 ///
+/// [restoring] names bundles the operator had installed that the store no
+/// longer holds (`SettingsService.extensionsInstalled`). They are installed
+/// whatever the pre-load record says — it says they were already offered,
+/// which is true and beside the point — and never as a first install: the
+/// operator's settings and on/off choice are still under their key, and
+/// carrying a predecessor's over them, or dropping the choice as stale, would
+/// undo what they set. [offerNew] false installs only those, for an install
+/// that has not taken the upgrade and is offered nothing new.
+///
 /// Every failure is per-bundle and reported, never fatal. Seven working
 /// extensions and one that says why beats a boot that stops on the first bad
 /// zip, and the operator can install the missing one from the catalog by
@@ -220,6 +229,8 @@ Future<bool> installShippedExtensions({
   required Map<String, bool> builtInDefaults,
   required Future<void> Function(InspectedBundle bundle, {required bool fresh}) recordInstall,
   required Future<void> Function({required String from, required String to}) copySecrets,
+  Set<String> restoring = const {},
+  bool offerNew = true,
   Future<ByteData> Function(String key)? loadAsset,
   Future<String> Function(String key)? loadIndex,
 }) async {
@@ -236,14 +247,15 @@ Future<bool> installShippedExtensions({
   var installedAny = false;
 
   for (final bundle in shipped) {
-    if (!shouldPreload(bundle, preloadedVersion: preloaded[bundle.key], installedVersion: installedVersions[bundle.key])) {
+    final restore = restoring.contains(bundle.key) && !installedVersions.containsKey(bundle.key);
+    if (!restore && (!offerNew || !shouldPreload(bundle, preloadedVersion: preloaded[bundle.key], installedVersion: installedVersions[bundle.key]))) {
       continue;
     }
     // Recorded whatever happens next. A bundle that cannot be installed is
     // one this app will not manage to install on the next launch either, and
     // retrying it every boot costs a zip parse and reports the same failure
     // forever.
-    final first = !preloaded.containsKey(bundle.key) && !installedVersions.containsKey(bundle.key);
+    final first = !restore && !preloaded.containsKey(bundle.key) && !installedVersions.containsKey(bundle.key);
     preloaded[bundle.key] = bundle.version;
     try {
       // Through the view's own offset and length: a ByteData from the bundle
@@ -411,16 +423,15 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
       continue;
     }
     try {
-      final bytes = await catalog.download(entry.release);
-      final inspected = await store.inspect(
-        bytes,
-        provenance: BundleProvenance(host: catalog.host, sha256: entry.sha256, version: entry.version),
-      );
-      await carryPredecessorRecords(key: twin, settings: settings, builtInKeys: shipped, copySecrets: copySecrets);
-      await store.install(inspected);
       // Never fresh: the point of the adoption is that the operator's state
       // for this extension already exists, under the name it used to have.
-      await recordInstall(inspected, fresh: false);
+      await installCatalogEntry(
+        store: store,
+        catalog: catalog,
+        entry: entry,
+        recordInstall: recordInstall,
+        beforeInstall: () => carryPredecessorRecords(key: twin, settings: settings, builtInKeys: shipped, copySecrets: copySecrets),
+      );
       // Recorded only on success. A download that failed is almost always the
       // connection, which is the one thing that changes between launches —
       // recording the attempt would retire a twin the operator still needs on
@@ -436,4 +447,57 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
   }
   await settings.setExtensionAdopted(adopted);
   return (landed: landed, complete: complete);
+}
+
+/// Downloads [entry]'s release, checks it against the listing, and installs
+/// it as an extension the operator already had — recorded never fresh, so
+/// their on/off choice stands. [beforeInstall] runs between the check and the
+/// write, for state that has to be in place before the first activation.
+///
+/// Throws whatever the download or the check throws, and writes nothing then.
+Future<void> installCatalogEntry({
+  required InstalledExtensions store,
+  required CatalogService catalog,
+  required CatalogEntry entry,
+  required Future<void> Function(InspectedBundle, {required bool fresh}) recordInstall,
+  Future<void> Function()? beforeInstall,
+}) async {
+  final bytes = await catalog.download(entry.release);
+  final inspected = await store.inspect(
+    bytes,
+    provenance: BundleProvenance(host: catalog.host, sha256: entry.sha256, version: entry.version),
+  );
+  await beforeInstall?.call();
+  await store.install(inspected);
+  await recordInstall(inspected, fresh: false);
+}
+
+/// Where a missing extension could come back from.
+enum MissingFrom {
+  /// A bundle the app ships: back from its own assets, at boot, unasked —
+  /// or from the catalog, when this build no longer ships it.
+  shipped,
+
+  /// The catalog this build talks to.
+  catalog,
+
+  /// A catalog other than the one this build talks to now — the developer
+  /// override, or production while it is on. Not fetched from here: the
+  /// bytes would come from a publisher the operator never agreed to.
+  otherCatalog,
+
+  /// A file, which only the operator has.
+  file,
+}
+
+/// An extension the operator installed that the store does not hold.
+class MissingExtension {
+  const MissingExtension({required this.key, required this.name, required this.from});
+
+  final String key;
+  final String name;
+  final MissingFrom from;
+
+  /// Whether the catalog this build talks to can put it back.
+  bool get fetchable => from == MissingFrom.catalog || from == MissingFrom.shipped;
 }

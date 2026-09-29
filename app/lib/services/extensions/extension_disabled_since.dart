@@ -21,9 +21,11 @@ import '../settings_service.dart';
 /// simpler) to track for all non-core keys.
 ///
 /// Also prunes both this map and `extensionOverrides` of any key absent from
-/// [available] entirely — an extension deleted from the build, not merely
-/// disabled or gated behind an experiment (which still keeps its entry there;
-/// see `ExtensionService.isExtensionAvailable`). Without this, a key an
+/// [available] entirely, and from what the operator installed
+/// (`SettingsService.extensionsInstalled`) — an extension deleted from the
+/// build or uninstalled, not merely missing from the store, disabled, or
+/// gated behind an experiment (which still keeps its entry there; see
+/// `ExtensionService.isExtensionAvailable`). Without this, a key an
 /// install migrated (like a former `hamdb: false` override) outlives the
 /// extension it named forever: nothing else ever visits an unknown key to
 /// remove it.
@@ -39,7 +41,10 @@ Future<void> updateExtensionDisabledSince({
   required bool Function(ExtensionInfo info) isActive,
 }) async {
   final disabledSince = {...settings.extensionDisabledSince};
-  final knownKeys = {for (final info in available) info.key};
+  // With what the operator installed: an extension missing from the store is
+  // not one deleted from the build, and pruning its choice would bring it
+  // back switched on — or SOTA and WWFF, off by default — once it is restored.
+  final knownKeys = {for (final info in available) info.key, ...settings.extensionsInstalled.keys};
   final canPrune = available.isNotEmpty;
   // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
   // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real
