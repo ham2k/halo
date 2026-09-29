@@ -16,6 +16,7 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'drivers/poll_config.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
 import 'transports/serial_transport_config.dart';
@@ -36,6 +37,7 @@ List<String> equipmentSetupLines({
     '- Connection: ${type.transportLabel}',
     '- Driver: `${type.driver.key}`',
     ...configLines(node, type, registry),
+    ...effectiveSettingLines(node, type),
     ...serialPortLines(node, type),
     '- Status: ${state.status.name}',
     // The raw exception's own words when the row shows a translated
@@ -176,10 +178,48 @@ List<String> configLines(EquipmentNode node, EquipmentType type, EquipmentRegist
 
   return [
     for (final entry in node.config.entries)
-      if (!secrets.contains(entry.key) && entry.value != null && '${entry.value}'.isNotEmpty)
+      if (!secrets.contains(entry.key) && !_statedByEffect.contains(entry.key) && entry.value != null && '${entry.value}'.isNotEmpty)
         '- ${labels[entry.key] ?? entry.key}: '
             '${_shownValue('${entry.value}', optionLabels[entry.key])}',
   ];
+}
+
+/// Keys [effectiveSettingLines] states as what the connection DOES, so the
+/// stored value would only repeat it — or, absent, say nothing at all.
+const _statedByEffect = {serialRtsHighConfigKey, serialDtrHighConfigKey, pollIntervalConfigKey};
+
+/// The settings most operators never touch, as the connection applies them —
+/// stated whether or not the node stores them. A blank or absent value means
+/// a default the reader of a report cannot see, and "the radio answers
+/// nothing" is so often a control line or a poll rate that leaving it to be
+/// inferred would cost the report its point.
+List<String> effectiveSettingLines(EquipmentNode node, EquipmentType type) {
+  final lines = <String>[];
+  if (type.transport is SerialTransportConfig) {
+    final target = type.targetFor(node.config);
+    String level(String key) => target[key] == true ? 'held high' : 'low';
+    lines.add('- Control lines: RTS ${level(serialRtsHighConfigKey)}, DTR ${level(serialDtrHighConfigKey)}');
+  }
+  // The driver's own elements, not the pairing's: those carry the fallback
+  // this driver means by a blank, and asking them enumerates no ports.
+  final Map<String, dynamic>? pollField;
+  try {
+    pollField = type.driver
+        .configElements(overrides: type.overrides, restrictions: type.restrictions)
+        .where((e) => e['key'] == pollIntervalConfigKey)
+        .firstOrNull;
+  } catch (e) {
+    debugPrint('[report] ${type.key}: driver elements unavailable ($e)');
+    return lines;
+  }
+  if (pollField != null) {
+    final fallback = Duration(milliseconds: int.tryParse('${pollField['placeholder']}') ?? 0);
+    final config = type.driverConfig(node.config);
+    final interval = idlePollIntervalFor(config, fallback: fallback);
+    final chosen = idlePollIntervalFor(config, fallback: Duration.zero) != Duration.zero;
+    lines.add('- Idle poll: ${interval.inMilliseconds} ms${chosen ? '' : ' (default)'}');
+  }
+  return lines;
 }
 
 /// A pairing's form elements, or none when asking for them throws.

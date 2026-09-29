@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
@@ -421,7 +422,7 @@ void main() {
           for (final e in elements)
             if (e['type'] == 'field') e['key'],
         ],
-        ['host', 'username', 'password', telemetryIntervalConfigKey],
+        ['host', 'username', 'password', telemetryIntervalConfigKey, pollIntervalConfigKey],
       );
       final password = elements.firstWhere((e) => e['key'] == 'password');
       expect(password['fieldType'], 'secret', reason: 'obscured in the editor');

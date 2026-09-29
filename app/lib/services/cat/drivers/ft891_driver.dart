@@ -40,6 +40,7 @@ import '../transports/config_field_helpers.dart';
 import 'cw_send_queue.dart';
 import 'keyer_config.dart';
 import 'meter_calibration.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 import 'yaesu_cat_codec.dart';
@@ -230,12 +231,14 @@ class Ft891Driver extends EquipmentDriver {
       'devMode': true,
     },
     telemetryConfigElement(),
+    pollConfigElement(),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
     voiceMemoriesConfigKey => validateVoiceMemories(value),
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    pollIntervalConfigKey => validatePollInterval(value),
     _ => null,
   };
 
@@ -312,7 +315,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   /// can't: the radio's AI menu switched off, or a frame lost to line noise.
   /// It stays silent for as long as the radio keeps talking. See
   /// adaptive_poller.dart for the wire measurements behind the intervals.
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode);
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode, slow: idlePollIntervalFor(_config));
 
   /// What was last reported upward, so a repeat can be told from a move.
   VfoReading? _lastReported;

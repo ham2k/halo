@@ -9,6 +9,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/rigctld_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/tcp_transport.dart';
@@ -34,9 +35,10 @@ void main() {
       for (final e in type.configElements())
         if (e['type'] == 'field') e['key'],
     ];
-    // Plus the meter cadence, which is how often to ask the daemon rather
-    // than where it is — the driver's question, not the transport's.
-    expect(keys, ['host', 'port', telemetryIntervalConfigKey]);
+    // Plus the meter and poll cadences, which are how often to ask the
+    // daemon rather than where it is — the driver's questions, not the
+    // transport's.
+    expect(keys, ['host', 'port', telemetryIntervalConfigKey, pollIntervalConfigKey]);
   });
 
   test('and tells the operator the daemon is theirs to run', () {

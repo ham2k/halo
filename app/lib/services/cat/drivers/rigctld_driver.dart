@@ -36,6 +36,7 @@ import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 
 const _lineFeed = 0x0a;
@@ -118,10 +119,15 @@ class RigctldDriver extends EquipmentDriver {
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     telemetryConfigElement(),
+    pollConfigElement(),
   ];
 
   @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
+    telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    pollIntervalConfigKey => validatePollInterval(value),
+    _ => null,
+  };
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => RigctldSession(sink, config);
@@ -141,7 +147,7 @@ class RigctldSession implements TransceiverSession {
 
   final Map<String, dynamic> _config;
 
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode);
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode, slow: idlePollIntervalFor(_config));
 
   /// Watches for the operator to key the rig, and reads its meters while
   /// they hold it — telemetry_poller.dart, and the opposite rule to

@@ -9,6 +9,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/flrig_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/tcp_transport.dart';
@@ -34,10 +35,10 @@ void main() {
       for (final e in type.configElements())
         if (e['type'] == 'field') e['key'],
     ];
-    // Plus the meter cadence, which is the driver's rather than the
-    // transport's: it is a question about how often to ask flrig, not about
-    // where flrig is.
-    expect(keys, ['host', 'port', telemetryIntervalConfigKey]);
+    // Plus the meter and poll cadences, which are the driver's rather than
+    // the transport's: they are questions about how often to ask flrig, not
+    // about where flrig is.
+    expect(keys, ['host', 'port', telemetryIntervalConfigKey, pollIntervalConfigKey]);
   });
 
   test('and tells the operator flrig is theirs to run', () {

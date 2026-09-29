@@ -37,6 +37,7 @@ import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
 import 'keyer_config.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
@@ -188,12 +189,14 @@ class KenwoodDriver extends EquipmentDriver {
       },
     if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
     telemetryConfigElement(),
+    pollConfigElement(),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
     voiceMemoriesKey => validateVoiceMemories(value),
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    pollIntervalConfigKey => validatePollInterval(value),
     _ => null,
   };
 }
@@ -222,7 +225,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// Auto-Information is the primary path; this covers what it can't — the
   /// radio's AI menu switched off, or a frame lost to line noise.
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestState);
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestState, slow: idlePollIntervalFor(_config));
 
   /// Watches for the operator to key the rig, by asking for the `IF` packet
   /// that carries the flag — see [_handleInfo].

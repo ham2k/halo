@@ -13,10 +13,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -82,7 +84,15 @@ void main() {
     // operator never sees it — but it is still a field this form collects,
     // and a list that pretended otherwise would stop noticing when one is
     // added.
-    expect(keys, ['port', 'baudRate', yaesuMeterCaptureConfigKey, telemetryIntervalConfigKey]);
+    expect(keys, [
+      'port',
+      'baudRate',
+      serialRtsHighConfigKey,
+      serialDtrHighConfigKey,
+      yaesuMeterCaptureConfigKey,
+      telemetryIntervalConfigKey,
+      pollIntervalConfigKey,
+    ]);
     expect([
       for (final e in type.configElements())
         if (e['devMode'] == true) e['key'],
@@ -95,14 +105,17 @@ void main() {
     // a setting somewhere else, so the editor is where it has to be said.
     final note = type.configElements().firstWhere((e) => e['type'] == 'markdown');
     expect(note['text'], contains('05-08'), reason: "the radio's CAT RTS menu item");
-    expect(note['text'], contains('PTT'), reason: 'why the app will not raise RTS itself');
+    expect(note['text'], contains('PTT'), reason: 'why the app does not raise RTS by default');
+    expect(note['text'], contains(t.settings.station.serialRtsHigh), reason: 'and the setting that raises it, named as the editor names it');
   });
 
   test('hands the transport exactly what it needs to open the port', () {
     final target = type.targetFor({'port': '/dev/cu.SLAB_USBtoUART', 'baudRate': 38400});
     // `stopBits` rides along for the one device that needs two (the Winkeyer);
-    // a radio's pairing leaves it at the serial default.
-    expect(target, {'port': '/dev/cu.SLAB_USBtoUART', 'baudRate': 38400, 'stopBits': 1});
+    // a radio's pairing leaves it at the serial default. Both lines low
+    // unless the operator raises them: they key the transmitter on common
+    // cables.
+    expect(target, {'port': '/dev/cu.SLAB_USBtoUART', 'baudRate': 38400, 'stopBits': 1, serialRtsHighConfigKey: false, serialDtrHighConfigKey: false});
   });
 
   test('a baud round-tripped through JSON as a string still opens the port', () {

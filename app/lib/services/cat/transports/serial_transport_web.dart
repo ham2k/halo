@@ -156,6 +156,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
     final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
+    final rtsHigh = target[serialRtsHighConfigKey] == true;
+    final dtrHigh = target[serialDtrHighConfigKey] == true;
+    final manageLines = target[serialNoControlLinesKey] != true;
 
     try {
       await port.open(SerialOptions(baudRate: baudRate, dataBits: 8, stopBits: stopBits, parity: 'none', flowControl: 'none')).toDart;
@@ -168,16 +171,18 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
       throw const CatCancelledException();
     }
 
-    try {
-      // Best effort, and deliberately not awaited into the connect
-      // failing: never assert either signal (RTS is PTT on common
-      // interfaces — see web_serial_interop.dart), but a browser/OS that
-      // refuses signal control entirely is not worth taking the whole
-      // connection down for, especially since every browser observed so
-      // far already leaves both deasserted after `open()` on its own.
-      await port.setSignals(SerialOutputSignals(dataTerminalReady: false, requestToSend: false)).toDart;
-    } catch (e) {
-      debugPrint('[cat] could not set web serial signals: $e');
+    if (manageLines) {
+      try {
+        // Best effort: a refusal is logged and the connection goes on. The
+        // lines go where the node says (RTS is PTT on common interfaces — see
+        // serialRtsHighConfigKey), but a browser/OS that refuses signal
+        // control entirely is not worth taking the whole connection down for,
+        // especially since every browser observed so far already leaves both
+        // deasserted after `open()` on its own.
+        await port.setSignals(SerialOutputSignals(dataTerminalReady: dtrHigh, requestToSend: rtsHigh)).toDart;
+      } catch (e) {
+        debugPrint('[cat] could not set web serial signals: $e');
+      }
     }
 
     return _WebSerialConnection(port, name);

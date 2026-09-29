@@ -34,6 +34,7 @@ import '../equipment.dart';
 import '../request_queue.dart';
 import '../telemetry_poller.dart';
 import 'commander_codec.dart';
+import 'poll_config.dart';
 
 class CommanderDriver extends EquipmentDriver {
   const CommanderDriver();
@@ -52,7 +53,13 @@ class CommanderDriver extends EquipmentDriver {
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(['LSB', 'USB', 'CW', 'CW-R', 'AM', 'FM', ...commanderModesByAppMode.keys]);
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => CommanderSession(sink);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => CommanderSession(sink, config);
+
+  @override
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [pollConfigElement()];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == pollIntervalConfigKey ? validatePollInterval(value) : null;
 }
 
 /// What the outstanding message will answer, or [set] for one it will not.
@@ -79,9 +86,11 @@ const _maxPending = 64 * 1024;
 class CommanderSession implements TransceiverSession {
   final EquipmentSink _sink;
 
-  CommanderSession(this._sink);
+  final Map<String, dynamic> _config;
 
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _poll);
+  CommanderSession(this._sink, [this._config = const {}]);
+
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _poll, slow: idlePollIntervalFor(_config));
 
   late final TelemetryPoller _telemetry = TelemetryPoller(onPoll: _pollTelemetry);
 

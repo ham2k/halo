@@ -272,6 +272,11 @@ class FormRendererState extends State<FormRenderer> {
   final Set<String> _runningActions = {};
   bool _isSubmitting = false;
 
+  /// The `type: 'disclosure'` groups the operator has opened, by key. Every
+  /// one starts closed: a disclosure holds what most people never need to
+  /// touch, and opening it is the operator's call.
+  final Set<String> _openDisclosures = {};
+
   /// Bumped after every action runs, and folded into every `select` field's
   /// widget key. `DropdownButtonFormField` tracks which item is selected
   /// internally once built — an `isAction` option stays visually "selected"
@@ -319,13 +324,34 @@ class FormRendererState extends State<FormRenderer> {
   /// discriminator field, never by "first non-empty".
   ///
   /// Reads [_values], so any field's `setState` re-evaluates visibility.
-  List<Map<String, dynamic>> get _visibleElements => _elements.where(_isVisible).toList();
+  ///
+  /// A `disclosure: <key>` element folds under the `type: 'disclosure'`
+  /// element of that key: hidden while it is closed, and hidden by the same
+  /// rules as any other element while it is open. The disclosure itself
+  /// shows only while at least one of its members' `visibleWhen` holds — a
+  /// fold with nothing in it would open onto nothing. A member naming a key
+  /// no disclosure element has is not folded at all: with no fold to open,
+  /// it would otherwise be hidden for good, errors and all.
+  List<Map<String, dynamic>> get _visibleElements {
+    final elements = _elements;
+    final folds = {
+      for (final el in elements)
+        if (el['type'] == 'disclosure') el['key'],
+    };
+    return [
+      for (final el in elements)
+        if (el['type'] == 'disclosure'
+            ? _visibleWhenHolds(el) && elements.any((member) => member['disclosure'] == el['key'] && _visibleWhenHolds(member))
+            : _visibleWhenHolds(el) && (!folds.contains(el['disclosure']) || _openDisclosures.contains(el['disclosure'])))
+          el,
+    ];
+  }
 
   /// Whether [el]'s `visibleWhen` holds. `equals` may be a single value or a
   /// list meaning "any of". Naming a field that doesn't exist reads as null and
   /// so hides the element — a definition that points at nothing shows nothing,
   /// rather than throwing in the middle of someone's setup dialog.
-  bool _isVisible(Map<String, dynamic> el) {
+  bool _visibleWhenHolds(Map<String, dynamic> el) {
     final when = el['visibleWhen'];
     if (when is! Map) return true;
     final actual = _values[when['field']];
@@ -665,6 +691,13 @@ class FormRendererState extends State<FormRenderer> {
         if (errors.isNotEmpty) {
           _errors.addAll(errors);
 
+          // An error inside a closed disclosure would block the save with
+          // nothing on screen saying why.
+          for (final field in _fields) {
+            final disclosure = field['disclosure'];
+            if (disclosure is String && errors.containsKey(field['key'])) _openDisclosures.add(disclosure);
+          }
+
           // Scroll first error into view
           for (final field in _fields) {
             final key = field['key'] as String;
@@ -806,6 +839,7 @@ class FormRendererState extends State<FormRenderer> {
         'header' => _buildHeader(el, theme),
         'divider' => _buildDivider(el, theme),
         'markdown' => _buildMarkdown(el, theme),
+        'disclosure' => _buildDisclosure(el, theme),
         'field' => _buildField(el, theme),
         'link' => _buildLink(el, theme),
         'action' => _buildActionElement(el, theme),
@@ -907,6 +941,24 @@ class FormRendererState extends State<FormRenderer> {
     return Padding(
       padding: _rowContentPadding,
       child: MarkdownBody(data: text, styleSheet: styleSheet),
+    );
+  }
+
+  /// The row that opens and closes the elements declaring `disclosure: <its
+  /// key>` — styled as a collapsible markdown section's title, which is the
+  /// other thing in a form that folds.
+  Widget _buildDisclosure(Map<String, dynamic> el, ThemeData theme) {
+    final key = el['key'] as String;
+    final open = _openDisclosures.contains(key);
+    return ListTile(
+      key: ValueKey('disclosure:$key'),
+      contentPadding: _rowContentPadding,
+      title: Text(
+        el['title'] as String? ?? '',
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: _devModeColor(el)),
+      ),
+      trailing: Icon(open ? MdiIcons.chevronUp : MdiIcons.chevronDown),
+      onTap: () => setState(() => open ? _openDisclosures.remove(key) : _openDisclosures.add(key)),
     );
   }
 

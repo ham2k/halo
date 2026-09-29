@@ -7,6 +7,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/equipment_brands.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/tcp_transport.dart';
@@ -36,7 +37,8 @@ void main() {
           for (final e in type.configElements())
             if (e['type'] == 'field') e['key'],
         ];
-        expect(keys, ['host', 'port']);
+        // Plus how often to poll the program, which is the driver's question.
+        expect(keys, ['host', 'port', pollIntervalConfigKey]);
       });
 
       test('says where in the program its server is turned on', () {

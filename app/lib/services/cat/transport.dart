@@ -70,6 +70,12 @@ enum SerialFailure {
   /// entitlement, a Web Serial grant revoked, a Linux user outside `dialout`.
   denied,
 
+  /// The port opened, but RTS or DTR read back somewhere other than where the
+  /// node holds it — hardware flow control another program left on, or a
+  /// driver that would not set the line. Refused rather than kept, because
+  /// on a Digirig that line is PTT.
+  lines,
+
   /// Anything the transport could not place. Keeps its own words rather than
   /// being translated into a guess.
   other,

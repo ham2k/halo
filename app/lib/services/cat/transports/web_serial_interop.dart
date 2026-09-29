@@ -39,9 +39,9 @@ extension type SerialPort._(JSObject _) implements JSObject {
   external JSPromise<JSAny?> open(SerialOptions options);
   external JSPromise<JSAny?> close();
 
-  /// DTR/RTS. `serial_transport_io.dart`'s hard rule carries over
-  /// unchanged: never assert either on connect — on the common interfaces
-  /// (Digirig, SignaLink, most home-brew cables) RTS *is* the PTT line.
+  /// DTR/RTS, set to what the pairing says on every connect — on the common
+  /// interfaces (Digirig, SignaLink, most home-brew cables) RTS *is* the PTT
+  /// line, so it is never left to the browser.
   external JSPromise<JSAny?> setSignals([SerialOutputSignals signals]);
 
   external SerialPortInfo getInfo();

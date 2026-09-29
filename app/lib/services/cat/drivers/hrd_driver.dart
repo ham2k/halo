@@ -32,6 +32,7 @@ import '../equipment.dart';
 import '../request_queue.dart';
 import '../telemetry_poller.dart';
 import 'hrd_codec.dart';
+import 'poll_config.dart';
 
 class HrdDriver extends EquipmentDriver {
   const HrdDriver();
@@ -51,7 +52,13 @@ class HrdDriver extends EquipmentDriver {
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(hrdModesByAppMode.keys);
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => HrdSession(sink);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => HrdSession(sink, config);
+
+  @override
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [pollConfigElement()];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == pollIntervalConfigKey ? validatePollInterval(value) : null;
 }
 
 /// What the outstanding request will answer.
@@ -77,9 +84,11 @@ final _digits = RegExp(r'^\d+$');
 class HrdSession implements TransceiverSession {
   final EquipmentSink _sink;
 
-  HrdSession(this._sink);
+  final Map<String, dynamic> _config;
 
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _poll);
+  HrdSession(this._sink, [this._config = const {}]);
+
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _poll, slow: idlePollIntervalFor(_config));
 
   /// The PTT watch, started once `get buttons` says there is a TX button.
   late final TelemetryPoller _telemetry = TelemetryPoller(onPoll: _pollTelemetry);

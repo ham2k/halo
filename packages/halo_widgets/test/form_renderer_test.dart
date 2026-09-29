@@ -2999,6 +2999,137 @@ void main() {
     });
   });
 
+  group('disclosure', () {
+    // The equipment editor's Advanced Settings: fields most operators never
+    // touch, folded away until asked for, on a form that also narrows by
+    // transport with visibleWhen.
+    Map<String, dynamic> foldingForm() => {
+      'elements': [
+        {
+          'type': 'field',
+          'fieldType': 'radio',
+          'key': 'link',
+          'label': 'Link',
+          'value': 'serial',
+          'options': [
+            {'label': 'Serial', 'value': 'serial'},
+            {'label': 'Network', 'value': 'network'},
+          ],
+        },
+        {'type': 'field', 'fieldType': 'text', 'key': 'port', 'label': 'Port'},
+        {'type': 'disclosure', 'key': 'advanced', 'title': 'Advanced Settings'},
+        {
+          'type': 'field',
+          'fieldType': 'text',
+          'key': 'poll',
+          'label': 'Poll',
+          'disclosure': 'advanced',
+          'visibleWhen': {'field': 'link', 'equals': 'serial'},
+        },
+      ],
+    };
+
+    Map<String, dynamic>? submitted;
+
+    Widget host({FormValidator? validator}) => MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: FormRenderer(
+            formDefinition: foldingForm(),
+            initialState: const {'poll': '3000'},
+            validator: validator,
+            onSubmit: (vals) => submitted = vals,
+            onCancel: () {},
+          ),
+        ),
+      ),
+    );
+
+    Future<void> save(WidgetTester tester) async {
+      final button = find.widgetWithText(FilledButton, 'Save');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+    }
+
+    setUp(() => submitted = null);
+
+    testWidgets('starts closed, and opens and closes on a tap', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('Advanced Settings'), findsOneWidget);
+      expect(find.text('Poll'), findsNothing, reason: 'closed until the operator asks');
+      expect(find.text('Port'), findsOneWidget, reason: 'a field outside the fold is unaffected');
+
+      await tester.tap(find.text('Advanced Settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Poll'), findsOneWidget);
+
+      await tester.tap(find.text('Advanced Settings'));
+      await tester.pumpAndSettle();
+      expect(find.text('Poll'), findsNothing);
+    });
+
+    testWidgets('a fold whose every member is hidden by visibleWhen is not shown', (tester) async {
+      // Open onto nothing, it would read as a broken section.
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Network'));
+      await tester.pumpAndSettle();
+      expect(find.text('Advanced Settings'), findsNothing);
+
+      await tester.tap(find.text('Serial'));
+      await tester.pumpAndSettle();
+      expect(find.text('Advanced Settings'), findsOneWidget);
+    });
+
+    testWidgets('a closed fold still submits what is inside it', (tester) async {
+      // Folding is presentation. A value the operator never looked at is
+      // still the node's setting, and dropping it on Save would reset it.
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      await save(tester);
+      expect(submitted!['poll'], '3000');
+    });
+
+    testWidgets('a member of a fold that does not exist is shown, not lost', (tester) async {
+      // With no fold to open it would be hidden for good — and an error on
+      // it would block Save with nothing on screen.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'field', 'fieldType': 'text', 'key': 'orphan', 'label': 'Orphan', 'disclosure': 'nowhere'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Orphan'), findsOneWidget);
+    });
+
+    testWidgets('an error inside a closed fold opens it', (tester) async {
+      // Otherwise Save refuses with nothing on screen saying why.
+      await tester.pumpWidget(host(validator: (key, value, values) async => key == 'poll' ? 'Too fast' : null));
+      await tester.pumpAndSettle();
+
+      await save(tester);
+      expect(submitted, isNull);
+      expect(find.text('Poll'), findsOneWidget);
+      expect(find.text('Too fast'), findsOneWidget);
+    });
+  });
+
   testWidgets('a select fills its field rather than its widest option', (tester) async {
     // An unexpanded dropdown takes the width of its WIDEST ITEM, so one long
     // option label — a contest sponsor's own words for an entry category —

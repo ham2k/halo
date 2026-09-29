@@ -457,6 +457,20 @@ void main() {
       expect(props.values.join(' '), isNot(contains('secret-host')), reason: 'no config value or error text may reach the payload');
     });
 
+    test('a port refused over its control lines is its own class, not "other"', () async {
+      // The desktop readback refuses a port whose RTS/DTR did not land. If
+      // that misfires on some driver, the field is the only place it shows,
+      // and "serial:other" would bury it among every unplaced failure.
+      await withTracking();
+      final node = await addRadio();
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.last.completer.completeError(const _FakeSerialProblem(SerialFailure.lines));
+      await connecting;
+
+      expect(only('radio_connect_failed').single['reason'], 'serial:lines');
+    });
+
     test('radio_added records whether discovery or the form found it', () async {
       // The gap between added and connected is what says a pairing is
       // configurable but not usable — worthless if both paths look alike.
@@ -822,6 +836,32 @@ void main() {
       await pumpWithRadioOff();
 
       expect(transport.attempts.length, atDisconnect, reason: 'the running loop ignored the operator');
+    });
+
+    test('a port refused over its control lines is not retried until the operator asks', () async {
+      // Hardware flow control another program left on the port lasts until
+      // the cable is replugged, and every retry opens the port — which raises
+      // RTS, the PTT line on a Digirig. Retrying would key the rig once per
+      // attempt for the rest of the session.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      connection.dropRemotely();
+      await pumpEventQueue();
+      for (var i = 0; i < 40; i++) {
+        for (final a in transport.attempts) {
+          if (!a.completer.isCompleted) a.completer.completeError(const _FakeSerialProblem(SerialFailure.lines));
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await pumpEventQueue();
+      }
+      final afterRefusal = transport.attempts.length;
+      await pumpWithRadioOff();
+      expect(transport.attempts.length, afterRefusal, reason: 'the loop kept reopening a port it had refused');
+
+      // Replugged, the operator tries again: that one goes out.
+      unawaited(cat.connect(node.uuid));
+      await pumpEventQueue();
+      expect(transport.attempts.length, afterRefusal + 1);
     });
 
     test('a manual Connect that succeeds ends the loop', () async {
@@ -2128,6 +2168,14 @@ void main() {
       final state = await failSerial(SerialFailure.denied);
       expect(state.error, t.settings.station.connectFailedDenied);
       expect(state.error, isNot(t.settings.station.connectFailedDevice));
+    });
+
+    test('a port refused over its control lines says what to do, not which line', () async {
+      // Another program's hardware handshake is the likely cause, and the
+      // cure is at the cable; "RTS did not go low as set" names neither.
+      final state = await failSerial(SerialFailure.lines);
+      expect(state.error, t.settings.station.connectFailedLines);
+      expect(state.errorDetail, contains('/dev/cu.usbserial-FTB6SPL3'), reason: 'the raw words stay for a report');
     });
 
     test('a serial failure the transport could not place keeps its own words', () async {

@@ -17,6 +17,24 @@ class BluetoothSerialTransport extends SerialTransport {
   @override
   String get key => transportKey;
 
+  /// A radio's own Bluetooth serial profile has no RTS or DTR wire behind
+  /// it, so there is nothing to offer, and nothing to write: a Bluetooth
+  /// driver that refuses a modem-control write, or reports the lines back
+  /// oddly, would otherwise fail a link that never had them. Whatever a USB
+  /// pairing of the same radio left in the form never reaches the port.
+  @override
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    for (final element in super.configElements(overrides: overrides, restrictions: restrictions))
+      if (element['key'] != serialRtsHighConfigKey && element['key'] != serialDtrHighConfigKey) element,
+  ];
+
+  @override
+  Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
+    for (final entry in super.targetFor(config).entries)
+      if (entry.key != serialRtsHighConfigKey && entry.key != serialDtrHighConfigKey) entry.key: entry.value,
+    serialNoControlLinesKey: true,
+  };
+
   /// A paired device's port, as each platform names it: one that says
   /// Bluetooth (Windows' "Standard Serial over Bluetooth link"), a Linux
   /// `rfcomm`, or on macOS a `cu.<name>` with no USB identity. Never the

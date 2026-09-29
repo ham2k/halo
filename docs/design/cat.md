@@ -332,6 +332,50 @@ characters instead of five of fifty (`yaesuKeyerMemory`, the one the app writes 
 `KY6;`–`KYA;` (`yaesuKeyerPlayByChannel`). A width is never guessed from an answer: an eight-digit
 read on a nine-digit radio is a frame that lost a byte.
 
+### RTS and DTR
+
+Every serial connection drives both control lines to a stated level, on every platform, and never
+leaves them where opening the port put them — macOS, Linux and most Windows drivers raise both on
+open, and libserialport's `setFlowControl(none)` does not lower them (a line it is not told about is
+left alone). Two node settings say where they go (`rtsHigh`, `dtrHigh` in
+`serial_transport_config.dart`), and **both are off unless the operator turns them on**, on every
+entry in the catalogue:
+
+- **RTS** is the PTT line on a Digirig, a SignaLink and most home-made cables, so a high RTS keys the
+  transmitter the moment the app connects. The radio that wants it is a Yaesu with CAT RTS on, which
+  waits for it before answering — the troubleshooting notes send that operator to the radio's menu
+  first, and the setting is the alternative.
+- **DTR** keys CW or PTT on many cables, and a radio's own USB port can be set to transmit from it
+  (an Icom's USB SEND). What wants it high is an older RS-232 interface that draws its power from the
+  line — some FT-817 cables — and the FT-8x7 notes say so.
+
+Absent keys read as low, so a node saved before these settings existed holds both lines low. A
+radio's own Bluetooth serial profile has no wire behind either line, so it offers neither and its
+target says so (`noControlLines`): the transport leaves the lines alone and reads nothing back, since
+a Bluetooth driver that refused a modem-control write would otherwise fail a link that never had
+them.
+
+**The desktop connection reads the lines back and refuses the port when they are not where it asked**
+(`serialLinesMismatch`). libserialport can report success without having set them: it never clears
+hardware flow control another program left on the port — it tests and clears `CRTSCTS` in `c_iflag`,
+where the bit is not — and with that flag on, the driver raises RTS by itself; and a setup error that
+sets no errno is never thrown. The readback goes through a second wrapper around the same open port
+(`SerialPort.fromAddress`), because the port's own `config` answers from what was just written.
+A refusal is its own failure class, `serial:lines`, so it reads distinctly on the row, in
+`radio_connect_failed` and in a DEVLOGCAT recording — and it stops the idle retry until the operator
+presses Connect. Left flow control lasts until the cable is replugged, and every retry would open the
+port again, which raises RTS: a key-up per attempt for the rest of the session. libserialport opens
+with `HUPCL` cleared, so closing a refused port does not lower the lines either; the message sends the
+operator to replug, which does. Every equipment report states the levels the
+connection applies (`effectiveSettingLines`), whether or not the node stores them. Android's plugin
+cannot report a refused line change, and Web Serial's `setSignals` is best effort; on those two the
+lines are set without confirmation. The open itself still raises both lines for the few
+milliseconds before the configuration lands; nothing in libserialport can open a port with them held.
+
+The lines and both cadences are fields most operators never touch, so the equipment editor folds
+every field a transport or driver marks `advanced` under an **Advanced Settings** disclosure,
+closed by default (FormRenderer's `type: 'disclosure'`; an error inside it opens it).
+
 ### A protocol with no framing at all
 
 Every other protocol here delimits its messages — `;` for Yaesu ASCII and Kenwood, `FE FE … FD` for
@@ -1362,6 +1406,15 @@ line, a bridge, a rig they do not want chattered at — and only the fast end is
 cannot overrule. A link that states no speed (TCP, flrig, rigctld) is *unmeasured*, not infinitely
 fast, and gets a flat floor rather than an arithmetic answer computed from a baud rate that does not
 exist.
+
+**The state poll's idle rate is the operator's as well** (`pollInterval`, `poll_config.dart`). On an
+`AdaptivePoller` it moves the slow end only (3 s by default) and leaves the 200 ms it drops to while
+the dial moves alone, because that half is what makes a spun dial look live; the staleness ceiling
+moves with it (three idle intervals). CI-V's fallback poll is fixed, not adaptive, and the setting is
+simply its period (5 s by default). It is capped at 10 s, a third of `catStaleAfter`: for most
+polling drivers the poll is the only proof the radio is still there, and a slower one would show a
+healthy radio as not responding between answers. The reason to raise it is the same as for the meter
+cadence: a bridge or a shared line that should be asked less often.
 
 Three consequences that bit during the build, all worth keeping:
 

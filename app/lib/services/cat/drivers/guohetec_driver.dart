@@ -37,6 +37,7 @@ import '../equipment.dart';
 import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
 import 'meter_calibration.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'guohetec_codec.dart';
 
@@ -121,11 +122,13 @@ class GuohetecDriver extends EquipmentDriver {
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     telemetryConfigElement(),
+    pollConfigElement(),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    pollIntervalConfigKey => validatePollInterval(value),
     _ => null,
   };
 
@@ -149,7 +152,7 @@ class GuohetecSession implements TransceiverSession {
 
   /// The radio volunteers nothing: this protocol has no auto-information,
   /// so a dial turn is only ever seen by asking.
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestStatus);
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestStatus, slow: idlePollIntervalFor(_config));
 
   /// Both cadences read the same packet — the meters command carries the
   /// transmit flag and the readings together, so watching costs exactly

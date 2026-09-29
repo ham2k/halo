@@ -19,6 +19,7 @@ import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/drivers/meter_calibration.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
@@ -117,6 +118,13 @@ void main() {
         // An answer to OUR read (0x03) proves nothing about transceive.
         feed([0xFE, 0xFE, us, ic705, 0x03, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);
         expect(session.expectedUpdateInterval, const Duration(seconds: 5));
+      });
+
+      test("the poll rate claimed is the node's own, when it sets one", () {
+        // The claim is what Smart VFO Snap waits on, so it has to move with
+        // the poll it describes.
+        final slow = IcomCivDriver().createSession(sink, const {'civAddress': 'A4', pollIntervalConfigKey: 10000}) as IcomCivSession;
+        expect(slow.expectedUpdateInterval, const Duration(seconds: 10));
       });
 
       test('stops claiming one as soon as the radio announces on its own', () {
@@ -832,7 +840,17 @@ void main() {
         for (final e in type.configElements())
           if (e['type'] == 'field') e,
       ];
-      expect(fields.map((e) => e['key']), ['port', 'baudRate', 'civAddress', 'cwKeyer', 'voiceMemories', telemetryIntervalConfigKey]);
+      expect(fields.map((e) => e['key']), [
+        'port',
+        'baudRate',
+        serialRtsHighConfigKey,
+        serialDtrHighConfigKey,
+        'civAddress',
+        'cwKeyer',
+        'voiceMemories',
+        telemetryIntervalConfigKey,
+        pollIntervalConfigKey,
+      ]);
       expect(fields.where((e) => e['devMode'] == true).map((e) => e['key']), ['cwKeyer', 'voiceMemories'], reason: 'an operator sees the first three only');
     });
 

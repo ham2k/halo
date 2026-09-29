@@ -34,6 +34,7 @@ import 'dart:typed_data';
 
 import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 import '../driver.dart';
 import '../equipment.dart';
@@ -87,10 +88,15 @@ class FlrigDriver extends EquipmentDriver {
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     telemetryConfigElement(),
+    pollConfigElement(),
   ];
 
   @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
+    telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    pollIntervalConfigKey => validatePollInterval(value),
+    _ => null,
+  };
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => FlrigSession(sink, config);
@@ -112,7 +118,7 @@ class FlrigSession implements TransceiverSession {
 
   FlrigSession(this._sink, [this._config = const {}]);
 
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode);
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode, slow: idlePollIntervalFor(_config));
 
   /// Watches for the operator to key the rig, and reads its meters while
   /// they hold it. Separate from [_poller], which follows the opposite rule

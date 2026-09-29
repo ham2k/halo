@@ -9,6 +9,8 @@
 // here are about the body's contents rather than about the dialog.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
@@ -177,6 +179,29 @@ void main() {
       final report = reportFor(config: {'host': '192.168.1.50', 'username': 'op'});
       expect(report.body, contains('192.168.1.50'));
       expect(report.body, contains('Radio username: op'));
+    });
+
+    test('states the control lines and idle poll the connection uses, set or not', () {
+      // A blank or absent setting means a default the reader cannot see, and
+      // "the radio answers nothing" is so often a line or a poll rate that
+      // leaving it to inference defeats the report. A node saved before these
+      // settings existed stores neither, and must still say both.
+      final unset = reportFor(type: portsType, config: {'port': 'COM8'}).body;
+      expect(unset, contains('- Control lines: RTS low, DTR low'));
+      expect(unset, contains('- Idle poll: 5000 ms (default)'), reason: "CI-V's fallback poll");
+
+      final set = reportFor(type: portsType, config: {'port': 'COM8', serialRtsHighConfigKey: true, pollIntervalConfigKey: 8000}).body;
+      expect(set, contains('- Control lines: RTS held high, DTR low'));
+      expect(set, contains('- Idle poll: 8000 ms'));
+      expect(set, isNot(contains('8000 ms (default)')));
+      // Stated once, as what happens, not again as the raw stored value.
+      expect(set, isNot(contains(t.settings.station.serialRtsHigh)));
+    });
+
+    test('a network pairing states its poll, and no serial lines it does not have', () {
+      final body = reportFor(type: ic705Network).body;
+      expect(body, isNot(contains('Control lines')));
+      expect(body, contains('- Idle poll:'));
     });
 
     test('never carries a credential, whatever the operator called the field', () {

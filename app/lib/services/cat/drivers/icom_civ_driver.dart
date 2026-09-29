@@ -28,14 +28,16 @@ import 'civ_codec.dart';
 import 'cw_send_queue.dart';
 import 'keyer_config.dart';
 import 'meter_calibration.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 /// Transceive makes the radio announce changes on its own, but it is a
 /// setting on the radio that may simply be off, and nothing in CI-V lets us
 /// read back whether it took. So poll as well — the same belt-and-braces the
-/// FlexRadio and FT-891 drivers use, for the same reason.
-const _pollInterval = Duration(seconds: 5);
+/// FlexRadio and FT-891 drivers use, for the same reason. What the idle poll
+/// field means when it is blank.
+const _defaultPollInterval = Duration(seconds: 5);
 
 /// How long a command waits for its answer before the next one goes out
 /// anyway. An IC-7300 answers in about 10 ms at 19200 baud; this only has to
@@ -249,12 +251,14 @@ class IcomCivDriver extends EquipmentDriver {
     // § Voice keying).
     ...keyerConfigElements(overrides),
     telemetryConfigElement(),
+    pollConfigElement(fallback: _defaultPollInterval),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     if (key == voiceMemoriesConfigKey) return validateVoiceMemories(value);
     if (key == telemetryIntervalConfigKey) return validateTelemetryInterval(value);
+    if (key == pollIntervalConfigKey) return validatePollInterval(value);
     if (key != 'civAddress') return null;
     // A wrong address is SILENT — the radio ignores frames addressed
     // elsewhere, which is indistinguishable from a dead cable. Catch an
@@ -396,6 +400,8 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// See [civModeWithFilterConfigKey].
   final bool _modeWithFilter;
+
+  late final Duration _pollInterval = idlePollIntervalFor(_config, fallback: _defaultPollInterval);
 
   /// What the radio's mode answers have said, by mode code and most
   /// recently — see [civModeWithFilterConfigKey]. A set asked for before the

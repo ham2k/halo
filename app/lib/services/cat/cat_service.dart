@@ -27,6 +27,7 @@ import '../settings_service.dart';
 import 'auto_connect_guard.dart';
 import 'cat_keying.dart';
 import 'cat_traffic_log.dart';
+import 'connect_failure.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'discovery.dart';
@@ -333,52 +334,6 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   static const _maxTrackedNameLength = 60;
 
   static String _trackedName(String name) => name.length <= _maxTrackedNameLength ? name : name.substring(0, _maxTrackedNameLength);
-
-  /// A bounded classification, never the exception's text: `'$e'` routinely
-  /// carries the port path or host that failed. Matched on the type NAME for
-  /// SocketException because dart:io does not exist on web, where this same
-  /// service runs over Web Serial.
-  static String _failureReason(Object error) {
-    if (error is TimeoutException) return 'timeout';
-    if (error.runtimeType.toString() == 'SocketException') return 'network';
-    // A real type test, not a name match: SerialPortProblem lives in
-    // transport.dart precisely so the two serial transports — which never
-    // compile into the same binary — can both be recognized here. Its own
-    // classification is carried from the throw site, which is the only place
-    // that knows whether the port was absent, held or refused.
-    if (error is SerialPortProblem) return 'serial:${error.failure.name}';
-    return 'other';
-  }
-
-  /// What the equipment row shows for a failed connect. [reason] is
-  /// [_failureReason]'s classification, reused rather than re-derived so
-  /// there's one place deciding what counts as a network or timeout error.
-  /// `'other'` keeps the exception's own words — `error.toString()` — since
-  /// guessing at an unfamiliar cause would be more likely to mislead an
-  /// operator than a raw Dart message already is.
-  static String _friendlyConnectError(String reason, Object error) {
-    switch (reason) {
-      case 'timeout':
-        return t.settings.station.connectFailedTimeout;
-      case 'network':
-        return t.settings.station.connectFailedNetwork;
-      // "Could not open /dev/cu.usbserial-FTB6SPL3: No such file or directory"
-      // names a path the operator never typed and a POSIX errno they cannot
-      // act on. Each of these says what to do about it instead — and they are
-      // three different things to do, which is why one message for all of
-      // them would send an operator to check a cable that is fine.
-      case 'serial:missing':
-        return t.settings.station.connectFailedDevice;
-      case 'serial:busy':
-        return t.settings.station.connectFailedBusy;
-      case 'serial:denied':
-        return t.settings.station.connectFailedDenied;
-      default:
-        // 'serial:other' included: a cause the transport could not place
-        // keeps its own words rather than being translated into a guess.
-        return '$error';
-    }
-  }
 
   /// The baud rate a failed serial attempt was using — deliberately the ONE
   /// config value that goes out. A mismatch is the classic cause of a silent
@@ -1558,7 +1513,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   Future<void> connect(String uuid) async {
     // Asking for it back cancels a previous Disconnect, so the idle retry may
     // resume looking after this node.
-    _runtimeFor(uuid).userDisconnected = false;
+    _runtimeFor(uuid)
+      ..userDisconnected = false
+      ..linesRefused = false;
     // And it is the way back from a held auto-connect: the operator asking for
     // this node by hand is both the deliberate act the hold waits for and the
     // evidence it wants, since a port that opens on request is one worth
@@ -1733,14 +1690,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       // own words otherwise — [errorDetail] keeps those words either way,
       // for the equipment report a developer reads.
       ErrorReportingService.report(CatConnectFailure(node.typeKey, e), st, context: 'cat:connect');
-      final reason = _failureReason(e);
-      final friendly = _friendlyConnectError(reason, e);
+      final reason = connectFailureReason(e);
+      final friendly = friendlyConnectError(reason, e);
       final raw = '$e';
       // The classified reason, not the error's text: a serial open failure
       // names the port, and the port carries the adapter's serial number.
       trafficLog?.note(_logLabel(uuid), 'connect failed: $reason (${e.runtimeType})');
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw));
       _trackFailure(node, reason, extra: _baudExtra(config));
+      if (e is SerialPortProblem && e.failure == SerialFailure.lines) runtime.linesRefused = true;
       return _ConnectOutcome.failed;
     }
 
@@ -1983,12 +1941,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       final wanted = _autoConnectTargets;
 
       // STOP only for a reason that will not resolve itself: there is nothing
-      // designated, the node is gone, the operator switched it off, it is held
-      // from a launch that died connecting it, or it is already connected.
+      // designated, the node is gone, the operator switched it off, its port
+      // was refused over its control lines, it is held from a launch that
+      // died connecting it, or it is already connected.
       // connect/disconnect and a dropped session restart it.
       bool settled(String uuid) =>
           !_nodes.containsKey(uuid) ||
           (_runtimes[uuid]?.userDisconnected ?? false) ||
+          (_runtimes[uuid]?.linesRefused ?? false) ||
           _autoConnectHeld.contains(uuid) ||
           stateFor(uuid).status == EquipmentStatus.connected;
       final open = wanted.where((uuid) => !settled(uuid)).toList();
@@ -2648,6 +2608,14 @@ class _NodeRuntime {
   /// radio back on under the operator. app-polo's auto-reconnect did exactly
   /// that. Cleared by [connect], so asking for it again resumes retrying.
   bool userDisconnected = false;
+
+  /// The last attempt opened the port and refused it over its control lines
+  /// ([SerialFailure.lines]) — hardware flow control another program left
+  /// on, which lasts until the cable is replugged. Retrying on its own would
+  /// only open the port again, and opening raises RTS: on a Digirig, a key-up
+  /// per retry for the rest of the session. Cleared by [connect], the
+  /// operator's own try after replugging.
+  bool linesRefused = false;
 }
 
 class _NodeSink implements EquipmentSink {

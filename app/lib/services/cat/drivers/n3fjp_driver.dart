@@ -33,6 +33,7 @@ import '../adaptive_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import 'n3fjp_codec.dart';
+import 'poll_config.dart';
 
 class N3fjpDriver extends EquipmentDriver {
   const N3fjpDriver();
@@ -53,7 +54,13 @@ class N3fjpDriver extends EquipmentDriver {
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(['LSB', 'USB', 'CW', 'AM', 'FM', 'RTTY-LSB', 'DATA-USB']);
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => N3fjpSession(sink);
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => N3fjpSession(sink, config);
+
+  @override
+  List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [pollConfigElement()];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => key == pollIntervalConfigKey ? validatePollInterval(value) : null;
 }
 
 /// Far past any real message; reached only when the peer is not N3FJP.
@@ -62,9 +69,11 @@ const _maxPending = 64 * 1024;
 class N3fjpSession implements TransceiverSession {
   final EquipmentSink _sink;
 
-  N3fjpSession(this._sink);
+  final Map<String, dynamic> _config;
 
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _poll);
+  N3fjpSession(this._sink, [this._config = const {}]);
+
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _poll, slow: idlePollIntervalFor(_config));
 
   VfoReading? _lastReported;
 

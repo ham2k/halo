@@ -28,6 +28,7 @@ Map<String, dynamic> telemetryConfigElement() => {
   'key': telemetryIntervalConfigKey,
   'label': t.settings.station.telemetryInterval,
   'description': t.settings.station.telemetryIntervalDescription,
+  'advanced': true,
 };
 
 /// Blank, or a whole number of milliseconds within the offered range.

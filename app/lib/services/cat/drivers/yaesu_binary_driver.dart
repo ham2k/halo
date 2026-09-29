@@ -57,6 +57,7 @@ import '../driver.dart';
 import '../equipment.dart';
 import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
+import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'yaesu_binary_codec.dart';
 
@@ -164,11 +165,13 @@ class YaesuBinaryDriver extends EquipmentDriver {
       'devMode': true,
     },
     telemetryConfigElement(),
+    pollConfigElement(),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
+    pollIntervalConfigKey => validatePollInterval(value),
     _ => null,
   };
 
@@ -190,7 +193,7 @@ class YaesuBinarySession implements TransceiverSession {
   /// The radio answers nothing on its own: this protocol has no
   /// auto-information, so the poll is not a backstop the way it is on the
   /// ASCII line — it is the only way a dial turn is ever seen.
-  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode);
+  late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode, slow: idlePollIntervalFor(_config));
 
   late final TelemetryPoller _telemetry = TelemetryPoller(
     onPoll: (_) => _request(readTransmitStatusCommand),

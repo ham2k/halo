@@ -188,6 +188,20 @@ void _quietLibserialport() {
   }
 }
 
+/// Why the lines read back from an open port are not the ones asked for, or
+/// null when they are. [rts] and [dtr] are libserialport's readings
+/// ([SerialPortRts], [SerialPortDtr]); hardware flow control counts as
+/// neither high nor low, because the driver moves the line on its own.
+@visibleForTesting
+String? serialLinesMismatch({required int rts, required int dtr, required bool rtsHigh, required bool dtrHigh}) {
+  if (rts == SerialPortRts.flowControl || dtr == SerialPortDtr.flowControl) {
+    return 'hardware flow control is on for this port, so RTS/DTR cannot be held — another program probably left it set; unplug and replug the cable';
+  }
+  if (rts != (rtsHigh ? SerialPortRts.on : SerialPortRts.off)) return 'RTS did not go ${rtsHigh ? 'high' : 'low'} as set';
+  if (dtr != (dtrHigh ? SerialPortDtr.on : SerialPortDtr.off)) return 'DTR did not go ${dtrHigh ? 'high' : 'low'} as set';
+  return null;
+}
+
 class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   const SerialTransport();
 
@@ -254,6 +268,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final name = target['port'] as String? ?? '';
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
     final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
+    final rtsHigh = target[serialRtsHighConfigKey] == true;
+    final dtrHigh = target[serialDtrHighConfigKey] == true;
+    final manageLines = target[serialNoControlLinesKey] != true;
 
     final port = SerialPort(name);
     // `openReadWrite` returns false rather than throwing — the usual causes
@@ -268,29 +285,64 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     }
 
     try {
-      port.config = SerialPortConfig()
+      final config = SerialPortConfig()
         ..baudRate = baudRate
         // 8-N-1, which is what Yaesu CAT uses and what every rig's CAT menu
         // means by its baud setting.
         ..bits = 8
         ..parity = SerialPortParity.none
         ..stopBits = stopBits
-        // RTS and DTR stay OFF, which is what setFlowControl(none) leaves
-        // them as. NEVER assert them here: on the common interfaces —
-        // Digirig, SignaLink, most home-brew cables — RTS *is* the PTT line,
-        // so raising it keys the transmitter the moment the app connects.
-        //
-        // The cost is that a radio whose CAT menu has RTS handshaking
-        // enabled (the FT-891 ships that way, menu 05-08 CAT RTS) waits for
-        // a high RTS before it will answer, and stays silent forever if it
-        // never comes. That has to be fixed at the radio by disabling CAT
-        // RTS, not here — keying someone's transmitter to read a frequency
-        // is not a trade worth making.
         ..setFlowControl(SerialPortFlowControl.none);
+      // Both lines are driven to what the node says, explicitly.
+      // setFlowControl(none) does not set them: libserialport leaves a line
+      // it was not told about as the OS left it, and opening a port on macOS,
+      // Linux and (for most drivers) Windows raises both — on a Digirig, a
+      // SignaLink or most home-made cables that keys the transmitter, because
+      // RTS *is* the PTT line there. Why each defaults off is at
+      // serialRtsHighConfigKey and serialDtrHighConfigKey.
+      if (manageLines) {
+        config
+          ..rts = rtsHigh ? SerialPortRts.on : SerialPortRts.off
+          ..dtr = dtrHigh ? SerialPortDtr.on : SerialPortDtr.off;
+      }
+      port.config = config;
     } catch (e) {
       port.close();
       port.dispose();
       throw SerialPortUnavailable(name, '$e');
+    }
+
+    // Read the lines back rather than trusting the write. libserialport can
+    // report success without having set them: it never clears hardware flow
+    // control another program left on the port (it looks for CRTSCTS in the
+    // wrong termios field), and with that on the driver raises RTS by itself;
+    // and a setup error that sets no errno is not thrown at all. Either way a
+    // Digirig's PTT would be held down with nothing said. A fresh wrapper
+    // around the same open port, because `port.config` answers from what was
+    // just written. Only its config is disposed — disposing the wrapper would
+    // free the port under the connection.
+    String? mismatch;
+    if (manageLines) {
+      final alias = SerialPort.fromAddress(port.address);
+      try {
+        mismatch = serialLinesMismatch(rts: alias.config.rts, dtr: alias.config.dtr, rtsHigh: rtsHigh, dtrHigh: dtrHigh);
+      } catch (e) {
+        port.close();
+        port.dispose();
+        throw SerialPortUnavailable(name, 'could not read back RTS/DTR: $e', failure: SerialFailure.lines);
+      } finally {
+        // The getter keeps the config it allocated even when reading into it
+        // threw, and asking again answers from that cache without a second
+        // read — so this frees it on both paths.
+        try {
+          alias.config.dispose();
+        } catch (_) {}
+      }
+    }
+    if (mismatch != null) {
+      port.close();
+      port.dispose();
+      throw SerialPortUnavailable(name, mismatch, failure: SerialFailure.lines);
     }
 
     // Opening is synchronous, so there is no window to be cancelled in —
@@ -309,6 +361,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final name = target['port'] as String? ?? '';
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
     final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
+    final rtsHigh = target[serialRtsHighConfigKey] == true;
+    final dtrHigh = target[serialDtrHighConfigKey] == true;
+    final manageLines = target[serialNoControlLinesKey] != true;
     final (:deviceName, :iface) = androidPortTarget(name);
 
     var device = _androidDevicesByName[deviceName];
@@ -400,10 +455,13 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     try {
       await port.setPortParameters(baudRate, usb.UsbPort.DATABITS_8, stopBits == 2 ? usb.UsbPort.STOPBITS_2 : usb.UsbPort.STOPBITS_1, usb.UsbPort.PARITY_NONE);
       await port.setFlowControl(usb.UsbPort.FLOW_CONTROL_OFF);
-      // RTS and DTR stay OFF — see the RTS-as-PTT note on the desktop
-      // connect path above; the same wiring risk applies here.
-      await port.setDTR(false);
-      await port.setRTS(false);
+      // Explicitly, either way — see the desktop connect path above. A CDC
+      // device that refuses the control transfer is not reported by the
+      // plugin, so this sets the lines without being able to confirm them.
+      if (manageLines) {
+        await port.setDTR(dtrHigh);
+        await port.setRTS(rtsHigh);
+      }
     } catch (e) {
       unawaited(port.close().catchError((Object _) => false));
       throw SerialPortUnavailable(name, '$e');

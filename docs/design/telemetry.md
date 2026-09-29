@@ -129,8 +129,10 @@ it comes from our own driver catalogue rather than the operator — and every
 name is capped at 60 characters before it leaves the device.
 
 `reason` is a bounded classification — `unknown_type`, `invalid_config`,
-`timeout`, `network`, `other` — derived from *where* the failure happened,
-never the exception's text. `'$e'` is what the operator reads and it
+`timeout`, `network`, `other`, and for a serial port the transport's own
+`serial:missing`, `serial:busy`, `serial:denied`, `serial:lines` (RTS/DTR
+read back wrong, so the port was refused) or `serial:other` — derived from
+*where* the failure happened, never the exception's text. `'$e'` is what the operator reads and it
 routinely carries the host or port that failed.
 
 All three are reported **once per radio per app session**. The reconnect
@@ -154,7 +156,9 @@ rig that holds a session and answers nothing.
 So a second, separate channel: the first time a node's radio reports **both a
 frequency and a mode of its own**, the app uploads that node's whole
 configuration — port device name and descriptors, USB VID:PID, baud rate,
-CI-V address, every non-secret config value — as an
+CI-V address, every non-secret config value, and the RTS/DTR levels and idle
+poll the connection actually applies, stated even when the node stores none
+(`effectiveSettingLines`) — as an
 `ErrorReportingService.diagnostic` titled `Radio working: <variant key>`. One
 Sentry issue per pairing, one body per shack.
 

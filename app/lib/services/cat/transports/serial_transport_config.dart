@@ -174,6 +174,25 @@ class PortChoice {
   String? get pickerSubtitle => justNow ? t.settings.station.serialPortJustNow : null;
 }
 
+/// Whether the connection holds RTS high for as long as it is open. Off
+/// unless the operator turns it on: on a Digirig, a SignaLink and most
+/// home-made cables RTS is the PTT line, so holding it high keys the
+/// transmitter. The operator who needs it has a Yaesu whose CAT RTS menu is
+/// on, which waits for it before answering.
+const serialRtsHighConfigKey = 'rtsHigh';
+
+/// Whether the connection holds DTR high for as long as it is open. Off
+/// unless the operator turns it on: on many cables DTR keys CW or PTT, and a
+/// radio's own USB port can be set to transmit from it. The operator who
+/// needs it has an RS-232 interface that draws its power from the line.
+const serialDtrHighConfigKey = 'dtrHigh';
+
+/// A connection target key, never a node setting: true for a link with no
+/// control-line wire behind it, whose lines the transport leaves alone rather
+/// than writing and reading back. Absent means the lines are managed — the
+/// safe reading for any target that forgot to say.
+const serialNoControlLinesKey = 'noControlLines';
+
 mixin SerialTransportConfig implements EquipmentTransport {
   /// Ports the app could open, enumerated fresh — a USB adapter can appear
   /// or vanish between one look and the next, so this must never be cached.
@@ -218,6 +237,24 @@ mixin SerialTransportConfig implements EquipmentTransport {
         'options': [
           for (final rate in _allowedBaudRates(restrictions)) {'value': rate, 'label': '$rate'},
         ],
+      },
+    if (!overrides.containsKey(serialRtsHighConfigKey))
+      {
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': serialRtsHighConfigKey,
+        'label': t.settings.station.serialRtsHigh,
+        'description': t.settings.station.serialRtsHighDescription,
+        'advanced': true,
+      },
+    if (!overrides.containsKey(serialDtrHighConfigKey))
+      {
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': serialDtrHighConfigKey,
+        'label': t.settings.station.serialDtrHigh,
+        'description': t.settings.station.serialDtrHighDescription,
+        'advanced': true,
       },
   ];
 
@@ -485,7 +522,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// `stopBits` is never a field: a driver whose device needs two (the
   /// WinKeyer) pins it in its model's `overrides`.
   @override
-  Set<String> get recognizedConfigKeys => const {'port', 'baudRate', 'stopBits'};
+  Set<String> get recognizedConfigKeys => const {'port', 'baudRate', 'stopBits', serialRtsHighConfigKey, serialDtrHighConfigKey};
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -498,6 +535,8 @@ mixin SerialTransportConfig implements EquipmentTransport {
     'port': serialPort(config),
     'baudRate': serialBaudRate(config),
     'stopBits': serialStopBits(config),
+    serialRtsHighConfigKey: config[serialRtsHighConfigKey] == true,
+    serialDtrHighConfigKey: config[serialDtrHighConfigKey] == true,
   };
 
   @override

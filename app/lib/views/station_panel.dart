@@ -44,6 +44,10 @@ import '../settings/core_settings_groups.dart' show moreStationSettingsKey, stat
 /// A fixed count, deliberately. Matching the real length would leak it.
 const _storedSecretPlaceholder = '••••••••';
 
+/// The equipment editor's Advanced Settings fold: every field a transport or
+/// driver marks `'advanced': true` folds under it.
+const _advancedDisclosureKey = 'advanced';
+
 /// The inset the rows of this panel take: the ambient `ListTileTheme`, which
 /// in the settings pane is the `SettingsList` one plus the pane's centring
 /// offset, and which every `ListTile`, [SectionHeader] and [FormRenderer] row
@@ -549,73 +553,85 @@ class StationPanel extends StatelessWidget {
     // granted USB device, say) — configElements() reflects the transport's
     // CURRENT state each time it's called, so rebuilding from it is enough;
     // nothing here needs to know what specifically changed.
-    List<Map<String, dynamic>> buildElements() => [
-      {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
-      if (choosable)
-        {
-          'type': 'field',
-          'fieldType': 'segmented',
-          'key': 'transport',
-          'label': st.transport,
-          'options': [
-            for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
-          ],
-        },
-      for (final candidate in variants)
-        for (final element in _annotateChannels(candidate, node, context))
-          // The switch's layout field is re-emitted under Wiring below,
-          // where it belongs with the antenna links. Left here too it
-          // would render twice, and FormRenderer would bind both boxes
-          // to the one value.
-          if (element['key'] != switchLayoutConfigKey)
-            {
-              ...element,
-              if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
-              // What a BLANK cadence field actually does, in the box where
-              // the operator would otherwise assume 200. Per candidate, so
-              // the serial pairing shows the number its baud rate can
-              // afford and the network one beside it shows its own — the
-              // whole reason the field is left blank by default is that
-              // the answer is not the same on both.
-              if (element['key'] == telemetryIntervalConfigKey)
-                // Through the TYPE, so the entry's own overrides and
-                // prefills are part of the question — the same reason
-                // telemetryMetersFor exists. Handed the node's raw stored
-                // map instead, a radio whose speed comes from its entry
-                // rather than from a box the operator touched computes as
-                // though the link had no stated speed at all.
-                'placeholder': '${candidate.defaultTelemetryIntervalFor(node?.config ?? const {}).inMilliseconds}',
-              // Only when there is a choice to hide behind: an unconditional
-              // visibleWhen on a single-transport radio would depend on a
-              // `transport` value no field sets.
-              if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
-            },
-      // Which of the operator's own enabled bands (Preferences → Bands)
-      // this antenna covers. Lives here rather than in AntennaDriver's
-      // own configElements(): a driver is pure data with no settings
-      // access, and this list is exactly the operator's, not the
-      // catalogue's.
-      if (model.category == kCategoryAntenna)
-        {
-          'type': 'field',
-          'fieldType': 'checkboxGroup',
-          'key': 'bands',
-          'label': st.antennaBands,
-          'options': [
-            for (final band in services.settings.enabledBands) {'value': band, 'label': band},
-          ],
-        },
-      // Which of the operator's own antennas is on each of the switch's
-      // antenna ports. Here rather than in the driver's own
-      // configElements() for exactly the reason the antenna bands above
-      // are: a driver is pure catalogue data with no access to the
-      // station's inventory, and this list is the operator's equipment,
-      // not the switch's.
-      // What the switch is doing now, before how it is set up: an
-      // operator opening this dialog mid-operation is looking for the
-      // former, and the latter is answered once and rarely revisited.
-      if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
-    ];
+    List<Map<String, dynamic>> buildElements() {
+      final connection = [
+        for (final candidate in variants)
+          for (final element in _annotateChannels(candidate, node, context))
+            // The switch's layout field is re-emitted under Wiring below,
+            // where it belongs with the antenna links. Left here too it
+            // would render twice, and FormRenderer would bind both boxes
+            // to the one value.
+            if (element['key'] != switchLayoutConfigKey)
+              {
+                ...element,
+                if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
+                // What a BLANK cadence field actually does, in the box where
+                // the operator would otherwise assume 200. Per candidate, so
+                // the serial pairing shows the number its baud rate can
+                // afford and the network one beside it shows its own — the
+                // whole reason the field is left blank by default is that
+                // the answer is not the same on both.
+                if (element['key'] == telemetryIntervalConfigKey)
+                  // Through the TYPE, so the entry's own overrides and
+                  // prefills are part of the question — the same reason
+                  // telemetryMetersFor exists. Handed the node's raw stored
+                  // map instead, a radio whose speed comes from its entry
+                  // rather than from a box the operator touched computes as
+                  // though the link had no stated speed at all.
+                  'placeholder': '${candidate.defaultTelemetryIntervalFor(node?.config ?? const {}).inMilliseconds}',
+                // Only when there is a choice to hide behind: an unconditional
+                // visibleWhen on a single-transport radio would depend on a
+                // `transport` value no field sets.
+                if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
+                if (element['advanced'] == true) 'disclosure': _advancedDisclosureKey,
+              },
+      ];
+      return [
+        {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
+        if (choosable)
+          {
+            'type': 'field',
+            'fieldType': 'segmented',
+            'key': 'transport',
+            'label': st.transport,
+            'options': [
+              for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
+            ],
+          },
+        ...connection.where((element) => element['disclosure'] == null),
+        // Everything most operators never touch — the serial lines, the
+        // poll and meter cadences — folded away after what they do, closed
+        // until asked for. FormRenderer hides the fold whenever the chosen
+        // pairing has nothing in it.
+        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings},
+        ...connection.where((element) => element['disclosure'] != null),
+        // Which of the operator's own enabled bands (Preferences → Bands)
+        // this antenna covers. Lives here rather than in AntennaDriver's
+        // own configElements(): a driver is pure data with no settings
+        // access, and this list is exactly the operator's, not the
+        // catalogue's.
+        if (model.category == kCategoryAntenna)
+          {
+            'type': 'field',
+            'fieldType': 'checkboxGroup',
+            'key': 'bands',
+            'label': st.antennaBands,
+            'options': [
+              for (final band in services.settings.enabledBands) {'value': band, 'label': band},
+            ],
+          },
+        // Which of the operator's own antennas is on each of the switch's
+        // antenna ports. Here rather than in the driver's own
+        // configElements() for exactly the reason the antenna bands above
+        // are: a driver is pure catalogue data with no access to the
+        // station's inventory, and this list is the operator's equipment,
+        // not the switch's.
+        // What the switch is doing now, before how it is set up: an
+        // operator opening this dialog mid-operation is looking for the
+        // former, and the latter is answered once and rarely revisited.
+        if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
+      ];
+    }
 
     final result = await showFormPane(
       context,
