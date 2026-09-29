@@ -3,7 +3,7 @@
   "name": "CQ World Wide DX Contest",
   "shortName": "CQ WW",
   "version": "0.0.1",
-  "description": "Work the world: zone and country multipliers on every band",
+  "description": "Work the world: zone and country multipliers on every band; late September (RTTY), late October (SSB) and late November (CW)",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "earth",
@@ -13,7 +13,7 @@
   "translations": {
     "es": {
       "name": "Concurso CQ World Wide DX",
-      "description": "Trabaja el mundo: multiplicadores de zona y país en cada banda",
+      "description": "Trabaja el mundo: multiplicadores de zona y país en cada banda; finales de septiembre (RTTY), finales de octubre (SSB) y finales de noviembre (CW)",
       "keywords": ["concurso", "zona"]
     }
   }

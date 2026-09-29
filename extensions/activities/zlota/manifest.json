@@ -3,7 +3,7 @@
   "name": "ZLOTA: ZL on the Air",
   "shortName": "ZLOTA",
   "version": "0.0.1",
-  "description": "New Zealand references, activation and chasing, and spots",
+  "description": "Activate and chase huts, islands and lakes across New Zealand; spots on ontheair.nz",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "fa-kiwi-bird",
@@ -16,7 +16,7 @@
   "domains": ["ontheair.nz"],
   "translations": {
     "es": {
-      "description": "Referencias de Nueva Zelanda, activación y caza, y spots",
+      "description": "Activa y caza refugios, islas y lagos de Nueva Zelanda; spots en ontheair.nz",
       "keywords": ["nueva zelanda", "activación"]
     }
   }

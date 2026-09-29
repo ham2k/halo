@@ -2,7 +2,7 @@
   "key": "ham2k-lookup",
   "name": "Ham2K Lookup Service",
   "version": "0.0.1",
-  "description": "Free callsign lookups from Ham2K's own service, currently covering the US, Canada, and Germany",
+  "description": "Free callsign lookups from Ham2K's service, currently covering the US, Canada, Germany and Norway",
   "category": "lookup",
   "enabledByDefault": true,
   "keywords": ["callsign", "lookup", "ham2k"],
@@ -11,7 +11,7 @@
   "translations": {
     "es": {
       "name": "Servicio de Búsquedas Ham2K",
-      "description": "Búsquedas de indicativos gratuitas del propio servicio de Ham2K, que por ahora cubre EE. UU., Canadá y Alemania",
+      "description": "Búsquedas de indicativos gratuitas del servicio de Ham2K, que por ahora cubre EE. UU., Canadá, Alemania y Noruega",
       "keywords": ["indicativo", "búsqueda"]
     }
   }

@@ -3,7 +3,7 @@
   "name": "North American QSO Party",
   "shortName": "NAQP",
   "version": "0.0.1",
-  "description": "Names and locations across North America: every state and province counts on every band",
+  "description": "Work North America; January (CW and SSB), late February (RTTY), mid July (RTTY) and August (CW and SSB)",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "flag-checkered",
@@ -16,7 +16,7 @@
   "translations": {
     "es": {
       "name": "Fiesta de QSO de Norteamérica",
-      "description": "Nombres y ubicaciones de Norteamérica: cada estado y provincia cuenta en cada banda",
+      "description": "Trabaja Norteamérica; enero (CW y SSB), finales de febrero (RTTY), mediados de julio (RTTY) y agosto (CW y SSB)",
       "keywords": ["concurso", "estado"]
     }
   }

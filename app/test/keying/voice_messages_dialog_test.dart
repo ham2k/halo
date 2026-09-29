@@ -71,7 +71,7 @@ void main() {
     final notice = find.text('Current radio does not support Phone messages');
     expect(notice, findsOneWidget);
     expect(tester.getTopLeft(notice).dy, lessThan(tester.getTopLeft(find.byType(ListTile).first).dy));
-    expect(find.text("This uses the radio's own voice memories"), findsOneWidget);
+    expect(find.text("This uses the radio's voice memories"), findsOneWidget);
   });
 
   testWidgets('a row edits its label, and nothing else — the audio is in the radio', (tester) async {

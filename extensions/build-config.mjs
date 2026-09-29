@@ -223,14 +223,14 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
   }
   for (const experiment of manifest.experiments ?? []) {
     if (!knownExperiments.has(experiment)) {
-      throw new Error(`manifest for '${bundleKey}' gates on experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
+      throw new Error(`manifest for '${bundleKey}' lists experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
     }
   }
   // The name `relevance` replaced. `indexEntryFor` copies `relevance` and
   // nothing else, so a manifest left on the old name builds green and ships
   // worldwide, with the author's audience dropped on the floor.
   if ("geo" in manifest) {
-    throw new Error(`manifest for '${bundleKey}' carries 'geo', which is now 'relevance' (${manifestPath})`)
+    throw new Error(`manifest for '${bundleKey}' still uses 'geo', which is now 'relevance' (${manifestPath})`)
   }
   // `relevance` is copied into index.json as-is and read there by the host's
   // matcher, which treats a key it cannot parse as "does not gate" — so a

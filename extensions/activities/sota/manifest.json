@@ -3,7 +3,7 @@
   "name": "SOTA: Summits on the Air",
   "shortName": "SOTA",
   "version": "0.0.1",
-  "description": "Summit references, spots, and activation logging",
+  "description": "Activate and chase summits worldwide; spots on SOTAwatch",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "image-filter-hdr",
@@ -13,7 +13,7 @@
   "domains": ["api-db2.sota.org.uk", "sso.sota.org.uk"],
   "translations": {
     "es": {
-      "description": "Referencias de cumbres, spots y registro de activaciones",
+      "description": "Activa y caza cumbres en todo el mundo; spots en SOTAwatch",
       "keywords": ["cumbres", "activación"]
     }
   }

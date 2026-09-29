@@ -246,7 +246,7 @@ function serializable(entry: SettledEntry): SettledEntry {
     JSON.stringify(entry)
     return entry
   } catch (e) {
-    return { key: entry.key, ok: false, error: `answered something JSON cannot carry: ${describeError(e)}` }
+    return { key: entry.key, ok: false, error: `returned something JSON cannot represent: ${describeError(e)}` }
   }
 }
 
@@ -399,7 +399,7 @@ function dispatchHostCall(method: string, params: Record<string, unknown>): Prom
 /// identity params the kernel injects itself.
 function hostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
   if (IDENTITY_HOST_METHODS.has(method)) {
-    return Promise.reject(new Error(`host call '${method}' carries extension identity and is only available through the SDK host API`))
+    return Promise.reject(new Error(`host call '${method}' needs the calling extension's identity and is only available through the SDK host API`))
   }
   return dispatchHostCall(method, params)
 }
@@ -660,7 +660,7 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
     const own = hooks.filter((h) => h.extensionKey === def.key)
     if (own.some((h) => h.category === "adifFields") && def.adifFieldsScope !== "always" && !own.some((h) => h.category.startsWith("ref:"))) {
       log(
-        `ERROR extension ${def.key} registers adifFields but answers for no reference and does not set adifFieldsScope: "always" — the full ADIF export will never ask it`,
+        `ERROR extension ${def.key} registers adifFields but handles no reference and does not set adifFieldsScope: "always" — the full ADIF export will never ask it`,
       )
     }
     log(`activated extension ${def.key}@${def.version}`)

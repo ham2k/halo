@@ -3,7 +3,7 @@
   "name": "IARU Region 1 Field Day",
   "shortName": "R1 FD",
   "version": "0.0.1",
-  "description": "Region 1's June CW and September SSB field days — serial exchange, portable points, country multipliers",
+  "description": "Region 1's field days; early June (CW) and early September (SSB)",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "tent",
@@ -15,7 +15,7 @@
   "hooks": ["activity", "adifFields", "export", "ref:r1-fd", "scoring"],
   "translations": {
     "es": {
-      "description": "Los field days de la Región 1, CW en junio y SSB en septiembre — intercambio de series, puntos por portables, multiplicadores por país",
+      "description": "Field days de la Región 1; principios de junio (CW) y principios de septiembre (SSB)",
       "keywords": ["field day", "región 1", "iaru", "darc", "concurso"]
     }
   }

@@ -1054,7 +1054,7 @@ __polo.defineExtension({
     final byKey = {for (final e in entries) e['key']: e};
 
     expect(byKey['circular-extension']!['ok'], false);
-    expect(byKey['circular-extension']!['error'], contains('JSON cannot carry'));
+    expect(byKey['circular-extension']!['error'], contains('JSON cannot represent'));
     expect(byKey['circular-extension']!['timedOut'], isNot(true), reason: 'it answered; it did not go quiet');
     expect(byKey['circular-extension-plain']!['value'], {'plain': true});
   });

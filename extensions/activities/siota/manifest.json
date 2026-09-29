@@ -3,7 +3,7 @@
   "name": "SiOTA: Silos on the Air",
   "shortName": "SiOTA",
   "version": "0.0.1",
-  "description": "Silo references, activation and chasing",
+  "description": "Activate and chase Australian grain silos",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "silo",
@@ -16,7 +16,7 @@
   "domains": ["www.silosontheair.com"],
   "translations": {
     "es": {
-      "description": "Referencias de silos, activación y caza",
+      "description": "Activa y caza silos de grano australianos",
       "keywords": ["silos", "australia", "activación"]
     }
   }

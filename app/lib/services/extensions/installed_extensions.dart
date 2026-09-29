@@ -377,7 +377,7 @@ class InstalledExtensions {
     // the extension permanently — installed, reported installed, and then
     // never loaded, with nothing in the UI to explain it.
     if (manifest['experiments'] != null) {
-      throw BundleException(BundleRejection.malformed, "That bundle gates itself on an app experiment, so it could never load.");
+      throw BundleException(BundleRejection.malformed, "That bundle's manifest lists app experiments, so it could never load.");
     }
     for (final field in ['domains', 'webSockets']) {
       final hosts = manifest[field];

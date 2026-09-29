@@ -3,7 +3,7 @@
   "name": "WWBOTA: Bunkers on the Air",
   "shortName": "WWBOTA",
   "version": "0.0.1",
-  "description": "Bunker references, activation and chasing, spots and spotting",
+  "description": "Activate and chase bunkers worldwide; spots on wwbota.org",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "nuke",
@@ -13,7 +13,7 @@
   "domains": ["api.wwbota.org"],
   "translations": {
     "es": {
-      "description": "Referencias de búnkeres, activación y caza, spots y spotting",
+      "description": "Activa y caza búnkeres en todo el mundo; spots en wwbota.org",
       "keywords": ["búnkeres", "activación"]
     }
   }

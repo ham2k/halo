@@ -109,7 +109,7 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
   const notOffered = declared.filter((pkg) => !offered.includes(pkg))
   if (notOffered.length) {
     throw new BuildError(
-      `${MANIFEST_ENTRY} declares sharedDependencies the host does not carry (${notOffered.join(", ")}). ` +
+      `${MANIFEST_ENTRY} declares sharedDependencies the host does not provide (${notOffered.join(", ")}). ` +
         "Bundle those into your build instead — only what the host offers can be shared.",
     )
   }
@@ -148,11 +148,11 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
           errors: [
             {
               text:
-                `'${args.path}' is carried by the Ham2K extension host, but this bundle does not declare it. ` +
+                `'${args.path}' is provided by the Ham2K extension host, but this bundle does not declare it. ` +
                 `Add it to "sharedDependencies" in ${MANIFEST_ENTRY} with the version range you work with ` +
                 `(e.g. {${JSON.stringify(args.path)}: "^${installedVersionOf(args.path, args.resolveDir) ?? "1.0.0"}"}), ` +
                 `or pass inline: [${JSON.stringify(args.path)}] ` +
-                "to ship your own copy — which is how you use a version the host does not carry.",
+                "to ship your own copy — which is how you use a version the host does not provide.",
             },
           ],
         }))

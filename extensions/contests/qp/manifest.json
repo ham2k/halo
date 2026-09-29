@@ -3,7 +3,7 @@
   "name": "QSO Parties (Beta)",
   "shortName": "QSO Parties",
   "version": "0.0.1",
-  "description": "State, provincial and regional QSO parties — counties, county lines, bonus stations and Cabrillo",
+  "description": "State, provincial and regional QSO parties, with county lines, bonus stations and Cabrillo",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "star",
@@ -163,7 +163,7 @@
   "translations": {
     "es": {
       "name": "Concursos Estatales (Beta)",
-      "description": "Concursos estatales, provinciales y regionales — condados, líneas de condado, estaciones de bonificación y Cabrillo",
+      "description": "Concursos estatales, provinciales y regionales, con líneas de condado, estaciones de bonificación y Cabrillo",
       "keywords": ["concurso", "condado", "condados", "estado", "provincia"]
     }
   }

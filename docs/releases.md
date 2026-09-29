@@ -496,6 +496,7 @@ skipped two builds, and why notes may safely accumulate under `upcoming`.
   typed (`` `OPER KI2D` ``). Platform-only changes name the platform in the
   sentence ("…on Windows"), not as a `Windows:` prefix. Credit outside
   contributors in parentheses: "(thanks to KC6X)".
+- **Word choice** follows [user-interface.md § Wording](design/user-interface.md#wording).
 - **Tester notes only**: a short ask fits as a parenthetical — "(tell us how it
   behaves)", "(feedback welcome)". A release note never solicits — it announces.
 - **One entry per change, never one per detail.** A rule the feature happens to

@@ -187,7 +187,7 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
     if (definition && definition.adifFieldsScope !== bundle.manifest.adifFieldsScope) {
       problems.push(
         `${manifestPath}: "adifFieldsScope" is ${JSON.stringify(bundle.manifest.adifFieldsScope)}, but the definition ` +
-          `carries ${JSON.stringify(definition.adifFieldsScope)} — spread the manifest into defineExtension; the kernel reads it from there.`,
+          `has ${JSON.stringify(definition.adifFieldsScope)} — spread the manifest into defineExtension; the kernel reads it from there.`,
       )
     }
 
@@ -217,7 +217,7 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
     if (malformed.length) {
       problems.push(
         `${manifestPath}: lists ${malformed.map((q) => `"ref:${q}"`).join(", ")} in "hooks". A qualified claim is ` +
-          `"ref:<type>/<code>" with both halves present and one slash; nothing else is read as one.`,
+          `"ref:<type>/<code>" with both halves present and one slash; any other form is not read as one.`,
       )
     }
     const { controlled, alsoHandled } = await controlledRefTypes(activityHooks, declaredRefTypes)
@@ -250,8 +250,8 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
     if (undeclared.length) {
       problems.push(
         `${manifestPath}: publishes a control handling ${undeclared.map((q) => `"${q}"`).join(", ")} but does not list ` +
-          `${undeclared.map((q) => `"ref:${q}"`).join(", ")} in "hooks" — nothing would offer this extension for such a ` +
-          `reference, so the control that answers it is never reached.`,
+          `${undeclared.map((q) => `"ref:${q}"`).join(", ")} in "hooks", so the app never offers this extension for such a ` +
+          `reference, and the control that handles it is never reached.`,
       )
     }
     if (declaredRefTypes.length) {

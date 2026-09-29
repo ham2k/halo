@@ -390,8 +390,8 @@ class Translations$extensionsPanel$en {
 	/// en: 'Drop one extension at a time.'
 	String get dropOneOnly => 'Drop one extension at a time.';
 
-	/// en: '${source} answered ${status} for that extension.'
-	String downloadFailed({required Object source, required Object status}) => '${source} answered ${status} for that extension.';
+	/// en: '${source} returned ${status} for that extension.'
+	String downloadFailed({required Object source, required Object status}) => '${source} returned ${status} for that extension.';
 
 	/// en: 'That download is far too large to be an extension.'
 	String get downloadTooLarge => 'That download is far too large to be an extension.';
@@ -465,8 +465,8 @@ class Translations$extensionsPanel$en {
 	/// en: 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.'
 	String get upgradeDoneBody => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.';
 
-	/// en: 'Not carried over: ${names}.'
-	String upgradeDoneUnserved({required Object names}) => 'Not carried over: ${names}.';
+	/// en: 'Not upgraded: ${names}.'
+	String upgradeDoneUnserved({required Object names}) => 'Not upgraded: ${names}.';
 
 	/// en: 'Would not run: ${names}.'
 	String upgradeDoneRefused({required Object names}) => 'Would not run: ${names}.';
@@ -931,8 +931,8 @@ class Translations$activitiesView$en {
 	/// en: 'Activity search unavailable'
 	String get searchUnavailableTitle => 'Activity search unavailable';
 
-	/// en: 'No activity extension could answer. Try again in a moment.'
-	String get searchUnavailableReason => 'No activity extension could answer. Try again in a moment.';
+	/// en: 'No activity extension could run the search. Try again in a moment.'
+	String get searchUnavailableReason => 'No activity extension could run the search. Try again in a moment.';
 
 	/// en: 'Use suggestions & search below to add one'
 	String get emptySheet => 'Use suggestions & search below to add one';
@@ -2026,11 +2026,11 @@ class Translations$notices$en {
 	/// en: 'This log needs a newer version'
 	String get logFromNewerBuildTitle => 'This log needs a newer version';
 
-	/// en: 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}'
-	String logFromNewerBuild({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}';
+	/// en: 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}'
+	String logFromNewerBuild({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}';
 
-	/// en: 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.'
-	String logFromNewerBuildNoLocation({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.';
+	/// en: 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.'
+	String logFromNewerBuildNoLocation({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.';
 
 	/// en: 'Settings restored from a backup'
 	String get preferencesRestoredTitle => 'Settings restored from a backup';
@@ -2410,8 +2410,8 @@ class Translations$offline$en {
 	/// en: 'No network connection at all.'
 	String get noRoute => 'No network connection at all.';
 
-	/// en: 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.'
-	String get unreachable => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.';
+	/// en: 'The network is up, but no server is responding — often a sign-in page waiting in a browser.'
+	String get unreachable => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.';
 
 	/// en: 'All services responding as expected.'
 	String get reachable => 'All services responding as expected.';
@@ -2422,14 +2422,14 @@ class Translations$offline$en {
 	/// en: 'Services'
 	String get servicesTitle => 'Services';
 
-	/// en: 'Nothing has reported in yet.'
-	String get noServices => 'Nothing has reported in yet.';
+	/// en: 'No service has reported in yet.'
+	String get noServices => 'No service has reported in yet.';
 
-	/// en: 'Last answered ${when} ago'
-	String lastSuccess({required Object when}) => 'Last answered ${when} ago';
+	/// en: 'Last responded ${when} ago'
+	String lastSuccess({required Object when}) => 'Last responded ${when} ago';
 
-	/// en: 'Has not answered yet'
-	String get neverSucceeded => 'Has not answered yet';
+	/// en: 'Has not responded yet'
+	String get neverSucceeded => 'Has not responded yet';
 
 	/// en: 'Next attempt in ${when}'
 	String nextAttempt({required Object when}) => 'Next attempt in ${when}';
@@ -2446,8 +2446,8 @@ class Translations$offline$en {
 	/// en: 'Back online.'
 	String get retryReached => 'Back online.';
 
-	/// en: 'Still no answer.'
-	String get retryUnreachable => 'Still no answer.';
+	/// en: 'Still no response.'
+	String get retryUnreachable => 'Still no response.';
 
 	/// en: 'Nothing to send right now.'
 	String get retryNotAttempted => 'Nothing to send right now.';
@@ -2723,8 +2723,8 @@ class Translations$dialogs$callChange$en {
 	/// en: 'This operation's contacts could not be read, so changing a callsign here won't offer to update them'
 	String get contactsUnreadable => 'This operation\'s contacts could not be read, so changing a callsign here won\'t offer to update them';
 
-	/// en: 'The contacts already logged could not be updated, so nothing was changed: ${error}'
-	String restampFailed({required Object error}) => 'The contacts already logged could not be updated, so nothing was changed: ${error}';
+	/// en: 'The contacts already logged could not be updated, so no changes were made: ${error}'
+	String restampFailed({required Object error}) => 'The contacts already logged could not be updated, so no changes were made: ${error}';
 
 	/// en: '${written} of ${planned} contacts were updated — the rest are no longer in this operation'
 	String restampShortfall({required Object written, required Object planned}) => '${written} of ${planned} contacts were updated — the rest are no longer in this operation';
@@ -2870,8 +2870,8 @@ class Translations$operation$layout$en {
 	/// en: 'View layout options'
 	String get viewOptions => 'View layout options';
 
-	/// en: 'This view is one of the app's own, so its name is too'
-	String get viewTitleBuiltIn => 'This view is one of the app\'s own, so its name is too';
+	/// en: 'This view is built into the app, and so is its name'
+	String get viewTitleBuiltIn => 'This view is built into the app, and so is its name';
 
 	/// en: 'Restore Defaults'
 	String get resetOptions => 'Restore Defaults';
@@ -2882,8 +2882,8 @@ class Translations$operation$layout$en {
 	/// en: 'Restore ${panel} to its defaults?'
 	String resetPaneConfirm({required Object panel}) => 'Restore ${panel} to its defaults?';
 
-	/// en: 'Its title, header and size go back to the defaults. Nothing else in the layout changes.'
-	String get resetPaneConfirmBody => 'Its title, header and size go back to the defaults. Nothing else in the layout changes.';
+	/// en: 'Its title, header and size go back to the defaults. The rest of the layout stays as it is.'
+	String get resetPaneConfirmBody => 'Its title, header and size go back to the defaults. The rest of the layout stays as it is.';
 
 	/// en: 'Restore this view to its default layout?'
 	String get resetViewConfirm => 'Restore this view to its default layout?';
@@ -4077,8 +4077,8 @@ class Translations$settings$peers$en {
 	/// en: 'Forget ${name}?'
 	String forgetTitle({required Object name}) => 'Forget ${name}?';
 
-	/// en: 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.'
-	String get forgetBody => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.';
+	/// en: 'It will stop syncing with this device. You can allow it again later, and contacts already logged are kept.'
+	String get forgetBody => 'It will stop syncing with this device. You can allow it again later, and contacts already logged are kept.';
 
 	/// en: 'Link with ${name}'
 	String pairTitle({required Object name}) => 'Link with ${name}';
@@ -4368,11 +4368,11 @@ class Translations$settings$accounts$en {
 	/// en: 'Finish signing in with your web browser'
 	String get browserLoginTitle => 'Finish signing in with your web browser';
 
-	/// en: 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.'
-	String browserLoginSteps({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.';
+	/// en: 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.'
+	String browserLoginSteps({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.';
 
-	/// en: 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.'
-	String browserLoginNotOpened({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.';
+	/// en: 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to (it starts with "${prefix}") and paste that here.'
+	String browserLoginNotOpened({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to (it starts with "${prefix}") and paste that here.';
 
 	/// en: 'Copy login link'
 	String get copyLoginLink => 'Copy login link';
@@ -4389,8 +4389,8 @@ class Translations$settings$accounts$en {
 	/// en: 'That link belongs to a different login attempt. Close this page and connect again.'
 	String get pastedLinkWrongLogin => 'That link belongs to a different login attempt. Close this page and connect again.';
 
-	/// en: 'That link carries no login code. Finish signing in first, then copy the link it sends you to.'
-	String get pastedLinkNoCode => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.';
+	/// en: 'That link has no login code. Finish signing in first, then copy the link it sends you to.'
+	String get pastedLinkNoCode => 'That link has no login code. Finish signing in first, then copy the link it sends you to.';
 
 	/// en: 'That link looks cut off. Copy the whole thing and paste it again.'
 	String get pastedLinkMalformed => 'That link looks cut off. Copy the whole thing and paste it again.';
@@ -4494,8 +4494,8 @@ class Translations$settings$station$en {
 	/// en: 'Remove ${name}?'
 	String removeTitle({required Object name}) => 'Remove ${name}?';
 
-	/// en: 'This only removes it from the app. Nothing on the equipment changes.'
-	String get removeMessage => 'This only removes it from the app. Nothing on the equipment changes.';
+	/// en: 'This only removes it from the app. The equipment's settings stay as they are.'
+	String get removeMessage => 'This only removes it from the app. The equipment\'s settings stay as they are.';
 
 	/// en: 'Unrecognized equipment type "${typeKey}"'
 	String unknownType({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"';
@@ -4605,14 +4605,14 @@ class Translations$settings$station$en {
 	/// en: 'Speed (baud)'
 	String get baudRate => 'Speed (baud)';
 
-	/// en: 'Must match the radio's own CAT menu — a mismatch answers with garbage and no error.'
-	String get baudRateDescription => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.';
+	/// en: 'Must match the radio's CAT menu. With a mismatch, the radio sends back garbage and no error.'
+	String get baudRateDescription => 'Must match the radio\'s CAT menu. With a mismatch, the radio sends back garbage and no error.';
 
 	/// en: 'Hold RTS high'
 	String get serialRtsHigh => 'Hold RTS high';
 
-	/// en: 'Only for a radio that waits for RTS before answering, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.'
-	String get serialRtsHighDescription => 'Only for a radio that waits for RTS before answering, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.';
+	/// en: 'Only for a radio that waits for RTS before responding, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.'
+	String get serialRtsHighDescription => 'Only for a radio that waits for RTS before responding, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.';
 
 	/// en: 'Hold DTR high'
 	String get serialDtrHigh => 'Hold DTR high';
@@ -4671,11 +4671,11 @@ class Translations$settings$station$en {
 	/// en: 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.'
 	String get winkeyerPttDescription => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.';
 
-	/// en: 'No WinKeyer answered on this port'
-	String get winkeyerNoAnswer => 'No WinKeyer answered on this port';
+	/// en: 'No WinKeyer responded on this port'
+	String get winkeyerNoAnswer => 'No WinKeyer responded on this port';
 
-	/// en: 'The WinKeyer stopped answering while sending; the message was dropped'
-	String get winkeyerStoppedAnswering => 'The WinKeyer stopped answering while sending; the message was dropped';
+	/// en: 'The WinKeyer stopped responding while sending; the message was dropped'
+	String get winkeyerStoppedAnswering => 'The WinKeyer stopped responding while sending; the message was dropped';
 
 	/// en: 'Radio username'
 	String get radioUser => 'Radio username';
@@ -4683,8 +4683,8 @@ class Translations$settings$station$en {
 	/// en: 'Radio password'
 	String get radioPass => 'Radio password';
 
-	/// en: 'The radio's own Network → Remote login, not your WiFi password.'
-	String get radioLoginDescription => 'The radio\'s own Network → Remote login, not your WiFi password.';
+	/// en: 'The radio's Network → Remote login, not your WiFi password.'
+	String get radioLoginDescription => 'The radio\'s Network → Remote login, not your WiFi password.';
 
 	/// en: 'The radio's remote-control username is required'
 	String get radioUserRequired => 'The radio\'s remote-control username is required';
@@ -4713,35 +4713,35 @@ class Translations$settings$station$en {
 	/// en: 'If the radio connects but shows no frequency'
 	String get troubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio's own USB port, **Hold RTS high** under Advanced Settings is the alternative. - **Speed must match** the radio's CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
-	String get ft891Troubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+	/// en: 'The radio is receiving commands but not responding. Almost always one of: - **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio's own USB port, **Hold RTS high** under Advanced Settings is the alternative. - **Speed must match** the radio's CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.'
+	String get ft891Troubleshooting => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.';
 
 	/// en: 'If the radio connects but shows no frequency'
 	String get yaesuBinaryTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'This radio speaks Yaesu's older five-byte CAT, and it answers nothing at all when something is off. Almost always one of: - **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT. - **Speed must match** the radio's CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error. - **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. This driver was written from Yaesu's published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.'
-	String get yaesuBinaryTroubleshooting => 'This radio speaks Yaesu\'s older five-byte CAT, and it answers nothing at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.';
+	/// en: 'This radio speaks Yaesu's older five-byte CAT, and it does not respond at all when something is off. Almost always one of: - **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won't work for CAT. - **Speed must match** the radio's CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error. - **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. This driver was written from Yaesu's published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.'
+	String get yaesuBinaryTroubleshooting => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.';
 
 	/// en: 'If the radio connects but shows no frequency'
 	String get guohetecTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using. - **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to. - **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation. This driver was written from the manufacturer's published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.'
-	String get guohetecTroubleshooting => 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using.\n\n- **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.';
+	/// en: 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using. - **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to. - **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. - **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation. This driver was written from the manufacturer's published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.'
+	String get guohetecTroubleshooting => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.';
 
 	/// en: 'If the radio connects but shows no frequency'
 	String get yaesuTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio's own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.'
-	String get yaesuTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.';
+	/// en: 'The radio is receiving commands but not responding. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio's own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.'
+	String get yaesuTroubleshooting => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.';
 
-	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings. - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. This entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.'
-	String get yaesuRs232Troubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.';
+	/// en: 'The radio is receiving commands but not responding. Almost always one of: - **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings. - **Speed must match** the radio's CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. This entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.'
+	String get yaesuRs232Troubleshooting => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.';
 
-	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **Use the first of the radio's two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings. - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
-	String get yaesuUsbTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+	/// en: 'The radio is receiving commands but not responding. Almost always one of: - **Use the first of the radio's two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings. - **Speed must match** the radio's CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.'
+	String get yaesuUsbTroubleshooting => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.';
 
-	/// en: 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 can carry CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet. This connection controls the radio and its keyers; it does not carry audio into HaLo.'
-	String get k4SerialNotes => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 can carry CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not carry audio into HaLo.';
+	/// en: 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet. This connection controls the radio and its keyers; it does not send audio to HaLo.'
+	String get k4SerialNotes => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.';
 
 	/// en: 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204. HaLo controls the radio and its keyers without streaming audio or panadapter data.'
 	String get k4TcpNotes => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.';
@@ -4755,14 +4755,14 @@ class Translations$settings$station$en {
 	/// en: 'If the radio connects but shows no frequency'
 	String get elecraftTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working. If nothing comes back, almost always one of: - **Speed must match** the rate set under **RS232** in the radio's menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. **If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio's status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as. The K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.'
-	String get elecraftTroubleshooting => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.';
+	/// en: 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working. If the radio does not respond, almost always one of: - **Speed must match** the rate set under **RS232** in the radio's menu. 38400 is what these ship on. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. **If the frequency is right but the mode is wrong**, tell us. The KX2 and KX3 entries read the mode from a position in the radio's status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as. The K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.'
+	String get elecraftTroubleshooting => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us. The KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.';
 
 	/// en: 'If the radio connects but shows no frequency'
 	String get kenwoodTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'This driver is proven against Kenwood's TS-590SG and TS-480, QRP Labs' QMX and QCX-mini, and Elecraft's KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
-	String get kenwoodTroubleshooting => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
+	/// en: 'This driver is proven against Kenwood's TS-590SG and TS-480, QRP Labs' QMX and QCX-mini, and Elecraft's KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way. If the radio does not respond, almost always one of: - **Speed must match** the radio's CAT menu. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they respond at all. **Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs are listed separately, under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
+	String get kenwoodTroubleshooting => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the radio\'s CAT menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they respond at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs are listed separately, under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
 
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
@@ -4855,14 +4855,14 @@ class Translations$settings$station$en {
 	/// en: 'If two serial ports show up for the same radio'
 	String get icomCivTroubleshootingTitle => 'If two serial ports show up for the same radio';
 
-	/// en: 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never answers, try the other port next.'
-	String get icomCivTroubleshooting => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never answers, try the other port next.';
+	/// en: 'Several Icom radios, the IC-705 among them, present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that: the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never responds, try the other port next.'
+	String get icomCivTroubleshooting => 'Several Icom radios, the IC-705 among them, present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that: the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never responds, try the other port next.';
 
-	/// en: 'If the radio never answers'
-	String get civAddressTroubleshootingTitle => 'If the radio never answers';
+	/// en: 'If the radio never responds'
+	String get civAddressTroubleshootingTitle => 'If the radio never responds';
 
-	/// en: '- **The CI-V address must match** the radio's own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable. - **Speed must match** the radio's CI-V BAUD RATE (on USB, CI-V USB Baud Rate) — set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop answering after a minute or so. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.'
-	String get civAddressTroubleshooting => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE (on USB, CI-V USB Baud Rate) — set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop answering after a minute or so.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
+	/// en: '- **The CI-V address must match** the radio's menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable. - **Speed must match** the radio's CI-V BAUD RATE (on USB, CI-V USB Baud Rate). Set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop responding after a minute or so. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.'
+	String get civAddressTroubleshooting => '- **The CI-V address must match** the radio\'s menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE (on USB, CI-V USB Baud Rate). Set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop responding after a minute or so.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.';
 
 	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.'
 	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.';
@@ -4879,20 +4879,20 @@ class Translations$settings$station$en {
 	/// en: 'If the app cannot connect'
 	String get rigctldTroubleshootingTitle => 'If the app cannot connect';
 
-	/// en: 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib's own backend talks to the radio and supports hundreds of models. - **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio's model number with `rigctl -l`. - **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on. - **Port** is 4532 unless you started the daemon with `-t`. - Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon's machine.'
-	String get rigctldTroubleshooting => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.';
+	/// en: 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib's backend talks to the radio and supports hundreds of models. - **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio's model number with `rigctl -l`. - **From another machine**, start it with `-T 0.0.0.0`: by default rigctld only accepts connections from the machine it runs on. - **Port** is 4532 unless you started the daemon with `-t`. - Once connected, a missing frequency usually means the daemon itself cannot reach the radio. Test it with `rigctl -m 2 f` on the daemon's machine.'
+	String get rigctldTroubleshooting => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0`: by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio. Test it with `rigctl -m 2 f` on the daemon\'s machine.';
 
 	/// en: 'If the app cannot connect'
 	String get flrigTroubleshootingTitle => 'If the app cannot connect';
 
-	/// en: 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models. - **flrig must already be running**, with its transceiver configured and connected. - **Port** is 12345 unless you changed it in flrig's configuration (Config → Setup → Server). - **From another machine**, make sure flrig's server is reachable — it listens on all interfaces, but your firewall may not agree. - Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig's own display is following the dial.'
-	String get flrigTroubleshooting => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.';
+	/// en: 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models. - **flrig must already be running**, with its transceiver configured and connected. - **Port** is 12345 unless you changed it in flrig's configuration (Config → Setup → Server). - **From another machine**, make sure flrig's server is reachable. It listens on all interfaces, but your firewall may not agree. - Once connected, a missing frequency usually means flrig itself cannot reach the radio. Check that flrig's display is following the dial.'
+	String get flrigTroubleshooting => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable. It listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio. Check that flrig\'s display is following the dial.';
 
 	/// en: 'If the app cannot connect'
 	String get hrdTroubleshootingTitle => 'If the app cannot connect';
 
-	/// en: 'This connects to **Ham Radio Deluxe's Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio. - **Rig Control must already be running** and connected to the radio. - **Its IP server must be enabled.** Rig Control only answers other programs through it. - **Port** is 7809 unless you changed it in the IP server's settings. - **From another machine**, make sure your firewall lets the connection through. This entry was written from published descriptions of HRD's protocol and has not been run against HRD. If it half-works, that is worth reporting.'
-	String get hrdTroubleshooting => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only answers other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.';
+	/// en: 'This connects to **Ham Radio Deluxe's Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio. - **Rig Control must already be running** and connected to the radio. - **Its IP server must be enabled.** Rig Control only talks to other programs through it. - **Port** is 7809 unless you changed it in the IP server's settings. - **From another machine**, make sure your firewall lets the connection through. This entry was written from published descriptions of HRD's protocol and has not been run against HRD. If it half-works, that is worth reporting.'
+	String get hrdTroubleshooting => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only talks to other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.';
 
 	/// en: 'If the app cannot connect'
 	String get n3fjpTroubleshootingTitle => 'If the app cannot connect';
@@ -4906,11 +4906,11 @@ class Translations$settings$station$en {
 	/// en: 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio. - **Commander must already be running** and connected to the radio. - **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander's Configuration window. - **Port** is 52002, the third port of the block starting at Net Serv's **Base Port** (52000 unless you changed it). - **From another machine**, make sure your firewall lets the connection through. This entry was written from Commander's published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.'
 	String get commanderTroubleshooting => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.';
 
-	/// en: 'If the radio never answers'
-	String get ic705TroubleshootingTitle => 'If the radio never answers';
+	/// en: 'If the radio never responds'
+	String get ic705TroubleshootingTitle => 'If the radio never responds';
 
-	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled. - **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding. A **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.'
-	String get ic705Troubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.';
+	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled. - **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session stuck on the radio. A **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.'
+	String get ic705Troubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.';
 
 	/// en: 'Not responding'
 	String get statusStale => 'Not responding';
@@ -5084,8 +5084,8 @@ class Translations$settings$station$en {
 	/// en: 'Meter reading interval (ms)'
 	String get telemetryInterval => 'Meter reading interval (ms)';
 
-	/// en: 'How often to read the radio's meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.'
-	String get telemetryIntervalDescription => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.';
+	/// en: 'How often to read the radio's meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.'
+	String get telemetryIntervalDescription => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.';
 
 	/// en: 'A whole number of milliseconds, ${min} to ${max}'
 	String telemetryIntervalInvalid({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}';
@@ -5093,8 +5093,8 @@ class Translations$settings$station$en {
 	/// en: 'Idle polling interval (ms)'
 	String get pollInterval => 'Idle polling interval (ms)';
 
-	/// en: 'How often to ask the radio for its frequency and mode while nothing is changing. Leave blank for ${fallback} ms.'
-	String pollIntervalDescription({required Object fallback}) => 'How often to ask the radio for its frequency and mode while nothing is changing. Leave blank for ${fallback} ms.';
+	/// en: 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.'
+	String pollIntervalDescription({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.';
 
 	/// en: 'A whole number of milliseconds, ${min} to ${max}'
 	String pollIntervalInvalid({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}';
@@ -5105,8 +5105,8 @@ class Translations$settings$station$en {
 	/// en: 'SWR reading'
 	String get placeholderSwr => 'SWR reading';
 
-	/// en: 'What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.'
-	String get placeholderSwrDescription => 'What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.';
+	/// en: 'What this radio reports on its SWR meter while transmitting. Above 1.8 the panel warns.'
+	String get placeholderSwrDescription => 'What this radio reports on its SWR meter while transmitting. Above 1.8 the panel warns.';
 
 	/// en: 'A number, 1 or more'
 	String get placeholderSwrInvalid => 'A number, 1 or more';
@@ -5117,8 +5117,8 @@ class Translations$settings$station$en {
 	/// en: 'CW keying dialect'
 	String get cwDialect => 'CW keying dialect';
 
-	/// en: 'Which shape of the KY command this radio takes. None keys nothing.'
-	String get cwDialectDescription => 'Which shape of the KY command this radio takes. None keys nothing.';
+	/// en: 'Which shape of the KY command this radio takes. None means no CW keying over CAT.'
+	String get cwDialectDescription => 'Which shape of the KY command this radio takes. None means no CW keying over CAT.';
 
 	/// en: 'Kenwood (KY, padded to 24)'
 	String get cwDialectKenwood => 'Kenwood (KY, padded to 24)';
@@ -5129,8 +5129,8 @@ class Translations$settings$station$en {
 	/// en: 'Voice keyer dialect'
 	String get voiceDialect => 'Voice keyer dialect';
 
-	/// en: 'How this radio plays its voice memories over CAT. None plays nothing. With a dialect and no count, the dialect's own count applies.'
-	String get voiceDialectDescription => 'How this radio plays its voice memories over CAT. None plays nothing. With a dialect and no count, the dialect\'s own count applies.';
+	/// en: 'How this radio plays its voice memories over CAT. None means no voice memories over CAT. With a dialect and no count, the dialect's default count applies.'
+	String get voiceDialectDescription => 'How this radio plays its voice memories over CAT. None means no voice memories over CAT. With a dialect and no count, the dialect\'s default count applies.';
 
 	/// en: 'Kenwood (PB, TS-590 style)'
 	String get voiceDialectPb => 'Kenwood (PB, TS-590 style)';
@@ -5390,8 +5390,8 @@ class Translations$settings$developer$en {
 	/// en: 'Let com.ham2k:// links open this copy of the app'
 	String get registerUrlSchemesDescription => 'Let com.ham2k:// links open this copy of the app';
 
-	/// en: 'This copy now answers com.ham2k:// links'
-	String get registerUrlSchemesDone => 'This copy now answers com.ham2k:// links';
+	/// en: 'This copy now opens com.ham2k:// links'
+	String get registerUrlSchemesDone => 'This copy now opens com.ham2k:// links';
 
 	/// en: 'Could not register: $error'
 	String registerUrlSchemesFailed({required Object error}) => 'Could not register: ${error}';
@@ -5798,14 +5798,14 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Conditions now and for the next eight hours, where you're operating'
 	String get weatherDescription => 'Conditions now and for the next eight hours, where you\'re operating';
 
-	/// en: 'Use the operation's own location'
-	String get weatherUseOperationLocation => 'Use the operation\'s own location';
+	/// en: 'Use the operation's location'
+	String get weatherUseOperationLocation => 'Use the operation\'s location';
 
 	/// en: 'Location'
 	String get weatherLocation => 'Location';
 
-	/// en: 'A grid square (FN31pr) or lat,lon. Ignored while 'Use the operation's own location' is checked.'
-	String get weatherLocationDescription => 'A grid square (FN31pr) or lat,lon. Ignored while \'Use the operation\'s own location\' is checked.';
+	/// en: 'A grid square (FN31pr) or lat,lon. Ignored while 'Use the operation's location' is checked.'
+	String get weatherLocationDescription => 'A grid square (FN31pr) or lat,lon. Ignored while \'Use the operation\'s location\' is checked.';
 
 	/// en: 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.'
 	String get weatherNoLocation => 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.';
@@ -5816,8 +5816,8 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Couldn't reach Open-Meteo — no network? Will try again shortly.'
 	String get weatherUnreachable => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.';
 
-	/// en: 'Open-Meteo answered, but not with anything readable. Will try again shortly.'
-	String get weatherUnreadable => 'Open-Meteo answered, but not with anything readable. Will try again shortly.';
+	/// en: 'Open-Meteo responded, but not with anything readable. Will try again shortly.'
+	String get weatherUnreadable => 'Open-Meteo responded, but not with anything readable. Will try again shortly.';
 
 	/// en: 'gusts ${speed}'
 	String weatherGusts({required Object speed}) => 'gusts ${speed}';
@@ -5953,8 +5953,8 @@ class Translations$operation$layout$panels$en {
 	/// en: 'That device couldn't capture that screen — it may need Screen Recording permission.'
 	String get remoteScreenCaptureFailed => 'That device couldn\'t capture that screen — it may need Screen Recording permission.';
 
-	/// en: 'That device didn't answer. It may not have screen sharing turned on.'
-	String get remoteScreenNoAnswer => 'That device didn\'t answer. It may not have screen sharing turned on.';
+	/// en: 'That device didn't respond. It may not have screen sharing turned on.'
+	String get remoteScreenNoAnswer => 'That device didn\'t respond. It may not have screen sharing turned on.';
 
 	/// en: 'Couldn't open a connection for the picture. Check the firewall on this device.'
 	String get remoteScreenNoMedia => 'Couldn\'t open a connection for the picture. Check the firewall on this device.';
@@ -5965,8 +5965,8 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Couldn't reach hamqsl.com — no network? Will try again shortly.'
 	String get solarUnreachable => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.';
 
-	/// en: 'hamqsl.com answered, but not with a reading we could use. Will try again shortly.'
-	String get solarUnreadable => 'hamqsl.com answered, but not with a reading we could use. Will try again shortly.';
+	/// en: 'hamqsl.com responded, but not with a reading we could use. Will try again shortly.'
+	String get solarUnreadable => 'hamqsl.com responded, but not with a reading we could use. Will try again shortly.';
 
 	/// en: 'A'
 	String get solarAIndex => 'A';
@@ -6268,8 +6268,8 @@ class Translations$settings$logging$suggestDefaultOperator$en {
 	/// en: 'Suggest Operator'
 	String get title => 'Suggest Operator';
 
-	/// en: 'Offering your own callsign as the operator when an operation runs under a different station callsign'
-	String get descriptionOn => 'Offering your own callsign as the operator when an operation runs under a different station callsign';
+	/// en: 'Offering your callsign as the operator when an operation runs under a different station callsign'
+	String get descriptionOn => 'Offering your callsign as the operator when an operation runs under a different station callsign';
 
 	/// en: 'Leaving the operator blank unless you fill it in'
 	String get descriptionOff => 'Leaving the operator blank unless you fill it in';
@@ -6541,8 +6541,8 @@ class Translations$settings$radio$snapMinMove$en {
 	/// en: 'Smart Snap: Smallest move'
 	String get title => 'Smart Snap: Smallest move';
 
-	/// en: 'Move less than this and nothing is rounded — fine tuning is left alone.'
-	String get description => 'Move less than this and nothing is rounded — fine tuning is left alone.';
+	/// en: 'Move less than this and the frequency is not rounded, so fine tuning is left alone.'
+	String get description => 'Move less than this and the frequency is not rounded, so fine tuning is left alone.';
 }
 
 // Path: settings.radio.snapMinSpeed
@@ -6556,8 +6556,8 @@ class Translations$settings$radio$snapMinSpeed$en {
 	/// en: 'Smart Snap: Slowest move'
 	String get title => 'Smart Snap: Slowest move';
 
-	/// en: 'Turn the dial slower than this and nothing is rounded, unless it was a long move.'
-	String get description => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.';
+	/// en: 'Turn the dial slower than this and the frequency is not rounded, unless it was a long move.'
+	String get description => 'Turn the dial slower than this and the frequency is not rounded, unless it was a long move.';
 }
 
 // Path: settings.radio.enterSends
@@ -6790,8 +6790,8 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Current radio does not support Phone messages'
 	String get notSupported => 'Current radio does not support Phone messages';
 
-	/// en: 'This uses the radio's own voice memories'
-	String get description => 'This uses the radio\'s own voice memories';
+	/// en: 'This uses the radio's voice memories'
+	String get description => 'This uses the radio\'s voice memories';
 
 	/// en: 'M$n'
 	String key({required Object n}) => 'M${n}';
@@ -7422,7 +7422,7 @@ extension on Translations {
 			'extensionsPanel.installedFrom' => ({required Object source}) => 'Downloaded from ${source}',
 			'extensionsPanel.dropHint' => 'Drop a .h2kext extension to install it',
 			'extensionsPanel.dropOneOnly' => 'Drop one extension at a time.',
-			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} answered ${status} for that extension.',
+			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} returned ${status} for that extension.',
 			'extensionsPanel.downloadTooLarge' => 'That download is far too large to be an extension.',
 			'extensionsPanel.downloadNotSecure' => 'That download redirected somewhere insecure.',
 			'extensionsPanel.catalogSection' => 'Catalog',
@@ -7446,7 +7446,7 @@ extension on Translations {
 			'extensionsPanel.upgradeLater' => 'Later',
 			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
 			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
-			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}.',
+			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not upgraded: ${names}.',
 			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => 'Would not run: ${names}.',
 			'extensionsPanel.upgradeDoneRefusedHint' => 'They are still installed and marked in Settings › Extensions — updating them there will bring them back.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
@@ -7581,7 +7581,7 @@ extension on Translations {
 			'dialogs.callChange.operatorRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Also record ${typed} as the operator of the contact already logged', other: 'Also record ${typed} as the operator of all ${count} contacts already logged', ), 
 			'dialogs.callChange.operatorSeveralStations' => 'When using multiple stations over the air, there\'s no support for separate operators',
 			'dialogs.callChange.contactsUnreadable' => 'This operation\'s contacts could not be read, so changing a callsign here won\'t offer to update them',
-			'dialogs.callChange.restampFailed' => ({required Object error}) => 'The contacts already logged could not be updated, so nothing was changed: ${error}',
+			'dialogs.callChange.restampFailed' => ({required Object error}) => 'The contacts already logged could not be updated, so no changes were made: ${error}',
 			'dialogs.callChange.restampShortfall' => ({required Object written, required Object planned}) => '${written} of ${planned} contacts were updated — the rest are no longer in this operation',
 			'operation.deletedReadOnly' => 'This operation is deleted. Undelete it to log or make changes.',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
@@ -7629,11 +7629,11 @@ extension on Translations {
 			'operation.layout.panelSettingsAction' => 'Panel Settings',
 			'operation.layout.viewName' => 'Operation View',
 			'operation.layout.viewOptions' => 'View layout options',
-			'operation.layout.viewTitleBuiltIn' => 'This view is one of the app\'s own, so its name is too',
+			'operation.layout.viewTitleBuiltIn' => 'This view is built into the app, and so is its name',
 			'operation.layout.resetOptions' => 'Restore Defaults',
 			'operation.layout.removePane' => 'Remove',
 			'operation.layout.resetPaneConfirm' => ({required Object panel}) => 'Restore ${panel} to its defaults?',
-			'operation.layout.resetPaneConfirmBody' => 'Its title, header and size go back to the defaults. Nothing else in the layout changes.',
+			'operation.layout.resetPaneConfirmBody' => 'Its title, header and size go back to the defaults. The rest of the layout stays as it is.',
 			'operation.layout.resetViewConfirm' => 'Restore this view to its default layout?',
 			'operation.layout.resetViewConfirmBody' => 'The panels go back to their default arrangement, and the view\'s options and every panel\'s go back to the defaults.',
 			'operation.layout.paneOptionsTitle' => ({required Object panel}) => '${panel} Layout Settings',
@@ -7672,13 +7672,13 @@ extension on Translations {
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
 			'operation.layout.panels.weatherDescription' => 'Conditions now and for the next eight hours, where you\'re operating',
-			'operation.layout.panels.weatherUseOperationLocation' => 'Use the operation\'s own location',
+			'operation.layout.panels.weatherUseOperationLocation' => 'Use the operation\'s location',
 			'operation.layout.panels.weatherLocation' => 'Location',
-			'operation.layout.panels.weatherLocationDescription' => 'A grid square (FN31pr) or lat,lon. Ignored while \'Use the operation\'s own location\' is checked.',
+			'operation.layout.panels.weatherLocationDescription' => 'A grid square (FN31pr) or lat,lon. Ignored while \'Use the operation\'s location\' is checked.',
 			'operation.layout.panels.weatherNoLocation' => 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.',
-			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo answered, but not with anything readable. Will try again shortly.',
+			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo responded, but not with anything readable. Will try again shortly.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'gusts ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'just now',
 			'operation.layout.panels.panelAgeMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} min ago', other: '${count} min ago', ), 
@@ -7752,11 +7752,11 @@ extension on Translations {
 			'operation.layout.panels.remoteScreenZoomOut' => 'Zoom out',
 			'operation.layout.panels.remoteScreenStopped' => 'That screen or window is no longer being shown.',
 			'operation.layout.panels.remoteScreenCaptureFailed' => 'That device couldn\'t capture that screen — it may need Screen Recording permission.',
-			'operation.layout.panels.remoteScreenNoAnswer' => 'That device didn\'t answer. It may not have screen sharing turned on.',
+			'operation.layout.panels.remoteScreenNoAnswer' => 'That device didn\'t respond. It may not have screen sharing turned on.',
 			'operation.layout.panels.remoteScreenNoMedia' => 'Couldn\'t open a connection for the picture. Check the firewall on this device.',
 			'operation.layout.panels.solarDescription' => 'Solar and geomagnetic conditions, with band-by-band propagation',
 			'operation.layout.panels.solarUnreachable' => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.',
-			'operation.layout.panels.solarUnreadable' => 'hamqsl.com answered, but not with a reading we could use. Will try again shortly.',
+			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. Will try again shortly.',
 			'operation.layout.panels.solarAIndex' => 'A',
 			'operation.layout.panels.solarKIndex' => 'Kp',
 			'operation.layout.panels.solarBandDay' => 'Day',
@@ -8001,7 +8001,7 @@ extension on Translations {
 			'activitiesView.locationSettingsUnavailable' => 'Allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
-			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
+			'activitiesView.searchUnavailableReason' => 'No activity extension could run the search. Try again in a moment.',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
@@ -8231,7 +8231,7 @@ extension on Translations {
 			'settings.logging.countryFlagsDescription.all' => 'Showing flags for all contacts',
 			'settings.logging.countryFlagsDescription.none' => 'Not showing any flags',
 			'settings.logging.suggestDefaultOperator.title' => 'Suggest Operator',
-			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offering your own callsign as the operator when an operation runs under a different station callsign',
+			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offering your callsign as the operator when an operation runs under a different station callsign',
 			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Leaving the operator blank unless you fill it in',
 			'settings.logging.showBearing.title' => 'Show Bearing',
 			'settings.logging.showBearing.descriptionOn' => 'Showing estimated bearing to station',
@@ -8298,9 +8298,9 @@ extension on Translations {
 			'settings.radio.snapLongMove.title' => 'Smart Snap: Long move',
 			'settings.radio.snapLongMove.description' => 'Move at least this far and the frequency rounds to a whole kHz, however slowly you finished.',
 			'settings.radio.snapMinMove.title' => 'Smart Snap: Smallest move',
-			'settings.radio.snapMinMove.description' => 'Move less than this and nothing is rounded — fine tuning is left alone.',
+			'settings.radio.snapMinMove.description' => 'Move less than this and the frequency is not rounded, so fine tuning is left alone.',
 			'settings.radio.snapMinSpeed.title' => 'Smart Snap: Slowest move',
-			'settings.radio.snapMinSpeed.description' => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.',
+			'settings.radio.snapMinSpeed.description' => 'Turn the dial slower than this and the frequency is not rounded, unless it was a long move.',
 			'settings.radio.enterSends.pillOff' => 'ESM Off',
 			'settings.radio.enterSends.pillRun' => 'ESM Run',
 			'settings.radio.enterSends.pillSp' => 'ESM S&P',
@@ -8368,7 +8368,7 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
 			'settings.radio.voiceMessages.title' => 'Phone Keyer Messages',
 			'settings.radio.voiceMessages.notSupported' => 'Current radio does not support Phone messages',
-			'settings.radio.voiceMessages.description' => 'This uses the radio\'s own voice memories',
+			'settings.radio.voiceMessages.description' => 'This uses the radio\'s voice memories',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Label',
@@ -8462,7 +8462,7 @@ extension on Translations {
 			'settings.peers.reject' => 'Reject',
 			'settings.peers.forget' => 'Forget',
 			'settings.peers.forgetTitle' => ({required Object name}) => 'Forget ${name}?',
-			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and nothing already logged is removed.',
+			'settings.peers.forgetBody' => 'It will stop syncing with this device. You can allow it again later, and contacts already logged are kept.',
 			'settings.peers.pairTitle' => ({required Object name}) => 'Link with ${name}',
 			'settings.peers.pairBody' => 'This device is on your local network and wants to connect.',
 			'settings.peers.pairBodyBle' => 'This device is nearby and wants to connect over Bluetooth LE.',
@@ -8551,14 +8551,14 @@ extension on Translations {
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
-			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link — from the address bar, or from the error page the browser shows — and paste it here.',
-			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to — it starts with "${prefix}" — and paste that here.',
+			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.',
+			'settings.accounts.browserLoginNotOpened' => ({required Object prefix}) => 'Ham2K Logger could not open your browser. Copy the login link below and open it yourself, then copy the link it sends you to (it starts with "${prefix}") and paste that here.',
 			'settings.accounts.copyLoginLink' => 'Copy login link',
 			'settings.accounts.pastedLinkLabel' => 'Paste the link here',
 			'settings.accounts.finishLogin' => 'Finish Login',
 			'settings.accounts.pastedLinkNotARedirect' => ({required Object prefix}) => 'That is not the login link — it should start with "${prefix}".',
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
-			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
+			'settings.accounts.pastedLinkNoCode' => 'That link has no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
@@ -8590,7 +8590,7 @@ extension on Translations {
 			'settings.station.disconnect' => 'Disconnect',
 			'settings.station.remove' => 'Remove',
 			'settings.station.removeTitle' => ({required Object name}) => 'Remove ${name}?',
-			'settings.station.removeMessage' => 'This only removes it from the app. Nothing on the equipment changes.',
+			'settings.station.removeMessage' => 'This only removes it from the app. The equipment\'s settings stay as they are.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
 			'settings.station.report' => 'Report',
 			'settings.station.reportTitle' => 'Report this radio',
@@ -8627,9 +8627,9 @@ extension on Translations {
 			'settings.station.serialPortJustNow' => 'Recently connected',
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
-			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
+			'settings.station.baudRateDescription' => 'Must match the radio\'s CAT menu. With a mismatch, the radio sends back garbage and no error.',
 			'settings.station.serialRtsHigh' => 'Hold RTS high',
-			'settings.station.serialRtsHighDescription' => 'Only for a radio that waits for RTS before answering, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.',
+			'settings.station.serialRtsHighDescription' => 'Only for a radio that waits for RTS before responding, such as a Yaesu with CAT RTS turned on. On a Digirig, SignaLink and most home-made cables RTS is PTT, and holding it high transmits.',
 			'settings.station.serialDtrHigh' => 'Hold DTR high',
 			'settings.station.serialDtrHighDescription' => 'Only for a CAT interface that draws its power from DTR, such as some RS-232 cables for the FT-817. On many cables DTR keys CW or PTT, and holding it high transmits.',
 			'settings.station.civAddress' => 'Radio CI-V address',
@@ -8649,11 +8649,11 @@ extension on Translations {
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
 			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
 			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
-			'settings.station.winkeyerNoAnswer' => 'No WinKeyer answered on this port',
-			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped answering while sending; the message was dropped',
+			'settings.station.winkeyerNoAnswer' => 'No WinKeyer responded on this port',
+			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
-			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
+			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'Device is in use',
 			'settings.station.connectFailedDenied' => 'Access denied',
@@ -8716,23 +8716,23 @@ extension on Translations {
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth Serial',
 			'settings.station.transports.placeholder' => 'Placeholder',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it answers nothing at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
+			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.guohetecTroubleshooting' => 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using.\n\n- **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
+			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
-			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
-			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
-			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 can carry CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not carry audio into HaLo.',
+			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.',
+			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
+			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.',
+			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us. The KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
+			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against Kenwood\'s TS-590SG and TS-480, QRP Labs\' QMX and QCX-mini, and Elecraft\'s KX2 and KX3. The rest of the line is written from published CAT references, so please report what happens either way.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the radio\'s CAT menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they respond at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs are listed separately, under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.statusLost' => 'Disconnected',
 			'settings.station.notConfigured' => 'Not configured',
@@ -8760,25 +8760,25 @@ extension on Translations {
 			'settings.station.noneSelected' => 'None',
 			'settings.station.moreSettings' => 'More Settings',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
-			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never answers, try the other port next.',
-			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
-			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE (on USB, CI-V USB Baud Rate) — set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop answering after a minute or so.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.icomCivTroubleshooting' => 'Several Icom radios, the IC-705 among them, present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that: the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists, and where this app can tell the two ports apart it marks that one as suggested. If commands go out and the radio never responds, try the other port next.',
+			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never responds',
+			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE (on USB, CI-V USB Baud Rate). Set the radio to the same number shown here, **not Auto**. On Auto some radios, the IC-7300 among them, connect and then stop responding after a minute or so.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
 			'settings.station.ic705PortNote' => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them, which the picker points at wherever it can tell the two apart.',
 			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
 			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents, and the one the picker points at.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
-			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
+			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0`: by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio. Test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
-			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable — it listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio — check that flrig\'s own display is following the dial.',
+			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable. It listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio. Check that flrig\'s display is following the dial.',
 			'settings.station.hrdTroubleshootingTitle' => 'If the app cannot connect',
-			'settings.station.hrdTroubleshooting' => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only answers other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.',
+			'settings.station.hrdTroubleshooting' => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only talks to other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.n3fjpTroubleshooting' => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.',
 			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
-			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
-			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
+			'settings.station.ic705TroubleshootingTitle' => 'If the radio never responds',
+			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.statusDisconnected' => 'Not connected',
 			'settings.station.statusConnecting' => 'Connecting…',
@@ -8849,22 +8849,22 @@ extension on Translations {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
-			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.',
+			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
-			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while nothing is changing. Leave blank for ${fallback} ms.',
+			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
 			'settings.station.placeholderSwr' => 'SWR reading',
-			'settings.station.placeholderSwrDescription' => 'What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.',
+			'settings.station.placeholderSwrDescription' => 'What this radio reports on its SWR meter while transmitting. Above 1.8 the panel warns.',
 			'settings.station.placeholderSwrInvalid' => 'A number, 1 or more',
 			'settings.station.keyerNone' => 'None',
 			'settings.station.cwDialect' => 'CW keying dialect',
-			'settings.station.cwDialectDescription' => 'Which shape of the KY command this radio takes. None keys nothing.',
+			'settings.station.cwDialectDescription' => 'Which shape of the KY command this radio takes. None means no CW keying over CAT.',
 			'settings.station.cwDialectKenwood' => 'Kenwood (KY, padded to 24)',
 			'settings.station.cwDialectElecraft' => 'Elecraft (KY text)',
 			'settings.station.voiceDialect' => 'Voice keyer dialect',
-			'settings.station.voiceDialectDescription' => 'How this radio plays its voice memories over CAT. None plays nothing. With a dialect and no count, the dialect\'s own count applies.',
+			'settings.station.voiceDialectDescription' => 'How this radio plays its voice memories over CAT. None means no voice memories over CAT. With a dialect and no count, the dialect\'s default count applies.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, TS-590 style)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB and DA)',
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (switch taps)',
@@ -8940,7 +8940,7 @@ extension on Translations {
 			'settings.developer.deepLinks' => 'Deep links',
 			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
 			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
-			'settings.developer.registerUrlSchemesDone' => 'This copy now answers com.ham2k:// links',
+			'settings.developer.registerUrlSchemesDone' => 'This copy now opens com.ham2k:// links',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.appVersion' => 'App Version',
@@ -9138,8 +9138,8 @@ extension on Translations {
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
 			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
 			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
-			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
-			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.',
+			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
+			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
@@ -9235,19 +9235,19 @@ extension on Translations {
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
-			'offline.unreachable' => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.',
+			'offline.unreachable' => 'The network is up, but no server is responding — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'All services responding as expected.',
 			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',
-			'offline.noServices' => 'Nothing has reported in yet.',
-			'offline.lastSuccess' => ({required Object when}) => 'Last answered ${when} ago',
-			'offline.neverSucceeded' => 'Has not answered yet',
+			'offline.noServices' => 'No service has reported in yet.',
+			'offline.lastSuccess' => ({required Object when}) => 'Last responded ${when} ago',
+			'offline.neverSucceeded' => 'Has not responded yet',
 			'offline.nextAttempt' => ({required Object when}) => 'Next attempt in ${when}',
 			'offline.nextAttemptNow' => 'Next attempt due',
 			'offline.retry' => 'Retry now',
 			'offline.retrying' => 'Trying…',
 			'offline.retryReached' => 'Back online.',
-			'offline.retryUnreachable' => 'Still no answer.',
+			'offline.retryUnreachable' => 'Still no response.',
 			'offline.retryNotAttempted' => 'Nothing to send right now.',
 			'offline.retryThrottled' => 'Just tried — give it a moment.',
 			'offline.retryDisabled' => 'Sync is switched off, so there is nothing to probe with.',

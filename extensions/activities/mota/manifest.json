@@ -3,7 +3,7 @@
   "name": "MOTA: Mills on the Air",
   "shortName": "MOTA",
   "version": "0.0.1",
-  "description": "Mill references, activation and chasing, and spotting",
+  "description": "Activate and chase windmills and watermills; spots on cqgma.org",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "wind-turbine",
@@ -13,7 +13,7 @@
   "domains": ["www.cqgma.org"],
   "translations": {
     "es": {
-      "description": "Referencias de molinos, activación y caza, y spotting",
+      "description": "Activa y caza molinos de viento y de agua; spots en cqgma.org",
       "keywords": ["molinos", "activación"]
     }
   }

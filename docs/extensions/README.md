@@ -34,7 +34,7 @@ that imports it and calls `defineExtension`:
   "name": "Parks on the Air",
   "shortName": "POTA",
   "version": "0.0.1",
-  "description": "Park references, spots, and activation logging",
+  "description": "Activate and chase parks worldwide; spots on pota.app",
   "category": "activity",      // panel grouping: activity | contest | lookup |
                                // spots; omit for core (always-on). A value the
                                // panel doesn't know falls under "Other"

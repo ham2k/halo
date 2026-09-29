@@ -3,7 +3,7 @@
   "name": "ECA: English Castles Awards",
   "shortName": "ECA",
   "version": "0.0.1",
-  "description": "English castle references, activation logging, and self-spotting",
+  "description": "Activate castles in England; spots on cqgma.org",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "castle",
@@ -16,7 +16,7 @@
   "domains": ["ham2k.com", "www.cqgma.org"],
   "translations": {
     "es": {
-      "description": "Referencias de castillos ingleses, registro de activaciones y auto-spotting",
+      "description": "Activa castillos en Inglaterra; spots en cqgma.org",
       "keywords": ["castillos", "inglaterra", "activación"]
     }
   }

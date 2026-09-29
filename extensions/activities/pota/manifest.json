@@ -3,7 +3,7 @@
   "name": "POTA: Parks on the Air",
   "shortName": "POTA",
   "version": "0.0.1",
-  "description": "Park references, spots, and activation logging",
+  "description": "Activate and chase parks worldwide; spots on pota.app",
   "category": "activity",
   "enabledByDefault": true,
   "icon": "pine-tree",
@@ -13,7 +13,7 @@
   "domains": ["api.pota.app", "pota.app"],
   "translations": {
     "es": {
-      "description": "Referencias de parques, spots y registro de activaciones",
+      "description": "Activa y caza parques en todo el mundo; spots en pota.app",
       "keywords": ["parques", "activación"]
     }
   }

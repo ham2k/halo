@@ -3,7 +3,7 @@
   "name": "PGA: Polish Gmina Award",
   "shortName": "PGA",
   "version": "0.0.1",
-  "description": "Polish gmina references and activation logging",
+  "description": "Activate Polish municipalities (gminas)",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "map-outline",
@@ -16,7 +16,7 @@
   "domains": ["www.sq7acp.pl"],
   "translations": {
     "es": {
-      "description": "Referencias de gminas polacas y registro de activaciones",
+      "description": "Activa municipios polacos (gminas)",
       "keywords": ["gmina", "polonia", "activación"]
     }
   }

@@ -3,7 +3,7 @@
   "name": "CQ WPX Contest",
   "shortName": "CQ WPX",
   "version": "0.0.1",
-  "description": "Every callsign prefix is a multiplier; serial numbers are the exchange",
+  "description": "Every callsign prefix is a multiplier; mid February (RTTY), late March (SSB) and late May (CW)",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "flag-checkered",
@@ -13,7 +13,7 @@
   "translations": {
     "es": {
       "name": "Concurso CQ WPX",
-      "description": "Cada prefijo de indicativo es un multiplicador; el intercambio son números de serie",
+      "description": "Cada prefijo de indicativo es un multiplicador; mediados de febrero (RTTY), finales de marzo (SSB) y finales de mayo (CW)",
       "keywords": ["concurso", "prefijo", "serie"]
     }
   }

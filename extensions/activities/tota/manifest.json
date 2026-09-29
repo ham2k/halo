@@ -3,7 +3,7 @@
   "name": "TOTA: Towers on the Air",
   "shortName": "TOTA",
   "version": "0.0.1",
-  "description": "Lookout tower references, activation and hunting, and spots",
+  "description": "Activate and chase lookout towers worldwide; spots on rozhledny.eu",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "tower-fire",
@@ -13,7 +13,7 @@
   "domains": ["rozhledny.eu", "www.rozhledny.eu"],
   "translations": {
     "es": {
-      "description": "Referencias de torres miradoras, activación y caza, y spots",
+      "description": "Activa y caza torres miradoras en todo el mundo; spots en rozhledny.eu",
       "keywords": ["torres", "miradores", "activación"]
     }
   }

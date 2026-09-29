@@ -3,7 +3,7 @@
   "name": "WCA: World Castles Awards",
   "shortName": "WCA",
   "version": "0.0.1",
-  "description": "Castle references, activation logging, and self-spotting",
+  "description": "Activate castles worldwide; spots on cqgma.org",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "castle",
@@ -13,7 +13,7 @@
   "domains": ["polo.ham2k.com", "www.cqgma.org"],
   "translations": {
     "es": {
-      "description": "Referencias de castillos, registro de activaciones y auto-spotting",
+      "description": "Activa castillos en todo el mundo; spots en cqgma.org",
       "keywords": ["castillos", "activación"]
     }
   }

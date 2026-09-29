@@ -3,7 +3,7 @@
   "name": "WWFF: World Wide Flora & Fauna",
   "shortName": "WWFF",
   "version": "0.0.1",
-  "description": "Park references, activation and hunting, spots and spotting",
+  "description": "Activate and chase flora and fauna areas worldwide; spots on wwff.co",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "flower",
@@ -13,7 +13,7 @@
   "domains": ["wwff.co", "spots.wwff.co"],
   "translations": {
     "es": {
-      "description": "Referencias de parques, activación y caza, spots y spotting",
+      "description": "Activa y caza áreas de flora y fauna en todo el mundo; spots en wwff.co",
       "keywords": ["flora", "fauna", "parques", "activación"]
     }
   }

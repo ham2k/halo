@@ -71,12 +71,12 @@
     "build": "node build.mjs"
   },
   "//peerDependencies": [
-    "The libraries the extension host carries. An extension does NOT need these",
+    "The libraries the extension host provides. An extension does NOT need these",
     "installed: the build preset rewrites each one the manifest declares into a",
     "lookup on the host's single instance, before esbuild ever resolves it, and",
-    "the published .d.ts carries their types rolled in. They are here, optional,",
+    "the published .d.ts has their types rolled in. They are here, optional,",
     "for the one case that does reach the filesystem \u2014 `inline: [...]`, which",
-    "ships your own copy because you need a version the host does not carry."
+    "ships your own copy because you need a version the host does not provide."
   ],
   "peerDependencies": {
     "@ham2k/lib-callsigns": "*",

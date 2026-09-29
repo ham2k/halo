@@ -3,7 +3,7 @@
   "name": "RSGB VHF Contests",
   "shortName": "RSGB VHF",
   "version": "0.0.1",
-  "description": "Great-circle distance, per-band points and grid/district/DXCC bonuses across RSGB's VHF/UHF/microwave contest family, submitted as REG1TEST/EDI",
+  "description": "RSGB's VHF/UHF/microwave contest family",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "flag-checkered",
@@ -16,7 +16,7 @@
   "translations": {
     "es": {
       "name": "Concursos VHF de RSGB",
-      "description": "Distancia de gran círculo, puntos por banda y bonos de grid/distrito/DXCC en la familia de concursos VHF/UHF/microondas de RSGB, enviado como REG1TEST/EDI",
+      "description": "Familia de concursos VHF/UHF/microondas de RSGB",
       "keywords": ["concurso", "vhf", "distancia", "rsgb"]
     }
   }

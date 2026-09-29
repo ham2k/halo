@@ -3,7 +3,7 @@
   "name": "GMA: Global Mountain Activity",
   "shortName": "GMA",
   "version": "0.0.1",
-  "description": "Summit references, activation and chasing, and spotting",
+  "description": "Activate and chase summits and other sites worldwide; spots on cqgma.org",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "summit",
@@ -13,7 +13,7 @@
   "domains": ["www.cqgma.org"],
   "translations": {
     "es": {
-      "description": "Referencias de cumbres, activación y caza, y spotting",
+      "description": "Activa y caza cumbres y otros lugares en todo el mundo; spots en cqgma.org",
       "keywords": ["cumbres", "montañas", "activación"]
     }
   }

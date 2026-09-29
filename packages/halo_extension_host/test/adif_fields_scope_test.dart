@@ -242,7 +242,7 @@ void main() {
     );
 
     expect(content, isNot(contains('APP_TEST_ORPHAN')));
-    expect(host.logLines.join('\n'), contains('extension orphan registers adifFields but answers for no reference'));
+    expect(host.logLines.join('\n'), contains('extension orphan registers adifFields but handles no reference'));
     expect(host.logLines.join('\n'), isNot(contains('extension everywhere registers adifFields but')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 

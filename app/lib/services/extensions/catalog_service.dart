@@ -298,7 +298,7 @@ class CatalogRefused implements Exception {
   CatalogRefused(this.url, this.status);
 
   @override
-  String toString() => 'CatalogRefused: $url answered $status';
+  String toString() => 'CatalogRefused: $url returned $status';
 }
 
 class CatalogService {
@@ -431,7 +431,7 @@ class CatalogService {
     // whose extensions happen to be worldwide — so it says so once rather
     // than never. The rows are kept: an unranked listing beats none.
     if (raw.any((item) => item is Map && item['relevance'] == null && item['geo'] is Map)) {
-      _malformed(url, 'entries carry the retired "geo" key, so nothing ranks');
+      _malformed(url, 'entries still use the retired "geo" key, so nothing ranks');
     }
     _remember(url, entries);
     return entries;

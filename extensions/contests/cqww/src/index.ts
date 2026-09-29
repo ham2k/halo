@@ -11,6 +11,7 @@ import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
+  ActivitySuggestion,
   ExportOption,
   ExportOptionsRequest,
   ExportRequest,
@@ -20,15 +21,22 @@ import type {
   LoggingControlDescriptor,
   Ref,
   RefLink,
+  SuggestArgs,
 } from "@ham2k/extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
 import { tFor } from "./i18n.ts"
+import { MODES, nearestMode, relevanceFor } from "./schedule.ts"
 import { CQWWScorer, ZONE_PATTERN, contestTitle, normalizeZone } from "./scorer.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
 const TYPE = "cqww"
+
+/// What a search has to contain to offer these contests. Matched as "does the
+/// alias contain what was typed", so "cq" finds them and the date ranking
+/// decides which running comes first.
+const ALIASES = ["CQWW", "CQ WW", "CQ WORLD WIDE", "WORLD WIDE DX", "WWDX"]
 
 function refOfType(container: Record<string, JSONValue>, type: string): Record<string, JSONValue> | undefined {
   return ((container.refs as Record<string, JSONValue>[] | undefined) ?? []).find((r) => r?.type === type)
@@ -48,6 +56,36 @@ function ourZone(operation: Record<string, JSONValue>): string {
 }
 
 const ActivityHook = {
+  /// Offered in the activity search by NAME and by NEARNESS — all three
+  /// runnings, each ranked by its own weekend, so in October SSB leads and in
+  /// November CW.
+  ///
+  /// Nothing is offered to an operation that already runs CQ WW. The mode
+  /// lives on the ref as `mode`, not `ref`, and the picker's duplicate guard
+  /// only fires for a suggestion with a `ref` — so a tapped suggestion would
+  /// REPLACE the configured ref, silently losing its zone. Changing the mode
+  /// goes through the existing setup instead.
+  async suggest({ operation, searchTerm }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
+    if (refOfType(operation ?? {}, TYPE)) return []
+    const t = tFor(ctx)
+    const term = (searchTerm ?? "").trim().toUpperCase()
+    if (term && !ALIASES.some((alias) => alias.includes(term))) return []
+
+    const now = Date.now()
+    return MODES.map((mode) => ({
+      type: TYPE,
+      mode,
+      // A suggestion is persisted VERBATIM and never runs through
+      // `decorateRef`, so everything the operation row reads has to be here,
+      // and the labels must match what `decorateRef` composes.
+      program: "Contest",
+      name: t("activityDescription"),
+      label: `CQ WW ${mode}`,
+      shortLabel: `CQ WW ${mode}`,
+      relevance: relevanceFor(now, mode),
+    }))
+  },
+
   async operationControls(_args: { operation: Record<string, JSONValue> }, ctx: HookContext): Promise<LoggingControlDescriptor[]> {
     const t = tFor(ctx)
     return [
@@ -71,6 +109,8 @@ const ActivityHook = {
                 fieldType: "radio",
                 key: "mode",
                 label: t("modeLabel"),
+                // Seeds a new setup only; a configured ref keeps its own mode.
+                value: nearestMode(Date.now()),
                 // CQ WW runs these as separate contests on separate weekends.
                 options: [
                   { value: "CW", label: "CW" },

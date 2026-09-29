@@ -3,7 +3,7 @@
   "name": "Satellite Operations",
   "shortName": "Sats",
   "version": "0.0.1",
-  "description": "Log contacts through amateur satellites, with the bird and its transponder",
+  "description": "Log contacts through satellites",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "satellite-variant",
@@ -13,7 +13,7 @@
   "domains": ["polo.ham2k.com"],
   "translations": {
     "es": {
-      "description": "Registra contactos vía satélites de radioaficionados, con el satélite y su transpondedor",
+      "description": "Registra contactos vía satélite",
       "keywords": ["satélite", "sat", "amsat", "transpondedor"]
     }
   }

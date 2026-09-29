@@ -149,7 +149,7 @@ test("declaring a library the host does not carry is refused, not externalised",
   // Externalising it would emit `sharedModules["lodash"]` — `undefined` at the
   // first call. The build succeeds and the bundle cannot work, which is the
   // one outcome worse than a build error.
-  assert.throws(() => sharedModulesPlugin({ sharedDependencies: { lodash: "^4.0.0" } }), /does not carry \(lodash\)/)
+  assert.throws(() => sharedModulesPlugin({ sharedDependencies: { lodash: "^4.0.0" } }), /does not provide \(lodash\)/)
 })
 
 test("declaring a library and also inlining it is refused", async () => {

@@ -3,7 +3,7 @@
   "name": "CWops CWT",
   "shortName": "CWT",
   "version": "0.0.1",
-  "description": "The weekly CWops mini-tests: one hour of CW, name and member number, four sessions a week",
+  "description": "Weekly CWops mini-tests: one hour of CW, four sessions a week",
   "category": "contest",
   "enabledByDefault": false,
   "icon": "clock-fast",
@@ -13,7 +13,7 @@
   "translations": {
     "es": {
       "name": "CWT de CWops",
-      "description": "Las mini-pruebas semanales de CWops: una hora de CW, nombre y número de socio, cuatro sesiones por semana",
+      "description": "Mini-pruebas semanales de CWops: una hora de CW, cuatro sesiones por semana",
       "keywords": ["concurso", "cwt", "cwops", "telegrafía"]
     }
   }

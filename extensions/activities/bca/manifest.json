@@ -3,7 +3,7 @@
   "name": "BCA: Belgium Castles & Fortresses",
   "shortName": "BCA",
   "version": "0.0.1",
-  "description": "Belgian castle references, activation logging, and self-spotting",
+  "description": "Activate castles and fortresses in Belgium; spots on cqgma.org",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "castle",
@@ -16,7 +16,7 @@
   "domains": ["drive.google.com", "www.cqgma.org"],
   "translations": {
     "es": {
-      "description": "Referencias de castillos belgas, registro de activaciones y auto-spotting",
+      "description": "Activa castillos y fortalezas en Bélgica; spots en cqgma.org",
       "keywords": ["castillos", "bélgica", "activación"]
     }
   }

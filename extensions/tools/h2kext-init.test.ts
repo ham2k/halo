@@ -234,7 +234,7 @@ test("the scaffold declares exactly what the SDK barrel forces it to", async () 
     })
   } catch (e: any) {
     for (const error of e.errors ?? []) {
-      const named = /'([^']+)' is carried by the Ham2K extension host/.exec(error.text)
+      const named = /'([^']+)' is provided by the Ham2K extension host/.exec(error.text)
       if (named) forced.add(named[1])
     }
   }

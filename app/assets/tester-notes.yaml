@@ -19,7 +19,7 @@
 
 "175":
   changes:
-    - "New Postcard pages carry your operation's stats and scores after the map"
+    - "New Postcard pages show your operation's stats and scores after the map"
     - "Multi-op activations show each operator's progress under every park"
 
 "173":
@@ -181,7 +181,7 @@
 "147":
   changes:
     - "Locations keep full coordinates, for finer grids and distances"
-    - "ADIF exports include your own grid, and coordinates if private data is on"
+    - "ADIF exports include your grid, and coordinates if private data is on"
 
 "146":
   changes:
@@ -202,7 +202,7 @@
 "143":
   changes:
     - "Listen for WSJT-X and N1MM+ (Operation view → Imports)"
-    - "Call History lookup: name and location from your own log"
+    - "Call History lookup: name and location from your log"
     - "Daily activity and contest progress in Operation Info's Scoring"
     - "Android offers to open HaLo when a USB-serial adapter is plugged in"
 
@@ -271,7 +271,7 @@
     - "New Avoid Zero-Beating on Spots setting"
     - "Report button in every radio editor, tell us what works"
     - "New REPORT command files a bug from the app"
-    - "Worked spots struck through, your own call in orange"
+    - "Worked spots struck through, your call in orange"
     - "Spots highlight new bands, modes, references and multipliers"
 
 "126":

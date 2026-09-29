@@ -103,6 +103,50 @@ since every context in the tree is below it either way. A test that can fail
 has to assert a value a build method **resolved**, with the app theme dark —
 `onboarding_test.dart`'s "the callsign field still focuses DARK" is the model.
 
+## Wording
+
+Every word a person reads follows these: the app's strings, release and
+tester notes, catalog and manifest descriptions, and the messages the
+extension tools print. Each names a word that crept into our text and reads as
+jargon to anyone who was not there when it was written.
+
+- **No "carry".** Not for "has" or "includes" ("That link has no login
+  code"), and not for a cable or connection moving a signal ("won't work for
+  CAT", "the fastest this connection can handle"). Say what the thing does:
+  has, shows, provides, sends, connects.
+- **No "gate" for a logical control**, as a noun or a verb. Say what decides:
+  a setting turns it on, a manifest lists an experiment, a feature needs
+  something.
+- **Machines don't "answer".** A radio, server or extension responds,
+  returns, reports or supports: "That device didn't respond", "${source}
+  returned 404". People still answer a call. A radio may "speak" a protocol.
+- **"Nothing" is not the subject.** Name the thing that doesn't act or
+  change: "the radio does not say which one it is using", not "nothing
+  reports which one"; "contacts already logged are kept", not "nothing
+  already logged is removed". An empty state ("Nothing selected", "Nothing to
+  export yet") is fine.
+- **No "genuinely".** It adds nothing a reader can check.
+- **"Own" only when it changes the meaning.** "Use the operation's location",
+  not "the operation's own location". Keep it where dropping it changes the
+  sentence: "A K4 has its own entry", "connect on its own".
+- **Em dashes sparingly.** One per string at most, and only where a comma,
+  colon, period or parentheses would read worse.
+
+An extension's catalog description says what sets it apart, not the features
+every extension of its kind has:
+
+- **Activities** name what is worked and where, whether hunting (chasing) is
+  supported, and where spots go: "Activate and chase parks worldwide; spots on
+  pota.app", "Activate castles in England; spots on cqgma.org". That an
+  activity has references and can be activated goes without saying.
+- **Contests** say what the event is, never its exchange, then roughly when:
+  "Norway's national field day; early September". A weekly series or a
+  family of many events gives no date.
+- **No leading "The"**, and no repeating the extension's name.
+
+Rewording an English string means checking its Spanish too — a translation
+often mirrors the word (`lleva` for "carries").
+
 ## Main views
 
 The app has three main views:

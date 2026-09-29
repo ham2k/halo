@@ -14,6 +14,7 @@ const COUNTRY_NAMES: Record<string, string> = {
   US: "United States",
   CA: "Canada",
   DE: "Germany",
+  NO: "Norway",
 }
 
 defineExtension({

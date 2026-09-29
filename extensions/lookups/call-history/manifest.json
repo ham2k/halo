@@ -2,7 +2,7 @@
   "key": "call-history",
   "name": "Call History",
   "version": "0.0.1",
-  "description": "Uses the most recent past QSO with a station, from your own log, as a lookup source",
+  "description": "Uses the most recent past QSO with a station, from your log, as a lookup source",
   "category": "lookup",
   "enabledByDefault": true,
   "keywords": ["callsign", "lookup", "history"],

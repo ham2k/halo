@@ -271,7 +271,7 @@ test("declaring a shared module makes using it fine", async () => {
 
 test("declaring a package the host does not carry is refused", () => {
   const problems = validateManifest({ ...validManifest, sharedDependencies: { lodash: "^4.0.0" } })
-  assert.match(problems.join(), /the host does not carry/)
+  assert.match(problems.join(), /the host does not provide/)
 })
 
 test("a shared dependency needs a range, not just a name", () => {

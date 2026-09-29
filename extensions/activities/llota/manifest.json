@@ -3,7 +3,7 @@
   "name": "LLOTA: Lakes and Lagoons on the Air",
   "shortName": "LLOTA",
   "version": "0.0.1",
-  "description": "Lake references, activation and hunting, spots and spotting",
+  "description": "Activate and chase lakes and lagoons worldwide; spots on llota.app",
   "category": "activity",
   "enabledByDefault": false,
   "icon": "waves",
@@ -13,7 +13,7 @@
   "domains": ["llota.app"],
   "translations": {
     "es": {
-      "description": "Referencias de lagos, activación y caza, spots y spotting",
+      "description": "Activa y caza lagos y lagunas en todo el mundo; spots en llota.app",
       "keywords": ["lagos", "lagunas", "activación"]
     }
   }

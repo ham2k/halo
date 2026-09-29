@@ -285,7 +285,7 @@ export function validateAdifFieldsScope(manifest) {
   if (!hooks.includes("adifFields") || scope === "always") return []
   if (hooks.some((hook) => typeof hook === "string" && hook.startsWith("ref:"))) return []
   return [
-    `'hooks' lists 'adifFields' but no 'ref:' type — the full ADIF export asks an extension only about contacts carrying a reference it handles, ` +
+    `'hooks' lists 'adifFields' but no 'ref:' type — the full ADIF export asks an extension only about contacts with a reference it handles, ` +
       `so these fields would never be written; declare the 'ref:' types, or set "adifFieldsScope": "always" (docs/extensions/hooks.md)`,
   ]
 }
@@ -343,7 +343,7 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
       const offered = sharedModulesFor(manifest.api)
       for (const [pkg, range] of Object.entries(declared)) {
         if (!offered.includes(pkg)) {
-          say(`'sharedDependencies' names '${pkg}', which the host does not carry — bundle it into your build instead`)
+          say(`'sharedDependencies' names '${pkg}', which the host does not provide — bundle it into your build instead`)
         } else if (typeof range !== "string" || range.trim() === "") {
           say(`'sharedDependencies' entry '${pkg}' needs a version range, e.g. "^1.0.0"`)
         }
@@ -355,7 +355,7 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   // key the host does not define hides the extension forever, with nothing in
   // the UI to explain it, so a distributed bundle must not carry one.
   if (manifest.experiments !== undefined) {
-    say("'experiments' gates on the app's own experiment catalog and would hide this extension permanently — remove it")
+    say("'experiments' refers to the app's own experiment catalog and would hide this extension permanently — remove it")
   }
 
   // The name `relevance` replaced. Nothing reads `geo`, and nothing here
