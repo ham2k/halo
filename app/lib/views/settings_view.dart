@@ -163,6 +163,7 @@ class _SettingsViewState extends State<SettingsView> {
   // key as gone and snap the selection elsewhere — so it's gated on this
   // flag.
   bool _extensionPanelsLoaded = false;
+  int _extensionPanelsRequest = 0;
 
   /// One per screen instance — see [PanelUseTracker].
   late final PanelUseTracker _panels;
@@ -187,9 +188,15 @@ class _SettingsViewState extends State<SettingsView> {
   }
 
   Future<void> _loadExtensionPanels() async {
-    await widget.services.extensions.start();
-    final panels = await widget.services.extensions.getSettingsPanels();
+    // Generations can follow each other faster than a load settles (a late
+    // activation bumps one on the same host), and only the latest may land.
+    final request = ++_extensionPanelsRequest;
+    final panels = await widget.services.extensions.settledSettingsPanels();
     if (!mounted) return;
+    // Decided by every load, superseded or not: each reads the runtime as it
+    // settled, and a failed boot bumps no generation — the last load to
+    // settle may be the only one that sees it.
+    //
     // The extension runtime failing to start is the one failure mode that's
     // both detectable here and not already self-reported elsewhere (a
     // single misbehaving extension's getPanels() failing is caught and
@@ -204,13 +211,14 @@ class _SettingsViewState extends State<SettingsView> {
         title: t.settings.panels.unavailableTitle,
         text: t.settings.panels.unavailableText,
       );
+    } else {
+      widget.services.statusBar.dismissNotice('settings_extensions_unavailable');
     }
-    if (mounted) {
-      setState(() {
-        _extensionPanels = panels;
-        _extensionPanelsLoaded = true;
-      });
-    }
+    if (request != _extensionPanelsRequest) return;
+    setState(() {
+      _extensionPanels = panels;
+      _extensionPanelsLoaded = true;
+    });
   }
 
   List<_SettingsPanelEntry> _buildPanelEntries(SettingsService settings, Translations t) {
@@ -571,7 +579,9 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
       content = const HelpPanel();
     default:
       final descriptor = panel.descriptor;
-      content = descriptor == null ? const SizedBox.shrink() : ExtensionSettingsPanel(services: services, descriptor: descriptor);
+      content = descriptor == null
+          ? const SizedBox.shrink()
+          : ExtensionSettingsPanel(key: ValueKey(descriptor['panelKey']), services: services, descriptor: descriptor);
   }
   // Observes only, and wraps the body once so BOTH returns below are covered.
   final body = Listener(onPointerDown: (_) => panels.used(_panelUseName(panel)), child: content);
@@ -858,6 +868,7 @@ const _openCategoryPrefsKey = 'settingsOpenCategory';
 
 class _SettingsPanelState extends State<_SettingsPanel> {
   List<Map<String, dynamic>>? _extensionPanels;
+  int _extensionPanelsRequest = 0;
   final _searchController = TextEditingController();
 
   String? _openCategory;
@@ -921,9 +932,9 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   }
 
   Future<void> _loadExtensionPanels() async {
-    await widget.services.extensions.start();
-    final panels = await widget.services.extensions.getSettingsPanels();
-    if (!mounted) return;
+    final request = ++_extensionPanelsRequest;
+    final panels = await widget.services.extensions.settledSettingsPanels();
+    if (!mounted || request != _extensionPanelsRequest) return;
     setState(() {
       _extensionPanels = panels;
       _refreshListKey();
@@ -1239,6 +1250,7 @@ class _CommonSettingsCategory extends StatelessWidget {
           if (panels != null)
             for (final descriptor in panels)
               ExtensionSettingsPanel(
+                key: ValueKey(descriptor['panelKey']),
                 services: services,
                 descriptor: descriptor,
                 embedded: true,

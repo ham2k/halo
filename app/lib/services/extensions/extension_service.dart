@@ -522,6 +522,11 @@ class ExtensionService
   @visibleForTesting
   set debugLastStartFailure(String? failure) => _lastStartFailure = failure;
 
+  /// Stands in for the host a real boot installs, so a test can hand a
+  /// replacement an old host of its own to tear down.
+  @visibleForTesting
+  set debugHost(ExtensionHost? host) => _host = host;
+
   /// Arms the crash backoff the way a boot failure or a dying runtime does,
   /// so a test can ask what a queued restart means for a live generation.
   @visibleForTesting
@@ -678,7 +683,6 @@ class ExtensionService
 
       final old = _host;
       _host = null;
-      _starting = null;
       // The new runtime may carry a different set of extensions (this is the
       // path an enable/disable toggle takes), so their advertised commands
       // have to be re-read rather than served from the old set's cache.
@@ -690,21 +694,40 @@ class ExtensionService
       // with — which, for the upgrade, means refusing an innocent extension
       // permanently.
       _lastStartFailure = null;
-      await old?.dispose();
-      // AFTER the dispose, not before: the old host is alive across that
-      // await, and a fetch finishing inside that window posts its progress
-      // through a host call that would land after the sweep, re-creating the
-      // orphan. What "returning" means is decided here, where the next
-      // generation's set is known.
-      clearGenerationStatus(
-        statusBar: statusBar,
-        dying: dying,
-        returning: {
-          for (final info in availableExtensions)
-            if (isExtensionActive(info)) info.key,
-        },
-      );
-      await start();
+      // A caller arriving while the old host is disposed waits for the boot
+      // that follows it. With no boot memoized, its [start] would begin the
+      // next runtime alongside the dying one, ahead of the sweep below.
+      final next = Completer<void>();
+      _starting = next.future;
+      try {
+        try {
+          await old?.dispose();
+        } catch (e, stack) {
+          // Reported, not thrown: the old runtime is gone either way, and a
+          // caller that just installed a bundle would read a thrown teardown
+          // as its install failing while the next runtime loads it.
+          ErrorReportingService.report(e, stack, context: 'extensions:dispose');
+        }
+        // AFTER the dispose, not before: the old host is alive across that
+        // await, and a fetch finishing inside that window posts its progress
+        // through a host call that would land after the sweep, re-creating the
+        // orphan. What "returning" means is decided here, where the next
+        // generation's set is known.
+        clearGenerationStatus(
+          statusBar: statusBar,
+          dying: dying,
+          returning: {
+            for (final info in availableExtensions)
+              if (isExtensionActive(info)) info.key,
+          },
+        );
+      } finally {
+        // Whatever happened above: every caller that arrived meanwhile is
+        // waiting on [next].
+        _starting = null;
+        next.complete(start());
+      }
+      await next.future;
       if (_host != null) {
         // The fresh runtime lost all seeded KV state (it's in-memory).
         final creds = _lastSyncCredentials;

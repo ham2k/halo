@@ -70,7 +70,7 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
   Future<void> _load() async {
     await widget.services.extensions.start();
     final files = await widget.services.dataFiles.listDataFiles();
-    final panels = await widget.services.extensions.getSettingsPanels();
+    final panels = await widget.services.extensions.settledSettingsPanels();
     if (mounted) {
       setState(() {
         _files = files;

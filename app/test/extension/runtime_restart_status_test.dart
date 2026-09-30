@@ -64,6 +64,22 @@ void main() {
     expect(extensions.lastStartFailureKey, isNull);
   });
 
+  test('a teardown that throws is reported, and the restart still sweeps and completes', () async {
+    // Thrown, it reaches whoever asked for the restart — an install that has
+    // just written its bundle reads it as the install failing while the next
+    // runtime loads that bundle. Skipped, the sweep leaves the dying
+    // generation's progress bar with nobody to finish it.
+    final (extensions, statusBar) = await serviceWithStatusBar();
+    extensions.debugHost = FakeExtensionHost()..onDispose = () async => throw StateError('teardown failed');
+    statusBar.setProgress(key: 'ham2k-pota:all-parks', text: 'Downloading parks');
+    final backend = FakeErrorReportingBackend();
+
+    await withErrorHooks(() => extensions.restartRuntime(), backend: backend);
+
+    expect(statusBar.itemForKey('ham2k-pota:all-parks'), isNull);
+    expect(backend.exceptions.map((e) => e.context), contains('extensions:dispose'));
+  });
+
   test('a restart takes the old generation\'s progress bar with it', () async {
     final (extensions, statusBar) = await serviceWithStatusBar();
     statusBar.setProgress(key: 'ham2k-pota:all-parks', text: 'Downloading parks');
