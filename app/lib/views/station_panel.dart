@@ -583,13 +583,13 @@ class StationPanel extends StatelessWidget {
                 // visibleWhen on a single-transport radio would depend on a
                 // `transport` value no field sets.
                 if (choosable) 'visibleWhen': {'field': 'transport', 'equals': candidate.transportKey},
-                if (element['advanced'] == true) 'disclosure': _advancedDisclosureKey,
               },
       ];
       // A pairing's troubleshooting notes (every note is collapsible
       // markdown, a registry test holds that): read only when something is
       // wrong, so they close the form rather than sit between the fields.
       bool isNote(Map<String, dynamic> element) => element['type'] == 'markdown' && element['collapsible'] == true;
+      bool isAdvanced(Map<String, dynamic> element) => element['advanced'] == true && !isNote(element);
       return [
         {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
         if (choosable)
@@ -602,13 +602,12 @@ class StationPanel extends StatelessWidget {
               for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
             ],
           },
-        ...connection.where((element) => element['disclosure'] == null && !isNote(element)),
+        ...connection.where((element) => !isAdvanced(element) && !isNote(element)),
         // Everything most operators never touch — the serial lines, the
         // poll and meter cadences — folded away after what they do, closed
         // until asked for. FormRenderer hides the fold whenever the chosen
         // pairing has nothing in it.
-        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings},
-        ...connection.where((element) => element['disclosure'] != null),
+        {'type': 'disclosure', 'key': _advancedDisclosureKey, 'title': st.advancedSettings, 'elements': connection.where(isAdvanced).toList()},
         // Which of the operator's own enabled bands (Preferences → Bands)
         // this antenna covers. Lives here rather than in AntennaDriver's
         // own configElements(): a driver is pure data with no settings
@@ -1135,55 +1134,57 @@ class StationPanel extends StatelessWidget {
                   SectionHeader(
                     section.title,
                     // By category: the title's count changes under the operator.
-                    leading: StationSectionChevron(expanded: expanded.contains(section.category)),
+                    expanded: expanded.contains(section.category),
                     onTap: () => toggle(section.category),
                   ),
-                  if (expanded.contains(section.category)) ...[
-                    for (final node in section.nodes)
-                      if (section.category == kCategoryTransceiver && _cat.typeFor(node) != null)
-                        TransceiverRow(
-                          name: _displayName(node),
-                          channel: _cat.typeFor(node)?.describeChannel(node.config),
-                          connection: connectionTextFor(context, _cat.typeFor(node), node.config),
-                          transportType: _cat.typeFor(node),
-                          selected: _cat.isRadio1(node.uuid),
-                          onSelect: () => unawaited(_onMainVfoPicked(node.uuid)),
-                          onEdit: () => _editEquipment(context, node),
-                        )
-                      else
-                        EquipmentTile(
-                          node: node,
-                          type: _cat.typeFor(node),
-                          state: _cat.stateFor(node.uuid),
-                          developerMode: services.settings.developerMode,
-                          displayName: _displayName(node),
-                          isMainVfo: _cat.isRadio1(node.uuid),
-                          onEdit: () => _editEquipment(context, node),
-                          onRemoveUnknown: () => _removeEquipment(context, node),
-                          onConnect: () => _cat.connect(node.uuid),
-                          onDisconnect: () => _cat.disconnect(node.uuid),
-                        ),
-                    // A peer's radio is picked from the same list as this
-                    // device's own: it drives the same one `vfoA`, so a second
-                    // control for it would offer two answers to one question.
-                    if (section.category == kCategoryTransceiver) ...[
-                      for (final peer in peerRadios)
-                        TransceiverRow(
-                          name: peer.radio.name,
-                          connection: st.peerRadioOnDevice(device: peer.deviceName),
-                          connectionIcon: MdiIcons.lan,
-                          selected: selection?.matches(peer.deviceId, peer.radio.id) ?? false,
-                          onSelect: () => unawaited(_onMainVfoPicked(_peerValue(_selectionFor(peer)))),
-                          onEdit: () => showPeerRadioElsewhere(context, radio: peer.radio.name, device: peer.deviceName),
-                        ),
-                      ?absentPeerRow,
-                    ],
+                  for (final node in section.nodes)
+                    if (section.category == kCategoryTransceiver && _cat.typeFor(node) != null)
+                      TransceiverRow(
+                        name: _displayName(node),
+                        channel: _cat.typeFor(node)?.describeChannel(node.config),
+                        connection: connectionTextFor(context, _cat.typeFor(node), node.config),
+                        transportType: _cat.typeFor(node),
+                        selected: _cat.isRadio1(node.uuid),
+                        onSelect: () => unawaited(_onMainVfoPicked(node.uuid)),
+                        onEdit: () => _editEquipment(context, node),
+                      )
+                    else
+                      EquipmentTile(
+                        node: node,
+                        type: _cat.typeFor(node),
+                        state: _cat.stateFor(node.uuid),
+                        developerMode: services.settings.developerMode,
+                        displayName: _displayName(node),
+                        isMainVfo: _cat.isRadio1(node.uuid),
+                        onEdit: () => _editEquipment(context, node),
+                        onRemoveUnknown: () => _removeEquipment(context, node),
+                        onConnect: () => _cat.connect(node.uuid),
+                        onDisconnect: () => _cat.disconnect(node.uuid),
+                      ),
+                  // A peer's radio is picked from the same list as this
+                  // device's own: it drives the same one `vfoA`, so a second
+                  // control for it would offer two answers to one question.
+                  if (section.category == kCategoryTransceiver) ...[
+                    for (final peer in peerRadios)
+                      TransceiverRow(
+                        name: peer.radio.name,
+                        connection: st.peerRadioOnDevice(device: peer.deviceName),
+                        connectionIcon: MdiIcons.lan,
+                        selected: selection?.matches(peer.deviceId, peer.radio.id) ?? false,
+                        onSelect: () => unawaited(_onMainVfoPicked(_peerValue(_selectionFor(peer)))),
+                        onEdit: () => showPeerRadioElsewhere(context, radio: peer.radio.name, device: peer.deviceName),
+                      ),
+                    ?absentPeerRow,
                   ],
                 ],
               ],
               if (compact) _powerField(context, inset: rowInset),
               if (!compact) ...[
-                const SizedBox(height: Space.xl * 2),
+                // Its own sliver, not a row: as a row it would belong to the
+                // last inventory section above and fold away with it.
+                const SectionedSlivers(
+                  slivers: [SliverToBoxAdapter(child: SizedBox(height: Space.xl * 2))],
+                ),
                 // The CAT Control preferences, the same rows Application
                 // Preferences shows, less its link back to this panel.
                 CategoryBand(st.catControlPreferences),

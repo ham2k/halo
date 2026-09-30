@@ -570,7 +570,8 @@ void main() {
       );
 
       expect(find.text('How to build your own'), findsOneWidget);
-      expect(find.byType(MarkdownBody), findsNothing, reason: 'the help text is collapsed by default');
+      // Mounted while shut, so only what can be reached counts as shown.
+      expect(find.byType(MarkdownBody).hitTestable(), findsNothing, reason: 'the help text is collapsed by default');
     });
 
     testWidgets('tapping the header expands it to reveal the text', (tester) async {
@@ -591,9 +592,9 @@ void main() {
 
     testWidgets('leads with one caret, right when shut and down when open', (tester) async {
       // The signs are the trap: `chevronDown` rests pointing DOWN, so shut is
-      // a NEGATIVE quarter turn. A trailing caret, a second (framework) caret,
-      // or up/down glyphs all read as a different control from the app's
-      // accordions.
+      // a NEGATIVE quarter turn. A trailing caret, a second caret, or up/down
+      // glyphs all read as a different control from the app's other folding
+      // sections.
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -604,7 +605,6 @@ void main() {
 
       final caret = find.byType(AnimatedRotation);
       expect(caret, findsOneWidget);
-      expect(find.byIcon(Icons.expand_more), findsNothing, reason: "ExpansionTile's own caret stays suppressed");
       expect(tester.getCenter(caret).dx, lessThan(tester.getTopLeft(find.text('How to build your own')).dx));
       expect(tester.widget<AnimatedRotation>(caret).turns, -0.25);
 
@@ -631,7 +631,7 @@ void main() {
         ),
       );
 
-      expect(find.byType(ExpansionTile), findsNothing);
+      expect(find.byType(CollapsibleSection), findsNothing);
       expect(find.byType(MarkdownBody), findsOneWidget);
       expect(find.text('Always visible'), findsOneWidget);
     });
@@ -3041,14 +3041,19 @@ void main() {
           ],
         },
         {'type': 'field', 'fieldType': 'text', 'key': 'port', 'label': 'Port'},
-        {'type': 'disclosure', 'key': 'advanced', 'title': 'Advanced Settings'},
         {
-          'type': 'field',
-          'fieldType': 'text',
-          'key': 'poll',
-          'label': 'Poll',
-          'disclosure': 'advanced',
-          'visibleWhen': {'field': 'link', 'equals': 'serial'},
+          'type': 'disclosure',
+          'key': 'advanced',
+          'title': 'Advanced Settings',
+          'elements': [
+            {
+              'type': 'field',
+              'fieldType': 'text',
+              'key': 'poll',
+              'label': 'Poll',
+              'visibleWhen': {'field': 'link', 'equals': 'serial'},
+            },
+          ],
         },
       ],
     };
@@ -3082,17 +3087,39 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pumpAndSettle();
 
+      // A shut fold keeps its members mounted, so "not shown" means nothing
+      // there can be reached — the finder a plain findsNothing would pass
+      // against an empty tree and fail against a mounted one.
       expect(find.text('Advanced Settings'), findsOneWidget);
-      expect(find.text('Poll'), findsNothing, reason: 'closed until the operator asks');
-      expect(find.text('Port'), findsOneWidget, reason: 'a field outside the fold is unaffected');
+      expect(find.widgetWithText(TextField, 'Poll').hitTestable(), findsNothing, reason: 'closed until the operator asks');
+      expect(find.widgetWithText(TextField, 'Port').hitTestable(), findsOneWidget, reason: 'a field outside the fold is unaffected');
 
       await tester.tap(find.text('Advanced Settings'));
       await tester.pumpAndSettle();
-      expect(find.text('Poll'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Poll').hitTestable(), findsOneWidget);
 
       await tester.tap(find.text('Advanced Settings'));
       await tester.pumpAndSettle();
-      expect(find.text('Poll'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Poll').hitTestable(), findsNothing);
+    });
+
+    testWidgets('Tab never lands in a shut fold', (tester) async {
+      // The members stay mounted while shut, so their fields still own focus
+      // nodes: without the body's focus exclusion, Tab from the last visible
+      // field walks into a box nobody can see and the keystrokes go there.
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      FocusNode? nodeOf(String label) =>
+          tester.widget<EditableText>(find.descendant(of: find.widgetWithText(TextField, label), matching: find.byType(EditableText))).focusNode;
+      final poll = nodeOf('Poll');
+      await tester.tap(find.widgetWithText(TextField, 'Port'));
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+        await tester.pump();
+        expect(poll!.hasFocus, isFalse, reason: 'Tab $i reached the shut fold');
+      }
     });
 
     testWidgets('leads with a caret, right when shut and down when open', (tester) async {
@@ -3135,29 +3162,6 @@ void main() {
       expect(submitted!['poll'], '3000');
     });
 
-    testWidgets('a member of a fold that does not exist is shown, not lost', (tester) async {
-      // With no fold to open it would be hidden for good — and an error on
-      // it would block Save with nothing on screen.
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FormRenderer(
-              formDefinition: const {
-                'elements': [
-                  {'type': 'field', 'fieldType': 'text', 'key': 'orphan', 'label': 'Orphan', 'disclosure': 'nowhere'},
-                ],
-              },
-              initialState: const {},
-              onSubmit: (_) {},
-              onCancel: () {},
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('Orphan'), findsOneWidget);
-    });
-
     testWidgets('an error inside a closed fold opens it', (tester) async {
       // Otherwise Save refuses with nothing on screen saying why.
       await tester.pumpWidget(host(validator: (key, value, values) async => key == 'poll' ? 'Too fast' : null));
@@ -3165,8 +3169,13 @@ void main() {
 
       await save(tester);
       expect(submitted, isNull);
-      expect(find.text('Poll'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Poll').hitTestable(), findsOneWidget);
       expect(find.text('Too fast'), findsOneWidget);
+      // Focus is what scrolls the field into view in a long pane. The field
+      // is mounted, and excluded from focus, until the fold rebuilds — so a
+      // request made in the same frame as the opening is dropped.
+      final poll = tester.widget<EditableText>(find.descendant(of: find.widgetWithText(TextField, 'Poll'), matching: find.byType(EditableText)));
+      expect(poll.focusNode.hasFocus, isTrue, reason: 'Save lands on the field it refused');
     });
   });
 

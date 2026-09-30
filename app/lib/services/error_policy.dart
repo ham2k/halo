@@ -618,7 +618,7 @@ class ErrorPolicy {
   /// switching accessibility on themselves, in a build where the assert is
   /// compiled out.
   ///
-  /// Reproduced by the pinned `AccordionHeader`s of the Settings pane, which
+  /// Reproduced by the pinned `CollapsibleBand`s of the Settings pane, which
   /// enter the tree as siblings of the scroll group; upstream, it is the
   /// family of flutter/flutter#170753.
   static bool _isWebSemanticsNodeMapInconsistent(Object error, FlutterErrorDetails? details) =>

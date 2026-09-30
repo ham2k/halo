@@ -7,6 +7,7 @@ export 'src/activity_controls.dart';
 export 'src/call_info_summary.dart';
 export 'src/category_band.dart';
 export 'src/chrome_edge.dart';
+export 'src/collapsible_section.dart';
 export 'src/collapsing_sliver.dart';
 export 'src/covered_route_hold.dart';
 export 'src/density.dart';

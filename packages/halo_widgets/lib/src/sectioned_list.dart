@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 
 import 'category_band.dart';
+import 'collapsing_sliver.dart';
 import 'section_header.dart';
 
 /// A settings-shaped list whose [SectionHeader] bands PIN: each band holds
@@ -72,7 +73,8 @@ List<Widget> sectionSlivers(BuildContext context, List<Widget> children) {
   void flush() {
     if (band == null && rows.isEmpty) return;
     final list = SliverList(delegate: SliverChildListDelegate(rows));
-    emit(band == null ? list : SliverMainAxisGroup(slivers: [band!.asPinnedSliver(context), list]));
+    final body = band?.expanded == null ? list : CollapsingSliver(expanded: band!.expanded!, child: list);
+    emit(band == null ? list : SliverMainAxisGroup(slivers: [band!.asPinnedSliver(context), body]));
     rows = [];
     band = null;
   }

@@ -21,7 +21,6 @@ import 'header_profile_label.dart';
 import 'help_panel.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
-import 'accordion_section.dart' show accordionCurve, accordionDuration;
 import 'extensions_panel.dart';
 import 'peers_panel.dart';
 import 'station_panel.dart';
@@ -1005,7 +1004,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     // A frame past the opening animation, not with it: the pane can only
     // scroll as far as the content it has, and the room this needs is
     // precisely what that animation is still making.
-    Future.delayed(accordionDuration + const Duration(milliseconds: 16), () {
+    Future.delayed(collapseDuration + const Duration(milliseconds: 16), () {
       if (!mounted || !_scroll.hasClients) return;
       // The category's own sliver, brought to the pane's leading edge —
       // measured now rather than at the tap, since the category that closed
@@ -1014,7 +1013,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
       // Its own mounted-ness, not this panel's: a category can go while the
       // animation runs (the search empties it, an extension unloads).
       if (band == null || !band.mounted) return;
-      Scrollable.ensureVisible(band, alignment: 0, duration: accordionDuration, curve: accordionCurve);
+      Scrollable.ensureVisible(band, alignment: 0, duration: collapseDuration, curve: collapseCurve);
     });
   }
 

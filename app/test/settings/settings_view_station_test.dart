@@ -16,7 +16,6 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/views/accordion_section.dart';
 import 'package:ham2k_logger/views/add_equipment_dialog.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
@@ -198,6 +197,32 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('a shut inventory section keeps the break before CAT Control Preferences', (tester) async {
+    // In a sectioned list every row after a band belongs to that band's
+    // section, and a folding section folds all of them — so a spacer written
+    // as a plain row after the inventory closes up whenever the last section
+    // is shut, which is how every section starts.
+    await pumpSettings(
+      tester,
+      equipment: {
+        'version': 1,
+        'radio1': 'radio-1',
+        'nodes': {
+          'radio-1': {
+            'typeKey': 'flexradio-tcp',
+            'name': 'Left Radio',
+            'config': {'host': 'flex.local', 'port': 4992},
+          },
+        },
+      },
+    );
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+
+    final gap = tester.getTopLeft(find.text(t.settings.station.catControlPreferences)).dy - tester.getBottomLeft(find.text('1 transceiver')).dy;
+    expect(gap, greaterThanOrEqualTo(Space.xl * 2));
+  });
+
   testWidgets('the panel is categories over sections, and both pin', (tester) async {
     // Two heading levels, and the difference between them is what says which
     // is which: a category runs edge to edge on its band, a section is
@@ -375,8 +400,8 @@ void main() {
     await pumpSettings(tester);
     await openAddDialog(tester);
 
-    final detected = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)));
-    final elecraft = tester.getRect(find.ancestor(of: find.text('Elecraft'), matching: find.byType(AccordionHeader)));
+    final detected = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(CollapsibleBand)));
+    final elecraft = tester.getRect(find.ancestor(of: find.text('Elecraft'), matching: find.byType(CollapsibleBand)));
     expect(detected.top, lessThan(elecraft.top), reason: 'first in the list');
 
     // The spinner is a ROW, not something in the header: discovery never ends
@@ -391,7 +416,7 @@ void main() {
       reason: 'it rides a row of the list',
     );
     expect(
-      find.descendant(of: find.byType(AccordionHeader), matching: spinner),
+      find.descendant(of: find.byType(CollapsibleBand), matching: spinner),
       findsNothing,
       reason: 'and not the shelf heading',
     );
@@ -436,14 +461,14 @@ void main() {
     await pumpSettings(tester, viewSize: const Size(1000, 620));
     await openAddDialog(tester);
 
-    final before = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)));
+    final before = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(CollapsibleBand)));
     // Icom is far enough down that pinning it to the top would scroll the
     // first shelf clean off, and near enough that it is already visible — so
     // the right answer is to move nothing at all.
     await openBrand(tester, 'Icom');
 
     expect(find.text('Detected Equipment'), findsOneWidget, reason: 'it does not go anywhere');
-    final after = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)));
+    final after = tester.getRect(find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(CollapsibleBand)));
     expect(after.top, closeTo(before.top, 1), reason: 'and it does not move');
     expect(find.text('Icom IC-705'), findsOneWidget, reason: 'while the opened shelf is on screen');
   });
@@ -581,7 +606,7 @@ void main() {
     // wherever it lands — which for a shelf this far down is above the
     // viewport with its rows off it. The BAND, not its text: the title sits
     // inset inside the header, so a text-based measure is off by that padding.
-    final header = tester.getRect(find.ancestor(of: find.text('Other Brands'), matching: find.byType(AccordionHeader)));
+    final header = tester.getRect(find.ancestor(of: find.text('Other Brands'), matching: find.byType(CollapsibleBand)));
     final viewport = tester.getRect(find.byType(CustomScrollView).last);
     expect(header.top, greaterThanOrEqualTo(viewport.top - 1), reason: 'not clipped off the top');
     expect(header.top, lessThan(viewport.top + header.height), reason: 'at the top, not merely somewhere');

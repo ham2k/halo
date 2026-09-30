@@ -39,7 +39,6 @@ import '../../services/settings_service.dart';
 import 'activities_catalog_tier.dart';
 import 'activities_enable_tier.dart';
 import 'operation_location_screen.dart';
-import '../accordion_section.dart';
 import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -151,7 +150,7 @@ const _resultsMinPeekHeight = _twoLineRowHeight * _peekRows;
 const _currentActivitiesMapMaxHeight = _twoLineRowHeight * 2.5;
 
 /// The accordion header's own height: an IconButton (48, Material's minimum
-/// tap target) inside [AccordionSection]'s `Space.sm` vertical padding.
+/// tap target) inside [CollapsibleSection]'s `Space.sm` vertical padding.
 /// Deliberately a fixed allowance rather than a measurement — it is only
 /// ever subtracted, so erring high costs the peek a few pixels and erring
 /// low would eat the results area it is there to protect.
@@ -2684,7 +2683,7 @@ class OperationSheetState extends State<OperationSheet> {
                         },
                       ),
                     ),
-                    AccordionSection(
+                    CollapsibleSection.band(
                       title: Padding(
                         padding: const EdgeInsets.only(right: Space.xl),
                         child: Text(

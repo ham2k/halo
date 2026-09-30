@@ -6,6 +6,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 
+import 'collapsible_section.dart';
+
 /// `AnimatedCrossFade` for a SLIVER: opens and shuts a whole sliver subtree,
 /// wiping it in and out from the top and fading it as it goes.
 ///
@@ -35,13 +37,7 @@ class CollapsingSliver extends StatefulWidget {
   final Duration duration;
   final Curve curve;
 
-  const CollapsingSliver({
-    super.key,
-    required this.expanded,
-    required this.child,
-    this.duration = const Duration(milliseconds: 200),
-    this.curve = Curves.easeInOut,
-  });
+  const CollapsingSliver({super.key, required this.expanded, required this.child, this.duration = collapseDuration, this.curve = collapseCurve});
 
   @override
   State<CollapsingSliver> createState() => _CollapsingSliverState();
@@ -85,9 +81,13 @@ class _CollapsingSliverState extends State<CollapsingSliver> with SingleTickerPr
     child: widget.child,
     builder: (context, child) => _CollapsedSliver(
       factor: _factor,
-      // Semantics go with the paint: a shut category is not a place the
-      // screen reader (or the Tab order) should land.
-      child: SliverOpacity(opacity: _factor, sliver: child!),
+      // Semantics go with the paint, and focus with the state: a shut
+      // section is not a place the screen reader or the Tab order should
+      // land.
+      child: ExcludeFocus(
+        excluding: !widget.expanded,
+        child: SliverOpacity(opacity: _factor, sliver: child!),
+      ),
     ),
   );
 }

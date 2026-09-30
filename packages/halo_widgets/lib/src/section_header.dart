@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'disclosure_chevron.dart';
 import 'sectioned_list.dart';
 import 'spacing.dart';
 import 'theme.dart';
@@ -47,15 +48,20 @@ class SectionHeader extends StatelessWidget {
   /// toolbar.
   final Widget? trailing;
 
-  /// Before the title, inside the same inset — a disclosure chevron, for a
-  /// section that folds. Unlike a category band's chevron it never hangs in
-  /// the margin: a section sits inside a category, and its heading keeps the
-  /// rows' measure.
+  /// Before the title, inside the same inset. Unlike a category band's
+  /// chevron it never hangs in the margin: a section sits inside a category,
+  /// and its heading keeps the rows' measure.
   final Widget? leading;
 
   /// Makes the whole heading a control — for a section that folds, so the
   /// title opens it as well as the chevron beside it.
   final VoidCallback? onTap;
+
+  /// Non-null for a section that FOLDS: the heading leads with a
+  /// [DisclosureChevron] (unless [leading] says otherwise), and a
+  /// [SectionedListView] folds the rows after it with the section while it
+  /// is false. Toggled through [onTap].
+  final bool? expanded;
 
   /// A ground for the band, painted EDGE TO EDGE — past the inset the title
   /// and rule sit within.
@@ -67,7 +73,7 @@ class SectionHeader extends StatelessWidget {
   /// its own.
   final Color? background;
 
-  const SectionHeader(this.title, {super.key, this.subtitle, this.color, this.trailing, this.leading, this.onTap, this.background});
+  const SectionHeader(this.title, {super.key, this.subtitle, this.color, this.trailing, this.leading, this.onTap, this.expanded, this.background});
 
   /// The band title's face, public so a hand-built HEADING that cannot be a
   /// [SectionHeader] — one carrying its own controls and geometry — still
@@ -153,6 +159,14 @@ class SectionHeader extends StatelessWidget {
       'or come from a widget that returns SectionedSlivers.',
     );
     final padding = _padding(context);
+    final leading =
+        this.leading ??
+        (expanded == null
+            ? null
+            : DisclosureChevron(
+                expanded: expanded!,
+                color: titleStyle(context, color: color).color,
+              ));
     // The inset is spent OUTSIDE the ruled box, not inside it: the rule
     // measures the content it heads, the same width as the rows under it,
     // rather than running out to the pane's edges the way a filled band (the
@@ -175,7 +189,7 @@ class SectionHeader extends StatelessWidget {
             else
               Row(
                 children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: Space.sm)],
+                  if (leading != null) ...[leading, const SizedBox(width: Space.sm)],
                   // Expanded, not Flexible: the control belongs on the band's
                   // trailing edge, and a Flexible title shrink-wraps and drags
                   // it back against the last word. Expanded also gives the

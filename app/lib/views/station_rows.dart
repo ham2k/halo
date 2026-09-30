@@ -44,29 +44,6 @@ class _StationExpansionScopeState extends State<StationExpansionScope> {
   Widget build(BuildContext context) => widget.builder(context, _expanded, _toggle);
 }
 
-/// A folding section's chevron: right when shut, down when open — the
-/// disclosure triangle the category accordions draw. One glyph
-/// rotated rather than two swapped, so the turn is continuous. The heading
-/// it sits in is the control ([SectionHeader.onTap]); this only shows which
-/// way it is.
-class StationSectionChevron extends StatelessWidget {
-  final bool expanded;
-
-  const StationSectionChevron({super.key, required this.expanded});
-
-  @override
-  Widget build(BuildContext context) => AnimatedRotation(
-    // A quarter turn ANTI-clockwise from down is right.
-    turns: expanded ? 0 : -0.25,
-    duration: const Duration(milliseconds: 200),
-    child: Icon(
-      MdiIcons.chevronDown,
-      color: SectionHeader.titleStyle(context).color,
-      semanticLabel: expanded ? context.t.common.collapse : context.t.common.expand,
-    ),
-  );
-}
-
 /// The rig driving the main VFO. Two lines: its name against whether it is
 /// connected, then what it is doing against where it is.
 class CurrentTransceiverTile extends StatelessWidget {

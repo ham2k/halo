@@ -11,7 +11,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'category_band.dart';
-import 'disclosure_chevron.dart';
+import 'collapsible_section.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'list_contents_key.dart';
@@ -286,10 +286,13 @@ class FormRendererState extends State<FormRenderer> {
   /// than trying to talk it out of what it already decided.
   int _actionGeneration = 0;
 
-  List<Map<String, dynamic>> get _elements => (widget.formDefinition['elements'] as List? ?? const [])
-      .cast<Map<String, dynamic>>()
-      .where((el) => el['devMode'] != true || widget.developerMode)
-      .toList();
+  List<Map<String, dynamic>> get _elements => _shown(widget.formDefinition['elements']);
+
+  List<Map<String, dynamic>> _shown(Object? elements) =>
+      (elements as List? ?? const []).cast<Map<String, dynamic>>().where((el) => el['devMode'] != true || widget.developerMode).toList();
+
+  /// A `type: 'disclosure'` element's own members — the fold owns them.
+  List<Map<String, dynamic>> _members(Map<String, dynamic> disclosure) => _shown(disclosure['elements']);
 
   /// The orange "dev mode" accent for an element flagged `devMode: true` —
   /// null once [_elements] has already excluded it, so no builder needs its
@@ -303,7 +306,12 @@ class FormRendererState extends State<FormRenderer> {
   /// flush-left look those callers already size their own container for.
   EdgeInsetsGeometry get _rowContentPadding => ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
 
-  List<Map<String, dynamic>> get _fields => _elements.where((el) => el['type'] == 'field').toList();
+  /// Every field, a fold's members included: a field inside a closed fold
+  /// is registered, validated and submitted like any other.
+  List<Map<String, dynamic>> get _fields => [
+    for (final el in _elements)
+      if (el['type'] == 'disclosure') ..._members(el).where((member) => member['type'] == 'field') else if (el['type'] == 'field') el,
+  ];
 
   /// [_elements] minus any whose `visibleWhen` predicate doesn't currently
   /// hold (docs/design/contests.md §5.4.1) — IARU HF's setup shows one of three
@@ -326,27 +334,13 @@ class FormRendererState extends State<FormRenderer> {
   ///
   /// Reads [_values], so any field's `setState` re-evaluates visibility.
   ///
-  /// A `disclosure: <key>` element folds under the `type: 'disclosure'`
-  /// element of that key: hidden while it is closed, and hidden by the same
-  /// rules as any other element while it is open. The disclosure itself
-  /// shows only while at least one of its members' `visibleWhen` holds — a
-  /// fold with nothing in it would open onto nothing. A member naming a key
-  /// no disclosure element has is not folded at all: with no fold to open,
-  /// it would otherwise be hidden for good, errors and all.
-  List<Map<String, dynamic>> get _visibleElements {
-    final elements = _elements;
-    final folds = {
-      for (final el in elements)
-        if (el['type'] == 'disclosure') el['key'],
-    };
-    return [
-      for (final el in elements)
-        if (el['type'] == 'disclosure'
-            ? _visibleWhenHolds(el) && elements.any((member) => member['disclosure'] == el['key'] && _visibleWhenHolds(member))
-            : _visibleWhenHolds(el) && (!folds.contains(el['disclosure']) || _openDisclosures.contains(el['disclosure'])))
-          el,
-    ];
-  }
+  /// A `type: 'disclosure'` element shows only while at least one of its
+  /// members' `visibleWhen` holds — a fold with nothing in it would open onto
+  /// nothing. Its members are filtered by the same rules when it renders.
+  List<Map<String, dynamic>> get _visibleElements => [
+    for (final el in _elements)
+      if (_visibleWhenHolds(el) && (el['type'] != 'disclosure' || _members(el).any(_visibleWhenHolds))) el,
+  ];
 
   /// Whether [el]'s `visibleWhen` holds. `equals` may be a single value or a
   /// list meaning "any of". Naming a field that doesn't exist reads as null and
@@ -384,8 +378,13 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
-  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) =>
-      (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>().where((el) => el['type'] == 'field').toList();
+  static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => [
+    for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
+      if (el['type'] == 'disclosure')
+        ...(el['elements'] as List? ?? const []).cast<Map<String, dynamic>>().where((member) => member['type'] == 'field')
+      else if (el['type'] == 'field')
+        el,
+  ];
 
   /// A field's `value` here is the source of truth — set by whatever last
   /// called [FormRenderer] with a new [formDefinition] (e.g. a settings
@@ -694,16 +693,26 @@ class FormRendererState extends State<FormRenderer> {
 
           // An error inside a closed disclosure would block the save with
           // nothing on screen saying why.
-          for (final field in _fields) {
-            final disclosure = field['disclosure'];
-            if (disclosure is String && errors.containsKey(field['key'])) _openDisclosures.add(disclosure);
+          var opened = false;
+          for (final el in _elements) {
+            if (el['type'] == 'disclosure' && _members(el).any((member) => errors.containsKey(member['key']))) {
+              opened = _openDisclosures.add(el['key'] as String) || opened;
+            }
           }
 
           // Scroll first error into view
           for (final field in _fields) {
             final key = field['key'] as String;
             if (errors.containsKey(key)) {
-              _focusNodes[key]?.requestFocus();
+              final node = _focusNodes[key];
+              // A fold opened in this same setState still holds its fields out
+              // of the focus order until it rebuilds, and a request made
+              // before then is dropped, not deferred.
+              if (opened) {
+                WidgetsBinding.instance.addPostFrameCallback((_) => node?.requestFocus());
+              } else {
+                node?.requestFocus();
+              }
               break;
             }
           }
@@ -925,17 +934,12 @@ class FormRendererState extends State<FormRenderer> {
     // keeps the bare sheet it always used, with only the fallback added.
     final styleSheet = withEmojiFallback(devModeColor == null ? MarkdownStyleSheet.fromTheme(theme) : MarkdownStyleSheet(p: TextStyle(color: devModeColor)));
     if (el['collapsible'] == true) {
-      return Theme(
-        data: theme.copyWith(dividerColor: Colors.transparent),
-        child: _CollapsibleMarkdown(
-          title: Text(
-            el['title'] as String? ?? '',
-            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: MarkdownBody(data: text, styleSheet: styleSheet),
-          ),
+      return _CollapsibleMarkdown(
+        title: el['title'] as String? ?? '',
+        color: devModeColor,
+        child: Padding(
+          padding: _rowContentPadding,
+          child: MarkdownBody(data: text, styleSheet: styleSheet),
         ),
       );
     }
@@ -945,21 +949,24 @@ class FormRendererState extends State<FormRenderer> {
     );
   }
 
-  /// The row that opens and closes the elements declaring `disclosure: <its
-  /// key>` — styled as a collapsible markdown section's title, which is the
-  /// other thing in a form that folds.
+  /// A fold over its own `elements` — the same row-style section a
+  /// collapsible markdown note is, holding the visible members as rows.
   Widget _buildDisclosure(Map<String, dynamic> el, ThemeData theme) {
     final key = el['key'] as String;
     final open = _openDisclosures.contains(key);
-    return ListTile(
+    return CollapsibleSection.row(
       key: ValueKey('disclosure:$key'),
-      contentPadding: _rowContentPadding,
-      leading: DisclosureChevron(expanded: open),
-      title: Text(
-        el['title'] as String? ?? '',
-        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: _devModeColor(el)),
+      title: el['title'] as String? ?? '',
+      color: _devModeColor(el),
+      expanded: open,
+      onToggle: () => setState(() => open ? _openDisclosures.remove(key) : _openDisclosures.add(key)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: Space.xl),
+          ..._elementRows(theme, _members(el).where(_visibleWhenHolds).toList()),
+        ],
       ),
-      onTap: () => setState(() => open ? _openDisclosures.remove(key) : _openDisclosures.add(key)),
     );
   }
 
@@ -2486,15 +2493,15 @@ class FormRendererState extends State<FormRenderer> {
   }
 }
 
-/// A collapsible markdown section: an [ExpansionTile] led by
-/// [DisclosureChevron]. A widget of its own because the chevron has to
-/// follow the tile's open/closed state — ExpansionTile animates only its
-/// default icon, never a custom one.
+/// A collapsible markdown section — a row-style [CollapsibleSection] holding
+/// its own open state, which a markdown element has no key to keep in the
+/// form's.
 class _CollapsibleMarkdown extends StatefulWidget {
-  final Widget title;
+  final String title;
+  final Color? color;
   final Widget child;
 
-  const _CollapsibleMarkdown({required this.title, required this.child});
+  const _CollapsibleMarkdown({required this.title, required this.color, required this.child});
 
   @override
   State<_CollapsibleMarkdown> createState() => _CollapsibleMarkdownState();
@@ -2504,18 +2511,13 @@ class _CollapsibleMarkdownState extends State<_CollapsibleMarkdown> {
   bool _expanded = false;
 
   @override
-  Widget build(BuildContext context) {
-    final padding = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
-    return ExpansionTile(
-      tilePadding: padding,
-      childrenPadding: padding,
-      leading: DisclosureChevron(expanded: _expanded),
-      showTrailingIcon: false,
-      onExpansionChanged: (open) => setState(() => _expanded = open),
-      title: widget.title,
-      children: [widget.child],
-    );
-  }
+  Widget build(BuildContext context) => CollapsibleSection.row(
+    title: widget.title,
+    color: widget.color,
+    expanded: _expanded,
+    onToggle: () => setState(() => _expanded = !_expanded),
+    child: Align(alignment: Alignment.centerLeft, child: widget.child),
+  );
 }
 
 /// The body of a `select` icon-row field's picker dialog: the options, and a

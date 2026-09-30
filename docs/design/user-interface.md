@@ -407,10 +407,10 @@ would surface as a missing-glyph box.
   Back/Close/Drawer buttons app-wide; `DropdownMenu` and
   `DropdownButtonFormField` take the shared `dropdownTrailingIcon`/
   `dropdownSelectedTrailingIcon` consts from theme.dart at each site;
-  `SegmentedButton` sets `showSelectedIcon: false`; `ExpansionTile` takes a
-  `DisclosureChevron` as `leading:` and `showTrailingIcon: false` (see
-  `_CollapsibleMarkdown`). Adopting a new
-  Material widget with a built-in glyph means extending this list.
+  `SegmentedButton` sets `showSelectedIcon: false`. `ExpansionTile` is not
+  used at all — a fold is a `CollapsibleSection` (§ Folding sections).
+  Adopting a new Material widget with a built-in glyph means extending this
+  list.
 
 All of this is enforced by `packages/halo_build_tools/test/icon_names_test.dart`,
 which validates every extension icon name against the vendored glyphmaps and
@@ -877,6 +877,40 @@ and these rules are what keep it one:
   opens every category that still matches (Common Preferences excepted — its
   rows are copies of the ones below, and it would answer every query twice),
   and clearing the query returns to the one remembered category.
+
+### Folding sections
+
+Every section that opens and shuts is the same component —
+`CollapsibleSection` (halo_widgets `collapsible_section.dart`) — so a fold
+behaves one way wherever the operator meets it:
+
+- **One caret**, `DisclosureChevron`, on the header's LEFT: pointing right
+  when shut and down when open, the disclosure triangle a file tree draws.
+  One glyph turned, never two swapped, so the operator sees the section
+  open. Its colour is the header title's.
+- **One clock**: `collapseDuration` (200 ms) on `collapseCurve` (ease-in-out)
+  for the caret's turn and the body's fold alike, so they finish together
+  and no two folds in the app run at different speeds. A host that waits for
+  a fold to finish (scrolling an opened category into view) waits on the same
+  constant.
+- **The header says what the section IS**, and that is the only thing that
+  differs between them:
+  - a CATEGORY folds on the filled band — `CollapsibleSection.band`, or
+    `SliverCollapsibleSection` where it pins (Settings categories, Add
+    Equipment's brand shelves, Activities' All Options, the template
+    editor's docs);
+  - a SECTION inside one folds on the unfilled heading — a `SectionHeader`
+    given `expanded` and `onTap` inside a `SectionedListView`, which folds the
+    rows after it up to the next band (the Station panel's inventory);
+  - a fold INSIDE a form is a bold row in the form's inset —
+    `CollapsibleSection.row`: a form's `type: 'disclosure'` element over its
+    own `elements` (the equipment editor's Advanced settings), and
+    `markdown` with `collapsible: true` (troubleshooting notes, an
+    extension's help).
+- **A shut body stays mounted** — a form inside it keeps its focus nodes and
+  controllers, and what was typed survives a close — but is out of the Tab
+  order, hit-testing and semantics. So in a widget test, "shut" is
+  `find.….hitTestable()` finding nothing, never a bare `findsNothing`.
 
 ## Row gestures
 

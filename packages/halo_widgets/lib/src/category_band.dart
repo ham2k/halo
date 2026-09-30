@@ -12,7 +12,7 @@ import 'theme.dart';
 /// one (docs/design/user-interface.md § Settings lists).
 ///
 /// The Settings panel's categories are the other use, with a chevron and a
-/// tap (`AccordionSection`). This is the same band without them, for a
+/// tap (`CollapsibleSection`). This is the same band without them, for a
 /// surface whose groups do not collapse — the equipment editor's, which
 /// divides one form into what the equipment IS doing and how it is WIRED.
 ///

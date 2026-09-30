@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
 import '../support/halo_test_support.dart';
@@ -51,7 +52,19 @@ void main() {
     await tester.ensureVisible(fold);
     await tester.tap(fold);
     await tester.pump();
+    await tester.pump(collapseDuration);
   }
+
+  /// The row a label belongs to, counted only where a tap would reach it: a
+  /// shut fold keeps its rows mounted, and a field's own label never takes
+  /// the hit (its decorator does), so a bare text finder passes either way.
+  Finder reachable(String label) => find
+      .ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate((w) => w is InputDecorator || w is ListTile || w is CheckboxListTile || w is SwitchListTile),
+      )
+      .first
+      .hitTestable();
 
   bool? checked(WidgetTester tester, String label) {
     final row = find.ancestor(of: find.text(label), matching: find.byWidgetPredicate((w) => w is CheckboxListTile || w is SwitchListTile || w is ListTile));
@@ -65,15 +78,15 @@ void main() {
     final st = t.settings.station;
 
     expect(find.text(st.advancedSettings), findsOneWidget);
-    expect(find.text(st.serialRtsHigh), findsNothing, reason: 'closed until the operator asks');
-    expect(find.text(st.pollInterval), findsNothing);
-    expect(find.text(st.serialPort), findsOneWidget, reason: 'what every operator fills in stays out of the fold');
+    expect(reachable(st.serialRtsHigh), findsNothing, reason: 'closed until the operator asks');
+    expect(reachable(st.pollInterval), findsNothing);
+    expect(reachable(st.serialPort), findsOneWidget, reason: 'what every operator fills in stays out of the fold');
 
     await openAdvanced(tester);
-    expect(find.text(st.serialRtsHigh), findsOneWidget);
-    expect(find.text(st.serialDtrHigh), findsOneWidget);
-    expect(find.text(st.telemetryInterval), findsOneWidget);
-    expect(find.text(st.pollInterval), findsOneWidget);
+    expect(reachable(st.serialRtsHigh), findsOneWidget);
+    expect(reachable(st.serialDtrHigh), findsOneWidget);
+    expect(reachable(st.telemetryInterval), findsOneWidget);
+    expect(reachable(st.pollInterval), findsOneWidget);
     // What the boxes open on is what the connection does: an unchecked box
     // over a line held high is the operator being lied to.
     expect(checked(tester, st.serialRtsHigh), isFalse);
@@ -91,7 +104,6 @@ void main() {
     expect(top(st.troubleshootingNotes), greaterThan(top(st.advancedSettings)));
 
     await openAdvanced(tester);
-    await tester.pump(const Duration(milliseconds: 300));
     expect(top(st.troubleshootingNotes), greaterThan(top(st.pollInterval)), reason: "below the fold's contents too, not just its header");
   });
 }

@@ -15,7 +15,6 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
-import 'accordion_section.dart';
 import 'equipment_glyphs.dart';
 import '../services/cat/discovery.dart';
 import '../services/cat/equipment.dart';
@@ -170,7 +169,9 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
   /// correction applied to any of those frames is undone by the next.
   void _revealAfterFold(double target, double headerHeight) {
     _revealTimer?.cancel();
-    _revealTimer = Timer(accordionDuration, () {
+    // A frame past the fold, not with it: the timer starts at the tap, the
+    // fold on the next frame.
+    _revealTimer = Timer(collapseDuration + const Duration(milliseconds: 16), () {
       if (!mounted || !_scroll.hasClients) return;
       final position = _scroll.position;
       final top = position.pixels;
@@ -500,7 +501,7 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
     // chevron takes its colour from the same place so the two cannot drift.
     final titleStyle = SectionHeader.titleStyle(context);
     final onHeaderColor = titleStyle.color ?? Theme.of(context).colorScheme.onSurface;
-    return SliverAccordionSection(
+    return SliverCollapsibleSection(
       key: _shelfKey(group.key),
       title: Text(group.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: titleStyle),
       headerKey: _headerKey(group.key),

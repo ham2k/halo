@@ -9,8 +9,6 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../accordion_section.dart';
-
 import 'settings_pane_width.dart';
 import '../settings_view.dart';
 
@@ -47,8 +45,9 @@ int settingsRowIdentity(List<Map<String, dynamic>> elements) => Object.hashAll([
 /// no DOM and shows no symptom.
 ///
 /// `maintainState` is what keeps the State (and its nodes) alive; the
-/// ExcludeFocus is what keeps unreachable fields — hidden or merely
-/// collapsed — out of the Tab order, which Visibility alone does not do.
+/// ExcludeFocus is what keeps a hidden category's fields out of the Tab
+/// order, which Visibility alone does not do. A merely collapsed one is the
+/// section's own business ([CollapsibleSection]).
 Widget settingsCategory(
   BuildContext context, {
   required String title,
@@ -57,13 +56,13 @@ Widget settingsCategory(
   required Widget child,
   bool hidden = false,
 }) {
-  final rows = ExcludeFocus(excluding: hidden || (onToggle != null && !expanded), child: child);
+  final rows = ExcludeFocus(excluding: hidden, child: child);
   return Visibility(
     visible: !hidden,
     maintainState: true,
     child: onToggle == null
         ? Column(mainAxisSize: MainAxisSize.min, children: [SectionHeader(title), rows])
-        : AccordionSection(
+        : CollapsibleSection.band(
             title: Text(title, style: SectionHeader.titleStyle(context)),
             expanded: expanded,
             onToggle: onToggle,
@@ -91,13 +90,13 @@ Widget settingsCategorySliver(
   required Widget sliver,
   bool hidden = false,
 }) {
-  final rows = ExcludeFocus(excluding: hidden || (onToggle != null && !expanded), child: sliver);
+  final rows = ExcludeFocus(excluding: hidden, child: sliver);
   return SliverVisibility(
     visible: !hidden,
     maintainState: true,
     sliver: onToggle == null
         ? SliverMainAxisGroup(slivers: [SectionHeader.pinned(context, title), rows])
-        : SliverAccordionSection(
+        : SliverCollapsibleSection(
             title: Text(title, style: SectionHeader.titleStyle(context)),
             expanded: expanded,
             onToggle: onToggle,

@@ -451,7 +451,7 @@ class _QsoListPanel extends StatelessWidget {
     final compact = !ShirtSize.of(context).isTwoPane;
     return Column(
       children: [
-        // Same cross-fade-and-resize `AccordionSection` uses for its own
+        // Same cross-fade-and-resize `CollapsibleSection` uses for its own
         // reveal (longer duration: this panel is taller, and the fields
         // inside it need to be readable mid-animation, not just glimpsed) —
         // a panel that just snapped into existence read as a layout jump,

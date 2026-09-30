@@ -37,7 +37,7 @@ void main() {
     await tester.tap(find.text('Edit'));
     await tester.pumpAndSettle();
     expect(find.text('N0CALL'), findsOneWidget);
-    expect(find.text('Available Attributes'), findsNothing);
+    expect(find.text('Available Attributes').hitTestable(), findsNothing);
     await tester.tap(find.text('Templating Docs'));
     await tester.pumpAndSettle();
     final editorPosition = tester.getTopLeft(find.byType(TextField));

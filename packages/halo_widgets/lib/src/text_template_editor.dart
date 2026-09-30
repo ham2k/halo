@@ -8,8 +8,7 @@ import 'halo_dialog.dart';
 import 'modal_pane.dart';
 import 'spacing.dart';
 import 'section_header.dart';
-import 'category_band.dart';
-import 'mdi_icons.g.dart';
+import 'collapsible_section.dart';
 import 'theme.dart';
 
 typedef TemplatePreview = Future<String?> Function(String template, Map<String, dynamic> sample);
@@ -226,13 +225,15 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
           ),
           ListTileTheme(
             contentPadding: const EdgeInsets.symmetric(horizontal: Space.lg),
-            child: InkWell(
-              onTap: () => setState(() => _showDocs = !_showDocs),
-              child: CategoryBand(labels.docs, leading: Icon(_showDocs ? MdiIcons.chevronDown : MdiIcons.chevronRight)),
+            child: CollapsibleBand(
+              title: Text(labels.docs, style: SectionHeader.titleStyle(context)),
+              expanded: _showDocs,
+              onToggle: () => setState(() => _showDocs = !_showDocs),
             ),
           ),
-          if (_showDocs)
-            Flexible(
+          Flexible(
+            child: CollapsibleBody(
+              expanded: _showDocs,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(Space.lg),
                 child: ListTileTheme(
@@ -299,6 +300,7 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
                 ),
               ),
             ),
+          ),
         ],
       ),
       destructive: widget.field.containsKey('defaultValue')

@@ -31,7 +31,6 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/settings/settings_scan.dart';
-import 'package:ham2k_logger/views/accordion_section.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -476,7 +475,7 @@ void main() {
 
     // The BAND, not the title inside it: the band is what lands at the top,
     // and its title sits a padding's worth below that.
-    Finder loggingBand() => find.ancestor(of: shown('Logging'), matching: find.byType(AccordionHeader)).first;
+    Finder loggingBand() => find.ancestor(of: shown('Logging'), matching: find.byType(CollapsibleBand)).first;
     expect(tester.getTopLeft(loggingBand()).dy, greaterThan(listTop + 100), reason: 'test setup: the category sits well down the panel');
 
     await tester.tap(shown('Logging'));
