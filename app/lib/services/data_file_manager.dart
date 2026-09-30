@@ -647,20 +647,27 @@ class DataFileManager {
           // the travelled future, so the next sweep would do it again.
           final unjudgeable = (realNowMillis() - lastUpdateTime).isNegative;
           final isStale = unjudgeable || age > maxAgeDays * 24 * 60 * 60 * 1000;
+          final healing = !force && !isStale && lastUpdateTime != 0 && await _lostItsRows(key, def, lastUpdateTime);
 
-          if (force || isStale || lastUpdateTime == 0) {
+          if (force || isStale || lastUpdateTime == 0 || healing) {
             // Unattended passes (boot, reconnect — the notifyOnFailure:false
             // callers) refresh quietly; a first download still narrates itself
             // even then, because until it lands its feature simply isn't there.
             final showProgress = notifyOnFailure || lastUpdateTime == 0;
-            if (await processDataFile(key, def, force: force, notifyOnFailure: notifyOnFailure, showProgress: showProgress)) ingested = true;
+            // A heal fetches unconditionally: the server still has what the
+            // stored ETag names, and a 304 would import nothing again.
+            if (await processDataFile(key, def, force: force || healing, notifyOnFailure: notifyOnFailure, showProgress: showProgress)) ingested = true;
             // Stamped REAL while the age above is judged on the app clock, which
             // is what makes travel useful here without leaving a mess: travelling
             // forward makes files look stale and refetches them, and the stamp it
             // writes is still true once the clock is back. A travelled stamp would
             // outlive the travel and read as fresh (or as "updated just now") for
             // as long as it stood.
-            await prefs.setInt(lastUpdateKey, realNowMillis());
+            final stamp = realNowMillis();
+            await prefs.setInt(lastUpdateKey, stamp);
+            // Empty straight after its own download is what this source
+            // holds, not rows lost later: never a reason to fetch it again.
+            if (await _fillsNoRows(key, def)) await prefs.setInt(_emptyAtKey(key), stamp);
           }
         } catch (e, stack) {
           debugPrint('[data-file] Error processing data file entry ${entry['value']}: $e\n$stack');
@@ -671,6 +678,29 @@ class DataFileManager {
     if (ingested) _dataRevision.value++;
     return matched;
   }
+
+  /// Whether [key]'s lookup rows are gone while its stamp, [stampedAt], still
+  /// says it is fresh — a category emptied under it after it was filled, as
+  /// the stale-data purge once did to every catalog twin's. Nothing downloads
+  /// such a file again until it ages out, so its feature is simply missing
+  /// until then.
+  ///
+  /// Not a file that was already empty right after the download that stamped
+  /// it ([_emptyAtKey]): that is its source holding nothing, and fetching it
+  /// again would change nothing, on every sync. A raw file fills no rows here,
+  /// so it is never judged this way.
+  Future<bool> _lostItsRows(String key, Map<String, dynamic> def, int stampedAt) async {
+    if (prefs.getInt(_emptyAtKey(key)) == stampedAt) return false;
+    if (!await _fillsNoRows(key, def)) return false;
+    debugPrint('[data-file] $key is fresh but its rows are gone; fetching it again');
+    return true;
+  }
+
+  /// Whether [key] fills lookup rows and its category holds none.
+  Future<bool> _fillsNoRows(String key, Map<String, dynamic> def) async =>
+      def['fetchType'] != 'raw' && await lookups.countCategory(def['category'] as String? ?? key) == 0;
+
+  static String _emptyAtKey(String key) => 'data_file_empty_at_$key';
 
   /// Resolves the human-facing name to show for a data file in status bar
   /// messages: its own name if the extension gave it one, else the label of
@@ -1122,6 +1152,7 @@ class DataFileManager {
     await prefs.remove('data_file_etag_$key');
     await prefs.remove('data_file_updated_$key');
     await prefs.remove(_refusedKey(key));
+    await prefs.remove(_emptyAtKey(key));
     if (!keepRows) await lookups.deleteCategory(category);
     if (!kIsWeb) {
       // The lookup rows and prefs are the substance; a leftover cache file
@@ -1158,6 +1189,7 @@ class DataFileManager {
     await prefs.remove(etagKey);
     await prefs.remove(lastUpdateKey);
     await prefs.remove(_refusedKey(key));
+    await prefs.remove(_emptyAtKey(key));
 
     // Rows live under the definition's category, which need not be the key
     // (POTA's `pota-all-parks` fills `pota`); the ownership record is what

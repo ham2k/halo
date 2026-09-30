@@ -871,6 +871,78 @@ REF-002,Summit Two,45.56,-122.78
     });
   });
 
+  group('a fresh data file whose rows are gone', () {
+    // Its stamp says fresh, so nothing downloads it until it ages out — days
+    // with no parks behind the POTA field. An install the stale-data purge
+    // emptied is in exactly that state.
+    Future<TestDataFileManager> synced({String body = 'ref,name\nUS-0001,A Park\n'}) async {
+      final host = FakeExtensionHost({
+        'dataFile:*:getDefinition': [
+          {
+            'key': 'ham2k-pota-all-parks',
+            'ok': true,
+            'value': {
+              'key': 'ham2k-pota-all-parks',
+              'extensionKey': 'ham2k-pota',
+              'name': 'Parks',
+              'description': '',
+              'url': 'https://example.com/parks.csv',
+              'maxAgeInDays': 10,
+              'fetchType': 'csv',
+              'category': 'pota',
+            },
+          },
+        ],
+        'dataFile:ham2k-pota-all-parks:mapCsvBatch': (args) => [
+          for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
+        ],
+      });
+      final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)..mockDownloadBody = body;
+      await m.syncAllDataFiles();
+      m.downloads.clear();
+      return m;
+    }
+
+    test('is fetched again, past its ETag', () async {
+      final m = await synced();
+      await lookups.deleteCategory('pota');
+
+      await m.syncAllDataFiles();
+
+      // Unconditional: the server still holds what the stored ETag names, and
+      // a 304 would import nothing again.
+      expect(m.downloads, [(key: 'ham2k-pota-all-parks', force: true)]);
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
+    });
+
+    test('a file that still has its rows is not', () async {
+      final m = await synced();
+      await m.syncAllDataFiles();
+      expect(m.downloads, isEmpty);
+    });
+
+    test('a source that holds nothing is not fetched again for it', () async {
+      // Empty straight after its own download is the source, not rows lost
+      // later — refetching changes nothing, and would on every sync.
+      final m = await synced(body: 'ref,name\n');
+      await m.syncAllDataFiles();
+      await m.syncAllDataFiles();
+      expect(m.downloads, isEmpty);
+    });
+
+    test('rows lost after a heal that brought them back are fetched again too', () async {
+      // The record is per stamp: a heal re-stamps the file, so a later loss
+      // is judged afresh rather than written off as the source's.
+      final m = await synced();
+      await lookups.deleteCategory('pota');
+      await m.syncAllDataFiles();
+      await lookups.deleteCategory('pota');
+      m.downloads.clear();
+      await m.syncAllDataFiles();
+      expect(m.downloads, hasLength(1));
+    });
+  });
+
   test('syncAllDataFiles purges a still-enabled extension\'s OLD key once it stops registering it', () async {
     // call-notes derives a customFiles entry's dataFile key (and, in this
     // fixture, its lookup category) from its URL, so editing the URL changes
@@ -1567,10 +1639,14 @@ class TestDataFileManager extends DataFileManager {
   /// — simulates a real network/CORS failure without an actual HTTP call.
   Object? mockDownloadError;
 
+  /// Every download asked for, and whether it skipped the stored ETag.
+  final downloads = <({String key, bool force})>[];
+
   TestDataFileManager({required super.lookups, required super.extensions, required super.prefs, super.statusBar});
 
   @override
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+    downloads.add((key: key, force: force));
     final error = mockDownloadError;
     if (error != null) throw error;
     return mockDownloadBody;
