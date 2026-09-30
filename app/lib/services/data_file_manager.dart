@@ -1076,6 +1076,16 @@ class DataFileManager {
     if (staleExtensions.isEmpty) return;
 
     final all = _ownership();
+    // Categories a data file of a live extension still fills. A catalog twin
+    // keeps its built-in's lookup category (`pota`) under a data file key of
+    // its own (`ham2k-pota-all-parks`), so the retired built-in's entry names
+    // the very rows the twin is using: deleting the category with it empties
+    // the twin's lookups, and the twin's own data file, still current, never
+    // downloads them again.
+    final liveCategories = {
+      for (final MapEntry(:key, value: owner) in all.entries)
+        if (owner is Map && !staleExtensions.contains(owner['ext'])) owner['category'] as String? ?? key,
+    };
     var purged = 0;
     for (final entry in all.entries.toList()) {
       final owner = entry.value;
@@ -1083,7 +1093,7 @@ class DataFileManager {
       final key = entry.key;
       final category = owner['category'] as String? ?? key;
       debugPrint('[data-file] Purging data for $key (extension ${owner['ext']} disabled > ${grace.inDays}d)');
-      await _purgeDataFileData(key, category);
+      await _purgeDataFileData(key, category, keepRows: liveCategories.contains(category));
       all.remove(key);
       purged++;
     }
@@ -1106,11 +1116,13 @@ class DataFileManager {
   /// NOT call the extension's `onRemoveRawData` hook (a purge targets
   /// DISABLED extensions, which aren't loaded to receive it) and uses the
   /// recorded lookup category rather than assuming it equals the key.
-  Future<void> _purgeDataFileData(String key, String category) async {
+  /// [keepRows] leaves the category's lookup rows to another data file that
+  /// still fills them.
+  Future<void> _purgeDataFileData(String key, String category, {bool keepRows = false}) async {
     await prefs.remove('data_file_etag_$key');
     await prefs.remove('data_file_updated_$key');
     await prefs.remove(_refusedKey(key));
-    await lookups.deleteCategory(category);
+    if (!keepRows) await lookups.deleteCategory(category);
     if (!kIsWeb) {
       // The lookup rows and prefs are the substance; a leftover cache file
       // is minor and self-heals on re-sync, so a filesystem hiccup here

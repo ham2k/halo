@@ -823,6 +823,52 @@ REF-002,Summit Two,45.56,-122.78
       await m.purgeStaleExtensionData(const {});
       expect(await lookups.getLookup('pota', 'US-0001'), isNotNull);
     });
+
+    // A catalog twin fills its retired built-in's lookup category under a data
+    // file key of its own. Purging the built-in's entry by category empties
+    // the twin's lookups, and the twin's data file, still current, never
+    // downloads them again: every park gone a week after the move.
+    test('keeps lookup rows another extension\'s data file still fills', () async {
+      Map<String, Object> definition(String key, String ext) => {
+        'key': key,
+        'ok': true,
+        'value': {
+          'key': key,
+          'extensionKey': ext,
+          'name': 'Parks',
+          'description': '',
+          'url': 'https://example.com/$key.csv',
+          'maxAgeInDays': 10,
+          'fetchType': 'csv',
+          'category': 'pota',
+        },
+      };
+      // Each in its own pass, as they arrive: the built-in's before the move,
+      // the twin's after it.
+      Future<TestDataFileManager> sync(String key, String ext) async {
+        final host = FakeExtensionHost({
+          'dataFile:*:getDefinition': [definition(key, ext)],
+          'dataFile:$key:mapCsvBatch': (args) => [
+            for (final r in zipCsvRows(args)) {'key': r['ref'], 'name': r['name']},
+          ],
+        });
+        final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, statusBar: StatusBarService(prefs))
+          ..mockDownloadBody = 'ref,name\nUS-0001,A Park\n';
+        await m.syncAllDataFiles();
+        return m;
+      }
+
+      await sync('pota-all-parks', 'pota');
+      final m = await sync('ham2k-pota-all-parks', 'ham2k-pota');
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'the premise: the twin has filled the category');
+
+      final now = DateTime.fromMillisecondsSinceEpoch(1000 * 24 * 3600 * 1000);
+      await m.purgeStaleExtensionData({'pota': now.subtract(const Duration(days: 8)).millisecondsSinceEpoch}, now: now);
+
+      expect(await lookups.getLookup('pota', 'US-0001'), isNotNull, reason: 'ham2k-pota still fills the category');
+      expect(prefs.getString('data_file_updated_pota-all-parks'), isNull, reason: 'the retired entry itself is still cleaned up');
+      expect(prefs.getString('data_file_ownership'), allOf(contains('ham2k-pota-all-parks'), isNot(contains('"pota-all-parks"'))));
+    });
   });
 
   test('syncAllDataFiles purges a still-enabled extension\'s OLD key once it stops registering it', () async {
