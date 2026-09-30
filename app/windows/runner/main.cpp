@@ -152,7 +152,8 @@ static bool ForwardToRunningInstance() {
       ::ShowWindow(hwnd, SW_RESTORE);
       break;
     default:
-      ::ShowWindow(hwnd, SW_NORMAL);
+      // Not SW_NORMAL: on a snapped window that restores the pre-snap rect.
+      ::ShowWindow(hwnd, SW_SHOW);
       break;
   }
   ::SetForegroundWindow(hwnd);

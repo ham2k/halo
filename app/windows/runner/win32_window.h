@@ -131,12 +131,6 @@ class Win32Window {
   // revealing it at the smaller restore-rect size.
   bool restore_maximized_ = false;
 
-  // Whether the window is snapped, and its snapped rect in screen
-  // coordinates — what SaveWindowPlacement stores in place of the pre-snap
-  // rect the placement reports.
-  bool arranged_ = false;
-  RECT arranged_rect_ = {};
-
   // window handle for top level window.
   HWND window_handle_ = nullptr;
 

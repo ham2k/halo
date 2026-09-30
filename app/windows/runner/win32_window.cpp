@@ -41,6 +41,12 @@ constexpr const wchar_t kWindowPlacementRegKey[] =
   L"Software\\Ham2K\\Halo\\" HALO_PRODUCT_NAME_W;
 constexpr const wchar_t kWindowPlacementRegValue[] = L"WindowPlacement";
 
+/// The window's actual rect, in screen coordinates, when it was closed neither
+/// maximized nor minimized — stored beside the placement because a snapped
+/// window's placement reports its pre-snap rect instead. Absent whenever the
+/// placement alone is the answer.
+constexpr const wchar_t kWindowRectRegValue[] = L"WindowRect";
+
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
 
@@ -89,21 +95,10 @@ SIZE FrameOutsets(HWND hwnd) {
   };
 }
 
-// Whether the window is snapped (Aero Snap, Snap Layouts). Looked up at run
-// time: IsWindowArranged only exists from build 20348 (Windows 11, Server
-// 2022), and a static import would stop the app starting on Windows 10.
-// There, a snapped window keeps reopening at its pre-snap size.
-bool IsArranged(HWND hwnd) {
-  using IsWindowArrangedFn = BOOL WINAPI(HWND);
-  static auto* const is_window_arranged = reinterpret_cast<IsWindowArrangedFn*>(
-      GetProcAddress(GetModuleHandle(L"user32.dll"), "IsWindowArranged"));
-  return is_window_arranged != nullptr && is_window_arranged(hwnd);
-}
-
-// Why the Flutter view was put back, for a console launch (stderr) and for
-// DebugView or a debugger (OutputDebugString): a normal launch has neither
-// console nor crash report for this, and the view being moved is otherwise
-// invisible.
+// A placement decision the operator cannot see — the Flutter view put back,
+// a snapped rect saved — for a console launch (stderr) and for DebugView or a
+// debugger (OutputDebugString): a normal launch has neither console nor crash
+// report for these.
 void LogViewPlacement(const char* message) {
   std::fprintf(stderr, "%s\n", message);
   OutputDebugStringA(message);
@@ -373,19 +368,6 @@ Win32Window::MessageHandler(HWND hwnd,
       }
       return 0;
 
-    case WM_WINDOWPOSCHANGED: {
-      // A snapped window's placement reports its pre-snap rect as "normal",
-      // so the snapped rect is kept here for SaveWindowPlacement. Tracked
-      // while visible rather than read at close: the window is already
-      // hidden by the time WM_DESTROY arrives.
-      const auto* pos = reinterpret_cast<const WINDOWPOS*>(lparam);
-      if ((pos->flags & SWP_HIDEWINDOW) == 0 && IsWindowVisible(hwnd)) {
-        arranged_ = IsArranged(hwnd) && GetWindowRect(hwnd, &arranged_rect_);
-      }
-      // DefWindowProc turns this into WM_SIZE (below) and WM_MOVE.
-      break;
-    }
-
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
       LONG newWidth = newRectSize->right - newRectSize->left;
@@ -633,22 +615,14 @@ void Win32Window::SaveWindowPlacement() {
     return;
   }
   // A snapped window comes back at its snapped size and position, as an
-  // ordinary window; Windows has no way to restore the snap itself.
-  // rcNormalPosition is in workspace coordinates, which are offset from
-  // screen coordinates by any taskbar on the top or left of the monitor.
-  if (arranged_ && placement.showCmd == SW_SHOWNORMAL) {
-    // Without the monitor's work area there is no way to convert, and a
-    // screen rect stored as workspace reopens shifted by the taskbar; the
-    // pre-snap rect is at least in the right coordinates.
-    RECT rect = arranged_rect_;
-    MONITORINFO monitor_info = {sizeof(MONITORINFO)};
-    if (GetMonitorInfo(MonitorFromRect(&rect, MONITOR_DEFAULTTONEAREST),
-                       &monitor_info)) {
-      OffsetRect(&rect, monitor_info.rcMonitor.left - monitor_info.rcWork.left,
-                 monitor_info.rcMonitor.top - monitor_info.rcWork.top);
-      placement.rcNormalPosition = rect;
-    }
-  }
+  // ordinary window; Windows has no way to restore the snap itself. Its
+  // placement reports the pre-snap rect, so the actual rect of any window
+  // closed neither maximized nor minimized is kept as well, in screen
+  // coordinates. Kept for every such window rather than only a detected
+  // snap: the rect is right either way, and no detection means none to miss.
+  RECT window_rect{};
+  const bool keep_rect = placement.showCmd == SW_SHOWNORMAL &&
+                         GetWindowRect(window_handle_, &window_rect);
   HKEY key = nullptr;
   if (RegCreateKeyEx(HKEY_CURRENT_USER, kWindowPlacementRegKey, 0, nullptr,
                      REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, nullptr, &key,
@@ -656,6 +630,22 @@ void Win32Window::SaveWindowPlacement() {
     RegSetValueEx(key, kWindowPlacementRegValue, 0, REG_BINARY,
                   reinterpret_cast<const BYTE*>(&placement),
                   sizeof(placement));
+    if (keep_rect) {
+      RegSetValueEx(key, kWindowRectRegValue, 0, REG_BINARY,
+                    reinterpret_cast<const BYTE*>(&window_rect),
+                    sizeof(window_rect));
+      char line[200];
+      std::snprintf(line, sizeof(line),
+                    "[window] saved the window rect %ld,%ld %ldx%ld",
+                    window_rect.left, window_rect.top,
+                    window_rect.right - window_rect.left,
+                    window_rect.bottom - window_rect.top);
+      LogViewPlacement(line);
+    } else {
+      // A rect left over from an earlier close would override this
+      // placement's maximized or restore state.
+      RegDeleteValue(key, kWindowRectRegValue);
+    }
     RegCloseKey(key);
   }
 }
@@ -684,4 +674,25 @@ void Win32Window::RestoreWindowPlacement() {
   // normal) once the first Flutter frame has rendered. Never launch minimized.
   placement.showCmd = SW_HIDE;
   SetWindowPlacement(window_handle_, &placement);
+
+  // The actual rect a normal window was closed at, which differs from the
+  // placement's when it was snapped. Applied after the placement: a snap
+  // usually stays on the monitor of the rect it came from, so this move
+  // rarely crosses into another DPI.
+  if (restore_maximized_) {
+    return;
+  }
+  RECT window_rect{};
+  DWORD rect_size = sizeof(window_rect);
+  if (RegGetValue(HKEY_CURRENT_USER, kWindowPlacementRegKey,
+                  kWindowRectRegValue, RRF_RT_REG_BINARY, nullptr,
+                  &window_rect, &rect_size) != ERROR_SUCCESS ||
+      rect_size != sizeof(window_rect) ||
+      MonitorFromRect(&window_rect, MONITOR_DEFAULTTONULL) == nullptr) {
+    return;
+  }
+  SetWindowPos(window_handle_, nullptr, window_rect.left, window_rect.top,
+               window_rect.right - window_rect.left,
+               window_rect.bottom - window_rect.top,
+               SWP_NOZORDER | SWP_NOACTIVATE);
 }

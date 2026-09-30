@@ -334,6 +334,11 @@ a console launch and to `OutputDebugString` (DebugView). RustDesk only
 re-shows the view after the fact, which misses a placement that lands after
 the window is shown.
 
+A window closed while snapped reopens at its snapped rect, which is exactly
+the kind of zone-shaped rect FancyZones acts on. For a FancyZones user that
+makes this path an ordinary launch rather than a rare one, so a
+`[window] put the Flutter view back` line on launch is expected there.
+
 ## `flutter_secure_storage` on Linux needs libsecret AND a Secret Service
 
 **Breaks:** two different ways, and they are worth keeping apart.
