@@ -156,8 +156,36 @@ void main() {
       expect(result, isNot(contains(t.dataFiles.downloadFailedWebHint)));
     });
 
-    test('an unrelated failure (e.g. a 404) is shown as-is, even on web — guessing would mislead', () {
-      final result = friendlyDownloadError(Exception('HttpException: Failed to download x: HTTP 404'), isWeb: true);
+    test('a timeout reads as a sentence, not a raw Duration', () {
+      expect(friendlyDownloadError(const DataFileUnavailable.timedOut('parks', 'example.com', DataFileWait.body)), t.dataFiles.downloadTimedOut);
+    });
+
+    test('a server error names the server and the status, and says to wait', () {
+      expect(
+        friendlyDownloadError(const DataFileUnavailable.status('parks', 'example.com', 503)),
+        t.dataFiles.downloadServerError(host: 'example.com', status: 503),
+      );
+    });
+
+    test('a rate limit still says to wait: only a dead link is told to check its address', () {
+      // pota.app answering a Refresh with a 429 has no address to check.
+      expect(
+        friendlyDownloadError(const DataFileUnavailable.status('pota-all-parks', 'pota.app', 429)),
+        t.dataFiles.downloadServerError(host: 'pota.app', status: 429),
+      );
+    });
+
+    test('a 404 says to check the address, not to wait', () {
+      // A dead or mistyped custom-file link answers 404 forever; "try again
+      // later" sends the operator to wait for something that never comes.
+      expect(
+        friendlyDownloadError(const DataFileUnavailable.status('notes', 'www.dropbox.com', 404)),
+        t.dataFiles.downloadNotAvailable(host: 'www.dropbox.com', status: 404),
+      );
+    });
+
+    test('an unrelated failure (e.g. a malformed URL) is shown as-is, even on web — guessing would mislead', () {
+      final result = friendlyDownloadError(const FormatException('Invalid URL: ht!tp://x'), isWeb: true);
       expect(result, isNot(contains(t.dataFiles.downloadFailedWebHint)));
     });
   });
@@ -1089,8 +1117,136 @@ REF-002,Summit Two,45.56,-122.78
           );
       fake.elapse(DataFileManager.headersTimeout + const Duration(seconds: 1));
       fake.flushMicrotasks();
-      expect(caught, isA<TimeoutException>());
+      // Wrapped, not bare: ErrorPolicy keeps a bare TimeoutException loud
+      // app-wide, so an unwrapped one puts "Something went wrong" in front of
+      // the operator on every unattended boot sync with a slow server.
+      expect(caught, isA<DataFileUnavailable>().having((e) => e.timedOut, 'timedOut', DataFileWait.headers).having((e) => e.host, 'host', 'example.com'));
     });
+  });
+
+  test('an error status is a DataFileUnavailable naming the host and status', () async {
+    // Same trap as the timeout above: an unwrapped HttpException reaches
+    // ErrorPolicy unclassified and wears the default notice on a pass the
+    // operator never asked for.
+    PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+    final m = DataFileManager(
+      lookups: lookups,
+      extensions: extensions,
+      prefs: prefs,
+      httpClientFactory: () => http.MockClient((_) async => http.Response('down', 503)),
+    );
+    await expectLater(
+      m.downloadFile('hams', 'https://example.com/f.txt'),
+      throwsA(isA<DataFileUnavailable>().having((e) => e.statusCode, 'statusCode', 503).having((e) => e.host, 'host', 'example.com')),
+    );
+  });
+
+  group('an import far smaller than the stored data', () {
+    // Without the guard, a 200 whose body maps to (almost) nothing — an error
+    // page, a file caught mid-regeneration — reaches the stale sweep, which
+    // deletes every row it did not restamp; the file is then stamped fresh
+    // with its ETag stored, so the offline data stays gone for at least
+    // maxAgeInDays while Settings still shows an age.
+    Map<String, dynamic> parksDef() => {
+      'key': 'parks-file',
+      'name': 'Parks',
+      'fetchType': 'csv',
+      'category': 'parks',
+      'url': 'https://example.com/parks.csv',
+      'maxAgeInDays': 10,
+      'csvOptions': {'hasHeaders': true, 'delimiter': ','},
+    };
+
+    late StatusBarService statusBar;
+    late TestDataFileManager m;
+
+    setUp(() async {
+      await lookups.insertLookupBatch([for (var i = 0; i < 10; i++) LookupRow(category: 'parks', key: 'P-$i', name: 'Old $i', updated: 1)]);
+      statusBar = StatusBarService(prefs);
+      final host = FakeExtensionHost({
+        'dataFile:*:getDefinition': [
+          {'ok': true, 'value': parksDef()},
+        ],
+        'dataFile:parks-file:mapCsvBatch': (args) => zipCsvRows(args).map((row) => {'key': row['id'], 'name': 'New ${row['id']}'}).toList(),
+      });
+      m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, statusBar: statusBar);
+    });
+
+    test('keeps every stored row, leaves the file unstamped, and drops its ETag', () async {
+      await prefs.setString('data_file_etag_parks-file', '"short-body"');
+      m.mockDownloadBody = 'id\nP-0\nP-1\n'; // 2 of 10: under the 30% floor
+
+      await m.syncAllDataFiles();
+
+      expect(await lookups.countCategory('parks'), 10, reason: 'the sweep must not run on a refused import');
+      expect(prefs.getInt('data_file_updated_parks-file'), isNull, reason: 'stamped, the file reads fresh and is not retried for maxAgeInDays');
+      expect(prefs.getString('data_file_etag_parks-file'), isNull, reason: 'kept, the next pass 304s past the refusal');
+      // The unattended pass that refused it says nothing, and retries it the
+      // same way every time: without a mark on the Offline Data row, the
+      // operator never learns that a Refresh would accept it.
+      final status = (await m.listDataFiles()).single;
+      expect(status.refused, isA<DataFileImportShrank>().having((r) => r.imported, 'imported', 2).having((r) => r.existing, 'existing', 10));
+    });
+
+    test('an attended refresh says why in plain words', () async {
+      m.mockDownloadBody = 'id\nP-0\n';
+
+      await expectLater(m.processDataFile('parks-file', parksDef()), throwsA(isA<DataFileImportShrank>()));
+
+      final notice = statusBar.activeNotices.singleWhere((n) => n.key == 'dataFile:parks-file');
+      expect(notice.text, t.dataFiles.importTooSmall(imported: 1, existing: 10));
+    });
+
+    test('a forced refresh accepts it, clears the mark, and still reports the shrink', () async {
+      // Refused on every pass, a genuinely smaller source could never be
+      // taken in — nothing in the app removes a data file's rows first. And
+      // a forced refresh is also what an operator does after a mapper
+      // regression drops most rows, so an unreported one hides exactly the
+      // case the rate exists to catch.
+      m.mockDownloadBody = 'id\nP-0\n';
+      await m.syncAllDataFiles();
+      expect((await m.listDataFiles()).single.refused, isNotNull);
+
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(backend: backend, () async {
+        await m.processDataFile('parks-file', parksDef(), force: true);
+      });
+
+      expect(await lookups.countCategory('parks'), 1);
+      expect((await m.listDataFiles()).single.refused, isNull);
+      expect(backend.exceptions.map((r) => r.error), contains(isA<DataFileImportShrank>().having((e) => e.forced, 'forced', isTrue)));
+    });
+
+    test('an import at the floor replaces the data and sweeps what it dropped', () async {
+      // The guard must not freeze a source that legitimately loses a few
+      // references: 3 of 10 is exactly the floor and goes through.
+      m.mockDownloadBody = 'id\nP-0\nP-1\nP-2\n';
+
+      await m.processDataFile('parks-file', parksDef());
+
+      expect(await lookups.countCategory('parks'), 3);
+      expect((await lookups.getLookup('parks', 'P-0'))!.name, 'New P-0');
+    });
+  });
+
+  test('removeDataFile deletes the rows of the file\'s CATEGORY, not of its key', () async {
+    // POTA's `pota-all-parks` file fills the `pota` category: deleting by key
+    // matches nothing and leaves every row behind.
+    final dir = await Directory.systemTemp.createTemp('halo-remove-');
+    addTearDown(() => dir.delete(recursive: true));
+    await prefs.setString(
+      'data_file_ownership',
+      jsonEncode({
+        'pota-all-parks': {'ext': 'pota', 'category': 'pota'},
+      }),
+    );
+    await lookups.insertLookupBatch([LookupRow(category: 'pota', key: 'US-0001', name: 'Acadia', updated: 1)]);
+    final host = FakeExtensionHost({'dataFile:pota-all-parks:onRemoveRawData': (args) => null});
+    final m = DataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs, isWeb: false, dataDirectory: () async => dir);
+
+    await m.removeDataFile('pota-all-parks');
+
+    expect(await lookups.countCategory('pota'), 0);
   });
 
   group('connectivity-driven resync', () {

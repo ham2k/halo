@@ -827,7 +827,10 @@ class _Translations$dataFiles$es extends Translations$dataFiles$en {
 	@override String downloadFailedTitle({required Object name}) => 'No se pudo descargar ${name}';
 	@override String get downloadFailedWebHint => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.';
 	@override String get downloadTimedOut => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.';
+	@override String downloadServerError({required Object host, required Object status}) => '${host} respondió con un error (HTTP ${status}). Vuelve a intentarlo más tarde.';
+	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} no pudo entregar este archivo (HTTP ${status}). Comprueba que su dirección siga siendo correcta.';
 	@override String processingFailedTitle({required Object name}) => 'No se pudo procesar ${name}';
+	@override String importTooSmall({required Object imported, required Object existing}) => 'La descarga traía solo ${imported} de los ${existing} registros de este dispositivo, así que se conservaron los que faltaban. Actualizarlo en Ajustes › Datos sin conexión lo acepta de todos modos.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: 'Se importó ${count} registro de ${label}.',
 		other: 'Se importaron ${count} registros de ${label}.',
@@ -2357,6 +2360,7 @@ class _Translations$settings$offlineData$es extends Translations$settings$offlin
 	@override String updatedHoursAgo({required Object hours}) => 'Actualizado hace ${hours}h';
 	@override String updatedHoursMinutesAgo({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m';
 	@override String updatedMinutesAgo({required Object minutes}) => 'Actualizado hace ${minutes}m';
+	@override String lastDownloadRefused({required Object imported, required Object existing}) => 'La última descarga traía solo ${imported} de ${existing} registros y no se usó. Actualízalo para aceptarla.';
 	@override String get extensionsSection => 'Extensiones';
 }
 
@@ -4960,6 +4964,7 @@ extension on TranslationsEs {
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Actualizado hace ${hours}h',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Actualizado hace ${hours}h ${minutes}m',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Actualizado hace ${minutes}m',
+			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'La última descarga traía solo ${imported} de ${existing} registros y no se usó. Actualízalo para aceptarla.',
 			'settings.offlineData.extensionsSection' => 'Extensiones',
 			'settings.profiles.notSet' => 'Sin definir',
 			'settings.profiles.personalInfo' => 'Datos personales',
@@ -5128,7 +5133,10 @@ extension on TranslationsEs {
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'No se pudo descargar ${name}',
 			'dataFiles.downloadFailedWebHint' => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.',
 			'dataFiles.downloadTimedOut' => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.',
+			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} respondió con un error (HTTP ${status}). Vuelve a intentarlo más tarde.',
+			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} no pudo entregar este archivo (HTTP ${status}). Comprueba que su dirección siga siendo correcta.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'No se pudo procesar ${name}',
+			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'La descarga traía solo ${imported} de los ${existing} registros de este dispositivo, así que se conservaron los que faltaban. Actualizarlo en Ajustes › Datos sin conexión lo acepta de todos modos.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',

@@ -71,6 +71,46 @@ void main() {
     expect(find.bySemanticsLabel('Refresh'), findsNWidgets(2));
   });
 
+  testWidgets('a refused download is marked on its row until a Refresh is accepted', (tester) async {
+    // The unattended passes that refuse a short download say nothing and
+    // retry it silently; without this line the operator never learns that a
+    // Refresh would accept it. And a mark that outlives the accepted Refresh
+    // tells them to do what they just did.
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+
+    final fake = _FakeDataFiles(lookups: LookupRepository(db), extensions: extensions, prefs: await SharedPreferences.getInstance())
+      ..files = [DataFileStatus(key: 'alpha', name: 'Alpha Data', refused: const DataFileImportShrank('alpha', imported: 12, existing: 95000))];
+    final services = HaLoServices(db, settings, extensions: extensions, dataFiles: fake);
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(home: SettingsView(services: services)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accounts, Services & Data Sources'));
+    await tester.pumpAndSettle();
+
+    final mark = find.text(t.settings.offlineData.lastDownloadRefused(imported: 12, existing: 95000));
+    expect(mark, findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('Refresh'));
+    await tester.pump();
+    fake.completeRefresh();
+    await tester.pumpAndSettle();
+
+    expect(mark, findsNothing);
+  });
+
   testWidgets('tapping Refresh shows progress and updates the row from the returned time without re-listing', (tester) async {
     tester.view.physicalSize = const Size(1000, 1400);
     tester.view.devicePixelRatio = 1.0;

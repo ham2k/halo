@@ -35,6 +35,15 @@ class LookupRepository {
     await (db.delete(db.lookups)..where((l) => l.category.equals(category))).go();
   }
 
+  /// How many rows [category] holds.
+  Future<int> countCategory(String category) async {
+    final count = db.lookups.key.count();
+    final query = db.selectOnly(db.lookups)
+      ..addColumns([count])
+      ..where(db.lookups.category.equals(category));
+    return await query.map((row) => row.read(count)).getSingle() ?? 0;
+  }
+
   /// Deletes all lookups in a category that do not have the specified updated flag value (stale data).
   Future<void> deleteCategoryStale(String category, int updatedValue) async {
     await (db.delete(db.lookups)..where((l) => l.category.equals(category) & l.updated.equals(updatedValue).not())).go();

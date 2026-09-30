@@ -6,10 +6,11 @@
 //
 // This is the app's DataFileManager pipeline reduced to what a one-shot
 // command needs: fetch, map in chunks, write rows, sweep what this run did
-// not stamp. Left out on purpose, because they are the APP's concerns and
-// none of them changes what a row ends up containing: scheduling and max-age,
-// ETag/304 caching (a CLI sync is always an explicit "get it now"), the
-// status bar, and error notices.
+// not stamp — unless the run mapped far fewer rows than the cache holds (the
+// guard both hosts share, dataFileImportShrinkage). Left out on purpose,
+// because they are the APP's concerns and none of them changes what a row
+// ends up containing: scheduling and max-age, ETag/304 caching (a CLI sync
+// is always an explicit "get it now"), the status bar, and error notices.
 //
 // What DOES change what a row contains — charset resolution, CSV field
 // splitting, the rootPath walk, log redaction — is not reimplemented here.
@@ -60,12 +61,17 @@ class DataFileResult {
   final String? cachedAt;
   final int? entries;
 
-  DataFileResult({required this.key, this.category, this.rows = 0, this.error, this.cachedAt, this.entries});
+  /// The import mapped too few rows to replace the cache and was refused;
+  /// [rows] is what it wrote before refusing, which stays.
+  final bool refused;
+
+  DataFileResult({required this.key, this.category, this.rows = 0, this.error, this.cachedAt, this.entries, this.refused = false});
 
   Map<String, Object?> toJson() => {
     'key': key,
     if (category != null) 'category': category,
     if (cachedAt != null) ...{'kind': 'raw', 'entries': entries, 'cachedAt': cachedAt} else 'rows': rows,
+    if (refused) 'refused': true,
     if (error != null) 'error': error,
   };
 }
@@ -76,12 +82,16 @@ class DataFileSync {
   final String userAgent;
   final bool verbose;
 
+  /// Accept an import however small next to what the cache holds — the app's
+  /// explicit refresh. Without it a short body is refused, not swept in.
+  final bool force;
+
   /// Rows per bridge crossing. The app's number, kept: it is the one these
   /// mappers have been run at, and both the JSON size and the per-call
   /// timeout are tuned around it.
   static const chunkSize = 5000;
 
-  DataFileSync({required this.runtime, required this.store, required this.userAgent, this.verbose = false});
+  DataFileSync({required this.runtime, required this.store, required this.userAgent, this.verbose = false, this.force = false});
 
   /// Every registered data file, in registration order.
   Future<List<DataFileDef>> definitions() async {
@@ -101,7 +111,16 @@ class DataFileSync {
     final url = def.url;
     if (url == null) return DataFileResult(key: def.key, error: 'definition has no url');
     try {
-      final body = await _download(url, encoding: def.raw['encoding'] as String?);
+      return await importBody(def, await _download(url, encoding: def.raw['encoding'] as String?));
+    } catch (e) {
+      return DataFileResult(key: def.key, error: '$e');
+    }
+  }
+
+  /// [import] after the download: maps [body] and writes it. Public so a test
+  /// can feed a body without a server.
+  Future<DataFileResult> importBody(DataFileDef def, String body) async {
+    try {
       switch (def.fetchType) {
         case 'csv':
           return await _importCsv(def, body);
@@ -112,8 +131,8 @@ class DataFileSync {
         default:
           return DataFileResult(key: def.key, error: 'unknown fetchType "${def.fetchType}"');
       }
-    } catch (e) {
-      return DataFileResult(key: def.key, error: '$e');
+    } on DataFileImportShrank catch (e) {
+      return DataFileResult(key: def.key, category: def.category, rows: e.imported, refused: true, error: '$e (--force accepts it)');
     }
   }
 
@@ -230,6 +249,7 @@ class DataFileSync {
     // Stamps every row this run touches, so the sweep below can delete
     // exactly what the source dropped.
     final updatedFlag = nowMillis();
+    final existing = await store.repository.countCategory(def.category);
     var imported = 0;
 
     for (var start = 0; start < items.length; start += chunkSize) {
@@ -277,6 +297,11 @@ class DataFileSync {
       }
     }
 
+    final shrank = dataFileImportShrinkage(def.key, imported: imported, existing: existing, forced: force);
+    if (shrank != null) {
+      if (!force) throw shrank;
+      stderr.writeln('halo-ext: $shrank');
+    }
     await store.repository.deleteCategoryStale(def.category, updatedFlag);
     return DataFileResult(key: def.key, category: def.category, rows: imported);
   }

@@ -1850,6 +1850,7 @@
       "updatedHoursAgo": "Updated ${hours}h ago",
       "updatedHoursMinutesAgo": "Updated ${hours}h ${minutes}m ago",
       "updatedMinutesAgo": "Updated ${minutes}m ago",
+      "lastDownloadRefused": "The last download had only ${imported} of ${existing} records and was not used. Refresh to accept it.",
       "extensionsSection": "Extensions"
     },
     "profiles": {
@@ -2069,7 +2070,10 @@
     "downloadFailedTitle": "Couldn't download ${name}",
     "downloadFailedWebHint": "This could be a network issue, or this link's host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.",
     "downloadTimedOut": "The server took too long to respond. Try again later.",
+    "downloadServerError": "${host} answered with an error (HTTP ${status}). Try again later.",
+    "downloadNotAvailable": "${host} couldn't provide this file (HTTP ${status}). Check that its address is still right.",
     "processingFailedTitle": "Couldn't process ${name}",
+    "importTooSmall": "The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.",
     "importedRecords": {
       "one": "Imported ${count} record for ${label}.",
       "other": "Imported ${count} records for ${label}."

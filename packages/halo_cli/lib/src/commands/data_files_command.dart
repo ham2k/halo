@@ -66,11 +66,19 @@ class _DataFilesSyncCommand extends ExtCommand {
   @override
   bool get warnsOnColdCache => false;
   @override
-  String get invocation => 'halo-ext data-files sync [KEY…]';
+  String get invocation => 'halo-ext data-files sync [--force] [KEY…]';
+
+  _DataFilesSyncCommand() {
+    argParser.addFlag(
+      'force',
+      negatable: false,
+      help: 'Accept a download that maps to under 30% of the rows already cached, which is otherwise refused to keep them.',
+    );
+  }
 
   @override
   Future<int> run() => withRuntime((runtime) async {
-    final sync = DataFileSync(runtime: runtime, store: lookups, userAgent: cliUserAgent(runtime.index), verbose: verbose);
+    final sync = DataFileSync(runtime: runtime, store: lookups, userAgent: cliUserAgent(runtime.index), verbose: verbose, force: argResults!['force'] as bool);
     final wanted = argResults!.rest.toSet();
     final defs = await sync.definitions();
     final selected = wanted.isEmpty

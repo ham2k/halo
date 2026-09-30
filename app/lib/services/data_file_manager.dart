@@ -26,17 +26,22 @@ import 'status_bar_service.dart';
 /// never the message text: `'Failed to fetch'` is Chromium/V8's own wording
 /// for the underlying `fetch()` TypeError, and Firefox and Safari phrase
 /// the identical failure differently — a string match silently never fires
-/// for them. Every other failure (a 404, a malformed URL) is shown
-/// as-is, since guessing at THOSE causes would be more likely to mislead
-/// than help. [isWeb] defaults to [kIsWeb] but is overridable — the
-/// constant itself isn't, so a test can't flip platforms without this.
+/// for them. A [DataFileUnavailable] gets its own translated sentence; every
+/// other failure (a malformed URL) is shown as-is, since guessing at THOSE
+/// causes would be more likely to mislead than help. [isWeb] defaults to
+/// [kIsWeb] but is overridable — the constant itself isn't, so a test can't
+/// flip platforms without this.
 @visibleForTesting
 String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
-  if (error is TimeoutException) {
-    // TimeoutException.toString() leads with a raw Duration
-    // ("TimeoutException after 0:00:30.000000") — replaced wholesale rather
-    // than hinted, since the class carries no server detail worth keeping.
-    return t.dataFiles.downloadTimedOut;
+  if (error is DataFileUnavailable) {
+    // A 404 or 410 will not fix itself with time — most often a custom file's
+    // address that is mistyped or no longer shared. Every other status is
+    // told to wait: a 429, a 408 or a challenge's 403 clears on its own, and
+    // a built-in source has no address for the operator to check.
+    final status = error.statusCode;
+    if (status == null) return t.dataFiles.downloadTimedOut;
+    if (status == 404 || status == 410) return t.dataFiles.downloadNotAvailable(host: error.host, status: status);
+    return t.dataFiles.downloadServerError(host: error.host, status: status);
   }
   final message = error.toString();
   if (isWeb && error is http.ClientException) {
@@ -59,8 +64,14 @@ class DataFileStatus {
 
   final DateTime? updatedAt;
 
-  DataFileStatus({required this.key, required this.name, this.icon, this.updatedAt});
+  /// The last unforced download that was refused as far smaller than the data
+  /// on the device, until an import is accepted — the one signal the
+  /// unattended passes, which retry it silently, leave for the operator.
+  final DataFileImportShrank? refused;
 
+  DataFileStatus({required this.key, required this.name, this.icon, this.updatedAt, this.refused});
+
+  /// After a successful refresh, which is forced and so clears any refusal.
   DataFileStatus withUpdatedAt(DateTime updatedAt) => DataFileStatus(key: key, name: name, icon: icon, updatedAt: updatedAt);
 }
 
@@ -78,6 +89,33 @@ class DataFileRemoveHookFailed implements Exception {
 
   @override
   String toString() => 'onRemoveRawData for $key: $cause';
+}
+
+/// Which of a download's two ceilings ran out: [DataFileManager.headersTimeout]
+/// (the host never answered) or [DataFileManager.bodyTimeout] (it answered,
+/// then the body stalled or crawled).
+enum DataFileWait { headers, body }
+
+/// A data file's server did not deliver it: a [timedOut] wait, or an answer
+/// ([statusCode]) other than 200 or 304 — exactly one of the two is set.
+///
+/// Its own type so the disposition is a rule rather than a catch site (see
+/// `ErrorPolicy`), and so that rule can quieten a download's timeout without
+/// quietening every bare `TimeoutException` in the app. [host] is the server
+/// that failed to answer — on web, for a proxied source, the proxy.
+class DataFileUnavailable implements Exception {
+  const DataFileUnavailable.timedOut(this.key, this.host, DataFileWait this.timedOut) : statusCode = null;
+  const DataFileUnavailable.status(this.key, this.host, int this.statusCode) : timedOut = null;
+
+  final String key;
+  final String host;
+  final DataFileWait? timedOut;
+  final int? statusCode;
+
+  @override
+  String toString() => statusCode != null
+      ? 'DataFileUnavailable: $host answered HTTP $statusCode for $key'
+      : 'DataFileUnavailable: $host timed out waiting for the ${timedOut!.name} of $key';
 }
 
 class DataFileManager {
@@ -298,6 +336,7 @@ class DataFileManager {
           name: def['name'] as String? ?? key,
           icon: def['icon'] as String?,
           updatedAt: millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis),
+          refused: _refusal(key),
         ),
       );
     }
@@ -482,8 +521,18 @@ class DataFileManager {
       }
 
       debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $etag)');
-      final streamedResponse = await client.send(request).timeout(headersTimeout);
-      final response = await http.Response.fromStream(streamedResponse).timeout(bodyTimeout);
+      final http.StreamedResponse streamedResponse;
+      try {
+        streamedResponse = await client.send(request).timeout(headersTimeout);
+      } on TimeoutException {
+        throw DataFileUnavailable.timedOut(key, request.url.host, DataFileWait.headers);
+      }
+      final http.Response response;
+      try {
+        response = await http.Response.fromStream(streamedResponse).timeout(bodyTimeout);
+      } on TimeoutException {
+        throw DataFileUnavailable.timedOut(key, request.url.host, DataFileWait.body);
+      }
 
       if (response.statusCode == 304) {
         debugPrint('[data-file] File $key unchanged (304)');
@@ -491,7 +540,7 @@ class DataFileManager {
       }
 
       if (response.statusCode != 200) {
-        throw HttpException('Failed to download $key: HTTP ${response.statusCode}');
+        throw DataFileUnavailable.status(key, request.url.host, response.statusCode);
       }
 
       final newEtag = response.headers['etag'];
@@ -688,14 +737,15 @@ class DataFileManager {
 
     try {
       if (fetchType == 'csv') {
-        await _processCsv(key, def, body, showProgress: showProgress);
+        await _processCsv(key, def, body, force: force, showProgress: showProgress);
       } else if (fetchType == 'json') {
-        await _processJson(key, def, body, showProgress: showProgress);
+        await _processJson(key, def, body, force: force, showProgress: showProgress);
       } else if (fetchType == 'raw') {
         await _processRaw(key, def, body, showProgress: showProgress);
       } else {
         return false;
       }
+      await prefs.remove(_refusedKey(key));
       return true;
     } catch (e) {
       // A failure part way through can leave some lookup batches committed
@@ -709,6 +759,7 @@ class DataFileManager {
       // data still missing. An unconditional re-download re-runs processing
       // in full.
       await prefs.remove('data_file_etag_$key');
+      if (e is DataFileImportShrank) await prefs.setString(_refusedKey(key), jsonEncode({'imported': e.imported, 'existing': e.existing}));
       // Distinct title from the download-failure notice above — a JSON/CSV
       // parsing error after a successful download is a config/data problem,
       // not a network one, and labeling it "Couldn't download" misdiagnoses
@@ -718,14 +769,14 @@ class DataFileManager {
           key: statusKey,
           icon: 'alert-circle',
           title: t.dataFiles.processingFailedTitle(name: label),
-          text: e.toString(),
+          text: e is DataFileImportShrank ? t.dataFiles.importTooSmall(imported: e.imported, existing: e.existing) : e.toString(),
         );
       }
       rethrow;
     }
   }
 
-  Future<void> _processCsv(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
+  Future<void> _processCsv(String key, Map<String, dynamic> def, String body, {required bool force, required bool showProgress}) async {
     final category = def['category'] as String? ?? key;
     final csvOpts = def['csvOptions'] as Map<dynamic, dynamic>? ?? const {};
     final hasHeaders = csvOpts['hasHeaders'] as bool? ?? true;
@@ -767,11 +818,12 @@ class DataFileManager {
       'rows',
       parsedRows,
       extraArgs: headers == null ? null : {'headers': headers},
+      force: force,
       showProgress: showProgress,
     );
   }
 
-  Future<void> _processJson(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
+  Future<void> _processJson(String key, Map<String, dynamic> def, String body, {required bool force, required bool showProgress}) async {
     final category = def['category'] as String? ?? key;
     final jsonOpts = def['jsonOptions'] as Map<dynamic, dynamic>? ?? const {};
     final rootPath = jsonOpts['rootPath'] as String?;
@@ -790,7 +842,16 @@ class DataFileManager {
       throw FormatException('Resolved target at rootPath is neither Array nor Object');
     }
 
-    await _batchWriteToDatabase(key, category, _labelFor(key, def), Hooks.dataFileMapJsonBatch, 'entries', entriesToProcess, showProgress: showProgress);
+    await _batchWriteToDatabase(
+      key,
+      category,
+      _labelFor(key, def),
+      Hooks.dataFileMapJsonBatch,
+      'entries',
+      entriesToProcess,
+      force: force,
+      showProgress: showProgress,
+    );
   }
 
   Future<void> _processRaw(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
@@ -898,6 +959,21 @@ class DataFileManager {
   }
 
   static const _ownershipKey = 'data_file_ownership';
+
+  static String _refusedKey(String key) => 'data_file_refused_$key';
+
+  /// The refusal [processDataFile] recorded for [key], or null. Unreadable
+  /// reads as none: the next accepted import clears it anyway.
+  DataFileImportShrank? _refusal(String key) {
+    final raw = prefs.getString(_refusedKey(key));
+    if (raw == null) return null;
+    try {
+      final counts = jsonDecode(raw) as Map;
+      return DataFileImportShrank(key, imported: counts['imported'] as int, existing: counts['existing'] as int);
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// `{dataFileKey: {ext, category}}` — persisted so the stale-data purge
   /// can identify (and delete) a disabled extension's data even though the
@@ -1033,6 +1109,7 @@ class DataFileManager {
   Future<void> _purgeDataFileData(String key, String category) async {
     await prefs.remove('data_file_etag_$key');
     await prefs.remove('data_file_updated_$key');
+    await prefs.remove(_refusedKey(key));
     await lookups.deleteCategory(category);
     if (!kIsWeb) {
       // The lookup rows and prefs are the substance; a leftover cache file
@@ -1068,9 +1145,13 @@ class DataFileManager {
     final lastUpdateKey = 'data_file_updated_$key';
     await prefs.remove(etagKey);
     await prefs.remove(lastUpdateKey);
+    await prefs.remove(_refusedKey(key));
 
-    // Delete from lookups by category
-    await lookups.deleteCategory(key);
+    // Rows live under the definition's category, which need not be the key
+    // (POTA's `pota-all-parks` fills `pota`); the ownership record is what
+    // remembers it without asking the extension.
+    final owner = _ownership()[key];
+    await lookups.deleteCategory((owner is Map ? owner['category'] as String? : null) ?? key);
     _dataRevision.value++;
 
     // Delete raw cache files
@@ -1084,6 +1165,13 @@ class DataFileManager {
   }
 
   /// Helper to send chunks across FFI boundary and write to Drift in database batches.
+  ///
+  /// Unless [force], an import far smaller than what the category holds is
+  /// refused before the stale sweep (see [minDataFileImportShare]); [force] is
+  /// every explicit refresh — a Refresh tap, Update All, RELOAD — so the
+  /// operator can accept a source that really did shrink. A forced shrink is
+  /// still reported: following the refusal notice's advice is also how a
+  /// mapper regression that drops most rows gets accepted.
   Future<void> _batchWriteToDatabase(
     String key,
     String category,
@@ -1092,6 +1180,7 @@ class DataFileManager {
     String mappingArgKey,
     List<dynamic> items, {
     Map<String, dynamic>? extraArgs,
+    required bool force,
     required bool showProgress,
   }) async {
     final host = extensions.host;
@@ -1104,6 +1193,7 @@ class DataFileManager {
     if (host == null) throw ExtensionHostException('dataFile $key: no runtime to import into');
 
     final updatedFlag = nowMillis();
+    final existing = await lookups.countCategory(category);
     final chunkSize = 5000;
     final statusKey = 'dataFile:$key';
     var imported = 0;
@@ -1176,6 +1266,13 @@ class DataFileManager {
         await lookups.insertLookupBatch(lookupRows);
         imported += lookupRows.length;
       }
+    }
+
+    // The rows this import did write stay when it throws: each replaced its own key.
+    final shrank = dataFileImportShrinkage(key, imported: imported, existing: existing, forced: force);
+    if (shrank != null) {
+      if (!force) throw shrank;
+      ErrorReportingService.report(shrank, StackTrace.current, context: 'data-files:forced-shrink');
     }
 
     // Clean up any stale records not updated in this run

@@ -128,3 +128,37 @@ String redactUrlForLog(String url) {
   final cut = url.indexOf(RegExp(r'[?#]'));
   return cut < 0 ? url : '${url.substring(0, cut)}?…';
 }
+
+/// The smallest share of a category's stored rows an unforced import may
+/// replace them with. A body that maps to far fewer rows than the last good
+/// import — an error page served as a 200, a file caught mid-regeneration —
+/// would otherwise reach the stale sweep and delete everything it did not
+/// restamp; in the app the file is then stamped fresh with its ETag stored, so
+/// the loss lasts at least maxAgeInDays, and past it for as long as the server
+/// keeps serving that same body. A forced import (an explicit refresh,
+/// `halo-ext data-files sync --force`) goes through regardless, which is how a
+/// source that genuinely shrinks this far is accepted.
+const minDataFileImportShare = 0.3;
+
+/// An import that mapped fewer than [minDataFileImportShare] of the rows its
+/// category already held. Unforced, it is thrown before the stale sweep and
+/// the rows the import did not restamp are kept; [forced], it went through and
+/// is only reported, so the rate counts accepted shrinks as well.
+class DataFileImportShrank implements Exception {
+  const DataFileImportShrank(this.key, {required this.imported, required this.existing, this.forced = false});
+
+  final String key;
+  final int imported;
+  final int existing;
+  final bool forced;
+
+  @override
+  String toString() => 'DataFileImportShrank: $key mapped $imported rows where $existing were stored${forced ? ' (forced through)' : ''}';
+}
+
+/// The [DataFileImportShrank] an import of [imported] rows over [existing]
+/// stored ones amounts to, or null when it keeps at least
+/// [minDataFileImportShare] of them. Both hosts ask after writing and BEFORE
+/// the stale sweep, the step that deletes the rows an import did not restamp.
+DataFileImportShrank? dataFileImportShrinkage(String key, {required int imported, required int existing, bool forced = false}) =>
+    imported < existing * minDataFileImportShare ? DataFileImportShrank(key, imported: imported, existing: existing, forced: forced) : null;

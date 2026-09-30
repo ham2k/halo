@@ -30,12 +30,12 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
+import 'package:halo_core/halo_core.dart' show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
-import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;
+import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart'
     show CatalogNotWired, SettingsNotWired, UpgradeCatalogUnavailable, UpgradeLeftNoRuntime;
 
@@ -566,13 +566,36 @@ void main() {
     });
 
     test('a bare TimeoutException is NOT swallowed', () {
-      // Deliberately excluded: _fetchAndDecode's headers/body timeouts throw
-      // this bare, and it still has to reach friendlyDownloadError's own
-      // translated message and downloadFile's CORS-preflight retry, both of
-      // which only trigger on ClientException. TimeoutException is also too
-      // generic a type to match on its own app-wide — see the sibling test
-      // in the fetch-transport-transience group.
+      // Too generic a type to match on its own app-wide — see the sibling
+      // test in the fetch-transport-transience group. A download's timeout
+      // is quietened through its own wrapper (the data-file group below).
       expect(dispositionFor(TimeoutException('the radio did not answer: pkt4')), ErrorDisposition.notify);
+    });
+  });
+
+  group('a data file refresh', () {
+    // The boot and reconnect passes refresh data files nobody asked about;
+    // unclassified, a slow or failing server there puts "Something went
+    // wrong" in front of the operator on every boot. An attended refresh names the failure in its own
+    // notice, so none of these needs the policy's.
+    test('that timed out is reported, not noticed', () {
+      final decision = ErrorPolicy.decide(const DataFileUnavailable.timedOut('pota-all-parks', 'pota.app', DataFileWait.headers));
+      expect(decision.rule?.id, 'data-file-unavailable');
+      expect(decision.disposition, ErrorDisposition.report);
+    });
+
+    test('answered with an error status is reported, not noticed', () {
+      expect(dispositionFor(const DataFileUnavailable.status('pota-all-parks', 'pota.app', 503)), ErrorDisposition.report);
+    });
+
+    test('refused as far smaller than the stored data is reported, not noticed', () {
+      final decision = ErrorPolicy.decide(const DataFileImportShrank('pota-all-parks', imported: 0, existing: 95000));
+      expect(decision.rule?.id, 'data-file-import-shrank');
+      expect(decision.disposition, ErrorDisposition.report);
+    });
+
+    test('forced through anyway is reported too', () {
+      expect(dispositionFor(const DataFileImportShrank('pota-all-parks', imported: 0, existing: 95000, forced: true)), ErrorDisposition.report);
     });
   });
 

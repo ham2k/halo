@@ -1842,6 +1842,7 @@
       "updatedHoursAgo": "Actualizado hace ${hours}h",
       "updatedHoursMinutesAgo": "Actualizado hace ${hours}h ${minutes}m",
       "updatedMinutesAgo": "Actualizado hace ${minutes}m",
+      "lastDownloadRefused": "La última descarga traía solo ${imported} de ${existing} registros y no se usó. Actualízalo para aceptarla.",
       "extensionsSection": "Extensiones"
     },
     "profiles": {
@@ -2061,7 +2062,10 @@
     "downloadFailedTitle": "No se pudo descargar ${name}",
     "downloadFailedWebHint": "Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.",
     "downloadTimedOut": "El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.",
+    "downloadServerError": "${host} respondió con un error (HTTP ${status}). Vuelve a intentarlo más tarde.",
+    "downloadNotAvailable": "${host} no pudo entregar este archivo (HTTP ${status}). Comprueba que su dirección siga siendo correcta.",
     "processingFailedTitle": "No se pudo procesar ${name}",
+    "importTooSmall": "La descarga traía solo ${imported} de los ${existing} registros de este dispositivo, así que se conservaron los que faltaban. Actualizarlo en Ajustes › Datos sin conexión lo acepta de todos modos.",
     "importedRecords": {
       "one": "Se importó ${count} registro de ${label}.",
       "other": "Se importaron ${count} registros de ${label}."

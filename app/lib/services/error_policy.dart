@@ -24,7 +24,8 @@ import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTest
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
-import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, SyncPayloadUnreadable, SyncRecordsRejected, WriteRefused;
+import 'package:halo_core/halo_core.dart'
+    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, SyncPayloadUnreadable, SyncRecordsRejected, WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -32,7 +33,7 @@ import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
-import 'data_file_manager.dart' show DataFileRemoveHookFailed;
+import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable;
 import 'extensions/extension_catalog_migration.dart'
     show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeCatalogUnavailable, UpgradeLeftNoRuntime;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
@@ -406,6 +407,26 @@ class ErrorPolicy {
           'retries on its own schedule',
       disposition: ErrorDisposition.report,
       matches: _isHttpClientConnectionTransient,
+    ),
+    ErrorRule(
+      id: 'data-file-unavailable',
+      reason:
+          "a data file's server did not answer in time, or answered with an error status; the "
+          'offline data already on the device stays, the next pass tries again, and a refresh the '
+          'operator asked for says so in its own notice — a background pass has nothing to act on. '
+          'Uploaded because the rate per host says whether a source is dying or a timeout is too tight',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is DataFileUnavailable,
+    ),
+    ErrorRule(
+      id: 'data-file-import-shrank',
+      reason:
+          'a data file mapped to far fewer rows than the device already holds. Unforced, the import '
+          'was refused and the rows kept, and Offline Data says so; forced, the operator asked for it. '
+          'Uploaded either way because only the rate says whether a source is serving short bodies '
+          'or a mapper has broken',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is DataFileImportShrank,
     ),
     ErrorRule(
       id: 'catalog-unreachable',
@@ -845,10 +866,8 @@ class ErrorPolicy {
   /// link failing is a real, reportable fault that has nothing to do with
   /// internet reachability (`peer_service.dart` keeps those apart for a
   /// related reason).
-  /// A bare [TimeoutException] is likewise absent: `_fetchAndDecode`'s two
-  /// `.timeout()`s throw it with nothing to scope it to a network call at
-  /// all, and it is thrown all over the app for waits that have no network
-  /// in them.
+  /// A bare [TimeoutException] is likewise absent: it is thrown all over the
+  /// app for waits that have no network in them.
   static bool isTransportFailure(Object error) => error is ClientException || _isHostFetchTransport(error);
 
   /// The prefix is `extensions/sync/ham2k-lofi/src/index.ts`'s `sync()`
@@ -875,13 +894,9 @@ class ErrorPolicy {
   /// rather than trying to tell them apart — so `report`, not `logOnly`, to
   /// keep whichever one it was visible in aggregate.
   ///
-  /// Deliberately NOT `TimeoutException`: `_fetchAndDecode`'s two
-  /// `.timeout()`s (headers, body) throw that bare, with nothing to scope it
-  /// to a data-file download — and it still has to reach
-  /// `friendlyDownloadError` (which gives it its own translated message) and
-  /// `downloadFile`'s own `on http.ClientException` retry (which reads any
-  /// ClientException there as a rejected CORS preflight, worth a same-call
-  /// retry; a timeout is neither of those things).
+  /// Deliberately NOT `TimeoutException`, which is too generic to match
+  /// app-wide; a download's own timeout arrives wrapped, as a
+  /// `DataFileUnavailable`.
   static bool _isHttpClientConnectionTransient(Object error, FlutterErrorDetails? details) => error is ClientException;
 
   /// [CatalogUnreachable] wrapping the transport failure CatalogService

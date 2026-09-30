@@ -236,10 +236,22 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
       );
     }
 
+    final refused = file.refused;
     return ListTile(
       leading: icon,
       title: Text(file.name),
-      subtitle: Text(_dataFileUpdatedLabel(file.updatedAt)),
+      subtitle: refused == null
+          ? Text(_dataFileUpdatedLabel(file.updatedAt))
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(_dataFileUpdatedLabel(file.updatedAt)),
+                Text(
+                  context.t.settings.offlineData.lastDownloadRefused(imported: refused.imported, existing: refused.existing),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ),
       trailing: IconButton(
         icon: Icon(MdiIcons.refresh, semanticLabel: context.t.settings.offlineData.refresh),
         onPressed: () => _refresh(file),

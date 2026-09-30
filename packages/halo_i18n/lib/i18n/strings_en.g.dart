@@ -1801,8 +1801,17 @@ class Translations$dataFiles$en {
 	/// en: 'The server took too long to respond. Try again later.'
 	String get downloadTimedOut => 'The server took too long to respond. Try again later.';
 
+	/// en: '${host} answered with an error (HTTP ${status}). Try again later.'
+	String downloadServerError({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.';
+
+	/// en: '${host} couldn't provide this file (HTTP ${status}). Check that its address is still right.'
+	String downloadNotAvailable({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.';
+
 	/// en: 'Couldn't process ${name}'
 	String processingFailedTitle({required Object name}) => 'Couldn\'t process ${name}';
+
+	/// en: 'The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.'
+	String importTooSmall({required Object imported, required Object existing}) => 'The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.';
 
 	/// en: '(one) {Imported ${count} record for ${label}.} (other) {Imported ${count} records for ${label}.}'
 	String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
@@ -5275,6 +5284,9 @@ class Translations$settings$offlineData$en {
 
 	/// en: 'Updated ${minutes}m ago'
 	String updatedMinutesAgo({required Object minutes}) => 'Updated ${minutes}m ago';
+
+	/// en: 'The last download had only ${imported} of ${existing} records and was not used. Refresh to accept it.'
+	String lastDownloadRefused({required Object imported, required Object existing}) => 'The last download had only ${imported} of ${existing} records and was not used. Refresh to accept it.';
 
 	/// en: 'Extensions'
 	String get extensionsSection => 'Extensions';
@@ -8912,6 +8924,7 @@ extension on Translations {
 			'settings.offlineData.updatedHoursAgo' => ({required Object hours}) => 'Updated ${hours}h ago',
 			'settings.offlineData.updatedHoursMinutesAgo' => ({required Object hours, required Object minutes}) => 'Updated ${hours}h ${minutes}m ago',
 			'settings.offlineData.updatedMinutesAgo' => ({required Object minutes}) => 'Updated ${minutes}m ago',
+			'settings.offlineData.lastDownloadRefused' => ({required Object imported, required Object existing}) => 'The last download had only ${imported} of ${existing} records and was not used. Refresh to accept it.',
 			'settings.offlineData.extensionsSection' => 'Extensions',
 			'settings.profiles.notSet' => 'Not set',
 			'settings.profiles.personalInfo' => 'Personal Info',
@@ -9080,7 +9093,10 @@ extension on Translations {
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
+			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
+			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
+			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
