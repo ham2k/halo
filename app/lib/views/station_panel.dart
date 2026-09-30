@@ -586,6 +586,10 @@ class StationPanel extends StatelessWidget {
                 if (element['advanced'] == true) 'disclosure': _advancedDisclosureKey,
               },
       ];
+      // A pairing's troubleshooting notes (every note is collapsible
+      // markdown, a registry test holds that): read only when something is
+      // wrong, so they close the form rather than sit between the fields.
+      bool isNote(Map<String, dynamic> element) => element['type'] == 'markdown' && element['collapsible'] == true;
       return [
         {'type': 'field', 'fieldType': 'text', 'key': 'name', 'label': st.name, 'description': st.nameDescription},
         if (choosable)
@@ -598,7 +602,7 @@ class StationPanel extends StatelessWidget {
               for (final candidate in variants) {'value': candidate.transportKey, 'label': candidate.transportLabel},
             ],
           },
-        ...connection.where((element) => element['disclosure'] == null),
+        ...connection.where((element) => element['disclosure'] == null && !isNote(element)),
         // Everything most operators never touch — the serial lines, the
         // poll and meter cadences — folded away after what they do, closed
         // until asked for. FormRenderer hides the fold whenever the chosen
@@ -630,6 +634,7 @@ class StationPanel extends StatelessWidget {
         // operator opening this dialog mid-operation is looking for the
         // former, and the latter is answered once and rarely revisited.
         if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
+        ...connection.where(isNote),
       ];
     }
 

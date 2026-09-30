@@ -11,6 +11,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'category_band.dart';
+import 'disclosure_chevron.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'list_contents_key.dart';
@@ -953,11 +954,11 @@ class FormRendererState extends State<FormRenderer> {
     return ListTile(
       key: ValueKey('disclosure:$key'),
       contentPadding: _rowContentPadding,
+      leading: DisclosureChevron(expanded: open),
       title: Text(
         el['title'] as String? ?? '',
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: _devModeColor(el)),
       ),
-      trailing: Icon(open ? MdiIcons.chevronUp : MdiIcons.chevronDown),
       onTap: () => setState(() => open ? _openDisclosures.remove(key) : _openDisclosures.add(key)),
     );
   }
@@ -2485,11 +2486,10 @@ class FormRendererState extends State<FormRenderer> {
   }
 }
 
-/// A collapsible markdown section: an [ExpansionTile] with an MDI chevron
-/// (the framework's default trailing is a Material glyph in an MDI app).
-/// A widget of its own because the chevron has to flip with the tile's
-/// open/closed state — ExpansionTile rotates only its default trailing; a
-/// custom one is never rotated for us.
+/// A collapsible markdown section: an [ExpansionTile] led by
+/// [DisclosureChevron]. A widget of its own because the chevron has to
+/// follow the tile's open/closed state — ExpansionTile animates only its
+/// default icon, never a custom one.
 class _CollapsibleMarkdown extends StatefulWidget {
   final Widget title;
   final Widget child;
@@ -2509,7 +2509,8 @@ class _CollapsibleMarkdownState extends State<_CollapsibleMarkdown> {
     return ExpansionTile(
       tilePadding: padding,
       childrenPadding: padding,
-      trailing: Icon(_expanded ? MdiIcons.chevronUp : MdiIcons.chevronDown),
+      leading: DisclosureChevron(expanded: _expanded),
+      showTrailingIcon: false,
       onExpansionChanged: (open) => setState(() => _expanded = open),
       title: widget.title,
       children: [widget.child],

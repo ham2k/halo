@@ -407,8 +407,9 @@ would surface as a missing-glyph box.
   Back/Close/Drawer buttons app-wide; `DropdownMenu` and
   `DropdownButtonFormField` take the shared `dropdownTrailingIcon`/
   `dropdownSelectedTrailingIcon` consts from theme.dart at each site;
-  `SegmentedButton` sets `showSelectedIcon: false`; `ExpansionTile` needs a
-  hand-flipped MDI `trailing:` (see `_CollapsibleMarkdown`). Adopting a new
+  `SegmentedButton` sets `showSelectedIcon: false`; `ExpansionTile` takes a
+  `DisclosureChevron` as `leading:` and `showTrailingIcon: false` (see
+  `_CollapsibleMarkdown`). Adopting a new
   Material widget with a built-in glyph means extending this list.
 
 All of this is enforced by `packages/halo_build_tools/test/icon_names_test.dart`,

@@ -589,6 +589,30 @@ void main() {
       expect(find.text('Read this carefully.'), findsOneWidget);
     });
 
+    testWidgets('leads with one caret, right when shut and down when open', (tester) async {
+      // The signs are the trap: `chevronDown` rests pointing DOWN, so shut is
+      // a NEGATIVE quarter turn. A trailing caret, a second (framework) caret,
+      // or up/down glyphs all read as a different control from the app's
+      // accordions.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: FormRenderer(formDefinition: collapsibleFormDefinition, initialState: const {}, onSubmit: (_) {}, onCancel: () {}),
+          ),
+        ),
+      );
+
+      final caret = find.byType(AnimatedRotation);
+      expect(caret, findsOneWidget);
+      expect(find.byIcon(Icons.expand_more), findsNothing, reason: "ExpansionTile's own caret stays suppressed");
+      expect(tester.getCenter(caret).dx, lessThan(tester.getTopLeft(find.text('How to build your own')).dx));
+      expect(tester.widget<AnimatedRotation>(caret).turns, -0.25);
+
+      await tester.tap(find.text('How to build your own'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<AnimatedRotation>(caret).turns, 0);
+    });
+
     testWidgets('a plain (non-collapsible) markdown block is unaffected', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -3069,6 +3093,22 @@ void main() {
       await tester.tap(find.text('Advanced Settings'));
       await tester.pumpAndSettle();
       expect(find.text('Poll'), findsNothing);
+    });
+
+    testWidgets('leads with a caret, right when shut and down when open', (tester) async {
+      // Same trap as the collapsible markdown: shut is a NEGATIVE quarter turn
+      // from `chevronDown`, and the caret sits before the title, not after.
+      await tester.pumpWidget(host());
+      await tester.pumpAndSettle();
+
+      final caret = find.descendant(of: find.byKey(const ValueKey('disclosure:advanced')), matching: find.byType(AnimatedRotation));
+      expect(caret, findsOneWidget);
+      expect(tester.getCenter(caret).dx, lessThan(tester.getTopLeft(find.text('Advanced Settings')).dx));
+      expect(tester.widget<AnimatedRotation>(caret).turns, -0.25);
+
+      await tester.tap(find.text('Advanced Settings'));
+      await tester.pumpAndSettle();
+      expect(tester.widget<AnimatedRotation>(caret).turns, 0);
     });
 
     testWidgets('a fold whose every member is hidden by visibleWhen is not shown', (tester) async {

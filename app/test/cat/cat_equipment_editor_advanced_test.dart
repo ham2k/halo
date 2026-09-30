@@ -79,4 +79,19 @@ void main() {
     expect(checked(tester, st.serialRtsHigh), isFalse);
     expect(checked(tester, st.serialDtrHigh), isFalse);
   });
+
+  testWidgets('the troubleshooting notes close the form, after the fold', (tester) async {
+    // The notes arrive among the always-shown fields, so a form that only
+    // pulls the fold's members out leaves them sitting ABOVE Advanced
+    // Settings, between the fields the operator is filling in.
+    await pick(tester, 'FT-891', t.settings.station.models.ft891);
+    final st = t.settings.station;
+
+    double top(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(top(st.troubleshootingNotes), greaterThan(top(st.advancedSettings)));
+
+    await openAdvanced(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(top(st.troubleshootingNotes), greaterThan(top(st.pollInterval)), reason: "below the fold's contents too, not just its header");
+  });
 }
