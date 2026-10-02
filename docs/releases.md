@@ -1030,6 +1030,24 @@ the same release-binding discipline Shorebird enforces for code pushes.
   content / unverified URLs into a WebView JS interface. HTTPS from our own origin,
   no arbitrary user-supplied URLs into a JS bridge → compliant.
 
+### 6.4 Pre-loaded extensions ride the release
+
+The app builds in only its core extensions; everything else is a catalog
+bundle, and the ones a new install needs ship inside the binary as pre-loads
+(`app/assets/preloaded-extensions/`, see
+[distribution.md](extensions/distribution.md#pre-loaded-extensions)). A binary
+freezes them, so each release must carry the catalog's **current stable
+release** of every one: an older one starts every new install behind the
+catalog, and an install moving off the retired built-ins onto it offline, until
+its first update check.
+
+`node scripts/preloaded-extensions.mjs check` compares them, byte for byte,
+with what the catalog serves at the app's extension API level;
+`… update [key…]` refreshes them (and adds `key`). `halo-ops release` runs the
+check and refuses to cut a Next or Prod build that fails it — including a check
+that could not reach the catalog — unless given `--force`. Every planning
+surface (`--json`, `--dry-run`) reports the result without refusing.
+
 ---
 
 ## 7. Product/variant/track/platform matrix

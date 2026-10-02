@@ -18,9 +18,22 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
 
-/// Hoisted so the shared host is reused rather than rebooted per call — a new
-/// closure each time is a new cache key (support/bundles.dart).
-Future<Object?> _noBirds(String method, Map<String, dynamic> params) async => method == 'dbLookupSelectAll' ? const [] : null;
+/// An extension whose `adifFields` answers every contact with [fields] (a JS
+/// array literal), or throws when [fields] is null.
+String _fieldsExtension(String key, {String? fields}) =>
+    '''
+__polo.defineExtension({
+  key: '$key',
+  name: '$key',
+  version: '0.0.1',
+  adifFieldsScope: 'always',
+  onActivation: function (api) {
+    api.registerHook('adifFields', { key: '$key', hook: {
+      fieldsForOneQSO: async function () { ${fields == null ? "throw new Error('its table could not be read')" : 'return $fields'} },
+    }})
+  },
+})
+''';
 
 void main() {
   requireBundles();
@@ -46,14 +59,14 @@ void main() {
       },
   ];
 
-  Future<ExtensionHost> startHost() => sharedHost(['adif', 'pota']);
+  Future<ExtensionHost> startHost() => sharedHost(['adif', 'ham2k-pota']);
 
   test('activating two parks offers one export per park', () async {
     final host = await startHost();
     final options =
         (await host.invokeHook(
                   'export',
-                  key: 'pota',
+                  key: 'ham2k-pota',
                   method: 'suggestExportOptions',
                   args: {
                     'operation': operation(['US-0001', 'US-0002']),
@@ -71,7 +84,7 @@ void main() {
     expect(options.map((o) => o['label']), ['ADIF for POTA US-0001', 'ADIF for POTA US-0002']);
     // A stable kind groups park logs; distinct keys keep each park selectable.
     expect(options.map((o) => o['exportType']), ['potaActivation-adif', 'potaActivation-adif']);
-    expect(options.map((o) => o['exportKey']), ['pota-adif:US-0001', 'pota-adif:US-0002']);
+    expect(options.map((o) => o['exportKey']), ['ham2k-pota-adif:US-0001', 'ham2k-pota-adif:US-0002']);
     // Distinct filenames, so two selected exports don't collide on disk.
     expect(options[0]['filename'], isNot(options[1]['filename']));
     // Declared so the core slices to segments where POTA was actually running.
@@ -80,11 +93,11 @@ void main() {
 
   test('a per-park export requires a valid instance key', () async {
     final host = await startHost();
-    for (final key in [null, 'potaActivation-adif', 'sota-adif:US-0001']) {
+    for (final key in [null, 'potaActivation-adif', 'ham2k-sota-adif:US-0001']) {
       await expectLater(
         host.invokeHook(
           'export',
-          key: 'pota',
+          key: 'ham2k-pota',
           method: 'generateExport',
           args: {
             'operation': operation(['US-0001']),
@@ -106,7 +119,7 @@ void main() {
       final result =
           await host.invokeHook(
                 'export',
-                key: 'pota',
+                key: 'ham2k-pota',
                 method: 'generateExport',
                 args: {
                   'operation': operation(['US-0001', 'US-0002']),
@@ -120,8 +133,8 @@ void main() {
       return result['content'] as String;
     }
 
-    final first = await generate('pota-adif:US-0001');
-    final second = await generate('pota-adif:US-0002');
+    final first = await generate('ham2k-pota-adif:US-0001');
+    final second = await generate('ham2k-pota-adif:US-0002');
 
     // Each file names its own park and does NOT mention the other — that is
     // what makes it separately submittable.
@@ -154,9 +167,9 @@ void main() {
     final result =
         await host.invokeHook(
               'export',
-              key: 'pota',
+              key: 'ham2k-pota',
               method: 'generateExport',
-              args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'potaActivation-adif', 'exportKey': 'pota-adif:US-0002'},
+              args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'potaActivation-adif', 'exportKey': 'ham2k-pota-adif:US-0002'},
               timeout: const Duration(seconds: 20),
             )
             as Map;
@@ -167,24 +180,24 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // A file uploaded to POTA is POTA's log. Activate a park that is also a
-  // lighthouse and an export that asks every `adifFields` hook writes both
+  // WWFF area and an export that asks every `adifFields` hook writes both
   // programs' MY_SIG pairs into every record — two SIG claims in one file,
   // leaving the receiving program to guess which is its. The core exporter
   // asks the hook whose export this IS and no other (`ExportRequest.
   // mainHandler`, app-polo's main handler).
   test('a POTA file carries no other program\'s fields, activated or hunted', () async {
-    final host = await sharedHost(['adif', 'pota', 'llota']);
+    final host = await sharedHost(['adif', 'ham2k-pota', 'ham2k-wwff']);
     final result =
         await host.invokeHook(
               'export',
-              key: 'pota',
+              key: 'ham2k-pota',
               method: 'generateExport',
               args: {
                 'operation': {
                   ...operation(['US-0001']),
                   'refs': [
                     {'type': 'potaActivation', 'ref': 'US-0001'},
-                    {'type': 'llotaActivation', 'ref': 'LLUS-0787'},
+                    {'type': 'wwffActivation', 'ref': 'KFF-0787'},
                   ],
                 },
                 'qsos': [
@@ -192,12 +205,12 @@ void main() {
                     ...qsos.first,
                     'refs': [
                       {'type': 'pota', 'ref': 'US-9001'},
-                      {'type': 'llota', 'ref': 'LLUS-9002'},
+                      {'type': 'wwff', 'ref': 'KFF-9002'},
                     ],
                   },
                 ],
                 'exportType': 'potaActivation-adif',
-                'exportKey': 'pota-adif:US-0001',
+                'exportKey': 'ham2k-pota-adif:US-0001',
               },
               timeout: const Duration(seconds: 20),
             )
@@ -207,11 +220,11 @@ void main() {
     expect(content, contains('<MY_SIG:4>POTA'));
     expect(content, contains('<MY_POTA_REF:7>US-0001'));
     expect(content, contains('<SIG_INFO:7>US-9001'));
-    // Not merely "no MY_SIG:LLOTA" — the lighthouse must leave no trace at
+    // Not merely "no MY_SIG:WWFF" — the other program must leave no trace at
     // all, on either side of the contact.
-    expect(content, isNot(contains('LLOTA')));
-    expect(content, isNot(contains('LLUS-0787')));
-    expect(content, isNot(contains('LLUS-9002')));
+    expect(content, isNot(contains('WWFF')));
+    expect(content, isNot(contains('KFF-0787')));
+    expect(content, isNot(contains('KFF-9002')));
     // One claim per record, not two.
     expect('<MY_SIG:'.allMatches(content).length, 1);
     // The free-text fields are the half of a record `mainHandler` does not
@@ -250,43 +263,62 @@ void main() {
     );
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  /// The generator asked the way a delegating export asks it — naming a main
+  /// handler and the extensions it lists in `includeFieldsFrom` — with
+  /// stand-ins for the listed ones: which extensions a program lists is that
+  /// program's business, what the generator does with the list is this one's.
+  ExtensionHost? standIns;
+  Future<ExtensionHost> standInHost() async => standIns ??= await ExtensionHost.start(
+    kernelSource: bundleSource('kernel'),
+    extensions: [
+      ExtensionBundle(key: 'adif', source: bundleSource('adif')),
+      ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota')),
+      ExtensionBundle(key: 'ham2k-wwff', source: bundleSource('ham2k-wwff')),
+      ExtensionBundle(
+        key: 'listed',
+        source: _fieldsExtension('listed', fields: "[{ name: 'PROP_MODE', value: 'SAT' }, { name: 'SAT_NAME', value: 'SO-50' }]"),
+      ),
+      ExtensionBundle(key: 'thrower', source: _fieldsExtension('thrower')),
+    ],
+    onHostCall: nullHostCall,
+  );
+  tearDownAll(() => standIns?.dispose());
+
+  Future<Object?> generateAdif(ExtensionHost host, Map<String, dynamic> operation, {required String mainHandler, List<String> includeFieldsFrom = const []}) =>
+      host.invokeHook(
+        'export',
+        key: 'adif',
+        method: 'generateExport',
+        args: {
+          'operation': operation,
+          'qsos': [qsos.first],
+          'exportType': 'adif',
+          'mainHandler': mainHandler,
+          'includeFieldsFrom': includeFieldsFrom,
+        },
+        timeout: const Duration(seconds: 20),
+      );
+
   // What DESCRIBES a contact is not what CLAIMS it. A park worked through a
   // satellite is still a park activation and POTA's uploader reads
-  // PROP_MODE/SAT_NAME, so POTA lists `satellites` in `includeFieldsFrom` —
-  // narrowing polo's all-or-nothing `includeOtherRefs` to what the program
-  // itself says it accepts. A rival program's claim still stays out.
-  test('a POTA file carries the satellite fields POTA asked for, and nothing else', () async {
-    // The satellites hook reads its bird table through the host on every
-    // export; without an answer it throws, the whole hook's fields are lost,
-    // and this test would pass or fail on the harness rather than the
-    // whitelist. An empty table is enough — BAND_RX is the only field that
-    // needs a match in it.
-    final host = await sharedHost(['adif', 'pota', 'satellites', 'llota'], cacheKey: 'sat-birds-empty', onHostCall: _noBirds);
+  // PROP_MODE/SAT_NAME, so a program lists the extensions whose fields its
+  // file accepts in `includeFieldsFrom` — narrowing polo's all-or-nothing
+  // `includeOtherRefs` to what the program itself says it accepts. A rival
+  // program's claim still stays out.
+  test('a program\'s file carries the fields of the extensions it lists, and nothing else', () async {
+    final host = await standInHost();
     final result =
-        await host.invokeHook(
-              'export',
-              key: 'pota',
-              method: 'generateExport',
-              args: {
-                'operation': {
-                  ...operation(['US-0001']),
-                  'refs': [
-                    {'type': 'potaActivation', 'ref': 'US-0001'},
-                    {'type': 'llotaActivation', 'ref': 'LLUS-0787'},
-                  ],
-                },
-                'qsos': [
-                  {
-                    ...qsos.first,
-                    'refs': [
-                      {'type': 'satellite', 'ref': 'SO-50'},
-                    ],
-                  },
+        await generateAdif(
+              host,
+              {
+                ...operation(['US-0001']),
+                'refs': [
+                  {'type': 'potaActivation', 'ref': 'US-0001'},
+                  {'type': 'wwffActivation', 'ref': 'KFF-0787'},
                 ],
-                'exportType': 'potaActivation-adif',
-                'exportKey': 'pota-adif:US-0001',
               },
-              timeout: const Duration(seconds: 20),
+              mainHandler: 'ham2k-pota',
+              includeFieldsFrom: ['listed'],
             )
             as Map;
     final content = result['content'] as String;
@@ -294,84 +326,44 @@ void main() {
     expect(content, contains('<MY_POTA_REF:7>US-0001'));
     expect(content, contains('<PROP_MODE:3>SAT'));
     expect(content, contains('<SAT_NAME:5>SO-50'));
-    // The whitelist is a list, not a door: the lighthouse is not on it.
-    expect(content, isNot(contains('LLOTA')));
+    // The list is a list, not a door: the rival program is not on it.
+    expect(content, isNot(contains('WWFF')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // The other half of the same claim: a hook that THREW answers the call, so a
   // guard counting answers would wave it through and write the same
-  // reference-less file. `satellites` is the real case — its hook reads the
-  // bird table through the host on every contact, so it fails on a bad day
-  // rather than on a bad build, and this host deliberately answers nothing.
+  // reference-less file. A hook that reads a table through the host on every
+  // contact fails on a bad day rather than on a bad build.
   //
   // A LISTED hook that throws is refused on the same terms, and this is where
   // the two tolerances part: a listed extension that is turned off answers
   // nothing and is fine, while one that answers and fails would otherwise cost
-  // POTA's file its satellite fields in silence — the contact recorded as
-  // terrestrial, the upload clean.
+  // the program's file that extension's fields in silence — a satellite
+  // contact recorded as terrestrial, the upload clean.
   test('a hook that throws fails the export, main handler or listed', () async {
-    final host = await sharedHost(['adif', 'pota', 'satellites'], cacheKey: 'no-host-answers');
+    final host = await standInHost();
     await expectLater(
-      host.invokeHook(
-        'export',
-        key: 'pota',
-        method: 'generateExport',
-        args: {
-          'operation': operation(['US-0001']),
-          'qsos': [
-            {
-              ...qsos.first,
-              'refs': [
-                {'type': 'satellite', 'ref': 'SO-50'},
-              ],
-            },
-          ],
-          'exportType': 'potaActivation-adif',
-          'exportKey': 'pota-adif:US-0001',
-        },
-        timeout: const Duration(seconds: 20),
-      ),
+      generateAdif(host, operation(['US-0001']), mainHandler: 'ham2k-pota', includeFieldsFrom: ['thrower']),
       // The KEY has to reach the operator: the export panel shows this string
       // and nothing else says which extension went wrong.
-      throwsA(predicate((e) => '$e'.contains('satellites'))),
-      reason: 'POTA lists satellites, and its hook cannot read its table here',
+      throwsA(predicate((e) => '$e'.contains('thrower'))),
+      reason: 'the listed hook threw',
     );
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a main handler whose hook throws fails the export too', () async {
-    final host = await sharedHost(['adif', 'satellites'], cacheKey: 'no-host-answers');
-    await expectLater(
-      host.invokeHook(
-        'export',
-        key: 'adif',
-        method: 'generateExport',
-        args: {
-          'operation': operation([]),
-          'qsos': [
-            {
-              ...qsos.first,
-              'refs': [
-                {'type': 'satellite', 'ref': 'SO-50'},
-              ],
-            },
-          ],
-          'exportType': 'adif',
-          'mainHandler': 'satellites',
-        },
-        timeout: const Duration(seconds: 20),
-      ),
-      throwsA(predicate((e) => '$e'.contains('satellites'))),
-    );
+    final host = await standInHost();
+    await expectLater(generateAdif(host, operation([]), mainHandler: 'thrower'), throwsA(predicate((e) => '$e'.contains('thrower'))));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  // The mirror of the narrowing test above, on the same fixture: the FULL ADIF
+  // The mirror of the narrowing test above: the FULL ADIF
   // export names no main handler and every program the contact belongs to
   // contributes, which is what makes it the complete copy the operator keeps.
   // Requiring `mainHandler`, defaulting it, or narrowing that fan-out to one
   // program would quietly turn that file single-program, and nothing else
   // would notice.
   test('the full ADIF export asks every program on the contact, and a shared field is written once', () async {
-    final host = await sharedHost(['adif', 'pota', 'llota']);
+    final host = await sharedHost(['adif', 'ham2k-pota', 'ham2k-wwff']);
     final result =
         await host.invokeHook(
               'export',
@@ -382,7 +374,7 @@ void main() {
                   ...operation(['US-0001']),
                   'refs': [
                     {'type': 'potaActivation', 'ref': 'US-0001'},
-                    {'type': 'llotaActivation', 'ref': 'LLUS-0787'},
+                    {'type': 'wwffActivation', 'ref': 'KFF-0787'},
                   ],
                 },
                 'qsos': [qsos.first],
@@ -393,14 +385,14 @@ void main() {
             as Map;
     final content = result['content'] as String;
 
-    // Both hooks ran: the lighthouse's own field is in the record next to the
-    // park's, which is what asking every program on the contact buys.
+    // Both hooks ran: WWFF's own field is in the record next to the park's,
+    // which is what asking every program on the contact buys.
     expect(content, contains('<MY_POTA_REF:7>US-0001'));
-    expect(content, contains('<MY_LLOTA_REF:9>LLUS-0787'));
+    expect(content, contains('<MY_WWFF_REF:8>KFF-0787'));
     // MY_SIG they BOTH answer, and ADIF gives no meaning to a field written
     // twice in one record — so the first hook asked keeps it, whole: the pair
     // that lands must be one program's, never POTA's name against the
-    // lighthouse's reference.
+    // other program's reference.
     expect('<MY_SIG:'.allMatches(content).length, 1);
     expect(content, contains('<MY_SIG:4>POTA <MY_SIG_INFO:7>US-0001'));
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -410,7 +402,7 @@ void main() {
     final options =
         await host.invokeHook(
               'export',
-              key: 'pota',
+              key: 'ham2k-pota',
               method: 'suggestExportOptions',
               args: {'operation': operation([]), 'qsos': qsos},
               timeout: const Duration(seconds: 20),
@@ -429,13 +421,13 @@ void main() {
     await expectLater(
       host.invokeHook(
         'export',
-        key: 'pota',
+        key: 'ham2k-pota',
         method: 'generateExport',
         args: {
           'operation': operation(['US-0001']),
           'qsos': qsos,
           'exportType': 'potaActivation-adif',
-          'exportKey': 'pota-adif:US-0002',
+          'exportKey': 'ham2k-pota-adif:US-0002',
         },
         timeout: const Duration(seconds: 20),
       ),
@@ -451,7 +443,7 @@ void main() {
     await expectLater(
       host.invokeHook(
         'export',
-        key: 'pota',
+        key: 'ham2k-pota',
         method: 'generateExport',
         args: {
           'operation': operation(['US-0001']),
@@ -476,7 +468,7 @@ void main() {
       final result =
           await host.invokeHook(
                 'export',
-                key: 'pota',
+                key: 'ham2k-pota',
                 method: 'generateExport',
                 args: {
                   'operation': operation(['US-0001']),
@@ -488,7 +480,7 @@ void main() {
                     },
                   ],
                   'exportType': 'potaActivation-adif',
-                  'exportKey': 'pota-adif:US-0001',
+                  'exportKey': 'ham2k-pota-adif:US-0001',
                   'includePrivateData': includePrivateData,
                 },
                 timeout: const Duration(seconds: 20),
@@ -528,7 +520,7 @@ void main() {
     // caches that answer, so the two precisions cannot share one.
     final host = await startHost();
     final fineHost = await sharedHost(
-      ['adif', 'pota'],
+      ['adif', 'ham2k-pota'],
       cacheKey: 'grid-precision-eight',
       onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
     );
@@ -665,7 +657,7 @@ void main() {
   // would state a coarser square in the file than every screen shows.
   test('the worked station\'s gridsquare is derived from the coordinate, at the operator\'s precision', () async {
     final fineHost = await sharedHost(
-      ['adif', 'pota'],
+      ['adif', 'ham2k-pota'],
       cacheKey: 'their-grid-precision-eight',
       onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
     );
@@ -772,7 +764,7 @@ void main() {
   // SOTA's file and keeps the contact's own privacy rules.
   test('a SOTA file carries both grids, ours at six characters, and the full export does not borrow them', () async {
     final host = await sharedHost(
-      ['adif', 'sota'],
+      ['adif', 'ham2k-sota'],
       cacheKey: 'sota-grids-precision-eight',
       onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
     );
@@ -807,7 +799,7 @@ void main() {
     }
 
     Future<String> sotaFile({required bool includePrivateData}) =>
-        generate('sota', {'exportType': 'sotaActivation-adif', 'exportKey': 'sota-adif:W1/HA-001', 'includePrivateData': includePrivateData});
+        generate('ham2k-sota', {'exportType': 'sotaActivation-adif', 'exportKey': 'ham2k-sota-adif:W1/HA-001', 'includePrivateData': includePrivateData});
 
     final withheld = await sotaFile(includePrivateData: false);
     expect(withheld, contains('<GRIDSQUARE:8>FN31pr56'), reason: 'their grid goes out as they sent it');
@@ -824,105 +816,6 @@ void main() {
     final full = await generate('adif', {'exportType': 'adif', 'includePrivateData': false});
     expect(full, contains('<MY_SOTA_REF:9>W1/HA-001'), reason: 'SOTA still answered for the contact');
     expect(full, isNot(contains('<GRIDSQUARE:')));
-  }, timeout: const Timeout(Duration(seconds: 60)));
-
-  // SOTA's grids outrank the contact's own, so they must read a location the
-  // way the rest of the file does: a real coordinate over the stored grid.
-  // Cutting the stored string instead would write an imported contact's
-  // four-character MY_GRIDSQUARE beside the fix it came with, and a station
-  // known only by its coordinate would get no GRIDSQUARE at all.
-  test('a SOTA file derives both grids from a real coordinate, not the stored string', () async {
-    final host = await sharedHost(['adif', 'sota']);
-    final result =
-        await host.invokeHook(
-              'export',
-              key: 'sota',
-              method: 'generateExport',
-              args: {
-                'operation': {
-                  'uuid': 'op',
-                  'stationCall': 'N0DEV',
-                  'refs': [
-                    {'type': 'sotaActivation', 'ref': 'W1/HA-001'},
-                  ],
-                },
-                'qsos': [
-                  {
-                    ...qsos.first,
-                    // What an ADIF import leaves: a coarse MY_GRIDSQUARE and the
-                    // MY_LAT/MY_LON the same record carried.
-                    'our': {'call': 'N0DEV', 'sent': '59', 'grid': 'FN21', 'lat': 41.7135, 'lon': -72.7278},
-                    'their': {'call': 'W0ABC', 'sent': '59', 'lat': 39.7589, 'lon': -84.1916},
-                  },
-                ],
-                'exportType': 'sotaActivation-adif',
-                'exportKey': 'sota-adif:W1/HA-001',
-                'includePrivateData': false,
-              },
-              timeout: const Duration(seconds: 20),
-            )
-            as Map;
-    final content = result['content'] as String;
-
-    expect(content, contains('<MY_GRIDSQUARE:6>${locationToGrid6(41.7135, -72.7278)}'));
-    expect(content, contains('<GRIDSQUARE:6>${locationToGrid6(39.7589, -84.1916)}'));
-  }, timeout: const Timeout(Duration(seconds: 60)));
-
-  // SOTA reads the other station's location with its own copy of the rules
-  // core/adif applies, and its answer outranks the contact's — so each rule
-  // that keeps a coordinate from speaking has to hold there too, or the SOTA
-  // file states a place the rest of the log does not.
-  test('a SOTA file keeps the pairs that are no coordinate out of its grids', () async {
-    final host = await sharedHost(['adif', 'sota']);
-    Map<String, dynamic> contact(String call, Map<String, dynamic> their) => {
-      ...qsos.first,
-      'uuid': 'q-$call',
-      'their': {'call': call, 'sent': '59', ...their},
-    };
-    final result =
-        await host.invokeHook(
-              'export',
-              key: 'sota',
-              method: 'generateExport',
-              args: {
-                'operation': {
-                  'uuid': 'op',
-                  'stationCall': 'N0DEV',
-                  // Our own typed square, stored beside its center the same way.
-                  'grid': 'FN21',
-                  'lat': 41.5,
-                  'lon': -75.0,
-                  'refs': [
-                    {'type': 'sotaActivation', 'ref': 'W1/HA-001'},
-                  ],
-                },
-                'qsos': [
-                  // A typed square, stored beside its own center.
-                  contact('W1CTR', {'grid': 'FN31', 'lat': 41.5, 'lon': -73.0}),
-                  // A synced guess carrying cty.dat's west-positive DXCC centroid.
-                  contact('W2PFX', {
-                    'guess': {'grid': 'FN31pr', 'lat': 37.6, 'lon': 91.87, 'locSource': 'prefix'},
-                  }),
-                  // A typed square correcting a lookup's pair elsewhere.
-                  contact('W3FIX', {
-                    'grid': 'EM79',
-                    'guess': {'lat': 41.7135, 'lon': -72.7278},
-                  }),
-                ],
-                'exportType': 'sotaActivation-adif',
-                'exportKey': 'sota-adif:W1/HA-001',
-                'includePrivateData': false,
-              },
-              timeout: const Duration(seconds: 20),
-            )
-            as Map;
-    final records = (result['content'] as String).split('<EOR>');
-    String recordFor(String call) => records.firstWhere((r) => r.contains('<CALL:${call.length}>$call'));
-
-    expect(recordFor('W1CTR'), contains('<GRIDSQUARE:4>FN31 '), reason: 'a center restates the square, it does not refine it');
-    expect(recordFor('W2PFX'), contains('<GRIDSQUARE:6>FN31pr '));
-    expect(recordFor('W3FIX'), contains('<GRIDSQUARE:4>EM79 '));
-    expect(recordFor('W1CTR'), contains('<MY_GRIDSQUARE:4>FN21 '));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // What app-polo puts on every guess it syncs to us: lib-country-files' DXCC

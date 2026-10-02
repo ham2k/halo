@@ -17,8 +17,8 @@
 // band, one contact per station per band. What this sample leaves out is
 // everything around them — Cabrillo export, the ADIF exchange fields, the
 // country-file zone suggestion, and writing a guessed exchange onto the QSO.
-// See `docs/hooks.md` §`scoring`, and `contests/cqww` in the app's repository
-// for the whole thing.
+// See `docs/hooks.md` §`scoring`, and the catalog's `ham2k-cqww` for the whole
+// thing.
 
 import { annotateCallAgainstCountryFile, contestArithmetic, contestScorer, contestSummary, defineExtension } from "@ham2k/extension-sdk"
 import type { ContestScorer, HookContext, JSONValue, LoggingControlDescriptor, Ref } from "@ham2k/extension-sdk"

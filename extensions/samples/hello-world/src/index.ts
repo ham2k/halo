@@ -5,7 +5,7 @@
 //
 // It exists to be COPIED. Everything here is the minimum — one hook, one
 // descriptor, one render — so that what a real extension adds is obvious by
-// comparison. See extensions/dashboard/custom-text for a panel that earns its
+// comparison. See the catalog's `ham2k-custom-text` for a panel that earns its
 // keep, and docs/extensions/hooks.md for every other hook there is.
 //
 // It declares no `sharedDependencies` because it uses none. An extension that

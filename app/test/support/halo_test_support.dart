@@ -13,3 +13,4 @@ export 'fake_panel_extensions.dart';
 export 'fake_secure_storage.dart';
 export 'halo_harness.dart';
 export 'map_tile_cache.dart';
+export 'shipped_extensions.dart';

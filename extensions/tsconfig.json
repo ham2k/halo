@@ -15,17 +15,5 @@
       "@ham2k/extension-sdk": ["./sdk/src/index.ts"]
     }
   },
-  "include": [
-    "sdk/src/**/*.ts",
-    "shared/**/*.ts",
-    "shims/**/*.ts",
-    "activities/*/src/**/*.ts",
-    "contests/*/src/**/*.ts",
-    "core/*/src/**/*.ts",
-    "dashboard/*/src/**/*.ts",
-    "samples/*/src/**/*.ts",
-    "lookups/*/src/**/*.ts",
-    "spots/*/src/**/*.ts",
-    "sync/*/src/**/*.ts"
-  ]
+  "include": ["sdk/src/**/*.ts", "shared/**/*.ts", "shims/**/*.ts", "core/*/src/**/*.ts", "samples/*/src/**/*.ts", "sync/*/src/**/*.ts"]
 }

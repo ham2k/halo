@@ -12,6 +12,7 @@
 import 'package:halo_core/halo_core.dart';
 
 import 'extension_info.dart';
+import 'preloaded_extensions.dart';
 import '../settings_service.dart';
 
 /// Stamps the moment each non-core extension became disabled, and clears the
@@ -44,7 +45,10 @@ Future<void> updateExtensionDisabledSince({
   // With what the operator installed: an extension missing from the store is
   // not one deleted from the build, and pruning its choice would bring it
   // back switched on — or SOTA and WWFF, off by default — once it is restored.
-  final knownKeys = {for (final info in available) info.key, ...settings.extensionsInstalled.keys};
+  // And with the retired built-ins: their choices are what a twin inherits
+  // when it arrives, which for one the app does not pre-load is whenever the
+  // catalog is next reachable.
+  final knownKeys = {for (final info in available) info.key, ...settings.extensionsInstalled.keys, ...kRetiredBuiltIns.keys};
   final canPrune = available.isNotEmpty;
   // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
   // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real
@@ -55,12 +59,10 @@ Future<void> updateExtensionDisabledSince({
   // READER forward, which still works.
   final now = realNowMillis();
   var changed = false;
-  // By KEY, not entry by entry. A key can appear twice: `ham2k-lookup` is both
-  // a bundle the app ships and one the catalog serves, so the list holds an
-  // asset entry and an installed entry under the one name, and whichever is
-  // not the live one is inactive. Judged separately, the inactive copy stamps
-  // the key its active twin is running under, and seven days on the purge
-  // deletes the running extension's downloaded data.
+  // By KEY, not entry by entry: should the list ever hold a key twice, the
+  // inactive copy, judged on its own, would stamp the key its live twin runs
+  // under, and seven days on the purge would delete the running extension's
+  // downloaded data.
   final nonCoreKeys = <String>{};
   final activeKeys = <String>{};
   for (final info in available) {
@@ -74,6 +76,15 @@ Future<void> updateExtensionDisabledSince({
       disabledSince[key] = now;
       changed = true;
     } else if (!disabled && disabledSince.remove(key) != null) {
+      changed = true;
+    }
+  }
+  // A retired built-in never runs again, so its data files are the purge's to
+  // clear a week on — the rows its twin still fills excepted. Listed nowhere,
+  // it would otherwise never be stamped, and its cache would stay forever.
+  for (final key in kRetiredBuiltIns.keys) {
+    if (!nonCoreKeys.contains(key) && !disabledSince.containsKey(key)) {
+      disabledSince[key] = now;
       changed = true;
     }
   }

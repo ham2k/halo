@@ -8,11 +8,11 @@
 // moved the zip out of Dart — where it was covered — into JS, where nothing
 // exercised it.
 //
-// What these pin, driven through the real SOTA bundle rather than a stand-in
-// mapper: that a column lands on the field it names, that EVERY row in a chunk
-// is zipped against the one shared header list, that ragged lines are tolerated
-// rather than dropped or allowed to shift a later row, and that a file with no
-// headers still reaches the mapper positionally.
+// What these pin, driven through the real `ham2k-sota` bundle rather than a
+// stand-in mapper: that a column lands on the field it names, that EVERY row in
+// a chunk is zipped against the one shared header list, that ragged lines are
+// tolerated rather than dropped or allowed to shift a later row, and that a
+// file with no headers still reaches the mapper positionally.
 //
 // What they deliberately do NOT claim: that the `limit = min(headers, cells)`
 // bound is exactly right. A mapper only ever READS properties, and a missing
@@ -73,8 +73,9 @@ void main() {
   ];
 
   Future<List<Map<String, dynamic>>> mapCsv(Map<String, Object?> args) async {
-    final host = await sharedHost(['sota']);
-    final result = await host.invokeHook('dataFile', key: 'sota-all-summits', method: 'mapCsvBatch', args: args, timeout: const Duration(seconds: 20)) as List;
+    final host = await sharedHost(['ham2k-sota']);
+    final result =
+        await host.invokeHook('dataFile', key: 'ham2k-sota-all-summits', method: 'mapCsvBatch', args: args, timeout: const Duration(seconds: 20)) as List;
     return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
   }
 

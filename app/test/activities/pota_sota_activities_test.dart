@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // End-to-end verification that POTA/SOTA's `dataFile` definitions really
-// populate the lookup table through the real bundled JS extensions (not a
-// mocked host, like data_file_manager_test.dart's fixtures), and that their
-// new `suggest` hook then serves nearby/search results from that data.
+// populate the lookup table through the real JS extensions the app pre-loads
+// (not a mocked host, like data_file_manager_test.dart's fixtures), and that
+// their `suggest` hook then serves nearby/search results from that data.
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+
+import '../support/halo_test_support.dart';
 
 class _CannedDataFileManager extends DataFileManager {
   final Map<String, String> bodiesByKey;
@@ -33,14 +35,14 @@ void main() {
     db = HaLoDatabase(NativeDatabase.memory());
     lookups = LookupRepository(db);
     SharedPreferences.setMockInitialValues({});
-    // SOTA is not in the default set — only POTA is — so a runtime booted
-    // from the defaults alone carries no SOTA extension to exercise.
+    // SOTA is off by default — only POTA is on — so a runtime booted from the
+    // defaults alone carries no SOTA extension to exercise.
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings.setExtensionOverrides({'sota': true});
     extensions = ExtensionService()
       ..lookups = lookups
       ..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
   });
 
   tearDown(() async {
@@ -52,8 +54,8 @@ void main() {
     expect(host, isNotNull, reason: 'extension runtime failed to boot');
 
     final defs = await host!.invokeHookAll('dataFile', method: 'getDefinition');
-    final potaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'pota-all-parks')['value'] as Map));
-    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map));
+    final potaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'ham2k-pota-all-parks')['value'] as Map));
+    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'ham2k-sota-all-summits')['value'] as Map));
 
     final prefs = await SharedPreferences.getInstance();
     final manager = _CannedDataFileManager(
@@ -61,20 +63,20 @@ void main() {
       extensions: extensions,
       prefs: prefs,
       bodiesByKey: {
-        'pota-all-parks':
+        'ham2k-pota-all-parks':
             'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
             'US-1234,Test State Park,1,291,US-CA,37.7749,-122.4194,\n'
             'US-9963,Retired Park,0,291,US-VA,36.9434,-77.1106,\n'
             'US-5555,Oddly Flagged Park,Y,291,US-VA,36.9,-77.1,\n',
-        'sota-all-summits':
+        'ham2k-sota-all-summits':
             'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             'W6/CT-001,Test Peak,USA-California,Central,37.5,-122.1,1200,4,01/01/2020,31/12/2099\n',
       },
     );
 
-    await manager.processDataFile('pota-all-parks', potaDef);
-    await manager.processDataFile('sota-all-summits', sotaDef);
+    await manager.processDataFile('ham2k-pota-all-parks', potaDef);
+    await manager.processDataFile('ham2k-sota-all-summits', sotaDef);
 
     final potaRow = await lookups.getLookup('pota', 'US-1234');
     expect(potaRow, isNotNull);
@@ -105,7 +107,7 @@ void main() {
   test('SOTA subCategory resolves sub-associations and the two hand-verified overrides', () async {
     final host = extensions.host!;
     final defs = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map));
+    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'ham2k-sota-all-summits')['value'] as Map));
 
     final prefs = await SharedPreferences.getInstance();
     final manager = _CannedDataFileManager(
@@ -113,7 +115,7 @@ void main() {
       extensions: extensions,
       prefs: prefs,
       bodiesByKey: {
-        'sota-all-summits':
+        'ham2k-sota-all-summits':
             'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             // KLA has no valid-prefix reading on its own; stripping the
@@ -127,7 +129,7 @@ void main() {
       },
     );
 
-    await manager.processDataFile('sota-all-summits', sotaDef);
+    await manager.processDataFile('ham2k-sota-all-summits', sotaDef);
 
     expect((await lookups.getLookup('sota', 'KLA/AK-001'))!.subCategory, 'K');
     expect((await lookups.getLookup('sota', 'VP0/SG-001'))!.subCategory, 'VP8/g');
@@ -156,7 +158,7 @@ void main() {
       method: 'suggest',
       args: {'operation': <String, dynamic>{}, 'callsign': 'ZD8XYZ', 'searchTerm': 'Test Ascension Peak'},
     );
-    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
+    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-sota')['value'] as List).cast<Map>();
     expect(sotaSuggestions.any((s) => s['ref'] == 'ZD/AI-001'), isTrue);
   });
 
@@ -192,7 +194,7 @@ void main() {
       method: 'suggest',
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'Test State Park'},
     );
-    final searchSuggestions = (searchResults.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final searchSuggestions = (searchResults.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(searchSuggestions.map((s) => s['ref']), ['US-1234']);
 
     // Nearby (location-based, no search term): both should be reachable —
@@ -206,7 +208,7 @@ void main() {
         'location': {'lat': 40.0, 'lon': -3.7},
       },
     );
-    final nearbySuggestions = (nearbyResults.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final nearbySuggestions = (nearbyResults.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(nearbySuggestions.any((s) => s['ref'] == 'EA-1234'), isTrue);
   });
 
@@ -248,7 +250,7 @@ void main() {
         'location': {'lat': 37.7749, 'lon': -122.4194},
       },
     );
-    final nearbySuggestions = (nearby.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final nearbySuggestions = (nearby.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(nearbySuggestions.map((s) => s['ref']), ['US-1234']);
 
     // A name search matches both rows in the lookup table; only the active
@@ -258,7 +260,7 @@ void main() {
       method: 'suggest',
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'Retired Park'},
     );
-    final searchSuggestions = (search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final searchSuggestions = (search.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(searchSuggestions.map((s) => s['ref']), ['US-1234']);
 
     // Naming the retired park exactly still offers it — marked — so the
@@ -268,7 +270,7 @@ void main() {
       method: 'suggest',
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US-9963'},
     );
-    final exactSuggestions = (exact.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final exactSuggestions = (exact.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     final retired = exactSuggestions.firstWhere((s) => s['ref'] == 'US-9963');
     // The marker is a FLAG, never a word appended to the name: a suggestion is
     // persisted onto the operation verbatim and its name feeds the operation
@@ -307,14 +309,14 @@ void main() {
         'location': {'lat': 37.7749, 'lon': -122.4194},
       },
     );
-    expect((nearby.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']), contains('US-4321'));
+    expect((nearby.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>().map((s) => s['ref']), contains('US-4321'));
 
     final search = await host.invokeHookAll(
       'activity',
       method: 'suggest',
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'Unflagged'},
     );
-    expect((search.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>().map((s) => s['ref']), contains('US-4321'));
+    expect((search.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>().map((s) => s['ref']), contains('US-4321'));
   });
 
   test('POTA and SOTA suggest() serves nearby results from the populated lookup table', () async {
@@ -344,14 +346,14 @@ void main() {
       },
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(potaSuggestions.any((s) => s['ref'] == 'US-1234'), isTrue);
     final potaMatch = potaSuggestions.firstWhere((s) => s['ref'] == 'US-1234');
     expect(potaMatch['type'], 'potaActivation');
     expect((potaMatch['distance'] as num).toDouble(), greaterThan(0));
     expect(potaMatch['relevance'], 1);
 
-    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
+    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-sota')['value'] as List).cast<Map>();
     expect(sotaSuggestions.any((s) => s['ref'] == 'W6/CT-001'), isTrue);
   });
 
@@ -397,7 +399,7 @@ void main() {
       },
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(potaSuggestions.length, lessThanOrEqualTo(30));
     expect(potaSuggestions.any((s) => s['ref'] == 'US-CLOSE'), isTrue);
     expect(potaSuggestions.first['ref'], 'US-CLOSE');
@@ -414,7 +416,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US-15000'},
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(potaSuggestions.map((s) => s['ref']), contains('US-15000'));
     final synthetic = potaSuggestions.firstWhere((s) => s['ref'] == 'US-15000');
     expect(synthetic['type'], 'potaActivation');
@@ -434,7 +436,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'us-12', 'scoped': true},
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     final offered = potaSuggestions.firstWhere((s) => s['ref'] == 'US-12');
     expect(offered['type'], 'potaActivation');
     expect(offered['name'], 'Invalid reference');
@@ -452,7 +454,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'us-12'},
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     expect(potaSuggestions.map((s) => s['ref']), isNot(contains('US-12')));
   });
 
@@ -471,7 +473,7 @@ void main() {
         args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': term, 'scoped': true},
       );
 
-      final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+      final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
       expect(potaSuggestions.map((s) => s['ref']), isNot(contains(term.toUpperCase())), reason: term);
     }
   });
@@ -519,7 +521,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'w6/sd-9', 'scoped': true},
     );
 
-    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
+    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-sota')['value'] as List).cast<Map>();
     final offered = sotaSuggestions.firstWhere((s) => s['ref'] == 'W6/SD-9');
     expect(offered['name'], 'Invalid reference');
   });
@@ -533,7 +535,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'w6/sd-999', 'scoped': true},
     );
 
-    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
+    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-sota')['value'] as List).cast<Map>();
     final offered = sotaSuggestions.firstWhere((s) => s['ref'] == 'W6/SD-999');
     expect(offered['type'], 'sotaActivation');
     expect(offered['name'], 'Unknown summit');
@@ -548,7 +550,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US15000'},
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     // Normalized to the canonical dashed form, not left as typed.
     expect(potaSuggestions.map((s) => s['ref']), contains('US-15000'));
     expect(potaSuggestions.map((s) => s['ref']), isNot(contains('US15000')));
@@ -564,7 +566,7 @@ void main() {
         args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': searchTerm},
       );
 
-      final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+      final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
       expect(potaSuggestions.map((s) => s['ref']), contains('K-TEST'), reason: searchTerm);
       expect(potaSuggestions.firstWhere((s) => s['ref'] == 'K-TEST')['name'], 'Test Park', reason: searchTerm);
     }
@@ -591,7 +593,7 @@ void main() {
       args: {'operation': <String, dynamic>{}, 'callsign': 'W1AW', 'searchTerm': 'US-1234'},
     );
 
-    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'ham2k-pota')['value'] as List).cast<Map>();
     // Exactly one entry for US-1234 — the real row's name, not a duplicate
     // bare synthetic one.
     expect(potaSuggestions.where((s) => s['ref'] == 'US-1234'), hasLength(1));

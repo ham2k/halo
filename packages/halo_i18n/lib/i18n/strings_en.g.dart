@@ -447,18 +447,6 @@ class Translations$extensionsPanel$en {
 		other: 'Update ${count} extensions?',
 	);
 
-	/// en: 'We need to upgrade your extensions'
-	String get upgradeTitle => 'We need to upgrade your extensions';
-
-	/// en: 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.'
-	String get upgradeBody => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.';
-
-	/// en: 'Upgrade now'
-	String get upgradeAction => 'Upgrade now';
-
-	/// en: 'Later'
-	String get upgradeLater => 'Later';
-
 	/// en: 'Your extensions are ready'
 	String get upgradeDoneTitle => 'Your extensions are ready';
 
@@ -477,35 +465,26 @@ class Translations$extensionsPanel$en {
 	/// en: 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.'
 	String get upgradeDoneUnservedHint => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.';
 
-	/// en: 'Your extensions were not upgraded'
-	String get upgradeFailedTitle => 'Your extensions were not upgraded';
+	/// en: 'QSO Parties'
+	String get retiredQp => 'QSO Parties';
 
-	/// en: 'We couldn't finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.'
-	String get upgradeFailedBody => 'We couldn\'t finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.';
+	/// en: 'State Parks Events'
+	String get retiredStateparks => 'State Parks Events';
 
-	/// en: 'We could not download some extensions, so we reverted the upgrade. Try again when you are online.'
-	String get upgradeIncompleteBody => 'We could not download some extensions, so we reverted the upgrade. Try again when you are online.';
+	/// en: '${count} of your extensions have not arrived yet. They will be downloaded the next time the extension catalog can be reached.'
+	String upgradeDoneMissing({required Object count}) => '${count} of your extensions have not arrived yet. They will be downloaded the next time the extension catalog can be reached.';
 
-	/// en: 'We couldn't upgrade your extensions. We will offer it again next time you open the app.'
-	String get upgradeUnavailableBody => 'We couldn\'t upgrade your extensions. We will offer it again next time you open the app.';
+	/// en: 'Your extensions would not start. Restarting the app should bring them back.'
+	String get runtimeDeadBody => 'Your extensions would not start. Restarting the app should bring them back.';
+
+	/// en: 'Some extensions would not run'
+	String get refusedTitle => 'Some extensions would not run';
 
 	/// en: 'Still setting up'
 	String get upgradeBusyTitle => 'Still setting up';
 
-	/// en: 'The app is still setting your extensions up. We will offer the upgrade again next time you open the app.'
-	String get upgradeBusyBody => 'The app is still setting your extensions up. We will offer the upgrade again next time you open the app.';
-
-	/// en: 'Your extensions could not start'
-	String get upgradeRevertedTitle => 'Your extensions could not start';
-
-	/// en: 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.'
-	String get upgradeRevertedBody => 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.';
-
 	/// en: 'Your extensions are not running'
 	String get upgradeRuntimeDeadTitle => 'Your extensions are not running';
-
-	/// en: 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.'
-	String get upgradeRuntimeDeadBody => 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.';
 
 	/// en: 'Some of your extensions are missing'
 	String get restoreTitle => 'Some of your extensions are missing';
@@ -7566,26 +7545,19 @@ extension on Translations {
 			'extensionsPanel.updatesNothingLeft' => 'Your extensions are up to date.',
 			'extensionsPanel.updatesNoticeAction' => 'More info',
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Update ${count} extension?', other: 'Update ${count} extensions?', ), 
-			'extensionsPanel.upgradeTitle' => 'We need to upgrade your extensions',
-			'extensionsPanel.upgradeBody' => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.',
-			'extensionsPanel.upgradeAction' => 'Upgrade now',
-			'extensionsPanel.upgradeLater' => 'Later',
 			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
 			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not upgraded: ${names}.',
 			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => 'Would not run: ${names}.',
 			'extensionsPanel.upgradeDoneRefusedHint' => 'They are still installed and marked in Settings › Extensions — updating them there will bring them back.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
-			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
-			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.',
-			'extensionsPanel.upgradeIncompleteBody' => 'We could not download some extensions, so we reverted the upgrade. Try again when you are online.',
-			'extensionsPanel.upgradeUnavailableBody' => 'We couldn\'t upgrade your extensions. We will offer it again next time you open the app.',
+			'extensionsPanel.retiredQp' => 'QSO Parties',
+			'extensionsPanel.retiredStateparks' => 'State Parks Events',
+			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => '${count} of your extensions have not arrived yet. They will be downloaded the next time the extension catalog can be reached.',
+			'extensionsPanel.runtimeDeadBody' => 'Your extensions would not start. Restarting the app should bring them back.',
+			'extensionsPanel.refusedTitle' => 'Some extensions would not run',
 			'extensionsPanel.upgradeBusyTitle' => 'Still setting up',
-			'extensionsPanel.upgradeBusyBody' => 'The app is still setting your extensions up. We will offer the upgrade again next time you open the app.',
-			'extensionsPanel.upgradeRevertedTitle' => 'Your extensions could not start',
-			'extensionsPanel.upgradeRevertedBody' => 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.',
 			'extensionsPanel.upgradeRuntimeDeadTitle' => 'Your extensions are not running',
-			'extensionsPanel.upgradeRuntimeDeadBody' => 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.',
 			'extensionsPanel.restoreTitle' => 'Some of your extensions are missing',
 			'extensionsPanel.restoreBody' => 'These extensions you installed are not on this device. We can download them again from the Ham2K extension catalog:',
 			'extensionsPanel.restoreFromFile' => 'Installed from a file. Install these again from their files, or forget them:',
@@ -7971,8 +7943,6 @@ extension on Translations {
 			'operation.export.stash.notSent' => 'not sent',
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'This file didn’t arrive:', other: 'These ${count} files didn’t arrive:', ), 
 			'operation.export.stash.emailOffer' => 'Or for your convenience, we can send you an email with a direct link.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.stash.emailMe' => 'Email Me a Link',
 			'operation.export.stash.emailSent' => 'We’ve emailed you a download link.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'Couldn’t send the email: ${error}',
@@ -7980,6 +7950,8 @@ extension on Translations {
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)', other: 'Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'No spots match your filters',
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.unknownBand' => 'Other',
 			'operation.spots.auto' => 'Automatic',
 			'operation.spots.autoValue' => ({required Object value}) => 'Automatic (Currently ${value})',
@@ -8485,8 +8457,6 @@ extension on Translations {
 			'settings.radio.cwMessages.repeatOff' => 'No',
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
 			'settings.radio.cwMessages.keyboardField' => 'Type to send',
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
@@ -8494,6 +8464,8 @@ extension on Translations {
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
 			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
 			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the call that will be logged',
 			'settings.radio.cwMessages.helpQsoFullCall' => 'Their callsign, if there is a valid call; blank for a partial',
 			'settings.radio.cwMessages.helpQsoPartial' => 'A partial call; blank if there is a full valid call',
@@ -8999,8 +8971,6 @@ extension on Translations {
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
@@ -9008,6 +8978,8 @@ extension on Translations {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR reading',
 			'settings.station.placeholderSwrDescription' => 'What this radio reports on its SWR meter while transmitting. Above 1.8 the panel warns.',
 			'settings.station.placeholderSwrInvalid' => 'A number, 1 or more',

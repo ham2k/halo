@@ -27,26 +27,18 @@ void main() {
     },
   ];
 
-  test('POTA registers its shared activity type without needing a log', () async {
-    final host = await sharedHost(['pota']);
-    final types = await host.invokeHook('export', key: 'pota', method: 'getExportTypes', args: {}) as List;
-    expect((types.single as Map)['exportType'], 'potaActivation-adif');
-    expect((types.single as Map)['activationType'], 'potaActivation');
-    expect((types.single as Map)['templateCategory'], 'reference');
-  });
-
   test('per-type text and lookup settings survive POTA delegation to ADIF', () async {
-    final host = await sharedHost(['adif', 'pota']);
+    final host = await sharedHost(['adif', 'ham2k-pota']);
     final result =
         await host.invokeHook(
               'export',
-              key: 'pota',
+              key: 'ham2k-pota',
               method: 'generateExport',
               args: {
                 'operation': operation,
                 'qsos': qsos,
                 'exportType': 'potaActivation-adif',
-                'exportKey': 'pota-adif:US-1234',
+                'exportKey': 'ham2k-pota-adif:US-1234',
                 'includePrivateData': true,
                 'includeLookupData': false,
                 'exportData': {'ref': 'US-1234', 'activity': 'POTA'},

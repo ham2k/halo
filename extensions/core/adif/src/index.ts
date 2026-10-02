@@ -344,7 +344,7 @@ function baseFieldsFor(
   // first place; writing FREQ_RX equal to FREQ says "split" about a contact
   // that wasn't one.
   //
-  // BAND_RX has an owner elsewhere: `activities/satellites` writes the
+  // BAND_RX has an owner elsewhere: `ham2k-satellites` writes the
   // transponder's downlink band, and AO-7 answers on 10m from one transponder
   // and 2m from the other. A hook's answer outranks this one ([renderRow]), so
   // on an imported satellite contact the file can state a BAND_RX that

@@ -403,19 +403,12 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         final now = nowUtc();
         int bandOf(ExtensionRelevance? relevance) => relevanceBand(relevance, operator: operatorGeo, now: now);
 
-        // What the catalog is compared against: the keys the app is
-        // OFFERING of its own (a catalog entry for one is "Built in", never
-        // installable) and the installed store's versions (a higher catalog
-        // version is an Update).
-        //
-        // Offering, not merely shipping. Once upgraded to catalog extensions
-        // the app withdraws its own extensions, and the store will then install a
-        // catalog bundle for one of those keys — so a panel judging by what
-        // the app ships would show "Built in" over a row that is in fact
-        // installable, and disagree with the door about the same bundle.
+        // What the catalog is compared against: the keys the app ships (a
+        // catalog entry for one is "Built in", never installable) and the
+        // installed store's versions (a higher catalog version is an Update).
         final builtInKeys = {
           for (final info in extensionService.availableExtensions)
-            if (info.source == ExtensionSource.asset && extensionService.isBuiltInOffered(info)) info.key,
+            if (info.source == ExtensionSource.asset) info.key,
         };
         final installedVersions = {
           for (final info in extensionService.availableExtensions)

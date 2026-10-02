@@ -434,7 +434,7 @@ class ExtensionService
       _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
       _restartAttempts = 0;
       // AFTER the runtime is up, and deliberately not awaited. Unzipping and
-      // writing eight bundles — plus a keychain the platform may take its
+      // writing the pre-loaded bundles — plus a keychain the platform may take its
       // time refusing — is seconds of work, and boot is behind a three-second
       // gate: done inline it spends the whole budget and the app arrives with
       // no extensions at all, which is what happens without this.
@@ -570,10 +570,10 @@ class ExtensionService
   Future<void> get firstCatchUp => _firstCatchUp.future;
   final _firstCatchUp = Completer<void>();
 
-  /// Settles [firstCatchUp]: called by a catch-up that ran to its end, and by
-  /// the upgrade when it lets go of the flag the catch-ups step aside for —
-  /// otherwise a boot whose catch-ups all met the upgrade in flight would
-  /// wait for one that never comes.
+  /// Whether [firstCatchUp] has settled.
+  bool get firstCatchUpSettled => _firstCatchUp.isCompleted;
+
+  /// Settles [firstCatchUp]: called by a catch-up that ran to its end.
   void markFirstCatchUpDone() {
     if (!_firstCatchUp.isCompleted) _firstCatchUp.complete();
   }
@@ -691,8 +691,8 @@ class ExtensionService
       // A new generation starts with no failure recorded. A crash LATER in
       // the session schedules a restart too, and a name left from an earlier
       // boot would be read as the culprit for a failure it had nothing to do
-      // with — which, for the upgrade, means refusing an innocent extension
-      // permanently.
+      // with — which, for a catch-up setting aside what will not run, means
+      // refusing an innocent extension permanently.
       _lastStartFailure = null;
       // A caller arriving while the old host is disposed waits for the boot
       // that follows it. With no boot memoized, its [start] would begin the

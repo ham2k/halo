@@ -227,9 +227,12 @@ void main() {
   group('coordinates', () {
     Map<String, dynamic>? popped;
 
-    Future<void> open(WidgetTester tester, Operation operation) async {
+    Future<void> open(WidgetTester tester, Operation operation, {GridPrecision? gridPrecision}) async {
       popped = null;
       final HaLoHarness(:services) = await makeHaLoServices();
+      // The operator's setting, not the global it resolves into: every
+      // settings write re-applies the stored one over a global set by hand.
+      if (gridPrecision != null) await services.settings.setGridPrecision(gridPrecision);
 
       await tester.pumpWidget(
         TranslationProvider(
@@ -283,9 +286,8 @@ void main() {
     });
 
     testWidgets('adopting a ref at eight characters when the operator asked for eight', (tester) async {
-      GridPrecision.configure(GridPrecision.eight);
       addTearDown(GridPrecision.reset);
-      await open(tester, withPark(lat: 41.7135, lon: -72.7278));
+      await open(tester, withPark(lat: 41.7135, lon: -72.7278), gridPrecision: GridPrecision.eight);
       await tester.tap(find.text('US-1234'));
       await tester.pumpAndSettle();
       await save(tester);

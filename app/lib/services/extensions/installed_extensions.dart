@@ -230,16 +230,11 @@ class InstalledExtensions {
   /// inherit it.
   final bool Function(String key) _reservedPrefixAllowed;
 
-  /// The keys the app currently offers of its own, read live rather than
+  /// The keys of the extensions the app builds in, read live rather than
   /// captured. An installed bundle may not claim one: hook identity has to
-  /// stay unambiguous, and secret visibility is by key prefix, so an
-  /// installed extension calling itself `sota` would be asking for `SOTA_*`.
-  ///
-  /// Live because the set MOVES. Once the upgrade to catalog extensions is
-  /// taken the app offers none of its own extensions but the core ones
-  /// (HALO-581), and the bundle it pre-loads for `ham2k-lookup` is one it also
-  /// ships built in — so a set captured when the store was built would refuse
-  /// the pre-load forever.
+  /// stay unambiguous. Live because the list is read again whenever the
+  /// extension index is, and a set captured with the store would not follow
+  /// it.
   final Set<String> Function() builtInKeys;
 
   /// What this build's kernel carries, from `assets/extensions/index.json`, for

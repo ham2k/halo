@@ -77,7 +77,7 @@ class LookupRepository {
   /// BY) happens to reach it. Filtering here means the limit applies to the
   /// already-narrowed set instead. Exact-equals only — SOTA scopes by entity
   /// too but needs a prefix match, so it still filters after fetching and
-  /// still has this bug (extensions/activities/sota/src/index.ts).
+  /// still has this bug (the catalog's `ham2k-sota`).
   ///
   /// Key-prefix and name-prefix hits are also ordered first, for the rest —
   /// the ones a [relevanceForMatch]-style ranking would call most relevant —

@@ -65,9 +65,9 @@ that imports it and calls `defineExtension`:
 }
 ```
 
-Once the upgrade to catalog extensions is taken the app offers none of its own
-extensions but the core ones, and pre-loads eight of the catalog's instead —
-see [distribution.md](distribution.md).
+The app builds in only its core extensions; every other extension is a
+catalog bundle, some of them pre-loaded — see
+[distribution.md](distribution.md#pre-loaded-extensions).
 
 `relevance` says where, when and for whom the extension matters. The catalog
 ranks its listing by it for the operator's own callsign — and the Extensions
@@ -557,10 +557,13 @@ const label = `${fmtInteger(tally.total)} QSOs`
 const summary = fmtInteger(tally.total)
 ```
 
-Adding an extension: create `extensions/<category>/<name>/src/index.ts`, add
-an entry to `bundles` in `extensions/build-config.mjs`, rebuild, and restart
-the app (bundles are baked into assets; runtime download/update channels come
-later).
+Only the app's core extensions live in this repository and are baked into
+its assets. Any other extension — Ham2K's own included — is a catalog bundle:
+it lives in its own repository ([ham2k/extensions](https://github.com/ham2k/extensions)
+holds Ham2K's), is packed and published as a `.h2kext`
+([distribution.md](distribution.md)), and reaches the app from the catalog or,
+for the few a new install needs, as a pre-load. A new core extension gets an
+entry in `bundles` in `extensions/build-config.mjs`.
 
 For iterating rather than adding, `npm run dev` rebuilds on save and reloads
 the one extension in a running app — see **[development.md](development.md)**.

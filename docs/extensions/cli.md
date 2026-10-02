@@ -32,8 +32,11 @@ app's own data are separate, later tools that will live beside it in
 ## Getting it running
 
 Three things have to exist, and `mise run setup` makes all of them once per
-checkout: the bundles (`halo-ext` reads `app/assets/extensions`, the same
-files the app ships), the host build of the JS engine
+checkout: the bundles (`halo-ext` reads `app/assets/extensions` and the
+catalog bundles pre-loaded beside it in `app/assets/preloaded-extensions`, the
+same files the app ships — so POTA is `ham2k-pota` here as in the app, off or
+on by default as an install has it, and sees no configured secret, as an
+installed extension does not), the host build of the JS engine
 (`packages/halo_quickjs/tool/build_host.sh` — the same library `flutter test`
 loads, since neither runs a platform build), and `packages/halo_cli`'s
 dependencies, resolved with `flutter pub get`. After that only the bundles
@@ -62,9 +65,10 @@ extensions it was asked to watch, so the built bundles are still required and
 everything the server isn't serving keeps coming from them. `--verbose` names
 what came from where.
 
-Dev-served extensions get **no secrets**, whatever key they claim — the same
-provenance rule the app applies, and it matters more here because
-`--dev-server` will happily name another machine.
+Dev-served and pre-loaded extensions get **no secrets**, whatever key they
+claim — the same provenance rule the app applies, where an installed extension
+sees none; it matters more here because `--dev-server` will happily name
+another machine.
 
 ## The commands
 
@@ -181,7 +185,7 @@ an extension tried to show a user go to stderr. Exit codes: `0` ok, `1` the
 hook or the runtime failed, `2` you typed something wrong.
 
 Useful global options: `--only`/`--exclude` to load a subset of extensions
-(`--only pota` runs POTA and nothing else, so nobody else's hook can answer),
+(`--only ham2k-pota` runs POTA and nothing else, so nobody else's hook can answer),
 `--qson`/`--op`/`--qsos`/`--qso` to supply log data, `--location lat,lon`,
 `--offline` to tell hooks the device has no network, `--md` for a rendered
 report where one exists, `-v` to narrate host calls.
@@ -193,10 +197,10 @@ The app keeps those in the platform keychain; here they go in the config file.
 
 ```sh
 halo-ext account list                  # what extensions offer, and what is stored
-halo-ext account set qrz               # prompts for each field; secrets are not echoed
-halo-ext account set qrz username=N0DEV
-halo-ext account test qrz              # the extension's own testCredentials verdict
-halo-ext account forget qrz
+halo-ext account set ham2k-qrz         # prompts for each field; secrets are not echoed
+halo-ext account set ham2k-qrz username=N0DEV
+halo-ext account test ham2k-qrz        # the extension's own testCredentials verdict
+halo-ext account forget ham2k-qrz
 ```
 
 `set` prompts for whatever you did not pass, so a password need never appear
@@ -210,8 +214,8 @@ misspelled one leaves an account looking configured while the hook reads null.
 `test` asks the extension itself:
 
 ```
-$ halo-ext account test qrz
-{ "kvKey": "qrz", "result": "Authentication failed: **Username/password incorrect**" }
+$ halo-ext account test ham2k-qrz
+{ "kvKey": "ham2k-qrz", "result": "Authentication failed: **Username/password incorrect**" }
 ```
 
 Accounts whose extension is off by default need `--all-extensions` to be
@@ -226,7 +230,7 @@ Without them those come back empty — correctly, but confusingly.
 
 ```sh
 halo-ext data-files sync             # everything registered
-halo-ext data-files sync pota-all-parks
+halo-ext data-files sync ham2k-pota-all-parks
 halo-ext data-files list             # what is registered, and what the cache holds
 ```
 
@@ -238,7 +242,7 @@ run is not a thing.
 Park and summit lists become rows in a SQLite table anything can read. A
 **raw** file (the callsign notes) is different: its extension parses it into
 whatever shape it keeps in memory, so the cached copy is replayed into the
-runtime at every boot — which is why `data-files sync hams-of-note` reports
+runtime at every boot — which is why `data-files sync ham2k-call-notes-hams-of-note` reports
 `entries` and a `cachedAt` path rather than a row count.
 
 ## Configuration
@@ -254,9 +258,8 @@ it is written `0600` and can contain a QRZ password or a SOTA refresh token.
 ```json
 {
   "settings": { "operatorCall": "KI2D", "developerMode": true },
-  "accounts": { "qrz": { "credentials": { "username": "KI2D", "password": "…" } } },
-  "secrets": { "TOTA_API_KEY": "…" },
-  "extensions": { "wwff": true }
+  "accounts": { "ham2k-qrz": { "credentials": { "username": "KI2D", "password": "…" } } },
+  "extensions": { "ham2k-wwff": true }
 }
 ```
 

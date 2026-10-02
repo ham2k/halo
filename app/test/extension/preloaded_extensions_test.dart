@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The extensions the app ships already packaged (HALO-581).
+// The extensions the app ships already packaged.
 //
 // Two things can go wrong quietly here. The index can drift from the bundles
 // beside it, which ships an app that pre-loads nothing and says nothing; and
@@ -70,61 +70,42 @@ void main() {
       }
     });
 
-    test('the eight the app promises are the eight it ships', () {
+    test('every retired built-in with a twin has it shipped', () {
+      // An install that ran the built-ins moves onto their twins at its first
+      // boot without them, offline or not. A twin that is not shipped has to
+      // come from the catalog, and until it does the extension the operator
+      // used is simply gone. Shrinking this to the long-term eight is a
+      // deliberate later step (docs/extensions/distribution.md).
       expect(
         {for (final entry in index) entry.key},
-        {'ham2k-pota', 'ham2k-sota', 'ham2k-wwff', 'ham2k-lookup', 'ham2k-qrz', 'ham2k-call-notes', 'ham2k-spot-history', 'ham2k-call-history'},
+        {
+          for (final builtIn in kRetiredBuiltIns.keys)
+            if (!kBuiltInsWithoutTwin.contains(builtIn)) twinOf(builtIn),
+          'ham2k-lookup',
+        },
       );
-    });
-
-    test('each one that renames a built-in says which, and no name is claimed twice', () {
-      // `kPreloadReplaces` is what carries an operator's settings and logins
-      // across the rename. A missing entry loses them silently; two keys
-      // naming one predecessor would have the second overwrite the first.
-      final predecessors = kPreloadReplaces.values.toList();
-      expect(predecessors.toSet().length, predecessors.length, reason: 'two pre-loads claim one built-in');
-      for (final key in kPreloadReplaces.keys) {
-        expect({for (final entry in index) entry.key}, contains(key), reason: '$key is not shipped');
-      }
-      // The one that keeps its name has nothing to carry, and saying so is
-      // the difference between "no predecessor" and "we forgot".
-      expect(kPreloadReplaces.containsKey('ham2k-lookup'), isFalse);
     });
   });
 
   group('parsePreloadIndex', () {
-    test('a catalog key inherits the built-in it is named after', () {
-      // The rule the seven named renames are exceptions to. Thirty-three
-      // built-ins have no entry in `kPreloadReplaces` and are withdrawn by the
-      // upgrade all the same; without the rule, reinstalling one from the
-      // catalog is a silent loss of everything the operator had set up.
-      const builtIns = {'wca', 'cqww', 'pota', 'ham2k-lookup'};
-      expect(predecessorBuiltInKey('ham2k-wca', builtIns), 'wca');
-      expect(predecessorBuiltInKey('ham2k-cqww', builtIns), 'cqww');
-      // The named ones still win, since their names do not follow the rule.
-      expect(predecessorBuiltInKey('ham2k-pota', builtIns), 'pota');
+    test('a catalog key inherits the retired built-in it is named after', () {
+      // Without it, a twin arrives unconfigured and logged out: the settings,
+      // credentials and on/off choice all hang off the built-in's name.
+      expect(predecessorBuiltInKey('ham2k-wca'), 'wca');
+      expect(predecessorBuiltInKey('ham2k-cqww'), 'cqww');
+      expect(predecessorBuiltInKey('ham2k-pota'), 'pota');
     });
 
-    test('a key that IS a built-in inherits nothing, whatever it starts with', () {
-      // `ham2k-lookup` is called that as a built-in too. Stripping the prefix
+    test('a key that kept its name inherits nothing', () {
+      // `ham2k-lookup` was built in under that very name. Stripping the prefix
       // would hand it `lookup`\'s state — a different extension entirely.
-      expect(predecessorBuiltInKey('ham2k-lookup', {'ham2k-lookup', 'lookup'}), isNull);
+      expect(predecessorBuiltInKey('ham2k-lookup'), isNull);
     });
 
-    test('a withdrawn built-in is still one the app ships', () {
-      // The distinction the adoption turns on. `isBuiltInOffered` is false for
-      // every non-core built-in once migrated, so a set built from what is
-      // OFFERED is core-only by the time the adoption runs — and every
-      // predecessor here would come back null, which is every adopted twin
-      // arriving unconfigured and logged out.
-      expect(predecessorBuiltInKey('ham2k-eca', const {'eca', 'adif'}), 'eca');
-      expect(predecessorBuiltInKey('ham2k-eca', const {'adif'}), isNull);
-    });
-
-    test('a catalog key the app never shipped inherits nothing', () {
+    test('a catalog key the app never built in inherits nothing', () {
       // The prefix is Ham2K\'s, not proof that this app ever had the key.
-      expect(predecessorBuiltInKey('ham2k-something-else', {'wca'}), isNull);
-      expect(predecessorBuiltInKey('k2hrc-llota', {'llota'}), isNull);
+      expect(predecessorBuiltInKey('ham2k-something-else'), isNull);
+      expect(predecessorBuiltInKey('k2hrc-llota'), isNull);
     });
 
     test('drops an entry it cannot read rather than the whole list', () {
@@ -206,20 +187,12 @@ void main() {
     });
   });
 
-  group('moving to the catalog withdraws the app\'s own extensions', () {
-    // `extensionsMigrated` says the upgrade was taken, and only it withdraws
-    // anything — see catalog_migration_test.dart. Everything here is about
-    // what withdrawal then does.
-    Future<void> moveToCatalog(SettingsService settings) async {
-      await settings.setExtensionsMigrated(true);
-    }
-
+  group('what loads, once the app builds in only its core', () {
     Future<(ExtensionService, SettingsService)> harness() async {
       SharedPreferences.setMockInitialValues(const {});
       final settings = SettingsService(await SharedPreferences.getInstance());
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
       extensions.debugSetAvailableExtensions(const [
-        ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity'),
         ExtensionInfo(key: 'adif', file: 'adif.js', core: true, name: 'ADIF'),
         ExtensionInfo(key: 'ham2k-lofi', file: 'lofi.js', core: true, name: 'LoFi sync'),
         ExtensionInfo(
@@ -237,51 +210,33 @@ void main() {
 
     ExtensionInfo infoFor(ExtensionService extensions, String key) => extensions.availableExtensions.firstWhere((info) => info.key == key);
 
-    test('before the upgrade, everything the app ships is offered', () async {
-      final (extensions, _) = await harness();
-      for (final key in ['pota', 'adif', 'ham2k-lofi']) {
-        expect(extensions.isExtensionAvailable(infoFor(extensions, key)), isTrue, reason: key);
+    test('an installed twin loads whether or not the move off the built-ins has run', () async {
+      // Nothing is left to run in its place. Gating the twin on the move
+      // leaves an install that has not made it yet — its first boot on this
+      // build, before the catch-up — running core alone.
+      final (extensions, settings) = await harness();
+      for (final moved in [false, true]) {
+        await settings.setExtensionsMigrated(moved);
+        expect(extensions.isExtensionActive(infoFor(extensions, 'ham2k-pota')), isTrue, reason: 'moved: $moved');
+        expect(extensions.isExtensionActive(infoFor(extensions, 'ham2k-lofi')), isTrue, reason: 'sync must never stop');
       }
     });
 
-    test('after it, a non-core built-in is withdrawn and the core ones are not', () async {
-      // `ham2k-lofi` is core, so sync keeps running — withdrawing it would
-      // stop an operator's log syncing the moment they upgraded.
+    test('a refusal never reaches a bundle the app builds in', () async {
+      // Only an installed bundle is ever put aside: one the app builds in that
+      // will not evaluate is a defect in the app, and skipping it would ship
+      // an install quietly missing part of itself.
       final (extensions, settings) = await harness();
-      await moveToCatalog(settings);
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'pota')), isFalse);
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'adif')), isTrue);
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'ham2k-lofi')), isTrue);
-    });
-
-    test('a refusal never reaches the built-in that shares its key', () async {
-      // `ham2k-lookup` is both a bundle the app ships and one the catalog
-      // serves. A record written for the downloaded copy must not take the
-      // app's own out of the set — the two differ in version today, and
-      // nothing enforces that they always will.
-      final (extensions, settings) = await harness();
-      const asset = ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', version: '0.0.1');
-      const installed = ExtensionInfo(
-        key: 'ham2k-lookup',
-        file: 'ham2k-lookup.js',
-        source: ExtensionSource.installed,
-        core: false,
-        name: 'Lookup',
-        version: '0.0.1',
-      );
-      await settings.setExtensionRefused({'ham2k-lookup': '0.0.1'});
-
-      expect(extensions.isExtensionRefused(asset), isFalse, reason: 'the app would ship missing part of itself');
-      expect(extensions.isExtensionRefused(installed), isTrue);
+      await settings.setExtensionRefused({'adif': '0.0.1'});
+      expect(extensions.isExtensionRefused(const ExtensionInfo(key: 'adif', file: 'adif.js', core: false, name: 'ADIF', version: '0.0.1')), isFalse);
     });
 
     test('a refusal is judged against the version that failed, not against its absence', () async {
-      // `extensionRefused[key]` is null for an extension nobody refused, and
-      // a built-in's version is null too. Compared directly, those two nulls
-      // are equal — which withdraws every extension the app ships, from an
-      // empty refusal map.
+      // `extensionRefused[key]` is null for an extension nobody refused.
+      // Compared against a version that can be null, the two nulls are equal
+      // — which withdraws everything, from an empty refusal map.
       final (extensions, _) = await harness();
-      expect(extensions.isExtensionActive(infoFor(extensions, 'pota')), isTrue);
+      expect(extensions.isExtensionActive(infoFor(extensions, 'ham2k-pota')), isTrue);
     });
 
     test('a bundle the engine refused is kept out of the runtime but stays listed', () async {
@@ -291,7 +246,6 @@ void main() {
       // the one the operator comes to the panel to ask about — and updating
       // it there is how the refusal is lifted.
       final (extensions, settings) = await harness();
-      await moveToCatalog(settings);
       final twin = infoFor(extensions, 'ham2k-pota');
       await settings.setExtensionRefused({twin.key: twin.version ?? ''});
 
@@ -303,83 +257,35 @@ void main() {
       // Keyed by version so a fixed release recovers by itself: an ordinary
       // update installs it and the refusal no longer matches.
       final (extensions, settings) = await harness();
-      await moveToCatalog(settings);
       final twin = infoFor(extensions, 'ham2k-pota');
       await settings.setExtensionRefused({twin.key: 'the-version-that-failed'});
 
       expect(extensions.isExtensionActive(twin), isTrue);
     });
 
-    test('an installed extension is never withdrawn by the upgrade', () async {
-      // The whole point: the catalog's copies replace the built-ins, so
-      // withdrawing them too would leave the app with nothing at all.
+    test('a choice named by its built-in key lands on the twin that runs', () async {
+      // Onboarding names POTA as `pota`. Written under that key alone it
+      // reaches nothing, and `ham2k-pota` runs whatever the operator said.
       final (extensions, settings) = await harness();
-      await moveToCatalog(settings);
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'ham2k-pota')), isTrue);
-    });
-
-    test('before the upgrade, the pre-load stands down for the built-in it replaced', () async {
-      // Otherwise a pre-load that lands before the upgrade leaves both loaded: two POTA
-      // rows in the panel, both registering `ref:pota`, and one of them
-      // winning by position with nothing to say which.
-      final (extensions, _) = await harness();
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'pota')), isTrue);
-      expect(extensions.isExtensionAvailable(infoFor(extensions, 'ham2k-pota')), isFalse);
-    });
-
-    test('an installed extension that replaces nothing is left alone either way', () async {
-      // The rule is about a duplicate, not about being installed. Anything
-      // the app never had a copy of has no built-in to stand down for.
-      SharedPreferences.setMockInitialValues(const {});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
-      const llota = ExtensionInfo(
-        key: 'ce1vk-llota',
-        file: 'index.js',
-        core: false,
-        name: 'LLOTA',
-        category: 'activity',
-        source: ExtensionSource.installed,
-        version: '1.0.0',
-      );
-      extensions.debugSetAvailableExtensions(const [llota]);
-      expect(extensions.isExtensionAvailable(llota), isTrue);
-      await moveToCatalog(settings);
-      expect(extensions.isExtensionAvailable(llota), isTrue);
-    });
-
-    test('once upgraded, a choice named by its built-in key lands on the twin that runs', () async {
-      // Onboarding names POTA as `pota`, and a fresh install starts upgraded,
-      // so its picks arrive after `pota` is withdrawn. Written under that key
-      // they reach nothing, and `ham2k-pota` runs whatever the operator said.
-      final (extensions, settings) = await harness();
-      await moveToCatalog(settings);
       await extensions.setExtensionsEnabled({'pota': false});
       expect(settings.extensionOverrides['ham2k-pota'], isFalse);
       expect(extensions.isExtensionActive(infoFor(extensions, 'ham2k-pota')), isFalse);
       // And under the built-in's key: the twin's is pruned while the twin is
-      // not yet installed, and this is what the pre-load carries when it lands.
+      // not yet installed, and this is what the pre-load or the adoption
+      // carries when it lands.
       expect(settings.extensionOverrides['pota'], isFalse);
     });
 
-    test('before the upgrade, the same choice stays on the built-in', () async {
-      // A copy under the twin's key would sit dormant and then outrank a
-      // later change to `pota`: the upgrade carries a choice only where the
-      // twin has none of its own.
+    test('a retired built-in\'s choice outlives the built-in, for its twin to inherit', () async {
+      // The prune drops overrides for keys nothing lists, and the retired
+      // built-ins are listed nowhere. A twin the app does not pre-load arrives
+      // whenever the catalog is next reachable; by then a pruned `wca: true`
+      // has become WCA arriving switched off, its default.
       final (extensions, settings) = await harness();
-      await extensions.setExtensionsEnabled({'pota': false});
-      expect(settings.extensionOverrides, {'pota': false});
-    });
-
-    test('a withdrawn built-in stays in the list, so its on/off choice survives', () async {
-      // `_updateDisabledSince` prunes overrides for any key absent from
-      // `availableExtensions`. Gating by removal would delete the operator's
-      // choice for every built-in the moment they upgraded.
-      final (extensions, settings) = await harness();
-      await settings.setExtensionOverrides({'pota': false});
-      await moveToCatalog(settings);
-      expect(extensions.availableExtensions.map((i) => i.key), contains('pota'));
-      expect(settings.extensionOverrides['pota'], isFalse);
+      await settings.setExtensionOverrides({'wca': true, 'hamdb': false});
+      await extensions.applyExtensionAvailability();
+      expect(settings.extensionOverrides['wca'], isTrue);
+      expect(settings.extensionOverrides.containsKey('hamdb'), isFalse, reason: 'a key nothing ever shipped under is still pruned');
     });
   });
 
@@ -456,18 +362,15 @@ void main() {
 
     Future<bool> runPreload({
       Map<String, String?>? installed,
-      Map<String, bool> builtInDefaults = const {},
       Set<String> restoring = const {},
-      bool offerNew = true,
+      Future<void> Function({required String from, required String to})? copySecrets,
     }) async => installShippedExtensions(
       store: store,
       settings: settings,
       installedVersions: installed ?? {for (final info in await store.list()) info.key: info.version},
       restoring: restoring,
-      offerNew: offerNew,
-      builtInDefaults: builtInDefaults,
       recordInstall: (bundle, {required bool fresh}) async => freshness[bundle.key] = fresh,
-      copySecrets: ({required String from, required String to}) async {},
+      copySecrets: copySecrets ?? ({required String from, required String to}) async {},
       loadAsset: loadAsset,
       loadIndex: loadIndex,
     );
@@ -479,10 +382,7 @@ void main() {
       settings = SettingsService(await SharedPreferences.getInstance());
       final index = jsonDecode(File('assets/extensions/index.json').readAsStringSync()) as Map<String, dynamic>;
       store = InstalledExtensions(
-        // What the app ships. `ham2k-lookup` is in here on purpose: it is a
-        // built-in AND a pre-load, and if the collision rule looked at what
-        // the app CARRIES rather than what it offers, this is the bundle it
-        // would refuse.
+        // The app builds in none of the extensions it pre-loads.
         builtInKeys: () => const {},
         hostSharedModules: ((index['sharedModules'] as Map?) ?? const {}).cast<String, String>(),
         storage: FileBundleStorage(root: root),
@@ -492,7 +392,7 @@ void main() {
     });
     tearDown(() => root.deleteSync(recursive: true));
 
-    test('all eight land, at the versions the index names', () async {
+    test('every shipped bundle lands, at the version the index names', () async {
       expect(await runPreload(), isTrue);
       final listed = {for (final info in await store.list()) info.key: info.version};
       final index = parsePreloadIndex(jsonDecode(File('${assetDir.path}/index.json').readAsStringSync()));
@@ -504,14 +404,14 @@ void main() {
       // operator\'s on/off choice across the rename; `fresh` exists to DROP a
       // stale choice so a key the store never had runs. Reported fresh, the
       // second undoes the first three lines later and every extension the
-      // operator had switched off comes back on the moment they upgrade.
+      // operator had switched off comes back on the moment they move.
       await runPreload();
-      // Seven of the eight take over from a built-in and carry its state.
-      for (final key in kPreloadReplaces.keys) {
-        expect(freshness[key], isFalse, reason: '$key carried ${kPreloadReplaces[key]}\'s state');
+      for (final key in freshness.keys) {
+        final predecessor = predecessorBuiltInKey(key);
+        if (predecessor != null) expect(freshness[key], isFalse, reason: '$key carried $predecessor\'s state');
       }
-      // The eighth renames nothing, so there is no choice to protect and the
-      // ordinary rule applies.
+      // `ham2k-lookup` renames nothing, so there is no choice to protect and
+      // the ordinary rule applies.
       expect(freshness['ham2k-lookup'], isTrue);
     });
 
@@ -528,17 +428,12 @@ void main() {
       expect(freshness, {'ham2k-lookup': false});
     });
 
-    test('an install that has not taken the upgrade gets back only what it had', () async {
-      expect(await runPreload(restoring: const {'ham2k-pota'}, offerNew: false), isTrue);
-      expect((await store.list()).map((info) => info.key), ['ham2k-pota']);
-    });
-
     test('a built-in nobody switched arrives in its own default state, and a choice still beats it', () async {
       // An installed extension is on unless switched off. Carrying only
       // explicit choices turns SOTA and WWFF — off by default as built-ins —
-      // on for every upgrade and every new install that skips onboarding.
+      // on for every moving install and every new one that skips onboarding.
       await settings.setExtensionOverrides({'wwff': true});
-      await runPreload(builtInDefaults: const {'pota': true, 'sota': false, 'wwff': false});
+      await runPreload();
       final overrides = settings.extensionOverrides;
       expect(overrides['ham2k-sota'], isFalse);
       expect(overrides['ham2k-pota'], isTrue);
@@ -546,17 +441,39 @@ void main() {
     });
 
     test('a choice made before the twin lands still reaches it', () async {
-      // A new install starts upgraded and onboarding can finish before the
-      // pre-load: the twin's override is pruned as an unknown key, and only
-      // the built-in's — which the pre-load carries — survives.
+      // Onboarding can finish before the pre-load: the twin's override is
+      // pruned as an unknown key, and only the built-in's — which the pre-load
+      // carries — survives.
       await settings.setExtensionOverrides({'sota': true});
-      await runPreload(builtInDefaults: const {'sota': false});
+      await runPreload();
       expect(settings.extensionOverrides['ham2k-sota'], isTrue);
+    });
+
+    test('a choice already under the pre-load\'s own name is kept', () async {
+      // `ham2k-lookup` was built in under that very name, so nothing carries
+      // its choice — it is already where the twin reads it. Recorded fresh,
+      // the install drops it, and a lookup the operator had switched off
+      // starts sending their contacts' calls to the service.
+      await settings.setExtensionOverrides({'ham2k-lookup': false});
+      await runPreload();
+      expect(freshness['ham2k-lookup'], isFalse);
+      expect(settings.extensionOverrides['ham2k-lookup'], isFalse);
+    });
+
+    test('a pre-load that failed for a reason that may pass is tried again', () async {
+      // Recorded as offered, it never would be: for one the operator had
+      // switched off, the pre-load is the only thing that installs it.
+      await withErrorHooks(() async {
+        await runPreload(copySecrets: ({required from, required to}) async => from == 'sota' ? throw StateError('the keychain is locked') : null);
+      });
+      expect(settings.extensionPreloaded.containsKey('ham2k-sota'), isFalse);
+      expect(await runPreload(), isTrue);
+      expect((await store.list()).map((i) => i.key), contains('ham2k-sota'));
     });
 
     test('a second run installs nothing, because the record says they were offered', () async {
       await runPreload();
-      expect(settings.extensionPreloaded.length, 8);
+      expect(settings.extensionPreloaded.length, parsePreloadIndex(jsonDecode(File('${assetDir.path}/index.json').readAsStringSync())).length);
       expect(await runPreload(), isFalse, reason: 'every launch would reinstall over the operator');
     });
 
@@ -575,20 +492,21 @@ void main() {
     });
 
     test('a bundle whose key the app is offering is refused, as any install would be', () async {
-      // The rule this relaxes is still a rule: with `ham2k-lookup` offered as
-      // a built-in, its pre-load must be refused exactly as a file install
-      // would be — the relaxation is about WHEN the app offers it, not about
-      // dropping the check.
+      // A pre-load is an install like any other: one claiming a key the app
+      // builds in is refused exactly as a file install would be.
       store = InstalledExtensions(
         builtInKeys: () => const {'ham2k-lookup'},
         hostSharedModules: store.hostSharedModules,
         storage: FileBundleStorage(root: root),
         reservedPrefixAllowed: (_) => true,
       );
-      await runPreload();
+      await withErrorHooks(() async => runPreload());
       final listed = (await store.list()).map((i) => i.key).toSet();
       expect(listed, isNot(contains('ham2k-lookup')));
-      expect(listed, contains('ham2k-pota'), reason: 'one refusal must not cost the other seven');
+      expect(listed, contains('ham2k-pota'), reason: 'one refusal must not cost the others');
+      // Refused for what the bundle is, so asked for again on every launch it
+      // would cost a zip parse and the same report forever.
+      expect(settings.extensionPreloaded.containsKey('ham2k-lookup'), isTrue);
     });
   });
 

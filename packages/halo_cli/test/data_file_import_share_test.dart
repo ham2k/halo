@@ -34,7 +34,7 @@ void main() {
       index: index,
       config: config,
       onHostCall: CliHostCalls(config: config, index: index, lookups: store).call,
-      only: const {'pota'},
+      only: const {'ham2k-pota'},
     );
     await store.repository.insertLookupBatch([for (var i = 1; i <= 10; i++) LookupRow(category: 'pota', key: 'US-000$i', name: 'Stored $i', updated: 1)]);
   });
@@ -46,7 +46,7 @@ void main() {
   });
 
   Future<DataFileDef> potaDef() async =>
-      (await DataFileSync(runtime: runtime, store: store, userAgent: 'test').definitions()).singleWhere((d) => d.key == 'pota-all-parks');
+      (await DataFileSync(runtime: runtime, store: store, userAgent: 'test').definitions()).singleWhere((d) => d.key == 'ham2k-pota-all-parks');
 
   const shortBody = 'reference,name,active,entityId\nUS-0001,Fresh,1,291\n';
 

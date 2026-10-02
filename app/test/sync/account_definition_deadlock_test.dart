@@ -25,12 +25,29 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  /// Boots a real service against the real kernel and bundles, capturing
-  /// debugPrint so the test can see the failure the service swallows.
+  /// A real service over the real kernel and the bundles the app pre-loads,
+  /// not yet started.
+  Future<ExtensionService> service() async {
+    SharedPreferences.setMockInitialValues(const {});
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionService()
+      ..lookups = LookupRepository(db)
+      ..settings = SettingsService(await SharedPreferences.getInstance());
+    await preloadShippedExtensionsForTest(extensions);
+    return extensions;
+  }
+
+  /// Boots [service], capturing debugPrint so the test can see the failure the
+  /// service swallows.
   Future<({ExtensionService extensions, List<String> logs, Duration elapsed})> boot() async {
     final logs = <String>[];
     final original = debugPrint;
@@ -39,10 +56,7 @@ void main() {
     };
     addTearDown(() => debugPrint = original);
 
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionService()..lookups = LookupRepository(db);
-
+    final extensions = await service();
     final clock = Stopwatch()..start();
     await extensions.start();
     clock.stop();
@@ -62,7 +76,7 @@ void main() {
           'account falls back to device-local for the whole session',
     );
     expect(
-      booted.extensions.accountSynchronizable['qrz'],
+      booted.extensions.accountSynchronizable['ham2k-qrz'],
       isTrue,
       reason:
           "QRZ declares synchronizable: true so a QRZ login follows the user "
@@ -117,13 +131,11 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async => null);
     addTearDown(() => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
 
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionService()..lookups = LookupRepository(db);
+    final extensions = await service();
 
     final starting = extensions.start();
     var credentialsResolved = false;
-    final credentials = extensions.getAccountCredentials('qrz').then((value) {
+    final credentials = extensions.getAccountCredentials('ham2k-qrz').then((value) {
       credentialsResolved = true;
       return value;
     });
@@ -147,6 +159,6 @@ void main() {
     await starting;
     await credentials;
     expect(credentialsResolved, isTrue);
-    expect(extensions.accountSynchronizable['qrz'], isTrue);
+    expect(extensions.accountSynchronizable['ham2k-qrz'], isTrue);
   });
 }

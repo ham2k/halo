@@ -13,7 +13,8 @@
 // tail yields the coarser cell it agrees on, and anything unreadable yields
 // nothing at all.
 //
-// extensions/activities/sota/src/grid.ts is a copy — keep the two in step.
+// The catalog's `ham2k-sota` carries a copy in its src/grid.ts — keep the two
+// in step.
 
 export interface GridCell {
   lat: number

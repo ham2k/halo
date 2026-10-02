@@ -171,7 +171,7 @@ const CANADIAN_PROVINCES = new Set(["AB", "BC", "MB", "NB", "NL", "NS", "NT", "N
 
 /// COUNTRY-FILE entity prefixes whose stations have a state or province, not
 /// what a ham would write: Alaska is `KL`, not `KL7` (the same correction
-/// `extensions/contests/naqp/src/exchange.ts` documents). Hawaii and Alaska are
+/// the catalog's `ham2k-naqp` documents in its exchange.ts). Hawaii and Alaska are
 /// their own DXCC entities, so a station there carries no `state` of its own —
 /// the entity IS the answer, which is why they get defaults below.
 const US_ENTITIES = new Set(["K", "KL", "KH6"])

@@ -421,7 +421,7 @@ test("refNoun/refNounPlural/p2pLabel customize the wording", async () => {
 })
 
 test("a function-valued refNoun/p2pLabel resolves through the activity's OWN ctx, not a fixed string", async () => {
-  // This is how a real activity supplies its noun (extensions/activities/pota
+  // This is how a real activity supplies its noun (the catalog's `ham2k-pota`
   // resolves 'park'/'P2P' through its own translator) — a raw string would be
   // untranslatable, so the resolver must actually call the function with the
   // ctx it was handed, not just accept the plain-string branch tested above.

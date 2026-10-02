@@ -33,10 +33,10 @@ typedef OpenAccount = void Function(String accountKey, {String? subkey});
 /// NOTICES — most restarts here are one extension toggled in the panel, and
 /// an "account expired, reconnect" card is the operator's to answer, not a
 /// casualty of an unrelated toggle. A key that is not coming back — disabled,
-/// or renamed by the catalog upgrade, where `wca` becomes `ham2k-wca` and
-/// nothing will ever post to the old namespace again — loses its notices too,
-/// the way an uninstall does. Dismissed, not deleted: Recent Notices keeps
-/// them either way.
+/// or a retired built-in whose catalog twin runs instead, as `ham2k-wca` does
+/// for `wca`, so nothing will ever post to the old namespace again — loses its
+/// notices too, the way an uninstall does. Dismissed, not deleted: Recent
+/// Notices keeps them either way.
 ///
 /// Only what an extension posted through its own namespace. A data file's
 /// progress is the app's (`dataFile:…`) and outlives any one generation.

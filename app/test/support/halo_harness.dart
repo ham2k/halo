@@ -60,6 +60,10 @@ Future<HaLoHarness> makeHaLoServices({
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage ?? FakeSecureStorage());
+  // As the boot does before the services exist. Unseeded, every harness reads
+  // as an install still on the retired built-ins, and a real runtime's
+  // catch-up moves it — with a notice — under whatever the test is about.
+  await settings.seedExtensionsMigratedDefault();
   // Only a database this harness OWNS gets closed for the caller: one handed
   // in may be a double whose close is the thing under test, and closing it
   // here would fail the test in teardown rather than in its body.

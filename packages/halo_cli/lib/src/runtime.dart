@@ -52,16 +52,23 @@ class ExtRuntime {
     if (only.isNotEmpty) {
       final missing = only.difference({for (final entry in selected) entry.key});
       if (missing.isNotEmpty) {
-        throw CliUsageError('no such extension: ${missing.join(', ')} (try `halo-ext list`)');
+        // The catalog extensions the app pre-loads come from beside the built
+        // bundles; pointed elsewhere with --bundles, they are simply not there.
+        final noPreloads = index.preloadedDirectory == null && missing.any((key) => key.startsWith('ham2k-'));
+        throw CliUsageError(
+          'no such extension: ${missing.join(', ')} (try `halo-ext list`)'
+          '${noPreloads ? ' — no pre-loaded extensions were found beside ${index.directory.path}, where the app keeps them in ../preloaded-extensions' : ''}',
+        );
       }
     }
 
     final secrets = {
       for (final entry in selected)
-        // Dev-served extensions get nothing, whatever key they claim — the
-        // same provenance rule the app applies (HALO-425). `--dev-server` can
-        // name any machine, and a configured credential must not follow.
-        if (!entry.fromDevServer)
+        // Dev-served and pre-loaded extensions get nothing, whatever key they
+        // claim — the same provenance rule the app applies. `--dev-server` can
+        // name any machine, and a configured credential must not follow; a
+        // pre-load is an installed extension, which sees none in the app.
+        if (!entry.fromDevServer && !entry.preloaded)
           if (_secretsFor(entry.key, config) case final visible when visible.isNotEmpty) entry.key: visible,
     };
 

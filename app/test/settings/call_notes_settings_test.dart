@@ -1,14 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// HALO-53: call-notes' settingsPanel, against the REAL bundled extension
+// Callsign Notes' settingsPanel, against the REAL extension the app pre-loads
 // (not a mocked host, like settings_panel_dispatch_test.dart's fixtures) —
 // this is what actually proves `onActivation` can `await host.getSettings()`
 // before its `registerHook` calls land, a pattern no other shipped
 // extension uses yet (kernel.ts dispatches `onActivation` fire-and-forget,
-// never awaiting it — see extensions/lookups/call-notes/src/index.ts's
-// header comment). A mocked host can't catch a timing assumption like that;
-// only the real bundle, on the real kernel, can.
+// never awaiting it). A mocked host can't catch a timing assumption like
+// that; only the real bundle, on the real kernel, can.
 
 import 'dart:convert';
 
@@ -20,6 +19,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
+import '../support/halo_test_support.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -29,12 +30,12 @@ void main() {
   late ExtensionService extensions;
 
   Future<void> seedCallNotesSettings(Map<String, dynamic> values) async {
-    SharedPreferences.setMockInitialValues({'settings.extension_call-notes': jsonEncode(values)});
+    SharedPreferences.setMockInitialValues({'settings.extension_ham2k-call-notes': jsonEncode(values)});
     settings = SettingsService(await SharedPreferences.getInstance());
     extensions = ExtensionService()
       ..lookups = lookups
       ..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
   }
 
   setUp(() {
@@ -54,7 +55,7 @@ void main() {
     final defs = await host!.invokeHookAll('dataFile', method: 'getDefinition');
     final callNotesDefs = defs.where((e) => (e['value'] as Map?)?['category'] == 'call-notes').toList();
     expect(callNotesDefs, hasLength(1), reason: 'no customFiles saved yet, so only the one builtin registers');
-    expect((callNotesDefs.first['value'] as Map)['key'], 'hams-of-note');
+    expect((callNotesDefs.first['value'] as Map)['key'], 'ham2k-call-notes-hams-of-note');
   });
 
   test('a customFiles entry saved before boot becomes its own registered dataFile hook', () async {
@@ -74,7 +75,7 @@ void main() {
     final callNotesDefs = defs.where((e) => (e['value'] as Map?)?['category'] == 'call-notes').toList();
     expect(callNotesDefs, hasLength(2), reason: 'the builtin plus the one custom file');
 
-    final customDef = callNotesDefs.firstWhere((e) => (e['value'] as Map)['key'] != 'hams-of-note');
+    final customDef = callNotesDefs.firstWhere((e) => (e['value'] as Map)['key'] != 'ham2k-call-notes-hams-of-note');
     expect((customDef['value'] as Map)['name'], 'My Club Notes');
     expect((customDef['value'] as Map)['url'], 'https://example.com/my-club-notes.txt');
   });
@@ -87,7 +88,7 @@ void main() {
     });
 
     final panels = await extensions.getSettingsPanels();
-    final panel = panels.firstWhere((p) => p['panelKey'] == 'call-notes');
+    final panel = panels.firstWhere((p) => p['panelKey'] == 'ham2k-call-notes');
     expect(panel['kind'], 'dynamic');
     // Declared by getPanels() (HALO-53 followup) so the host knows the real
     // title and can skip this panel in its own top-level nav without first
@@ -96,7 +97,7 @@ void main() {
     expect(panel['sidebar'], false);
     expect(panel['dataFilesSection'], true, reason: 'this is what makes it show up under the data sources');
 
-    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'call-notes', panelKey: 'call-notes', kind: 'dynamic');
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'ham2k-call-notes', panelKey: 'ham2k-call-notes', kind: 'dynamic');
     expect(definition!['title'], isNull, reason: "the panel's own title (above) already labels the modal — no in-body title to double it");
     final elements = (definition['elements'] as List).cast<Map<String, dynamic>>();
 
@@ -130,8 +131,8 @@ void main() {
 
     await extensions.commitSettingsFieldValue(
       kind: 'dynamic',
-      hookKey: 'call-notes',
-      panelKey: 'call-notes',
+      hookKey: 'ham2k-call-notes',
+      panelKey: 'ham2k-call-notes',
       fieldKey: 'enabled.hams-of-note',
       value: false,
       state: const {},
@@ -139,7 +140,7 @@ void main() {
 
     expect(extensions.host, same(hostBefore), reason: 'a plain enable/disable toggle needs no restart');
 
-    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'call-notes', panelKey: 'call-notes', kind: 'dynamic');
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'ham2k-call-notes', panelKey: 'ham2k-call-notes', kind: 'dynamic');
     final checkbox = (definition!['elements'] as List).cast<Map<String, dynamic>>().firstWhere((el) => el['key'] == 'enabled.hams-of-note');
     expect(checkbox['value'], false);
   });
@@ -150,8 +151,8 @@ void main() {
 
     await extensions.commitSettingsFieldValue(
       kind: 'dynamic',
-      hookKey: 'call-notes',
-      panelKey: 'call-notes',
+      hookKey: 'ham2k-call-notes',
+      panelKey: 'ham2k-call-notes',
       fieldKey: 'customFiles',
       value: [
         {'name': 'My Club Notes', 'location': 'https://example.com/my-club-notes.txt'},
@@ -175,8 +176,13 @@ void main() {
   /// makes.
   Future<void> loadHamsOfNoteBody(String body) async {
     final host = extensions.host!;
-    final processed = await host.invokeHook('dataFile', key: 'hams-of-note', method: 'rawToJSONData', args: {'body': body, 'url': '', 'options': const {}});
-    await host.invokeHook('dataFile', key: 'hams-of-note', method: 'onLoadRawData', args: processed);
+    final processed = await host.invokeHook(
+      'dataFile',
+      key: 'ham2k-call-notes-hams-of-note',
+      method: 'rawToJSONData',
+      args: {'body': body, 'url': '', 'options': const {}},
+    );
+    await host.invokeHook('dataFile', key: 'ham2k-call-notes-hams-of-note', method: 'onLoadRawData', args: processed);
   }
 
   test('a call noted in an enabled builtin surfaces through the real lookup fan-out', () async {
@@ -196,8 +202,8 @@ void main() {
 
     await extensions.commitSettingsFieldValue(
       kind: 'dynamic',
-      hookKey: 'call-notes',
-      panelKey: 'call-notes',
+      hookKey: 'ham2k-call-notes',
+      panelKey: 'ham2k-call-notes',
       fieldKey: 'enabled.hams-of-note',
       value: false,
       state: const {},
@@ -228,8 +234,8 @@ void main() {
 
     await extensions.commitSettingsFieldValue(
       kind: 'dynamic',
-      hookKey: 'call-notes',
-      panelKey: 'call-notes',
+      hookKey: 'ham2k-call-notes',
+      panelKey: 'ham2k-call-notes',
       fieldKey: 'enabled.hams-of-note',
       value: false,
       state: const {},

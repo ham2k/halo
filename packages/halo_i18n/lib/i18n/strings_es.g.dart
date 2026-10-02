@@ -230,26 +230,19 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 		one: '¿Actualizar ${count} extensión?',
 		other: '¿Actualizar ${count} extensiones?',
 	);
-	@override String get upgradeTitle => 'Necesitamos actualizar tus extensiones';
-	@override String get upgradeBody => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.';
-	@override String get upgradeAction => 'Actualizar ahora';
-	@override String get upgradeLater => 'Más tarde';
 	@override String get upgradeDoneTitle => 'Tus extensiones están listas';
 	@override String get upgradeDoneBody => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.';
 	@override String upgradeDoneUnserved({required Object names}) => 'No se actualizaron: ${names}.';
 	@override String upgradeDoneRefused({required Object names}) => 'No pudieron ejecutarse: ${names}.';
 	@override String get upgradeDoneRefusedHint => 'Siguen instaladas y marcadas en Ajustes › Extensiones — actualizarlas allí las recuperará.';
 	@override String get upgradeDoneUnservedHint => 'El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.';
-	@override String get upgradeFailedTitle => 'Tus extensiones no se actualizaron';
-	@override String get upgradeFailedBody => 'No pudimos terminar de actualizar tus extensiones, así que revertimos la actualización. Te la ofreceremos de nuevo la próxima vez que abras la aplicación.';
-	@override String get upgradeIncompleteBody => 'No pudimos descargar algunas extensiones, así que revertimos la actualización. Inténtalo de nuevo cuando tengas conexión.';
-	@override String get upgradeUnavailableBody => 'No pudimos actualizar tus extensiones. Te lo ofreceremos de nuevo la próxima vez que abras la aplicación.';
+	@override String get retiredQp => 'Concursos Estatales';
+	@override String get retiredStateparks => 'Eventos de Parques Estatales';
+	@override String upgradeDoneMissing({required Object count}) => '${count} de tus extensiones aún no llegaron. Se descargarán la próxima vez que se pueda acceder al catálogo de extensiones.';
+	@override String get runtimeDeadBody => 'Tus extensiones no se iniciaron. Reiniciar la app debería traerlas de vuelta.';
+	@override String get refusedTitle => 'Algunas extensiones no se ejecutaron';
 	@override String get upgradeBusyTitle => 'Todavía preparando';
-	@override String get upgradeBusyBody => 'La aplicación todavía está preparando tus extensiones. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.';
-	@override String get upgradeRevertedTitle => 'Tus extensiones no pudieron iniciarse';
-	@override String get upgradeRevertedBody => 'Las extensiones actualizadas no pudieron iniciarse, así que las que tenías están de vuelta y funcionando. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.';
 	@override String get upgradeRuntimeDeadTitle => 'Tus extensiones no están funcionando';
-	@override String get upgradeRuntimeDeadBody => 'No pudimos iniciar tus extensiones, ni siquiera después de deshacer la actualización. Reiniciar la aplicación debería recuperarlas.';
 	@override String get restoreTitle => 'Faltan algunas de tus extensiones';
 	@override String get restoreBody => 'Estas extensiones que instalaste no están en este dispositivo. Podemos descargarlas de nuevo del catálogo de extensiones de Ham2K:';
 	@override String get restoreFromFile => 'Instaladas desde un archivo. Instálalas de nuevo desde sus archivos, u olvídalas:';
@@ -3561,26 +3554,19 @@ extension on TranslationsEs {
 			'extensionsPanel.updatesNothingLeft' => 'Tus extensiones están al día.',
 			'extensionsPanel.updatesNoticeAction' => 'Más información',
 			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '¿Actualizar ${count} extensión?', other: '¿Actualizar ${count} extensiones?', ), 
-			'extensionsPanel.upgradeTitle' => 'Necesitamos actualizar tus extensiones',
-			'extensionsPanel.upgradeBody' => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.',
-			'extensionsPanel.upgradeAction' => 'Actualizar ahora',
-			'extensionsPanel.upgradeLater' => 'Más tarde',
 			'extensionsPanel.upgradeDoneTitle' => 'Tus extensiones están listas',
 			'extensionsPanel.upgradeDoneBody' => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'No se actualizaron: ${names}.',
 			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => 'No pudieron ejecutarse: ${names}.',
 			'extensionsPanel.upgradeDoneRefusedHint' => 'Siguen instaladas y marcadas en Ajustes › Extensiones — actualizarlas allí las recuperará.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.',
-			'extensionsPanel.upgradeFailedTitle' => 'Tus extensiones no se actualizaron',
-			'extensionsPanel.upgradeFailedBody' => 'No pudimos terminar de actualizar tus extensiones, así que revertimos la actualización. Te la ofreceremos de nuevo la próxima vez que abras la aplicación.',
-			'extensionsPanel.upgradeIncompleteBody' => 'No pudimos descargar algunas extensiones, así que revertimos la actualización. Inténtalo de nuevo cuando tengas conexión.',
-			'extensionsPanel.upgradeUnavailableBody' => 'No pudimos actualizar tus extensiones. Te lo ofreceremos de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.retiredQp' => 'Concursos Estatales',
+			'extensionsPanel.retiredStateparks' => 'Eventos de Parques Estatales',
+			'extensionsPanel.upgradeDoneMissing' => ({required Object count}) => '${count} de tus extensiones aún no llegaron. Se descargarán la próxima vez que se pueda acceder al catálogo de extensiones.',
+			'extensionsPanel.runtimeDeadBody' => 'Tus extensiones no se iniciaron. Reiniciar la app debería traerlas de vuelta.',
+			'extensionsPanel.refusedTitle' => 'Algunas extensiones no se ejecutaron',
 			'extensionsPanel.upgradeBusyTitle' => 'Todavía preparando',
-			'extensionsPanel.upgradeBusyBody' => 'La aplicación todavía está preparando tus extensiones. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.',
-			'extensionsPanel.upgradeRevertedTitle' => 'Tus extensiones no pudieron iniciarse',
-			'extensionsPanel.upgradeRevertedBody' => 'Las extensiones actualizadas no pudieron iniciarse, así que las que tenías están de vuelta y funcionando. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.',
 			'extensionsPanel.upgradeRuntimeDeadTitle' => 'Tus extensiones no están funcionando',
-			'extensionsPanel.upgradeRuntimeDeadBody' => 'No pudimos iniciar tus extensiones, ni siquiera después de deshacer la actualización. Reiniciar la aplicación debería recuperarlas.',
 			'extensionsPanel.restoreTitle' => 'Faltan algunas de tus extensiones',
 			'extensionsPanel.restoreBody' => 'Estas extensiones que instalaste no están en este dispositivo. Podemos descargarlas de nuevo del catálogo de extensiones de Ham2K:',
 			'extensionsPanel.restoreFromFile' => 'Instaladas desde un archivo. Instálalas de nuevo desde sus archivos, u olvídalas:',
@@ -3966,8 +3952,6 @@ extension on TranslationsEs {
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Este archivo no llegó:', other: 'Estos ${count} archivos no llegaron:', ), 
 			'operation.export.stash.emailOffer' => 'O, si te resulta más cómodo, podemos enviarte un correo con un enlace directo.',
 			'operation.export.stash.emailMe' => 'Envíame un enlace',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.stash.emailSent' => 'Te enviamos un enlace de descarga por correo.',
 			'operation.export.stash.emailFailed' => ({required Object error}) => 'No se pudo enviar el correo: ${error}',
 			'operation.export.stash.freeTier' => 'Las cuentas gratuitas solo guardan un envío a la vez. Los suscriptores pueden guardar todos los que quieran.',
@@ -3975,6 +3959,8 @@ extension on TranslationsEs {
 			'operation.spots.empty' => 'Ningún spot coincide con tus filtros',
 			'operation.spots.error' => ({required Object error}) => 'No se pudieron cargar los spots: ${error}',
 			'operation.spots.unknownBand' => 'Otras',
+			_ => null,
+		} ?? switch (path) {
 			'operation.spots.auto' => 'Auto',
 			'operation.spots.autoValue' => ({required Object value}) => 'Auto (Actualmente ${value})',
 			'operation.spots.valueAuto' => ({required Object value}) => '${value} (Auto)',
@@ -4480,8 +4466,6 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.repeatOff' => 'No',
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
 			'settings.radio.cwMessages.keyboardField' => 'Escribe para transmitir',
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
@@ -4489,6 +4473,8 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
 			'settings.radio.cwMessages.helpIntro' => 'Los mensajes pueden usar plantillas con los siguientes valores:',
 			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el indicativo que se registrará',
 			'settings.radio.cwMessages.helpQsoFullCall' => 'Su indicativo, si hay un indicativo válido; vacío si es parcial',
 			'settings.radio.cwMessages.helpQsoPartial' => 'Un indicativo parcial; vacío si hay un indicativo completo válido',
@@ -4994,8 +4980,6 @@ extension on TranslationsEs {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador en ${device}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.cwKeyerArea' => 'Área del manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
@@ -5003,6 +4987,8 @@ extension on TranslationsEs {
 			'settings.station.trackFieldRig' => 'Transceptor',
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador',
 			'settings.station.switchLayout' => 'Disposición',

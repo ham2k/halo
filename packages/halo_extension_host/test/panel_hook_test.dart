@@ -15,14 +15,13 @@ import 'support/bundles.dart';
 void main() {
   requireBundles();
 
-  /// `getSettings` MUST be answered: an unset handler is not a neutral
-  /// default — the kernel's call rejects and getSettingsContext swallows it
-  /// (sdk/src/kernel.ts), leaving `ctx.appName` undefined, which the panel
-  /// renders as an empty `app.name` rather than failing.
+  /// Its own host per test: the sample keeps each placement's simulated radio
+  /// in module state, which a shared host would carry from one test into the
+  /// next.
   Future<ExtensionHost> panelHost() => ExtensionHost.start(
     kernelSource: bundleSource('kernel'),
-    extensions: [ExtensionBundle(key: 'custom-text', source: bundleSource('custom-text'))],
-    onHostCall: (method, params) async => method == 'getSettings' ? {'appName': 'Ham2K Logger'} : null,
+    extensions: [ExtensionBundle(key: 'k2hrc-panel-scenes', source: bundleSource('k2hrc-panel-scenes'))],
+    onHostCall: nullHostCall,
   );
 
   test('a panel hook advertises its panels, and renders one', () async {
@@ -31,59 +30,79 @@ void main() {
 
     final panels = await host.invokeHook(
       'panel',
-      key: 'custom-text',
+      key: 'k2hrc-panel-scenes',
       method: 'getPanels',
       args: const <String, dynamic>{},
       timeout: const Duration(seconds: 30),
     );
 
     expect(panels, isA<List>());
-    final panel = (panels as List).single as Map;
-    expect(panel['key'], 'text');
-    expect(panel['title'], isNotEmpty);
+    final byKey = {for (final p in (panels as List).cast<Map>()) p['key']: p};
+    expect(byKey.keys, ['radio', 'weather', 'controls']);
     // The descriptor's optional halves are what the Layout Setup sheet and
     // the several-placements machinery are built from — a panel that
     // declared them must not lose them on the way across.
-    expect(panel['description'], isNotEmpty);
-    expect(panel['preview'], startsWith('<svg'));
-    expect(panel['multiple'], isTrue);
-    expect((panel['form'] as List).map((f) => (f as Map)['key']), containsAll(['title', 'content']));
+    final radio = byKey['radio']!;
+    expect(radio['title'], isNotEmpty);
+    expect(radio['icon'], 'radio-tower');
+    expect(radio['multiple'], isTrue);
+    expect(radio['on'], ['tick:1']);
 
-    final content = await host.invokeHook(
+    Future<Map> render(String instanceId) async =>
+        await host.invokeHook(
+              'panel',
+              key: 'k2hrc-panel-scenes',
+              method: 'render',
+              args: {
+                'panelKey': 'radio',
+                'instanceId': instanceId,
+                'operation': {'uuid': 'op-1', 'stationCall': 'N0DEV'},
+                'qsoCount': 7,
+                'config': const <String, dynamic>{},
+                'reason': 'initial',
+              },
+              timeout: const Duration(seconds: 30),
+            )
+            as Map;
+
+    // An event's value has to arrive for the panel to act on it, and the
+    // render after it reads the state that event left behind: the only way
+    // 14200 is in the scene is that both crossings carried their args.
+    final result = await host.invokeHook(
       'panel',
-      key: 'custom-text',
-      method: 'render',
+      key: 'k2hrc-panel-scenes',
+      method: 'onEvent',
       args: {
-        'panelKey': 'text',
-        'operation': {'uuid': 'op-1', 'stationCall': 'N0DEV'},
-        'qsoCount': 7,
-        'config': {'title': 'Sked list', 'content': 'Worked {{ op.qsoCount }} so far in {{ app.name }}'},
-        'reason': 'initial',
+        'panelKey': 'radio',
+        'instanceId': 'a',
+        'operation': const <String, dynamic>{},
+        'qsoCount': 0,
+        'config': const <String, dynamic>{},
+        'reason': 'event',
+        'event': {'controlId': 'tune', 'action': 'tune', 'phase': 'commit', 'sequence': 1, 'value': 14200},
       },
       timeout: const Duration(seconds: 30),
     );
+    expect(((result as Map)['values'] as Map)['requested'], 14200);
 
-    final document = content as Map;
-    expect(document['kind'], 'markdown');
-    // Proves the args actually arrived, not merely that something rendered:
-    // the count is only in the result because the render args carried it.
-    // `app.name` is the one HookContext field this panel consumes, and it
-    // reaches the template through the host's own getSettings answer — an
-    // unanswered one renders it empty without failing anything.
-    expect(document['content'], contains('Worked 7 so far in Ham2K Logger'));
-    expect(document['title'], 'Sked list');
-    // A render declares its OWN triggers, derived from the operator's
-    // template — the one part of the content contract the descriptor cannot
-    // carry, and the reason PanelContent has the field at all. `op.qsoCount`
-    // is what asks for these two; a template naming nothing live would
-    // cross with an empty list.
-    expect(document['triggers'], containsAll(['qsoLogged', 'operation']));
+    final document = await render('a');
+    expect(document['kind'], 'scene');
+    // A scene is the deepest content shape a panel returns — layers and
+    // controls nested inside the scene — so it is the one a lossy serializer
+    // would break first.
+    final scene = document['scene'] as Map;
+    expect((scene['values'] as Map)['requested'], 14200);
+    expect((scene['layers'] as List).map((l) => (l as Map)['id']), containsAll(['face', 'needle', 'knob']));
+    expect((scene['controls'] as List).map((c) => (c as Map)['kind']), containsAll(['knob', 'slider', 'button']));
+    // `instanceId` is what keeps two placements of one panel apart; a render
+    // that lost it would show the first placement's state in the second.
+    expect((((await render('b'))['scene'] as Map)['values'] as Map)['requested'], 14074);
   });
 
   /// An inline panel extension, so what only a CONTEXT-varying panel can
   /// prove doesn't depend on a shipped one declaring anything in
-  /// particular. `custom-text` ignores `ctx` and declares no descriptor
-  /// triggers, which is right for it and leaves both halves uncovered.
+  /// particular. `k2hrc-panel-scenes` ignores `ctx`, which is right for it
+  /// and leaves that half uncovered.
   /// A fixture that fails to EVALUATE fails these tests as "no hook
   /// registered": activation errors are logged and swallowed by the kernel,
   /// so the real cause is in `host.logs`, not in the failure message.
@@ -127,12 +146,11 @@ __polo.defineExtension({
       timeout: const Duration(seconds: 30),
     );
 
-    // `on` is the one descriptor field no shipped panel declares — a bare
-    // pass-through, but the host builds a panel's refresh budget from it,
-    // so a serializer that dropped what it did not recognize would leave a
-    // panel that never updates and nothing to say why. Also the positive
-    // half of the pair below: a descriptor comes back at all only because
-    // HookContext reached getPanels carrying developerMode.
+    // `on` is a bare pass-through, but the host builds a panel's refresh
+    // budget from it, so a serializer that dropped what it did not recognize
+    // would leave a panel that never updates and nothing to say why. Also the
+    // positive half of the pair below: a descriptor comes back at all only
+    // because HookContext reached getPanels carrying developerMode.
     final panel = (panels as List).single as Map;
     expect(panel['on'], containsAll(['operation', 'tick:30']));
   });

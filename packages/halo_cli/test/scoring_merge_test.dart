@@ -64,7 +64,7 @@ void main() {
   tearDown(() async => runtime?.stop());
 
   /// Core scoring plus POTA, and nothing else — the pair whose rules disagree.
-  Future<ExtRuntime> start({Set<String> only = const {'scoring', 'pota'}}) async => runtime = await ExtRuntime.start(
+  Future<ExtRuntime> start({Set<String> only = const {'scoring', 'ham2k-pota'}}) async => runtime = await ExtRuntime.start(
     index: index,
     config: CliConfig(settings: const {}),
     only: only,
@@ -81,7 +81,7 @@ void main() {
     );
     // Keyed by scorer, in priority order: what the app caches, and what an
     // operator comparing the two reads.
-    expect(scored.keys, ['pota', 'core']);
+    expect(scored.keys, ['ham2k-pota', 'core']);
   });
 
   // The case this whole change exists for. Worked at a park in the morning;
@@ -99,12 +99,12 @@ void main() {
     // The credit is the premise, not a detail: POTA rules on this contact
     // BECAUSE it awarded it park credit, and asserting the outcome without it
     // would pass just as well if POTA had started overruling core for free.
-    expect(_verdictFor(merged, 'pota', 'packed-up')?['value'], greaterThan(0));
+    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up')?['value'], greaterThan(0));
     expect(_alertsOf(_verdictFor(merged, 'core', 'packed-up')), isNot(contains('duplicate')), reason: 'POTA credited this contact; core must not strike it');
 
     // And the reason it yielded is a RULING, not silence: POTA reports the
     // dupe test it ran, which is what `judgesWorkedBefore` reads.
-    expect(_verdictFor(merged, 'pota', 'packed-up')?['dupe'], false);
+    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up')?['dupe'], false);
   });
 
   // The same log on a CHASER's operation, where POTA credits the bare repeat
@@ -119,8 +119,8 @@ void main() {
     ];
 
     final merged = await scoreOperation(runtime!.host, operation: _operation, qsos: log);
-    expect(_verdictFor(merged, 'pota', 'packed-up')?['value'], 0);
-    expect(_verdictFor(merged, 'pota', 'packed-up')?['dupe'], isNull);
+    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up')?['value'], 0);
+    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up')?['dupe'], isNull);
     expect(_alertsOf(_verdictFor(merged, 'core', 'packed-up')), contains('duplicate'));
   });
 
@@ -175,26 +175,34 @@ void main() {
     expect(((first?['notices'] as List?) ?? const []), contains('newDXCC'), reason: 'nothing else in the app reports a new entity');
   });
 
-  // The hole a bare "did it answer?" test leaves, against the real contest
-  // scorer: CQ WW's band check returns ABOVE its dupe test, so a casual 30m
-  // contact gets `invalidBand` and no opinion on whether the station was
-  // worked. Core's is then the only dupe rule there is, and it has to survive
-  // — the alternative is an operator working 30m during a contest weekend and
-  // being told nothing about repeats all weekend.
+  // The hole a bare "did it answer?" test leaves, against a real contest
+  // scorer — the sample CQ WW, which the app never ships but whose band check
+  // returns ABOVE its dupe test as the catalog's does: a casual 30m contact
+  // gets `invalidBand` and no opinion on whether the station was worked.
+  // Core's is then the only dupe rule there is, and it has to survive — the
+  // alternative is an operator working 30m during a contest weekend and being
+  // told nothing about repeats all weekend.
   test('an off-band contest answer does not silence core', () async {
-    await start(only: const {'scoring', 'cqww'});
+    if (!index.extensions.any((e) => e.key == 'k2hrc-cqww')) {
+      // Built by extensions/build-config.mjs into the fixtures directory,
+      // never into the app's assets.
+      index.extensions.add(
+        const BundleEntry(key: 'k2hrc-cqww', file: '../../../extensions/build/fixtures/k2hrc-cqww.js', name: 'CQ WW DX (sample)', core: false),
+      );
+    }
+    await start(only: const {'scoring', 'k2hrc-cqww'});
 
     const operation = {
       'uuid': 'op-2',
       'stationCall': 'N0DEV',
       'refs': [
-        {'type': 'cqww', 'mode': 'SSB', 'ourZone': '5'},
+        {'type': 'k2hrcCqww', 'mode': 'SSB', 'zone': '5'},
       ],
     };
     final log = [_qso('warc-1', at: _at, call: 'W3QRP', band: '30m'), _qso('warc-2', at: _at + 60 * 1000, call: 'W3QRP', band: '30m')];
 
     final merged = await scoreOperation(runtime!.host, operation: operation, qsos: log);
-    expect(_alertsOf(_verdictFor(merged, 'cqww', 'warc-2')), contains('invalidBand'));
+    expect(_alertsOf(_verdictFor(merged, 'k2hrc-cqww', 'warc-2')), contains('invalidBand'));
     expect(_alertsOf(_verdictFor(merged, 'core', 'warc-2')), contains('duplicate'), reason: 'CQ WW ruled on the band, not on whether this station was worked');
   });
 

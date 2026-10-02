@@ -664,20 +664,6 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// Every known extension; only the installed ones are asked about.
   final List<ExtensionInfo> Function() installed;
 
-  /// Whether an installed extension actually loads — ExtensionService's
-  /// `isSupersededByBuiltIn`, inverted.
-  ///
-  /// An update OFFER is about something the operator is using, and before the
-  /// catalog upgrade is taken every pre-loaded or hand-installed twin sits
-  /// dormant behind the built-in it replaces. Offering an update for one of
-  /// those is the app talking about an extension that is not running, on an
-  /// install that has not moved to the catalog at all. Revocation is judged
-  /// over everything installed regardless — a bundle withdrawn for cause is
-  /// still on disk, and a built-in going away later would light it up.
-  /// Defaults to "everything loads", which is what a test without an
-  /// extension service means by it.
-  final bool Function(ExtensionInfo) inUse;
-
   /// Re-applies which extensions load, once a revocation is on record —
   /// ExtensionService.applyExtensionAvailability, which reads that record.
   final Future<void> Function() applyAvailability;
@@ -707,14 +693,10 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     required this.statusBar,
     required this.installed,
     required this.applyAvailability,
-    bool Function(ExtensionInfo)? inUse,
     this.openExtensions,
     this.updateAll,
     int Function()? realNow,
-  }) : inUse = inUse ?? _everythingLoads,
-       _realNow = realNow ?? realNowMillis;
-
-  static bool _everythingLoads(ExtensionInfo info) => true;
+  }) : _realNow = realNow ?? realNowMillis;
 
   Map<String, CatalogEntry> _pending = const {};
 
@@ -765,14 +747,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
       final result = await catalog.checkUpdates(candidates);
       if (result == null) return false;
       await settings.setCatalogUpdateCheckedAt(_realNow());
-      final loading = {
-        for (final info in candidates)
-          if (inUse(info)) info.key,
-      };
-      _pending = {
-        for (final update in result.updates)
-          if (loading.contains(update.entry.key)) update.entry.key: update.entry,
-      };
+      _pending = {for (final update in result.updates) update.entry.key: update.entry};
       notifyListeners();
       _noticeUpdates(candidates, announce: announce);
       await _handleRevoked(result.revoked, candidates);

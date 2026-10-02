@@ -268,23 +268,6 @@ void main() {
       expect(settledDuringRestart, isFalse);
       expect(extensions.firstCatchUpSettled, isTrue);
     });
-
-    test('and an upgrade every catch-up stepped aside for settles it when it lets go', () async {
-      // Otherwise nothing after the upgrade runs a catch-up this session, and
-      // the offer waits forever.
-      final extensions = _HeldPreload();
-      SharedPreferences.setMockInitialValues(const {});
-      extensions
-        ..settings = SettingsService(await SharedPreferences.getInstance())
-        ..catalog = _Catalog(const {});
-      final upgrade = withErrorHooks(() async => migrateToCatalogExtensions(extensions));
-      await extensions.entered.future;
-      expect(await catchUpOnCatalogExtensions(extensions), isFalse);
-      expect(extensions.firstCatchUpSettled, isFalse);
-      extensions.release.complete();
-      await upgrade;
-      expect(extensions.firstCatchUpSettled, isTrue);
-    });
   });
 
   test('one unreadable manifest costs only its own extension', () async {
@@ -379,15 +362,6 @@ class _HeldPreload extends ExtensionServiceWithFakeHost {
   final entered = Completer<void>();
   final release = Completer<void>();
 
-  bool get firstCatchUpSettled => _settled;
-  bool _settled = false;
-
-  @override
-  void markFirstCatchUpDone() {
-    _settled = true;
-    super.markFirstCatchUpDone();
-  }
-
   @override
   Future<bool> preloadShippedExtensions() async {
     if (!entered.isCompleted) entered.complete();
@@ -411,15 +385,6 @@ class _ReentersOnRestart extends ExtensionServiceWithFakeHost {
   _ReentersOnRestart() : super(FakeExtensionHost({}));
 
   Future<void> Function()? onRestart;
-
-  bool get firstCatchUpSettled => _settled;
-  bool _settled = false;
-
-  @override
-  void markFirstCatchUpDone() {
-    _settled = true;
-    super.markFirstCatchUpDone();
-  }
 
   @override
   Future<bool> preloadShippedExtensions() async => true;

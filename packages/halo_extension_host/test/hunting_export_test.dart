@@ -40,10 +40,10 @@ void main() {
     ],
   };
 
-  Future<ExtensionHost> startHost() => sharedHost(['adif', 'sota']);
+  Future<ExtensionHost> startHost() => sharedHost(['adif', 'ham2k-sota']);
 
   test('hunter template counts agree with the contacts written to the file', () async {
-    final host = await sharedHost(['adif', 'sota', 'templates']);
+    final host = await sharedHost(['adif', 'ham2k-sota', 'templates']);
     final payload = {
       'operation': operation(),
       'qsos': [
@@ -51,7 +51,7 @@ void main() {
         qso('W1AW'),
       ],
     };
-    final options = await host.invokeHook('export', key: 'sota-hunter', method: 'suggestExportOptions', args: payload) as List;
+    final options = await host.invokeHook('export', key: 'ham2k-sota-hunter', method: 'suggestExportOptions', args: payload) as List;
     final prepared =
         await host.invokeHook(
               'template',
@@ -73,7 +73,7 @@ void main() {
             )
             as List;
     final selected = prepared.single as Map;
-    final result = await host.invokeHook('export', key: 'sota-hunter', method: 'generateExport', args: {...payload, ...selected}) as Map;
+    final result = await host.invokeHook('export', key: 'ham2k-sota-hunter', method: 'generateExport', args: {...payload, ...selected}) as Map;
     expect(selected['filename'], '1 QSOs.adi');
     expect(selected['exportTitle'], '1 contacts');
     expect(result['content'], contains('ADIF export for 1 contacts'));
@@ -86,7 +86,7 @@ void main() {
     final options =
         (await host.invokeHook(
                   'export',
-                  key: 'sota-hunter',
+                  key: 'ham2k-sota-hunter',
                   method: 'suggestExportOptions',
                   args: {
                     'operation': operation(),
@@ -110,7 +110,7 @@ void main() {
     // so there's nothing for the core to slice segments by. `color` carries
     // the panel's accent instead (see `HuntingExportRules.color`).
     expect(options.first.containsKey('refType'), isFalse);
-    // sota/manifest.json's accentColor, threaded through explicitly since
+    // `ham2k-sota`'s manifest accentColor, threaded through explicitly since
     // there's no refType for the panel to resolve one from (see
     // `HuntingExportRules.color`).
     expect(options.first['color'], '#6295BF');
@@ -121,7 +121,7 @@ void main() {
     final options =
         await host.invokeHook(
               'export',
-              key: 'sota-hunter',
+              key: 'ham2k-sota-hunter',
               method: 'suggestExportOptions',
               args: {
                 'operation': operation(),
@@ -142,7 +142,7 @@ void main() {
     final options =
         await host.invokeHook(
               'export',
-              key: 'sota-hunter',
+              key: 'ham2k-sota-hunter',
               method: 'suggestExportOptions',
               args: {
                 'operation': operation(activating: ['W7A/LC-002']),
@@ -167,7 +167,7 @@ void main() {
     await expectLater(
       host.invokeHook(
         'export',
-        key: 'sota-hunter',
+        key: 'ham2k-sota-hunter',
         method: 'generateExport',
         args: {
           'operation': operation(activating: ['W7A/LC-002']),
@@ -187,7 +187,7 @@ void main() {
     final result =
         await host.invokeHook(
               'export',
-              key: 'sota-hunter',
+              key: 'ham2k-sota-hunter',
               method: 'generateExport',
               args: {
                 'operation': operation(),
@@ -217,7 +217,7 @@ void main() {
     await expectLater(
       host.invokeHook(
         'export',
-        key: 'sota-hunter',
+        key: 'ham2k-sota-hunter',
         method: 'generateExport',
         args: {
           'operation': operation(),
@@ -242,7 +242,7 @@ void main() {
       final result =
           await host.invokeHook(
                 'export',
-                key: 'sota-hunter',
+                key: 'ham2k-sota-hunter',
                 method: 'generateExport',
                 args: {
                   'operation': operation(),

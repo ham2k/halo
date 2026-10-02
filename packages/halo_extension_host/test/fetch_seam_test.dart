@@ -13,8 +13,8 @@
 // all still run, so a test exercises the real path — and a stub cannot become a
 // way to route around any of them.
 //
-// POTA is the vehicle: it ships in the app, and it both reads a spot feed and
-// posts to one.
+// `ham2k-pota` is the vehicle: the app pre-loads it, and it both reads a spot
+// feed and posts to one.
 
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
@@ -42,8 +42,8 @@ void main() {
   Future<ExtensionHost> hostWith(http.Client client, {List<String> domains = const ['api.pota.app', 'pota.app']}) async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
-      extensions: [ExtensionBundle(key: 'pota', source: bundleSource('pota'))],
-      fetchAllowlists: {'pota': domains},
+      extensions: [ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota'))],
+      fetchAllowlists: {'ham2k-pota': domains},
       httpClient: client,
       userAgent: 'Ham2K-Test/1.0',
       onHostCall: nullHostCall,
@@ -60,8 +60,9 @@ void main() {
     );
     final host = await hostWith(rec.client);
 
-    final spots = (await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
-        .cast<Map>();
+    final spots =
+        (await host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)) as List)
+            .cast<Map>();
 
     expect(spots.single['freq'], 14285);
     expect((spots.single['their'] as Map)['call'], 'W1AW');
@@ -77,7 +78,7 @@ void main() {
     final result =
         await host.invokeHook(
               'spots',
-              key: 'pota',
+              key: 'ham2k-pota',
               method: 'postSelfSpot',
               args: {
                 'operation': {
@@ -99,43 +100,12 @@ void main() {
     expect(body['reference'], 'US-0001');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('a multi-station Test Operation still spots the K-TEST sandbox ref, not its real park', () async {
-    // The app appends BOTH suffixes before the hook sees the call
-    // (`ExtensionService.spotCallForSelfSpot`), so what arrives here is
-    // `KI2D/TEST/OP1`. If the extension stops recognizing that as a test
-    // call, this posts a live spot to a park nobody is at — the one failure
-    // the /TEST rewrite exists to prevent, and one no local check can see.
-    final rec = recorder('{}');
-    final host = await hostWith(rec.client);
-
-    await host.invokeHook(
-      'spots',
-      key: 'pota',
-      method: 'postSelfSpot',
-      args: {
-        'operation': {
-          'stationCall': 'KI2D/TEST/OP1',
-          'refs': [
-            {'type': 'potaActivation', 'ref': 'US-0001'},
-          ],
-        },
-        'freq': 14285,
-        'mode': 'SSB',
-      },
-      timeout: const Duration(seconds: 20),
-    );
-
-    final body = jsonDecode(rec.sent.single.body) as Map<String, dynamic>;
-    expect(body['reference'], 'K-TEST');
-    expect(body['activator'], 'KI2D/TEST/OP1');
-  }, timeout: const Timeout(Duration(seconds: 60)));
-
   test('the canonical User-Agent is still stamped', () async {
     // Proof the seam is below the host's own behaviour rather than replacing
     // it: an extension cannot become anonymous by being tested.
     final rec = recorder('[]');
     final host = await hostWith(rec.client);
-    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
+    await host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
     expect(rec.sent.single.headers['User-Agent'], 'Ham2K-Test/1.0');
   }, timeout: const Timeout(Duration(seconds: 60)));
@@ -153,7 +123,7 @@ void main() {
     });
     final host = await hostWith(client);
 
-    final spots = await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
+    final spots = await host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
 
     expect(spots, isEmpty);
     expect(sent, hasLength(2));
@@ -171,7 +141,7 @@ void main() {
     final host = await hostWith(client);
 
     final stopwatch = Stopwatch()..start();
-    await host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
+    await host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
     stopwatch.stop();
 
     // Generous slack above the 300-500ms production range for test/CI
@@ -190,7 +160,7 @@ void main() {
     final host = await hostWith(client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(sent, hasLength(2));
@@ -210,7 +180,7 @@ void main() {
     final host = await hostWith(client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(sent, hasLength(1));
@@ -225,7 +195,7 @@ void main() {
     final host = await hostWith(client);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(sent, hasLength(1));
@@ -252,7 +222,7 @@ void main() {
     final host = await hostWith(rec.client, domains: const []);
 
     await expectLater(
-      host.invokeHook('spots', key: 'pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
+      host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20)),
       throwsA(anything),
     );
     expect(rec.sent, isEmpty);

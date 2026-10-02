@@ -36,8 +36,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart' show Ex
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
-import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart'
-    show CatalogNotWired, SettingsNotWired, UpgradeCatalogUnavailable, UpgradeLeftNoRuntime;
+import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart' show CatalogNotWired, UpgradeLeftNoRuntime;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) => ErrorPolicy.decide(error, details: details).disposition;
 
@@ -542,14 +541,6 @@ void main() {
       expect(decision.disposition, ErrorDisposition.report);
     });
 
-    test('an upgrade check stuck without a catalog is reported, not noticed', () {
-      // The operator did not ask and has lost nothing; the audience is
-      // whoever runs the catalog.
-      final decision = ErrorPolicy.decide(const UpgradeCatalogUnavailable(launches: 3, empty: false));
-      expect(decision.rule?.id, 'upgrade-catalog-unavailable');
-      expect(decision.disposition, ErrorDisposition.report);
-    });
-
     test('the wrapper does not launder anything else — a non-transport cause stays loud', () {
       expect(dispositionFor(CatalogUnreachable(url, const FormatException('not json'))), ErrorDisposition.notify);
     });
@@ -847,11 +838,10 @@ void main() {
   });
 
   group('the extension graph left unwired', () {
-    test('reports either half without a notice', () {
+    test('reports a missing catalog without a notice', () {
       // Nothing the operator can act on, and the audience is whoever changes
-      // the service graph. Unclassified, both would wear a notice.
+      // the service graph. Unclassified, it would wear a notice.
       expect(dispositionFor(const CatalogNotWired()), ErrorDisposition.report);
-      expect(dispositionFor(const SettingsNotWired()), ErrorDisposition.report);
     });
 
     test('an upgrade that left no runtime at all reports too', () {

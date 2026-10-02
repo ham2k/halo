@@ -12,6 +12,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/halo_test_support.dart';
+
 const _dyingProgress = 'probe-extension:download';
 
 /// Notes, as each boot begins, whether the replacement has already swept the
@@ -37,7 +39,7 @@ void main() {
     extensions = _BootWatchingExtensions()
       ..settings = SettingsService(prefs)
       ..statusBar = StatusBarService(prefs);
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
     expect(extensions.ready, isTrue, reason: 'extension runtime failed to boot');
   });
 
@@ -45,7 +47,7 @@ void main() {
 
   test('a settings query caught by a replacement is answered by the runtime that replaced it', () async {
     final expected = [for (final panel in await extensions.getSettingsPanels()) panel['panelKey']];
-    expect(expected, isNotEmpty, reason: 'the built-in extensions contribute settings panels');
+    expect(expected, isNotEmpty, reason: 'the extensions an install runs contribute settings panels');
     final before = extensions.host;
 
     // Sent before the replacement takes the host down: the dispose fails it,

@@ -71,11 +71,18 @@ void main() {
       kernelSource: bundleSource('kernel'),
       extensions: [
         ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-        ExtensionBundle(key: 'sota', source: bundleSource('sota')),
-        // WCA ahead of ECA, so that WCA's own claim on ECA's references (it
-        // resolves them while ECA is off) is the one registered first.
-        ExtensionBundle(key: 'wca', source: bundleSource('wca')),
-        ExtensionBundle(key: 'eca', source: bundleSource('eca')),
+        ExtensionBundle(key: 'ham2k-sota', source: bundleSource('ham2k-sota')),
+        // Two extensions claiming the same reference type equally precisely,
+        // the way a program that resolves another's references while that one
+        // is off claims them.
+        ExtensionBundle(
+          key: 'first-claim',
+          source: _extension('first-claim', field: 'APP_TEST_FIRST_CLAIM', refCategories: ['ref:shared']),
+        ),
+        ExtensionBundle(
+          key: 'second-claim',
+          source: _extension('second-claim', field: 'APP_TEST_SECOND_CLAIM', refCategories: ['ref:shared']),
+        ),
         ExtensionBundle(
           key: 'careless',
           source: _extension('careless', field: 'APP_TEST_CARELESS', refCategories: ['ref:careless']),
@@ -194,18 +201,18 @@ void main() {
     expect(newYork, isNot(contains('APP_TEST_CLAIMANT')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  // WCA registers `ref:ecaActivation` too, as precisely as ECA does. Asking
-  // only whichever of the two registered first leaves ECA's own MY_SIG pair
-  // out of an English castle activation whenever WCA wins that race.
+  // Two extensions registering the same `ref:` category equally precisely
+  // are both owners of it. Asking only whichever registered first leaves the
+  // other program's own fields out of the file whenever it loses that race.
   test('equal claims on a reference are all asked, whatever order they registered in', () async {
     final content = await export(
       operationRefs: [
-        {'type': 'ecaActivation', 'ref': 'G-01234'},
+        {'type': 'shared', 'ref': 'S-1'},
       ],
     );
 
-    expect(content, contains('<MY_SIG:3>ECA'));
-    expect(content, contains('<MY_SIG_INFO:7>G-01234'));
+    expect(content, contains('<APP_TEST_FIRST_CLAIM:1>Y'));
+    expect(content, contains('<APP_TEST_SECOND_CLAIM:1>Y'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // A program's answer outranks the contact's generic one — but a hook that

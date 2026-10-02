@@ -811,7 +811,7 @@ the frequency that already says which sideband that place runs — so it carries
 mode. `ExtensionService.sendSpot` is the one seam, and it has to correct **both** spot paths: a
 self-spot carries `mode` as an argument, while spotting someone else's QSO carries no mode at all and
 each poster reads `qso.mode` JS-side, so the QSO copy sent out is what gets normalized. SOTA narrows
-it further on its own (`extensions/activities/sota/src/spotMode.ts`), because SOTAwatch accepts only
+it further on its own (`ham2k-sota`'s `src/spotMode.ts`), because SOTAwatch accepts only
 `AM/CW/Data/DV/FM/SSB` — a deliberately odd sideband folds to `SSB` there rather than being rejected.
 
 What is **stored** is untouched — the sideband, always. The collapse is a rendering rule, and every

@@ -38,6 +38,7 @@ import '../views/extension_install_flow.dart' show updateAllFromCatalog;
 import '../config/experiments.dart';
 import '../config/secrets.dart';
 
+import 'extensions/extension_catalog_migration.dart';
 import 'extensions/catalog_service.dart';
 import 'panel_radio_service.dart';
 import 'deep_link_service.dart';
@@ -636,7 +637,6 @@ class HaLoServices {
     settings: settings,
     statusBar: statusBar,
     installed: () => extensions.availableExtensions,
-    inUse: (info) => !extensions.isSupersededByBuiltIn(info),
     applyAvailability: extensions.applyExtensionAvailability,
     openExtensions: () => openSettingsPanel('extensions'),
     updateAll: _updateAllFromNotice,
@@ -1085,6 +1085,11 @@ class HaLoServices {
     extensions.catalog = catalog;
     extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
     extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);
+    // The boot starts the runtime before the services exist, so one quick to
+    // come up has already run its catch-up — and stood it down, with no
+    // settings to carry choices or record installs in. Without this that
+    // session runs on the core extensions alone.
+    if (extensions.ready && !extensions.firstCatchUpSettled) unawaited(catchUpOnCatalogExtensions(extensions));
   }
 
   /// Resolves the operator's Number Formatting choice into the two characters

@@ -521,5 +521,5 @@ standalone dialog — not inline in a `settingsPanel`'s `FormRenderer`.
 
 A `settingsPanel` field can reference an account for display/navigation via
 `fieldType: 'account'` (see above), but the account itself is still fully
-owned by its `AccountHook` registration. `extensions/lookups/qrz` continues
+owned by its `AccountHook` registration. `ham2k-qrz` continues
 to register under `account` — there is no migration to do.

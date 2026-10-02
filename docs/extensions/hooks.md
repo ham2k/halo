@@ -162,7 +162,8 @@ describes it whenever it was last worked. It still labels a carried-forward
 field by where it came from (`Call History` for a typed one, `Call History
 (guess)` for a guessed one), and a station's whole location travels in one
 of the two so the merge's grid/city reconciliation cannot split it — see
-`extensions/lookups/call-history/src/index.ts`.
+`ham2k-call-history`'s `src/index.ts` in
+[ham2k/extensions](https://github.com/ham2k/extensions).
 
 ## ✅ `recentContextLookup` — live-context lookups
 

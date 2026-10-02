@@ -4,12 +4,12 @@
 // Shared DXCC entity resolution — parses a callsign against the bundled
 // country file (no network) and, separately, looks up that entity's flag
 // emoji. core/lookups' callsign-annotation pre-step, core/scoring's
-// DXCC-worked-entities rule, and activities/pota's country-prefix
+// DXCC-worked-entities rule, and the catalog's `ham2k-pota` country-prefix
 // formatting all share this one parseCallsign+annotateFromCountryFile
 // call instead of carrying their own copies.
 //
 // A plain module, not part of the `@ham2k/extension-sdk` *value* import users
-// must avoid (see activities/pota/src/refFormatting.ts's header comment) —
+// must avoid (see `ham2k-pota`'s refFormatting.ts header comment) —
 // import it by relative path from a file that needs to stay resolvable by
 // plain `node --test`, or via the `@ham2k/extension-sdk` re-export otherwise.
 

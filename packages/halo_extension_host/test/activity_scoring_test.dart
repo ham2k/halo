@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Activity scoring through the REAL runtime and the REAL POTA bundle
+// Activity scoring through the REAL runtime and the REAL `ham2k-pota` bundle
 // (docs/design/activities.md §4). The node tests in
 // extensions/sdk/src/activityScoring.test.ts pin the award rules; this pins
 // that they survive the trip — QuickJS is not node, the rules literal reaches
@@ -39,11 +39,11 @@ void main() {
   };
 
   Future<Map<String, dynamic>?> score(Map<String, dynamic> operation, List<Map<String, dynamic>> qsos) async {
-    final host = await sharedHost(['pota']);
+    final host = await sharedHost(['ham2k-pota']);
     final result =
         await host.invokeHook(
               'scoring',
-              key: 'pota',
+              key: 'ham2k-pota',
               method: 'scoreQsos',
               args: {'operation': operation, 'qsos': qsos, 'ref': (operation['refs'] as List).isEmpty ? null : (operation['refs'] as List).first},
               timeout: const Duration(seconds: 20),

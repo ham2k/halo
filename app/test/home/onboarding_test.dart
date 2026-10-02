@@ -210,7 +210,9 @@ void main() {
     await applyOnboardAsSpec(services, 'ki2d, pota , sota');
     expect(services.settings.activeProfile.operatorCall, 'KI2D');
     expect(services.settings.defaultProfileCallsignDefined, isTrue);
-    expect(services.settings.extensionOverrides, {'pota': true, 'sota': true});
+    // On the twin that runs, and on the built-in key the twin inherits from
+    // should it arrive later.
+    expect(services.settings.extensionOverrides, {'pota': true, 'sota': true, 'ham2k-pota': true, 'ham2k-sota': true});
   });
 
   test('applyOnboardAsSpec with only a callsign enables no activities', () async {
@@ -308,9 +310,10 @@ void main() {
     expect(settings.defaultProfileCallsignDefined, isTrue);
     expect(settings.consentAppData, isTrue);
     expect(settings.consentOpData, isTrue);
-    // Activity picks are real extension enable/disable overrides now
-    // (Extensions panel, issue #25) — not settings-group keys.
-    expect(settings.extensionOverrides, {'pota': true, 'sota': true, 'wwff': false});
+    // Activity picks are real extension enable/disable overrides — not
+    // settings-group keys — on the twin that runs, and on the built-in key the
+    // twin inherits from should it arrive later.
+    expect(settings.extensionOverrides, {'pota': true, 'sota': true, 'wwff': false, 'ham2k-pota': true, 'ham2k-sota': true, 'ham2k-wwff': false});
     expect(settings.settingValue('extension_pota', 'enabled'), isNull);
     await drainTimers(tester);
   });

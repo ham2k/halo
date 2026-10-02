@@ -59,7 +59,7 @@ void main() {
     test('a writer may CREATE the file it was pointed at', () async {
       // `--config ci.json account set …` is the documented CI path. Requiring
       // the file to exist first made it impossible to ever produce one.
-      expect(await run(['account', 'set', 'qrz', 'username=N0DEV']), 0);
+      expect(await run(['account', 'set', 'ham2k-qrz', 'username=N0DEV']), 0);
       expect(File(configPath).existsSync(), isTrue);
     });
 

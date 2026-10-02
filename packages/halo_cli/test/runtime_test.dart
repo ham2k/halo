@@ -82,6 +82,46 @@ void main() {
     expect(commandHooks.every((hook) => hook['extensionKey'] == 'radio-commands'), isTrue);
   });
 
+  test('the extensions the app pre-loads run here too, on and off as an install has them', () async {
+    // The app builds in only its core; POTA, the lookups and the rest reach it
+    // as pre-loaded catalog bundles. A CLI that read only the built bundles
+    // would exercise none of the extensions operators actually use, and one
+    // that loaded every pre-load would run SOTA on a default boot the app
+    // never makes.
+    BundleEntry entry(String key) => index.extensions.singleWhere((e) => e.key == key);
+    expect(entry('ham2k-pota').preloaded, isTrue);
+    expect(entry('ham2k-pota').enabledByDefault, isTrue);
+    expect(entry('ham2k-sota').enabledByDefault, isFalse, reason: 'off by default as a built-in, off by default here');
+    expect(entry('ham2k-lookup').enabledByDefault, isTrue, reason: 'no built-in behind it, so on like any install');
+
+    await start(only: const {'ham2k-pota'});
+    expect(
+      await runtime.host.invokeHook(
+        'ref:pota',
+        key: 'ham2k-pota',
+        method: 'linkForRef',
+        args: {
+          'ref': {'type': 'pota', 'ref': 'US-1234'},
+        },
+      ),
+      isNotNull,
+    );
+  });
+
+  test('a damaged pre-load is named, rather than failing some later command', () {
+    // One unreadable bundle in a checkout otherwise breaks every command —
+    // core-only ones included — with an error that names no file.
+    final root = Directory.systemTemp.createTempSync('halo-ext-preloads');
+    addTearDown(() => root.deleteSync(recursive: true));
+    final built = Directory('${root.path}/extensions')..createSync();
+    File('${built.path}/index.json').writeAsStringSync(File('${index.directory.path}/index.json').readAsStringSync());
+    final preloads = Directory('${root.path}/preloaded-extensions')..createSync();
+    File('${preloads.path}/index.json').writeAsStringSync('{"preloaded": [{"key": "ham2k-x", "file": "ham2k-x-1.0.0.h2kext"}]}');
+    File('${preloads.path}/ham2k-x-1.0.0.h2kext').writeAsStringSync('not a zip');
+
+    expect(() => BundleIndex.load(dir: built), throwsA(isA<BundlesNotBuilt>().having((e) => e.message, 'message', contains('ham2k-x-1.0.0.h2kext'))));
+  });
+
   test('the user agent names halo-ext, not the app', () {
     // Third-party APIs see this traffic. A debugging CLI must be
     // distinguishable from the product hitting the same endpoint.

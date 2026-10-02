@@ -5,7 +5,7 @@
 // parks and each park is submitted separately, which is the same reason it
 // counts twice toward an activation (docs/design/activities.md §4). The scorer
 // and the exporter have to agree about that, so this drives BOTH the `adif`
-// and `pota` bundles through the real runtime — the record-splitting only
+// and `ham2k-pota` bundles through the real runtime — the record-splitting only
 // exists once the exporter can see POTA's `fieldCombinationsForOneQSO`.
 
 import 'package:flutter_test/flutter_test.dart';
@@ -30,7 +30,7 @@ void main() {
   };
 
   Future<String> exportAdif(List<String> activating, Map<String, dynamic> qso) async {
-    final host = await sharedHost(['adif', 'pota']);
+    final host = await sharedHost(['adif', 'ham2k-pota']);
     final result =
         await host.invokeHook(
               'export',

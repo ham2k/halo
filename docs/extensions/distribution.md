@@ -310,12 +310,10 @@ packer refuses anything else.
 There is no signing yet, so anyone could claim it, and the key is what the app
 shows when it says where a hook came from.
 
-The extensions built into the app use bare keys (`pota`, `sota`, …). Those are
-reserved too: hook identity has to stay unambiguous, and build-secret
-visibility is by key prefix, so an installed extension calling itself `sota`
-would be asking to read `SOTA_*`. The app refuses any collision at install —
-the packer cannot, because a standalone tool has no way to know what the app it
-will be installed into contains.
+The core extensions built into the app use bare keys (`adif`, `scoring`, …).
+Those are reserved too: hook identity has to stay unambiguous. The app refuses
+any collision at install — the packer cannot, because a standalone tool has no
+way to know what the app it will be installed into contains.
 
 ## What an installed extension does not get
 
@@ -325,7 +323,7 @@ follows where the code came from, not what it calls itself. A feature that
 needs one degrades the same way it does in a build without that value
 configured.
 
-The sandbox is otherwise the same one the built-in extensions run in — no
+The sandbox is otherwise the same one the core extensions run in — no
 filesystem, no network beyond the `domains` and `webSockets` the manifest
 declares and the user approved, and timers only within their budget
 (README's "Timers").
@@ -381,104 +379,122 @@ came from. Nothing is written until the operator agrees.
 
 ### Pre-loaded extensions
 
-The app ships eight of the catalog's own extensions already packaged, under
-`app/assets/preloaded-extensions/`, and installs them into the ordinary store
-on first run: `ham2k-pota`, `ham2k-sota`, `ham2k-wwff`, and the five lookups.
-Afterwards they are ordinary installed extensions — the same rows, the same
-update check, the same Update and uninstall — so an operator starts with a
-working app and the catalog can move it forward from there.
+The app builds in only its **core** extensions — the ones that are the app
+itself: `adif`, `scoring`, `lookups`, `templates`, the command sets and
+`ham2k-lofi` sync. Every other extension is a catalog bundle, and the app ships
+some of them already packaged under `app/assets/preloaded-extensions/`,
+installing them into the ordinary store on first run. Afterwards they are
+ordinary installed extensions — the same rows, the same update check, the same
+Update and uninstall — so an operator starts with a working app and the catalog
+can move it forward from there.
+
+Which ones ship is staged. Today it is the catalog twin of every extension the
+app used to build in (see [Retired built-ins](#retired-built-ins)), so that an
+install moving off them has every one to hand with no network. Once installs
+still on a build with the built-ins are few enough, it shrinks to the eight a
+new install needs — `ham2k-pota`, `ham2k-sota`, `ham2k-wwff` and the five
+lookups — and the rest are fetched from the catalog when switched on
+([HALO-743](https://cabo.ham2k.com/halo/c/743)). The app's own tests rely on
+only those eight, the core, and the never-shipped samples, so the shrink
+touches none of them.
+
+**They have to be kept current.** A pre-load is frozen into the binary, so
+every release must carry the catalog's current stable release of each one: an
+older one starts every new install behind the catalog until its first update
+check. `node scripts/preloaded-extensions.mjs check` compares them with what
+the catalog serves, byte for byte and at the app's extension API level;
+`node scripts/preloaded-extensions.mjs update` replaces any that are behind
+(`update <key>` adds one). Publishing a new release of a pre-loaded extension
+is therefore also a change to this repository, and the release cut refuses to
+ship pre-loads that fail the check ([releases.md §6.4](../releases.md)).
 
 They are installed once, not every launch. A record of the highest version
 ever pre-loaded per key is what makes that true: an app update carrying a
 newer bundle installs it, a catalog release already ahead of it is left
 alone, and a key the operator uninstalled stays gone.
 
-Each one that renames a built-in — `ham2k-pota` is the built-in `pota` under
-a name the catalog can serve — carries the operator's settings, panel values
-and account credentials across on its first install. Copied, not moved: the
-built-in's own state stays where it is.
+An installed bundle may not claim a key the app builds in, and a pre-load is
+no exception: it goes through the same door as any other install.
 
-One rule bends for these, and only for them:
+**Build secrets are not among what they get.** Every value a twin once needed —
+SOTA's OAuth client id, WWFF's API key — ships as a constant inside the
+extension that uses it, because these bundles are served to anyone who asks and
+a `.h2kext` is a zip. An installed extension sees no build secret, whatever key
+it claims and wherever it came from.
 
-- **Built-in collisions.** An installed bundle may not claim a key the app
-  ships — judged against what the app is currently OFFERING, which once the
-  upgrade to catalog extensions is taken is the core extensions and nothing
-  else. `ham2k-lookup`
-  is both a built-in and a pre-load, and could otherwise never install.
+### Retired built-ins
 
-**Build secrets are not among them, and used to be.** A pre-load holding a
-`ham2k-` key could once read the values its name granted. Nothing needs that
-now: every value it carried — SOTA's OAuth client id, WWFF's API key — ships
-as a constant inside the extension that uses it, because these bundles are
-served to anyone who asks and a `.h2kext` is a zip. An installed extension
-sees no build secret, whatever key it claims and wherever it came from.
+The app used to build in forty-one more extensions — the activities, contests,
+lookups, a spot source and a dashboard panel. Their catalog copies are the same
+extensions under the reserved prefix (`pota` became `ham2k-pota`; `ham2k-lookup`
+kept its name), because the catalog cannot serve a bare key. Everything the app
+stores per extension hangs off the name — its settings group, its panel values,
+its account credentials, the operator's on/off choice — so each twin inherits
+from its built-in. The app keeps a table of the retired keys and whether each
+was on by default (`kRetiredBuiltIns`), since an install may skip any number of
+releases between the last one with its built-ins and this one; it never shrinks.
 
-### The upgrade to catalog extensions
+**The move.** An install that ran the built-ins — one whose default profile had
+a callsign before its extension state was first recorded
+(`seedExtensionsMigratedDefault`) — moves onto their twins at its first boot on
+a build without them, unasked: there is nothing left to run instead. The boot's
+catch-up (`catchUpOnCatalogExtensions`) carries each built-in's on/off choice
+onto its twin, over whatever an earlier attempt left there; installs the
+pre-loads, which carry the built-in's settings, panel values and credentials on
+a twin's first install, and its default where the operator never chose; then
+fetches the twin of any other built-in the operator had switched on. It records
+the move done once the pre-load has run, so a boot killed half way carries the
+choices again next time. It needs no network while every twin is pre-loaded.
+The boot starts the extension runtime before settings are wired in, so a
+catch-up that finds none does not count, and wiring them runs it.
+Choices keep being carried after the move, too: onboarding and the
+`ONBOARD_AS` define name activities by their built-in keys, and
+`offeredKeyFor` writes each choice under both names, so a twin that arrives
+later still inherits it.
 
-A new install — one whose default profile has never had a callsign — starts
-on the catalog at its first boot, on the bundles the app ships, with nothing
-to offer and nothing to carry; the decision is recorded once
-(`seedExtensionsMigratedDefault`). Onboarding still names its activities by
-their built-in keys, which `offeredKeyFor` maps to the shipped twin that
-actually runs. An install that has been running the app's own extensions is
-offered the move at start, on every launch until it is taken. Only a taken upgrade withdraws
-anything, and the offer may be deferred. A catalog that cannot be reached
-raises no offer and says nothing: it is a launch nobody was watching, and the
-offer comes back next time.
+Once moved, the operator sees one notice — not a dialog, since the move was not
+theirs to decide — saying their extensions now come from the catalog, naming
+anything that did not come along, and counting the twins still to arrive from a
+catalog that could not be reached. Any catch-up, the move or not, raises the
+same notice when an extension was put aside or the runtime would not start at
+all, and says so in place of "ready".
 
-Accepting installs the pre-loads, then fetches the catalog's twin of every
-other built-in the operator had switched on — `wca` becomes `ham2k-wca` —
-carrying its settings and credentials the same way. Nothing is withdrawn until
-that finishes; a download that fails puts the app's own extensions back in use
-and the offer returns next launch. Twins that did arrive stay on disk, unused
-until an upgrade completes — the built-in each one supersedes is what runs
-meanwhile.
+A pre-load is recorded as offered only once it installed, or when the store
+refuses the bundle itself: a keychain that would not open or a full disk is
+tried again next launch, and meanwhile the adoption fetches the catalog's copy
+if the operator had it on. A twin the pre-load did install is never fetched
+back after the operator uninstalls it. A choice stored under the pre-load's own
+name — `ham2k-lookup`'s, which kept its name — is kept rather than dropped as
+stale.
 
-A bundle the engine will not evaluate takes the whole runtime with it, so the
-upgrade puts that one aside — the boot names the bundle it died on — and
-restarts once more. What boots then is the upgrade minus that extension, named
-in the dialog in a sentence of its own. Refused rather than
-withdrawn: the panel still lists it, badged, because the row is where an
-operator sees that something they installed is doing nothing, and updating it
-there is what lifts the refusal. Keyed by the VERSION that failed, so a fixed
-release arrives as an ordinary update and clears it. Only an INSTALLED
-extension is ever put aside; a built-in that
-will not evaluate is a defect in the app, and skipping it would ship an
-install quietly missing part of itself.
+**What does not come along.** A few built-ins have no twin on purpose — `qp`,
+which the catalog carries as one extension per party instead, and `stateparks`,
+one per event — and the app names them itself (`kBuiltInsWithoutTwin`). The
+notice names each one the operator had switched on, since it is where they learn
+it is gone. Any other twin missing from the listing is asked for again next
+launch: a listing lacks a key the same way whether the catalog will never serve
+it or has not published it yet, and only the app knows which. A built-in
+retired from the catalog on purpose joins that list in the same change.
 
-A refusal is kept even when putting the bundle aside did not get a runtime
-back: it still will not evaluate, and an extension with no built-in behind it
-is in the reverted set too, so re-admitting it there would kill the boot that
-was about to give the operator everything back. Every dialog, and the notice
-that stands in for one, names what stayed out — except a downloaded copy the
-revert superseded, whose built-in is running again. Uninstalling clears the
-record, so a reinstall of the same bytes gets its chance.
+**A twin that will not run.** A bundle the engine will not evaluate takes the
+whole runtime with it, so the catch-up puts that one aside — the boot names the
+bundle it died on — and restarts once more, the notice naming it in a sentence
+of its own. Refused rather than withdrawn: the panel still lists it, badged,
+because the row is where an operator sees that something they installed is
+doing nothing, and updating it there is what lifts the refusal. Keyed by the
+VERSION that failed, so a fixed release arrives as an ordinary update and
+clears it. Only an INSTALLED extension is ever put aside; a core one that will
+not evaluate is a defect in the app, and skipping it would ship an install
+quietly missing part of itself. A refused extension is treated like a revoked
+one in everything else: it keeps its switch, and its downloaded data expires on
+the same clock as any extension the app is not loading. A failure that names no
+bundle — a kernel that will not load, an extension that throws while
+ACTIVATING — puts nothing aside, and is reported.
 
-A refused extension is treated like a revoked one in everything else: it
-keeps its switch, and its downloaded data expires on the same clock as any
-extension the app is not loading.
-
-What this does NOT cover is a failure that names no bundle. Only a bundle
-that fails while it is being EVALUATED names itself: a kernel that will not
-load, or an extension that throws while ACTIVATING, takes the generation down
-under a name that is not a key. Those revert the whole upgrade as before, and
-it is offered again at the next launch.
-
-The upgrade restarts the extension runtime, which takes the footer items of
-the generation going down with it: a data file's import raises an error rather
-than returning into a torn-down runtime, so its progress line is cleared and
-the file is left unstamped for the next sweep instead of recorded as fresh
-with nothing imported.
-
-A few built-ins have no twin on purpose — `qp`, which the catalog carries as
-one extension per party instead — and the app names them itself
-(`kBuiltInsWithoutTwin`). Those are withdrawn without asking the catalog, and
-the dialog that reports the upgrade finished names each one the operator had
-switched on, since it is where they learn it is gone. Any other twin missing
-from the listing fails the upgrade and is asked for again next launch: a
-listing lacks a key the same way whether the catalog will never serve it or has
-not published it yet, and only the app knows which. A built-in retired from the
-catalog on purpose joins that list in the same change.
+A twin fills the same lookup categories its built-in did, under data-file keys
+of its own. Each retired built-in is stamped disabled, so a week on the
+stale-data purge clears the data files it left — leaving alone the rows a live
+extension's data file still fills.
 
 ### Installing from the catalog
 
@@ -541,8 +557,8 @@ consent screen, the hash check. What differs is only where the bytes are kept
   page are newer and patchier on Safari.
 
 So the web build installs from a file, installs and updates from the catalog,
-pre-loads the shipped bundles and takes the upgrade exactly as the native ones
-do.
+pre-loads the shipped bundles and moves off the retired built-ins exactly as
+the native ones do.
 
 ### When the store is lost
 

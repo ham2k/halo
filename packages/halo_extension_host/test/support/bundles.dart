@@ -1,8 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Shared access to the built extension bundles under app/assets/extensions,
-// and the single place that decides what a missing or stale bundle means.
+// Shared access to the extension bundles the tests boot — the core ones built
+// into app/assets/extensions, the catalog bundles the app pre-loads, and the
+// never-shipped fixtures — and the single place that decides what a missing or
+// stale bundle means.
 //
 // It means a FAILURE, not a skip. `scripts/test.sh` builds the bundles before
 // it runs these tests precisely so they can rely on them, so a guard that
@@ -21,15 +23,33 @@
 // files naming a third of what they load. Checking the key at the moment it
 // is read cannot drift, because the key checked IS the key being read.
 
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 final _assets = Directory('../../app/assets/extensions');
+final _preloaded = Directory('../../app/assets/preloaded-extensions');
+final _fixtures = Directory('../../extensions/build/fixtures');
 final _extensionSources = Directory('../../extensions');
 
 File bundleFile(String key) => File('${_assets.path}/$key.js');
+
+/// The `index.js` of the catalog bundle the app pre-loads as [key], or null
+/// when it pre-loads none. The exact bytes the app installs, so a test through
+/// one exercises what ships rather than a build of the same source.
+String? _preloadedSource(String key) {
+  final index = File('${_preloaded.path}/index.json');
+  if (!index.existsSync()) return null;
+  final entries = (jsonDecode(index.readAsStringSync()) as Map)['preloaded'] as List;
+  final entry = entries.cast<Map>().where((e) => e['key'] == key).firstOrNull;
+  if (entry == null) return null;
+  final archive = ZipDecoder().decodeBytes(File('${_preloaded.path}/${entry['file']}').readAsBytesSync());
+  final bundle = archive.findFile('index.js');
+  return bundle == null ? null : utf8.decode(bundle.content as List<int>);
+}
 
 final Map<String, String> _sourceCache = {};
 
@@ -39,10 +59,12 @@ final Map<String, String> _sourceCache = {};
 /// re-decode kernel.js (1.8MB) once per boot — ~105 times per package run.
 String bundleSource(String key) {
   return _sourceCache.putIfAbsent(key, () {
-    final file = bundleFile(key);
-    if (!file.existsSync()) {
+    final file = [bundleFile(key), File('${_fixtures.path}/$key.js')].where((f) => f.existsSync()).firstOrNull;
+    if (file == null) {
+      final preloaded = _preloadedSource(key);
+      if (preloaded != null) return preloaded;
       fail(
-        'extension bundle not built: $key.js\n'
+        'extension bundle not built: $key.js, and the app pre-loads no $key\n'
         'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.',
       );
     }

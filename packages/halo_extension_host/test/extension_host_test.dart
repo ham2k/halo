@@ -302,7 +302,7 @@ __polo.defineExtension({
       kernelSource: bundleSource('kernel'),
       extensions: [
         ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-        ExtensionBundle(key: 'pota', source: bundleSource('pota')),
+        ExtensionBundle(key: 'ham2k-pota', source: bundleSource('ham2k-pota')),
       ],
       useIsolate: false,
     );
@@ -468,7 +468,7 @@ __polo.defineExtension({
       kernelSource: bundleSource('kernel'),
       extensions: [
         ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
-        ExtensionBundle(key: 'spot-history', source: bundleSource('spot-history')),
+        ExtensionBundle(key: 'ham2k-spot-history', source: bundleSource('ham2k-spot-history')),
       ],
       useIsolate: false,
       onHostCall: (method, params) async {
@@ -533,12 +533,12 @@ __polo.defineExtension({
     expect(spotCalls, hasLength(1));
   });
 
-  test('call-notes extension: raw dataFile round-trip, lookup notes, and //KEY expansion', () async {
+  test('call-notes extension: raw dataFile round-trip and lookup notes', () async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [
         ExtensionBundle(key: 'lookups', source: bundleSource('lookups')),
-        ExtensionBundle(key: 'call-notes', source: bundleSource('call-notes')),
+        ExtensionBundle(key: 'ham2k-call-notes', source: bundleSource('ham2k-call-notes')),
       ],
       useIsolate: false,
       // call-notes' onActivation awaits host.getSettings() (HALO-53, to
@@ -561,15 +561,19 @@ __polo.defineExtension({
     // incidental timing elsewhere.
     await host.activated;
     final defsBeforeLoad = await host.invokeHookAll('dataFile', method: 'getDefinition');
-    expect(defsBeforeLoad.any((e) => (e['value'] as Map?)?['key'] == 'hams-of-note'), isTrue, reason: 'the builtin dataFile hook must be registered by now');
+    expect(
+      defsBeforeLoad.any((e) => (e['value'] as Map?)?['key'] == 'ham2k-call-notes-hams-of-note'),
+      isTrue,
+      reason: 'the builtin dataFile hook must be registered by now',
+    );
 
     // The exact invocations DataFileManager._processRaw makes for a
     // fetchType 'raw' data file: parse the body, then hand the (JSON-cached)
-    // result back through onLoadRawData — issue #17's Hams of Note file.
-    // Registered under its own identifier ('hams-of-note'), not the
-    // extension's key — HALO-53 gave every note source (this builtin, plus
-    // any user-added custom file) its own dataFile registration, so they
-    // can be fetched/cached/enabled independently of one another.
+    // result back through onLoadRawData — the Hams of Note file. Registered
+    // under a key of its own, not the extension's: every note source (this
+    // builtin, plus any user-added custom file) has its own dataFile
+    // registration, so they can be fetched/cached/enabled independently of
+    // one another.
     const body =
         '# TITLE: Hams of Note\n'
         '\n'
@@ -578,12 +582,12 @@ __polo.defineExtension({
         'DAN WD4DAN,WD4JMM\n';
     final parsed = await host.invokeHook(
       'dataFile',
-      key: 'hams-of-note',
+      key: 'ham2k-call-notes-hams-of-note',
       method: 'rawToJSONData',
       args: {'body': body, 'url': 'https://ham2k.com/data/hams-of-note.txt', 'options': {}},
     );
     expect((parsed as Map)['KI2D'], hasLength(2));
-    await host.invokeHook('dataFile', key: 'hams-of-note', method: 'onLoadRawData', args: parsed);
+    await host.invokeHook('dataFile', key: 'ham2k-call-notes-hams-of-note', method: 'onLoadRawData', args: parsed);
 
     // The full lookup pipeline (annotation pre-step + fan-out + merge)
     // carries the combined note and marker emoji onto the guess.
@@ -613,29 +617,6 @@ __polo.defineExtension({
       },
     );
     expect((blank['guess'] as Map).containsKey('note'), isFalse);
-
-    Future<Map<String, dynamic>?> interpretCommand(String input) async {
-      final entries = await host.invokeHookAll('command', method: 'interpret', args: {'input': input});
-      for (final entry in entries) {
-        if (entry['ok'] == true && entry['value'] is Map) return (entry['value'] as Map).cast<String, dynamic>();
-      }
-      return null;
-    }
-
-    // `//KEY` expands an entry whose note is a plain comma list of calls...
-    expect(await interpretCommand('//dan'), {
-      'describe': 'Expand to WD4DAN,WD4JMM?',
-      'commands': [
-        {
-          'setCallField': {'text': 'WD4DAN,WD4JMM'},
-        },
-      ],
-    });
-    // ...but never one with emoji/free-text (issue #17), an unknown key, or
-    // ordinary call-stacking input ("//" not at the start).
-    expect(await interpretCommand('//KI2D'), isNull);
-    expect(await interpretCommand('//NOSUCH'), isNull);
-    expect(await interpretCommand('K1ABC//W1AW'), isNull);
   });
 
   test('SOTA extension composes ADIF fields into the export (in-runtime hooks)', () async {
@@ -643,7 +624,7 @@ __polo.defineExtension({
       kernelSource: bundleSource('kernel'),
       extensions: [
         ExtensionBundle(key: 'adif', source: bundleSource('adif')),
-        ExtensionBundle(key: 'sota', source: bundleSource('sota')),
+        ExtensionBundle(key: 'ham2k-sota', source: bundleSource('ham2k-sota')),
       ],
       useIsolate: false,
     );

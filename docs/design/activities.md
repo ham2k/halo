@@ -26,7 +26,8 @@ first because it was also a retrofit for `pota` and `sota`.
 
 ## 2. Current state (verified)
 
-Read against `extensions/activities/pota/src/index.ts` and app-polo at
+Read against POTA's `src/index.ts` — the built-in then, the catalog's
+`ham2k-pota` in [ham2k/extensions](https://github.com/ham2k/extensions) now — and app-polo at
 `/Users/sd/Work/ham2k/app-polo/src/extensions/activities`.
 
 **Hooks that already carry an activity.** `activity` (logging/operation

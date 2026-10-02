@@ -16,6 +16,8 @@ import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
+import '../support/halo_test_support.dart';
+
 class _CannedDataFileManager extends DataFileManager {
   final Map<String, String> bodiesByKey;
   int callsForPota = 0;
@@ -25,8 +27,8 @@ class _CannedDataFileManager extends DataFileManager {
 
   @override
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
-    if (key == 'pota-all-parks') callsForPota++;
-    if (key == 'sota-all-summits') callsForSota++;
+    if (key == 'ham2k-pota-all-parks') callsForPota++;
+    if (key == 'ham2k-sota-all-summits') callsForSota++;
     return bodiesByKey[key];
   }
 }
@@ -42,14 +44,14 @@ void main() {
     db = HaLoDatabase(NativeDatabase.memory());
     lookups = LookupRepository(db);
     SharedPreferences.setMockInitialValues({});
-    // SOTA is not in the default set — only POTA is — and this exercises
-    // both extensions' real data files.
+    // SOTA is off by default — only POTA is on — and this exercises both
+    // extensions' real data files.
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings.setExtensionOverrides({'sota': true});
     extensions = ExtensionService()
       ..lookups = lookups
       ..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
   });
 
   tearDown(() async {
@@ -103,8 +105,8 @@ void main() {
 
   test('syncAllDataFiles(categoryFilter:) reprocesses only the matching category, force bypasses ETag', () async {
     final defs = await extensions.host!.invokeHookAll('dataFile', method: 'getDefinition');
-    final potaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'pota-all-parks')['value'] as Map));
-    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'sota-all-summits')['value'] as Map));
+    final potaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'ham2k-pota-all-parks')['value'] as Map));
+    final sotaDef = Map<String, dynamic>.from((defs.firstWhere((e) => (e['value'] as Map?)?['key'] == 'ham2k-sota-all-summits')['value'] as Map));
 
     final prefs = await SharedPreferences.getInstance();
     final manager = _CannedDataFileManager(
@@ -112,10 +114,10 @@ void main() {
       extensions: extensions,
       prefs: prefs,
       bodiesByKey: {
-        'pota-all-parks':
+        'ham2k-pota-all-parks':
             'reference,name,active,entityId,locationDesc,latitude,longitude,grid\n'
             'US-1234,Test State Park,1,291,US-CA,37.7749,-122.4194,\n',
-        'sota-all-summits':
+        'ham2k-sota-all-summits':
             'SOTA Summits List\n'
             'SummitCode,SummitName,AssociationName,RegionName,Latitude,Longitude,AltM,Points,ValidFrom,ValidTo\n'
             'W6/CT-001,Test Peak,USA-California,Central,37.5,-122.1,1200,4,01/01/2020,31/12/2099\n',
@@ -123,8 +125,8 @@ void main() {
     );
 
     // Seed both, as syncAllDataFiles() would at boot.
-    await manager.processDataFile('pota-all-parks', potaDef);
-    await manager.processDataFile('sota-all-summits', sotaDef);
+    await manager.processDataFile('ham2k-pota-all-parks', potaDef);
+    await manager.processDataFile('ham2k-sota-all-summits', sotaDef);
     expect(manager.callsForPota, 1);
     expect(manager.callsForSota, 1);
 

@@ -1,6 +1,30 @@
 {
   "preloaded": [
     {
+      "key": "ham2k-arrl-dx",
+      "version": "0.2.4",
+      "file": "ham2k-arrl-dx-0.2.4.h2kext",
+      "sha256": "bf1792665464645a5e91bb4d7089af23f58f3c6ffa4d07ed6ace51f03be6a1b7"
+    },
+    {
+      "key": "ham2k-arrl-vhf-tests",
+      "version": "0.2.4",
+      "file": "ham2k-arrl-vhf-tests-0.2.4.h2kext",
+      "sha256": "37f413bfe47859a16295ddfd93936d1444f5b834475944dabdec911f0076f42a"
+    },
+    {
+      "key": "ham2k-bca",
+      "version": "0.2.6",
+      "file": "ham2k-bca-0.2.6.h2kext",
+      "sha256": "93748ba10bbcb3b4e8d94337e6c3f3395d4bb5e89e0ddec02a7d55508cc06ef2"
+    },
+    {
+      "key": "ham2k-blha",
+      "version": "0.2.6",
+      "file": "ham2k-blha-0.2.6.h2kext",
+      "sha256": "73436483dccf4c599292868dd1bd920e00f8e648bc2f7ab3cd040c3a630cf1f7"
+    },
+    {
       "key": "ham2k-call-history",
       "version": "0.2.1",
       "file": "ham2k-call-history-0.2.1.h2kext",
@@ -13,10 +37,106 @@
       "sha256": "33415460f8e9cd7774bd6d89c53320cfd6c32c03832fd3aaa2eb659410e2616d"
     },
     {
+      "key": "ham2k-cqwpx",
+      "version": "0.2.4",
+      "file": "ham2k-cqwpx-0.2.4.h2kext",
+      "sha256": "7701b4f2cf5e1347837b152580ef8c73ab1f4f2e1954f3143920802c3f6aef9e"
+    },
+    {
+      "key": "ham2k-cqww",
+      "version": "0.2.4",
+      "file": "ham2k-cqww-0.2.4.h2kext",
+      "sha256": "27429e723171e48c51757dfdbdb251e8cca30dcd0e8123b748b93fb4fb6f584f"
+    },
+    {
+      "key": "ham2k-custom",
+      "version": "0.2.2",
+      "file": "ham2k-custom-0.2.2.h2kext",
+      "sha256": "0569021db786c81295a0df0f2ecc11c991bf6e97b56cf8f79fd2a4501946efca"
+    },
+    {
+      "key": "ham2k-custom-text",
+      "version": "0.2.0",
+      "file": "ham2k-custom-text-0.2.0.h2kext",
+      "sha256": "5ea62fb259b775e7d38f2cd103058141788fd0ec12bc25a8ccf5b712710acd79"
+    },
+    {
+      "key": "ham2k-cwt",
+      "version": "0.2.4",
+      "file": "ham2k-cwt-0.2.4.h2kext",
+      "sha256": "0fc0c3a0c5a4df77fa93c2cf3b41aeb81366a5c5e616de1953dd13ee93a7df7a"
+    },
+    {
+      "key": "ham2k-eca",
+      "version": "0.2.6",
+      "file": "ham2k-eca-0.2.6.h2kext",
+      "sha256": "de6a3ef3d8060411bd1e5cdc82e6ee9e7d0e027faa3c676912309bd27177ce10"
+    },
+    {
+      "key": "ham2k-ela",
+      "version": "0.2.6",
+      "file": "ham2k-ela-0.2.6.h2kext",
+      "sha256": "fd45bc62dba9bc3a820855e4fa7d744d3d7123fc6b51ab0be5818649f388af10"
+    },
+    {
+      "key": "ham2k-fd",
+      "version": "0.2.4",
+      "file": "ham2k-fd-0.2.4.h2kext",
+      "sha256": "f6d354d1a82d14735a3734f293b39369ba5e3bc4b213a28c861ba4d5e202ae2c"
+    },
+    {
+      "key": "ham2k-gma",
+      "version": "0.2.4",
+      "file": "ham2k-gma-0.2.4.h2kext",
+      "sha256": "e761b04d883039d67fe464972d1808f206e11b2e4aa61c6a0d3feba6a00b50d5"
+    },
+    {
+      "key": "ham2k-iaru-hf",
+      "version": "0.2.4",
+      "file": "ham2k-iaru-hf-0.2.4.h2kext",
+      "sha256": "ca1477845a20ccae27000bb55954f49fda34c685137005485f5152afe604070c"
+    },
+    {
+      "key": "ham2k-llota",
+      "version": "0.2.9",
+      "file": "ham2k-llota-0.2.9.h2kext",
+      "sha256": "cdcc5a677ff425c5d86051b9474a62c935011319324761279a58add40ae1b052"
+    },
+    {
       "key": "ham2k-lookup",
       "version": "0.2.2",
       "file": "ham2k-lookup-0.2.2.h2kext",
       "sha256": "c856199f92cccb7b688dc9785a88020c9a800da19ebbcfd349e8e54c7ed98312"
+    },
+    {
+      "key": "ham2k-mota",
+      "version": "0.2.7",
+      "file": "ham2k-mota-0.2.7.h2kext",
+      "sha256": "4777187825b64e413d30e4015c2e8ee0e703d3f462900e9a039b9c06267dd441"
+    },
+    {
+      "key": "ham2k-naqp",
+      "version": "0.2.4",
+      "file": "ham2k-naqp-0.2.4.h2kext",
+      "sha256": "48165b6053e3ed05413431ca5b3d161d9e077893429a70ea5a9fc16026ce470a"
+    },
+    {
+      "key": "ham2k-nrrl-nfd",
+      "version": "0.2.4",
+      "file": "ham2k-nrrl-nfd-0.2.4.h2kext",
+      "sha256": "9e568baaac9bd597bedb321ff3e15b3c33bc435a33c13707d95895af7a3a7d7e"
+    },
+    {
+      "key": "ham2k-parksnpeaks",
+      "version": "0.2.0",
+      "file": "ham2k-parksnpeaks-0.2.0.h2kext",
+      "sha256": "0586fd3ca70662af8d1389a3a6c3210f3f88f6bf4608c5ee69e1283e83362199"
+    },
+    {
+      "key": "ham2k-pga",
+      "version": "0.2.4",
+      "file": "ham2k-pga-0.2.4.h2kext",
+      "sha256": "8a9b94f9e17ba9d1a7cdf76a5c429bb3e52dbb993455bff062410b19f3201ef3"
     },
     {
       "key": "ham2k-pota",
@@ -31,6 +151,42 @@
       "sha256": "c99ffe5c93aecee6161c797e05153e403b0ea5db518154afab61951e5ab479e7"
     },
     {
+      "key": "ham2k-r1-fd",
+      "version": "0.2.4",
+      "file": "ham2k-r1-fd-0.2.4.h2kext",
+      "sha256": "5ecc8d5987479e74631521b7a5fea8a683151003aa4057df518c061ab5b9b6ad"
+    },
+    {
+      "key": "ham2k-r1-vhf-tests",
+      "version": "0.2.4",
+      "file": "ham2k-r1-vhf-tests-0.2.4.h2kext",
+      "sha256": "3f31aa347aa815ae3cf56d53077f1280b96c2068da4aa2037e9f72570cab6dbe"
+    },
+    {
+      "key": "ham2k-rsgb-vhf-tests",
+      "version": "0.2.4",
+      "file": "ham2k-rsgb-vhf-tests-0.2.4.h2kext",
+      "sha256": "553d7389d3846f7608d35acebd356bc7dcbdbe80346f1bb0ed4860c7730d24cf"
+    },
+    {
+      "key": "ham2k-satellites",
+      "version": "0.2.2",
+      "file": "ham2k-satellites-0.2.2.h2kext",
+      "sha256": "9869e0dd377236ee3879dd1abb0a3bed8a538414dcb5663b463b630a77c6a8a1"
+    },
+    {
+      "key": "ham2k-simple-contest",
+      "version": "0.2.3",
+      "file": "ham2k-simple-contest-0.2.3.h2kext",
+      "sha256": "0f3adb3e359a6f348b48f51cc64d523a2368429ca497bf2f5913a318a8143624"
+    },
+    {
+      "key": "ham2k-siota",
+      "version": "0.2.7",
+      "file": "ham2k-siota-0.2.7.h2kext",
+      "sha256": "bd2edbe6f0657b773994ce22f161a7d6203377a0efb9ceef918a93c4eb0200e0"
+    },
+    {
       "key": "ham2k-sota",
       "version": "0.2.7",
       "file": "ham2k-sota-0.2.7.h2kext",
@@ -43,10 +199,40 @@
       "sha256": "611a4a088fa604fa18af67a2fb01b02e0705b119f40244b3ac007d996f332742"
     },
     {
+      "key": "ham2k-tota",
+      "version": "0.2.8",
+      "file": "ham2k-tota-0.2.8.h2kext",
+      "sha256": "4a0446b9b7b1e17b2ed537a38345f1263ea2441a262accef411e0865ca145a2e"
+    },
+    {
+      "key": "ham2k-wca",
+      "version": "0.2.6",
+      "file": "ham2k-wca-0.2.6.h2kext",
+      "sha256": "8e9c8cd782ad1c9576d9684dfa0d37bfa2113595c4994dd69ddd80813453ce7d"
+    },
+    {
+      "key": "ham2k-wfd",
+      "version": "0.2.4",
+      "file": "ham2k-wfd-0.2.4.h2kext",
+      "sha256": "eb720b2600fb68aa7bb22cc0aff28b661a0ff62e669663e1ce17afc1a3ebc0b1"
+    },
+    {
+      "key": "ham2k-wwbota",
+      "version": "0.2.7",
+      "file": "ham2k-wwbota-0.2.7.h2kext",
+      "sha256": "3608c0e8e44e7fae586f364411be1c4533655906f95eb425a9ed21d4a5228250"
+    },
+    {
       "key": "ham2k-wwff",
       "version": "0.2.8",
       "file": "ham2k-wwff-0.2.8.h2kext",
       "sha256": "f6f107a3fed300ce7af396e7aa3d637ec3e3330ba817df4c437fa30d354d02ef"
+    },
+    {
+      "key": "ham2k-zlota",
+      "version": "0.2.7",
+      "file": "ham2k-zlota-0.2.7.h2kext",
+      "sha256": "5888c19962f21af61cd107bcd52f6fc504dc1360e3e3f447e9f59f5c443ef52c"
     }
   ]
 }

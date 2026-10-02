@@ -40,11 +40,11 @@ void main() {
       index: index,
       config: config,
       onHostCall: CliHostCalls(config: config, index: index, lookups: store).call,
-      only: const {'call-notes'},
+      only: const {'ham2k-call-notes'},
     );
     try {
       if (replay) await DataFileSync.replayRawDataFiles(runtime, store);
-      final calls = await runtime.host.invokeHook('callNotes', key: 'call-notes', method: 'allCalls');
+      final calls = await runtime.host.invokeHook('callNotes', key: 'ham2k-call-notes', method: 'allCalls');
       return calls is List ? calls.length : 0;
     } finally {
       await runtime.stop();
@@ -60,7 +60,7 @@ void main() {
 
     Directory(DataFileSync.rawCacheDir(LookupStore.open(cache.path))).createSync(recursive: true);
     File(
-      '${DataFileSync.rawCacheDir(LookupStore.open(cache.path))}/hams-of-note.json',
+      '${DataFileSync.rawCacheDir(LookupStore.open(cache.path))}/ham2k-call-notes-hams-of-note.json',
     ).writeAsStringSync(File('test/fixtures/hams-of-note.json').readAsStringSync());
 
     expect(await callsKnown(replay: true), 2);
@@ -70,7 +70,7 @@ void main() {
   });
 
   test('a cached file whose extension is not loaded is reported, not fatal', () async {
-    // `--only pota` with call notes in the cache must still run pota.
+    // `--only ham2k-pota` with call notes in the cache must still run POTA.
     Directory('${cache.path}/data-files').createSync(recursive: true);
     File('${cache.path}/data-files/no-such-extension.json').writeAsStringSync('{}');
 
@@ -80,7 +80,7 @@ void main() {
       index: index,
       config: config,
       onHostCall: CliHostCalls(config: config, index: index, lookups: store).call,
-      only: const {'call-notes'},
+      only: const {'ham2k-call-notes'},
     );
     try {
       expect(await DataFileSync.replayRawDataFiles(runtime, store), isEmpty);

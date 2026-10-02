@@ -531,7 +531,6 @@ void main() {
     Future<CatalogUpdateCheck> checker(
       Future<http.Response> Function(http.Request) handler, {
       List<ExtensionInfo>? installed,
-      bool Function(ExtensionInfo)? inUse,
       Map<String, Object> prefs = const {},
       int Function()? realNow,
     }) async {
@@ -546,7 +545,6 @@ void main() {
         settings: settings,
         statusBar: statusBar,
         installed: () => installed ?? [_installed('k2hrc-llota', '1.0.0', name: 'LLOTA')],
-        inUse: inUse,
         applyAvailability: () async => applied++,
         openExtensions: () => opened++,
         updateAll: (entries, named) async {
@@ -781,40 +779,6 @@ void main() {
       offered = [];
       await check.check(force: true);
       expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
-    });
-
-    test('an update for an extension that is not loading is not offered', () async {
-      // Before the catalog upgrade is taken, every pre-loaded or
-      // hand-installed twin sits dormant behind the built-in it replaces.
-      // Offering an update for one is the app talking about an extension that
-      // is not running, on an install that has not moved to the catalog at
-      // all — which is exactly what it did.
-      final check = await checker(
-        (_) async => answer(updates: [_entry(version: '1.1.0')]),
-        inUse: (_) => false,
-      );
-      await check.check();
-      expect(check.pendingUpdates, isEmpty);
-      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
-    });
-
-    test('a revocation is judged over everything installed, loading or not', () async {
-      // The other half of the same rule: a bundle withdrawn for cause is on
-      // disk whether or not a built-in is currently standing in front of it,
-      // and the built-in going away later would light it up.
-      final check = await checker(
-        (_) async => answer(
-          revoked: [
-            {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'It uploads the whole log.'},
-          ],
-        ),
-        inUse: (_) => false,
-      );
-      await check.check();
-      expect(settings.extensionRevoked, {
-        'k2hrc-llota': {'version': '1.0.0', 'note': 'It uploads the whole log.'},
-      });
-      expect(applied, 1);
     });
 
     test('a revoked pair is put on record, unloaded and told once, with the catalog\'s note', () async {

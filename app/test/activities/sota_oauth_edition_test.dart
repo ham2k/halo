@@ -14,7 +14,7 @@
 // What varies per edition is the REDIRECT URL alone. The client id is one
 // shared value, `polo`, because SOTA's realm holds exactly one Ham2K client
 // and registers HaLo's per-edition redirects against it — see the table in
-// extensions/activities/sota/src/index.ts for why a per-edition client id
+// the SOTA extension's index.ts for why a per-edition client id
 // cannot work.
 
 import 'package:drift/native.dart';
@@ -24,6 +24,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
+import '../support/halo_test_support.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -31,19 +33,19 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final lookups = LookupRepository(db);
-    // SOTA is not in the default set — only POTA is — so the runtime has to
-    // be asked for it before its account hook is there to answer.
+    // SOTA is off by default — only POTA is on — so the runtime has to be
+    // asked for it before its account hook is there to answer.
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     await settings.setExtensionOverrides({'sota': true});
     final extensions = ExtensionService()
       ..lookups = lookups
       ..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
 
     final accounts = await extensions.getAccounts();
     expect(accounts, isNotNull, reason: 'the account fan-out failed outright, so nothing below is testable');
-    final sota = accounts!.singleWhere((a) => a['key'] == 'sota');
+    final sota = accounts!.singleWhere((a) => a['key'] == 'ham2k-sota');
     final oauth2 = (sota['oauth2'] as Map).cast<String, dynamic>();
 
     // dev — this test binary's own edition (no HALO_EDITION define set). The
@@ -57,7 +59,7 @@ void main() {
     expect(oauth2['redirectUrl'], 'com.ham2k.logger.dev.auth://sota');
     // One fixed relay URL shared by every edition (HALO-22), used only on
     // platforms oauthUsesWebhookRelay() sends through LoFi (Web/Linux) — see
-    // extensions/activities/sota/src/index.ts's SOTA_OAUTH_WEBHOOK_REDIRECT_URL.
+    // the SOTA extension's SOTA_OAUTH_WEBHOOK_REDIRECT_URL.
     expect(oauth2['webhookRedirectUrl'], 'https://lofi.ham2k.net/v1/webhooks/client/oauth');
     // The one client SOTA's realm actually has. A per-edition client id
     // reads as the more careful choice and is the failure this pins: no

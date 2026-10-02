@@ -10,7 +10,7 @@ keeps running.
 ```sh
 cd extensions
 npm run dev                      # every extension
-npm run dev -- --only pota,cwt   # just the ones you're working on
+npm run dev -- --only adif,scoring   # just the ones you're working on
 npm run dev -- --port 9000       # default is 8787
 ```
 

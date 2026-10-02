@@ -289,7 +289,7 @@ void main() {
     // Any lookup source can answer offline (the log itself, a local
     // reference-data cache, notes files…) — this queue must not need to
     // know any of them by name to tell an offline answer from a real one.
-    // `call-history` (extensions/lookups/call-history) is one concrete
+    // Call History (`ham2k-call-history`) is one concrete
     // example: it answers on essentially every repeat contact, so treating
     // its presence as proof of real enrichment would mean a worked-before
     // QSO never reaches QRZ/Ham2K Lookup at all — but the mechanism this

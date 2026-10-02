@@ -5,12 +5,17 @@
 // produces belongs here — an unlabelled key reaches the operator as raw
 // camelCase, which is worse than useless mid-contest."
 //
-// Nothing enforced it, and M4 promptly broke it: two new contests introduced
-// `missingExchange` and it reached the pill row verbatim. So rather than pin a
-// hand-written list that drifts the same way, this reads the shipped scorers'
-// SOURCE and holds the map to every key they can actually emit.
+// Rather than pin a hand-written list that drifts the moment a contest adds a
+// key — `missingExchange` reached the pill row verbatim that way — this reads
+// what the app ships and holds the map to every key it can actually emit: the
+// core extensions' SOURCE, and the built JS of every catalog bundle the app
+// pre-loads. A catalog extension the app does not pre-load is not scanned, so
+// a key only it emits is not held to anything here.
 
+import 'dart:convert';
 import 'dart:io';
+
+import 'package:archive/archive.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,15 +25,15 @@ import 'package:ham2k_logger/tools/scoring_labels.dart';
 
 /// Every string literal a scorer hands to `notices` or `alerts`.
 ///
-/// Deliberately a source scan and not a fixed list: a new contest gets caught
-/// the day it lands, which is the whole point — the previous convention was
-/// "remember to add it", and that is what failed.
+/// Deliberately a scan and not a fixed list: a new contest gets caught the day
+/// it ships, which is the whole point — "remember to add it" is what failed.
 Set<String> _emittedKeys() {
   final root = Directory('../extensions');
+  final preloaded = Directory('assets/preloaded-extensions');
   // Loudly, not vacuously: a suite run from an unexpected cwd would otherwise
   // scan nothing, find no keys, and pass while enforcing nothing at all.
-  if (!root.existsSync()) {
-    throw StateError('extensions/ not found from ${Directory.current.path} — this guard scans source, so it cannot run blind');
+  if (!root.existsSync() || !preloaded.existsSync()) {
+    throw StateError('extensions/ or the pre-loaded bundles not found from ${Directory.current.path} — this guard scans what ships, so it cannot run blind');
   }
   final keys = <String>{};
 
@@ -43,11 +48,15 @@ Set<String> _emittedKeys() {
   final callForm = RegExp(r"""(?:alerts|notices)\.(?:push|add)\(\s*(['"])([A-Za-z][A-Za-z0-9]*)\1""");
   final literal = RegExp(r"""(['"])([A-Za-z][A-Za-z0-9]*)\1""");
 
-  for (final entity in root.listSync(recursive: true)) {
-    if (entity is! File || !entity.path.endsWith('.ts')) continue;
-    if (entity.path.contains('/node_modules/') || entity.path.endsWith('.test.ts')) continue;
-    final source = entity.readAsStringSync();
-
+  final sources = [
+    for (final entity in root.listSync(recursive: true))
+      if (entity is File && entity.path.endsWith('.ts') && !entity.path.contains('/node_modules/') && !entity.path.endsWith('.test.ts'))
+        entity.readAsStringSync(),
+    for (final entity in preloaded.listSync())
+      if (entity is File && entity.path.endsWith('.h2kext'))
+        utf8.decode(ZipDecoder().decodeBytes(entity.readAsBytesSync()).findFile('index.js')!.content as List<int>),
+  ];
+  for (final source in sources) {
     for (final m in listForm.allMatches(source)) {
       for (final l in literal.allMatches(m.group(1)!)) {
         keys.add(l.group(2)!);

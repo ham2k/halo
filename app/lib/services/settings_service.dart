@@ -1601,7 +1601,7 @@ class Profile {
   String get operatorClub => (data['operatorClub'] as String?) ?? '';
 
   /// ARRL section, or RAC section for a Canadian call — the same code space
-  /// (`extensions/contests/fd/src/sections.ts` holds the authoritative table).
+  /// (the catalog's `ham2k-fd` holds the authoritative table).
   /// Free-form: an out-of-date table must never block a valid entry.
   String get operatorSection => (data['operatorSection'] as String?) ?? '';
 }

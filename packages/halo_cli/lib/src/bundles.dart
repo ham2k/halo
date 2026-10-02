@@ -1,16 +1,20 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Finding and reading the built extension bundles.
+// Finding and reading the extension bundles: the core ones built into
+// app/assets/extensions, and the catalog bundles the app pre-loads beside them
+// in app/assets/preloaded-extensions.
 //
 // The app reads these through `rootBundle` because they are Flutter assets.
-// A CLI has no asset bundle, so it reads the same directory off disk — the
+// A CLI has no asset bundle, so it reads the same directories off disk — the
 // SAME files the app ships, deliberately, so what halo-ext exercises is what
 // the app runs.
 
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:archive/archive.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show kRetiredBuiltIns;
 import 'package:http/http.dart' as http;
 
 /// One entry of `index.json`, limited to what the CLI acts on.
@@ -41,11 +45,17 @@ class BundleEntry {
   /// where the app needs a three-way source.
   final bool fromDevServer;
 
+  /// A catalog bundle the app pre-loads, which an install holds as an
+  /// installed extension — and an installed extension sees no configured
+  /// secret either, in the app or here.
+  final bool preloaded;
+
   const BundleEntry({
     required this.key,
     required this.file,
     required this.name,
     this.fromDevServer = false,
+    this.preloaded = false,
     this.domains = const [],
     this.webSockets = const [],
     this.core = true,
@@ -71,6 +81,7 @@ class BundleEntry {
     category: json['category'] as String?,
     hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
     fromDevServer: json['fromDevServer'] as bool? ?? false,
+    preloaded: json['preloaded'] as bool? ?? false,
   );
 
   Map<String, Object?> toJson() => {
@@ -100,7 +111,10 @@ class BundleIndex {
 
   String get kernelSource => _read(kernelFile);
 
-  String sourceFor(BundleEntry entry) => _devSources[entry.key] ?? _read(entry.file);
+  /// Sources of the pre-loaded bundles, by key, unzipped as [load] read them.
+  final Map<String, String> _preloadedSources = {};
+
+  String sourceFor(BundleEntry entry) => _devSources[entry.key] ?? _preloadedSources[entry.key] ?? _read(entry.file);
 
   String _read(String file) {
     final source = File('${directory.path}/$file').readAsStringSync();
@@ -130,7 +144,7 @@ class BundleIndex {
         '${_buildHint(directory)}',
       );
     }
-    return BundleIndex(
+    final index = BundleIndex(
       directory: directory,
       kernelFile: decoded['kernel'] as String? ?? 'kernel.js',
       extensions: [
@@ -138,7 +152,48 @@ class BundleIndex {
           if (entry is Map) BundleEntry.fromJson(entry.cast<String, dynamic>()),
       ],
     );
+    index._addPreloaded(Directory('${directory.parent.path}/preloaded-extensions'));
+    return index;
   }
+
+  /// Adds the catalog bundles the app pre-loads from [dir], when there is one
+  /// beside the built bundles. Each is on by default exactly when it is in an
+  /// install that never switched it: its retired built-in's default, or on
+  /// for one with no built-in behind it.
+  ///
+  /// One that cannot be read is an error naming its file, not a crash in some
+  /// later command: a checkout whose pre-loads are damaged needs saying so.
+  void _addPreloaded(Directory dir) {
+    final indexFile = File('${dir.path}/index.json');
+    if (!indexFile.existsSync()) return;
+    preloadedDirectory = dir;
+    final Object? decoded = jsonDecode(indexFile.readAsStringSync());
+    final preloaded = decoded is Map ? decoded['preloaded'] : null;
+    if (preloaded is! List) throw BundlesNotBuilt('the pre-loaded extensions index is malformed: ${indexFile.path}');
+    for (final item in preloaded) {
+      final file = item is Map ? item['file'] : null;
+      if (file is! String) throw BundlesNotBuilt('an entry in ${indexFile.path} names no file: $item');
+      final path = '${dir.path}/$file';
+      try {
+        final archive = ZipDecoder().decodeBytes(File(path).readAsBytesSync());
+        final manifestEntry = archive.findFile('manifest.json');
+        final bundleEntry = archive.findFile('index.js');
+        if (manifestEntry == null || bundleEntry == null) throw const FormatException('no manifest.json or index.js inside');
+        final manifest = jsonDecode(utf8.decode(manifestEntry.content as List<int>));
+        final key = manifest is Map ? manifest['key'] : null;
+        if (key is! String || manifest is! Map<String, dynamic>) throw const FormatException('its manifest names no key');
+        _preloadedSources[key] = utf8.decode(bundleEntry.content as List<int>);
+        final retired = key.startsWith('ham2k-') ? kRetiredBuiltIns[key.substring('ham2k-'.length)] : null;
+        extensions.add(BundleEntry.fromJson({...manifest, 'file': file, 'core': false, 'enabledByDefault': retired ?? true, 'preloaded': true}));
+      } on Exception catch (e) {
+        throw BundlesNotBuilt('the pre-loaded extension $path cannot be read: $e');
+      }
+    }
+  }
+
+  /// Where the pre-loaded bundles were found, or null when there were none
+  /// beside the built bundles — what an unknown `ham2k-` key needs saying.
+  Directory? preloadedDirectory;
 
   /// Replaces this index's entries with what a running dev server is serving
   /// (docs/extensions/development.md), so `halo-ext` exercises the code an

@@ -4,8 +4,8 @@
 // `getHistoryForCall` backs the `call-history` lookup extension's
 // `ctx.getHistoryForCall` — the one host call that reads QSOs across every
 // operation rather than one. These tests cover the Dart side of that
-// bridge; the extension's own field-selection logic is covered by
-// `extensions/lookups/call-history/src/buildCallHistoryLookup.test.ts`.
+// bridge; the extension's own field-selection logic is covered by the
+// catalog's `ham2k-call-history`, in its `buildCallHistoryLookup.test.ts`.
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';

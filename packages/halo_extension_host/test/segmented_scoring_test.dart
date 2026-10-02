@@ -6,9 +6,11 @@
 // the whole point of putting resolution in the harness is that no extension had
 // to change — a stub would prove the opposite of what matters.
 //
-// CQ WW is the vehicle: its zone multipliers are per band and its points depend
-// on the operation's station call, so a segment that changes either shows up in
-// the score rather than only in an argument.
+// Two vehicles, for the two halves of it. The `k2hrc-cqww` sample contest shows
+// the gate — which QSOs a contest's scorer is handed at all — because its
+// multipliers and dupes are per band, so a QSO that reaches it shows up in the
+// score. `ham2k-pota` shows WHICH operation each QSO is scored against, because
+// its activity scorer reads the activated parks off that operation, per QSO.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -33,12 +35,19 @@ void main() {
   };
 
   const dawnOfTime = -4611686018427387904; // -1 << 62, as SegmentedOperation writes it
-  const cqwwCW = {'type': 'cqww', 'mode': 'CW'};
-  const park = {'type': 'pota', 'ref': 'US-0001'};
+  const contest = {'type': 'k2hrcCqww', 'mode': 'CW'};
+  const park = {'type': 'potaActivation', 'ref': 'US-0001'};
+  const otherPark = {'type': 'potaActivation', 'ref': 'US-0002'};
 
   Future<Map<String, dynamic>?> score(Map<String, dynamic> args) async {
-    final host = await sharedHost(['cqww']);
-    final result = await host.invokeHook('scoring', key: 'cqww', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map?;
+    final host = await sharedHost(['k2hrc-cqww']);
+    final result = await host.invokeHook('scoring', key: 'k2hrc-cqww', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map?;
+    return result?.cast<String, dynamic>();
+  }
+
+  Future<Map<String, dynamic>?> scorePota(Map<String, dynamic> args) async {
+    final host = await sharedHost(['ham2k-pota']);
+    final result = await host.invokeHook('scoring', key: 'ham2k-pota', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map?;
     return result?.cast<String, dynamic>();
   }
 
@@ -47,225 +56,97 @@ void main() {
       'operation': {
         'uuid': 'op',
         'stationCall': 'N0DEV',
-        'refs': [
-          {'type': 'cqww', 'mode': 'CW'},
-        ],
+        'refs': [contest],
       },
       'qsos': [qso(0, 'DL1ABC'), qso(1, 'JA1ABC')],
-      'ref': {'type': 'cqww', 'mode': 'CW'},
+      'ref': contest,
     });
 
-    expect((result!['operationSummary'] as Map)['cqww'], isNotNull);
-    expect(((result['operationSummary'] as Map)['cqww'] as Map)['qsos'], 2);
+    expect((result!['operationSummary'] as Map)['k2hrcCqww'], isNotNull);
+    expect(((result['operationSummary'] as Map)['k2hrcCqww'] as Map)['qsos'], 2);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('the OPERATION each QSO is scored against is the segment-effective one, not the base', () async {
-    // Everything else here proves the segment-effective REF reaches the
-    // scorer. This proves the rest of the operation does. The harness hands
-    // `scoreQso` a whole operation, and six scorers read a field of it that is
-    // not the ref — `arrl-vhf-tests` reads `operation.grid`, which is exactly
-    // what a VHF rover changes at each stint.
+    // The harness hands `scoreQso` a whole operation, and a scorer reads what
+    // it needs off it: an activity scorer reads which parks are being
+    // activated, which is exactly what an activator changes when they pack up
+    // and move to the next park.
     //
-    // Two contacts with the same station on different bands, from two grids.
-    // The distance from FN32 to FN42 is not the distance from EM12 to FN42, so
-    // a harness handing the BASE operation to every QSO scores the second from
-    // FN32aa — no crash, no log, a plausible number that is simply not the one
-    // the operator earned.
-    final host = await sharedHost(['arrl-vhf-tests']);
-    final vhf = {'type': 'arrl-vhf-tests', 'ref': 'ARRL-222'};
-    final contacts = [
-      {
-        ...qso(0, 'W1AW', band: '1.25m'),
-        'refs': [
-          {'type': 'arrl-vhf-tests', 'grid': 'FN42aa'},
-        ],
-      },
-      {
-        ...qso(10, 'W1AW', band: '70cm'),
-        'refs': [
-          {'type': 'arrl-vhf-tests', 'grid': 'FN42aa'},
-        ],
-      },
-    ];
+    // The base operation carries only the FIRST park — which is what an
+    // operation looks like after the second one was written into a break
+    // override rather than onto the operation itself. A harness handing the
+    // BASE operation to every QSO credits both contacts to the first park — no
+    // crash, no log, a plausible number that is simply not the one the
+    // operator earned.
+    final contacts = [qso(0, 'DL1ABC'), qso(10, 'JA1ABC')];
     final movedAt = contacts[1]['startAtMillis'] as int;
 
-    Future<Map<String, dynamic>?> run(List<Map<String, dynamic>> segments) async {
-      final result =
-          await host.invokeHook(
-                'scoring',
-                key: 'arrl-vhf-tests',
-                method: 'scoreQsos',
-                args: {
-                  'operation': {
-                    'uuid': 'op',
-                    'stationCall': 'N0DEV',
-                    'grid': 'FN32aa',
-                    'refs': [vhf],
-                  },
-                  'qsos': contacts,
-                  'ref': vhf,
-                  'segments': segments,
-                },
-                timeout: const Duration(seconds: 20),
-              )
-              as Map?;
-      return result?.cast<String, dynamic>();
-    }
-
-    final moved = await run([
-      {
-        'fromMillis': dawnOfTime,
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'grid': 'FN32aa',
-          'refs': [vhf],
-        },
-      },
-      {
-        'fromMillis': movedAt,
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'grid': 'EM12aa',
-          'refs': [vhf],
-        },
-      },
-    ]);
-    final stayed = await run([
-      {
-        'fromMillis': dawnOfTime,
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'grid': 'FN32aa',
-          'refs': [vhf],
-        },
-      },
-    ]);
-
-    final movedScores = (moved!['qsoScores'] as Map).cast<String, dynamic>();
-    final stayedScores = (stayed!['qsoScores'] as Map).cast<String, dynamic>();
-    // The first contact predates the break, so both runs must agree about it.
-    expect((movedScores['q0'] as Map)['value'], (stayedScores['q0'] as Map)['value']);
-    // The second is after it, and the grid it is scored from is the only thing
-    // that differs between the two runs.
-    expect((movedScores['q10'] as Map)['value'], isNot((stayedScores['q10'] as Map)['value']), reason: 'scored from EM12aa, not the base operation\'s FN32aa');
-  }, timeout: const Timeout(Duration(seconds: 60)));
-
-  test('a segment that changes the contest mode changes what scores', () async {
-    // Two QSOs, both CW. The operation starts as a CW contest and a break
-    // switches it to SSB — so the second QSO is now in the wrong mode and must
-    // stop counting. If the harness ignored segments, both would score.
-    final qsos = [qso(0, 'DL1ABC'), qso(10, 'JA1ABC')];
-    final breakAt = qsos[1]['startAtMillis'] as int;
-
-    final result = await score({
+    final result = await scorePota({
       'operation': {
         'uuid': 'op',
         'stationCall': 'N0DEV',
-        'refs': [
-          {'type': 'cqww', 'mode': 'CW'},
-        ],
+        'refs': [park],
       },
-      'qsos': qsos,
-      'ref': {'type': 'cqww', 'mode': 'CW'},
+      'qsos': contacts,
+      'ref': park,
       'segments': [
-        {
-          'fromMillis': -4611686018427387904,
-          'operation': {
-            'uuid': 'op',
-            'stationCall': 'N0DEV',
-            'refs': [
-              {'type': 'cqww', 'mode': 'CW'},
-            ],
-          },
-        },
-        {
-          'fromMillis': breakAt,
-          'operation': {
-            'uuid': 'op',
-            'stationCall': 'N0DEV',
-            'refs': [
-              {'type': 'cqww', 'mode': 'SSB'},
-            ],
-          },
-        },
+        segment(dawnOfTime, [park]),
+        segment(movedAt, [otherPark]),
       ],
     });
 
-    final summary = (result!['operationSummary'] as Map)['cqww'] as Map;
-    expect(summary['qsos'], 1, reason: 'the post-break CW QSO is off-mode for an SSB segment');
-
-    final scores = (result['qsoScores'] as Map).cast<String, dynamic>();
-    expect((scores['q0'] as Map)['value'], greaterThan(0));
-    expect((scores['q10'] as Map)['value'], 0);
-    expect(((scores['q10'] as Map)['alerts'] as List), contains('invalidMode'));
+    final activation = (result!['operationSummary'] as Map)['activation'] as Map;
+    expect(activation['activatedRefs'], {'US-0001': 1, 'US-0002': 1}, reason: 'the second contact was made from the second park');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('a scorer sees the ref its own segment restates, not the selection ref', () async {
-    // Same shape, inverted: selection happened on the CW ref, but every QSO
-    // falls inside an SSB segment. All of them are SSB, so all must count —
-    // which only holds if the harness re-resolved the ref per segment rather
-    // than passing the one selection handed it.
-    final qsos = [qso(0, 'DL1ABC', band: '20m'), qso(10, 'JA1ABC', band: '20m')].map((q) => {...q, 'mode': 'SSB'}).toList();
-
-    final result = await score({
-      'operation': {
-        'uuid': 'op',
-        'stationCall': 'N0DEV',
-        'refs': [
-          {'type': 'cqww', 'mode': 'CW'},
-        ],
-      },
-      'qsos': qsos,
-      'ref': {'type': 'cqww', 'mode': 'CW'},
-      'segments': [
-        {
-          'fromMillis': -4611686018427387904,
-          'operation': {
-            'uuid': 'op',
-            'stationCall': 'N0DEV',
-            'refs': [
-              {'type': 'cqww', 'mode': 'SSB'},
-            ],
-          },
-        },
-      ],
-    });
-
+  test('a single segment is not a timeline', () async {
     // One segment only, so the harness takes its unsegmented path and the
-    // selection ref stands — CW against SSB QSOs scores nothing.
-    final summary = (result!['operationSummary'] as Map)['cqww'] as Map;
-    expect(summary['qsos'], 0, reason: 'a single segment is not a timeline; the passed ref is used');
+    // base operation stands — even where that lone segment restates it
+    // differently.
+    final result = await scorePota({
+      'operation': {
+        'uuid': 'op',
+        'stationCall': 'N0DEV',
+        'refs': [park],
+      },
+      'qsos': [qso(0, 'DL1ABC'), qso(10, 'JA1ABC')],
+      'ref': park,
+      'segments': [
+        segment(dawnOfTime, [otherPark]),
+      ],
+    });
+
+    final activation = (result!['operationSummary'] as Map)['activation'] as Map;
+    expect(activation['activatedRefs'], {'US-0001': 2});
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a contest that starts at a break does not claim the log before it', () async {
     // Scorer selection spans every segment, so a contest confined to the back
     // half of a log gets invoked over the WHOLE log. Nothing else stops it from
     // counting the casual QSOs that came first — the harness has to, by seeing
-    // that their segment carries no cqww ref at all.
+    // that their segment carries no contest ref at all.
     final before = [qso(0, 'DL1ABC'), qso(1, 'JA1ABC')];
     final after = [qso(10, 'F1ABC'), qso(11, 'VK1ABC')];
     final breakAt = after.first['startAtMillis'] as int;
 
     final result = await score({
-      // The base operation is a park activation. `scorersFor` never sees cqww
-      // here — it finds it in the second segment and hands that ref down.
+      // The base operation is a park activation. `scorersFor` never sees the
+      // contest here — it finds it in the second segment and hands that ref
+      // down.
       'operation': {
         'uuid': 'op',
         'stationCall': 'N0DEV',
         'refs': [park],
       },
       'qsos': [...before, ...after],
-      'ref': cqwwCW,
+      'ref': contest,
       'segments': [
         segment(dawnOfTime, [park]),
-        segment(breakAt, [cqwwCW]),
+        segment(breakAt, [contest]),
       ],
     });
 
-    final summary = (result!['operationSummary'] as Map)['cqww'] as Map;
+    final summary = (result!['operationSummary'] as Map)['k2hrcCqww'] as Map;
     expect(summary['qsos'], 2, reason: 'only the two QSOs made inside the contest segment');
 
     // Not merely zero-valued: the pre-contest QSOs are not this scorer's to
@@ -288,17 +169,17 @@ void main() {
       'operation': {
         'uuid': 'op',
         'stationCall': 'N0DEV',
-        'refs': [cqwwCW],
+        'refs': [contest],
       },
       'qsos': [...saturday, ...sunday],
-      'ref': cqwwCW,
+      'ref': contest,
       'segments': [
-        segment(dawnOfTime, [cqwwCW]),
+        segment(dawnOfTime, [contest]),
         segment(breakAt, [park]),
       ],
     });
 
-    final summary = (result!['operationSummary'] as Map)['cqww'] as Map;
+    final summary = (result!['operationSummary'] as Map)['k2hrcCqww'] as Map;
     expect(summary['qsos'], 2, reason: 'Sunday is a park activation, not the contest');
 
     final days = (result['daySections'] as List).cast<Map>();
@@ -326,7 +207,7 @@ void main() {
                 'qsos': [qso(0, 'DL1ABC'), qso(10, 'JA1ABC')],
                 'segments': [
                   segment(dawnOfTime, [park]),
-                  segment(DateTime.utc(2026, 3, 28, 12, 10).millisecondsSinceEpoch, [cqwwCW]),
+                  segment(DateTime.utc(2026, 3, 28, 12, 10).millisecondsSinceEpoch, [contest]),
                 ],
               },
               timeout: const Duration(seconds: 20),
@@ -335,137 +216,6 @@ void main() {
 
     expect((result!['qsoScores'] as Map).keys.toSet(), {'q0', 'q10'});
   }, timeout: const Timeout(Duration(seconds: 60)));
-
-  group('a scorer that reads another activity\'s refs', () {
-    // CQ WW above only ever reads its OWN ref and the station call, so none of
-    // it proves what happens to a scorer that reaches for a ref it does not own.
-    // `stateparks` does exactly that — a state-park event is played THROUGH POTA,
-    // and the parks it scores come from `potaActivation` on the operation and
-    // `pota` on the QSO — which makes the segment-effective operation load
-    // bearing in a way no other contest can show.
-    //
-    // The workflow this is really about is the one the events are designed
-    // around: an activator works one park, packs up, drives to another, and
-    // carries on under the same event. That is a `break` whose override restates
-    // the event ref and swaps the park, and every number in the summary depends
-    // on the harness handing each QSO the park that was true when it was made.
-    const ohsp = {'type': 'stateparks', 'ref': 'OHSP'};
-    const adaPark = {'type': 'potaActivation', 'ref': 'US-1932'}; // Adams Lake SP
-    const hocPark = {'type': 'potaActivation', 'ref': 'US-1958'}; // Hocking Hills SP
-
-    /// Ohio runs 80-10m, so 20m; ten QSOs is POTA's activation threshold, which
-    /// is what makes a park count toward the multiplier.
-    List<Map<String, dynamic>> tenQsos(int from, {int day = 12}) => [
-      for (var i = 0; i < 10; i++)
-        {
-          'uuid': 'q${from + i}',
-          'startAtMillis': DateTime.utc(2026, 9, day, 14, from + i).millisecondsSinceEpoch,
-          'band': '20m',
-          'mode': 'CW',
-          'our': {'call': 'N0DEV'},
-          'their': {'call': 'W${from + i}AW'},
-        },
-    ];
-
-    Future<Map<String, dynamic>?> scoreStateparks(Map<String, dynamic> args) async {
-      final host = await sharedHost(['stateparks']);
-      final result = await host.invokeHook('scoring', key: 'stateparks', method: 'scoreQsos', args: args, timeout: const Duration(seconds: 20)) as Map?;
-      return result?.cast<String, dynamic>();
-    }
-
-    test('the park it credits is the one the segment was activating', () async {
-      final atAda = tenQsos(0);
-      final atHoc = tenQsos(10);
-      final movedAt = atHoc.first['startAtMillis'] as int;
-
-      final result = await scoreStateparks({
-        // The base operation carries only the FIRST park — which is what an
-        // operation looks like after `_saveRefs` wrote the second one into a
-        // break override rather than onto the operation itself.
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'refs': [ohsp, adaPark],
-        },
-        'qsos': [...atAda, ...atHoc],
-        'ref': ohsp,
-        'segments': [
-          segment(dawnOfTime, [ohsp, adaPark]),
-          segment(movedAt, [ohsp, hocPark]),
-        ],
-      });
-
-      final summary = (result!['operationSummary'] as Map)['stateparks'] as Map;
-      expect(summary['qsos'], 20, reason: 'the event ran across both parks');
-      // TWO activated parks, ten QSOs each: Ohio multiplies by activated + hunted,
-      // and nothing was hunted here, so 20 points x 2 parks. Handed the BASE
-      // operation for every QSO instead, this reads one park with twenty QSOs —
-      // mult 1, total 20 — and the operator's second park is simply missing.
-      expect(summary['mults'], 2);
-      expect(summary['total'], 40);
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    test('a park worked too little to activate still does not count', () async {
-      // The same move, but the operator only made three QSOs at the second park
-      // before the weather turned. POTA's threshold is ten, so that park is not
-      // activated and cannot be claimed as a multiplier — the per-QSO points are
-      // still theirs.
-      final atAda = tenQsos(0);
-      final atHoc = tenQsos(10).take(3).toList();
-      final movedAt = atHoc.first['startAtMillis'] as int;
-
-      final result = await scoreStateparks({
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'refs': [ohsp, adaPark],
-        },
-        'qsos': [...atAda, ...atHoc],
-        'ref': ohsp,
-        'segments': [
-          segment(dawnOfTime, [ohsp, adaPark]),
-          segment(movedAt, [ohsp, hocPark]),
-        ],
-      });
-
-      final summary = (result!['operationSummary'] as Map)['stateparks'] as Map;
-      expect(summary['qsos'], 13);
-      expect(summary['mults'], 1, reason: 'three QSOs is not an activation');
-      expect(summary['total'], 13);
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    test('a stretch the event was not running is not scored at all', () async {
-      // The case worth pinning for THIS scorer specifically: a break that keeps
-      // the park but drops the event — the operator carried on activating after
-      // the event's 8-hour window closed. Those contacts are POTA's and not the
-      // event's, and the park they were made from must not reach the event's
-      // activation count either, or a park that was never activated DURING the
-      // event becomes a multiplier.
-      final during = tenQsos(0);
-      final after = tenQsos(10);
-      final closedAt = after.first['startAtMillis'] as int;
-
-      final result = await scoreStateparks({
-        'operation': {
-          'uuid': 'op',
-          'stationCall': 'N0DEV',
-          'refs': [ohsp, adaPark],
-        },
-        'qsos': [...during, ...after],
-        'ref': ohsp,
-        'segments': [
-          segment(dawnOfTime, [ohsp, adaPark]),
-          segment(closedAt, [hocPark]), // POTA only — no event ref
-        ],
-      });
-
-      final summary = (result!['operationSummary'] as Map)['stateparks'] as Map;
-      expect(summary['qsos'], 10, reason: 'only the QSOs made while the event was running');
-      expect(summary['mults'], 1, reason: 'the after-hours park is not an event multiplier');
-      final scores = (result['qsoScores'] as Map).cast<String, dynamic>();
-      expect(scores.keys.length, 10, reason: 'and the rest get no verdict at all, not a zero');
-    }, timeout: const Timeout(Duration(seconds: 60)));
-  });
 
   group('the live single-candidate pass', () {
     // This one runs cold on every debounced keystroke — `ExtensionService`
@@ -485,24 +235,24 @@ void main() {
     Future<Map<String, dynamic>?> live({List<Map<String, dynamic>>? segments}) async {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
-        extensions: [ExtensionBundle(key: 'cqww', source: bundleSource('cqww'))],
+        extensions: [ExtensionBundle(key: 'k2hrc-cqww', source: bundleSource('k2hrc-cqww'))],
         onHostCall: (method, params) async => method == 'getQsos' ? log : null,
       );
       addTearDown(host.dispose);
       final result =
           await host.invokeHook(
                 'scoring',
-                key: 'cqww',
+                key: 'k2hrc-cqww',
                 method: 'scoreQso',
                 args: {
                   // The CURRENT segment, which is what the host now sends.
                   'operation': {
                     'uuid': 'op',
                     'stationCall': 'N0DEV',
-                    'refs': [cqwwCW],
+                    'refs': [contest],
                   },
                   'qso': qso(20, 'W1AW'),
-                  'ref': cqwwCW,
+                  'ref': contest,
                   'segments': ?segments,
                 },
                 timeout: const Duration(seconds: 20),
@@ -515,11 +265,11 @@ void main() {
       final result = await live(
         segments: [
           segment(dawnOfTime, [park]),
-          segment(breakAt, [cqwwCW]),
+          segment(breakAt, [contest]),
         ],
       );
       expect(
-        (result!['alerts'] as List),
+        (result!['alerts'] as List? ?? const []),
         isNot(contains('duplicate')),
         reason: 'W1AW was worked before the contest, so this is the first contest QSO with them',
       );
@@ -531,8 +281,8 @@ void main() {
       // test above would pass on a scorer that had simply stopped working.
       final result = await live(
         segments: [
-          segment(dawnOfTime, [cqwwCW]),
-          segment(breakAt, [cqwwCW]),
+          segment(dawnOfTime, [contest]),
+          segment(breakAt, [contest]),
         ],
       );
       expect((result!['alerts'] as List), contains('duplicate'));

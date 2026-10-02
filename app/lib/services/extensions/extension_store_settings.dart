@@ -65,11 +65,9 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
-  /// Whether this install has moved its extensions to the catalog.
-  ///
-  /// Nothing is withdrawn until this is true, so an operator who defers the
-  /// upgrade — or who is offline when it is offered — keeps every extension
-  /// they had. Set only once the twins are in hand.
+  /// Whether this install has moved off the built-ins the app no longer has
+  /// onto their catalog copies — carrying each one's on/off choice across —
+  /// or never ran them. Set once the move's pre-load has run.
   static const _extensionsMigratedKey = 'extensionsMigrated';
 
   bool get extensionsMigrated => prefs.getBool(_extensionsMigratedKey) ?? false;
@@ -79,29 +77,14 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
-  /// Consecutive launches whose upgrade check found no usable catalog; see
-  /// `canReachCatalog`. Persisted because the check asks once a launch.
-  static const _upgradeCheckMissesKey = 'catalogUpgradeCheckMisses';
-
-  int get upgradeCheckMisses => prefs.getInt(_upgradeCheckMissesKey) ?? 0;
-
-  Future<void> setUpgradeCheckMisses(int misses) async {
-    if (misses == 0) {
-      await prefs.remove(_upgradeCheckMissesKey);
-    } else {
-      await prefs.setInt(_upgradeCheckMissesKey, misses);
-    }
-  }
-
-  /// Decides, once per install, whether it starts on catalog extensions: yes
-  /// for a new one, which has nothing of its own to carry and runs on the
-  /// bundles the app ships; no for one that predates this, which is offered
-  /// the upgrade instead (ExtensionUpgradeGate).
+  /// Decides, once per install, whether it has a move to make: none for a new
+  /// one, which never ran the built-ins; one for an install that predates
+  /// this, made at its next catch-up (`catchUpOnCatalogExtensions`).
   ///
   /// Recorded rather than defaulted, like `seedSyncEnabledDefault`, and on
   /// the same signal — so it has to run before onboarding can set a
-  /// callsign. The getter's fallback stays false, so an existing install is
-  /// never moved without being asked.
+  /// callsign. The getter's fallback stays false, so an install that ran the
+  /// built-ins is never left without its choices carried across.
   Future<void> seedExtensionsMigratedDefault() async {
     if (prefs.containsKey(_extensionsMigratedKey)) return;
     await setExtensionsMigrated(!defaultProfileCallsignDefined);
@@ -109,18 +92,13 @@ mixin ExtensionStoreSettings on ChangeNotifier {
 
   bool get defaultProfileCallsignDefined;
 
-  /// Whether the catalog is where this app's extensions come from NOW — the
-  /// one question every withdrawal, pre-load and adoption asks.
-  bool get catalogExtensionsInUse => extensionsMigrated;
-
-  /// Which catalog twins this app has already fetched for a built-in the
-  /// operator had switched on ({key: version}), when the upgrade withdrew
-  /// the built-ins.
+  /// Which catalog twins this app has already fetched for a retired built-in
+  /// the operator had switched on ({key: version}).
   ///
   /// The same job [extensionPreloaded] does for the bundles the app ships, for
-  /// the ones it has to go and get. An empty value records a key the catalog
-  /// does not serve: it is still an answer, and re-asking every launch is a
-  /// request per built-in per boot for something that will not appear.
+  /// the ones it has to go and get. Only a twin that landed is recorded: a key
+  /// the listing lacked is asked for again, since a listing cannot tell "never
+  /// served" from "not published yet".
   ///
   /// Survives an uninstall, for the reason the pre-load record does — taking
   /// an extension away is the operator's decision, not one to undo at boot.

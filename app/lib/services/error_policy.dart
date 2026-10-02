@@ -34,8 +34,7 @@ import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable;
-import 'extensions/extension_catalog_migration.dart'
-    show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeCatalogUnavailable, UpgradeLeftNoRuntime;
+import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
@@ -160,19 +159,19 @@ class ErrorPolicy {
     ErrorRule(
       id: 'extensions-not-wired',
       reason:
-          'the extension service was handed no catalog or no settings, so nothing can be fetched or adopted '
-          'and the upgrade offer cannot be made. A wiring defect rather than a server that cannot '
+          'the extension service was handed no catalog, so nothing can be fetched, adopted or '
+          'restored. A wiring defect rather than a server that cannot '
           'be reached — which is what it looked like for as long as the two were folded together — '
           'so it is uploaded rather than noticed: the operator can do nothing about it, and the '
           'audience is whoever changes the service graph',
       disposition: ErrorDisposition.report,
-      matches: (error, _) => error is CatalogNotWired || error is SettingsNotWired,
+      matches: (error, _) => error is CatalogNotWired,
     ),
     ErrorRule(
       id: 'bundle-would-not-evaluate',
       reason:
-          'a downloaded extension the JS engine refused, now kept out of the runtime so the '
-          'other thirty can load. The operator is told in the dialog and on the panel row, so it '
+          'an installed extension the JS engine refused, now kept out of the runtime so the '
+          'others can load. The operator is told in a notice and on the panel row, so it '
           'uploads without a notice — and it has to upload, because a refused bundle never loads '
           'again and its boot failure stops arriving under extensions:restart: the rate here is '
           'the only thing that tells one bad download from a release the catalog is serving '
@@ -183,24 +182,13 @@ class ErrorPolicy {
     ErrorRule(
       id: 'upgrade-left-no-runtime',
       reason:
-          'the catalog upgrade installed its twins, could not start them, reverted itself, and '
-          'the reverted set did not start either. The operator is already told in as many words, '
+          'extensions that just arrived — pre-loaded, adopted or restored — left the runtime unable to '
+          'start even with every bundle the boot named set aside. The operator is already told, '
           'so it is uploaded rather than noticed — what the backend adds is the RATE, which is the '
           'only way to tell one corrupt download from a bundle the catalog is shipping broken to '
           'everybody',
       disposition: ErrorDisposition.report,
       matches: (error, _) => error is UpgradeLeftNoRuntime,
-    ),
-    ErrorRule(
-      id: 'upgrade-catalog-unavailable',
-      reason:
-          'the upgrade check found no usable catalog several launches in a row. It asks once a '
-          'launch, so the in-session failure streak never fires for it, and an install the '
-          'catalog cannot reach — a trust store refusing its certificate, a challenge in front of '
-          'it — is never offered the upgrade with nothing anywhere to say so. Uploaded, not '
-          'noticed: the operator did not ask, and has lost nothing',
-      disposition: ErrorDisposition.report,
-      matches: (error, _) => error is UpgradeCatalogUnavailable,
     ),
     ErrorRule(
       id: 'web-focus-traversal-null',

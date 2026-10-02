@@ -1,11 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The `referenceActivity` factory, through the real runtime and the real WCA
-// bundle. WCA is the vehicle because it is the first program built on the
-// factory and the only one with `otherActivationTypes`; five more castle and
-// lighthouse awards are the same call with different constants, so what breaks
-// here breaks all of them.
+// The `referenceActivity` factory, through the real runtime and the real
+// `ham2k-wwff` bundle, which the factory builds. The castle, lighthouse and
+// flora-and-fauna awards built on it are the same call with different
+// constants, so what breaks here breaks all of them.
 //
 // The reference database is stubbed through `onHostCall` — these programs have
 // no per-reference API, so every name and grid they show comes from the local
@@ -19,28 +18,28 @@ import 'support/bundles.dart';
 void main() {
   requireBundles();
 
-  // Two Belgian castles a few km apart, plus one far away, so distance ranking
+  // Two Belgian areas a few km apart, plus one far away, so distance ranking
   // has something to get wrong.
-  final castles = <String, Map<String, dynamic>>{
-    'ON-00558': {
-      'key': 'ON-00558',
-      'name': 'Kasteel van Beersel',
+  final areas = <String, Map<String, dynamic>>{
+    'ONFF-0558': {
+      'key': 'ONFF-0558',
+      'name': 'Hallerbos',
       'lat': 50.766,
       'lon': 4.307,
       'flags': 1,
       'data': {'location': 'Vlaams-Brabant', 'grid': 'JO20eq'},
     },
-    'ON-00123': {
-      'key': 'ON-00123',
-      'name': 'Kasteel van Gaasbeek',
+    'ONFF-0123': {
+      'key': 'ONFF-0123',
+      'name': 'Domein Gaasbeek',
       'lat': 50.783,
       'lon': 4.208,
       'flags': 1,
       'data': {'location': 'Vlaams-Brabant', 'grid': 'JO20dr'},
     },
-    'I-00001': {
-      'key': 'I-00001',
-      'name': 'Castello Sforzesco',
+    'IFF-0001': {
+      'key': 'IFF-0001',
+      'name': 'Parco Nord Milano',
       'lat': 45.470,
       'lon': 9.179,
       'flags': 1,
@@ -48,13 +47,13 @@ void main() {
     },
   };
 
-  // A viewport's worth of castles — more than the 30 a nearby list keeps, so
+  // A viewport's worth of areas — more than the 30 a nearby list keeps, so
   // a viewport answer that is still capped shows as a short list.
-  final viewportCastles = [
+  final viewportAreas = [
     for (var i = 0; i < 40; i++)
       {
-        'key': 'ON-${10000 + i}',
-        'name': 'Castle $i',
+        'key': 'ONFF-${2000 + i}',
+        'name': 'Area $i',
         'lat': 50.5 + i / 100,
         'lon': 4.0 + i / 100,
         'flags': 1,
@@ -67,20 +66,20 @@ void main() {
   // handler's identity, so a closure rebuilt per call would boot a host per
   // call and defeat the sharing. The table it answers from is `const`, so one
   // host serves every test here.
-  Future<dynamic> castleLookups(String method, Map<String, dynamic> params) async {
+  Future<dynamic> areaLookups(String method, Map<String, dynamic> params) async {
     switch (method) {
       case 'dbLookupSelectOne':
-        return castles[params['key']];
+        return areas[params['key']];
       case 'dbLookupSelectAll':
         final q = (params['query'] as String).toUpperCase();
-        return castles.values.where((c) => c['key'].toString().contains(q) || c['name'].toString().toUpperCase().contains(q)).toList();
+        return areas.values.where((c) => c['key'].toString().contains(q) || c['name'].toString().toUpperCase().contains(q)).toList();
       case 'dbLookupSelectByLocation':
-        // Deliberately returns the FAR castle first: the factory has to
+        // Deliberately returns the FAR area first: the factory has to
         // rank by real distance rather than trusting query order.
-        return [castles['I-00001'], castles['ON-00558'], castles['ON-00123']];
+        return [areas['IFF-0001'], areas['ONFF-0558'], areas['ONFF-0123']];
       case 'dbLookupSelectInBounds':
         inBoundsParams = params;
-        return viewportCastles;
+        return viewportAreas;
       case 'log':
         return null;
       default:
@@ -88,30 +87,30 @@ void main() {
     }
   }
 
-  Future<ExtensionHost> startHost() => sharedHost(['wca'], onHostCall: castleLookups);
+  Future<ExtensionHost> startHost() => sharedHost(['ham2k-wwff'], onHostCall: areaLookups);
 
   group('reference handling', () {
     test('a well-formed reference validates and is upper-cased', () async {
       final host = await startHost();
       final result = await host.invokeHook(
-        'ref:wcaActivation',
+        'ref:wwffActivation',
         method: 'validateRef',
         args: {
-          'ref': {'type': 'wcaActivation', 'ref': 'on-00558'},
+          'ref': {'type': 'wwffActivation', 'ref': 'onff-0558'},
         },
       );
       expect(result['valid'], true);
-      expect(result['normalized'], 'ON-00558');
+      expect(result['normalized'], 'ONFF-0558');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a malformed reference is rejected', () async {
       final host = await startHost();
-      // WCA references are prefix-NNNNN; four digits is not enough.
+      // WWFF references are prefixFF-NNNN; two digits is not enough.
       final result = await host.invokeHook(
-        'ref:wcaActivation',
+        'ref:wwffActivation',
         method: 'validateRef',
         args: {
-          'ref': {'type': 'wcaActivation', 'ref': 'ON-0055'},
+          'ref': {'type': 'wwffActivation', 'ref': 'ONFF-05'},
         },
       );
       expect(result['valid'], false);
@@ -122,22 +121,22 @@ void main() {
     // are what a row renders in preference to the code, so a spread-through
     // pair shows the OLD reference over the new code while the log and the
     // export carry the new one; and a stale `lat`/`lon` outranks a grid
-    // wherever a location is read, keeping the operation at a castle it no
+    // wherever a location is read, keeping the operation at an area it no
     // longer references.
     test('re-decorating onto an unresolvable code drops the old one entirely', () async {
       final host = await startHost();
-      for (final code in ['ON-99999', 'ON-0055']) {
+      for (final code in ['ONFF-9999', 'ONFF-05']) {
         final ref = await host.invokeHook(
-          'ref:wcaActivation',
+          'ref:wwffActivation',
           method: 'decorateRef',
           args: {
             'ref': {
-              'type': 'wcaActivation',
+              'type': 'wwffActivation',
               'ref': code,
               // Everything a previous, resolved reference would have left behind.
-              'name': 'Kasteel van Beersel',
-              'label': 'WCA ON-00558: Kasteel van Beersel',
-              'shortLabel': 'WCA ON-00558',
+              'name': 'Hallerbos',
+              'label': 'WWFF ONFF-0558: Hallerbos',
+              'shortLabel': 'WWFF ONFF-0558',
               'grid': 'JO20eq',
               'lat': 50.766,
               'lon': 4.307,
@@ -155,69 +154,32 @@ void main() {
     test('a known reference is decorated from the local list', () async {
       final host = await startHost();
       final ref = await host.invokeHook(
-        'ref:wcaActivation',
+        'ref:wwffActivation',
         method: 'decorateRef',
         args: {
-          'ref': {'type': 'wcaActivation', 'ref': 'on-00558'},
+          'ref': {'type': 'wwffActivation', 'ref': 'onff-0558'},
         },
       );
-      expect(ref['name'], 'Kasteel van Beersel');
-      expect(ref['program'], 'WCA');
+      expect(ref['name'], 'Hallerbos');
+      expect(ref['program'], 'WWFF');
       expect(ref['grid'], 'JO20eq');
       expect(ref['location'], 'Vlaams-Brabant');
-      expect(ref['shortLabel'], 'WCA ON-00558');
-      expect(ref['label'], 'WCA ON-00558: Kasteel van Beersel');
+      expect(ref['shortLabel'], 'WWFF ONFF-0558');
+      expect(ref['label'], 'WWFF ONFF-0558: Hallerbos');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a well-formed reference the list has never heard of says so', () async {
       final host = await startHost();
       final ref = await host.invokeHook(
-        'ref:wcaActivation',
+        'ref:wwffActivation',
         method: 'decorateRef',
         args: {
-          'ref': {'type': 'wcaActivation', 'ref': 'ON-99999'},
+          'ref': {'type': 'wwffActivation', 'ref': 'ONFF-9999'},
         },
       );
       // Distinct from "invalid": the code is plausible, the list is just stale.
-      expect(ref['name'], 'Unknown castle');
-      expect(ref['program'], 'WCA');
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    test('English and Belgian castle references resolve through WCA too', () async {
-      final host = await startHost();
-      // ECA/BCA references ARE WCA references; WCA answers for them so one
-      // typed while those extensions are disabled still resolves.
-      for (final type in ['ecaActivation', 'bcaActivation']) {
-        final ref = await host.invokeHook(
-          'ref:$type',
-          method: 'decorateRef',
-          args: {
-            'ref': {'type': type, 'ref': 'ON-00558'},
-          },
-        );
-        expect(ref['name'], 'Kasteel van Beersel', reason: 'via $type');
-      }
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    test('...and get an operation title, not just a decoration', () async {
-      final host = await startHost();
-      // Title dispatch resolves to a SINGLE hook and WCA wins it by
-      // registration order, so a handler that titled only its own
-      // `activationType` would quietly cost ECA and BCA their "at ON-00558"
-      // whenever WCA is enabled alongside them — while still decorating the
-      // ref, which makes the loss look like a rendering bug rather than this.
-      for (final type in ['wcaActivation', 'ecaActivation', 'bcaActivation']) {
-        final title = await host.invokeHook(
-          'ref:$type',
-          method: 'suggestOperationTitle',
-          args: {
-            'ref': {'type': type, 'ref': 'ON-00558', 'name': 'Kasteel van Beersel'},
-          },
-        );
-        expect(title, isNotNull, reason: 'via $type');
-        expect((title as Map)['at'], 'ON-00558', reason: 'via $type');
-        expect(title['subtitle'], 'Kasteel van Beersel', reason: 'via $type');
-      }
+      expect(ref['name'], 'Unknown park');
+      expect(ref['program'], 'WWFF');
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 
@@ -227,7 +189,7 @@ void main() {
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
@@ -237,10 +199,10 @@ void main() {
                   as List)
               .cast<Map>();
 
-      // The stub hands back Milan first; Beersel is 500m away and must win.
-      expect(suggestions.first['ref'], 'ON-00558');
-      expect(suggestions.map((s) => s['ref']), ['ON-00558', 'ON-00123', 'I-00001']);
-      expect(suggestions.first['type'], 'wcaActivation');
+      // The stub hands back Milan first; Hallerbos is 500m away and must win.
+      expect(suggestions.first['ref'], 'ONFF-0558');
+      expect(suggestions.map((s) => s['ref']), ['ONFF-0558', 'ONFF-0123', 'IFF-0001']);
+      expect(suggestions.first['type'], 'wwffActivation');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a map viewport is answered whole, not cut to the nearest few', () async {
@@ -248,7 +210,7 @@ void main() {
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
@@ -266,49 +228,49 @@ void main() {
       expect(inBoundsParams!['limit'], greaterThan(30));
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('a name search finds a castle and labels it', () async {
+    test('a name search finds an area and labels it', () async {
       final host = await startHost();
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
-                      'searchTerm': 'Sforzesco',
+                      'searchTerm': 'Milano',
                     },
                   )
                   as List)
               .cast<Map>();
 
       expect(suggestions.length, 1);
-      expect(suggestions.first['ref'], 'I-00001');
-      expect(suggestions.first['shortLabel'], 'WCA I-00001');
+      expect(suggestions.first['ref'], 'IFF-0001');
+      expect(suggestions.first['shortLabel'], 'WWFF IFF-0001');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     // A reference the list does not carry is otherwise unreachable: the search
     // is the only way onto the operation, so an answer of "no results" is the
-    // operator being told their own castle does not exist. Both of these are
-    // real — a castle added since the last data-file sync, and a code whose
-    // shape WCA's own regex has wrong.
+    // operator being told their own area does not exist. Both of these are
+    // real — an area added since the last data-file sync, and a code whose
+    // shape the program's own regex has wrong.
     test('a scoped search offers the reference the operator typed, even unlisted', () async {
       final host = await startHost();
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
-                      'searchTerm': 'on-99999',
+                      'searchTerm': 'onff-9999',
                       'scoped': true,
                     },
                   )
                   as List)
               .cast<Map>();
 
-      expect(suggestions.first['ref'], 'ON-99999');
-      expect(suggestions.first['name'], 'Unknown castle');
+      expect(suggestions.first['ref'], 'ONFF-9999');
+      expect(suggestions.first['name'], 'Unknown park');
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     test('a scoped search offers a code the regex rejects, named as invalid', () async {
@@ -316,7 +278,7 @@ void main() {
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
@@ -332,8 +294,8 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     // A name search must not double as an offer to activate a reference by that
-    // name: `wca: beersel` is looking for a castle, and answering it with
-    // "BEERSEL — Invalid reference" at the head of the list is the search
+    // name: `wwff: hallerbos` is looking for an area, and answering it with
+    // "HALLERBOS — Invalid reference" at the head of the list is the search
     // arguing with the operator.
     //
     // ONE WORD, deliberately. A multi-word term would pass against a guard that
@@ -345,63 +307,41 @@ void main() {
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
-                      'searchTerm': 'Beersel',
+                      'searchTerm': 'Hallerbos',
                       'scoped': true,
                     },
                   )
                   as List)
               .cast<Map>();
 
-      expect(suggestions.map((s) => s['ref']), ['ON-00558']);
+      expect(suggestions.map((s) => s['ref']), ['ONFF-0558']);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    // A program whose references contain a space — BLHA's are `BEL 123` — must
-    // not be shut out of the escape hatch by the code-shape heuristic. Anything
-    // the program's own pattern accepts skips the heuristic entirely.
-    test('a reference the pattern accepts is offered whatever it looks like', () async {
-      final host = await sharedHost(['blha'], onHostCall: castleLookups);
-      final suggestions =
-          (await host.invokeHook(
-                    'activity',
-                    key: 'blha',
-                    method: 'suggest',
-                    args: {
-                      'operation': {'uuid': 'op'},
-                      'searchTerm': 'BEL 999',
-                      'scoped': true,
-                    },
-                  )
-                  as List)
-              .cast<Map>();
-
-      expect(suggestions.first['ref'], 'BEL 999');
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    // Names carry numbers — `route 66`, `camp 4`, `castle 3` — so a digit alone
+    // Names carry numbers — `route 66`, `camp 4`, `park 3` — so a digit alone
     // cannot be what marks text as a code. Both halves of the heuristic are
     // load-bearing, and a program's own pattern short-circuits ahead of them,
-    // which is what keeps BLHA's `BEL 123` (tested above) working.
+    // which is what keeps a program whose references contain a space working.
     test('a scoped NAME search with a number in it still invents nothing', () async {
       final host = await startHost();
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
-                      'searchTerm': 'castle 3',
+                      'searchTerm': 'park 3',
                       'scoped': true,
                     },
                   )
                   as List)
               .cast<Map>();
 
-      expect(suggestions.map((s) => s['ref']), isNot(contains('CASTLE 3')));
+      expect(suggestions.map((s) => s['ref']), isNot(contains('PARK 3')));
     }, timeout: const Timeout(Duration(seconds: 60)));
 
     // The guard that keeps the list usable: with a dozen of these programs
@@ -412,7 +352,7 @@ void main() {
       final suggestions =
           (await host.invokeHook(
                     'activity',
-                    key: 'wca',
+                    key: 'ham2k-wwff',
                     method: 'suggest',
                     args: {
                       'operation': {'uuid': 'op'},
@@ -426,12 +366,12 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 
-  test('the operation control is keyed so `wca:` search scoping works', () async {
+  test('the operation control is keyed so `wwff:` search scoping works', () async {
     final host = await startHost();
     final controls =
         (await host.invokeHook(
                   'activity',
-                  key: 'wca',
+                  key: 'ham2k-wwff',
                   method: 'operationControls',
                   args: {
                     'operation': {'uuid': 'op'},
@@ -443,17 +383,17 @@ void main() {
     expect(controls.length, 1);
     // The core derives the search scope from the part before the slash, so a
     // control keyed anything else silently never gets scoped.
-    expect(controls.first['key'], 'wca/activation');
-    expect((controls.first['input'] as Map)['refType'], 'wcaActivation');
+    expect(controls.first['key'], 'wwff/activation');
+    expect((controls.first['input'] as Map)['refType'], 'wwffActivation');
     expect((controls.first['input'] as Map)['kind'], 'refList');
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('an activation contributes MY_SIG/MY_SIG_INFO and nothing else', () async {
+  test('an activation contributes only its own fields when nothing was hunted', () async {
     final host = await startHost();
     final fields =
         (await host.invokeHook(
                   'adifFields',
-                  key: 'wca',
+                  key: 'ham2k-wwff',
                   method: 'fieldsForOneQSO',
                   args: {
                     'qso': {
@@ -461,7 +401,7 @@ void main() {
                     },
                     'operation': {
                       'refs': [
-                        {'type': 'wcaActivation', 'ref': 'ON-00558'},
+                        {'type': 'wwffActivation', 'ref': 'ONFF-0558'},
                       ],
                     },
                   },
@@ -469,44 +409,7 @@ void main() {
                 as List)
             .cast<Map>();
 
-    expect(fields.map((f) => f['name']), ['MY_SIG', 'MY_SIG_INFO']);
-    expect(fields.map((f) => f['value']), ['WCA', 'ON-00558']);
+    expect(fields.map((f) => f['name']), ['MY_SIG', 'MY_SIG_INFO', 'MY_WWFF_REF']);
+    expect(fields.map((f) => f['value']), ['WWFF', 'ONFF-0558', 'ONFF-0558']);
   }, timeout: const Timeout(Duration(seconds: 60)));
-
-  test('fifty contacts activate a castle', () async {
-    final host = await startHost();
-    final result =
-        await host.invokeHook(
-              'scoring',
-              key: 'wca',
-              method: 'scoreQsos',
-              args: {
-                'operation': {
-                  'uuid': 'op',
-                  'refs': [
-                    {'type': 'wcaActivation', 'ref': 'ON-00558'},
-                  ],
-                },
-                'qsos': [
-                  for (var i = 0; i < 50; i++)
-                    {
-                      'uuid': 'q$i',
-                      'their': {'call': 'W${i}ABC'},
-                      'band': '20m',
-                      'mode': 'SSB',
-                      'startAtMillis': DateTime.utc(2026, 7, 1, 12, i).millisecondsSinceEpoch,
-                    },
-                ],
-                'ref': {'type': 'wcaActivation', 'ref': 'ON-00558'},
-              },
-              timeout: const Duration(seconds: 20),
-            )
-            as Map;
-
-    final activation = ((result['operationSummary'] as Map)['activation'] as Map);
-    expect(activation['summary'], '50 ✓');
-    expect(activation['activated'], true);
-    // No hunting side to this award, so no hunting tally at all.
-    expect((result['operationSummary'] as Map)['hunting'], isNull);
-  }, timeout: const Timeout(Duration(seconds: 120)));
 }
