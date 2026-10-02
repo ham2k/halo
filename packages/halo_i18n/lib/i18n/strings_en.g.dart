@@ -1927,6 +1927,9 @@ class Translations$extensionService$en {
 	/// en: 'Reports can't be sent right now'
 	String get reportUnavailable => 'Reports can\'t be sent right now';
 
+	/// en: 'Ham2K’s File Stash can’t be reached right now'
+	String get stashUnavailable => 'Ham2K’s File Stash can’t be reached right now';
+
 	/// en: '${name} spent too much time in its timers. They're stopped until the extensions restart.'
 	String timersSuspendedBudget({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.';
 
@@ -3088,6 +3091,18 @@ class Translations$operation$export$en {
 	/// en: 'Download ${name}'
 	String downloadOne({required Object name}) => 'Download ${name}';
 
+	/// en: '(one) {Stash ${count} file} (other) {Stash ${count} files}'
+	String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Stash ${count} file',
+		other: 'Stash ${count} files',
+	);
+
+	/// en: '(one) {Stash combined ${count} file} (other) {Stash combined ${count} files}'
+	String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Stash combined ${count} file',
+		other: 'Stash combined ${count} files',
+	);
+
 	/// en: 'Export settings'
 	String get settingsButton => 'Export settings';
 
@@ -3129,6 +3144,8 @@ class Translations$operation$export$en {
 
 	/// en: 'Export failed: ${error}'
 	String exportFailed({required Object error}) => 'Export failed: ${error}';
+
+	late final Translations$operation$export$stash$en stash = Translations$operation$export$stash$en.internal(_root);
 }
 
 // Path: operation.spots
@@ -6110,6 +6127,78 @@ class Translations$operation$export$includePrivateData$en {
 	String get note => 'The Full ADIF Export always includes everything';
 }
 
+// Path: operation.export.stash
+class Translations$operation$export$stash$en {
+	Translations$operation$export$stash$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Add an email address first'
+	String get needsEmailTitle => 'Add an email address first';
+
+	/// en: 'Ham2K’s File Stash sends your files to the email address on your LoFi account, and you sign in with it at stash.ham2k.net. Your account doesn’t have a confirmed one yet — add it in Settings › Cloud Sync.'
+	String get needsEmailBody => 'Ham2K’s File Stash sends your files to the email address on your LoFi account, and you sign in with it at stash.ham2k.net. Your account doesn’t have a confirmed one yet — add it in Settings › Cloud Sync.';
+
+	/// en: 'Open Cloud Sync'
+	String get openSyncSettings => 'Open Cloud Sync';
+
+	/// en: 'Recent stash will be replaced'
+	String get replaceTitle => 'Recent stash will be replaced';
+
+	/// en: 'You sent “${name}” less than 6 hours ago and it hasn’t been downloaded yet. Free accounts keep one stash at a time, so sending now replaces it.'
+	String replaceBody({required Object name}) => 'You sent “${name}” less than 6 hours ago and it hasn’t been downloaded yet. Free accounts keep one stash at a time, so sending now replaces it.';
+
+	/// en: 'Send Anyway'
+	String get replaceConfirm => 'Send Anyway';
+
+	/// en: 'Couldn’t send to Ham2K’s File Stash'
+	String get failedTitle => 'Couldn’t send to Ham2K’s File Stash';
+
+	/// en: 'Sent to Ham2K’s File Stash'
+	String get sentTitle => 'Sent to Ham2K’s File Stash';
+
+	/// en: '(one) {You can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.} (other) {You can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.}'
+	String retrieve({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'You can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.',
+		other: 'You can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.',
+	);
+
+	/// en: 'No answer from the stash — the file may have arrived anyway. Check stash.ham2k.net before sending again'
+	String get mayHaveArrived => 'No answer from the stash — the file may have arrived anyway. Check stash.ham2k.net before sending again';
+
+	/// en: 'not sent'
+	String get notSent => 'not sent';
+
+	/// en: '(one) {This file didn’t arrive:} (other) {These ${count} files didn’t arrive:}'
+	String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'This file didn’t arrive:',
+		other: 'These ${count} files didn’t arrive:',
+	);
+
+	/// en: 'Or for your convenience, we can send you an email with a direct link.'
+	String get emailOffer => 'Or for your convenience, we can send you an email with a direct link.';
+
+	/// en: 'Email Me a Link'
+	String get emailMe => 'Email Me a Link';
+
+	/// en: 'We’ve emailed you a download link.'
+	String get emailSent => 'We’ve emailed you a download link.';
+
+	/// en: 'Couldn’t send the email: ${error}'
+	String emailFailed({required Object error}) => 'Couldn’t send the email: ${error}';
+
+	/// en: 'Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.'
+	String get freeTier => 'Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.';
+
+	/// en: '(one) {Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)} (other) {Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)}'
+	String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)',
+		other: 'Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)',
+	);
+}
+
 // Path: operation.spots.continents
 class Translations$operation$spots$continents$en {
 	Translations$operation$spots$continents$en.internal(this._root);
@@ -7826,6 +7915,8 @@ extension on Translations {
 			'operation.export.shareOne' => ({required Object name}) => 'Share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Export ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Download ${name}',
+			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Stash ${count} file', other: 'Stash ${count} files', ), 
+			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Stash combined ${count} file', other: 'Stash combined ${count} files', ), 
 			'operation.export.settingsButton' => 'Export settings',
 			'operation.export.settingsTitle' => 'Export Settings',
 			'operation.export.compactFileNames.title' => 'Use compact file names',
@@ -7842,6 +7933,26 @@ extension on Translations {
 			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Shared ${count} file', other: 'Shared ${count} files', ), 
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Downloaded ${count} file', other: 'Downloaded ${count} files', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Export failed: ${error}',
+			'operation.export.stash.needsEmailTitle' => 'Add an email address first',
+			'operation.export.stash.needsEmailBody' => 'Ham2K’s File Stash sends your files to the email address on your LoFi account, and you sign in with it at stash.ham2k.net. Your account doesn’t have a confirmed one yet — add it in Settings › Cloud Sync.',
+			'operation.export.stash.openSyncSettings' => 'Open Cloud Sync',
+			'operation.export.stash.replaceTitle' => 'Recent stash will be replaced',
+			'operation.export.stash.replaceBody' => ({required Object name}) => 'You sent “${name}” less than 6 hours ago and it hasn’t been downloaded yet. Free accounts keep one stash at a time, so sending now replaces it.',
+			'operation.export.stash.replaceConfirm' => 'Send Anyway',
+			'operation.export.stash.failedTitle' => 'Couldn’t send to Ham2K’s File Stash',
+			'operation.export.stash.sentTitle' => 'Sent to Ham2K’s File Stash',
+			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'You can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', other: 'You can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', ), 
+			'operation.export.stash.mayHaveArrived' => 'No answer from the stash — the file may have arrived anyway. Check stash.ham2k.net before sending again',
+			'operation.export.stash.notSent' => 'not sent',
+			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'This file didn’t arrive:', other: 'These ${count} files didn’t arrive:', ), 
+			'operation.export.stash.emailOffer' => 'Or for your convenience, we can send you an email with a direct link.',
+			_ => null,
+		} ?? switch (path) {
+			'operation.export.stash.emailMe' => 'Email Me a Link',
+			'operation.export.stash.emailSent' => 'We’ve emailed you a download link.',
+			'operation.export.stash.emailFailed' => ({required Object error}) => 'Couldn’t send the email: ${error}',
+			'operation.export.stash.freeTier' => 'Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.',
+			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)', other: 'Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'No spots match your filters',
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
 			'operation.spots.unknownBand' => 'Other',
@@ -7857,8 +7968,6 @@ extension on Translations {
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Calls of Note',
 			'operation.spots.yourSpots' => 'Your Spots',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.allSpots' => 'All Spots',
 			'operation.spots.continents.af' => 'Africa',
 			'operation.spots.continents.as' => 'Asia',
@@ -8351,6 +8460,8 @@ extension on Translations {
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
 			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
 			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the call that will be logged',
@@ -8371,8 +8482,6 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmIntro' => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Your exchange: after their call when running, after they answer in S&P',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: its placeholders name the next contact, not this one',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'In S&P, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
@@ -8865,6 +8974,8 @@ extension on Translations {
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
 			'settings.station.placeholderSwr' => 'SWR reading',
@@ -8885,8 +8996,6 @@ extension on Translations {
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
 			'settings.station.placeholderModeInvalid' => 'Must be a mode name, e.g. USB, CW, FT8',
 			'settings.station.switchLayout' => 'Layout',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.switchLayoutDescription' => 'Which side of the switch your radios are plugged into.',
 			'settings.station.switchLayoutRequired' => 'Choose how the switch is wired',
 			'settings.station.switchCommandRefused' => ({required Object command, required Object code}) => 'The switch refused "${command}" (error ${code})',
@@ -9127,6 +9236,7 @@ extension on Translations {
 			'extensionService.actionFailed' => ({required Object error}) => 'Action failed: ${error}',
 			'extensionService.commandFailed' => 'The command failed to run',
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
+			'extensionService.stashUnavailable' => 'Ham2K’s File Stash can’t be reached right now',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.',

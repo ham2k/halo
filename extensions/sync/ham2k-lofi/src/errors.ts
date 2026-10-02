@@ -89,7 +89,9 @@ export function isUnparseableBody(body: string): boolean {
   }
 }
 
-/// What to show an operator whose report did not reach the board.
+/// What to show an operator whose report did not reach the board — or,
+/// with [path] naming the stash endpoint, whose file did not reach the stash,
+/// which refuses an account-less client with the same 404.
 ///
 /// `POST v1/reports` answers 404 for a client the server has no ACCOUNT
 /// behind — the device registered fine, so the request is authenticated as a
@@ -109,8 +111,8 @@ export function isUnparseableBody(body: string): boolean {
 /// a proxy's garbage. They name real and different problems, and folding
 /// them into the account message would send an operator to Settings to fix
 /// an outage.
-export function reportFailureMessage(error: unknown, needsAccountMessage: string): string {
-  if (error instanceof LoFiRequestError && error.status === 404 && error.path === REPORTS_PATH) {
+export function reportFailureMessage(error: unknown, needsAccountMessage: string, path: string = REPORTS_PATH): string {
+  if (error instanceof LoFiRequestError && error.status === 404 && error.path === path) {
     return needsAccountMessage
   }
   return error instanceof Error ? error.message : String(error)

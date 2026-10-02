@@ -36,6 +36,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/export_service.dart';
 import '../../services/status_bar_service.dart';
+import '../../tools/operation_title.dart';
+import 'stash_sent_dialog.dart';
 
 /// The ground every band in this pane paints on — the callsign headers, the
 /// batch that opens the list and the sync report that closes it. ONE
@@ -80,22 +82,40 @@ enum ExportAction {
 
   /// A browser download, one per file.
   download,
+
+  /// An upload to Ham2K's File Stash, fetched later from any browser at
+  /// stash.ham2k.net. Where it is offered it leads, with the platform's own
+  /// verbs as the alternatives — see [bulkExportActions].
+  stash,
 }
 
-/// The buttons the counted footer offers. Android is the only platform with
-/// two: it genuinely distinguishes putting a file in Downloads from handing
-/// it to another app, and operators use both (uploading to POTA vs. mailing
-/// a Cabrillo).
+/// The buttons the counted footer offers, the primary first. Android has two
+/// verbs of its own: it genuinely distinguishes putting a file in Downloads
+/// from handing it to another app, and operators use both (uploading to POTA
+/// vs. mailing a Cabrillo).
+///
+/// [ExportAction.stash] leads on phones and in the browser while
+/// [syncEnabled] — the upload rides the device's LoFi account. There a file
+/// is awkward to get off the device: the share sheet reaches the apps on the
+/// phone, not the computer the log is headed for, and a browser may be a
+/// borrowed one. A desktop's Save already puts the file where the operator
+/// will use it.
 ///
 /// [isWeb] and [platform] exist only so tests can cover the whole matrix:
 /// `kIsWeb` is a compile-time false under `flutter test`, so the web branch
 /// is otherwise unreachable.
-List<ExportAction> bulkExportActions({bool? isWeb, TargetPlatform? platform}) {
-  if (isWeb ?? isWebPlatform) return const [ExportAction.download];
+List<ExportAction> bulkExportActions({bool? isWeb, TargetPlatform? platform, bool syncEnabled = false}) {
+  final web = isWeb ?? isWebPlatform;
   final target = platform ?? defaultTargetPlatform;
-  if (target == TargetPlatform.iOS) return const [ExportAction.export];
-  if (target == TargetPlatform.android) return const [ExportAction.save, ExportAction.share];
-  return const [ExportAction.save];
+  final verbs = web
+      ? const [ExportAction.download]
+      : target == TargetPlatform.iOS
+      ? const [ExportAction.export]
+      : target == TargetPlatform.android
+      ? const [ExportAction.save, ExportAction.share]
+      : const [ExportAction.save];
+  final stash = syncEnabled && (web || target == TargetPlatform.iOS || target == TargetPlatform.android);
+  return [if (stash) ExportAction.stash, ...verbs];
 }
 
 /// The single action on each option's own row — the platform's primary verb,
@@ -115,6 +135,7 @@ IconData exportActionIcon(ExportAction action) => switch (action) {
   ExportAction.share => MdiIcons.shareVariant,
   ExportAction.export => MdiIcons.exportVariant,
   ExportAction.download => MdiIcons.download,
+  ExportAction.stash => MdiIcons.cloudUploadOutline,
 };
 
 /// Opens the Exports pane for [operation].
@@ -313,6 +334,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         ExportAction.share => s.shareCombined(count: count),
         ExportAction.export => s.exportCombined(count: count),
         ExportAction.download => s.downloadCombined(count: count),
+        ExportAction.stash => s.stashCombined(count: count),
       };
     }
     return switch (action) {
@@ -320,6 +342,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       ExportAction.share => s.shareFiles(count: count),
       ExportAction.export => s.exportFiles(count: count),
       ExportAction.download => s.downloadFiles(count: count),
+      ExportAction.stash => s.stashFiles(count: count),
     };
   }
 
@@ -330,6 +353,8 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       ExportAction.share => s.shareOne(name: name),
       ExportAction.export => s.exportOne(name: name),
       ExportAction.download => s.downloadOne(name: name),
+      // Never a row's verb (see [rowExportAction]); the switch only has to be whole.
+      ExportAction.stash => s.stashFiles(count: 1),
     };
   }
 
@@ -340,6 +365,17 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     setState(() => _busy = true);
     String? outcome;
     String? failure;
+    String? failureTitle;
+    ({int count, bool? freeAccount, List<String> failures})? stashed;
+    // How the stash lists this group: the callsigns the files are for, then
+    // the operation's title. Read before the awaits, while the context is
+    // still this State's.
+    final stashTitle = action == ExportAction.stash
+        ? [
+            {for (final option in options) option['stationCall'] as String? ?? ''}.where((c) => c.isNotEmpty).join(', '),
+            displayTitleFor(context, widget.operation),
+          ].where((part) => part.isNotEmpty).join(' ')
+        : null;
     try {
       // The iPad share sheet is a popover and needs an anchor rect; the
       // panel's own bounds serve for every share trigger in it. Captured
@@ -348,6 +384,27 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       // failure.
       final box = context.findRenderObject() as RenderBox?;
       final shareOrigin = box == null || !box.hasSize ? null : box.localToGlobal(Offset.zero) & box.size;
+      // Asked BEFORE the files are generated: an operator who would rather
+      // fetch the stash they already have has nothing to wait for.
+      StashPreflight? preflight;
+      if (action == ExportAction.stash) {
+        preflight = await exports.stashPreflight();
+        if (preflight.needsEmail) {
+          if (!mounted) return;
+          setState(() => _busy = false);
+          await _pointToSyncSettingsForEmail();
+          return;
+        }
+        final replaces = preflight.replaces;
+        if (replaces != null) {
+          if (!mounted) return;
+          // Nothing is running while the operator decides; a spinner behind
+          // the question says otherwise.
+          setState(() => _busy = false);
+          if (!await _confirmStashReplace(replaces) || !mounted) return;
+          setState(() => _busy = true);
+        }
+      }
       final files = await exports.generateExports(widget.operation, options);
       widget.services.track('operation_exported', {
         'formats': options.map((o) => o['format'] ?? o['key'] ?? '?').join(','),
@@ -381,6 +438,20 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         case ExportAction.download:
           await exports.downloadFiles(files);
           outcome = t.operation.export.downloadSuccess(count: files.length);
+        case ExportAction.stash:
+          final result = await exports.stashFiles(files, groupTitle: stashTitle);
+          if (result.errors.isNotEmpty) debugPrint('[export] stash: ${result.uploaded} of ${files.length} uploaded; ${result.errors.join('; ')}');
+          if (result.uploaded == 0) {
+            failureTitle = t.operation.export.stash.failedTitle;
+            failure = result.errors.join('\n');
+          } else {
+            // Some arriving is a stash, however many did not: those files
+            // are waiting at stash.ham2k.net — on a free account in place of
+            // the previous stash — and the operator has to be told where,
+            // with the ones that didn't make it named beside them.
+            stashed = (count: result.uploaded, freeAccount: preflight?.freeAccount, failures: result.errors);
+            outcome = t.operation.export.stash.sentStatus(count: result.uploaded);
+          }
       }
     } catch (e, stack) {
       failure = e.toString();
@@ -400,7 +471,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       if (mounted) setState(() => _busy = false);
     }
     final report = failure != null
-        ? (title: t.operation.export.resultFailedTitle, body: failure)
+        ? (title: failureTitle ?? t.operation.export.resultFailedTitle, body: failure)
         : outcome != null
         ? (title: t.operation.export.resultTitle, body: outcome)
         : null;
@@ -421,7 +492,47 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       );
       return;
     }
+    if (stashed != null) {
+      await showStashSentDialog(context, services: widget.services, count: stashed.count, freeAccount: stashed.freeAccount, failures: stashed.failures);
+      return;
+    }
     await _showResult(report.title, report.body);
+  }
+
+  /// The account has no email address to fetch a stash with — see
+  /// [StashPreflight.needsEmail]. Nothing is sent: the way forward is Sync
+  /// settings, where the address is added, and the pane stays open under it
+  /// so the operator comes back to their ticks.
+  Future<void> _pointToSyncSettingsForEmail() async {
+    final s = context.t.operation.export.stash;
+    if (await _ask(title: s.needsEmailTitle, body: s.needsEmailBody, confirm: s.openSyncSettings)) {
+      widget.services.openSettingsPanel('sync');
+    }
+  }
+
+  /// A free account keeps one stash; [replaces] names the one this would
+  /// replace. True to send anyway.
+  Future<bool> _confirmStashReplace(String replaces) {
+    final s = context.t.operation.export.stash;
+    return _ask(
+      title: s.replaceTitle,
+      body: s.replaceBody(name: replaces),
+      confirm: s.replaceConfirm,
+    );
+  }
+
+  /// A question with Cancel and one way forward; true when it was taken.
+  Future<bool> _ask({required String title, required String body, required String confirm}) async {
+    final answer = await showHaloDialog<bool>(
+      context: context,
+      builder: (dialogContext) => HaloDialog(
+        title: Text(title),
+        content: Text(body),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(false), child: Text(dialogContext.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(confirm))],
+      ),
+    );
+    return answer == true;
   }
 
   /// The outcome, as a dialog over the panel rather than a line in the status
@@ -662,13 +773,35 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
               wrap: false,
               // The shared breakpoints, not one invented here (layouts.md):
               // S covers the 360 Android baseline, which is exactly where two
-              // counted labels and a callsign stop fitting on one line.
-              compact: ShirtSize.fromWidth(constraints.maxWidth).index <= ShirtSize.s.index,
+              // counted labels and a callsign stop fitting on one line. Three
+              // labels — Stash beside Android's two — outgrow bands well past
+              // S, so above it the labels are measured too.
+              compact:
+                  ShirtSize.fromWidth(constraints.maxWidth).index <= ShirtSize.s.index ||
+                  !_groupLabelsFit(context, group.call, selected.length, constraints.maxWidth),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// What a Material icon button adds around its label at the theme's
+  /// defaults: 16 leading, the 18 icon, 8 to the label, 24 trailing.
+  static const _iconButtonChrome = 16.0 + 18 + 8 + 24;
+
+  /// Whether a callsign band of [width] holds [call] whole beside every batch
+  /// verb's counted label for [count] files — measured, since what fits
+  /// depends on the language and the number of verbs, not on a breakpoint.
+  bool _groupLabelsFit(BuildContext context, String call, int count, double width) {
+    final theme = Theme.of(context);
+    final labelStyle = theme.textTheme.labelLarge ?? const TextStyle();
+    final callStyle = (theme.textTheme.titleMedium ?? const TextStyle()).copyWith(fontWeight: FontWeight.bold);
+    var needed = 20 + Space.lg + textWidth(context, call, callStyle);
+    for (final action in bulkExportActions(syncEnabled: widget.services.settings.syncEnabled)) {
+      needed += Space.md + _iconButtonChrome + textWidth(context, _bulkLabel(action, count), labelStyle);
+    }
+    return needed <= width;
   }
 
   /// One option, read left to right: what it is (the activity's own accented
@@ -784,7 +917,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// The batch action(s) for [selected] — everything ticked in the panel, in
   /// [_buildActionBand], or just one callsign's in its group header.
   Widget _buildBulkActions(BuildContext context, List<Map<String, dynamic>> selected, {bool combined = false, bool wrap = true, bool compact = false}) {
-    final actions = bulkExportActions();
+    final actions = bulkExportActions(syncEnabled: widget.services.settings.syncEnabled);
 
     /// The count alone where the label won't fit — the icon already carries
     /// the verb, and "3" beside a save glyph is the same sentence shorter.
@@ -803,9 +936,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         )
       else
         for (final (index, action) in actions.indexed)
-          // The first is the platform's primary verb; anything after it (only
-          // Android's Share) is an alternative, not a competing call to
-          // action.
+          // The first is the primary verb — Stash where it is offered, the
+          // platform's own otherwise; anything after it is an alternative,
+          // not a competing call to action.
           index == 0
               ? FilledButton.icon(
                   onPressed: selected.isEmpty ? null : () => _run(action, selected),

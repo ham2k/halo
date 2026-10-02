@@ -9,5 +9,8 @@
   "catalogCategory": "Sincronización",
   "catalogSyncAll": "Sincronizar todas las operaciones ahora",
   "catalogReport": "Enviar un informe de error",
-  "catalogReportParams": "<descripción>"
+  "catalogReportParams": "<descripción>",
+  "stashNeedsSync": "Guardar archivos en el Stash necesita tu cuenta LoFi — primero habilita la sincronización en la Configuración",
+  "stashNeedsAccount": "Guardar archivos en el Stash necesita tu cuenta LoFi — este dispositivo aún no está vinculado a una (Configuración, LoFi Cloud Sync)",
+  "stashMayHaveArrived": "El Stash no respondió ({{detail}}) — puede que el archivo haya llegado de todos modos. Revisa stash.ham2k.net antes de volver a enviarlo"
 }

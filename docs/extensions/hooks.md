@@ -1409,6 +1409,26 @@ report — as a real CaBo card; the host writes the title, body and kind, the
 transport adds who/where/what-build and owns the account gate.
 Implemented by: `ham2k-lofi`.
 
+`uploadStashFile` / `listStashFiles` / `emailStashLink`
+(optional) back the Exports pane's Stash button, which sends export files
+to a store the operator fetches from any browser (Ham2K's File Stash, at
+stash.ham2k.net). `uploadStashFile` takes ONE file and the `groupUuid` of
+the batch it belongs to — the host mints it, since the sandbox has no uuid
+source, and calls once per file: its call timeout does not stop a hook, so a
+whole batch in one call would go on uploading unseen after the host had
+told the operator it failed. It answers `{ uploaded: true }` or `{ error }`,
+never a throw, with `fatal: true` on any failure but the server refusing
+that one file — sync off, no account or permission, no answer — so the host
+stops instead of having every remaining file fail the same way. No answer
+says the file may have arrived: a body can reach the server after the reply
+is lost.
+`listStashFiles` answers the server's `{ stash_files: [...] }`, newest
+first, which the host reads to warn a free account before a new stash
+replaces one not yet fetched; `emailStashLink` mails the account's own
+address a link to its stash. Both answer `{ error }` for a refusal. All
+three own the same sync gate `submitReport` does.
+Implemented by: `ham2k-lofi`.
+
 ## ✅ `panel` — panes an extension contributes to a view
 
 A panel is a PANE the operator can put in a customizable view's layout

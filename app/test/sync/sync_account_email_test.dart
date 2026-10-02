@@ -55,7 +55,7 @@ class _Extensions extends ExtensionServiceWithFakeHost {
   _Extensions(this.account, {this.pendingChallenges}) : super(FakeExtensionHost({}));
 
   @override
-  Future<Map<String, dynamic>?> syncAccountData() async {
+  Future<Map<String, dynamic>?> syncAccountData({Duration timeout = const Duration(seconds: 10)}) async {
     accountFetches++;
     if (unreachable || account == null) return null;
     return {'current_account': account, if (pendingChallenges != null) 'pending_challenges': pendingChallenges};

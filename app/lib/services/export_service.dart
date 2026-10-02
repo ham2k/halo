@@ -17,7 +17,9 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
+import 'package:uuid/uuid.dart';
 
 import 'android_file_save.dart';
 import 'export_preferences.dart';
@@ -25,6 +27,75 @@ import 'extensions/extension_service.dart';
 import 'hook_payloads.dart';
 import 'settings_service.dart';
 import 'web_download.dart';
+
+const _uuidGenerator = Uuid();
+
+/// How long a free account's undownloaded stash counts as still wanted. A
+/// free account keeps only its latest group, so stashing again replaces it —
+/// worth a question while the operator may not have fetched it yet, not a
+/// day later. The same window app-polo uses.
+const stashReplaceWindow = Duration(hours: 6);
+
+/// What stashing would take or cost, as far as the account can tell.
+///
+/// [needsEmail] is true when the account has no confirmed email address.
+/// stash.ham2k.net signs in by email, and the link the result dialog offers
+/// goes to that address, so without one a stash is a file the operator has
+/// no way to fetch. A pending address doesn't count: nothing reaches it until
+/// it is confirmed.
+///
+/// [freeAccount] says the account keeps only its latest stash, as the free
+/// tier does — null when the account couldn't be read. [replaces] names the
+/// stash the next one would replace; it is set whenever the account isn't
+/// known to keep more than one, unread included, since the listing alone is
+/// enough to know there is something to lose. An account that couldn't be
+/// read never [needsEmail] — refusing on a failed read would block a stash
+/// the server may well accept.
+typedef StashPreflight = ({bool needsEmail, bool? freeAccount, String? replaces});
+
+/// [StashPreflight] from the sync account snapshot and the account's latest
+/// stash files (the server's `{'stash_files': [...]}`), at [nowMillis].
+StashPreflight stashPreflightFrom({Map<String, dynamic>? accountData, Map<String, dynamic>? stashFiles, required int nowMillis}) {
+  final account = accountData?['current_account'];
+  final email = account is Map ? account['email'] : null;
+  final needsEmail = accountData != null && (email is! String || email.trim().isEmpty);
+  final freeAccount = accountData == null ? null : !_keepsEveryStash(accountData['subscription'], nowMillis);
+  if (freeAccount == false) return (needsEmail: needsEmail, freeAccount: false, replaces: null);
+
+  final files = stashFiles?['stash_files'];
+  for (final file in files is List ? files : const []) {
+    if (file is! Map || file['status'] == 'downloaded') continue;
+    final createdAt = DateTime.tryParse('${file['created_at']}');
+    if (createdAt == null || nowMillis - createdAt.millisecondsSinceEpoch > stashReplaceWindow.inMilliseconds) continue;
+    final title = file['group_title'];
+    return (needsEmail: needsEmail, freeAccount: freeAccount, replaces: title is String && title.isNotEmpty ? title : '${file['filename']}');
+  }
+  return (needsEmail: needsEmail, freeAccount: freeAccount, replaces: null);
+}
+
+/// Whether the server keeps every stash this account sends, rather than only
+/// the latest — api-lofi's `Account#visible_stash_files`, which asks for a
+/// paid subscription (`Account#paid_subscription?`) on a plan that retains
+/// stashes at all.
+///
+/// Paid means a saved subscription (the free tier's default one never is, so
+/// has no id) whose status is active or unverified and whose `ends_at`, if
+/// any, is still ahead: a lapsed subscription stays on the account with its
+/// id, and is answered as free. A plan naming no retention falls back to the
+/// server's default, which keeps stashes; only a retention of 0 or less
+/// keeps the latest alone.
+bool _keepsEveryStash(Object? subscription, int nowMillis) {
+  if (subscription is! Map || subscription['id'] == null) return false;
+  if (subscription['status'] != 'active' && subscription['status'] != 'unverified') return false;
+  final endsAt = subscription['ends_at'];
+  if (endsAt != null) {
+    final parsed = DateTime.tryParse('$endsAt');
+    if (parsed == null || parsed.millisecondsSinceEpoch <= nowMillis) return false;
+  }
+  final plan = subscription['plan'];
+  final retention = plan is Map ? plan['stash_retention_in_days'] : null;
+  return retention is! num || retention > 0;
+}
 
 class ExportException implements Exception {
   final String message;
@@ -563,6 +634,51 @@ class ExportService {
     for (var i = 0; i < files.length; i++) {
       downloadFile(filename: filenames[i], content: files[i]['content'] as String, mimeType: files[i]['mimeType'] as String?);
     }
+  }
+
+  /// Whether stashing now would replace an undownloaded stash — see
+  /// [stashPreflightFrom]. Two reads of the account, made together.
+  ///
+  /// Given the room [ExtensionService.submitReport] gets rather than the
+  /// host's default: a phone in the field is who stashes, and a read that
+  /// times out answers "nothing to replace" — the one wrong answer that
+  /// loses files.
+  ///
+  /// The REAL clock: the window is measured against the server's own
+  /// `created_at`, which developer time travel does not move.
+  Future<StashPreflight> stashPreflight() async {
+    const timeout = Duration(seconds: 30);
+    final (accountData, stashFiles) = await (extensions.syncAccountData(timeout: timeout), extensions.listStashFiles(timeout: timeout)).wait;
+    return stashPreflightFrom(accountData: accountData, stashFiles: stashFiles, nowMillis: realNowMillis());
+  }
+
+  /// Stash flow: sends every file to Ham2K's File Stash as ONE group, titled
+  /// [groupTitle], under the same disambiguated names a save would give
+  /// them — the stash page lists them side by side, and two files named
+  /// alike there are two the operator can't tell apart.
+  ///
+  /// One call per file, so a slow upload costs its own file rather than the
+  /// batch's count. Stops at the first [ExtensionService.uploadStashFile]
+  /// failure marked fatal, naming every file it never tried, so [errors]
+  /// always accounts for each file that did not arrive.
+  Future<({int uploaded, List<String> errors})> stashFiles(List<Map<String, dynamic>> files, {String? groupTitle}) async {
+    final filenames = _uniqueFilenames(files);
+    final groupUuid = _uuidGenerator.v4();
+    var uploaded = 0;
+    final errors = <String>[];
+    for (var i = 0; i < files.length; i++) {
+      final result = await extensions.uploadStashFile(file: {...files[i], 'filename': filenames[i]}, groupUuid: groupUuid, groupTitle: groupTitle);
+      if (result.uploaded) {
+        uploaded++;
+        continue;
+      }
+      errors.add('${filenames[i]}: ${result.error ?? t.extensionService.stashUnavailable}');
+      if (result.fatal) {
+        errors.addAll([for (final name in filenames.skip(i + 1)) '$name: ${t.operation.export.stash.notSent}']);
+        break;
+      }
+    }
+    return (uploaded: uploaded, errors: errors);
   }
 
   /// Mobile share flow: writes every file to a temp directory, then opens

@@ -804,6 +804,234 @@ void main() {
     });
   });
 
+  group('stashing', () {
+    final now = DateTime.utc(2026, 9, 30, 18).millisecondsSinceEpoch;
+    const withEmail = {'uuid': 'a', 'email': 'n0call@example.com'};
+    const paid = {
+      'id': 42,
+      'status': 'active',
+      'ends_at': null,
+      'plan': {'stash_retention_in_days': 30},
+    };
+    const free = {
+      'current_account': withEmail,
+      'subscription': {
+        'id': null,
+        'plan': {'slug': 'default'},
+      },
+    };
+    Map<String, dynamic> stash(String status, Duration age, {String? groupTitle, String filename = 'a.adi'}) => {
+      'status': status,
+      'filename': filename,
+      'group_title': ?groupTitle,
+      'created_at': DateTime.fromMillisecondsSinceEpoch(now, isUtc: true).subtract(age).toIso8601String(),
+    };
+
+    // A paid account keeps every stash for its retention window, so nothing
+    // it sends replaces anything — a question there is noise.
+    test('a paid account is never asked', () {
+      final preflight = stashPreflightFrom(
+        accountData: {'current_account': withEmail, 'subscription': paid},
+        stashFiles: {
+          'stash_files': [stash('uploaded', const Duration(minutes: 5))],
+        },
+        nowMillis: now,
+      );
+      expect(preflight, (needsEmail: false, freeAccount: false, replaces: null));
+    });
+
+    // The server keeps only the latest stash unless the subscription is LIVE
+    // and its plan retains stashes at all (api-lofi `visible_stash_files`). A
+    // lapsed subscription keeps its id on the account, so an id alone would
+    // skip the question for exactly the account whose stash is replaced.
+    test('a subscription the server does not count as paid is asked like a free one', () {
+      final expired = DateTime.fromMillisecondsSinceEpoch(now, isUtc: true).subtract(const Duration(days: 1)).toIso8601String();
+      for (final subscription in [
+        {...paid, 'status': 'lapsed'},
+        {...paid, 'status': 'cancelled'},
+        {...paid, 'ends_at': expired},
+        {
+          ...paid,
+          'plan': {'stash_retention_in_days': 0},
+        },
+      ]) {
+        final preflight = stashPreflightFrom(
+          accountData: {'current_account': withEmail, 'subscription': subscription},
+          stashFiles: {
+            'stash_files': [stash('uploaded', const Duration(minutes: 5), groupTitle: 'N0CALL Field Day')],
+          },
+          nowMillis: now,
+        );
+        expect(preflight, (needsEmail: false, freeAccount: true, replaces: 'N0CALL Field Day'), reason: '$subscription');
+      }
+    });
+
+    test('an unverified purchase, a future end and a plan naming no retention all count as paid', () {
+      final later = DateTime.fromMillisecondsSinceEpoch(now, isUtc: true).add(const Duration(days: 30)).toIso8601String();
+      for (final subscription in [
+        {...paid, 'status': 'unverified'},
+        {...paid, 'ends_at': later},
+        {
+          ...paid,
+          'plan': {'stash_retention_in_days': null},
+        },
+      ]) {
+        final preflight = stashPreflightFrom(accountData: {'current_account': withEmail, 'subscription': subscription}, stashFiles: null, nowMillis: now);
+        expect(preflight.freeAccount, isFalse, reason: '$subscription');
+      }
+    });
+
+    test('a free account is asked about an unfetched stash from the last hours, by its title', () {
+      final preflight = stashPreflightFrom(
+        accountData: free,
+        stashFiles: {
+          'stash_files': [stash('seen', const Duration(hours: 5), groupTitle: 'N0CALL Field Day')],
+        },
+        nowMillis: now,
+      );
+      expect(preflight, (needsEmail: false, freeAccount: true, replaces: 'N0CALL Field Day'));
+    });
+
+    test('a stash with no group title is named by its file', () {
+      final preflight = stashPreflightFrom(
+        accountData: free,
+        stashFiles: {
+          'stash_files': [stash('uploaded', Duration.zero)],
+        },
+        nowMillis: now,
+      );
+      expect(preflight.replaces, 'a.adi');
+    });
+
+    // Fetched means safe, and a stash left for longer than the window is one
+    // the operator has moved on from — asking every time would teach them to
+    // tap through the question that matters.
+    test('a fetched or an old stash is replaced without asking', () {
+      final preflight = stashPreflightFrom(
+        accountData: free,
+        stashFiles: {
+          'stash_files': [stash('downloaded', const Duration(minutes: 1)), stash('uploaded', const Duration(hours: 7))],
+        },
+        nowMillis: now,
+      );
+      expect(preflight, (needsEmail: false, freeAccount: true, replaces: null));
+    });
+
+    // Unknown is not free: a tier note or a warning on a guess would tell a
+    // subscriber they're on the free plan.
+    test('an account that could not be read claims nothing', () {
+      expect(stashPreflightFrom(accountData: null, stashFiles: null, nowMillis: now), (needsEmail: false, freeAccount: null, replaces: null));
+    });
+
+    // The listing alone shows there is something to lose; a failed account
+    // read is no reason to replace it without asking.
+    test('an unread account is still asked when the listing shows an unfetched stash', () {
+      final preflight = stashPreflightFrom(
+        accountData: null,
+        stashFiles: {
+          'stash_files': [stash('uploaded', const Duration(minutes: 20), groupTitle: 'N0CALL Field Day')],
+        },
+        nowMillis: now,
+      );
+      expect(preflight, (needsEmail: false, freeAccount: null, replaces: 'N0CALL Field Day'));
+    });
+
+    // stash.ham2k.net signs in by email and the link goes to the confirmed
+    // address; a pending one reaches nobody until it's confirmed. Paid or
+    // free makes no difference — a stash nobody can fetch is no use to either.
+    test('an account with no confirmed email needs one before it can stash', () {
+      for (final account in [
+        {'uuid': 'a'},
+        {'uuid': 'a', 'email': ''},
+        {'uuid': 'a', 'email': null, 'pending_email': 'n0call@example.com'},
+      ]) {
+        for (final subscription in [
+          {'id': null},
+          {'id': 42},
+        ]) {
+          final preflight = stashPreflightFrom(accountData: {'current_account': account, 'subscription': subscription}, stashFiles: null, nowMillis: now);
+          expect(preflight.needsEmail, isTrue, reason: '$account, $subscription');
+        }
+      }
+    });
+
+    // The stash page lists a group's files side by side; two named alike
+    // are two the operator can't tell apart, and one group per press is
+    // what a free account keeps.
+    test('one press is one group, with the names a save would give', () async {
+      final extensions = _StashRecordingExtensions();
+      final service = ExportService(extensions: extensions, qsos: QsosRepository(db), settings: settings);
+      final result = await service.stashFiles([
+        {'filename': 'log.adi', 'content': 'a', 'mimeType': 'text/plain'},
+        {'filename': 'log.adi', 'content': 'b', 'mimeType': 'text/plain'},
+      ], groupTitle: 'N0CALL Test Op');
+
+      expect(result.uploaded, 2);
+      expect(result.errors, isEmpty);
+      expect(extensions.calls.map((c) => c.file['filename']), ['log.adi', 'log-2.adi']);
+      expect(extensions.calls.map((c) => c.file['content']), ['a', 'b']);
+      expect(extensions.calls.map((c) => c.groupUuid).toSet(), hasLength(1), reason: 'one press, one group');
+      expect(extensions.calls.first.groupUuid, matches(RegExp(r'^[0-9a-f-]{36}$')));
+      expect(extensions.calls.map((c) => c.groupTitle).toSet(), {'N0CALL Test Op'});
+    });
+
+    // A file the server refuses costs that file alone; the rest of the
+    // group still arrives.
+    test('a refused file is named, and the rest are still sent', () async {
+      final extensions = _StashRecordingExtensions()..answers = {'b.adi': (uploaded: false, error: 'is too large (max 5MB)', fatal: false)};
+      final service = ExportService(extensions: extensions, qsos: QsosRepository(db), settings: settings);
+      final result = await service.stashFiles([
+        for (final name in ['a.adi', 'b.adi', 'c.adi']) {'filename': name, 'content': 'x'},
+      ]);
+
+      expect(extensions.calls, hasLength(3));
+      expect(result.uploaded, 2);
+      expect(result.errors, ['b.adi: is too large (max 5MB)']);
+    });
+
+    // After an account refusal or an unreachable stash, every further file
+    // would fail the same way — each after waiting out its own timeout — so
+    // the batch stops, and still accounts for every file that isn't there.
+    test('a fatal failure stops the batch and names every file never tried', () async {
+      final extensions = _StashRecordingExtensions()..answers = {'b.adi': (uploaded: false, error: 'unreachable', fatal: true)};
+      final service = ExportService(extensions: extensions, qsos: QsosRepository(db), settings: settings);
+      final result = await service.stashFiles([
+        for (final name in ['a.adi', 'b.adi', 'c.adi', 'd.adi']) {'filename': name, 'content': 'x'},
+      ]);
+
+      expect(extensions.calls.map((c) => c.file['filename']), ['a.adi', 'b.adi']);
+      expect(result.uploaded, 1);
+      expect(result.errors, ['b.adi: unreachable', 'c.adi: not sent', 'd.adi: not sent']);
+    });
+  });
+
+  group('stashing (real ham2k-lofi extension)', () {
+    // Covers the seam the fakes cannot: that the three stash calls are
+    // registered on the syncTransport hook and answer in the shapes the
+    // Dart side reads. An unregistered method resolves null, which the
+    // wrappers would report as the runtime being down — the refusal text is
+    // what proves the hook actually ran.
+    //
+    // Offline BECAUSE of what it asserts: with no settings behind the service
+    // `syncEnabled` reads false, so the hooks refuse before `request()`,
+    // which would otherwise register this device against the live server.
+    late ExtensionService extensions;
+
+    setUpAll(() async {
+      extensions = ExtensionService();
+      await extensions.start();
+    });
+
+    test('every stash call refuses without sync, in its own words', () async {
+      final upload = await extensions.uploadStashFile(file: {'filename': 'a.adi', 'content': 'x'}, groupUuid: 'u');
+      expect(upload.uploaded, isFalse);
+      expect(upload.error, contains('enable sync in Settings'));
+      expect(upload.fatal, isTrue, reason: 'every other file would be refused the same way');
+      expect((await extensions.listStashFiles())?['error'], contains('enable sync in Settings'));
+      expect((await extensions.emailStashLink())?['error'], contains('enable sync in Settings'));
+    });
+  });
+
   group('saving on Android', () {
     // `file_selector_android` implements neither `getSaveLocation` nor a
     // writable directory picker, so anything reaching `file_selector` here is
@@ -995,5 +1223,22 @@ class _FakeAndroidFileSave extends AndroidFileSave {
     // Deliberately NOT the name asked for: the platform renames around a
     // collision, which is the whole reason the channel reports a name back.
     return 'saved-$filename';
+  }
+}
+
+/// Records what each stash upload was handed, without a runtime, answering
+/// by filename from [answers] and succeeding otherwise.
+class _StashRecordingExtensions extends ExtensionService {
+  final List<({Map<String, dynamic> file, String groupUuid, String? groupTitle})> calls = [];
+  Map<String, ({bool uploaded, String? error, bool fatal})> answers = {};
+
+  @override
+  Future<({bool uploaded, String? error, bool fatal})> uploadStashFile({
+    required Map<String, dynamic> file,
+    required String groupUuid,
+    String? groupTitle,
+  }) async {
+    calls.add((file: file, groupUuid: groupUuid, groupTitle: groupTitle));
+    return answers[file['filename']] ?? (uploaded: true, error: null, fatal: false);
   }
 }

@@ -572,6 +572,14 @@
       "shareOne": "Compartir ${name}",
       "exportOne": "Exportar ${name}",
       "downloadOne": "Descargar ${name}",
+      "stashFiles": {
+        "one": "Guardar ${count} archivo en el Stash",
+        "other": "Guardar ${count} archivos en el Stash"
+      },
+      "stashCombined": {
+        "one": "Guardar ${count} archivo combinado en el Stash",
+        "other": "Guardar ${count} archivos combinados en el Stash"
+      },
       "settingsButton": "Ajustes de exportación",
       "settingsTitle": "Ajustes de Exportación",
       "compactFileNames": {
@@ -603,7 +611,36 @@
         "one": "Se descargó ${count} archivo",
         "other": "Se descargaron ${count} archivos"
       },
-      "exportFailed": "Exportación fallida: ${error}"
+      "exportFailed": "Exportación fallida: ${error}",
+      "stash": {
+        "needsEmailTitle": "Primero agrega un correo electrónico",
+        "needsEmailBody": "El File Stash de Ham2K envía tus archivos al correo de tu cuenta LoFi, y con él inicias sesión en stash.ham2k.net. Tu cuenta aún no tiene uno confirmado — agrégalo en Configuración › Sincronización en la Nube.",
+        "openSyncSettings": "Abrir Sincronización en la Nube",
+        "replaceTitle": "Se reemplazará el envío reciente",
+        "replaceBody": "Enviaste “${name}” hace menos de 6 horas y todavía no se ha descargado. Las cuentas gratuitas guardan un solo envío a la vez, así que enviar ahora lo reemplaza.",
+        "replaceConfirm": "Enviar de todos modos",
+        "failedTitle": "No se pudo enviar al File Stash de Ham2K",
+        "sentTitle": "Enviado al File Stash de Ham2K",
+        "retrieve": {
+          "one": "Puedes descargar este archivo visitando **[stash.ham2k.net](https://stash.ham2k.net)** desde cualquier navegador.",
+          "other": "Puedes descargar estos archivos visitando **[stash.ham2k.net](https://stash.ham2k.net)** desde cualquier navegador."
+        },
+        "mayHaveArrived": "El Stash no respondió — puede que el archivo haya llegado de todos modos. Revisa stash.ham2k.net antes de volver a enviarlo",
+        "notSent": "no enviado",
+        "notArrived": {
+          "one": "Este archivo no llegó:",
+          "other": "Estos ${count} archivos no llegaron:"
+        },
+        "emailOffer": "O, si te resulta más cómodo, podemos enviarte un correo con un enlace directo.",
+        "emailMe": "Envíame un enlace",
+        "emailSent": "Te enviamos un enlace de descarga por correo.",
+        "emailFailed": "No se pudo enviar el correo: ${error}",
+        "freeTier": "Las cuentas gratuitas solo guardan un envío a la vez. Los suscriptores pueden guardar todos los que quieran.",
+        "sentStatus": {
+          "one": "Se envió ${count} archivo al File Stash de Ham2K (stash.ham2k.net)",
+          "other": "Se enviaron ${count} archivos al File Stash de Ham2K (stash.ham2k.net)"
+        }
+      }
     },
     "spots": {
       "empty": "Ningún spot coincide con tus filtros",
@@ -2106,6 +2143,7 @@
     "actionFailed": "Acción fallida: ${error}",
     "commandFailed": "El comando no se pudo ejecutar",
     "reportUnavailable": "Ahora mismo no se pueden enviar informes",
+    "stashUnavailable": "No se puede acceder al File Stash de Ham2K en este momento",
     "timersSuspendedBudget": "${name} pasó demasiado tiempo en sus temporizadores. Quedan detenidos hasta que se reinicien las extensiones.",
     "timersSuspendedFailures": "Los temporizadores de ${name} fallaban una y otra vez. Quedan detenidos hasta que se reinicien las extensiones.",
     "timersSuspendedInterrupted": "${name} se trabó en un temporizador. Sus temporizadores quedan detenidos hasta que se reinicien las extensiones."

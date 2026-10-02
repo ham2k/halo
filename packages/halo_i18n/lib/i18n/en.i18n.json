@@ -573,6 +573,14 @@
       "shareOne": "Share ${name}",
       "exportOne": "Export ${name}",
       "downloadOne": "Download ${name}",
+      "stashFiles": {
+        "one": "Stash ${count} file",
+        "other": "Stash ${count} files"
+      },
+      "stashCombined": {
+        "one": "Stash combined ${count} file",
+        "other": "Stash combined ${count} files"
+      },
       "settingsButton": "Export settings",
       "settingsTitle": "Export Settings",
       "compactFileNames": {
@@ -604,7 +612,36 @@
         "one": "Downloaded ${count} file",
         "other": "Downloaded ${count} files"
       },
-      "exportFailed": "Export failed: ${error}"
+      "exportFailed": "Export failed: ${error}",
+      "stash": {
+        "needsEmailTitle": "Add an email address first",
+        "needsEmailBody": "Ham2K’s File Stash sends your files to the email address on your LoFi account, and you sign in with it at stash.ham2k.net. Your account doesn’t have a confirmed one yet — add it in Settings › Cloud Sync.",
+        "openSyncSettings": "Open Cloud Sync",
+        "replaceTitle": "Recent stash will be replaced",
+        "replaceBody": "You sent “${name}” less than 6 hours ago and it hasn’t been downloaded yet. Free accounts keep one stash at a time, so sending now replaces it.",
+        "replaceConfirm": "Send Anyway",
+        "failedTitle": "Couldn’t send to Ham2K’s File Stash",
+        "sentTitle": "Sent to Ham2K’s File Stash",
+        "retrieve": {
+          "one": "You can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.",
+          "other": "You can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser."
+        },
+        "mayHaveArrived": "No answer from the stash — the file may have arrived anyway. Check stash.ham2k.net before sending again",
+        "notSent": "not sent",
+        "notArrived": {
+          "one": "This file didn’t arrive:",
+          "other": "These ${count} files didn’t arrive:"
+        },
+        "emailOffer": "Or for your convenience, we can send you an email with a direct link.",
+        "emailMe": "Email Me a Link",
+        "emailSent": "We’ve emailed you a download link.",
+        "emailFailed": "Couldn’t send the email: ${error}",
+        "freeTier": "Free accounts can only keep one stash at a time. Subscribers can keep as many as they want.",
+        "sentStatus": {
+          "one": "Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)",
+          "other": "Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)"
+        }
+      }
     },
     "spots": {
       "empty": "No spots match your filters",
@@ -2114,6 +2151,7 @@
     "actionFailed": "Action failed: ${error}",
     "commandFailed": "The command failed to run",
     "reportUnavailable": "Reports can't be sent right now",
+    "stashUnavailable": "Ham2K’s File Stash can’t be reached right now",
     "timersSuspendedBudget": "${name} spent too much time in its timers. They're stopped until the extensions restart.",
     "timersSuspendedFailures": "${name}'s timers kept failing. They're stopped until the extensions restart.",
     "timersSuspendedInterrupted": "${name} got stuck in a timer. Its timers are stopped until the extensions restart."

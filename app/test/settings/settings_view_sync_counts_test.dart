@@ -32,7 +32,7 @@ class _ExtensionsWithAccountData extends ExtensionServiceWithFakeHost {
   _ExtensionsWithAccountData(this.fetch) : super(FakeExtensionHost({}));
 
   @override
-  Future<Map<String, dynamic>?> syncAccountData() => fetch();
+  Future<Map<String, dynamic>?> syncAccountData({Duration timeout = const Duration(seconds: 10)}) => fetch();
 }
 
 /// [fetchAccountData] lets a test hold the fetch open (or fail it) to exercise

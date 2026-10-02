@@ -24,13 +24,18 @@ mixin _ExtensionSyncCalls {
   /// Every fresh fetch also persists the snapshot into
   /// `settings.syncState['accountData']` — the static copy the declarative
   /// sync settings group displays, so building a settings schema never
-  /// needs a network round-trip. Only this method (called from the Sync
-  /// panel's refreshes and post-link flows) updates it.
-  Future<Map<String, dynamic>?> syncAccountData() async {
+  /// needs a network round-trip. Only this method updates it — called from
+  /// the Sync panel's refreshes, the post-link flows, and a stash's
+  /// preflight, which reads the account fresh so a subscription bought a
+  /// minute ago already counts.
+  ///
+  /// [timeout] is the host's per-call default unless the caller has a reason
+  /// to wait longer.
+  Future<Map<String, dynamic>?> syncAccountData({Duration timeout = const Duration(seconds: 10)}) async {
     final host = this.host;
     if (host == null) return null;
     try {
-      final result = await host.invoke(Hooks.syncTransportGetAccountData, args: const {});
+      final result = await host.invoke(Hooks.syncTransportGetAccountData, args: const {}, timeout: timeout);
       final data = result is Map ? result.cast<String, dynamic>() : null;
       final currentSettings = settings;
       if (data != null && currentSettings != null) {
@@ -116,12 +121,12 @@ mixin _ExtensionSyncCalls {
   /// isn't up or the host call failed, the server's map otherwise —
   /// including the `error`/`error_status` maps those endpoints return for
   /// rejections that belong to the UI flow rather than to error reporting.
-  Future<Map<String, dynamic>?> _syncTransportCall(HookRef hook, Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>?> _syncTransportCall(HookRef hook, Map<String, dynamic> args, {Duration timeout = const Duration(seconds: 10)}) async {
     final host = this.host;
     if (host == null) return null;
     final streakKey = '${hook.category}:${hook.method}';
     try {
-      final result = await host.invoke(hook, args: args);
+      final result = await host.invoke(hook, args: args, timeout: timeout);
       ErrorReportingService.recordSuccess(streakKey);
       return result is Map ? result.cast<String, dynamic>() : null;
     } on ExtensionHostException catch (e, stackTrace) {
@@ -232,4 +237,64 @@ mixin _ExtensionSyncCalls {
       return (ref: null, error: t.extensionService.reportUnavailable);
     }
   }
+
+  /// Sends one export [file] (`filename`, `content`, `mimeType`, `format`)
+  /// to Ham2K's File Stash, into the group [groupUuid] names.
+  ///
+  /// [error] is operator-facing text; [fatal] means the rest of a batch
+  /// should not be tried: every other file would be refused the same way (no
+  /// account, sync off, no permission, no transport), or the stash did not
+  /// answer and each further file would wait out its own timeout to learn the
+  /// same.
+  Future<({bool uploaded, String? error, bool fatal})> uploadStashFile({
+    required Map<String, dynamic> file,
+    required String groupUuid,
+    String? groupTitle,
+  }) async {
+    final host = this.host;
+    if (host == null) return (uploaded: false, error: t.extensionService.stashUnavailable, fatal: true);
+    const streakKey = 'syncTransport:uploadStashFile';
+    try {
+      final result = await host.invoke(
+        Hooks.syncTransportUploadStashFile,
+        args: {
+          'file': {'filename': file['filename'], 'content': file['content'], 'mimeType': ?file['mimeType'], 'format': ?file['format']},
+          'groupUuid': groupUuid,
+          'groupTitle': ?groupTitle,
+        },
+        // Above what the extension's own fetches can take — host.fetch gives
+        // up at 15s to the reply's headers and 30s more for its body, and a
+        // device registration may come first — so the extension's answer,
+        // which knows what failed, is what the operator normally reads.
+        timeout: const Duration(seconds: 60),
+      );
+      if (result is! Map) {
+        // A transport without `uploadStashFile` resolves null (see
+        // [submitReport]): nothing was sent, and no retry will change that.
+        debugPrint('[extensions] uploadStashFile: transport answered ${result.runtimeType}, not a Map');
+        return (uploaded: false, error: t.extensionService.stashUnavailable, fatal: true);
+      }
+      ErrorReportingService.recordSuccess(streakKey);
+      final error = result['error'];
+      if (error is String && error.isNotEmpty) return (uploaded: false, error: error, fatal: result['fatal'] == true);
+      return (uploaded: result['uploaded'] == true, error: null, fatal: false);
+    } on ExtensionHostException catch (e, stackTrace) {
+      // Same reasoning as [_syncTransportCall]: one failure is the network,
+      // the same one every time is a defect nobody would otherwise see.
+      debugPrint('[extensions] uploadStashFile failed: $e');
+      ErrorReportingService.reportIfRepeated(streakKey, e, stackTrace, context: streakKey);
+      // A call that timed out may still have sent the file.
+      return (uploaded: false, error: t.operation.export.stash.mayHaveArrived, fatal: true);
+    }
+  }
+
+  /// The account's [limit] most recent stash files, newest first — the
+  /// server's `{'stash_files': [...]}` — or `{'error': ...}`; null when the
+  /// runtime couldn't answer at all.
+  Future<Map<String, dynamic>?> listStashFiles({int limit = 5, Duration timeout = const Duration(seconds: 10)}) =>
+      _syncTransportCall(Hooks.syncTransportListStashFiles, {'limit': limit}, timeout: timeout);
+
+  /// Mails the account's own address a link to its stash: `{'ok': true}`,
+  /// `{'error': ...}`, or null when the runtime couldn't answer.
+  Future<Map<String, dynamic>?> emailStashLink() => _syncTransportCall(Hooks.syncTransportEmailStashLink, const {});
 }

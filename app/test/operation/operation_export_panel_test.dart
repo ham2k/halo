@@ -62,6 +62,28 @@ void main() {
       ], reason: 'Save leads: it is the platform default verb, Share is the addition');
       expect(rowExportAction(isWeb: false, platform: TargetPlatform.android), ExportAction.share);
     });
+
+    // A desktop's Save already lands the file where the operator uses it; the
+    // stash is for a device a file is awkward to get off.
+    test('with sync on, Stash leads on phones and in the browser, never on a desktop', () {
+      for (final platform in [TargetPlatform.macOS, TargetPlatform.windows, TargetPlatform.linux]) {
+        expect(bulkExportActions(isWeb: false, platform: platform, syncEnabled: true), [ExportAction.save], reason: '$platform');
+      }
+      expect(bulkExportActions(isWeb: false, platform: TargetPlatform.iOS, syncEnabled: true), [ExportAction.stash, ExportAction.export]);
+      expect(bulkExportActions(isWeb: false, platform: TargetPlatform.android, syncEnabled: true), [ExportAction.stash, ExportAction.save, ExportAction.share]);
+      // A browser on a Mac reports macOS as its platform — the same trap as
+      // the download verb above.
+      expect(bulkExportActions(isWeb: true, platform: TargetPlatform.macOS, syncEnabled: true), [ExportAction.stash, ExportAction.download]);
+    });
+
+    // The upload rides the device's LoFi account; without sync there is no
+    // account to send it with, and a button that can only fail is a trap.
+    test('without sync, no platform offers Stash', () {
+      for (final platform in TargetPlatform.values) {
+        expect(bulkExportActions(isWeb: false, platform: platform), isNot(contains(ExportAction.stash)), reason: '$platform');
+      }
+      expect(bulkExportActions(isWeb: true), isNot(contains(ExportAction.stash)));
+    });
   });
 
   group('the panel', () {
@@ -656,6 +678,188 @@ void main() {
       expect(find.text('Save 1 file'), findsOneWidget, reason: 'the batch button stays at the top');
       expect(find.textContaining('combined'), findsNothing);
     });
+
+    // The upload rides the device's LoFi account; without sync there is no
+    // account to send it with, and a button that can only fail is a trap.
+    testWidgets('Stash is offered only while sync is on', (tester) async {
+      await pump(tester);
+      expect(find.textContaining('Stash'), findsNothing);
+    });
+
+    // Where it is offered, getting the file OFF the device is the job, so
+    // Stash leads and the platform's verbs follow as the alternatives.
+    testWidgets('Stash leads the batch verbs, counted like them', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+
+      expect(find.widgetWithText(FilledButton, 'Stash 1 file'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Save 1 file'), findsOneWidget);
+      expect(find.widgetWithText(OutlinedButton, 'Share 1 file'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Stash 1 file')).dx, lessThan(tester.getTopLeft(find.text('Save 1 file')).dx));
+      expect(tester.getTopLeft(find.text('Save 1 file')).dx, lessThan(tester.getTopLeft(find.text('Share 1 file')).dx));
+    });
+
+    // A free account keeps one stash. Replacing one the operator has not
+    // fetched yet loses those files for good, so the panel asks first — and
+    // asks before generating anything, since a "no" leaves nothing to do.
+    testWidgets('a free account is asked before replacing a stash it has not fetched', (tester) async {
+      await settings.setSyncEnabled(true);
+      exports.preflight = (needsEmail: false, freeAccount: true, replaces: 'N0CALL Field Day');
+      await pump(tester);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+      expect(find.text('Recent stash will be replaced'), findsOneWidget);
+      expect(find.textContaining('“N0CALL Field Day”'), findsOneWidget);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(exports.generated, isEmpty);
+      expect(exports.stashed, isEmpty);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send Anyway'));
+      await tester.pumpAndSettle();
+      expect(exports.stashed, hasLength(1));
+
+      expect(find.text('Sent to Ham2K’s File Stash'), findsOneWidget);
+      expect(find.textContaining('Free accounts can only keep one stash'), findsOneWidget);
+    });
+
+    // Without an email the operator has no way to fetch what they stash, so
+    // nothing is sent — the way forward is the settings panel that adds one,
+    // opened over the pane so the ticks are still there on the way back.
+    testWidgets('an account without an email is sent to Cloud Sync, and nothing is stashed', (tester) async {
+      await settings.setSyncEnabled(true);
+      exports.preflight = (needsEmail: true, freeAccount: true, replaces: 'N0CALL Field Day');
+      final opened = <String>[];
+      services = _RecordingSettingsServices(db, settings, exports: exports, opened: opened);
+      await pump(tester);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+      expect(find.text('Add an email address first'), findsOneWidget);
+      expect(find.text('Recent stash will be replaced'), findsNothing, reason: 'the email comes first; replacing is moot without it');
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(opened, isEmpty);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Open Cloud Sync'));
+      await tester.pumpAndSettle();
+      expect(opened, ['sync']);
+
+      expect(exports.generated, isEmpty);
+      expect(exports.stashed, isEmpty);
+    });
+
+    // The stash page lists groups by this title; "N0CALL" alone is every
+    // activation the operator has ever stashed.
+    testWidgets('the stash group is titled with the callsign and the operation', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+
+      final title = exports.stashed.single.groupTitle!;
+      expect(title, startsWith('N0CALL '));
+      expect(title, contains('Test Op'));
+    });
+
+    testWidgets('a paid account is neither warned nor told about the free tier', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Recent stash will be replaced'), findsNothing);
+      expect(find.text('Sent to Ham2K’s File Stash'), findsOneWidget);
+      expect(find.textContaining('Free accounts'), findsNothing);
+    });
+
+    // The address is the point of the dialog. An ellipsis with no line limit
+    // truncates the text to its first line, and on a phone that line ends
+    // partway through the address.
+    testWidgets('the sent dialog spells out the stash address in full', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+      tester.view.physicalSize = const Size(360, 900);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+
+      final retrieve = tester.widget<RichText>(
+        find.descendant(
+          of: find.byType(HaloDialog),
+          matching: find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().contains('stash.ham2k.net')),
+        ),
+      );
+      expect(retrieve.overflow, isNot(TextOverflow.ellipsis));
+      expect(retrieve.maxLines, isNull);
+    });
+
+    // Each line names what it cost — a file, or the account — so an operator
+    // who stashed three and lost one knows which to send again.
+    testWidgets('a stash where nothing arrived says so, file by file', (tester) async {
+      await settings.setSyncEnabled(true);
+      exports.stashResult = (uploaded: 0, errors: ['2026-07-15 N0CALL at US-1234.adi: is too large (max 5MB)']);
+      await pump(tester);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sent to Ham2K’s File Stash'), findsNothing);
+      final body = await readAndDismissResult(tester);
+      expect(body, contains('Couldn’t send to Ham2K’s File Stash'));
+      expect(body, contains('US-1234.adi: is too large'));
+    });
+
+    // The files that did arrive are a stash — on a free account one that has
+    // already replaced the last — so reporting the batch as a failure hides
+    // where they are and invites sending everything again.
+    testWidgets('a partial stash says where the arrivals are, and names what did not arrive', (tester) async {
+      await settings.setSyncEnabled(true);
+      exports.stashResult = (uploaded: 1, errors: ['2026-07-15 N0CALL Test Op Full.adi: is too large (max 5MB)']);
+      await pump(tester);
+
+      await tester.tap(find.byType(Checkbox).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Stash 2 files'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Sent to Ham2K’s File Stash'), findsOneWidget);
+      expect(find.textContaining('stash.ham2k.net', findRichText: true), findsWidgets);
+      expect(find.textContaining('This file didn’t arrive:\n2026-07-15 N0CALL Test Op Full.adi: is too large'), findsOneWidget);
+      expect(find.text('Email Me a Link'), findsOneWidget);
+    });
+
+    testWidgets('the sent dialog emails the link, and says when it could not', (tester) async {
+      await settings.setSyncEnabled(true);
+      final emailer = _ExtensionsWithStashEmail()..answer = {'error': "No email address given, and this account doesn't have one on file"};
+      services = HaLoServices(db, settings, extensions: emailer, exports: exports);
+      await pump(tester);
+
+      await tester.tap(find.text('Stash 1 file'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Email Me a Link'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Couldn’t send the email: No email address given'), findsOneWidget);
+      expect(find.text('Email Me a Link'), findsOneWidget, reason: 'the operator can try again');
+
+      emailer.answer = {'ok': true};
+      await tester.tap(find.text('Email Me a Link'));
+      await tester.pumpAndSettle();
+      expect(emailer.calls, 2);
+      expect(find.text('We’ve emailed you a download link.'), findsOneWidget);
+      expect(find.text('Email Me a Link'), findsNothing, reason: 'one mail per stash is what was asked for');
+    });
   });
 
   // A multi-operator operation owes each callsign its own submission, so the
@@ -791,6 +995,47 @@ void main() {
       expect(find.text('N0CALL'), findsOneWidget, reason: 'the callsign kept its room');
     });
 
+    // Sync on is the common Android case, and it puts a THIRD button in a
+    // band whose height is fixed — an overflow there is a striped bar on
+    // every multi-operator export an operator opens.
+    testWidgets('a narrow band still fits Stash beside the platform verbs', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+      tester.view.physicalSize = const Size(360, 900);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(of: find.byType(OutlinedButton), matching: find.text('1')),
+        findsNWidgets(4),
+        reason: 'Save and Share, once per callsign',
+      );
+      expect(find.bySemanticsLabel('Stash 1 file'), findsNWidgets(2));
+      expect(find.text('N0CALL'), findsOneWidget, reason: 'the callsign kept its room');
+    });
+
+    // Wider than S, where the shared breakpoint keeps the labels — but three
+    // counted labels and a callsign still don't fit a tablet's portrait
+    // band, and the band's one fixed-height line cannot wrap them.
+    testWidgets('a band too narrow for three labels shows counts, whatever its breakpoint', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+      tester.view.physicalSize = const Size(760, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stash 1 file'), findsNothing, reason: 'the labels are what did not fit');
+      expect(find.bySemanticsLabel('Stash 1 file'), findsNWidgets(2));
+      expect(find.text('N0CALL'), findsOneWidget);
+    });
+
+    testWidgets('a band with room for its labels keeps them', (tester) async {
+      await settings.setSyncEnabled(true);
+      await pump(tester);
+      tester.view.physicalSize = const Size(1600, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Stash 1 file'), findsNWidgets(2));
+    });
+
     // The pinned band declares its height before its child is laid out and
     // the SizedBox clamps whatever comes back, so the constant and the
     // button's own 40 floor are coupled with zero slack: a button theme that
@@ -885,6 +1130,30 @@ class _ExtensionsWithControls extends ExtensionService {
 
   @override
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
+
+  @override
+  Future<void> start() async {}
+}
+
+/// Records which settings panel the pane asked for, instead of pushing it.
+class _RecordingSettingsServices extends HaLoServices {
+  final List<String> opened;
+  _RecordingSettingsServices(super.db, super.settings, {required super.exports, required this.opened}) : super(extensions: ExtensionService());
+
+  @override
+  void openSettingsPanel(String panel) => opened.add(panel);
+}
+
+/// Answers the sent dialog's email request without a runtime.
+class _ExtensionsWithStashEmail extends ExtensionService {
+  Map<String, dynamic>? answer;
+  int calls = 0;
+
+  @override
+  Future<Map<String, dynamic>?> emailStashLink() async {
+    calls++;
+    return answer;
+  }
 
   @override
   Future<void> start() async {}
@@ -1054,6 +1323,23 @@ class _FakeExportService extends ExportService {
     sharedFiles.addAll(files);
     sharedOrigin = sharePositionOrigin;
     return shareSucceeds;
+  }
+
+  /// A paid account by default: no question, no tier note.
+  StashPreflight preflight = (needsEmail: false, freeAccount: false, replaces: null);
+
+  /// What the upload answers; null is every file arriving.
+  ({int uploaded, List<String> errors})? stashResult;
+
+  final List<({List<Map<String, dynamic>> files, String? groupTitle})> stashed = [];
+
+  @override
+  Future<StashPreflight> stashPreflight() async => preflight;
+
+  @override
+  Future<({int uploaded, List<String> errors})> stashFiles(List<Map<String, dynamic>> files, {String? groupTitle}) async {
+    stashed.add((files: files, groupTitle: groupTitle));
+    return stashResult ?? (uploaded: files.length, errors: const <String>[]);
   }
 }
 

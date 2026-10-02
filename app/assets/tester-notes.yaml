@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New Stash button sends exports to stash.ham2k.net (phones and web, with sync on)"
+
 "176":
   changes:
     - "QSO party setup suggests counties and flags unknown locations"

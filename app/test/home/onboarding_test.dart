@@ -946,7 +946,8 @@ class MockExtensionService extends ExtensionServiceWithFakeHost {
   MockExtensionService() : super(FakeExtensionHost({}));
 
   @override
-  Future<Map<String, dynamic>?> syncAccountData() async => onAccountData != null ? onAccountData!() : mockAccountData;
+  Future<Map<String, dynamic>?> syncAccountData({Duration timeout = const Duration(seconds: 10)}) async =>
+      onAccountData != null ? onAccountData!() : mockAccountData;
 
   @override
   Future<Map<String, dynamic>?> syncLinkClient(String? email) async {

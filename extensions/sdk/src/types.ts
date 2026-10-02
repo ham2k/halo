@@ -1792,6 +1792,23 @@ export interface SyncTransportHook {
   /// showing this to an operator who has just written something they want
   /// sent. Optional so transports predating this contract keep compiling.
   submitReport?(args: { title: string; body: string; kind: "idea" | "task" | "bug" }, ctx: HookContext): Promise<{ ref?: string | null; error?: string }>
+  /// Sends ONE export file to Ham2K's File Stash, into the group `groupUuid`
+  /// names (the host mints it — the sandbox has no uuid source — and sends a
+  /// batch file by file under it). `{ uploaded: true }` or `{ error }`, never
+  /// a throw; `fatal` marks any failure but the server refusing that one
+  /// file (no account, sync off, no answer), so the host stops rather than
+  /// fail every remaining file the same way. Optional so transports
+  /// predating the stash keep compiling.
+  uploadStashFile?(
+    args: { file: { filename: string; content: string; mimeType?: string; format?: string }; groupUuid: string; groupTitle?: string },
+    ctx: HookContext,
+  ): Promise<{ uploaded?: boolean; error?: string; fatal?: boolean }>
+  /// The account's most recent stash files, newest first, as the server's
+  /// `{ stash_files: [...] }` — or `{ error }`.
+  listStashFiles?(args: { limit?: number }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// Mails the account's address a link to its stash: `{ ok: true }` or
+  /// `{ error }`.
+  emailStashLink?(args: Record<string, never>, ctx: HookContext): Promise<Record<string, JSONValue>>
 }
 
 export interface AccountField {

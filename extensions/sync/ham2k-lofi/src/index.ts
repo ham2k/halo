@@ -28,6 +28,8 @@ import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normal
 import { tFor } from "./i18n.ts"
 import { attachReportContext, buildReportPayload } from "./report.ts"
 import type { ReportContext, ReportPayload } from "./report.ts"
+import { buildStashMultipart, STASH_FILES_PATH, stashBoundary } from "./stash.ts"
+import type { StashFile } from "./stash.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -54,6 +56,9 @@ defineExtension({
         ensureClientRegistered,
         fetchWebhookEvents,
         submitReport,
+        uploadStashFile,
+        listStashFiles,
+        emailStashLink,
       },
     })
     registerHook("command", { key: "ham2k-lofi-syncall", hook: { interpret: syncAllCommand, catalog: syncAllCatalog } })
@@ -205,6 +210,78 @@ async function submitReport(
 
 const VALID_REPORT_KINDS: ReportPayload["kind"][] = ["idea", "task", "bug"]
 
+/// The sync gate every stash call shares, for the reason [fileReport] checks
+/// it before `request()`: without it, the first call registers this device
+/// with the server — credentials the operator never asked for — only to be
+/// refused for having no account.
+async function stashRefusal(ctx: HookContext): Promise<string | null> {
+  const settings = await host.getSettings().catch(() => null)
+  return settings?.syncEnabled === true ? null : tFor(ctx)("stashNeedsSync")
+}
+
+/// Sends one export file to Ham2K's File Stash, into the group [groupUuid]
+/// names. One file per call rather than the whole batch: the host's call
+/// timeout does not stop a hook, so a batch that outlives it goes on
+/// uploading unseen while the operator is told nothing arrived — and a
+/// retry then starts a second group. Per file, a timeout costs that file.
+///
+/// `{ uploaded: true }`, or `{ error }`. Only a 422 — the server refusing
+/// THIS file (too large, not plain text) — leaves the rest of the batch to
+/// try. Anything else is `fatal`: sync off, no account, a device without the
+/// permission to write, or no answer at all, which every other file would
+/// meet too, each after waiting out its own timeout.
+///
+/// No answer is not no upload: a body that reached the server before the
+/// reply was lost is stored. Said so, because the operator's next move is to
+/// send again, which starts a second group — on a free account, replacing
+/// the first.
+async function uploadStashFile(
+  { file, groupUuid, groupTitle }: { file: StashFile; groupUuid: string; groupTitle?: string },
+  ctx: HookContext,
+): Promise<{ uploaded?: boolean; error?: string; fatal?: boolean }> {
+  const refusal = await stashRefusal(ctx)
+  if (refusal) return { error: refusal, fatal: true }
+
+  const t = tFor(ctx)
+  const group = { uuid: groupUuid, title: groupTitle }
+  try {
+    await request("POST", STASH_FILES_PATH, undefined, { raw: buildStashMultipart(file, group, stashBoundary(file, group)) })
+    return { uploaded: true }
+  } catch (e) {
+    if (!(e instanceof LoFiRequestError)) {
+      return { error: t("stashMayHaveArrived", { detail: e instanceof Error ? e.message : String(e) }), fatal: true }
+    }
+    return { error: reportFailureMessage(e, t("stashNeedsAccount"), STASH_FILES_PATH), fatal: e.status !== 422 }
+  }
+}
+
+/// The account's most recent stash files, newest first — the server's own
+/// `{ stash_files }` reply, or `{ error }`.
+async function listStashFiles({ limit }: { limit?: number }, ctx: HookContext): Promise<Record<string, JSONValue>> {
+  const refusal = await stashRefusal(ctx)
+  if (refusal) return { error: refusal }
+  const path = `${STASH_FILES_PATH}?limit=${limit ?? 5}`
+  try {
+    return await request("GET", path)
+  } catch (e) {
+    return { error: reportFailureMessage(e, tFor(ctx)("stashNeedsAccount"), path) }
+  }
+}
+
+/// Mails the account's own address a link that opens its stash without
+/// signing in. `{ ok: true }`, or `{ error }` — including the server's
+/// refusal when the account has no email on file.
+async function emailStashLink(_args: Record<string, never>, ctx: HookContext): Promise<Record<string, JSONValue>> {
+  const refusal = await stashRefusal(ctx)
+  if (refusal) return { error: refusal }
+  const path = `${STASH_FILES_PATH}/email_link`
+  try {
+    return await request("POST", path)
+  } catch (e) {
+    return { error: reportFailureMessage(e, tFor(ctx)("stashNeedsAccount"), path) }
+  }
+}
+
 async function reportCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
   const t = tFor(ctx)
   return [
@@ -306,7 +383,15 @@ async function cacheClientIdentity(client: JSONValue | undefined): Promise<{ pus
 /// Authenticated request with the same retry-once-on-401 shape as the RN
 /// extension: an expired/invalid token drops just the token (key/secret
 /// still identify this device), never the caller's request.
-async function request(method: "GET" | "POST" | "PATCH", path: string, body?: JSONValue): Promise<Record<string, JSONValue>> {
+///
+/// [body] goes as JSON; [raw] instead goes as-is under its own content type,
+/// for the one upload that isn't JSON (see stash.ts).
+async function request(
+  method: "GET" | "POST" | "PATCH",
+  path: string,
+  body?: JSONValue,
+  { raw }: { raw?: { contentType: string; body: string } } = {},
+): Promise<Record<string, JSONValue>> {
   const server = await serverUrl()
   if (cachedToken == null) {
     const stored = await host.kvGet("token")
@@ -321,10 +406,10 @@ async function request(method: "GET" | "POST" | "PATCH", path: string, body?: JS
     const response = await host.fetch(`${server}/${path}`, {
       method,
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": raw?.contentType ?? "application/json",
         Authorization: `Bearer ${cachedToken}`,
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: raw ? raw.body : body === undefined ? undefined : JSON.stringify(body),
     })
 
     if (response.status === 401) {

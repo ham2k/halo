@@ -134,6 +134,9 @@ abstract final class Hooks {
   static const syncTransportEnsureClientRegistered = HookRef(HookCategories.syncTransport, 'ensureClientRegistered');
   static const syncTransportFetchWebhookEvents = HookRef(HookCategories.syncTransport, 'fetchWebhookEvents');
   static const syncTransportSubmitReport = HookRef(HookCategories.syncTransport, 'submitReport');
+  static const syncTransportUploadStashFile = HookRef(HookCategories.syncTransport, 'uploadStashFile');
+  static const syncTransportListStashFiles = HookRef(HookCategories.syncTransport, 'listStashFiles');
+  static const syncTransportEmailStashLink = HookRef(HookCategories.syncTransport, 'emailStashLink');
 
   static const templateRender = HookRef(HookCategories.template, 'render');
   static const templateRenderMany = HookRef(HookCategories.template, 'renderMany');

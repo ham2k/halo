@@ -885,6 +885,7 @@ class _Translations$extensionService$es extends Translations$extensionService$en
 	@override String actionFailed({required Object error}) => 'Acción fallida: ${error}';
 	@override String get commandFailed => 'El comando no se pudo ejecutar';
 	@override String get reportUnavailable => 'Ahora mismo no se pueden enviar informes';
+	@override String get stashUnavailable => 'No se puede acceder al File Stash de Ham2K en este momento';
 	@override String timersSuspendedBudget({required Object name}) => '${name} pasó demasiado tiempo en sus temporizadores. Quedan detenidos hasta que se reinicien las extensiones.';
 	@override String timersSuspendedFailures({required Object name}) => 'Los temporizadores de ${name} fallaban una y otra vez. Quedan detenidos hasta que se reinicien las extensiones.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} se trabó en un temporizador. Sus temporizadores quedan detenidos hasta que se reinicien las extensiones.';
@@ -1437,6 +1438,14 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 	@override String shareOne({required Object name}) => 'Compartir ${name}';
 	@override String exportOne({required Object name}) => 'Exportar ${name}';
 	@override String downloadOne({required Object name}) => 'Descargar ${name}';
+	@override String stashFiles({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Guardar ${count} archivo en el Stash',
+		other: 'Guardar ${count} archivos en el Stash',
+	);
+	@override String stashCombined({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Guardar ${count} archivo combinado en el Stash',
+		other: 'Guardar ${count} archivos combinados en el Stash',
+	);
 	@override String get settingsButton => 'Ajustes de exportación';
 	@override String get settingsTitle => 'Ajustes de Exportación';
 	@override late final _Translations$operation$export$compactFileNames$es compactFileNames = _Translations$operation$export$compactFileNames$es._(_root);
@@ -1460,6 +1469,7 @@ class _Translations$operation$export$es extends Translations$operation$export$en
 		other: 'Se descargaron ${count} archivos',
 	);
 	@override String exportFailed({required Object error}) => 'Exportación fallida: ${error}';
+	@override late final _Translations$operation$export$stash$es stash = _Translations$operation$export$stash$es._(_root);
 }
 
 // Path: operation.spots
@@ -2743,6 +2753,42 @@ class _Translations$operation$export$includePrivateData$es extends Translations$
 	@override String get note => 'La Exportación ADIF Completa siempre incluye todo';
 }
 
+// Path: operation.export.stash
+class _Translations$operation$export$stash$es extends Translations$operation$export$stash$en {
+	_Translations$operation$export$stash$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get needsEmailTitle => 'Primero agrega un correo electrónico';
+	@override String get needsEmailBody => 'El File Stash de Ham2K envía tus archivos al correo de tu cuenta LoFi, y con él inicias sesión en stash.ham2k.net. Tu cuenta aún no tiene uno confirmado — agrégalo en Configuración › Sincronización en la Nube.';
+	@override String get openSyncSettings => 'Abrir Sincronización en la Nube';
+	@override String get replaceTitle => 'Se reemplazará el envío reciente';
+	@override String replaceBody({required Object name}) => 'Enviaste “${name}” hace menos de 6 horas y todavía no se ha descargado. Las cuentas gratuitas guardan un solo envío a la vez, así que enviar ahora lo reemplaza.';
+	@override String get replaceConfirm => 'Enviar de todos modos';
+	@override String get failedTitle => 'No se pudo enviar al File Stash de Ham2K';
+	@override String get sentTitle => 'Enviado al File Stash de Ham2K';
+	@override String retrieve({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Puedes descargar este archivo visitando **[stash.ham2k.net](https://stash.ham2k.net)** desde cualquier navegador.',
+		other: 'Puedes descargar estos archivos visitando **[stash.ham2k.net](https://stash.ham2k.net)** desde cualquier navegador.',
+	);
+	@override String get mayHaveArrived => 'El Stash no respondió — puede que el archivo haya llegado de todos modos. Revisa stash.ham2k.net antes de volver a enviarlo';
+	@override String get notSent => 'no enviado';
+	@override String notArrived({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Este archivo no llegó:',
+		other: 'Estos ${count} archivos no llegaron:',
+	);
+	@override String get emailOffer => 'O, si te resulta más cómodo, podemos enviarte un correo con un enlace directo.';
+	@override String get emailMe => 'Envíame un enlace';
+	@override String get emailSent => 'Te enviamos un enlace de descarga por correo.';
+	@override String emailFailed({required Object error}) => 'No se pudo enviar el correo: ${error}';
+	@override String get freeTier => 'Las cuentas gratuitas solo guardan un envío a la vez. Los suscriptores pueden guardar todos los que quieran.';
+	@override String sentStatus({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Se envió ${count} archivo al File Stash de Ham2K (stash.ham2k.net)',
+		other: 'Se enviaron ${count} archivos al File Stash de Ham2K (stash.ham2k.net)',
+	);
+}
+
 // Path: operation.spots.continents
 class _Translations$operation$spots$continents$es extends Translations$operation$spots$continents$en {
 	_Translations$operation$spots$continents$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -3873,6 +3919,8 @@ extension on TranslationsEs {
 			'operation.export.shareOne' => ({required Object name}) => 'Compartir ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descargar ${name}',
+			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo en el Stash', other: 'Guardar ${count} archivos en el Stash', ), 
+			'operation.export.stashCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo combinado en el Stash', other: 'Guardar ${count} archivos combinados en el Stash', ), 
 			'operation.export.settingsButton' => 'Ajustes de exportación',
 			'operation.export.settingsTitle' => 'Ajustes de Exportación',
 			'operation.export.compactFileNames.title' => 'Usar nombres de archivo compactos',
@@ -3889,6 +3937,26 @@ extension on TranslationsEs {
 			'operation.export.shareSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se compartió ${count} archivo', other: 'Se compartieron ${count} archivos', ), 
 			'operation.export.downloadSuccess' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se descargó ${count} archivo', other: 'Se descargaron ${count} archivos', ), 
 			'operation.export.exportFailed' => ({required Object error}) => 'Exportación fallida: ${error}',
+			'operation.export.stash.needsEmailTitle' => 'Primero agrega un correo electrónico',
+			'operation.export.stash.needsEmailBody' => 'El File Stash de Ham2K envía tus archivos al correo de tu cuenta LoFi, y con él inicias sesión en stash.ham2k.net. Tu cuenta aún no tiene uno confirmado — agrégalo en Configuración › Sincronización en la Nube.',
+			'operation.export.stash.openSyncSettings' => 'Abrir Sincronización en la Nube',
+			'operation.export.stash.replaceTitle' => 'Se reemplazará el envío reciente',
+			'operation.export.stash.replaceBody' => ({required Object name}) => 'Enviaste “${name}” hace menos de 6 horas y todavía no se ha descargado. Las cuentas gratuitas guardan un solo envío a la vez, así que enviar ahora lo reemplaza.',
+			'operation.export.stash.replaceConfirm' => 'Enviar de todos modos',
+			'operation.export.stash.failedTitle' => 'No se pudo enviar al File Stash de Ham2K',
+			'operation.export.stash.sentTitle' => 'Enviado al File Stash de Ham2K',
+			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Puedes descargar este archivo visitando **[stash.ham2k.net](https://stash.ham2k.net)** desde cualquier navegador.', other: 'Puedes descargar estos archivos visitando **[stash.ham2k.net](https://stash.ham2k.net)** desde cualquier navegador.', ), 
+			'operation.export.stash.mayHaveArrived' => 'El Stash no respondió — puede que el archivo haya llegado de todos modos. Revisa stash.ham2k.net antes de volver a enviarlo',
+			'operation.export.stash.notSent' => 'no enviado',
+			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Este archivo no llegó:', other: 'Estos ${count} archivos no llegaron:', ), 
+			'operation.export.stash.emailOffer' => 'O, si te resulta más cómodo, podemos enviarte un correo con un enlace directo.',
+			'operation.export.stash.emailMe' => 'Envíame un enlace',
+			_ => null,
+		} ?? switch (path) {
+			'operation.export.stash.emailSent' => 'Te enviamos un enlace de descarga por correo.',
+			'operation.export.stash.emailFailed' => ({required Object error}) => 'No se pudo enviar el correo: ${error}',
+			'operation.export.stash.freeTier' => 'Las cuentas gratuitas solo guardan un envío a la vez. Los suscriptores pueden guardar todos los que quieran.',
+			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se envió ${count} archivo al File Stash de Ham2K (stash.ham2k.net)', other: 'Se enviaron ${count} archivos al File Stash de Ham2K (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'Ningún spot coincide con tus filtros',
 			'operation.spots.error' => ({required Object error}) => 'No se pudieron cargar los spots: ${error}',
 			'operation.spots.unknownBand' => 'Otras',
@@ -3905,8 +3973,6 @@ extension on TranslationsEs {
 			'operation.spots.callsOfNote' => 'Indicativos destacados',
 			'operation.spots.yourSpots' => 'Tus spots',
 			'operation.spots.allSpots' => 'Todos los spots',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.continents.af' => 'África',
 			'operation.spots.continents.as' => 'Asia',
 			'operation.spots.continents.eu' => 'Europa',
@@ -4399,6 +4465,8 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
 			'settings.radio.cwMessages.help' => 'Ayuda',
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.helpIntro' => 'Los mensajes pueden usar plantillas con los siguientes valores:',
 			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
 			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el indicativo que se registrará',
@@ -4419,8 +4487,6 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpEsmIntro' => 'Con Enter envía mensajes encendido, Enter manipula los mensajes por su tecla de función, como hace N1MM. El conjunto Mensajes ESM empieza con estos:',
 			'settings.radio.cwMessages.helpEsmCq' => 'En Run, Enter con el indicativo vacío llama CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Tu intercambio: tras su indicativo en Run, tras su respuesta en S&P',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpEsmThanks' => 'Las gracias, una vez registrado el contacto: sus marcadores nombran el siguiente contacto, no este',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'En S&P, tu indicativo a la estación que contestas',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'En Run, su indicativo antes de tu intercambio',
@@ -4913,6 +4979,8 @@ extension on TranslationsEs {
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
 			'settings.station.whatToTrack' => '¿Qué registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
 			'settings.station.trackFieldAntenna' => 'Antena',
@@ -4933,8 +5001,6 @@ extension on TranslationsEs {
 			'settings.station.switchCurrentStateDescription' => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.',
 			'settings.station.switchWiringHeader' => 'Cableado',
 			'settings.station.switchPortInhibitedHint' => 'transmisión inhibida',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.autoConnectHeld' => 'HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.',
 			'settings.station.antennaTypes.dipole' => 'Dipolo',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
@@ -5167,6 +5233,7 @@ extension on TranslationsEs {
 			'extensionService.actionFailed' => ({required Object error}) => 'Acción fallida: ${error}',
 			'extensionService.commandFailed' => 'El comando no se pudo ejecutar',
 			'extensionService.reportUnavailable' => 'Ahora mismo no se pueden enviar informes',
+			'extensionService.stashUnavailable' => 'No se puede acceder al File Stash de Ham2K en este momento',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} pasó demasiado tiempo en sus temporizadores. Quedan detenidos hasta que se reinicien las extensiones.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => 'Los temporizadores de ${name} fallaban una y otra vez. Quedan detenidos hasta que se reinicien las extensiones.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} se trabó en un temporizador. Sus temporizadores quedan detenidos hasta que se reinicien las extensiones.',

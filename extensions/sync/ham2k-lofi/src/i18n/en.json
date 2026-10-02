@@ -9,5 +9,8 @@
   "catalogCategory": "Sync",
   "catalogSyncAll": "Sync all operations now",
   "catalogReport": "Send a bug report",
-  "catalogReportParams": "<description>"
+  "catalogReportParams": "<description>",
+  "stashNeedsSync": "Stashing files needs your LoFi account — enable sync in Settings first",
+  "stashNeedsAccount": "Stashing files needs your LoFi account — this device isn’t linked to one yet (Settings, LoFi Cloud Sync)",
+  "stashMayHaveArrived": "No answer from the stash ({{detail}}) — the file may have arrived anyway. Check stash.ham2k.net before sending again"
 }
