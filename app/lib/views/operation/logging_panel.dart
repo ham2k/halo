@@ -265,6 +265,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   bool _computeRadioConnected() => widget.services.radio1IsLive;
 
+  late bool _radioTransmitting = widget.services.cat.radio1IsTransmitting || widget.services.cat.pttKeys.held.value;
+
   // The main VFO's display name — the Radio control's own reflection of the
   // same name station_panel.dart's equipment list shows for it.
   late String? _radioName = _computeRadioName();
@@ -645,11 +647,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final has = _computeHasConfiguredRadio();
     final connected = _computeRadioConnected();
     final name = _computeRadioName();
-    if (has != _hasConfiguredRadio || connected != _radioConnected || name != _radioName) {
+    final transmitting = widget.services.cat.radio1IsTransmitting || widget.services.cat.pttKeys.held.value;
+    if (has != _hasConfiguredRadio || connected != _radioConnected || name != _radioName || transmitting != _radioTransmitting) {
       setState(() {
         _hasConfiguredRadio = has;
         _radioConnected = connected;
         _radioName = name;
+        _radioTransmitting = transmitting;
       });
     }
   }
@@ -806,6 +810,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               radioUpdates: widget.services.radio,
               hasConfiguredRadio: _hasConfiguredRadio,
               radioConnected: _radioConnected,
+              radioTransmitting: _radioTransmitting,
               // Offered with no radio configured too: the dialog is where
               // one gets configured.
               onOpenStationConfig: () => _openStationConfigDialog(context),

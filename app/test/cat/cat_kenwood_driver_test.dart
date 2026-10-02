@@ -32,8 +32,17 @@ class _FakeSink implements EquipmentSink {
   final powers = <num>[];
   final diagnostics = <String?>[];
 
+  /// The next send throws, as a write on a dropped link can.
+  bool failNextSend = false;
+
   @override
-  void send(List<int> bytes) => sent.add(ascii.decode(bytes));
+  void send(List<int> bytes) {
+    if (failNextSend) {
+      failNextSend = false;
+      throw StateError('link down');
+    }
+    sent.add(ascii.decode(bytes));
+  }
 
   @override
   void report(VfoReading reading) => readings.add(reading);
@@ -215,6 +224,58 @@ void main() {
       sink.sent.clear();
       session.stopUpdates();
       expect(sink.sent, contains('AI0;'));
+    });
+
+    group('PTT', () {
+      test('keys with a bare TX; and unkeys with RX;', () {
+        // The bare form on purpose: `TX1;` is DATA SEND on the TS-590/890/990,
+        // which takes the rear-panel audio instead of the operator's mic.
+        session.setPtt(true);
+        session.setPtt(false);
+        expect(sink.sent, ['TX;', 'RX;']);
+      });
+
+      test('the TX watch never asks with TX;', () {
+        // On this line `TX;` is not a question: a watch that asked it would
+        // key the radio five times a second.
+        fakeAsync((async) {
+          final watched = KenwoodSession(sink)..startUpdates();
+          async.elapse(const Duration(seconds: 2));
+          expect(sink.sent.where((c) => c == 'IF;').length, greaterThan(2), reason: 'the watch ran');
+          expect(sink.sent, isNot(contains('TX;')));
+          watched.teardown();
+        });
+      });
+
+      test('teardown unkeys a radio the app keyed, first', () {
+        // A teardown that forgets the unkey leaves the transmitter on the air
+        // with nothing left to turn it off.
+        session.startUpdates();
+        session.setPtt(true);
+        sink.sent.clear();
+        session.teardown();
+        expect(sink.sent.first, 'RX;');
+      });
+
+      test('an unkey that throws is sent again at teardown', () {
+        // A session that forgot it keyed the moment it tried to unkey would
+        // leave a radio whose unkey never went out keyed after the disconnect.
+        session.startUpdates();
+        session.setPtt(true);
+        sink.failNextSend = true;
+        expect(() => session.setPtt(false), throwsStateError);
+        sink.sent.clear();
+        session.teardown();
+        expect(sink.sent.first, 'RX;');
+      });
+
+      test('teardown sends no RX; on a radio the app never keyed', () {
+        // An unkey from a session that never keyed would cut off the operator
+        // transmitting from the radio's own mic.
+        session.startUpdates();
+        session.teardown();
+        expect(sink.sent, isNot(contains('RX;')));
+      });
     });
 
     test('a frequency and a mode arrive as readings, in kHz', () {

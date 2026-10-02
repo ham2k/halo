@@ -1120,6 +1120,10 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   Future<void> setSmartVfoSnap(bool value) => setSettingValue(radioGroup, 'smartVfoSnap', value);
 
+  /// Whether ['] keys and unkeys radio1 in a Phone mode (cat_ptt.dart). Off
+  /// by default: it puts the operator's transmitter on the air.
+  bool get pttKey => (settingValue(radioGroup, 'pttKey') as bool?) ?? false;
+
   /// How many CW messages there are: one per function key F1-F8.
   static const cwMessageCount = 8;
 

@@ -206,7 +206,7 @@ class KenwoodDriver extends EquipmentDriver {
 /// narrow question to ask (its `TX;` keys the radio).
 const kenwoodTxWatchBytes = 41;
 
-class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
+class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
   final EquipmentSink _sink;
   final bool isK4;
   num? _pendingK4Power;
@@ -807,6 +807,18 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _voice.end();
   }
 
+  /// Whether the app keyed the radio, so [teardown] can unkey it.
+  bool _keyedByUs = false;
+
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _send(buildKenwoodSetTxCommand(on));
+    _keyedByUs = on;
+  }
+
   @override
   void startUpdates() {
     _framer.reset();
@@ -851,6 +863,12 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   @override
   void teardown() {
+    if (_keyedByUs) {
+      // First, and sent even though the connection is closing: nothing else
+      // will unkey this radio.
+      _keyedByUs = false;
+      _send(buildKenwoodSetTxCommand(false));
+    }
     _cwQueue.clear();
     _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.

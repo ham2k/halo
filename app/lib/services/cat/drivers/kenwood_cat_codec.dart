@@ -148,8 +148,9 @@ String? parseKenwoodInfoModeAt(String params, int offset) {
 /// position is already known.
 ///
 /// The Kenwood line has NO readable transmit-status command — its `TX;` is
-/// the command that KEYS the radio, which this app must never send — so the
-/// flag in `IF` is the only way to ask. It sits in the character
+/// the command that KEYS the radio, sent only by the operator's own key
+/// ([buildKenwoodSetTxCommand]) and never as a question — so the flag in
+/// `IF` is the only way to ask. It sits in the character
 /// immediately before the mode across every documented generation of the
 /// packet (P8 RX/TX, then P9 mode), which is why this takes the mode offset
 /// rather than an offset of its own: it inherits whatever confidence that
@@ -166,6 +167,11 @@ bool? parseKenwoodInfoTransmittingBeforeMode(String params, int modeOffset) {
     _ => null,
   };
 }
+
+/// `TX;` keys the transmitter, `RX;` returns to receive. The bare `TX;`,
+/// with no P1: SEND on the TS-590/890/990, and the form the Elecraft K3, K4
+/// and KX references give.
+String buildKenwoodSetTxCommand(bool on) => on ? 'TX;' : 'RX;';
 
 /// Kenwood's Auto-Information has two levels, and the difference matters:
 /// `AI1` reports only what the radio itself changed, `AI2` also reports what

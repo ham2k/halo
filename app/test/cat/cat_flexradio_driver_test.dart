@@ -934,4 +934,52 @@ void main() {
       expect(sink.txReports, isEmpty);
     });
   });
+
+  group('PTT', () {
+    // The SmartSDR command is `xmit`, bare: the radio keys its transmit
+    // slice. Commands carry a sequence number, so only what follows the
+    // `|` is compared.
+    List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+
+    test('keys with xmit 1 and unkeys with xmit 0', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        sink.sent.clear();
+        session.setPtt(true);
+        session.setPtt(false);
+        expect(commands(), ['xmit 1', 'xmit 0']);
+        expect(sink.txReports, isEmpty, reason: 'keyed is what the interlock says, never what was asked');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('teardown unkeys a radio the app keyed, before unsubscribing', () {
+      // Closing the API connection does not unkey a Flex: a teardown that
+      // forgets the unkey leaves the transmitter on the air with nothing
+      // left to turn it off.
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.setPtt(true);
+        sink.sent.clear();
+        session.teardown();
+        expect(commands().first, 'xmit 0');
+        async.flushTimers();
+      });
+    });
+
+    test('teardown sends no xmit on a radio the app never keyed', () {
+      // An unkey from a session that never keyed would cut off the operator
+      // transmitting from SmartSDR or a footswitch.
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.teardown();
+        expect(commands().where((c) => c.startsWith('xmit')), isEmpty);
+        async.flushTimers();
+      });
+    });
+  });
 }

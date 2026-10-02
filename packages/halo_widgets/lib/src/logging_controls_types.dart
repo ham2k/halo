@@ -406,6 +406,7 @@ class RadioHookup {
     this.radioUpdates,
     this.hasConfiguredRadio = false,
     this.radioConnected = false,
+    this.radioTransmitting = false,
     this.onOpenStationConfig,
     this.onConnectRadio,
     this.radioName,
@@ -445,6 +446,12 @@ class RadioHookup {
   /// green (connected) vs red (configured but not connected). Meaningless
   /// when [hasConfiguredRadio] is false.
   final bool radioConnected;
+
+  /// Whether the station is on the air as the operator should be told — that
+  /// radio's own word (the app's PTT or the operator's mic), or a PTT key the
+  /// app holds on any radio — which turns the Radio chip's glyph into a red
+  /// dot.
+  final bool radioTransmitting;
 
   /// Opens the Station Configuration quick-access dialog (current radio pick
   /// plus the equipment inventory) from inside the expanded Radio control.
@@ -507,6 +514,7 @@ class RadioHookup {
     Listenable? radioUpdates,
     bool? hasConfiguredRadio,
     bool? radioConnected,
+    bool? radioTransmitting,
     VoidCallback? onOpenStationConfig,
     VoidCallback? onConnectRadio,
     String? radioName,
@@ -520,6 +528,7 @@ class RadioHookup {
     radioUpdates: radioUpdates ?? this.radioUpdates,
     hasConfiguredRadio: hasConfiguredRadio ?? this.hasConfiguredRadio,
     radioConnected: radioConnected ?? this.radioConnected,
+    radioTransmitting: radioTransmitting ?? this.radioTransmitting,
     onOpenStationConfig: onOpenStationConfig ?? this.onOpenStationConfig,
     onConnectRadio: onConnectRadio ?? this.onConnectRadio,
     radioName: radioName ?? this.radioName,

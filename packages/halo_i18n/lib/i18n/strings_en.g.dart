@@ -3890,6 +3890,7 @@ class Translations$settings$radio$en {
 	String get moreSettings => 'More station configuration settings';
 
 	late final Translations$settings$radio$units$en units = Translations$settings$radio$units$en.internal(_root);
+	late final Translations$settings$radio$pttKey$en pttKey = Translations$settings$radio$pttKey$en.internal(_root);
 	late final Translations$settings$radio$smartVfoSnap$en smartVfoSnap = Translations$settings$radio$smartVfoSnap$en.internal(_root);
 	late final Translations$settings$radio$snapDebounce$en snapDebounce = Translations$settings$radio$snapDebounce$en.internal(_root);
 	late final Translations$settings$radio$snapLongMove$en snapLongMove = Translations$settings$radio$snapLongMove$en.internal(_root);
@@ -6583,6 +6584,30 @@ class Translations$settings$radio$units$en {
 	String get hz => 'Hz';
 }
 
+// Path: settings.radio.pttKey
+class Translations$settings$radio$pttKey$en {
+	Translations$settings$radio$pttKey$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Control PTT with [']'
+	String get title => 'Control PTT with [\']';
+
+	/// en: 'In Phone modes, ['] keys the radio and ['] again unkeys it. It unkeys by itself after a minute.'
+	String get descriptionOn => 'In Phone modes, [\'] keys the radio and [\'] again unkeys it. It unkeys by itself after a minute.';
+
+	/// en: 'The ['] key does not key the radio.'
+	String get descriptionOff => 'The [\'] key does not key the radio.';
+
+	/// en: 'TX'
+	String get pill => 'TX';
+
+	/// en: 'Transmitting'
+	String get transmitting => 'Transmitting';
+}
+
 // Path: settings.radio.smartVfoSnap
 class Translations$settings$radio$smartVfoSnap$en {
 	Translations$settings$radio$smartVfoSnap$en.internal(this._root);
@@ -8411,6 +8436,11 @@ extension on Translations {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'Control PTT with [\']',
+			'settings.radio.pttKey.descriptionOn' => 'In Phone modes, [\'] keys the radio and [\'] again unkeys it. It unkeys by itself after a minute.',
+			'settings.radio.pttKey.descriptionOff' => 'The [\'] key does not key the radio.',
+			'settings.radio.pttKey.pill' => 'TX',
+			'settings.radio.pttKey.transmitting' => 'Transmitting',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.',
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Staying exactly where you tuned it.',
@@ -8455,13 +8485,13 @@ extension on Translations {
 			'settings.radio.cwMessages.repeatOff' => 'No',
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
 			'settings.radio.cwMessages.keyboardField' => 'Type to send',
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
 			'settings.radio.cwMessages.help' => 'Help',
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
 			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
 			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the call that will be logged',
@@ -8969,13 +8999,13 @@ extension on Translations {
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can handle, up to 200 ms.',
 			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.pollInterval' => 'Idle polling interval (ms)',
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
 			'settings.station.placeholderSwr' => 'SWR reading',

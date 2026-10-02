@@ -1192,6 +1192,13 @@
         "kHzPerSecond": "kHz/s",
         "hz": "Hz"
       },
+      "pttKey": {
+        "title": "Control PTT with [']",
+        "descriptionOn": "In Phone modes, ['] keys the radio and ['] again unkeys it. It unkeys by itself after a minute.",
+        "descriptionOff": "The ['] key does not key the radio.",
+        "pill": "TX",
+        "transmitting": "Transmitting"
+      },
       "smartVfoSnap": {
         "title": "Smart VFO Snap",
         "descriptionOn": "After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.",

@@ -257,6 +257,38 @@ void main() {
       });
     });
 
+    test('PTT keys the rig at once and unkeys it, and teardown lets go', () {
+      // The only way to reach Phone keying — the ['] key, the TX annunciator
+      // during a hand-held over — on a machine with no radio. A torn-down
+      // session left "transmitting" would hold the antenna gate shut after
+      // the rig was gone.
+      fakeAsync((async) {
+        final sink = _RecordingSink();
+        final session = const PlaceholderRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig)) as PttSession;
+        session.startUpdates();
+        sink.txReports.clear();
+
+        session.setPtt(true);
+        expect(sink.txReports, [true]);
+        expect(sink.meterReports, isNotEmpty, reason: 'keyed means metered, the same as a played memory');
+        session.setPtt(false);
+        expect(sink.txReports, [true, false]);
+
+        session.setPtt(true);
+        session.teardown();
+        expect(sink.txReports, [true, false, true, false]);
+      });
+    });
+
+    test('teardown reports nothing for a rig the operator never keyed', () {
+      // A session superseded before it started: a "receiving" on its way out
+      // would be the first word ever heard from a connection that is gone.
+      final sink = _RecordingSink();
+      final session = const PlaceholderRadioDriver().createSession(sink, type.driverConfig(type.defaultConfig));
+      session.teardown();
+      expect(sink.txReports, isEmpty);
+    });
+
     test('an SWR the operator cannot set is an alert they cannot see', () {
       // The knob exists for exactly one reason, so it is worth pinning: the
       // panel's warning threshold is [swrAlertThreshold], and without a way

@@ -291,6 +291,10 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// the row, so the settings dialog's entry reads this too.
   IconData get chipIcon => config().radio.hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
 
+  /// Whether the radio is on the air — the chip shows a red dot in place of
+  /// its glyph, in the same slot so the row does not shift under it.
+  bool get transmitting => config().radio.radioTransmitting;
+
   /// The chip's icon colour for the rig's state — null when there is no
   /// radio to report on. [selected] is the pill's own; see [radioStatusColor].
   Color? statusColor(ThemeData theme, {required bool selected}) {
@@ -1388,8 +1392,8 @@ SecondaryControlSpec radioControlSpec(
   required VoidCallback onPicked,
 }) => SecondaryControlSpec(
   key: 'radio',
-  icon: model.chipIcon,
-  iconColor: model.statusColor(theme, selected: selected),
+  icon: model.transmitting ? MdiIcons.circle : model.chipIcon,
+  iconColor: model.transmitting ? theme.colorScheme.error : model.statusColor(theme, selected: selected),
   // `band` is null both when nothing is tuned at all and when the
   // frequency in the field falls outside every ham band; `outOfBand`
   // catches the case a band name can't — a frequency inside a ham band

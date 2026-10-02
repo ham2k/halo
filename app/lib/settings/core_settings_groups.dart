@@ -636,6 +636,17 @@ class RadioSettingsGroup extends SettingsGroup {
       // on (the same `listed: false` the keyer's message fields use).
       for (final el in <Map<String, dynamic>>[
         {'type': 'header', 'style': 'section', 'title': s.tuningSection},
+        // Behind the keyer experiment, beside the voice keyer it shares the
+        // Phone-mode keys with.
+        if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ )
+          _toggle(
+            key: 'pttKey',
+            label: s.pttKey.title,
+            icon: 'microphone',
+            description: settings.pttKey ? s.pttKey.descriptionOn : s.pttKey.descriptionOff,
+            value: settings.pttKey,
+            target: 'current-radio',
+          ),
         _toggle(
           key: 'smartVfoSnap',
           label: s.smartVfoSnap.title,

@@ -140,7 +140,7 @@ class RigctldDriver extends EquipmentDriver {
 /// conversions do; wrong for a QRP or a high-power station.
 const _assumedMaxWatts = 100;
 
-class RigctldSession implements TransceiverSession {
+class RigctldSession implements TransceiverSession, PttSession {
   final EquipmentSink _sink;
 
   RigctldSession(this._sink, [this._config = const {}]);
@@ -330,6 +330,18 @@ class RigctldSession implements TransceiverSession {
   @override
   void setPower(num watts) => _send('L$_vfo RFPOWER ${(watts / _assumedMaxWatts).clamp(0, 1).toStringAsFixed(3)}');
 
+  /// Whether the app keyed the radio, so [teardown] can unkey it.
+  bool _keyedByUs = false;
+
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _send('T$_vfo ${on ? 1 : 0}');
+    _keyedByUs = on;
+  }
+
   @override
   void startUpdates() {
     _residual.clear();
@@ -358,8 +370,14 @@ class RigctldSession implements TransceiverSession {
 
   @override
   void teardown() {
-    // Nothing to say goodbye to: rigctld holds no per-client state, so
-    // stopping the poll is the whole farewell.
+    if (_keyedByUs) {
+      // First, and sent even though the connection is closing: nothing else
+      // will unkey this radio.
+      _keyedByUs = false;
+      _send('T$_vfo 0');
+    }
+    // rigctld holds no per-client state, so past the unkey, stopping the
+    // poll is the whole farewell.
     stopUpdates();
     _telemetry.dispose();
   }

@@ -105,7 +105,7 @@ class FlrigDriver extends EquipmentDriver {
 /// What kind of answer the outstanding request will produce — the only
 /// correlation an XML-RPC response offers is "it answers the oldest
 /// unanswered question".
-enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ignored }
+enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ptt, ignored }
 
 /// An XML-RPC scalar: bare text, which the spec reads as a string, or text
 /// inside one type element. flrig sends both — `rig.get_vfo` answers bare,
@@ -113,7 +113,7 @@ enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ignored 
 /// the bare form loses every typed answer without a trace.
 final _scalar = RegExp(r'<value>(?:<(i4|int|double|string|boolean)>([^<]*)</\1>|([^<]*))</value>');
 
-class FlrigSession implements TransceiverSession {
+class FlrigSession implements TransceiverSession, PttSession {
   final EquipmentSink _sink;
 
   FlrigSession(this._sink, [this._config = const {}]);
@@ -312,6 +312,7 @@ class FlrigSession implements TransceiverSession {
       case _Ask.meterSwr:
         final swr = double.tryParse(value);
         if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
+      case _Ask.ptt:
       case _Ask.ignored:
         break;
     }
@@ -345,6 +346,26 @@ class FlrigSession implements TransceiverSession {
   @override
   void setPower(num watts) => _call(_Ask.ignored, 'rig.set_power', '<param><value><double>$watts</double></value></param>');
 
+  /// Whether the app keyed the radio, so [teardown] can unkey it.
+  bool _keyedByUs = false;
+
+  static String _pttRequest(bool on) => _httpRequest('rig.set_ptt', '<param><value><i4>${on ? 1 : 0}</i4></value></param>');
+
+  /// At the head of the queue, not the tail: behind a TX watch and two meter
+  /// reads an unkey waits a round-trip per request while the transmitter
+  /// stays on. A set still queued goes with it — left behind this one it
+  /// would go out after it, and undo it.
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _queue.removeWhere((entry) => entry.$1 == _Ask.ptt);
+    _queue.insert(0, (_Ask.ptt, _pttRequest(on)));
+    _pump();
+    _keyedByUs = on;
+  }
+
   @override
   void startUpdates() {
     _buffer.clear();
@@ -369,6 +390,17 @@ class FlrigSession implements TransceiverSession {
 
   @override
   void teardown() {
+    if (_keyedByUs) {
+      // Straight to the wire, ahead of the queue: the connection is closing,
+      // and nothing else will unkey this radio. flrig drops a request that
+      // lands mid-response, so this can be lost to one in flight — there is
+      // no later moment to send it at.
+      _keyedByUs = false;
+      _sink.send(ascii.encode(_pttRequest(false)));
+    }
+    // A key still queued must not follow the unkey out, should one more
+    // response arrive and pump it.
+    _queue.clear();
     // flrig holds no per-client state; stopping the poll is the farewell.
     stopUpdates();
     _telemetry.dispose();

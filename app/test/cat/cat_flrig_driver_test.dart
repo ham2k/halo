@@ -288,6 +288,62 @@ void main() {
     });
   });
 
+  group('PTT', () {
+    test('keys and unkeys with rig.set_ptt, as an int', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setPtt(true);
+      expect(sink.sent.single, contains('<methodName>rig.set_ptt</methodName>'));
+      expect(sink.sent.single, contains('<i4>1</i4>'));
+      session.feed(_response('<i4>1</i4>'));
+      session.setPtt(false);
+      expect(sink.sent.last, contains('rig.set_ptt'));
+      expect(sink.sent.last, contains('<i4>0</i4>'));
+    });
+
+    test('an unkey goes ahead of the queue, and takes a queued key with it', () {
+      // Queued at the tail, an unkey waits a round-trip for every poll ahead
+      // of it with the transmitter on; put at the head over a key still
+      // waiting, it goes out FIRST and the stale key after it re-keys the
+      // radio.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      session.setPtt(true);
+      session.setPtt(false);
+      session.feed(_response('14070000'));
+      expect(sink.sent[1], contains('rig.set_ptt'));
+      expect(sink.sent[1], contains('<i4>0</i4>'));
+      session.feed(_response('<i4>1</i4>'));
+      expect(sink.sent.skip(2).where((r) => r.contains('rig.set_ptt')), isEmpty, reason: 'the superseded key never goes out');
+      session.teardown();
+    });
+
+    test('teardown unkeys a radio the app keyed, even with a request in flight', () {
+      // flrig drives the radio, and closing the connection does not unkey
+      // it: a teardown that forgets the unkey leaves the transmitter on the
+      // air with nothing left to turn it off.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      session.setPtt(true);
+      sink.sent.clear();
+      session.teardown();
+      expect(sink.sent.single, contains('rig.set_ptt'));
+      expect(sink.sent.single, contains('<i4>0</i4>'));
+    });
+
+    test('teardown sends no PTT on a radio the app never keyed', () {
+      // An unkey from a session that never keyed would cut off the operator
+      // transmitting from the radio's own mic.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      session.teardown();
+      expect(sink.sent.where((r) => r.contains('rig.set_ptt')), isEmpty);
+    });
+  });
+
   group('polling', () {
     test('a backed-up queue is not asked again, and recovery is one ask deep', () {
       // An unanswered flrig is behind, not forgetful; piling polls onto

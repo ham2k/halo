@@ -124,9 +124,9 @@ void main() {
       return SettingsService(await SharedPreferences.getInstance());
     }
 
-    /// Everything except the two feature toggles — i.e. the values that must
+    /// Everything except the feature toggles — i.e. the values that must
     /// stay out of the way until someone goes looking for them.
-    const toggles = {'smartVfoSnap', 'avoidZeroBeat'};
+    const toggles = {'pttKey', 'smartVfoSnap', 'avoidZeroBeat'};
 
     /// The CW messages live in this group too, but under their own dialog
     /// (`cw-messages`) — they are not tuning knobs. Kept out of the knob
@@ -186,6 +186,16 @@ void main() {
       // Each feature hides only its own knobs.
       expect(await keysFor(await settingsWith(snap: false)), {...toggles, 'zeroBeatRangeHz'});
       expect(await keysFor(await settingsWith(zeroBeat: false)), isNot(contains('zeroBeatRangeHz')));
+    });
+
+    test("['] PTT is offered only under the keyer experiment, off, and ahead of Smart VFO Snap", () async {
+      // Off by default because it puts the transmitter on the air; gated with
+      // the voice keyer whose Phone-mode keys it shares.
+      SharedPreferences.setMockInitialValues({});
+      expect(SettingsService(await SharedPreferences.getInstance()).pttKey, isFalse);
+      expect(await keysFor(await settingsWith(keyer: false)), isNot(contains('pttKey')));
+      final keys = [for (final el in await RadioSettingsGroup(await settingsWith()).buildElements()) el['key']];
+      expect(keys.indexOf('pttKey'), keys.indexOf('smartVfoSnap') - 1);
     });
 
     test('both radio features are off out of the box', () async {

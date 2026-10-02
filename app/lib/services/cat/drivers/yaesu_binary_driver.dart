@@ -179,7 +179,7 @@ class YaesuBinaryDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => YaesuBinarySession(sink, config: config);
 }
 
-class YaesuBinarySession implements TransceiverSession {
+class YaesuBinarySession implements TransceiverSession, PttSession {
   final EquipmentSink _sink;
   final Map<String, dynamic> _config;
 
@@ -412,9 +412,13 @@ class YaesuBinarySession implements TransceiverSession {
   /// Tracked ([_keyedByUs]) so [teardown] can put it back: this protocol
   /// has no dead-man's switch, and a disconnect with the transmitter on
   /// leaves a keyed radio and nothing to unkey it.
+  @override
   void setPtt(bool on) {
-    _keyedByUs = on;
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
     _request(buildPttCommand(on), isWrite: true);
+    _keyedByUs = on;
   }
 
   // ------------------------------------------------------------ lifetime

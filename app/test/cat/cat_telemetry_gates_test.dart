@@ -53,9 +53,14 @@ class _FakeTransport extends EquipmentTransport {
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
 }
 
-class _RadioSession implements TransceiverSession {
+/// Keys over CAT and never reports it — the app's key is all that says the
+/// radio is on the air.
+class _RadioSession implements TransceiverSession, PttSession {
   final EquipmentSink sink;
   _RadioSession(this.sink);
+
+  @override
+  void setPtt(bool on) {}
 
   @override
   void handleData(Uint8List chunk) {}
@@ -252,6 +257,36 @@ void main() {
     expect(cat.radio1IsTransmitting, isFalse, reason: 'silence is not a transmission');
     cat.selectAntenna(station.switchNode.uuid, '1', '3');
     expect(switchDriver.sessions.single.selections, ['1->3']);
+  });
+
+  test("the app's own key shuts the switch, before the radio says a word", () async {
+    // The app keyed this radio itself; waiting for the radio to confirm it
+    // would leave the relay free to move under the carrier it just put out.
+    final station = await connectedStation();
+    cat.togglePtt(station.radioNode.uuid);
+    expect(cat.radio1IsTransmitting, isTrue);
+    cat.selectAntenna(station.switchNode.uuid, '1', '3');
+    expect(switchDriver.sessions.single.selections, isEmpty);
+
+    cat.pttKeys.release();
+    cat.selectAntenna(station.switchNode.uuid, '1', '3');
+    expect(switchDriver.sessions.single.selections, ['1->3']);
+  });
+
+  test("a radio that goes silent under the app's key still holds the switch shut", () async {
+    // RF in the CAT cable is what silences a radio exactly while it
+    // transmits. Its last word goes stale; the app's own key does not — it
+    // has its own minute, and a relay moved under that carrier is destroyed.
+    final station = await connectedStation();
+    cat.togglePtt(station.radioNode.uuid);
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    expect(cat.stateFor(station.radioNode.uuid).stale, isTrue, reason: 'sanity: the silence watch tripped');
+    expect(cat.radio1IsTransmitting, isTrue);
+    cat.selectAntenna(station.switchNode.uuid, '1', '3');
+    expect(switchDriver.sessions.single.selections, isEmpty);
+
+    cat.pttKeys.release();
   });
 
   test('a meter reading that repeats its value does not wake every listener', () async {

@@ -409,6 +409,25 @@ void main() {
       });
     });
 
+    test('keys with opcode 0x08 and unkeys with 0x88', () {
+      // The chart's PTT pair, in order: an unkey that overtook its key would
+      // leave the radio keyed with the app believing it had let go.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        final radio = _FakeRadio(session, sink);
+        session.setPtt(true);
+        session.setPtt(false);
+        radio.answerEverythingAsked();
+        expect(sink.sent, [
+          [0, 0, 0, 0, YaesuBinaryOpcode.pttOn],
+          [0, 0, 0, 0, YaesuBinaryOpcode.pttOff],
+        ]);
+        expect(sink.txReports, isEmpty, reason: 'keyed is what the TX watch hears, never what was asked');
+        session.teardown();
+      });
+    });
+
     // A keyed radio with the app gone is a transmitter nothing can turn
     // off: this protocol has no dead-man's switch, and the operator's own
     // PTT was never pressed.

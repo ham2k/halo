@@ -899,7 +899,10 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
 /// The speed pill's place in a Phone mode: says the strip is the voice
 /// keyer's, and opens the Phone Keyer dialog — where a memory is named,
 /// played to check, or recorded — the way the speed pill opens the keyer's.
-/// Faded the same way when nothing can play.
+/// Faded the same way when nothing can play. While radio1 transmits, for
+/// whatever reason, it reads "TX" beside a red dot instead
+/// (docs/design/cat.md § PTT), at the width "Voice" gives it, so the strip
+/// does not shift each time the operator keys.
 class _VoicePill extends StatelessWidget {
   final CatService cat;
   final HaLoServices services;
@@ -915,12 +918,14 @@ class _VoicePill extends StatelessWidget {
       listenable: cat,
       builder: (context, _) {
         final enabled = cat.canPlayVoice;
-        var foreground = theme.colorScheme.onTertiaryContainer;
+        final transmitting = cat.radio1IsTransmitting || cat.pttKeys.held.value;
+        var foreground = transmitting ? theme.colorScheme.error : theme.colorScheme.onTertiaryContainer;
         var background = poloColors.tertiaryLight;
-        if (!enabled) {
+        if (!enabled && !transmitting) {
           foreground = foreground.withValues(alpha: 0.5);
           background = background.withValues(alpha: 0.5);
         }
+        final ptt = context.t.settings.radio.pttKey;
         return Material(
           color: background,
           borderRadius: borderRadius,
@@ -933,11 +938,30 @@ class _VoicePill extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(MdiIcons.microphone, size: 14, color: foreground),
+                  Icon(
+                    transmitting ? MdiIcons.circle : MdiIcons.microphone,
+                    size: 14,
+                    color: foreground,
+                    semanticLabel: transmitting ? ptt.transmitting : null,
+                  ),
                   const SizedBox(width: Space.xs),
-                  Text(
-                    context.t.settings.radio.voiceMessages.pill,
-                    style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: foreground),
+                  // Both labels laid out, one shown: the pill is as wide as the
+                  // wider of them whichever is up.
+                  Stack(
+                    alignment: AlignmentDirectional.centerStart,
+                    children: [
+                      for (final (label, shown) in [(context.t.settings.radio.voiceMessages.pill, !transmitting), (ptt.pill, transmitting)])
+                        Visibility(
+                          visible: shown,
+                          maintainSize: true,
+                          maintainAnimation: true,
+                          maintainState: true,
+                          child: Text(
+                            label,
+                            style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: foreground),
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),

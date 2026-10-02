@@ -108,7 +108,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => PlaceholderRadioSession(sink, config);
 
   @override
-  int voiceMemoryCountWith(Map<String, dynamic> config) => placeholderVoiceMemoryCount;
+  int voiceMemoryCountWith(Map<String, dynamic> config) => voiceMemoriesFromConfig(config, fallback: placeholderVoiceMemoryCount);
 
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
@@ -189,7 +189,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   }
 }
 
-class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
+class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports
@@ -396,7 +396,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   void refreshKeyerSpeed() => _afterDelay(() => _sink.reportKeyerSpeed(_keyerSpeed));
 
   @override
-  int get voiceMemoryCount => placeholderVoiceMemoryCount;
+  int get voiceMemoryCount => voiceMemoriesFromConfig(_config, fallback: placeholderVoiceMemoryCount);
 
   /// Off through `placeholderNoVoiceRecording`, so the fake rig can also
   /// stand in for one whose CAT plays memories but cannot record them —
@@ -440,6 +440,20 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
     _sink.reportVoiceActivity(null);
   }
 
+  /// Whether the operator keyed this rig, so [teardown] can unkey it.
+  bool _keyedByUs = false;
+
+  /// On the air at once, with no reply delay: the same as a played memory,
+  /// which is the other way this rig keys.
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _setTransmitting(on);
+    _keyedByUs = on;
+  }
+
   /// Null, not a short interval: this session reports a change as it
   /// happens, so a quiet VFO is a settled one.
   @override
@@ -447,6 +461,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
 
   @override
   void teardown() {
+    if (_keyedByUs) setPtt(false);
     _cwQueue.clear();
     stopVoice();
     stopUpdates();

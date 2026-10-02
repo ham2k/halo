@@ -1495,8 +1495,8 @@ built in the first place, and it stays available on a radio that already has one
 radio with a table is how a wrong table is found.
 
 Kenwood's TX state is worth one more line: the line has **no readable transmit-status command** —
-its `TX;` is the command that KEYS the radio, which this app must never send — so the flag in `IF`
-is the only way to ask. It sits immediately before the mode (P8, then P9) on every documented
+its `TX;` is the command that KEYS the radio, which this app never sends to ask anything, only to key
+the operator's own PTT (§ PTT) — so the flag in `IF` is the only way to ask. It sits immediately before the mode (P8, then P9) on every documented
 generation of the packet, so it is read against the mode offset the driver already learns rather
 than against a second guess of its own, and says nothing at all until that offset is settled.
 
@@ -1626,6 +1626,99 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   different switches and is not covered.
 - **FlexRadio** has no voice memories in its API; the **placeholder radio** "plays" for four
   seconds and records until stopped, so the surfaces run on a web build.
+
+## PTT
+
+**Control PTT with [']** (Radio settings, just before Smart VFO Snap; under the `keyer` experiment,
+off by default): in a Phone mode — the DRAFT's, as for the voice memories — `'` keys radio1 over CAT
+and `'` again unkeys it. Escape unkeys it too, alongside every message it stops. Not with ⌘, Ctrl or
+⌥ held. The key is matched by the CHARACTER it typed (`event.character`), not by its name: US
+Shift+`'` types `"` and a German or Swiss layout types `'` with Shift, and the platforms disagree
+about which key name either one reports. The view tracks the draft whenever PTT is possible, not only
+for the keyers — on a radio with no voice memories and a station with no CW messages, the draft's
+mode would otherwise never be known — and before it has heard one it reads the radio's mode, which is
+what a fresh draft takes: turning the setting on mid-operation publishes no new draft to hear.
+
+**Keying PTT ends this operator's own keying first** — a CQ repeat, an Enter Sends Messages sequence, a
+memory or a CW message going out — the way Escape does. The operator's voice replaces whatever was
+queued: a repeat left armed would play its CQ over them when its wait ran out, and a memory left
+playing ends with the radio's own unkey under their key (the FT-891's `TX0;`).
+
+**One handler for the station** (`PttKeyboard`, cat_ptt.dart), registered with the keyboard once and
+kept for the service's life, however many surfaces can key. While a key is held, `'` or Escape drops
+it from anywhere — another field, a dialog, Settings, an operation that has since closed — because
+the transmitter is on and the key that put it there has to take it off. Only KEYING asks the surfaces:
+each operation view registers a `PttKeyTarget` that names the radio `'` keys from it, or null, and
+only the view in front ever names one. Two views each handling the key themselves would disagree
+about whether it is held — the one behind would unkey and the one in front key again on the same
+press. The auto-repeats and the release of a press that went to PTT go nowhere, or holding `'` down to
+talk would type a run of apostrophes into the field.
+
+**Where the keyboard is decides whether `'` keys** (`quoteKeysPtt`, cw_function_keys.dart). In the
+main fields — the call, the reports and every exchange field, a name or a state included — `'` is PTT:
+that is where the operator works a contact. The one exception is the call field while it reads a
+command that takes free text, as NOTE does, which keeps the character; it is asked of the field's own
+formatters, so the call field answers for the mode it is in. In the secondary controls the formatters
+decide outright: a field that lets the character through keeps it (a note), one that would filter it
+out (the frequency) lets it key the radio — asked without the length limit, since a field that is full
+right now still takes `'` as text. Any other text field keeps it whatever it filters — outside the
+logging fields `'` never keys while the operator types — and with no field focused it is PTT.
+
+`PttSession` (driver.dart) is a capability like the keyers, on every protocol with a documented PTT
+set: CI-V `0x1C 0x00 01/00`, Yaesu `TX1;`/`TX0;` and the FT-8x7's binary `0x08`/`0x88`, Kenwood and
+Elecraft `TX;`/`RX;`, FlexRadio `xmit 1/0`, flrig `rig.set_ptt`, rigctld `T 1/0`, and the Guohetec
+radios. HRD, Commander and N3FJP document none and are not keyed. A session that keyed unkeys in its
+teardown, ahead of anything queued: no protocol here has a dead-man's switch, and only the driver can
+put the unkey ahead of its own queue. A driver marks itself keyed BEFORE a key goes out and clears the
+mark only AFTER an unkey has: either command throwing leaves the teardown an unkey to send. PTT on a serial line (RTS/DTR, § RTS and DTR) is not offered;
+neither is a peer's radio.
+
+**The key belongs to the radio it keyed** (`CatPtt`), not to the Main VFO role. Its TX reports and its
+release go to that radio's session whatever Main VFO points at since: moving the role, or adding a
+radio that takes it, leaves the key where it is, and `'`, Escape and the timeout still reach it. A
+session that closes is forgotten (`forget`): its own teardown unkeys the radio, and the next `'` keys
+the new session rather than spending a press on an unkey for a closed connection.
+
+**One transmitter at a time, whoever asks** (`CatService.yieldTransmitter`). Before anything transmits
+on a radio — a PTT key, a CW message, a voice memory, this operator's or a peer's request on a radio
+this station offers — every other radio of the station goes quiet: its CW queue stops and its voice
+memory stops (`CatKeying.quietOthers`). The app's PTT key drops before a CW message or a voice memory
+on ANY radio, the one it is on included: the message takes the transmitter over. What it stops is
+stopped the way every other stop is — a memory cut short is not timed, and only the chain of what was
+stopped is cancelled: left armed, a stopped CQ would come back after its wait and take the transmitter
+back, and the chain whose own send is quieting the others is not what went quiet. A CW message's radio
+is the one whose keyer sends it — the key in use itself when that is a radio's own keyer, radio1 when
+it is a keyer of its own. A keyer that is no radio (a Winkeyer) is left alone: it keys for radio1, and
+a message about to go to it queues behind what it is sending. This is the interlock two-radio
+operation builds on — the operator starts a message on one radio while the other is still on the
+air, and the one they reached for is the one that transmits.
+
+**The app's key follows the radio.** What the app holds is its own key; whether the radio TRANSMITS is
+the radio's report. A radio that said it was transmitting and then says it is not has dropped the key
+itself — its own time-out timer, a mic switch — and the app's key goes with it, so the next `'` keys
+again rather than unkeying a key nobody holds. The unkey is sent anyway: a CAT key is latched, and a
+report that was transient or misread would otherwise leave the radio keyed with no timeout left. Before the radio has confirmed, a "not transmitting" is
+the poll that was already on the wire and is ignored. Nothing else is read into silence: a slow TX
+watch (a shared serial line, a busy flrig), a radio that cannot report, and one that refused the key
+all look the same, and a fixed wait before calling a key refused would unkey a working radio whose
+watch is slower than the wait. The **one-minute** timeout (`pttTimeout`) bounds them all: a key
+forgotten under a mic cable is a minute of dead carrier, not an hour. One protocol cannot promise the
+teardown unkey: flrig drops a request that arrives while it is answering another, and its TX watch
+keeps a `get_ptt` in flight most of the time, so a disconnect mid-answer can lose the unkey; the
+radio's own time-out timer is what is left. flrig and rigctld also answer a refused PTT set with a fault
+the drivers do not surface, so a refused unkey reads as done until the radio's TX watch says otherwise.
+
+**On the air means either** (`radio1IsTransmitting`): radio1 says it is transmitting, or the app holds
+its key — which a radio that cannot report TX never confirms. The radio's own word goes stale with its
+silence; the app's key does not: RF in the CAT cable silences a radio exactly while it transmits, and a
+key read as "off" then would reopen the antenna lock under the carrier. The key has its own minute. A
+radio that refused the key (TX inhibit) likewise reads as on the air until `'`, Escape or the timeout
+— the cost of reading nothing into silence. The antenna lock and Smart VFO Snap read it (§ The alert,
+and the two things TX state is allowed to stop), so neither acts on a transmitter the app just keyed.
+The indicators read it too, and ALSO light for a key the app holds on any other radio — one left behind
+when Main VFO moved is still the operator's to drop: the Radio chip's glyph becomes a red dot and the
+keyer area's Voice pill reads "TX" beside one, at the width "Voice" gives it, so the strip does not
+shift each time the operator keys.
 
 ## Keying a peer's radio
 

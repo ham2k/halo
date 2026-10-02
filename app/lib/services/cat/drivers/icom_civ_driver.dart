@@ -297,7 +297,7 @@ class IcomCivDriver extends EquipmentDriver {
   static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
-class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
+class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).
@@ -855,6 +855,25 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _voice.end();
   }
 
+  /// Whether the app keyed the radio, so [teardown] can unkey it.
+  bool _keyedByUs = false;
+
+  /// Ahead of everything waiting, like a stop, and taking queued 0x1C frames
+  /// with it: a set still queued from a moment ago would otherwise go out
+  /// AFTER this one and undo it. A TX read dropped with them is asked again
+  /// on the watch's next turn.
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _sendFirst(
+      buildSetTransmitFrame(to: radioAddress, from: controllerAddress, on: on),
+      dropping: CivCommand.transmitStatus,
+    );
+    _keyedByUs = on;
+  }
+
   @override
   void startUpdates() {
     _framer.reset();
@@ -895,6 +914,13 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   @override
   void teardown() {
+    if (_keyedByUs) {
+      // Straight to the wire, not through the outbox: an unkey that waits
+      // for the exchange in flight may not go out at all, and nothing else
+      // will unkey this radio.
+      _keyedByUs = false;
+      _sink.send(buildSetTransmitFrame(to: radioAddress, from: controllerAddress, on: false));
+    }
     _answerTimer?.cancel();
     _outbox.clear();
     _cwQueue.clear();

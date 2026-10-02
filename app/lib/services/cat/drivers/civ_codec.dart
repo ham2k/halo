@@ -309,6 +309,11 @@ List<int> buildStopVoiceMemoryFrame({required int to, int from = civDefaultContr
 List<int> buildReadTransmitStatusFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: const [0x00]);
 
+/// Keys ([on]) or unkeys the transmitter: the same sub-command the read
+/// asks, with the state as its data byte.
+List<int> buildSetTransmitFrame({required int to, int from = civDefaultControllerAddress, required bool on}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: [0x00, on ? 0x01 : 0x00]);
+
 /// `frame.data` of a 0x1C reply: sub-command 0x00 then 0x00 (receiving) or
 /// 0x01 (transmitting). Null for any other sub-command or a short reply.
 bool? parseTransmitStatusData(List<int> data) {

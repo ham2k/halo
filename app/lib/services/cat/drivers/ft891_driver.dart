@@ -307,7 +307,7 @@ const yaesuKeyerMemoryCharsConfigKey = 'yaesuKeyerMemoryChars';
 /// the FT-710's (see [buildPlayKeyerMemoryByChannelCommand]).
 const yaesuKeyerPlayByChannelConfigKey = 'yaesuKeyerPlayByChannel';
 
-class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
+class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -798,6 +798,19 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     _voice.end();
   }
 
+  /// Whether the operator keyed the radio through [setPtt], so [teardown]
+  /// can unkey it.
+  bool _keyedByUs = false;
+
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _send(buildSetTxCommand(on));
+    _keyedByUs = on;
+  }
+
   @override
   void startUpdates() {
     _framer.reset();
@@ -832,6 +845,12 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
 
   @override
   void teardown() {
+    if (_keyedByUs) {
+      // First, and sent even though the connection is closing: nothing else
+      // will unkey this radio.
+      _keyedByUs = false;
+      _send(buildSetTxCommand(false));
+    }
     _cwQueue.clear();
     _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.

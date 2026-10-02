@@ -72,6 +72,10 @@ abstract class KeyingStation {
   String? get localRadio1;
 
   Future<void> updateNode(EquipmentNode node);
+
+  /// Quiets every radio but [radio] before it transmits — one transmitter at
+  /// a time (CatService.yieldTransmitter, docs/design/cat.md § PTT).
+  void yieldTransmitter(String? radio);
 }
 
 class CatKeying {
@@ -304,6 +308,9 @@ class CatKeying {
   bool sendCwLocally(String text) {
     final session = _cwKeyer;
     if (session == null) return false;
+    // The radio that transmits it: the key in use itself when that is a
+    // radio's own keyer, radio1 when it is a keyer that keys radio1.
+    station.yieldTransmitter(station.connectedSession(_cwKeyerUuid!) is TransceiverSession ? _cwKeyerUuid : station.localRadio1);
     try {
       session.sendCw(text);
       return true;
@@ -350,10 +357,12 @@ class CatKeying {
 
   /// Escape: stops every message, chain and repeat, whatever the keyer, the
   /// mode, or whose they are. False when there was nothing to stop, so the
-  /// key keeps its usual meaning in the logging fields.
-  bool stopKeying() {
+  /// key keeps its usual meaning in the logging fields. [alsoStopped] says
+  /// the same Escape already stopped something outside the keyers (a held
+  /// PTT key), which the logging fields must hear about the same way.
+  bool stopKeying({bool alsoStopped = false}) {
     final busy = chain.running || _voiceSequence.isNotEmpty || voiceActivity.value != null || cwSending;
-    if (!busy) return false;
+    if (!busy && !alsoStopped) return false;
     // The logging fields hear the same keystroke AFTER the operation view's
     // key handler has run this, and read the answer through
     // [escapeStoppedKeying] rather than asking again: asked again, the stop
@@ -361,11 +370,19 @@ class CatKeying {
     // QSO edit.
     escapeStoppedKeying = true;
     scheduleMicrotask(() => escapeStoppedKeying = false);
+    stopAll();
+    return true;
+  }
+
+  /// Ends every message, chain and repeat of this operator's own — Escape's
+  /// stop, and the operator keying PTT, whose own voice replaces whatever was
+  /// queued: a CQ repeat left armed would play over them when its wait ran
+  /// out, and a memory left playing ends with an unkey under their key.
+  void stopAll() {
     chain.cancel();
     cancelVoiceSequence();
     if (voiceActivity.value != null) stopVoice();
     if (cwSending) stopCw();
-    return true;
   }
 
   /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
@@ -643,6 +660,7 @@ class CatKeying {
       // one — a key, a button, the dialog — repeats alike. Any OTHER memory
       // ends a chain: the operator has moved on.
       if (!chaining) chain.cancel();
+      station.yieldTransmitter(station.localRadio1);
       _startMeasurement(n);
       session.playVoiceMemory(n);
       _voiceMessageOne = n == 1;
@@ -693,6 +711,7 @@ class CatKeying {
       // Measured only on radio1, which is the rig whose memory lengths this
       // device stores — a second offered radio's memories are timed by
       // whoever has it as their radio1.
+      station.yieldTransmitter(uuid);
       if (uuid == station.localRadio1) _startMeasurement(n);
       session.playVoiceMemory(n);
     } catch (e, st) {
@@ -1098,6 +1117,41 @@ class CatKeying {
     // offered, but the memory of it playing would outlive the offer.
     _voiceActivityByNode.remove(uuid);
     onKeyingChanged();
+  }
+
+  /// Stops the CW and voice of every transceiver but [radio] — its half of
+  /// one transmitter at a time; the PTT key is the station's to drop. A
+  /// keyer that is no radio is left alone: it keys for radio1, and a message
+  /// about to go to it queues behind what it is sending.
+  void quietOthers(String? radio) {
+    for (final node in station.nodes) {
+      if (node.uuid == radio) continue;
+      if (station.connectedSession(node.uuid) is! TransceiverSession) continue;
+      final session = station.connectedSession(node.uuid);
+      try {
+        // Only the chain of what is stopped here: this runs inside a chain's
+        // own send too, and that chain is not what went quiet. Left armed, a
+        // stopped CQ would come back after its wait and take the transmitter
+        // back from the radio that took it.
+        if (session is CwKeyerSession && session.cwSending) {
+          if (node.uuid == _cwKeyerUuid && chain.memory == null) chain.cancel();
+          session.stopCw();
+        }
+        if (session is VoiceKeyerSession && _voiceActivityByNode.containsKey(node.uuid)) {
+          if (node.uuid == station.localRadio1) {
+            if (chain.memory != null) chain.cancel();
+            cancelVoiceSequence();
+            // Cut short, so not a measurement — [stopVoice]'s rule.
+            _playMemory = null;
+            _playStart = null;
+            _playDoubted = false;
+          }
+          session.stopVoice();
+        }
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'cat:quiet-others');
+      }
+    }
   }
 
   /// Stops what the OUTGOING key was keying when the key in use changes —

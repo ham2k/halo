@@ -1192,6 +1192,13 @@
         "kHzPerSecond": "kHz/s",
         "hz": "Hz"
       },
+      "pttKey": {
+        "title": "Controlar PTT con [']",
+        "descriptionOn": "En modos de voz, ['] pone la radio a transmitir y ['] otra vez la detiene. Se detiene sola al minuto.",
+        "descriptionOff": "La tecla ['] no pone la radio a transmitir.",
+        "pill": "TX",
+        "transmitting": "Transmitiendo"
+      },
       "smartVfoSnap": {
         "title": "Ajuste inteligente del VFO",
         "descriptionOn": "Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.",

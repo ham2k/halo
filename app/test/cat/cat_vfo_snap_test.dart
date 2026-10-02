@@ -74,7 +74,9 @@ class _FakeTransport extends EquipmentTransport {
   Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => _FakeConnection();
 }
 
-class _FakeSession implements TransceiverSession {
+/// Keys over CAT and never reports TX — a radio whose TX state the app
+/// cannot read, which is every radio for the moment before its watch answers.
+class _FakeSession implements TransceiverSession, PttSession {
   final EquipmentSink sink;
   final List<String> commands = [];
 
@@ -100,6 +102,8 @@ class _FakeSession implements TransceiverSession {
   void setMode(String mode) => commands.add('mode:$mode');
   @override
   void setPower(num watts) => commands.add('power:$watts');
+  @override
+  void setPtt(bool on) => commands.add('ptt:$on');
   @override
   void teardown() {}
 }
@@ -397,6 +401,22 @@ void main() {
         async.elapse(quiet * 2);
       });
       expect(session.commands, isEmpty);
+    });
+
+    test('a radio the app keyed is never snapped, though it never said it was transmitting', () async {
+      // The app's own key counts as much as the radio's word: a radio that
+      // cannot report TX would otherwise be retuned mid-over by the very app
+      // that keyed it.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      cat.togglePtt(cat.localRadio1!);
+      fakeAsync((async) {
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands, ['ptt:true']);
+      expect(cat.radio1IsTransmitting, isTrue);
+      cat.pttKeys.release();
     });
 
     test('a radio keyed DURING the settle delay is not snapped when it elapses', () async {

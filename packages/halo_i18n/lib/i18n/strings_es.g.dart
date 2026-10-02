@@ -1823,6 +1823,7 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override String get stationConfigurationSection => 'Configuración de estación';
 	@override String get moreSettings => 'Más ajustes de configuración de la estación';
 	@override late final _Translations$settings$radio$units$es units = _Translations$settings$radio$units$es._(_root);
+	@override late final _Translations$settings$radio$pttKey$es pttKey = _Translations$settings$radio$pttKey$es._(_root);
 	@override late final _Translations$settings$radio$smartVfoSnap$es smartVfoSnap = _Translations$settings$radio$smartVfoSnap$es._(_root);
 	@override late final _Translations$settings$radio$snapDebounce$es snapDebounce = _Translations$settings$radio$snapDebounce$es._(_root);
 	@override late final _Translations$settings$radio$snapLongMove$es snapLongMove = _Translations$settings$radio$snapLongMove$es._(_root);
@@ -3029,6 +3030,20 @@ class _Translations$settings$radio$units$es extends Translations$settings$radio$
 	@override String get kHz => 'kHz';
 	@override String get kHzPerSecond => 'kHz/s';
 	@override String get hz => 'Hz';
+}
+
+// Path: settings.radio.pttKey
+class _Translations$settings$radio$pttKey$es extends Translations$settings$radio$pttKey$en {
+	_Translations$settings$radio$pttKey$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Controlar PTT con [\']';
+	@override String get descriptionOn => 'En modos de voz, [\'] pone la radio a transmitir y [\'] otra vez la detiene. Se detiene sola al minuto.';
+	@override String get descriptionOff => 'La tecla [\'] no pone la radio a transmitir.';
+	@override String get pill => 'TX';
+	@override String get transmitting => 'Transmitiendo';
 }
 
 // Path: settings.radio.smartVfoSnap
@@ -4416,6 +4431,11 @@ extension on TranslationsEs {
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
+			'settings.radio.pttKey.title' => 'Controlar PTT con [\']',
+			'settings.radio.pttKey.descriptionOn' => 'En modos de voz, [\'] pone la radio a transmitir y [\'] otra vez la detiene. Se detiene sola al minuto.',
+			'settings.radio.pttKey.descriptionOff' => 'La tecla [\'] no pone la radio a transmitir.',
+			'settings.radio.pttKey.pill' => 'TX',
+			'settings.radio.pttKey.transmitting' => 'Transmitiendo',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.',
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Quedándose exactamente donde la sintonizaste.',
@@ -4460,13 +4480,13 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.repeatOff' => 'No',
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
 			'settings.radio.cwMessages.keyboardField' => 'Escribe para transmitir',
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
 			'settings.radio.cwMessages.help' => 'Ayuda',
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpIntro' => 'Los mensajes pueden usar plantillas con los siguientes valores:',
 			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
 			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el indicativo que se registrará',
@@ -4974,13 +4994,13 @@ extension on TranslationsEs {
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador en ${device}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwKeyerArea' => 'Área del manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
 			'settings.station.whatToTrack' => '¿Qué registrar?',
 			'settings.station.trackFieldRig' => 'Transceptor',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
 			'settings.station.trackFieldAntenna' => 'Antena',

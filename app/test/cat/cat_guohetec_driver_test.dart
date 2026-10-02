@@ -290,6 +290,14 @@ void main() {
       expect(_dataOf(_lastSent(sink, GuohetecOpcode.ptt)!), [0x00]);
     });
 
+    test('unkeying sends the release byte', () {
+      // Inverted from what a reader expects — 0x00 presses, 0x01 releases —
+      // so an unkey written the obvious way would key the radio instead.
+      session.setPtt(true);
+      session.setPtt(false);
+      expect(_dataOf(_lastSent(sink, GuohetecOpcode.ptt)!), [0x01]);
+    });
+
     test('teardown unkeys a radio the app keyed', () {
       // This protocol has no dead-man's switch. Disconnecting mid-transmission
       // leaves a radio keyed into an antenna with nothing left to turn it off.

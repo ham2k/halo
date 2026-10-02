@@ -673,6 +673,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // widget, because the keys must work whichever field has focus, and the
     // main key handler (main.dart) only looks at modified chords.
     HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
+    widget.services.cat.pttKeys.addTarget(_pttTarget);
     // Opening the view is the first activity on it; every key, pointer
     // press, scroll, call edit and logged QSO after that refreshes the hold
     // (see [_onWakeKeyEvent], the Listener around the Scaffold and
@@ -696,14 +697,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// panels that care read the cache themselves.
   int _spotsRevision = 0;
 
-  /// Whether a function key could play a voice memory: the keying
-  /// experiment on, and radio1 able to play. Read at build, like
-  /// [_cwMessagesConfigured]; the view rebuilds on the CAT service's
+  /// Whether a key could transmit in a Phone mode — a function key playing a
+  /// voice memory, or ['] keying PTT — so the draft is tracked for
+  /// [_keyingPhone]. Read at build; the view rebuilds on the CAT service's
   /// notifications, so a radio connecting takes effect on the next one.
-  bool get _voiceKeyingPossible {
+  bool get _phoneKeyingPossible {
     final settings = widget.services.settings;
     if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
-    return widget.services.cat.canPlayVoice;
+    return widget.services.cat.canPlayVoice || (settings.pttKey && widget.services.cat.canPtt);
   }
 
   /// Whether a function key would key anything — the draft is worth
@@ -812,8 +813,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// the draft's mode is Phone. From the LATEST draft, and handed to the
   /// keyer area as a value, so the keys and the strip answer from one
   /// snapshot — the strip's rebuild still waits for the debounce, but a
-  /// build never disagrees with the keys about which keyer it is.
-  bool get _keyingPhone => superModeForMode(_latestDraftQso?['mode'] as String?) == 'Phone';
+  /// build never disagrees with the keys about which keyer it is. Before the
+  /// view has heard a draft, the radio's mode, which is what a fresh draft
+  /// takes: turning PTT on mid-operation publishes nothing new to hear.
+  bool get _keyingPhone => superModeForMode((_latestDraftQso?['mode'] as String?) ?? widget.services.radio.vfoA.mode) == 'Phone';
 
   /// Coalesces the keystroke burst of typing a callsign into one rebuild.
   ///
@@ -870,6 +873,17 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     if (event is! KeyDownEvent) return false;
     if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) _wakeHold.touch();
     return false;
+  }
+
+  /// Which radio ['] keys from this view (cat_ptt.dart): radio1, while this
+  /// view is in front, the draft is in a Phone mode, and the field with the
+  /// keyboard does not take ['] as a character.
+  String? _pttTarget() {
+    final services = widget.services;
+    if (!mounted || testerOverlayCovering.value || !(ModalRoute.of(context)?.isCurrent ?? false)) return null;
+    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ || !services.settings.pttKey) return null;
+    if (!_keyingPhone || !services.cat.canPtt || !quoteKeysPtt(FocusManager.instance.primaryFocus?.context)) return null;
+    return services.cat.localRadio1;
   }
 
   /// F1-F8 key the matching CW message through the key in use — or, while
@@ -1182,6 +1196,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
+    widget.services.cat.pttKeys.removeTarget(_pttTarget);
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
     _wakeHold.release();
     widget.services.settings.removeListener(_onSettingsChanged);
@@ -2756,7 +2771,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 // And the voice keyer: its MODE is the draft's (`_keyingPhone`),
                 // so with nothing tracking the draft F1 in SSB would fall
                 // through to a CW keyer that keys nothing, silently.
-                onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured || _voiceKeyingPossible ? _onQsoDraftChanged : null,
+                onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured || _phoneKeyingPossible ? _onQsoDraftChanged : null,
                 // Peer sharing is its own reason to publish, independent of the
                 // layout: the panel that reads this lives on ANOTHER device, so
                 // gating it on what a panel here declares would leave a position

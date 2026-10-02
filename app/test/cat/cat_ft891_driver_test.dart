@@ -484,6 +484,36 @@ void main() {
         expect(sink.sent, isEmpty);
       });
     });
+
+    group('PTT', () {
+      test('keys with TX1; and unkeys with TX0;', () {
+        // TX1 is CAT TX ON in the manual's P1 table; the bare `TX;` the
+        // watch sends is the read, and would key nothing.
+        session.setPtt(true);
+        session.setPtt(false);
+        expect(sink.sent, ['TX1;', 'TX0;']);
+        expect(sink.txReports, isEmpty, reason: 'keyed is what the TX watch hears, never what was asked');
+      });
+
+      test('teardown unkeys a radio the app keyed, before anything else', () {
+        // A teardown that forgets the unkey leaves the transmitter on the air
+        // with nothing left to turn it off.
+        session.startUpdates();
+        session.setPtt(true);
+        sink.sent.clear();
+        session.teardown();
+        expect(sink.sent, ['TX0;', 'AI0;']);
+      });
+
+      test('teardown sends no TX0; on a radio the app never keyed', () {
+        // An unkey from a session that never keyed would cut off the operator
+        // transmitting from the radio's own mic.
+        session.startUpdates();
+        sink.sent.clear();
+        session.teardown();
+        expect(sink.sent, ['AI0;']);
+      });
+    });
   });
 
   test('the CP2105 match is a guess, and only ever a suggestion', () {

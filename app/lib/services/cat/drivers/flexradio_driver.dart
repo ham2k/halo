@@ -257,7 +257,7 @@ const _cwxChunkLength = 128;
 const _flexKeyerSpeedMin = 5;
 const _flexKeyerSpeedMax = 100;
 
-class FlexRadioSession implements TransceiverSession, CwKeyerSession {
+class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -774,6 +774,21 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     if (_handshakeDone && _wantUpdates) _sendCommand('sub cwx all');
   }
 
+  /// Whether the app keyed the radio, so [teardown] can unkey it.
+  bool _keyedByUs = false;
+
+  /// Keys the radio's transmit slice, which need not be [slice]: `xmit`
+  /// names none. Whether it keyed comes back as the interlock push
+  /// ([_handleInterlockLine]).
+  @override
+  void setPtt(bool on) {
+    // Set before a key and cleared only after an unkey: either one that
+    // throws leaves [teardown] an unkey to send.
+    _keyedByUs |= on;
+    _sendCommand('xmit ${on ? 1 : 0}');
+    _keyedByUs = on;
+  }
+
   /// FlexRadio pushes status on its own — "starting updates" just means
   /// subscribing.
   @override
@@ -807,6 +822,12 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
 
   @override
   void teardown() {
+    if (_keyedByUs) {
+      // First, and sent even though the connection is closing: nothing else
+      // will unkey this radio.
+      _keyedByUs = false;
+      _sendCommand('xmit 0');
+    }
     _cwQueue.clear();
     _stopPeriodicTimers();
     if (_wantUpdates && _handshakeDone) _unsubscribe();

@@ -416,6 +416,27 @@ abstract class VoiceKeyerSession implements EquipmentSession {
   void stopVoice();
 }
 
+/// A transceiver whose CAT can key and unkey the transmitter outright —
+/// what the operator's ['] does in a Phone mode (docs/design/cat.md § PTT).
+///
+/// A capability of its own for the same reason the keyers are: several
+/// protocols here (HRD, Commander, N3FJP) have no documented PTT set, and
+/// "this radio ignores setPtt" must not look like "the radio was keyed".
+///
+/// Whether the radio IS transmitting comes up through
+/// [EquipmentSink.reportTransmitting] like any other TX report, never
+/// assumed from the set: the radio can refuse (TX inhibit, out of band) or
+/// drop it by itself (its own time-out timer).
+///
+/// A session that keyed the radio unkeys it in [EquipmentSession.teardown],
+/// ahead of anything queued: no protocol here has a dead-man's switch, and a
+/// connection closed with PTT held leaves a transmitter on the air with
+/// nothing left to unkey it.
+abstract class PttSession implements EquipmentSession {
+  /// Keys ([on]) or unkeys the transmitter.
+  void setPtt(bool on);
+}
+
 abstract class EquipmentDriver {
   const EquipmentDriver();
 

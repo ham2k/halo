@@ -346,6 +346,38 @@ void main() {
       });
     });
 
+    test('a PTT set goes ahead of everything waiting, and a newer one replaces it', () {
+      // Behind the poll's reads an unkey waits an exchange per read with the
+      // transmitter on. And a key still queued behind an unkey placed ahead
+      // of it would go out second and put the radio back on the air.
+      fakeAsync((async) {
+        session.startUpdates();
+        session.setPtt(true);
+        session.setPtt(false);
+        sink.sent.clear();
+        ack();
+        expect(sink.sent.first.sublist(4), [0x1C, 0x00, 0x00, 0xFD]);
+        ack(10);
+        expect(sink.sent.where((f) => f.length == 8 && f[4] == 0x1C), hasLength(1), reason: 'the unkey, and no key after it');
+        session.teardown();
+      });
+    });
+
+    test('teardown unkeys straight to the wire, not behind the exchange in flight', () {
+      // The connection closes right after: an unkey left in the queue for an
+      // answer that never comes is never sent, and the transmitter stays on
+      // the air with nothing left to turn it off.
+      fakeAsync((async) {
+        session.startUpdates();
+        session.setPtt(true);
+        sink.sent.clear();
+        session.teardown();
+        expect(sink.sent, [
+          [0xFE, 0xFE, ic705, us, 0x1C, 0x00, 0x00, 0xFD],
+        ]);
+      });
+    });
+
     test('an announcement the radio makes on its own does not free the wire', () {
       // A transceive broadcast arrives whenever the dial moves; taken as an
       // answer, it would send the next command over the one still pending.
@@ -473,6 +505,23 @@ void main() {
   });
 
   group('commanding the radio', () {
+    test('PTT keys with 0x1C 0x00 0x01 and unkeys with 0x1C 0x00 0x00', () {
+      session.setPtt(true);
+      session.setPtt(false);
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic705, us, 0x1C, 0x00, 0x01, 0xFD],
+        [0xFE, 0xFE, ic705, us, 0x1C, 0x00, 0x00, 0xFD],
+      ]);
+      expect(sink.txReports, isEmpty, reason: 'keyed is what the TX watch hears, never what was asked');
+    });
+
+    test('teardown sends no unkey on a radio the app never keyed', () {
+      // An unkey from a session that never keyed would cut off the operator
+      // transmitting from the radio's own mic.
+      session.teardown();
+      expect(sink.sent.where((f) => f.length == 8 && f[4] == 0x1C), isEmpty);
+    });
+
     test('set frequency is a CI-V frame with BCD payload', () {
       session.setFrequency(14074);
       expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x05, 0x00, 0x40, 0x07, 0x14, 0x00, 0xFD]);

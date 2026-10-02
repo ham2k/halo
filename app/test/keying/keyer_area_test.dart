@@ -468,6 +468,30 @@ void main() {
     await tester.pump(const Duration(seconds: 62));
   });
 
+  testWidgets('while the radio transmits the voice pill reads TX, at the width it had', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    final pill = find.ancestor(of: find.text('Voice'), matching: find.byType(InkWell)).first;
+    final idle = tester.getSize(pill);
+    expect(find.text('TX').hitTestable(), findsNothing);
+
+    services.cat.togglePtt(services.cat.localRadio1!);
+    await tester.pump();
+    expect(find.text('TX').hitTestable(), findsOneWidget);
+    expect(find.text('Voice').hitTestable(), findsNothing);
+    // A pill that narrowed to "TX" would shift the strip each time the
+    // operator keys, and back on every unkey.
+    expect(tester.getSize(pill), idle);
+
+    services.cat.togglePtt(services.cat.localRadio1!);
+    await tester.pump();
+    expect(find.text('Voice').hitTestable(), findsOneWidget);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
   testWidgets('a memory playing brings the strip up by itself, and it stays after, like a CW message', (tester) async {
     await connectPlaceholder(tester);
     await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));

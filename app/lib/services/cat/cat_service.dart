@@ -26,6 +26,7 @@ import '../radio_service.dart';
 import '../settings_service.dart';
 import 'auto_connect_guard.dart';
 import 'cat_keying.dart';
+import 'cat_ptt.dart';
 import 'cat_traffic_log.dart';
 import 'connect_failure.dart';
 import 'equipment_tag.dart';
@@ -884,8 +885,35 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   void playVoiceSequence(List<int> memories) => _keying.playVoiceSequence(memories);
   void cancelVoiceSequence() => _keying.cancelVoiceSequence();
   void stopMessageOne() => _keying.stopMessageOne();
-  bool stopKeying() => _keying.stopKeying();
+  bool stopKeying() => _keying.stopKeying(alsoStopped: _ptt.release());
   bool get escapeStoppedKeying => _keying.escapeStoppedKeying;
+
+  /// ['] in a Phone mode (cat_ptt.dart) — this station's radios, never a peer's.
+  late final _ptt = CatPtt()..held.addListener(notifyListeners);
+  late final pttKeys = PttKeyboard(held: _ptt.held, release: _ptt.release, escape: stopKeying, toggle: togglePtt);
+  PttSession? _pttSession(String? uuid) => switch (uuid == null ? null : connectedSession(uuid)) {
+    final PttSession session => session,
+    _ => null,
+  };
+  bool get canPtt => _pttSession(_localRadio1) != null;
+  void togglePtt(String radio) {
+    final session = _pttSession(radio);
+    if (session == null) return;
+    if (!_ptt.heldOn(session)) {
+      _keying.stopAll();
+      _keying.quietOthers(radio);
+    }
+    _ptt.toggle(session);
+  }
+
+  /// One transmitter at a time, whoever asks: before a CW message or a voice
+  /// memory goes out on [radio], the app's PTT key drops — on any radio, the
+  /// message takes over — and every other radio stops its CW and voice.
+  @override
+  void yieldTransmitter(String? radio) {
+    _ptt.release();
+    _keying.quietOthers(radio);
+  }
 
   // --------------------------------------- what keying asks of the station
 
@@ -987,7 +1015,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     }
   }
 
-  /// Whether the radio driving `vfoA` says it is keyed RIGHT NOW.
+  /// Whether the radio driving `vfoA` is keyed RIGHT NOW: it says so, or the app
+  /// holds its PTT key — unconfirmed, or the radio gone stale (RF in its CAT cable).
   ///
   /// False when nothing knows — a driver that cannot read TX state never
   /// reports one, and both callers want "go ahead unless the radio has said
@@ -1006,8 +1035,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // is what already knows the difference, and a gate that fails closed on
     // an answer known to be out of date, with nothing on screen to say why,
     // is worse than one that reopens.
-    if (state.stale) return false;
-    return state.telemetry.isTransmitting;
+    if (state.stale) return _ptt.heldOn(connectedSession(uuid));
+    return state.telemetry.isTransmitting || _ptt.heldOn(connectedSession(uuid));
   }
 
   /// The type handling [node], or null if it isn't in the catalogue — a
@@ -1743,6 +1772,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         final state = stateFor(uuid);
         if (state.telemetry.transmitting == transmitting) return;
         _setState(uuid, state.copyWith(telemetry: state.telemetry.withTransmitting(transmitting)));
+        _ptt.onTransmitting(runtime.session, transmitting);
       },
       onMeter: (meter, value) {
         if (runtime.connection != connection) return;
@@ -2512,6 +2542,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     if (subscription != null) await subscription.cancel();
 
     if (session != null) {
+      _ptt.forget(session);
       try {
         session.teardown();
       } catch (e, st) {
@@ -2556,6 +2587,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // the designated radio — a notifier disposed first would be notified.
     cancelKeyerRepeat();
     _keying.dispose();
+    pttKeys.dispose();
+    _ptt.dispose();
     _repeat.dispose();
     _runtimes.clear();
     super.dispose();

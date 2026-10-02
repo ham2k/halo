@@ -198,6 +198,50 @@ void main() {
     });
   });
 
+  group('PTT', () {
+    test('keys with T 1 and unkeys with T 0', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setPtt(true);
+      session.setPtt(false);
+      expect(sink.sent, ['T 1\n', 'T 0\n']);
+    });
+
+    test('a --vfo daemon is told the VFO on PTT too', () {
+      // Sent bare to a `--vfo` daemon, `T 1` is misparsed — its `1` taken
+      // for the VFO name — and the radio silently never keys.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.feed('ChkVFO: 1\n');
+      session.setPtt(true);
+      expect(sink.sent, ['T currVFO 1\n']);
+    });
+
+    test('teardown unkeys a radio the app keyed', () {
+      // rigctld holds the radio after we hang up: a teardown that forgets
+      // the unkey leaves the transmitter on the air with nothing left to
+      // turn it off.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      session.setPtt(true);
+      sink.sent.clear();
+      session.teardown();
+      expect(sink.sent, ['T 0\n']);
+    });
+
+    test('teardown sends no PTT on a radio the app never keyed', () {
+      // An unkey from a session that never keyed would cut off the operator
+      // transmitting from the radio's own mic.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      sink.sent.clear();
+      session.teardown();
+      expect(sink.sent, isEmpty);
+    });
+  });
+
   group('polling', () {
     test('startUpdates probes the parser, then asks with self-labeling reads', () {
       final sink = _FakeSink();
