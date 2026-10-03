@@ -75,7 +75,9 @@ Future<String?> installExtensionFromFile(
 ///
 /// [provenance] is the catalog listing the bytes must match; the store
 /// re-checks the hash before opening them, and the record is what the
-/// install writes for the key.
+/// install writes for the key. [releaseChannel] is the channel the release
+/// itself lives on, what the consent screen warns about — the provenance's
+/// own when not given, which a track asked for by a link may have widened.
 Future<String?> installExtensionFromBytes(
   BuildContext context, {
   required InstalledExtensions store,
@@ -83,6 +85,7 @@ Future<String?> installExtensionFromBytes(
   required Future<List<int>> Function() read,
   String? from,
   BundleProvenance? provenance,
+  CatalogChannel? releaseChannel,
 
   /// False only for a bulk update the operator has already asked for as a
   /// whole — see where the screen is shown below. Never for a file, a deep
@@ -143,7 +146,7 @@ Future<String?> installExtensionFromBytes(
   if (askConsent) {
     final replacing = await _isInstalled(store, bundle);
     if (!context.mounted) return null;
-    if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from)) return null;
+    if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from, channel: releaseChannel ?? provenance?.channel)) return null;
     // Asked again: another install of this key can have started while the
     // operator was reading.
     if (isBusy?.call(bundle.key) ?? false) {
@@ -177,12 +180,18 @@ Future<String?> installExtensionFromBytes(
 /// [ExtensionInstaller], under the release's key from the first byte — which
 /// is what the Extensions panel's row for it mirrors. [name] titles that
 /// progress until the bundle names itself; the key stands in without one.
+///
+/// [track] is the channel a link asked for, recorded as the key's track when
+/// it is rougher than the release's own: a link to an extension's unstable
+/// page that lands on a stable release is still the operator choosing
+/// unstable, and its next unstable release must reach them.
 Future<String?> installFromCatalog(
   BuildContext context, {
   required HaLoServices services,
   required CatalogRelease release,
   String? name,
   bool askConsent = true,
+  CatalogChannel track = CatalogChannel.stable,
 }) async {
   final store = services.extensions.installed;
   // A press that did nothing at all, with no message and no log, is the one
@@ -205,7 +214,7 @@ Future<String?> installFromCatalog(
     return null;
   }
   final catalog = services.catalog;
-  final provenance = BundleProvenance(host: catalog.host, sha256: release.sha256, version: release.version);
+  final provenance = BundleProvenance(host: catalog.host, sha256: release.sha256, version: release.version, channel: release.channel.widen(track));
   try {
     store.checkKeyInstallable(release.key, provenance: provenance);
   } on BundleException catch (e) {
@@ -238,6 +247,7 @@ Future<String?> installFromCatalog(
       },
       from: catalog.host,
       provenance: provenance,
+      releaseChannel: release.channel,
       commit: commitThroughInstaller(services),
       askConsent: askConsent,
       beforeRefusal: () => installer.clearProgress(release.key),
@@ -368,14 +378,45 @@ Future<void> showInstallRefusal(BuildContext context, String message) => showDia
 
 /// Shows what [bundle] will be able to reach, and returns whether the operator
 /// agreed to it.
-Future<bool> showConsentDialog(BuildContext context, {required InspectedBundle bundle, required bool replacing, String? from}) async =>
+Future<bool> showConsentDialog(BuildContext context, {required InspectedBundle bundle, required bool replacing, String? from, CatalogChannel? channel}) async =>
     await showDialog<bool>(
       context: context,
       builder: (context) => HoldSizeWhileCovered(
-        child: _ConsentDialog(bundle: bundle, replacing: replacing, from: from),
+        child: _ConsentDialog(bundle: bundle, replacing: replacing, from: from, channel: channel),
       ),
     ) ??
     false;
+
+/// The consent screen's warning over an unstable or bleeding release.
+@visibleForTesting
+class PreReleaseWarning extends StatelessWidget {
+  final CatalogChannel channel;
+
+  const PreReleaseWarning({super.key, required this.channel});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t.extensionsPanel;
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(Space.md),
+      decoration: BoxDecoration(color: colors.errorContainer, borderRadius: BorderRadius.circular(8)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(MdiIcons.alertOutline, size: 18, color: colors.onErrorContainer),
+          const SizedBox(width: Space.md),
+          Expanded(
+            child: Text(
+              channel == CatalogChannel.bleeding ? t.bleedingReleaseWarning : t.unstableReleaseWarning,
+              style: TextStyle(color: colors.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 /// What the extension will be able to reach, and a decision about it.
 class _ConsentDialog extends StatelessWidget {
@@ -385,7 +426,11 @@ class _ConsentDialog extends StatelessWidget {
   /// Where the bundle came from, when that is not the operator's own disk.
   final String? from;
 
-  const _ConsentDialog({required this.bundle, required this.replacing, this.from});
+  /// The catalog channel the release lives on; null for anything that did
+  /// not come from the catalog.
+  final CatalogChannel? channel;
+
+  const _ConsentDialog({required this.bundle, required this.replacing, this.from, this.channel});
 
   @override
   Widget build(BuildContext context) {
@@ -403,6 +448,11 @@ class _ConsentDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (bundle.version.isNotEmpty) Text(t.installVersion(version: bundle.version), style: theme.textTheme.bodySmall),
+          // First and in the error container, ahead of anything else to
+          // read: the operator is about to run code its publisher has not
+          // called finished, and every other line on this screen reads the
+          // same for a finished release.
+          if (channel case final channel? when channel != CatalogChannel.stable) ...[const SizedBox(height: Space.md), PreReleaseWarning(channel: channel)],
           // Named prominently, not tucked away: a bundle that arrived from a
           // link is one the operator did not choose off their own disk, and
           // where it came from is most of what tells them whether to trust
@@ -621,7 +671,7 @@ class _ExtensionDropTargetState extends State<ExtensionDropTarget> {
 }
 
 /// What the operator chose in the details dialog, or null if they closed it.
-enum ExtensionDetailsAction { uninstall, update }
+enum ExtensionDetailsAction { uninstall, update, followStable }
 
 /// Everything the app knows about one extension, and what can be done about
 /// it — the dialog behind an extension row's info button.
@@ -632,9 +682,9 @@ enum ExtensionDetailsAction { uninstall, update }
 /// than crowding fifty rows with it.
 ///
 /// [update] is the release the catalog offers when that is newer than what is
-/// installed; null means there is nothing to move to. The dialog only ever
-/// ANSWERS: acting is the panel's, which owns the applying state and the
-/// status bar.
+/// installed; null means there is nothing to move to. [channel] is the
+/// catalog track the extension follows. The dialog only ever ANSWERS: acting
+/// is the panel's, which owns the applying state and the status bar.
 Future<ExtensionDetailsAction?> showExtensionDetails(
   BuildContext context, {
   required ExtensionInfo info,
@@ -642,10 +692,18 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   String? installedFrom,
   IconData? installedFromIcon,
   String? updateVersion,
+  CatalogChannel channel = CatalogChannel.stable,
 }) => showDialog<ExtensionDetailsAction>(
   context: context,
   builder: (context) => HoldSizeWhileCovered(
-    child: _DetailsDialog(info: info, locale: locale, installedFrom: installedFrom, installedFromIcon: installedFromIcon, updateVersion: updateVersion),
+    child: _DetailsDialog(
+      info: info,
+      locale: locale,
+      installedFrom: installedFrom,
+      installedFromIcon: installedFromIcon,
+      updateVersion: updateVersion,
+      channel: channel,
+    ),
   ),
 );
 
@@ -658,8 +716,16 @@ class _DetailsDialog extends StatelessWidget {
   /// bundle did, and the caller is the only thing that knows which it was.
   final IconData? installedFromIcon;
   final String? updateVersion;
+  final CatalogChannel channel;
 
-  const _DetailsDialog({required this.info, required this.locale, required this.installedFrom, required this.installedFromIcon, required this.updateVersion});
+  const _DetailsDialog({
+    required this.info,
+    required this.locale,
+    required this.installedFrom,
+    required this.installedFromIcon,
+    required this.updateVersion,
+    required this.channel,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -694,6 +760,15 @@ class _DetailsDialog extends StatelessWidget {
           // when it arrived. For an extension the app ships there is nothing
           // to say beyond that it does.
           _Capability(icon: installedFromIcon ?? MdiIcons.packageVariantClosed, label: installedFrom ?? t.builtIn),
+          // The track, and the way back off it, together: the line is what
+          // makes the button make sense, and stable has neither.
+          if (channel != CatalogChannel.stable) ...[
+            _Capability(icon: MdiIcons.flaskOutline, label: channel == CatalogChannel.bleeding ? t.followsBleeding : t.followsUnstable),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton(onPressed: () => Navigator.of(context).pop(ExtensionDetailsAction.followStable), child: Text(t.followStableAction)),
+            ),
+          ],
           const SizedBox(height: Space.xl),
           // The same capability list the operator agreed to at install, so
           // "what did I let this reach" is answerable afterwards and not only

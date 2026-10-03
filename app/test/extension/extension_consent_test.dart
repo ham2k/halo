@@ -234,6 +234,52 @@ void main() {
     expect(find.text(t.extensionsPanel.installedFrom(source: 'example.org')), findsOneWidget);
   });
 
+  testWidgets('a release that is not stable is warned about, by how rough it is; a stable one is not', (tester) async {
+    // Every other line on this screen reads the same for a finished release
+    // and an unfinished one, so the warning is the only thing telling the
+    // operator what they are agreeing to run. Warning over stable too would
+    // teach them to read past it.
+    final bundle = await inspect(fixture);
+    CatalogChannel? channel;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          locale: const Locale('en'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () => showConsentDialog(context, bundle: bundle, replacing: false, from: kCatalogHost, channel: channel),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Future<void> open(CatalogChannel? asked) async {
+      channel = asked;
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> close() async {
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+    }
+
+    await open(CatalogChannel.unstable);
+    expect(find.text(t.extensionsPanel.unstableReleaseWarning), findsOneWidget);
+    await close();
+    await open(CatalogChannel.bleeding);
+    expect(find.text(t.extensionsPanel.bleedingReleaseWarning), findsOneWidget);
+    await close();
+    await open(CatalogChannel.stable);
+    expect(find.byType(PreReleaseWarning), findsNothing);
+    await close();
+    await open(null);
+    expect(find.byType(PreReleaseWarning), findsNothing);
+  });
+
   testWidgets('a bundle picked off disk names no source', (tester) async {
     await show(tester, await inspect(fixture));
 

@@ -25,7 +25,10 @@ import '../services/extensions/extension_installer.dart';
 import '../services/extensions/extension_service.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
 import '../services/extensions/installed_extensions.dart';
+import '../services/deep_link_router.dart' show openInstallExtension;
+import '../services/deep_link_service.dart';
 import 'extension_install_flow.dart';
+import 'station_rows.dart' show StationPill;
 import '../services/halo_services.dart';
 
 /// Category display order; anything unrecognized lands in "other". Public
@@ -295,6 +298,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       installedFrom: from?.label,
       installedFromIcon: from?.icon,
       updateVersion: entry?.version,
+      channel: info.isInstalled ? widget.services.catalog.channelFollowedBy(info.key) : CatalogChannel.stable,
     );
     if (!mounted || action == null) return;
     switch (action) {
@@ -302,23 +306,80 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         await _uninstall(info);
       case ExtensionDetailsAction.update:
         if (entry != null) await _installFromCatalog(entry);
+      case ExtensionDetailsAction.followStable:
+        await _followStable(info);
     }
   }
 
+  /// Puts [info] back on the stable track: from now on only stable releases
+  /// are offered as its updates. What is installed stays installed — moving
+  /// it is the next stable release's job, not this button's.
+  Future<void> _followStable(ExtensionInfo info) async {
+    final settings = widget.services.settings;
+    final records = {...settings.extensionInstalledFrom};
+    final record = BundleProvenance.fromJson(records[info.key]);
+    if (record == null) return;
+    records[info.key] = record.withChannel(CatalogChannel.stable).toJson();
+    await settings.setExtensionInstalledFrom(records);
+    // The offer the last check made came from the track just left, and taken
+    // it would widen the track straight back — dropped here rather than left
+    // to a check that may be skipped or fail; the check then finds what
+    // stable has.
+    final check = widget.services.catalogUpdateCheck..forget(info.key);
+    unawaited(check.check(force: true, announce: false));
+  }
+
   /// The catalog's release for [info] when it is newer than what is
-  /// installed, from either the listing on screen or the unattended check.
-  CatalogEntry? _catalogEntryFor(ExtensionInfo info) {
-    // `_catalogShown` for the same reason the row's badge reads it: an Update
-    // button that installs from a catalog the panel is not showing is worse
-    // than no badge at all.
+  /// installed, from either the listing on screen or the unattended check —
+  /// the one answer behind the row's "Update available" badge, its Pending
+  /// Updates row and the details' Update button, so the three cannot
+  /// disagree. [records] is `extensionInstalledFrom` when the caller has
+  /// already read it.
+  CatalogEntry? _catalogEntryFor(ExtensionInfo info, [Map<String, Map<String, String>>? records]) {
+    // `_catalogShown`: an Update button that installs from a catalog the
+    // panel is not showing is worse than no badge at all.
     if (!info.isInstalled || !_catalogShown) return null;
+    // The listing's release only when it is on the extension's own track: a
+    // developer searching bleeding must not be offered a bleeding "update"
+    // for an extension that follows stable. The unattended check already
+    // asked on that track.
+    final catalog = widget.services.catalog;
+    final track = records == null ? catalog.channelFollowedBy(info.key) : catalog.channelIn(records, info.key);
     for (final entry in [
-      ?(_catalog ?? const <CatalogEntry>[]).where((e) => e.key == info.key).firstOrNull,
+      ?(_catalog ?? const <CatalogEntry>[]).where((e) => e.key == info.key && track.sees(e.channel)).firstOrNull,
       ?widget.services.catalogUpdateCheck.pendingUpdates[info.key],
     ]) {
       if (entry.isNewerThan(info.version)) return entry;
     }
     return null;
+  }
+
+  /// The bundle a link typed or pasted into the search field would install,
+  /// or null when the field holds anything else. An `install_extension` link
+  /// as the catalog's button makes it is unwrapped, and then the address must
+  /// be one an install can use: on the catalog in force, a bundle or an
+  /// extension's page; anywhere else, an https `.h2kext`. Anything looser
+  /// offers an install for a home page, which can only end in a refusal.
+  /// Plain http only on the catalog in force, which is a loopback developer
+  /// catalog or nothing ([CatalogService.downloadBundle] has the rule).
+  Uri? _installLinkIn(String text) {
+    if (text.contains(RegExp(r'\s'))) return null;
+    var uri = Uri.tryParse(text);
+    if (uri != null && uri.scheme.startsWith('com.ham2k')) uri = DeepLinkService.installExtensionRequest(uri);
+    if (uri == null || uri.host.isEmpty) return null;
+    final catalog = widget.services.catalog;
+    if (catalog.isCatalogUrl(uri)) {
+      return CatalogService.parseBundleUrl(uri) != null || CatalogService.parsePageUrl(uri) != null ? uri : null;
+    }
+    return uri.scheme == 'https' && uri.path.toLowerCase().endsWith('.h2kext') ? uri : null;
+  }
+
+  /// The pasted link's install — the deep link's own path, so a link behaves
+  /// the same pasted as clicked. The field is cleared: the job is under way,
+  /// and the address left in the box would offer it a second time.
+  void _installFromLink(Uri link) {
+    setState(() => _searchController.clear());
+    openInstallExtension(widget.services, link);
   }
 
   /// Where an installed extension's bytes came from, in the words the consent
@@ -414,13 +475,9 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           for (final info in extensionService.availableExtensions)
             if (info.isInstalled) info.key: info.version,
         };
-        final catalogByKey = {for (final entry in _catalog ?? const <CatalogEntry>[]) entry.key: entry};
-        final pendingUpdates = widget.services.catalogUpdateCheck.pendingUpdates;
-        // The badge follows the section: the Update button it points at is
-        // a catalog row, and in a hook-filtered panel there is none.
-        bool hasUpdate(String key) =>
-            _catalogShown &&
-            ((catalogByKey[key]?.isNewerThan(installedVersions[key]) ?? false) || (pendingUpdates[key]?.isNewerThan(installedVersions[key]) ?? false));
+        // Read once for the whole build: every row asks for its track.
+        final catalog = widget.services.catalog;
+        final records = settings.extensionInstalledFrom;
 
         // What the catalog offers that the operator does not already have.
         //
@@ -475,14 +532,32 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // the panel making work. Absent when there is nothing to do — an empty
         // heading saying so is a worse answer than silence.
         // Whichever source actually offers something NEWER, not whichever
-        // answers first: `hasUpdate` is true when either is ahead, so
+        // answers first: the badge is up when either is ahead, so
         // preferring the listing unconditionally can put a row on screen
         // reading `1.0.0 → 1.0.0` and have Update all reinstall it.
         final installer = widget.services.extensionInstaller;
         final visibleByKey = {for (final info in visible) info.key: info};
+        // A link in the search field is an install the operator is asking
+        // for, not a query: one row offering it, ahead of everything.
+        final link = widget.onlyHook == null && extensionService.installed != null ? _installLinkIn(_searchController.text.trim()) : null;
+        if (link != null) {
+          shownOffers.add('link:$link');
+          rows.add(
+            ListTile(
+              key: const ValueKey('extensions-install-link'),
+              leading: const Icon(MdiIcons.linkVariant),
+              title: Text(t.extensionsPanel.installFromLink),
+              subtitle: Text('${link.host}${link.path}', maxLines: 2, overflow: TextOverflow.ellipsis),
+              trailing: SizedBox(
+                height: _trailingControlHeight,
+                child: FilledButton(onPressed: () => _installFromLink(link), child: Text(t.extensionsPanel.installAction)),
+              ),
+            ),
+          );
+        }
         if (query.isEmpty) {
           for (final info in visible) {
-            final entry = _catalogEntryFor(info);
+            final entry = _catalogEntryFor(info, records);
             if (entry != null) _heldPending[entry.key] = entry;
           }
         }
@@ -496,7 +571,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           if (_catalogShown)
             for (final entry in _heldPending.values)
               if (visibleByKey[entry.key] case final info?)
-                if (installer.isActive(entry.key) || !entry.isNewerThan(info.version) || _catalogEntryFor(info) != null) entry,
+                if (installer.isActive(entry.key) || !entry.isNewerThan(info.version) || _catalogEntryFor(info, records) != null) entry,
         ];
         // What Update all would still take: not what has landed, and not what
         // is under way already.
@@ -624,7 +699,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // hooks) when it has one; the category icon otherwise, on the
               // accent its manifest names.
               final icon = ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category));
-              final title = Text(info.nameFor(locale));
+              final title = _ChannelTitle(name: info.nameFor(locale), channel: info.isInstalled ? catalog.channelIn(records, info.key) : CatalogChannel.stable);
               final description = info.descriptionFor(locale);
               // Stable identity: without keys, list churn during the applying
               // rebuilds re-creates row elements and their icons visibly flicker.
@@ -700,7 +775,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                           description: [
                             if (isRevoked) t.extensionsPanel.revokedBadge,
                             if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
-                            if (hasUpdate(info.key)) t.extensionsPanel.updateAvailableBadge,
+                            if (_catalogEntryFor(info, records) != null) t.extensionsPanel.updateAvailableBadge,
                             if (revokedNote.isNotEmpty) revokedNote,
                             ?description,
                           ].join(' · '),
@@ -743,7 +818,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   filled: false,
                   opacity: kUninstalledIconOpacity,
                 ),
-                title: Text(entry.nameFor(locale)),
+                title: _ChannelTitle(name: entry.nameFor(locale), channel: entry.channel),
                 subtitle: busy
                     ? _InstallProgressLine(extensionKey: entry.key, statusBar: widget.services.statusBar)
                     : description == null
@@ -1057,6 +1132,34 @@ class _InstallSpinner extends StatelessWidget {
       child: CircularProgressIndicator(strokeWidth: 2, color: color),
     ),
   );
+}
+
+/// A row's name, with the catalog track beside it when that is not stable —
+/// on an installed row the track it follows, on an offer the channel its
+/// release lives on. Nothing at all for stable, which is what every row is
+/// unless someone chose otherwise.
+class _ChannelTitle extends StatelessWidget {
+  final String name;
+  final CatalogChannel channel;
+
+  const _ChannelTitle({required this.name, required this.channel});
+
+  @override
+  Widget build(BuildContext context) {
+    if (channel == CatalogChannel.stable) return Text(name);
+    final colors = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
+        const SizedBox(width: Space.sm),
+        StationPill(
+          label: channel == CatalogChannel.bleeding ? t.extensionsPanel.channelBleeding : t.extensionsPanel.channelUnstable,
+          background: colors.tertiaryContainer,
+          foreground: colors.onTertiaryContainer,
+        ),
+      ],
+    );
+  }
 }
 
 /// One line under the Catalog header that is not a row — loading, or

@@ -20,6 +20,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'catalog_service.dart';
 import '../error_reporting_service.dart';
 import 'extension_service.dart';
+import 'installed_extensions.dart' show CatalogChannel;
 import 'preloaded_extensions.dart';
 import '../settings_service.dart';
 
@@ -294,14 +295,23 @@ Future<RestoreResult> restoreMissingExtensions(ExtensionService service, List<Mi
   }
   _inFlight = true;
   try {
-    // Forced: the operator is watching this, and a listing from before they
-    // went offline and came back is the one thing that would fail every key.
-    final listing = fetchable.isEmpty ? null : await catalog.fetchCatalog(force: true);
-    final offered = {for (final entry in listing ?? const <CatalogEntry>[]) entry.key: entry};
+    // Each on the track it followed — its record outlives the store — with
+    // one listing per track in use. Forced: the operator is watching this,
+    // and a listing from before they went offline and came back is the one
+    // thing that would fail every key.
+    final tracks = {for (final missing in fetchable) missing.key: catalog.channelFollowedBy(missing.key)};
+    final listings = <CatalogChannel, Map<String, CatalogEntry>?>{
+      for (final channel in tracks.values.toSet())
+        channel: switch (await catalog.fetchCatalog(force: true, channel: channel)) {
+          final listing? => {for (final entry in listing) entry.key: entry},
+          null => null,
+        },
+    };
     final landed = <String>[];
     final failed = <String>[];
     for (final missing in fetchable) {
-      final entry = offered[missing.key];
+      final listing = listings[tracks[missing.key]];
+      final entry = listing?[missing.key];
       if (entry == null) {
         // Unreachable, or no longer served here — withdrawn, another channel,
         // an API this build does not speak. The operator can Forget it.

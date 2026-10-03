@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The extension catalog client (catalog.ham2k.net): what is published for
-// the catalog's stable channel, whether an installed extension has a newer release,
+// the channel the panel asks for, whether an installed extension has a newer
+// release on the track it follows,
 // and the bundle bytes themselves — verified against the listing's sha256
 // before anything opens them.
 //
@@ -47,7 +48,10 @@ const _cacheTtl = Duration(minutes: 5);
 /// What an install needs of one listed release: which bytes, and what they
 /// must hash to. A catalog entry yields its own ([CatalogEntry.release]); a
 /// catalog deep link assembles one from the link and the listing it names.
-typedef CatalogRelease = ({String key, String version, String sha256, Uri bundleUrl});
+///
+/// [channel] is the channel the release LIVES on — what the consent screen
+/// warns about, and what the install records as the key's track.
+typedef CatalogRelease = ({String key, String version, String sha256, Uri bundleUrl, CatalogChannel channel});
 
 /// One entry of `GET /api/v1/catalog`: what the panel shows of an extension's
 /// current release on this channel, and what an install needs of it. Only
@@ -90,12 +94,20 @@ class CatalogEntry with ExtensionSearchable {
   final String sha256;
   final Uri bundleUrl;
 
+  /// The channel this release lives on, which a listing asked for on a
+  /// rougher one may well say is steadier (SPEC §8.1). Missing reads as
+  /// stable — what a catalog predating channels served — while an unknown
+  /// name reads as the roughest, so a channel this build has never heard of
+  /// is never installed without the warning.
+  final CatalogChannel channel;
+
   const CatalogEntry({
     required this.key,
     required this.name,
     required this.version,
     required this.sha256,
     required this.bundleUrl,
+    this.channel = CatalogChannel.stable,
     this.description,
     this.category,
     this.icon,
@@ -129,6 +141,7 @@ class CatalogEntry with ExtensionSearchable {
       version: version,
       sha256: sha256.toLowerCase(),
       bundleUrl: bundleUrl,
+      channel: channelOf(json['channel']),
       description: json['description'] is String ? json['description'] as String : null,
       category: json['category'] is String ? json['category'] as String : null,
       icon: json['icon'] is String ? json['icon'] as String : null,
@@ -145,7 +158,10 @@ class CatalogEntry with ExtensionSearchable {
   }
 
   /// This entry as the install flow's input.
-  CatalogRelease get release => (key: key, version: version, sha256: sha256, bundleUrl: bundleUrl);
+  CatalogRelease get release => (key: key, version: version, sha256: sha256, bundleUrl: bundleUrl, channel: channel);
+
+  /// A served `channel` field — see [channel] for why the two fallbacks differ.
+  static CatalogChannel channelOf(Object? raw) => raw == null ? CatalogChannel.stable : CatalogChannel.tryParse(raw) ?? CatalogChannel.bleeding;
 
   /// Whether [installedVersion] is older than this release. Both sides are
   /// parsed leniently, and either failing to parse means "no update": a
@@ -192,12 +208,18 @@ List<CatalogEntry> orderedCatalogEntries(List<CatalogEntry> entries, OperatorGeo
 }
 
 /// One version of `GET /api/v1/extensions/:key` — the hash a deep link's
-/// bytes are checked against.
+/// bytes are checked against, and the channel it is released on.
 class CatalogVersion {
   final String version;
   final String sha256;
 
-  const CatalogVersion({required this.version, required this.sha256});
+  /// The steadiest channel the version is released on, among those the
+  /// listing was asked to show: a version approved for both unstable and
+  /// stable IS a stable release. A version listed with no submissions says
+  /// nothing about how finished it is, and reads as the roughest.
+  final CatalogChannel channel;
+
+  const CatalogVersion({required this.version, required this.sha256, this.channel = CatalogChannel.stable});
 
   static CatalogVersion? fromJson(Object? json) {
     if (json is! Map) return null;
@@ -205,16 +227,30 @@ class CatalogVersion {
     final sha256 = json['sha256'];
     if (version is! String || version.isEmpty) return null;
     if (sha256 is! String || !CatalogEntry._sha256Pattern.hasMatch(sha256)) return null;
-    return CatalogVersion(version: version, sha256: sha256.toLowerCase());
+    final channels = [
+      if (json['submissions'] is List)
+        for (final submission in json['submissions'] as List)
+          if (submission is Map && submission['status'] == 'approved') CatalogEntry.channelOf(submission['channel']),
+    ];
+    return CatalogVersion(
+      version: version,
+      sha256: sha256.toLowerCase(),
+      channel: channels.isEmpty ? CatalogChannel.bleeding : channels.reduce((a, b) => a.index <= b.index ? a : b),
+    );
   }
 }
 
-/// `GET /api/v1/extensions/:key`: every version visible on this channel.
+/// `GET /api/v1/extensions/:key`: every version visible on the channel asked
+/// for, and the current release there.
 class CatalogExtension {
   final String key;
   final List<CatalogVersion> versions;
 
-  const CatalogExtension({required this.key, required this.versions});
+  /// The release the channel asked for would install now — null when the
+  /// extension has none there.
+  final CatalogEntry? current;
+
+  const CatalogExtension({required this.key, required this.versions, this.current});
 
   CatalogVersion? versionNamed(String version) => versions.where((v) => v.version == version).firstOrNull;
 }
@@ -328,18 +364,30 @@ class CatalogService {
        _userAgent = userAgent ?? ham2kUserAgentOrFallback,
        _locale = locale ?? (() => LocaleSettings.currentLocale.languageCode);
 
-  /// The channel asked for.
+  /// The channel the listing is asked for: the developer's "Catalog Search
+  /// Tracks" under developer mode, stable otherwise — whichever edition is
+  /// running. A channel says how finished a release is and an edition says
+  /// who is running the app; deriving one from the other would stop a Dev
+  /// build from running only finished extensions.
   ///
-  /// `stable`, whichever edition is running. A channel says how finished a
-  /// release is; an edition says who is running the app. Tying them together
-  /// — which is what asking for the edition's name did — meant a Dev build
-  /// could not choose to run only finished extensions and a Prod build could
-  /// not try an unfinished one at all.
-  ///
-  /// Constant until there is a setting for it. The catalog cascades, so
-  /// asking for a rougher channel later ADDS releases rather than replacing
-  /// them, and nothing an operator already installed goes away.
-  String get channel => kCatalogChannel;
+  /// The catalog cascades, so a rougher channel ADDS releases to the listing
+  /// rather than replacing them.
+  CatalogChannel get searchChannel {
+    final settings = _settings;
+    return settings != null && settings.developerMode ? settings.catalogSearchChannel : CatalogChannel.stable;
+  }
+
+  /// The track the installed [key] follows: the channel its record names,
+  /// when that record is a track on this catalog ([BundleProvenance.isTrackOf]),
+  /// and stable for anything else — a file, another catalog, or no record.
+  CatalogChannel channelFollowedBy(String key) => channelIn(_settings?.extensionInstalledFrom ?? const {}, key);
+
+  /// [channelFollowedBy] over records already read — for a caller asking
+  /// about many keys, which would otherwise decode them once per key.
+  CatalogChannel channelIn(Map<String, Map<String, String>> records, String key) {
+    final record = BundleProvenance.fromJson(records[key]);
+    return record != null && record.isTrackOf(host) ? record.channel : CatalogChannel.stable;
+  }
 
   /// Whether the developer override is in force — developer mode on AND an
   /// address typed. The two together, not the address alone: developer mode
@@ -371,12 +419,26 @@ class CatalogService {
   }
 
   static final _bundlePath = RegExp(r'^/api/v1/extensions/([a-z0-9][a-z0-9-]*)/versions/([^/]+)/bundle$');
+  static final _pagePath = RegExp(r'^/extensions/([a-z0-9][a-z0-9-]*)/?$');
 
   /// The key and version a bundle URL names, or null for any other path.
   static ({String key, String version})? parseBundleUrl(Uri url) {
     final match = _bundlePath.firstMatch(url.path);
     if (match == null) return null;
     return (key: match.group(1)!, version: Uri.decodeComponent(match.group(2)!));
+  }
+
+  /// The key and channel an extension's page on the catalog site names
+  /// (`/extensions/<key>?channel=unstable`), or null for any other path. No
+  /// `channel` is stable, as it is to the site; one this build does not know
+  /// is null, rather than a guess at which release the link meant.
+  static ({String key, CatalogChannel channel})? parsePageUrl(Uri url) {
+    final match = _pagePath.firstMatch(url.path);
+    if (match == null) return null;
+    final raw = url.queryParameters['channel'];
+    final channel = raw == null || raw.isEmpty ? CatalogChannel.stable : CatalogChannel.tryParse(raw);
+    if (channel == null) return null;
+    return (key: match.group(1)!, channel: channel);
   }
 
   Uri bundleUrlFor(String key, String version) => Uri.parse('$baseUrl/api/v1/extensions/$key/versions/${Uri.encodeComponent(version)}/bundle');
@@ -402,15 +464,16 @@ class CatalogService {
   /// Drops every cached listing, so the next question reaches the network.
   void invalidate() => _cache.clear();
 
-  /// What the catalog publishes for this channel, ranked by the caller. Only
+  /// What the catalog publishes for [channel] — [searchChannel] unless the
+  /// caller needs another — ranked by the caller. Only
   /// the geo values that are known travel — an absent parameter is
   /// "unknown" to the catalog — and never the callsign. Null when the
   /// catalog could not be read; an entry that could not be parsed is
   /// dropped, not the list.
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false, CatalogChannel? channel}) async {
     final url = Uri.parse(
       '$baseUrl/api/v1/catalog',
-    ).replace(queryParameters: {'channel': channel, ...?geo?.toQueryParameters(), 'api': '$kExtensionApiVersion', 'lang': _locale()});
+    ).replace(queryParameters: {'channel': (channel ?? searchChannel).name, ...?geo?.toQueryParameters(), 'api': '$kExtensionApiVersion', 'lang': _locale()});
     // [force] for a caller that IS the operator asking — opening the panel is
     // the one moment where an answer from a few minutes ago is not good
     // enough: they have come to see what is there, and a version published
@@ -437,16 +500,21 @@ class CatalogService {
     return entries;
   }
 
-  /// One extension's page: every version visible on this channel. Null when
-  /// the catalog could not be read, or has no such key.
+  /// One extension's page: every version visible on [channel], and its
+  /// current release there. Null when the catalog could not be read, or has
+  /// no such key.
+  ///
+  /// A link naming a version asks on bleeding, which sees every release:
+  /// the link already says which one, and the version's own channel is what
+  /// the consent screen then warns about.
   ///
   /// With [expecting], a cached listing that lacks that version is read
   /// again past the cache, once: a link can name a release younger than the
   /// five minutes the listing answers from memory, and refusing it on the
   /// strength of a stale page would be refusing the catalog's own link.
-  Future<CatalogExtension?> fetchExtension(String key, {String? expecting}) async {
+  Future<CatalogExtension?> fetchExtension(String key, {required CatalogChannel channel, String? expecting}) async {
     if (!kSafeKeyPattern.hasMatch(key)) return null;
-    final url = Uri.parse('$baseUrl/api/v1/extensions/$key').replace(queryParameters: {'channel': channel});
+    final url = Uri.parse('$baseUrl/api/v1/extensions/$key').replace(queryParameters: {'channel': channel.name});
     final cached = _cached<CatalogExtension>(url);
     if (cached != null && (expecting == null || cached.versionNamed(expecting) != null)) return cached;
     final json = await _getJson(url);
@@ -457,6 +525,7 @@ class CatalogService {
         if (json['versions'] is List)
           for (final raw in json['versions'] as List) ?CatalogVersion.fromJson(raw),
       ],
+      current: CatalogEntry.fromJson(json['current']),
     );
     _remember(url, listing);
     return listing;
@@ -467,16 +536,32 @@ class CatalogService {
   /// the catalog's to update — and nothing is asked when there are none:
   /// what keeps every fresh install and every developer build off the
   /// network for this.
+  ///
+  /// Each on the track it follows ([channelFollowedBy]), which is one request
+  /// per track in use: the catalog takes one channel per request, and asking
+  /// every extension on the roughest would offer a stable install a bleeding
+  /// release. Asked side by side, and all or nothing — a track that went
+  /// unanswered is a null, so the check is not stamped as done and asks again.
   Future<CatalogUpdates?> checkUpdates(Iterable<ExtensionInfo> installed) async {
-    final pairs = [
-      for (final info in installed)
-        if (info.isInstalled) {'key': info.key, 'version': info.version ?? ''},
-    ];
-    if (pairs.isEmpty) return null;
+    final records = _settings?.extensionInstalledFrom ?? const {};
+    final byChannel = <CatalogChannel, List<Map<String, String>>>{};
+    for (final info in installed) {
+      if (!info.isInstalled) continue;
+      byChannel.putIfAbsent(channelIn(records, info.key), () => []).add({'key': info.key, 'version': info.version ?? ''});
+    }
+    if (byChannel.isEmpty) return null;
     final url = Uri.parse('$baseUrl/api/v1/updates');
-    final json = await _postJson(url, {'channel': channel, 'api': kExtensionApiVersion, 'installed': pairs});
-    if (json == null) return null;
-    return CatalogUpdates.fromJson(json);
+    final replies = await Future.wait([
+      for (final MapEntry(key: channel, value: pairs) in byChannel.entries)
+        _postJson(url, {'channel': channel.name, 'api': kExtensionApiVersion, 'installed': pairs}),
+    ]);
+    if (replies.contains(null)) return null;
+    final answers = [for (final json in replies) CatalogUpdates.fromJson(json!)];
+    return CatalogUpdates(
+      updates: [for (final answer in answers) ...answer.updates],
+      revoked: [for (final answer in answers) ...answer.revoked],
+      ignored: [for (final answer in answers) ...answer.ignored],
+    );
   }
 
   /// The bundle bytes of a listed release, verified against its sha256.
@@ -747,7 +832,16 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
       final result = await catalog.checkUpdates(candidates);
       if (result == null) return false;
       await settings.setCatalogUpdateCheckedAt(_realNow());
-      _pending = {for (final update in result.updates) update.entry.key: update.entry};
+      final installed = {for (final info in candidates) info.key: info.version};
+      // Newer only. The catalog also answers with a LOWER release as the
+      // replacement for an installed version the channel cannot see (SPEC
+      // §8.3) — an install just put back on stable from an unstable
+      // prerelease, every time — and a notice announcing it is an update
+      // that Update all then finds nothing to take for.
+      _pending = {
+        for (final update in result.updates)
+          if (update.entry.isNewerThan(installed[update.entry.key])) update.entry.key: update.entry,
+      };
       notifyListeners();
       _noticeUpdates(candidates, announce: announce);
       await _handleRevoked(result.revoked, candidates);
@@ -764,6 +858,17 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   void noteInstalled(String key, String version) {
     final offered = _pending[key];
     if (offered == null || offered.isNewerThan(version)) return;
+    _pending = {..._pending}..remove(key);
+    notifyListeners();
+    if (_pending.isEmpty) statusBar.dismissNotice(noticeKey);
+  }
+
+  /// Drops whatever was offered for [key] — its track narrowed, so the offer
+  /// came from releases it no longer follows. Not left to the next check:
+  /// that one can be skipped (one already running) or fail, and the stale
+  /// offer, taken, would widen the track straight back.
+  void forget(String key) {
+    if (!_pending.containsKey(key)) return;
     _pending = {..._pending}..remove(key);
     notifyListeners();
     if (_pending.isEmpty) statusBar.dismissNotice(noticeKey);

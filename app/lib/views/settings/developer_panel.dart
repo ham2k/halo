@@ -20,6 +20,7 @@ import '../../services/app_storage.dart';
 import '../../services/windows_url_schemes.dart';
 import '../experiments_pane.dart';
 import '../../services/extensions/extension_dev_client.dart';
+import '../../services/extensions/installed_extensions.dart' show CatalogChannel;
 import '../version_label.dart';
 
 class DeveloperPanel extends StatelessWidget {
@@ -471,6 +472,24 @@ class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
               isDense: true,
             ),
             onSubmitted: (_) => unawaited(_save()),
+          ),
+          const SizedBox(height: Space.lg),
+          // What the panel's listing shows, not what installs follow: each
+          // install keeps the track it arrived on whatever this says.
+          ListenableBuilder(
+            listenable: widget.services.settings,
+            builder: (context, _) => RowSelectField(
+              label: t.catalogSearchTracks,
+              value: widget.services.settings.catalogSearchChannel,
+              rows: [
+                SelectRow(value: CatalogChannel.stable, name: t.catalogSearchStable),
+                SelectRow(value: CatalogChannel.unstable, name: t.catalogSearchUnstable),
+                SelectRow(value: CatalogChannel.bleeding, name: t.catalogSearchBleeding),
+              ],
+              onChanged: (value) {
+                if (value is CatalogChannel) unawaited(widget.services.settings.setCatalogSearchChannel(value));
+              },
+            ),
           ),
         ]),
       ]),

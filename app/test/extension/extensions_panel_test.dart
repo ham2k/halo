@@ -9,6 +9,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show File;
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/extensions/bundle_storage.dart';
+import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/flags_service.dart';
@@ -28,6 +31,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/extension_install_flow.dart';
 import 'package:ham2k_logger/views/extensions_panel.dart';
+import 'package:ham2k_logger/views/station_rows.dart' show StationPill;
 
 import '../support/halo_test_support.dart';
 
@@ -1640,4 +1644,274 @@ void main() {
     expect(inDialog(find.widgetWithText(TextButton, 'Remove')), findsNothing);
     expect(inDialog(find.widgetWithText(FilledButton, 'Update')), findsNothing);
   });
+
+  group('catalog tracks', () {
+    // Dated soon, so each is suggested rather than tucked behind "and N others".
+    Map<String, Object?> onChannel(String key, String name, String version, String channel) => {
+      ..._entry(key, name, version: version, relevance: _soon()),
+      'channel': channel,
+    };
+
+    testWidgets('an install wears its track, is offered updates only from it, and Follow stable puts it back', (tester) async {
+      // A developer searching bleeding sees bleeding releases — but an
+      // extension that follows stable must not be offered one as its update,
+      // or the search setting silently moves installs onto rough releases.
+      // The unstable install IS offered its unstable update.
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      SharedPreferences.setMockInitialValues({
+        'developerMode': true,
+        'catalogSearchChannel': 'bleeding',
+        'extensionInstalledFrom': jsonEncode({
+          'ki2d-rough': {'host': kCatalogHost, 'sha256': 'a' * 64, 'version': '1.0.0', 'channel': 'unstable'},
+          'ki2d-steady': {'host': kCatalogHost, 'sha256': 'a' * 64, 'version': '1.0.0'},
+        }),
+      });
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+      extensions.debugSetAvailableExtensions(const [
+        ExtensionInfo(
+          key: 'ki2d-rough',
+          file: 'index.js',
+          core: false,
+          name: 'Rough',
+          category: 'activity',
+          source: ExtensionSource.installed,
+          version: '1.0.0',
+        ),
+        ExtensionInfo(
+          key: 'ki2d-steady',
+          file: 'index.js',
+          core: false,
+          name: 'Steady',
+          category: 'activity',
+          source: ExtensionSource.installed,
+          version: '1.0.0',
+        ),
+      ]);
+      final listingChannels = <String?>[];
+      final catalog = CatalogService(
+        client: MockClient((request) async {
+          if (request.url.path == '/api/v1/updates') return http.Response(jsonEncode({'updates': [], 'revoked': [], 'ignored': []}), 200);
+          listingChannels.add(request.url.queryParameters['channel']);
+          return http.Response(
+            jsonEncode({
+              'extensions': [
+                onChannel('ki2d-rough', 'Rough', '1.1.0', 'unstable'),
+                onChannel('ki2d-steady', 'Steady', '2.0.0', 'bleeding'),
+                onChannel('ki2d-new', 'Brand New', '0.1.0', 'bleeding'),
+              ],
+            }),
+            200,
+          );
+        }),
+        settings: settings,
+        userAgent: () async => 'Ham2K Logger/test',
+        locale: () => 'en',
+      );
+      final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(body: ExtensionsPanel(services: services)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(listingChannels, everyElement('bleeding'));
+      Finder inRow(String rowKey, Finder what) => find.descendant(of: find.byKey(ValueKey(rowKey)), matching: what);
+      expect(inRow('extension-ki2d-rough', find.text('Unstable')), findsOneWidget);
+      expect(inRow('extension-ki2d-steady', find.byType(StationPill)), findsNothing);
+      expect(inRow('catalog-ki2d-new', find.text('Bleeding')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pending-ki2d-rough')), findsOneWidget);
+      expect(find.byKey(const ValueKey('pending-ki2d-steady')), findsNothing);
+
+      await tester.tap(inRow('extension-ki2d-rough', find.byIcon(MdiIcons.informationOutline)));
+      await tester.pumpAndSettle();
+      expect(find.text('Receives unstable and stable releases'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Follow stable releases only'));
+      await tester.pumpAndSettle();
+
+      // Back on stable: no pill, and the unstable release is no longer its
+      // update. The record keeps the rest — it is still a catalog install.
+      expect(settings.extensionInstalledFrom['ki2d-rough'], {'host': kCatalogHost, 'sha256': 'a' * 64, 'version': '1.0.0'});
+      expect(inRow('extension-ki2d-rough', find.byType(StationPill)), findsNothing);
+      expect(services.catalog.channelFollowedBy('ki2d-rough'), CatalogChannel.stable);
+    });
+
+    /// The full panel over an in-memory store and a catalog whose
+    /// `ki2d-my-clock` listing answers with [listing] — the fixture bundle at
+    /// 1.2.3 — for a pasted link to install from.
+    Future<({HaLoServices services, SettingsService settings, _MemoryBundleStorage storage, List<Uri> asked})> linkPanel(
+      WidgetTester tester,
+      Map<String, Object?> Function(String sha256) listing,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final fixture = File('test/fixtures/ki2d-my-clock.h2kext').readAsBytesSync();
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final storage = _MemoryBundleStorage();
+      final store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, storage: storage);
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
+        ..settings = settings
+        ..debugInstalledStore = store;
+      extensions.debugSetAvailableExtensions(const []);
+      final asked = <Uri>[];
+      final catalog = CatalogService(
+        client: MockClient((request) async {
+          asked.add(request.url);
+          if (request.url.path.endsWith('/bundle')) return http.Response.bytes(fixture, 200);
+          if (request.url.path == '/api/v1/extensions/ki2d-my-clock') return http.Response(jsonEncode(listing(sha256Hex(fixture))), 200);
+          if (request.url.path == '/api/v1/updates') return http.Response(jsonEncode({'updates': [], 'revoked': [], 'ignored': []}), 200);
+          return http.Response(jsonEncode({'extensions': []}), 200);
+        }),
+        settings: settings,
+        userAgent: () async => 'Ham2K Logger/test',
+        locale: () => 'en',
+      );
+      final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            navigatorKey: navigatorKey,
+            home: Scaffold(body: ExtensionsPanel(services: services)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return (services: services, settings: settings, storage: storage, asked: asked);
+    }
+
+    Future<void> paste(WidgetTester tester, String text) async {
+      await tester.enterText(find.byKey(const ValueKey('extensions-search')), text);
+      await tester.pumpAndSettle();
+    }
+
+    /// Presses the link row's Install, through to the consent screen.
+    Future<void> installLink(WidgetTester tester) async {
+      await tester.tap(find.descendant(of: find.byKey(const ValueKey('extensions-install-link')), matching: find.widgetWithText(FilledButton, 'Install')));
+      await tester.pumpAndSettle();
+      // The download's stream does not finish on the fake clock alone; a
+      // real moment lets it, and the consent screen then opens.
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pumpAndSettle();
+    }
+
+    final linkRow = find.byKey(const ValueKey('extensions-install-link'));
+
+    testWidgets('a link pasted into the search box offers its install, and an unstable release warns before anything is written', (tester) async {
+      // Pasting is how an operator handed a link reaches an unstable
+      // release without changing any setting, so it has to land on the same
+      // consent screen — warning included — that the catalog's own link does.
+      final panel = await linkPanel(
+        tester,
+        (sha256) => {
+          'key': 'ki2d-my-clock',
+          'versions': [
+            {
+              'version': '1.2.3',
+              'sha256': sha256,
+              'submissions': [
+                {'channel': 'unstable', 'status': 'approved'},
+              ],
+            },
+          ],
+        },
+      );
+
+      // Only an address an install can use is offered as one: words are a
+      // search, and a home page — the catalog's own included — can only end
+      // in a refusal.
+      for (final notAnInstall in ['clock', 'https://pota.app/', 'https://catalog.ham2k.net/', 'https://example.org/clock.zip']) {
+        await paste(tester, notAnInstall);
+        expect(linkRow, findsNothing, reason: notAnInstall);
+      }
+      await paste(tester, 'https://example.org/downloads/clock.h2kext');
+      expect(linkRow, findsOneWidget);
+
+      await paste(
+        tester,
+        'com.ham2k.logger:///install_extension?url=${Uri.encodeComponent('https://catalog.ham2k.net/api/v1/extensions/ki2d-my-clock/versions/1.2.3/bundle')}',
+      );
+      await installLink(tester);
+
+      // Asked on bleeding, which sees every release: the link already named
+      // the version, and its own channel is what is warned about.
+      expect(panel.asked.firstWhere((url) => url.path == '/api/v1/extensions/ki2d-my-clock').queryParameters['channel'], 'bleeding');
+      expect(find.text(t.extensionsPanel.unstableReleaseWarning), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      expect(panel.storage.files, isEmpty, reason: 'declined: nothing written');
+      expect(panel.settings.extensionInstalledFrom, isEmpty);
+    });
+
+    testWidgets('an unstable page link that lands on a stable release still follows unstable', (tester) async {
+      // The operator chose the extension's unstable page. Its current release
+      // there happens to be stable — nothing to warn about — but its next
+      // unstable release must still reach them, so the install records the
+      // track the link asked for, not the release's.
+      final panel = await linkPanel(
+        tester,
+        (sha256) => {
+          'key': 'ki2d-my-clock',
+          'versions': [
+            {
+              'version': '1.2.3',
+              'sha256': sha256,
+              'submissions': [
+                {'channel': 'stable', 'status': 'approved'},
+              ],
+            },
+          ],
+          'current': {..._entry('ki2d-my-clock', 'KI2D My Clock', version: '1.2.3'), 'sha256': sha256, 'channel': 'stable'},
+        },
+      );
+
+      await paste(tester, 'https://catalog.ham2k.net/extensions/ki2d-my-clock?channel=unstable');
+      await installLink(tester);
+      expect(panel.asked.firstWhere((url) => url.path == '/api/v1/extensions/ki2d-my-clock').queryParameters['channel'], 'unstable');
+      expect(find.byType(PreReleaseWarning), findsNothing);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Install'));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
+      await tester.pumpAndSettle();
+      expect(panel.storage.files.keys, ['ki2d-my-clock']);
+      expect(panel.settings.extensionInstalledFrom['ki2d-my-clock']?['channel'], 'unstable');
+      // The footer's "Installed" line takes itself down on a timer.
+      await tester.pump(StatusBarService.completedDismissDelay);
+    });
+  });
+}
+
+/// The store's files in memory: a widget test's fake clock never completes
+/// real file IO.
+class _MemoryBundleStorage implements BundleStorage {
+  final files = <String, Map<String, List<int>>>{};
+
+  @override
+  Future<Map<String, String?>> manifests() async => {
+    for (final MapEntry(:key, :value) in files.entries) key: value['manifest.json'] == null ? null : utf8.decode(value['manifest.json']!),
+  };
+
+  @override
+  Future<String?> readText(String key, String name) async => files[key]?[name] == null ? null : utf8.decode(files[key]![name]!);
+
+  @override
+  Future<void> write(String key, Map<String, List<int>> files) async => this.files[key] = files;
+
+  @override
+  Future<void> remove(String key) async => files.remove(key);
 }

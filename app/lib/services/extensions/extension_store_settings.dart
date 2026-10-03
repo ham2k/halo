@@ -4,7 +4,7 @@
 // The per-extension records SettingsService keeps about what is installed
 // and what may run — the operator's enable/disable overrides, when each
 // disabled one was switched off, which arrived hash-verified from the
-// catalog, which the catalog has revoked — and the catalog's own two
+// catalog, which the catalog has revoked — and the catalog's own three
 // scalars. Every one of them is a TOP-LEVEL pref, outside the `settings.*`
 // group system: app infrastructure, not a setting, and being top-level keeps
 // them out of the extension-facing getSettings view
@@ -16,6 +16,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'installed_extensions.dart' show CatalogChannel;
 
 mixin ExtensionStoreSettings on ChangeNotifier {
   SharedPreferences get prefs;
@@ -251,6 +253,20 @@ mixin ExtensionStoreSettings on ChangeNotifier {
   }
 
   static String _normalizeCatalogBaseUrl(String url) => url.trim().replaceAll(RegExp(r'/+$'), '');
+
+  /// The roughest channel the catalog listing is asked for — Settings →
+  /// Developer → Extension Catalog's "Catalog Search Tracks". Honoured by
+  /// CatalogService only under `developerMode`, like [catalogBaseUrl]: turning
+  /// developer mode off returns the panel to stable releases, while every
+  /// install already on a rougher track keeps following it.
+  static const _catalogSearchChannelKey = 'catalogSearchChannel';
+
+  CatalogChannel get catalogSearchChannel => CatalogChannel.tryParse(prefs.getString(_catalogSearchChannelKey)) ?? CatalogChannel.stable;
+
+  Future<void> setCatalogSearchChannel(CatalogChannel channel) async {
+    await prefs.setString(_catalogSearchChannelKey, channel.name);
+    notifyListeners();
+  }
 
   /// Drops every per-extension record of [key]. Does NOT notify: the caller,
   /// SettingsService.forgetExtension, notifies once after the extension's

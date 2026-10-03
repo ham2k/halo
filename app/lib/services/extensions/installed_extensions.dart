@@ -51,13 +51,26 @@ const kCatalogHost = 'catalog.ham2k.net';
 /// what it records is that these bytes were never fetched from anywhere.
 const kPreloadHost = 'preloaded';
 
-/// The catalog channel this build asks for.
+/// A catalog release track: how finished a release is, and deliberately not
+/// which edition is asking (the catalog's SPEC §4.5). Steadiest first; [name]
+/// is the wire value.
 ///
-/// A channel says how finished a release is — `bleeding`, `unstable`,
-/// `stable` — and deliberately not which edition is asking. Constant until
-/// there is a setting for it; the catalog cascades, so opting into a rougher
-/// channel later adds releases rather than replacing them.
-const kCatalogChannel = 'stable';
+/// The catalog cascades — asking for a channel sees the releases on it AND on
+/// every steadier one — so a channel asked for reads as "this or better".
+enum CatalogChannel {
+  stable,
+  unstable,
+  bleeding;
+
+  /// Null for anything that is not one of the three.
+  static CatalogChannel? tryParse(Object? raw) => values.where((channel) => channel.name == raw).firstOrNull;
+
+  /// Whether asking for this channel sees a release that lives on [release].
+  bool sees(CatalogChannel release) => release.index <= index;
+
+  /// The rougher of the two.
+  CatalogChannel widen(CatalogChannel other) => other.index > index ? other : this;
+}
 
 /// The catalog every install talks to, derived from [kCatalogHost] so the two
 /// cannot drift: the only other address the app will read is the developer
@@ -75,7 +88,15 @@ class BundleProvenance {
   final String sha256;
   final String version;
 
-  const BundleProvenance({required this.host, required this.sha256, required this.version});
+  /// For a bundle being installed, the channel its release lives on. Once
+  /// recorded, the TRACK the key follows: the update check asks for it, and
+  /// it only ever widens on an install (see [followingAtLeast]) — an
+  /// extension the operator chose to take unstable keeps taking unstable
+  /// releases after a stable one overtakes it. Only the operator's "follow
+  /// stable releases only" narrows it.
+  final CatalogChannel channel;
+
+  const BundleProvenance({required this.host, required this.sha256, required this.version, this.channel = CatalogChannel.stable});
 
   /// Whether this record waives the `ham2k-` refusal.
   ///
@@ -93,7 +114,29 @@ class BundleProvenance {
   /// Whether the app shipped these bytes itself.
   bool get isPreloaded => host == kPreloadHost;
 
-  Map<String, String> toJson() => {'host': host, 'sha256': sha256, 'version': version};
+  /// Whether this record's [channel] is a track on the catalog at
+  /// [catalogHost]: a record from that host, or a pre-load — the app ships
+  /// the catalog's own bundles, so a pre-load counts as whichever catalog is
+  /// in force. The one rule for which records carry a track, read by the
+  /// update check (`CatalogService.channelFollowedBy`) and by
+  /// [followingAtLeast].
+  bool isTrackOf(String catalogHost) => host == catalogHost || isPreloaded;
+
+  /// This record, on the rougher of its own channel and [previous]'s — when
+  /// [previous] is a track on the same catalog ([isTrackOf]); a pre-load
+  /// landing over an unstable install must not quietly put it back on
+  /// stable. Any other host is a different publisher's track, which says
+  /// nothing about this one.
+  BundleProvenance followingAtLeast(BundleProvenance? previous) {
+    if (previous == null || !(previous.isTrackOf(host) || isPreloaded)) return this;
+    return withChannel(channel.widen(previous.channel));
+  }
+
+  BundleProvenance withChannel(CatalogChannel channel) => BundleProvenance(host: host, sha256: sha256, version: version, channel: channel);
+
+  /// `channel` is written only when it is not stable: absent means stable,
+  /// the catalog's own reading, and every record predating tracks is one.
+  Map<String, String> toJson() => {'host': host, 'sha256': sha256, 'version': version, if (channel != CatalogChannel.stable) 'channel': channel.name};
 
   static BundleProvenance? fromJson(Map<String, String>? json) {
     if (json == null) return null;
@@ -101,7 +144,7 @@ class BundleProvenance {
     final sha256 = json['sha256'];
     final version = json['version'];
     if (host == null || sha256 == null || version == null) return null;
-    return BundleProvenance(host: host, sha256: sha256, version: version);
+    return BundleProvenance(host: host, sha256: sha256, version: version, channel: CatalogChannel.tryParse(json['channel']) ?? CatalogChannel.stable);
   }
 }
 

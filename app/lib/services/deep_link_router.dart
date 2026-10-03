@@ -407,20 +407,39 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
   );
 }
 
-/// A `.../extensions/<key>/versions/<version>/bundle` link on the catalog:
-/// the version's sha256 comes from the extension's listing — re-read past
-/// the service's cache when a cached page lacks the version, since a link
-/// can name a release younger than that cache — and from there the install
-/// is the panel's (installFromCatalog): the bytes refused unless they hash
-/// to it, a built-in key refused before anything is fetched.
+/// A link on the catalog, which names a release one of two ways, and from
+/// there the install is the panel's (installFromCatalog): the bytes refused
+/// unless they hash to the listing's sha256, a built-in key refused before
+/// anything is fetched, and the consent screen warning over a release that
+/// is not stable.
+///
+/// - `.../extensions/<key>/versions/<version>/bundle`: the version's sha256
+///   and channel come from the extension's listing, asked on bleeding so
+///   every release is in it — re-read past the service's cache when a cached
+///   page lacks the version, since a link can name a release younger than
+///   that cache.
+/// - `/extensions/<key>?channel=…`, the catalog site's page: that channel's
+///   current release, with the channel as the key's track even when the
+///   release turns out to live on a steadier one.
 Future<void> _installFromCatalogLink(HaLoServices services, BuildContext context, InstalledExtensions store, Uri source) async {
   final catalog = services.catalog;
+  if (CatalogService.parsePageUrl(source) case final page?) {
+    final listing = await catalog.fetchExtension(page.key, channel: page.channel);
+    final current = listing?.current;
+    if (!context.mounted) return;
+    if (current == null) {
+      await showInstallRefusal(context, listing == null ? t.extensionsPanel.catalogUnreachable : t.extensionsPanel.catalogNoRelease(key: page.key));
+      return;
+    }
+    await installFromCatalog(context, services: services, release: current.release, track: page.channel);
+    return;
+  }
   final ref = CatalogService.parseBundleUrl(source);
   if (ref == null) {
     await showInstallRefusal(context, t.extensionsPanel.catalogLinkUnknown);
     return;
   }
-  final listing = await catalog.fetchExtension(ref.key, expecting: ref.version);
+  final listing = await catalog.fetchExtension(ref.key, channel: CatalogChannel.bleeding, expecting: ref.version);
   final version = listing?.versionNamed(ref.version);
   if (!context.mounted) return;
   if (version == null) {
@@ -430,7 +449,11 @@ Future<void> _installFromCatalogLink(HaLoServices services, BuildContext context
     );
     return;
   }
-  await installFromCatalog(context, services: services, release: (key: ref.key, version: version.version, sha256: version.sha256, bundleUrl: source));
+  await installFromCatalog(
+    context,
+    services: services,
+    release: (key: ref.key, version: version.version, sha256: version.sha256, bundleUrl: source, channel: version.channel),
+  );
 }
 
 /// The footer already says it landed — the installer's completion item.

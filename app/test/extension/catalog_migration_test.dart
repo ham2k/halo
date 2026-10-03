@@ -114,15 +114,19 @@ class _PreloadThrows extends ExtensionServiceWithFakeHost {
 /// A catalog listing exactly [keys], or unreachable when [keys] is null.
 /// Every download fails: nothing in these tests is meant to install.
 class _Catalog extends CatalogService {
-  _Catalog(this.keys);
+  _Catalog(this.keys, {super.settings});
 
   final List<String>? keys;
+
+  /// The channel of every listing asked for.
+  final asked = <CatalogChannel>[];
 
   @override
   Future<List<int>> download(CatalogRelease release, {void Function(double? fraction)? onProgress}) async => throw StateError('offline');
 
   @override
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false, CatalogChannel? channel}) async {
+    asked.add(channel ?? searchChannel);
     final listed = keys;
     if (listed == null) return null;
     return [
@@ -440,6 +444,20 @@ void main() {
       final settings = await _settings(migrated: true);
       final result = await adopt(settings, _Catalog(null));
       expect(result.complete, isTrue);
+    });
+
+    test('twins are read from stable releases, whatever the developer searches', () async {
+      // Twins install with no consent screen. Reading the developer's search
+      // track here would install bleeding releases unseen, and record each
+      // as following bleeding for good.
+      final settings = await _settings(migrated: true);
+      await settings.setDeveloperMode(true);
+      await settings.setCatalogSearchChannel(CatalogChannel.bleeding);
+      await settings.setExtensionOverrides({'wca': true});
+      final catalog = _Catalog(null, settings: settings);
+
+      await adopt(settings, catalog);
+      expect(catalog.asked, [CatalogChannel.stable]);
     });
 
     test('a pre-loaded twin the operator uninstalled is not fetched back', () async {

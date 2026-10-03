@@ -237,6 +237,29 @@ void main() {
     expect(result.runtimeDead, isTrue);
   });
 
+  test('a missing extension comes back on the track it followed, whatever the panel searches', () async {
+    // Its record outlives the store, and says unstable. Asked on stable —
+    // the panel's default — the listing does not carry an unstable-only
+    // release and the restore fails every launch; asked on the developer's
+    // search track, it could put back a bleeding release nobody chose.
+    final (extensions, settings, _) = await setup();
+    await settings.setDeveloperMode(true);
+    await settings.setCatalogSearchChannel(CatalogChannel.bleeding);
+    final catalog = _TrackCatalog({'ki2d-my-clock': clock}, onlyOn: CatalogChannel.unstable, settings: settings);
+    extensions.catalog = catalog;
+    await settings.setExtensionsInstalled({'ki2d-my-clock': 'KI2D My Clock'});
+    await settings.setExtensionInstalledFrom({
+      'ki2d-my-clock': {...catalogRecord('1.0.0'), 'channel': 'unstable'},
+    });
+    await extensions.reloadAvailableExtensions();
+
+    late RestoreResult result;
+    await withErrorHooks(() async => result = await restoreMissingExtensions(extensions, extensions.missingExtensions()));
+    expect(catalog.asked, [CatalogChannel.unstable]);
+    expect(result.installed, ['KI2D My Clock']);
+    expect(settings.extensionInstalledFrom['ki2d-my-clock']?['channel'], 'unstable');
+  });
+
   test('a restore asked for while a catalog pass runs is busy, not a failure of every extension', () async {
     final extensions = _HeldPreload();
     SharedPreferences.setMockInitialValues(const {});
@@ -298,12 +321,12 @@ void main() {
 /// A catalog listing [bundles] at the fixture's version — bytes to serve, or null for
 /// a download that fails.
 class _Catalog extends CatalogService {
-  _Catalog(this.bundles);
+  _Catalog(this.bundles, {super.settings});
 
   final Map<String, List<int>?> bundles;
 
   @override
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async => [
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false, CatalogChannel? channel}) async => [
     for (final MapEntry(:key, :value) in bundles.entries)
       CatalogEntry(
         key: key,
@@ -317,6 +340,27 @@ class _Catalog extends CatalogService {
   @override
   Future<List<int>> download(CatalogRelease release, {void Function(double? fraction)? onProgress}) async =>
       bundles[release.key] ?? (throw const SocketException('offline'));
+}
+
+/// [_Catalog] whose listing carries its bundles only when asked for
+/// [onlyOn] or rougher, as the catalog's cascade does, and which records the
+/// channel of every listing asked for.
+class _TrackCatalog extends _Catalog {
+  _TrackCatalog(super.bundles, {required this.onlyOn, super.settings});
+
+  final CatalogChannel onlyOn;
+  final asked = <CatalogChannel>[];
+
+  @override
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false, CatalogChannel? channel}) async {
+    final asking = channel ?? searchChannel;
+    asked.add(asking);
+    if (!asking.sees(onlyOn)) return const [];
+    return [
+      for (final entry in (await super.fetchCatalog())!)
+        CatalogEntry(key: entry.key, name: entry.name, version: entry.version, sha256: entry.sha256, bundleUrl: entry.bundleUrl, channel: onlyOn),
+    ];
+  }
 }
 
 /// [bytes] with its manifest's key and name replaced.

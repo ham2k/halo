@@ -330,7 +330,7 @@ declares and the user approved, and timers only within their budget
 
 ## Installing one
 
-**Settings → Extensions → Install from file…**, pick the `.h2kext`, and agree
+**Settings → Extensions & Features → Install from file…**, pick the `.h2kext`, and agree
 to what it asks for. The runtime restarts with it loaded, and the extension
 appears in its own category alongside the app's own, marked *Installed* and
 with a way to remove it again.
@@ -498,7 +498,7 @@ extension's data file still fills.
 
 ### Installing from the catalog
 
-**Settings → Extensions → Catalog** lists what [catalog.ham2k.net](https://catalog.ham2k.net)
+**Settings → Extensions & Features** lists what [catalog.ham2k.net](https://catalog.ham2k.net)
 publishes on its `stable` channel, in the catalog's own order for the
 operator's callsign (`relevance`, above). Install and Update go through the same consent screen as a
 file, over bytes that must hash to the sha256 the listing gives — a mismatch
@@ -511,6 +511,39 @@ same key. A key the app ships stays refused whatever the catalog says. The
 catalog's own bundle links (`…/api/v1/extensions/<key>/versions/<version>/bundle`)
 take this verified path when they arrive as a deep link; every other host
 takes the plain one above.
+
+### Release tracks
+
+A catalog channel — `stable`, `unstable` or `bleeding` — says how finished a
+release is, and the catalog cascades: asking for `unstable` sees unstable and
+stable releases. The panel's listing asks for `stable`. Under developer mode,
+**Developer → Extension Catalog → Catalog Search Tracks** (Only Stable,
+Unstable or better, Bleeding or better) widens it; turning developer mode off
+puts the listing back on stable without touching anything installed. Only
+the panel's listing reads it: fetching the catalog twins of retired built-ins
+reads stable, since those install with no consent screen, and restoring a
+missing extension reads the track it followed.
+
+The other way to an unfinished release is a link: the catalog's install
+button, or an address pasted into the panel's search field — a catalog
+bundle URL, an extension's page (`/extensions/<key>?channel=unstable`, which
+installs that channel's current release), the `install_extension` deep link
+itself, or an https URL ending in `.h2kext`; anything else is a search. A
+bundle URL is resolved against the listing on `bleeding`, which sees every
+release, and the version's channel is the steadiest one it is approved on. A
+page link records the channel it asked for as the track even when the release
+there turns out to be steadier — the operator chose that track.
+
+Whichever way it arrives, the consent screen warns over a release that is not
+stable, and the install records its channel in the provenance record as the
+TRACK the extension follows (`channel`, absent meaning stable). The update
+check asks about each extension on its own track — one request per track in
+use, side by side — and offers only what is newer than what is installed, so an extension installed at `0.1` unstable is updated to `1.0` stable,
+and then to `1.0.1` unstable. The track only widens on an install: a stable
+release landing over an unstable install leaves it on unstable. A pre-load
+counts as the catalog's own here. The row and the details show the track, and
+the details' **Follow stable releases only** puts it back on stable; an
+uninstall or a file install clears it with the rest of the record.
 
 At most once every six hours — on launch and on resume — the app asks the
 catalog whether anything installed has a newer release, and says so in the

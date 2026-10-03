@@ -108,6 +108,36 @@ void main() {
     expect(settings.extensionInstalledFrom, isEmpty);
   });
 
+  test('the track an install follows only widens: a stable release updating an unstable install keeps it on unstable', () async {
+    // The operator chose unstable for this extension. The publisher then
+    // ships 1.0.0 to stable, and the next unstable 1.0.1 must still reach
+    // them — so the stable update leaves the record on unstable. Mutated to
+    // record the release's own channel, the second expectation reads stable
+    // and the update check stops asking for unstable releases.
+    final (extensions, settings, store) = await setup({});
+    Future<void> install(List<int> bytes, String version, CatalogChannel channel) async => extensions.installBundle(
+      await store.inspect(
+        bytes,
+        provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(bytes), version: version, channel: channel),
+      ),
+    );
+    String? track() => settings.extensionInstalledFrom['ki2d-my-clock']?['channel'];
+
+    await install(rebuilt((m) => {...m, 'version': '0.1.0'}), '0.1.0', CatalogChannel.unstable);
+    expect(track(), 'unstable');
+    await install(rebuilt((m) => {...m, 'version': '1.0.0'}), '1.0.0', CatalogChannel.stable);
+    expect(track(), 'unstable');
+    // A rougher release widens it.
+    await install(rebuilt((m) => {...m, 'version': '1.1.0'}), '1.1.0', CatalogChannel.bleeding);
+    expect(track(), 'bleeding');
+    // A file install is no catalog track at all, and the next catalog
+    // install starts from its own release.
+    await extensions.installBundle(await store.inspect(fixture));
+    expect(settings.extensionInstalledFrom, isEmpty);
+    await install(rebuilt((m) => {...m, 'version': '1.2.0'}), '1.2.0', CatalogChannel.stable);
+    expect(track(), isNull);
+  });
+
   group('a revoked release', () {
     const revoked = {
       'extensionRevoked': {

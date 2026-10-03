@@ -262,6 +262,15 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get downloadHashMismatch => 'Esa descarga no es la extensión que describe el catálogo.';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'El catálogo no tiene la versión ${version} de ${key}.';
 	@override String get catalogLinkUnknown => 'Ese enlace del catálogo no indica una versión de extensión.';
+	@override String catalogNoRelease({required Object key}) => 'El catálogo no tiene una versión de ${key} en ese canal.';
+	@override String get installFromLink => 'Instalar desde enlace';
+	@override String get unstableReleaseWarning => 'Esta es una versión inestable, que su autor no considera terminada. Puede fallar, y seguirá recibiendo actualizaciones inestables.';
+	@override String get bleedingReleaseWarning => 'Esta es una versión de vanguardia: trabajo en curso que puede fallar o perder su configuración. Seguirá recibiendo actualizaciones de vanguardia.';
+	@override String get channelUnstable => 'Inestable';
+	@override String get channelBleeding => 'Vanguardia';
+	@override String get followsUnstable => 'Recibe versiones inestables y estables';
+	@override String get followsBleeding => 'Recibe versiones de vanguardia, inestables y estables';
+	@override String get followStableAction => 'Seguir solo versiones estables';
 	@override String get revokedBadge => 'Retirada';
 	@override String get refusedBadge => 'No se pudo cargar';
 	@override String get downloadNotHttps => 'Esa descarga no usa una conexión segura.';
@@ -2453,6 +2462,10 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	@override String get catalogDescription => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.';
 	@override String get catalogAddress => 'Dirección del catálogo';
 	@override String get catalogHint => 'http://localhost:8787';
+	@override String get catalogSearchTracks => 'Canales de búsqueda del catálogo';
+	@override String get catalogSearchStable => 'Solo estables';
+	@override String get catalogSearchUnstable => 'Inestables o mejores';
+	@override String get catalogSearchBleeding => 'Vanguardia o mejores';
 }
 
 // Path: settings.about
@@ -2480,8 +2493,8 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get commonSettings => 'Preferencias Comunes';
 	@override String get syncDescription => 'Respalda y sincroniza tus registros entre dispositivos';
 	@override String get accountsDescription => 'Credenciales de servicios, datos sin conexión y más';
-	@override String get extensions => 'Funciones y extensiones';
-	@override String get extensionsDescription => 'Actividades, concursos y más funciones';
+	@override String get extensions => 'Extensiones y funciones';
+	@override String get extensionsDescription => 'Actividades, concursos, paneles y más funciones';
 	@override String get profilesDescription => 'Indicativo del operador y perfil de la estación';
 	@override String get stationProfiles => 'Perfiles de estación';
 	@override String get developerSettings => 'Ajustes de desarrollador';
@@ -3586,6 +3599,15 @@ extension on TranslationsEs {
 			'extensionsPanel.downloadHashMismatch' => 'Esa descarga no es la extensión que describe el catálogo.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'El catálogo no tiene la versión ${version} de ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'Ese enlace del catálogo no indica una versión de extensión.',
+			'extensionsPanel.catalogNoRelease' => ({required Object key}) => 'El catálogo no tiene una versión de ${key} en ese canal.',
+			'extensionsPanel.installFromLink' => 'Instalar desde enlace',
+			'extensionsPanel.unstableReleaseWarning' => 'Esta es una versión inestable, que su autor no considera terminada. Puede fallar, y seguirá recibiendo actualizaciones inestables.',
+			'extensionsPanel.bleedingReleaseWarning' => 'Esta es una versión de vanguardia: trabajo en curso que puede fallar o perder su configuración. Seguirá recibiendo actualizaciones de vanguardia.',
+			'extensionsPanel.channelUnstable' => 'Inestable',
+			'extensionsPanel.channelBleeding' => 'Vanguardia',
+			'extensionsPanel.followsUnstable' => 'Recibe versiones inestables y estables',
+			'extensionsPanel.followsBleeding' => 'Recibe versiones de vanguardia, inestables y estables',
+			'extensionsPanel.followStableAction' => 'Seguir solo versiones estables',
 			'extensionsPanel.revokedBadge' => 'Retirada',
 			'extensionsPanel.refusedBadge' => 'No se pudo cargar',
 			'extensionsPanel.downloadNotHttps' => 'Esa descarga no usa una conexión segura.',
@@ -3950,6 +3972,8 @@ extension on TranslationsEs {
 			'operation.export.stash.mayHaveArrived' => 'El Stash no respondió — puede que el archivo haya llegado de todos modos. Revisa stash.ham2k.net antes de volver a enviarlo',
 			'operation.export.stash.notSent' => 'no enviado',
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Este archivo no llegó:', other: 'Estos ${count} archivos no llegaron:', ), 
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.stash.emailOffer' => 'O, si te resulta más cómodo, podemos enviarte un correo con un enlace directo.',
 			'operation.export.stash.emailMe' => 'Envíame un enlace',
 			'operation.export.stash.emailSent' => 'Te enviamos un enlace de descarga por correo.',
@@ -3959,8 +3983,6 @@ extension on TranslationsEs {
 			'operation.spots.empty' => 'Ningún spot coincide con tus filtros',
 			'operation.spots.error' => ({required Object error}) => 'No se pudieron cargar los spots: ${error}',
 			'operation.spots.unknownBand' => 'Otras',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.auto' => 'Auto',
 			'operation.spots.autoValue' => ({required Object value}) => 'Auto (Actualmente ${value})',
 			'operation.spots.valueAuto' => ({required Object value}) => '${value} (Auto)',
@@ -4464,6 +4486,8 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
 			'settings.radio.cwMessages.repeat' => 'Repetir mensaje #1',
 			'settings.radio.cwMessages.repeatOff' => 'No',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
 			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
@@ -4473,8 +4497,6 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
 			'settings.radio.cwMessages.helpIntro' => 'Los mensajes pueden usar plantillas con los siguientes valores:',
 			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo — en una pila //, el indicativo que se registrará',
 			'settings.radio.cwMessages.helpQsoFullCall' => 'Su indicativo, si hay un indicativo válido; vacío si es parcial',
 			'settings.radio.cwMessages.helpQsoPartial' => 'Un indicativo parcial; vacío si hay un indicativo completo válido',
@@ -4978,6 +5000,8 @@ extension on TranslationsEs {
 			'settings.station.newAntenna' => 'Nueva antena',
 			'settings.station.newKey' => 'Nuevo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador en ${device}',
 			'settings.station.cwKeyerArea' => 'Área del manipulador',
@@ -4987,8 +5011,6 @@ extension on TranslationsEs {
 			'settings.station.trackFieldRig' => 'Transceptor',
 			'settings.station.trackFieldPower' => 'Potencia',
 			'settings.station.watts' => 'Vatios',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.trackFieldAntenna' => 'Antena',
 			'settings.station.trackFieldKey' => 'Manipulador',
 			'settings.station.switchLayout' => 'Disposición',
@@ -5089,6 +5111,10 @@ extension on TranslationsEs {
 			'settings.developer.catalogDescription' => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Dirección del catálogo',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
+			'settings.developer.catalogSearchTracks' => 'Canales de búsqueda del catálogo',
+			'settings.developer.catalogSearchStable' => 'Solo estables',
+			'settings.developer.catalogSearchUnstable' => 'Inestables o mejores',
+			'settings.developer.catalogSearchBleeding' => 'Vanguardia o mejores',
 			'settings.about.notices' => 'Avisos y mensajes',
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
@@ -5098,8 +5124,8 @@ extension on TranslationsEs {
 			'settings.panels.commonSettings' => 'Preferencias Comunes',
 			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
 			'settings.panels.accountsDescription' => 'Credenciales de servicios, datos sin conexión y más',
-			'settings.panels.extensions' => 'Funciones y extensiones',
-			'settings.panels.extensionsDescription' => 'Actividades, concursos y más funciones',
+			'settings.panels.extensions' => 'Extensiones y funciones',
+			'settings.panels.extensionsDescription' => 'Actividades, concursos, paneles y más funciones',
 			'settings.panels.profilesDescription' => 'Indicativo del operador y perfil de la estación',
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
 			'settings.panels.developerSettings' => 'Ajustes de desarrollador',

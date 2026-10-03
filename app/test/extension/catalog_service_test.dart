@@ -100,6 +100,46 @@ void main() {
       expect(urls.last.queryParameters.keys, isNot(anyOf(contains('entity'), contains('country'))));
     });
 
+    test('the search track is the developer\'s choice under developer mode, and stable otherwise', () async {
+      // Turning developer mode off must put the panel back on finished
+      // releases without the developer having to remember the setting.
+      Future<String?> askedFor(SettingsService settings) async {
+        String? channel;
+        await service((request) async {
+          channel = request.url.queryParameters['channel'];
+          return http.Response(_catalog([]), 200);
+        }, settings: settings).fetchCatalog();
+        return channel;
+      }
+
+      expect(await askedFor(await settingsWith({'developerMode': true, 'catalogSearchChannel': 'bleeding'})), 'bleeding');
+      expect(await askedFor(await settingsWith({'developerMode': false, 'catalogSearchChannel': 'bleeding'})), 'stable');
+      expect(await askedFor(await settingsWith({'developerMode': true})), 'stable');
+    });
+
+    test('an entry says which channel its release lives on; an unknown channel reads as the roughest', () async {
+      // The channel is what the consent screen warns about. One this build
+      // has never heard of is not a reason to install without the warning.
+      final catalog = service(
+        (_) async => http.Response(
+          _catalog([
+            _entry(key: 'on-stable', extra: {'channel': 'stable'}),
+            _entry(key: 'on-unstable', extra: {'channel': 'unstable'}),
+            _entry(key: 'on-mystery', extra: {'channel': 'nightly'}),
+            _entry(key: 'unsaid'),
+          ]),
+          200,
+        ),
+      );
+      final channels = {for (final entry in (await catalog.fetchCatalog())!) entry.key: entry.release.channel};
+      expect(channels, {
+        'on-stable': CatalogChannel.stable,
+        'on-unstable': CatalogChannel.unstable,
+        'on-mystery': CatalogChannel.bleeding,
+        'unsaid': CatalogChannel.stable,
+      });
+    });
+
     test('sends the canonical User-Agent', () async {
       late Map<String, String> headers;
       final catalog = service((request) async {
@@ -257,7 +297,7 @@ void main() {
         final catalog = service((_) async => http.Response('', 404));
         for (var i = 0; i < 3; i++) {
           catalog.invalidate();
-          expect(await catalog.fetchExtension('ham2k-gone'), isNull);
+          expect(await catalog.fetchExtension('ham2k-gone', channel: CatalogChannel.bleeding), isNull);
         }
         expect(backend.exceptions, isEmpty);
       }, backend: backend);
@@ -320,6 +360,69 @@ void main() {
       expect(bodies, hasLength(1));
     });
 
+    test('each installed extension is asked about on the track it follows, and the answers are merged', () async {
+      // One request on the roughest track would offer a stable install a
+      // bleeding release; one on stable would never offer the unstable
+      // install its next unstable release. A pre-load is the catalog's own
+      // bundle and keeps its track; a file, or another catalog's record,
+      // follows stable.
+      final bodies = <Map<String, dynamic>>[];
+      final settings = await settingsWith({
+        'extensionInstalledFrom': jsonEncode({
+          'ki2d-unstable': {'host': kCatalogHost, 'sha256': _sha, 'version': '0.1.0', 'channel': 'unstable'},
+          'ham2k-preload': {'host': kPreloadHost, 'sha256': _sha, 'version': '0.1.0', 'channel': 'bleeding'},
+          'ki2d-elsewhere': {'host': 'dev-catalog.example', 'sha256': _sha, 'version': '0.1.0', 'channel': 'bleeding'},
+        }),
+      });
+      final catalog = service((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        bodies.add(body);
+        final key = ((body['installed'] as List).first as Map)['key'] as String;
+        return http.Response(
+          jsonEncode({
+            'updates': [_entry(key: key, version: '9.0.0')],
+            'revoked': [],
+            'ignored': [],
+          }),
+          200,
+        );
+      }, settings: settings);
+
+      final result = (await catalog.checkUpdates([
+        _installed('ki2d-stable', '1.0.0'),
+        _installed('ki2d-unstable', '0.1.0'),
+        _installed('ham2k-preload', '0.1.0'),
+        _installed('ki2d-elsewhere', '0.1.0'),
+      ]))!;
+      final asked = {
+        for (final body in bodies) body['channel']: [for (final pair in body['installed'] as List) (pair as Map)['key']],
+      };
+      expect(asked, {
+        'stable': ['ki2d-stable', 'ki2d-elsewhere'],
+        'unstable': ['ki2d-unstable'],
+        'bleeding': ['ham2k-preload'],
+      });
+      expect(result.updates.map((u) => u.entry.key), unorderedEquals(['ki2d-stable', 'ki2d-unstable', 'ham2k-preload']));
+    });
+
+    test('one track going unanswered fails the whole check, so it is asked again', () async {
+      // A partial answer stamped as done would leave the unanswered track
+      // without an update offer for six hours.
+      final settings = await settingsWith({
+        'extensionInstalledFrom': jsonEncode({
+          'ki2d-unstable': {'host': kCatalogHost, 'sha256': _sha, 'version': '0.1.0', 'channel': 'unstable'},
+        }),
+      });
+      final catalog = service((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        if (body['channel'] == 'unstable') return http.Response('', 503);
+        return http.Response(jsonEncode({'updates': [], 'revoked': [], 'ignored': []}), 200);
+      }, settings: settings);
+      await withErrorHooks(() async {
+        expect(await catalog.checkUpdates([_installed('ki2d-stable', '1.0.0'), _installed('ki2d-unstable', '0.1.0')]), isNull);
+      }, backend: backend);
+    });
+
     test('reads updates, revocations and the ignored list', () async {
       final catalog = service(
         (_) async => http.Response(
@@ -376,9 +479,14 @@ void main() {
         }
         return http.Response('abc', 200);
       });
-      final listing = (await catalog.fetchExtension('k2hrc-llota'))!;
-      CatalogRelease release(String version) =>
-          (key: 'k2hrc-llota', version: version, sha256: listing.versionNamed(version)!.sha256, bundleUrl: catalog.bundleUrlFor('k2hrc-llota', version));
+      final listing = (await catalog.fetchExtension('k2hrc-llota', channel: CatalogChannel.bleeding))!;
+      CatalogRelease release(String version) => (
+        key: 'k2hrc-llota',
+        version: version,
+        sha256: listing.versionNamed(version)!.sha256,
+        bundleUrl: catalog.bundleUrlFor('k2hrc-llota', version),
+        channel: CatalogChannel.stable,
+      );
       expect(await catalog.download(release('1.2.0')), utf8.encode('abc'));
       // The same bytes against the other version's hash: refused.
       await expectLater(catalog.download(release('1.1.0')), throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)));
@@ -404,12 +512,12 @@ void main() {
           200,
         );
       });
-      expect((await catalog.fetchExtension('k2hrc-llota'))!.versionNamed('1.3.0'), isNull);
+      expect((await catalog.fetchExtension('k2hrc-llota', channel: CatalogChannel.bleeding))!.versionNamed('1.3.0'), isNull);
       served = ['1.2.0', '1.3.0'];
-      expect((await catalog.fetchExtension('k2hrc-llota', expecting: '1.3.0'))!.versionNamed('1.3.0'), isNotNull);
+      expect((await catalog.fetchExtension('k2hrc-llota', channel: CatalogChannel.bleeding, expecting: '1.3.0'))!.versionNamed('1.3.0'), isNotNull);
       expect(requests, 2);
       // A version the cache does hold is not a reason to ask again.
-      await catalog.fetchExtension('k2hrc-llota', expecting: '1.2.0');
+      await catalog.fetchExtension('k2hrc-llota', channel: CatalogChannel.bleeding, expecting: '1.2.0');
       expect(requests, 2);
     });
 
@@ -518,6 +626,59 @@ void main() {
       expect(CatalogService.parseBundleUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota')), isNull);
       expect(CatalogService.parseBundleUrl(Uri.parse('https://catalog.ham2k.net/extensions/k2hrc-llota')), isNull);
     });
+
+    test('an extension page names its key and the channel the site shows, stable when it names none', () {
+      expect(CatalogService.parsePageUrl(Uri.parse('https://catalog.ham2k.net/extensions/k2hrc-llota?channel=unstable')), (
+        key: 'k2hrc-llota',
+        channel: CatalogChannel.unstable,
+      ));
+      expect(CatalogService.parsePageUrl(Uri.parse('https://catalog.ham2k.net/extensions/k2hrc-llota')), (key: 'k2hrc-llota', channel: CatalogChannel.stable));
+      // A channel this build does not know is not guessed at: installing
+      // stable for a link that asked for something rougher would install a
+      // release the link never named.
+      expect(CatalogService.parsePageUrl(Uri.parse('https://catalog.ham2k.net/extensions/k2hrc-llota?channel=nightly')), isNull);
+      expect(CatalogService.parsePageUrl(Uri.parse('https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota')), isNull);
+    });
+
+    test('a version\'s channel is the steadiest one it is approved on', () async {
+      // Identical bytes approved on unstable and stable are a stable
+      // release, and warning about them as unstable would teach the operator
+      // to click through the warning.
+      final catalog = service(
+        (_) async => http.Response(
+          jsonEncode({
+            'key': 'k2hrc-llota',
+            'versions': [
+              {
+                'version': '1.2.0',
+                'sha256': _sha,
+                'submissions': [
+                  {'channel': 'unstable', 'status': 'approved'},
+                  {'channel': 'stable', 'status': 'approved'},
+                ],
+              },
+              {
+                'version': '1.3.0-beta.1',
+                'sha256': _sha,
+                'submissions': [
+                  {'channel': 'bleeding', 'status': 'approved'},
+                  {'channel': 'stable', 'status': 'pending'},
+                ],
+              },
+              {'version': '0.9.0', 'sha256': _sha},
+            ],
+            'current': _entry(version: '1.3.0-beta.1', extra: {'channel': 'bleeding'}),
+          }),
+          200,
+        ),
+      );
+      final listing = (await catalog.fetchExtension('k2hrc-llota', channel: CatalogChannel.bleeding))!;
+      expect(listing.versionNamed('1.2.0')!.channel, CatalogChannel.stable);
+      expect(listing.versionNamed('1.3.0-beta.1')!.channel, CatalogChannel.bleeding);
+      // Nothing said about how finished it is: warned about, not trusted.
+      expect(listing.versionNamed('0.9.0')!.channel, CatalogChannel.bleeding);
+      expect(listing.current!.release.channel, CatalogChannel.bleeding);
+    });
   });
 
   group('the unattended update check', () {
@@ -584,6 +745,37 @@ void main() {
       await two.check();
       // Two names is still a sentence; the count is what a third would cost.
       expect(notices(CatalogUpdateCheck.noticeKey).single.text, 'LLOTA, Other One need updating.');
+    });
+
+    test('a lower replacement is not an update: no notice, nothing pending', () async {
+      // The catalog answers with its current release even when it is LOWER,
+      // for an installed version the channel cannot see — every check, for
+      // an install put back on stable from an unstable prerelease. Announced,
+      // it is an "update available" that Update all finds nothing to take
+      // for, every six hours.
+      final check = await checker(
+        (_) async => answer(
+          updates: [
+            {..._entry(version: '1.0.0'), 'installedStatus': 'unknown'},
+          ],
+        ),
+        installed: [_installed('k2hrc-llota', '1.1.0-beta.1', name: 'LLOTA')],
+      );
+      expect(await check.check(), isTrue);
+      expect(check.pendingUpdates, isEmpty);
+      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
+    });
+
+    test('forgetting an offer drops it at once, and the notice with the last one', () async {
+      // Follow stable relies on this rather than on the next check, which can
+      // be skipped or fail — and the stale unstable offer, taken, would widen
+      // the track straight back.
+      final check = await checker((_) async => answer(updates: [_entry(version: '1.1.0')]));
+      await check.check();
+      expect(notices(CatalogUpdateCheck.noticeKey), hasLength(1));
+      check.forget('k2hrc-llota');
+      expect(check.pendingUpdates, isEmpty);
+      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
     });
 
     test('past two, the notice names two and counts the rest', () async {

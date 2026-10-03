@@ -16,6 +16,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/config/navigation.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_relevance.dart';
+import 'package:ham2k_logger/services/extensions/installed_extensions.dart' show CatalogChannel;
 import 'package:ham2k_logger/services/extensions/preloaded_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/app_shell/extension_upgrade_gate.dart';
@@ -197,7 +198,7 @@ class _Listing extends CatalogService {
   final List<String> keys;
 
   @override
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async => [
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false, CatalogChannel? channel}) async => [
     for (final key in keys)
       CatalogEntry(
         key: key,

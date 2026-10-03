@@ -25,7 +25,7 @@ flutter run -d web-server --web-port 8767 --web-hostname 127.0.0.1 \
 ```
 
 Open `http://127.0.0.1:8767`, install the externally built `ki2d-weather-panel`
-`.h2kext` under Settings → Features & Extensions, then add **KI2D’s Weather Panel**
+`.h2kext` under Settings → Extensions & Features, then add **KI2D’s Weather Panel**
 through Edit Layout. A blank panel location
 follows the operation's exact coordinates (preferred) or grid; a configured grid
 or latitude/longitude overrides it. The extension requests Open-Meteo through

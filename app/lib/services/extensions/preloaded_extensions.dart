@@ -332,8 +332,9 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
   if (wanted.isEmpty) return (landed: false, complete: true);
 
   // Ungeo'd deliberately: geo ranks a listing, and what this needs from it is
-  // membership — whether the catalog has this key at all.
-  final listing = await catalog.fetchCatalog();
+  // membership — whether the catalog has this key at all. Stable, whatever
+  // the developer searches: these install with no consent screen.
+  final listing = await catalog.fetchCatalog(channel: CatalogChannel.stable);
   if (listing == null) return (landed: false, complete: false);
   final offered = {for (final entry in listing) entry.key: entry};
 
@@ -426,7 +427,7 @@ Future<void> installCatalogEntry({
   final bytes = await catalog.download(entry.release);
   final inspected = await store.inspect(
     bytes,
-    provenance: BundleProvenance(host: catalog.host, sha256: entry.sha256, version: entry.version),
+    provenance: BundleProvenance(host: catalog.host, sha256: entry.sha256, version: entry.version, channel: entry.channel),
   );
   await beforeInstall?.call();
   await store.install(inspected);

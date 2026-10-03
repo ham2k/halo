@@ -185,7 +185,10 @@ mixin _ExtensionInstalls {
 
   /// The settings an install touches. The provenance record is written for
   /// catalog bytes and cleared for any other: a file install of a key the
-  /// catalog once served must not inherit the `ham2k-` waiver. A revocation
+  /// catalog once served must not inherit the `ham2k-` waiver. Written on the
+  /// track the key already follows, or the release's own when that is
+  /// rougher — never narrower, which is what keeps an unstable install taking
+  /// unstable releases after a stable one updates it. A revocation
   /// of another version is over. And a catalog install of a key the store
   /// did not have — the built-in that moved to the catalog, switched off by
   /// the operator while it was built in — drops the operator's override and
@@ -199,7 +202,7 @@ mixin _ExtensionInstalls {
     if (provenance == null) {
       if (records.remove(bundle.key) != null) await currentSettings.setExtensionInstalledFrom(records);
     } else {
-      records[bundle.key] = provenance.toJson();
+      records[bundle.key] = provenance.followingAtLeast(BundleProvenance.fromJson(records[bundle.key])).toJson();
       await currentSettings.setExtensionInstalledFrom(records);
     }
     await liftInstallRecordsForNewVersion(currentSettings, bundle.key, bundle.version);

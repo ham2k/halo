@@ -543,6 +543,33 @@ class Translations$extensionsPanel$en {
 	/// en: 'That catalog link does not name an extension version.'
 	String get catalogLinkUnknown => 'That catalog link does not name an extension version.';
 
+	/// en: 'The catalog has no release of ${key} on that track.'
+	String catalogNoRelease({required Object key}) => 'The catalog has no release of ${key} on that track.';
+
+	/// en: 'Install from link'
+	String get installFromLink => 'Install from link';
+
+	/// en: 'This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.'
+	String get unstableReleaseWarning => 'This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.';
+
+	/// en: 'This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.'
+	String get bleedingReleaseWarning => 'This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.';
+
+	/// en: 'Unstable'
+	String get channelUnstable => 'Unstable';
+
+	/// en: 'Bleeding'
+	String get channelBleeding => 'Bleeding';
+
+	/// en: 'Receives unstable and stable releases'
+	String get followsUnstable => 'Receives unstable and stable releases';
+
+	/// en: 'Receives bleeding-edge, unstable and stable releases'
+	String get followsBleeding => 'Receives bleeding-edge, unstable and stable releases';
+
+	/// en: 'Follow stable releases only'
+	String get followStableAction => 'Follow stable releases only';
+
 	/// en: 'Revoked'
 	String get revokedBadge => 'Revoked';
 
@@ -5476,6 +5503,18 @@ class Translations$settings$developer$en {
 
 	/// en: 'http://localhost:8787'
 	String get catalogHint => 'http://localhost:8787';
+
+	/// en: 'Catalog Search Tracks'
+	String get catalogSearchTracks => 'Catalog Search Tracks';
+
+	/// en: 'Only Stable'
+	String get catalogSearchStable => 'Only Stable';
+
+	/// en: 'Unstable or better'
+	String get catalogSearchUnstable => 'Unstable or better';
+
+	/// en: 'Bleeding or better'
+	String get catalogSearchBleeding => 'Bleeding or better';
 }
 
 // Path: settings.about
@@ -5522,11 +5561,11 @@ class Translations$settings$panels$en {
 	/// en: 'Service credentials, offline data, and more'
 	String get accountsDescription => 'Service credentials, offline data, and more';
 
-	/// en: 'Features & Extensions'
-	String get extensions => 'Features & Extensions';
+	/// en: 'Extensions & Features'
+	String get extensions => 'Extensions & Features';
 
-	/// en: 'Activities, Contests and more features'
-	String get extensionsDescription => 'Activities, Contests and more features';
+	/// en: 'Activities, Contests, Dashboard Panels and more features'
+	String get extensionsDescription => 'Activities, Contests, Dashboard Panels and more features';
 
 	/// en: 'Operator callsign and station profile'
 	String get profilesDescription => 'Operator callsign and station profile';
@@ -7577,6 +7616,15 @@ extension on Translations {
 			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'The catalog has no version ${version} of ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'That catalog link does not name an extension version.',
+			'extensionsPanel.catalogNoRelease' => ({required Object key}) => 'The catalog has no release of ${key} on that track.',
+			'extensionsPanel.installFromLink' => 'Install from link',
+			'extensionsPanel.unstableReleaseWarning' => 'This is an unstable release, which its publisher has not called finished. It may misbehave, and it will keep receiving unstable updates.',
+			'extensionsPanel.bleedingReleaseWarning' => 'This is a bleeding-edge release: work in progress that may break or lose its settings. It will keep receiving bleeding-edge updates.',
+			'extensionsPanel.channelUnstable' => 'Unstable',
+			'extensionsPanel.channelBleeding' => 'Bleeding',
+			'extensionsPanel.followsUnstable' => 'Receives unstable and stable releases',
+			'extensionsPanel.followsBleeding' => 'Receives bleeding-edge, unstable and stable releases',
+			'extensionsPanel.followStableAction' => 'Follow stable releases only',
 			'extensionsPanel.revokedBadge' => 'Revoked',
 			'extensionsPanel.refusedBadge' => 'Did not load',
 			'extensionsPanel.downloadNotHttps' => 'That download is not over a secure connection.',
@@ -7941,6 +7989,8 @@ extension on Translations {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'You can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', other: 'You can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', ), 
 			'operation.export.stash.mayHaveArrived' => 'No answer from the stash — the file may have arrived anyway. Check stash.ham2k.net before sending again',
 			'operation.export.stash.notSent' => 'not sent',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'This file didn’t arrive:', other: 'These ${count} files didn’t arrive:', ), 
 			'operation.export.stash.emailOffer' => 'Or for your convenience, we can send you an email with a direct link.',
 			'operation.export.stash.emailMe' => 'Email Me a Link',
@@ -7950,8 +8000,6 @@ extension on Translations {
 			'operation.export.stash.sentStatus' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Sent ${count} file to Ham2K’s File Stash (stash.ham2k.net)', other: 'Sent ${count} files to Ham2K’s File Stash (stash.ham2k.net)', ), 
 			'operation.spots.empty' => 'No spots match your filters',
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.spots.unknownBand' => 'Other',
 			'operation.spots.auto' => 'Automatic',
 			'operation.spots.autoValue' => ({required Object value}) => 'Automatic (Currently ${value})',
@@ -8455,6 +8503,8 @@ extension on Translations {
 			'settings.radio.cwMessages.setSaved' => 'My Messages',
 			'settings.radio.cwMessages.repeat' => 'Repeat Message #1',
 			'settings.radio.cwMessages.repeatOff' => 'No',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
@@ -8464,8 +8514,6 @@ extension on Translations {
 			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
 			'settings.radio.cwMessages.helpIntro' => 'Messages can use templates with the following values:',
 			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign — in a // stack, the call that will be logged',
 			'settings.radio.cwMessages.helpQsoFullCall' => 'Their callsign, if there is a valid call; blank for a partial',
 			'settings.radio.cwMessages.helpQsoPartial' => 'A partial call; blank if there is a full valid call',
@@ -8969,6 +9017,8 @@ extension on Translations {
 			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',
 			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
@@ -8978,8 +9028,6 @@ extension on Translations {
 			'settings.station.pollIntervalDescription' => ({required Object fallback}) => 'How often to ask the radio for its frequency and mode while neither is changing. Leave blank for ${fallback} ms.',
 			'settings.station.pollIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
 			'settings.station.advancedSettings' => 'Advanced Settings',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderSwr' => 'SWR reading',
 			'settings.station.placeholderSwrDescription' => 'What this radio reports on its SWR meter while transmitting. Above 1.8 the panel warns.',
 			'settings.station.placeholderSwrInvalid' => 'A number, 1 or more',
@@ -9088,6 +9136,10 @@ extension on Translations {
 			'settings.developer.catalogDescription' => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Catalog address',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
+			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
+			'settings.developer.catalogSearchStable' => 'Only Stable',
+			'settings.developer.catalogSearchUnstable' => 'Unstable or better',
+			'settings.developer.catalogSearchBleeding' => 'Bleeding or better',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',
@@ -9097,8 +9149,8 @@ extension on Translations {
 			'settings.panels.commonSettings' => 'Common Preferences',
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Service credentials, offline data, and more',
-			'settings.panels.extensions' => 'Features & Extensions',
-			'settings.panels.extensionsDescription' => 'Activities, Contests and more features',
+			'settings.panels.extensions' => 'Extensions & Features',
+			'settings.panels.extensionsDescription' => 'Activities, Contests, Dashboard Panels and more features',
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
 			'settings.panels.developerSettings' => 'Developer Settings',
