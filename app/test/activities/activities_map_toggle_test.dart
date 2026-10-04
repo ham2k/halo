@@ -76,7 +76,7 @@ void main() {
       expect(find.text('POTA US-0001'), findsOneWidget);
       expect(find.byType(OsmMapView), findsNothing);
 
-      await tester.tap(find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == t.activitiesView.showResultsMap));
+      await tester.tap(find.text(t.activitiesView.mapToggle));
       await tester.pumpAndSettle();
 
       expect(find.text('POTA US-0001'), findsNothing, reason: 'the list rows are swapped out, not just covered');
@@ -99,7 +99,7 @@ void main() {
       expect(latest, isNotNull);
       expect(latest!.refs.where((r) => r['type'] == 'pota' && r['ref'] == 'US-0001'), hasLength(1));
 
-      await tester.tap(find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == t.activitiesView.showResultsList));
+      await tester.tap(find.text(t.activitiesView.searchToggle));
       await tester.pumpAndSettle();
       expect(find.byType(OsmMapView), findsNothing);
     } finally {
@@ -136,7 +136,7 @@ void main() {
 
       expect(find.text('POTA US-9999'), findsOneWidget);
 
-      await tester.tap(find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == t.activitiesView.showResultsMap));
+      await tester.tap(find.text(t.activitiesView.mapToggle));
       await tester.pumpAndSettle();
 
       expect(find.byType(OsmMapView), findsOneWidget);

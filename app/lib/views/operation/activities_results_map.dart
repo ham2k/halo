@@ -27,7 +27,9 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../services/extensions/extension_ref_results.dart';
 import '../../services/geoshape_service.dart';
+import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
@@ -171,14 +173,22 @@ class ActivitiesResultsMap extends StatefulWidget {
 
   final ValueChanged<Map<String, dynamic>> onAdd;
 
+  /// Takes an already-added reference back off the operation, from its card.
+  final ValueChanged<Map<String, dynamic>>? onRemove;
+
+  /// Where to read about a reference, for the reveal card's web button —
+  /// null, or answering null, leaves the card without one.
+  final Future<RefLink?> Function(Map<String, dynamic> ref)? linkFor;
+
   /// References found by panning, drawn after [suggestions] and never fitted
   /// by the camera — the operator is the one moving it. Map-only: the list
   /// above the map keeps answering the search it was asked.
   final List<Map<String, dynamic>> exploredSuggestions;
 
-  /// What moves the camera: it refits to the markers when this changes, and
-  /// only then (see [MapMarkerData.fitKey]). The pane changes it with each
-  /// search it answers. Null fits once, when the map first has markers —
+  /// What moves the camera while there is no [currentLocation] to open on:
+  /// it refits to the markers when this changes, and only then (see
+  /// [MapMarkerData.fitKey]). The pane changes it with each search it
+  /// answers. Null fits once, when the map first has markers —
   /// never whenever they change, which on this map is the operator's own
   /// doing (a card opened, a reference added, a dot hidden by zooming out).
   final String? fitKey;
@@ -218,6 +228,8 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.geoshapes,
     this.camera,
     required this.onAdd,
+    this.onRemove,
+    this.linkFor,
     this.exploredSuggestions = const [],
     this.onExplore,
     this.fitKey,
@@ -288,8 +300,13 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   /// The outlines on the map as last built, for [_onMapTap] to hit-test.
   List<MapShapeData> _shapes = const [];
 
-  /// How far from an edge or a trail a tap still counts as on it.
-  static const _tapSlackPixels = 12.0;
+  /// How far from a tap a dot, an edge or a trail still counts as under it.
+  static const _pickRadiusPixels = 20.0;
+
+  /// Everything the last tap found under it, in the order the card steps
+  /// through them. The pager shows only while the open card is one of them,
+  /// so a card opened any other way never carries a stale count.
+  List<String> _picks = const [];
 
   /// How thick the chosen marker's ring is, against the 1.5–2 of the rest.
   static const _chosenRingWidth = 4.0;
@@ -451,11 +468,19 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       setState(() => _selectedMarkerId = null);
     }
     // A new search starts the exploring over: what was found for the last
-    // one is gone from the map.
+    // one is gone from the map. The pager's ids go too: a suggestion's is an
+    // index into the list just replaced.
     if (!identical(oldWidget.suggestions, widget.suggestions)) {
       _exploreDebounce?.cancel();
       _explored.clear();
       _exploreGeneration++;
+      _picks = const [];
+    }
+    // A revealed reference taken off the operation stays revealed as the
+    // suggestion the pane offers it back as, so its card turns to Add — the
+    // undo for a removal made by mistake. Gone from both, the card closes.
+    if (_selectedMarkerId case final id? when id.startsWith('ref-') && _markerEntry(id) == null) {
+      _selectedMarkerId = _markerIdForRef(id);
     }
   }
 
@@ -463,47 +488,117 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // Faded out, a suggestion is not there to tap; and a marker that stands
     // for no entry ("you are here") reveals nothing — it only closes a card.
     if (!_suggestionMarkers && int.tryParse(id) != null) return;
-    if (_markerEntry(id) == null) {
+    final entry = _markerEntry(id);
+    if (entry == null) {
       setState(() => _selectedMarkerId = null);
       return;
     }
-    // A second tap on what is already open closes it, and moves nothing.
-    if (id == _selectedMarkerId) {
-      setState(() => _selectedMarkerId = null);
-      return;
-    }
-    setState(() => _selectedMarkerId = id);
-    // Only a reference already on the operation, not a suggestion: a
-    // suggestion's card offers Add, and flying the map away from the search
-    // results the operator is comparing would answer a question they did not
-    // ask. Tapping the same reference's row does the same thing — see
-    // activities_view.dart.
-    if (!id.startsWith('ref-')) return;
-    final location = locationForSuggestion(_markerEntry(id) ?? const {});
+    // Picked around the dot rather than the tap itself, which the backend
+    // does not report: the two are a dot's radius apart at most.
+    final location = locationForSuggestion(entry);
+    // The dot the operator aimed at leads, the rest in their usual order.
+    final picks = [id, if (location != null) ..._pickAt(location).where((pick) => pick != id)];
+    _open(picks);
+    // Only a reference already on the operation, alone under the tap, not a
+    // suggestion: a suggestion's card offers Add, and flying the map away
+    // from the search results the operator is comparing would answer a
+    // question they did not ask — as would flying to the first of several
+    // they are about to step through. Tapping the same reference's row does
+    // the same thing — see activities_view.dart.
+    if (_picks.isNotEmpty || !id.startsWith('ref-') || _selectedMarkerId != id) return;
     if (location != null) widget.camera?.moveTo(location.latitude, location.longitude);
   }
 
-  /// A tap on an outline opens its reference's card, as a tap on its marker
-  /// does — the map's own references and its suggestions alike. The camera
-  /// stays put even for the operation's own reference: the operator tapped
-  /// something already in view.
+  /// A tap on the map opens the card of what lies under it, as a tap on a
+  /// marker does — the map's own references and its suggestions alike. The
+  /// camera stays put even for the operation's own reference: the operator
+  /// tapped something already in view.
   void _onMapTap(GridLocation point) {
+    final picks = _pickAt(point);
+    if (picks.isNotEmpty) _open(picks);
+  }
+
+  /// Opens the first of [picks], or — when its card is already open —
+  /// closes it: a second tap on the same thing.
+  void _open(List<String> picks) {
+    setState(() {
+      if (picks.first == _selectedMarkerId) {
+        _selectedMarkerId = null;
+      } else {
+        _selectedMarkerId = picks.first;
+      }
+      _picks = picks.length > 1 ? picks : const [];
+    });
+  }
+
+  /// The marker ids of every dot and outline within [_pickRadiusPixels] of
+  /// [point], each reference once: dots first, then outlines from the
+  /// smallest up — a summit's zone before the forest around it — and by
+  /// reference within each size.
+  List<String> _pickAt(GridLocation point) {
     final zoom = _zoom;
     // Web Mercator at 512-pixel tiles; without a zoom, only a tap inside an
     // area can land.
-    final metersPerPixel = zoom == null ? 0.0 : _metersPerPixel(point, zoom);
-    final hit = shapeAt(_shapes, point, toleranceMeters: _tapSlackPixels * metersPerPixel);
-    if (hit == null) return;
-    final id = markerIdOfShape(hit);
-    final String markerId;
-    if (widget.refs.any((ref) => selectedRefMarkerId(ref) == id)) {
-      markerId = id;
-    } else {
-      final index = _allSuggestions.indexWhere((suggestion) => selectedRefMarkerId(suggestion) == id);
-      if (index < 0) return;
-      markerId = '$index';
+    final radius = _pickRadiusPixels * (zoom == null ? 0.0 : _metersPerPixel(point, zoom));
+    final cosLat = math.cos(point.latitude * math.pi / 180);
+    const metersPerDegree = 111320.0;
+    final sizes = <String, double>{};
+    final entries = <String, Map<String, dynamic>>{};
+    void found(String? markerId, double size) {
+      final entry = _markerEntry(markerId);
+      if (markerId == null || entry == null || size >= (sizes[markerId] ?? double.infinity)) return;
+      sizes[markerId] = size;
+      entries[markerId] = entry;
     }
-    setState(() => _selectedMarkerId = markerId == _selectedMarkerId ? null : markerId);
+
+    // Measured before its marker id is looked up, which scans the lists:
+    // the dots under a tap are a handful of the hundreds panning can bring in.
+    bool under(Map<String, dynamic> entry) {
+      final at = locationForSuggestion(entry);
+      if (at == null) return false;
+      final dx = (at.longitude - point.longitude) * cosLat * metersPerDegree, dy = (at.latitude - point.latitude) * metersPerDegree;
+      return math.sqrt(dx * dx + dy * dy) <= radius;
+    }
+
+    for (final ref in widget.refs) {
+      if (under(ref)) found(selectedRefMarkerId(ref), 0);
+    }
+    if (_suggestionMarkers) {
+      final suggestions = _allSuggestions;
+      for (var i = 0; i < suggestions.length; i++) {
+        if (under(suggestions[i])) found(_markerIdForRef(selectedRefMarkerId(suggestions[i])) ?? '$i', 0);
+      }
+    }
+    for (final hit in shapesAt(_shapes, point, toleranceMeters: radius)) {
+      found(_markerIdForRef(markerIdOfShape(hit.shape)), hit.size);
+    }
+    return sizes.keys.toList()..sort((a, b) {
+      final bySize = sizes[a]!.compareTo(sizes[b]!);
+      return bySize != 0 ? bySize : '${entries[a]!['ref'] ?? ''}'.compareTo('${entries[b]!['ref'] ?? ''}');
+    });
+  }
+
+  /// The marker id a reference's content id is drawn under: its own when the
+  /// operation has it, otherwise its index among the suggestions, or null for
+  /// one the map is not showing.
+  String? _markerIdForRef(String id) {
+    if (widget.refs.any((ref) => selectedRefMarkerId(ref) == id)) return id;
+    final index = _allSuggestions.indexWhere((suggestion) => selectedRefMarkerId(suggestion) == id);
+    return index < 0 ? null : '$index';
+  }
+
+  /// The open card's link, asked for once per card rather than once per
+  /// build — every camera move rebuilds this pane.
+  String? _linkMarkerId;
+  Future<RefLink?>? _link;
+
+  Future<RefLink?>? _linkForSelected(Map<String, dynamic> selected) {
+    final id = selectedRefMarkerId(selected);
+    if (id != _linkMarkerId) {
+      _linkMarkerId = id;
+      _link = widget.linkFor?.call(selected);
+    }
+    return _link;
   }
 
   /// The entry a marker id stands for, or null when it stands for none — the
@@ -561,9 +656,10 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     );
 
     // The hint is about a search that found nothing, so it must not stand in
-    // front of references the operation already has: it shows only when
-    // there is nothing at all to draw.
-    if (markers.isEmpty && refMarkers.isEmpty) {
+    // front of references the operation already has, nor of the "you are
+    // here" the map opens on: it shows only when there is nothing at all to
+    // draw.
+    if (markers.isEmpty && refMarkers.isEmpty && widget.currentLocation == null) {
       final t = context.t.activitiesView;
       return Center(
         child: Padding(
@@ -621,13 +717,18 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
                 ),
         ),
     ];
-    // Every marker carries the search's key, so the camera refits for a new
-    // search and for nothing else — not for a reference added from a card,
-    // nor for suggestions hidden or shown by zooming.
+    // With a "you are here", the camera fits that one dot, once: a lone
+    // marker fits at MapZoomController.fitMaxZoom (10.5), so the map opens
+    // centered on the operator at that zoom and stays wherever they take it.
+    // Without one, every marker carries the search's key, so the camera
+    // refits for a new search and for nothing else — not for a reference
+    // added from a card, nor for suggestions hidden or shown by zooming.
+    final opensOnHere = currentLocation != null;
     final allMarkers = [
       for (final marker in unkeyedMarkers)
         (marker.id == _selectedMarkerId ? _asChosen(marker, glyphForeground: glyphForeground, devicePixelRatio: devicePixelRatio) : marker).withFit(
-          fitKey: widget.fitKey ?? 'once',
+          fitKey: opensOnHere ? 'current-location' : (widget.fitKey ?? 'once'),
+          fitsCamera: opensOnHere ? marker.id == 'current-location' : null,
         ),
     ];
 
@@ -779,23 +880,76 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
             left: Space.md,
             right: Space.md,
             top: Space.md,
-            child: _RevealCard(
-              suggestion: selected,
-              control: controlForRefType(widget.controls, selected['type'] as String?),
-              controls: widget.controls,
-              alreadyAdded: widget.refs.any((r) => r['type'] == selected['type'] && r['ref'] == selected['ref']),
-              miles: widget.settings.distanceUnits == DistanceUnits.miles,
-              onAdd: () {
-                widget.onAdd(selected);
-                setState(() => _selectedMarkerId = null);
-              },
-              onDismiss: () => setState(() => _selectedMarkerId = null),
+            child: _CardDeck(
+              behind: _picks.contains(_selectedMarkerId) ? math.min(_picks.length - 1, _CardDeck.maxBehind) : 0,
+              child: _RevealCard(
+                suggestion: selected,
+                control: controlForRefType(widget.controls, selected['type'] as String?),
+                controls: widget.controls,
+                alreadyAdded: widget.refs.any((r) => r['type'] == selected['type'] && r['ref'] == selected['ref']),
+                miles: widget.settings.distanceUnits == DistanceUnits.miles,
+                link: _linkForSelected(selected),
+                pickIndex: _picks.indexOf(_selectedMarkerId!),
+                pickCount: _picks.length,
+                onPick: (index) => setState(() => _selectedMarkerId = _picks[index]),
+                onAdd: () {
+                  widget.onAdd(selected);
+                  setState(() => _selectedMarkerId = null);
+                },
+                // The card stays open, offering Add again — see didUpdateWidget.
+                onRemove: widget.onRemove == null ? null : () => widget.onRemove!(selected),
+                onDismiss: () => setState(() => _selectedMarkerId = null),
+              ),
             ),
           ),
       ],
     );
   }
 }
+
+/// Cards stacked behind the open one with their left edges showing: the
+/// hint that the tap found more than this card, before the pager is read.
+class _CardDeck extends StatelessWidget {
+  /// How many edges show — capped, since past three a deck reads as a
+  /// border rather than a count.
+  final int behind;
+  final Widget child;
+
+  const _CardDeck({required this.behind, required this.child});
+
+  static const maxBehind = 3;
+
+  /// How far each edge shows past the one in front, and how much shorter it
+  /// is at top and bottom, so the stack recedes rather than reading as one
+  /// thick border.
+  static const _step = 5.0;
+  static const _inset = 5.0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (behind == 0) return child;
+    final colors = Theme.of(context).colorScheme;
+    return Stack(
+      children: [
+        for (var depth = behind; depth >= 1; depth--)
+          Positioned(
+            left: (behind - depth) * _step,
+            top: depth * _inset,
+            bottom: depth * _inset,
+            right: 0,
+            child: Material(color: Color.lerp(colors.surface, colors.onSurface, 0.06 * depth), borderRadius: BorderRadius.circular(12), elevation: 2),
+          ),
+        Padding(
+          padding: EdgeInsets.only(left: behind * _step),
+          child: child,
+        ),
+      ],
+    );
+  }
+}
+
+/// Bright enough to read as "done" at a glance on the card's surface.
+const _selectedGreen = Color(0xFF00A43B);
 
 /// What a marker tap reveals: the same title/detail a list row shows, plus
 /// an explicit Add action — a stray tap on the map can't add the wrong
@@ -806,7 +960,15 @@ class _RevealCard extends StatelessWidget {
   final List<Map<String, dynamic>> controls;
   final bool alreadyAdded;
   final bool miles;
+  final Future<RefLink?>? link;
+
+  /// Where this card stands among what the tap found, -1 when it is not one
+  /// of them; the pager shows only for one of two or more.
+  final int pickIndex;
+  final int pickCount;
+  final ValueChanged<int> onPick;
   final VoidCallback onAdd;
+  final VoidCallback? onRemove;
   final VoidCallback onDismiss;
 
   const _RevealCard({
@@ -815,7 +977,12 @@ class _RevealCard extends StatelessWidget {
     required this.controls,
     required this.alreadyAdded,
     required this.miles,
+    required this.link,
+    required this.pickIndex,
+    required this.pickCount,
+    required this.onPick,
     required this.onAdd,
+    required this.onRemove,
     required this.onDismiss,
   });
 
@@ -823,8 +990,10 @@ class _RevealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.t.activitiesView;
+    final title = activityRowTitle(control, suggestion);
     final detail = activityRowDetail(suggestion);
     final distance = suggestion['distance'] is num ? fmtDistance((suggestion['distance'] as num).toDouble(), miles: miles) : null;
+    final narrow = !ShirtSize.of(context).isTwoPane;
 
     return Material(
       color: theme.colorScheme.surface,
@@ -833,53 +1002,107 @@ class _RevealCard extends StatelessWidget {
       elevation: 4,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.sm, Space.sm),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            activityRefIcon(controls, suggestion['type'] as String?),
-            const SizedBox(width: Space.md),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            Row(
+              children: [
+                activityRefIcon(controls, suggestion['type'] as String?),
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          activityRowTitle(control, suggestion),
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              title,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (activityRowIsRetired(suggestion))
+                            Padding(
+                              padding: const EdgeInsets.only(left: Space.md),
+                              child: ActivityRowChip(label: t.retiredReference, unavailable: true),
+                            ),
+                        ],
+                      ),
+                      if (detail != null || distance != null)
+                        Text(
+                          [?detail, ?distance].join(' • '),
+                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      if (activityRowIsRetired(suggestion))
-                        Padding(
-                          padding: const EdgeInsets.only(left: Space.md),
-                          child: ActivityRowChip(label: t.retiredReference, unavailable: true),
-                        ),
                     ],
                   ),
-                  if (detail != null || distance != null)
-                    Text(
-                      [?detail, ?distance].join(' • '),
-                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                ),
+                // The same web button the list rows end with.
+                FutureBuilder<RefLink?>(
+                  // Keyed, or a card paged to the next reference keeps
+                  // offering the last one's link until the new one answers.
+                  key: ValueKey(selectedRefMarkerId(suggestion)),
+                  future: link,
+                  builder: (context, snapshot) => switch (snapshot.data) {
+                    final link? => IconButton(
+                      icon: Icon(MdiIcons.web, semanticLabel: t.openReferenceLink(name: link.label ?? title)),
+                      onPressed: () => openExternalUrl(link.url),
                     ),
-                ],
-              ),
+                    null => const SizedBox.shrink(),
+                  },
+                ),
+                IconButton(
+                  icon: Icon(MdiIcons.close, semanticLabel: context.t.common.close),
+                  onPressed: onDismiss,
+                ),
+              ],
             ),
-            const SizedBox(width: Space.sm),
-            if (alreadyAdded)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.sm),
-                child: Text(t.alreadySelected, style: theme.textTheme.labelSmall),
-              )
-            else
-              FilledButton.tonal(onPressed: onAdd, child: Text(t.addToOperation)),
-            IconButton(
-              icon: Icon(MdiIcons.close, semanticLabel: context.t.common.close),
-              onPressed: onDismiss,
+            Row(
+              // The pager on the left, the action on the right: Add stays where
+              // a lone card has it, whether or not the tap found more.
+              children: [
+                if (pickIndex >= 0 && pickCount > 1) ...[
+                  IconButton(
+                    icon: Icon(MdiIcons.arrowLeft, semanticLabel: t.previousPick),
+                    onPressed: pickIndex > 0 ? () => onPick(pickIndex - 1) : null,
+                  ),
+                  Text(
+                    t.pickPosition(index: pickIndex + 1, count: pickCount),
+                    style: theme.textTheme.labelLarge,
+                  ),
+                  IconButton(
+                    icon: Icon(MdiIcons.arrowRight, semanticLabel: t.nextPick),
+                    onPressed: pickIndex < pickCount - 1 ? () => onPick(pickIndex + 1) : null,
+                  ),
+                ],
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.xs, right: Space.xs),
+                  child: alreadyAdded
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(MdiIcons.checkCircle, color: _selectedGreen),
+                            const SizedBox(width: Space.xs),
+                            Text(
+                              t.selected,
+                              style: theme.textTheme.labelLarge?.copyWith(color: _selectedGreen, fontWeight: FontWeight.bold),
+                            ),
+                            if (onRemove != null)
+                              IconButton(
+                                icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
+                                onPressed: onRemove,
+                              ),
+                          ],
+                        )
+                      : FilledButton.tonal(onPressed: onAdd, child: Text(narrow ? t.addToOperationShort : t.addToOperation)),
+                ),
+              ],
             ),
           ],
         ),

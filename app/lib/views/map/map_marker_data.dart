@@ -615,10 +615,40 @@ List<MapShapeData> mapShapesFromGeojson(
 /// Otherwise the smallest area holding the point wins, so a state park inside
 /// a national forest is the one a tap in the park picks, rather than whichever
 /// shape happened to come first.
+MapShapeData? shapeAt(List<MapShapeData> shapes, GridLocation point, {required double toleranceMeters}) {
+  MapShapeData? nearestEdge;
+  var nearestDistance = double.infinity;
+  MapShapeData? smallestArea;
+  var smallestSize = double.infinity;
+  for (final shape in shapes) {
+    final (:edgeDistance, :inside, :size) = _measureShape(shape, point);
+    if (edgeDistance <= toleranceMeters && edgeDistance < nearestDistance) {
+      nearestDistance = edgeDistance;
+      nearestEdge = shape;
+    }
+    if (inside && size < smallestSize) {
+      smallestSize = size;
+      smallestArea = shape;
+    }
+  }
+  return nearestEdge ?? smallestArea;
+}
+
+/// Every shape a tap at [point] touches — holding it, or within
+/// [toleranceMeters] of an edge or a trail — with the area of its bounding
+/// box in square metres, for a caller that ranks them itself.
+List<({MapShapeData shape, double size})> shapesAt(List<MapShapeData> shapes, GridLocation point, {required double toleranceMeters}) => [
+  for (final shape in shapes)
+    if (_measureShape(shape, point) case (:final edgeDistance, :final inside, :final size) when inside || edgeDistance <= toleranceMeters)
+      (shape: shape, size: size),
+];
+
+/// How far [point] is from [shape]'s nearest edge, whether the shape holds
+/// it, and its bounding box's area.
 ///
 /// Measured on a local flat projection around [point], which is exact enough
 /// for the few pixels a tap spans and the areas a map on screen can show.
-MapShapeData? shapeAt(List<MapShapeData> shapes, GridLocation point, {required double toleranceMeters}) {
+({double edgeDistance, bool inside, double size}) _measureShape(MapShapeData shape, GridLocation point) {
   final cosLat = math.cos(point.latitude * math.pi / 180);
   const metersPerDegree = 111320.0;
   (double, double) local(GridLocation p) => ((p.longitude - point.longitude) * cosLat * metersPerDegree, (p.latitude - point.latitude) * metersPerDegree);
@@ -633,40 +663,26 @@ MapShapeData? shapeAt(List<MapShapeData> shapes, GridLocation point, {required d
     return math.sqrt(x * x + y * y);
   }
 
-  MapShapeData? nearestEdge;
-  var nearestDistance = double.infinity;
-  MapShapeData? smallestArea;
-  var smallestSize = double.infinity;
-  for (final shape in shapes) {
-    var inside = false;
-    var minX = double.infinity, minY = double.infinity, maxX = double.negativeInfinity, maxY = double.negativeInfinity;
-    for (final ring in shape.rings) {
-      final points = [for (final p in ring) local(p)];
-      for (var i = 0; i < points.length; i++) {
-        final (x, y) = points[i];
-        minX = math.min(minX, x);
-        maxX = math.max(maxX, x);
-        minY = math.min(minY, y);
-        maxY = math.max(maxY, y);
-        if (i == 0) continue;
-        final previous = points[i - 1];
-        final distance = distanceToSegment(previous, points[i]);
-        if (distance <= toleranceMeters && distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestEdge = shape;
-        }
-        // Even-odd across every ring, so a point in a hole is outside.
-        final (px, py) = previous;
-        if (!shape.isLine && (y > 0) != (py > 0) && 0 < px + (-py) * (x - px) / (y - py)) inside = !inside;
-      }
-    }
-    final size = (maxX - minX) * (maxY - minY);
-    if (inside && size < smallestSize) {
-      smallestSize = size;
-      smallestArea = shape;
+  var edgeDistance = double.infinity;
+  var inside = false;
+  var minX = double.infinity, minY = double.infinity, maxX = double.negativeInfinity, maxY = double.negativeInfinity;
+  for (final ring in shape.rings) {
+    final points = [for (final p in ring) local(p)];
+    for (var i = 0; i < points.length; i++) {
+      final (x, y) = points[i];
+      minX = math.min(minX, x);
+      maxX = math.max(maxX, x);
+      minY = math.min(minY, y);
+      maxY = math.max(maxY, y);
+      if (i == 0) continue;
+      final previous = points[i - 1];
+      edgeDistance = math.min(edgeDistance, distanceToSegment(previous, points[i]));
+      // Even-odd across every ring, so a point in a hole is outside.
+      final (px, py) = previous;
+      if (!shape.isLine && (y > 0) != (py > 0) && 0 < px + (-py) * (x - px) / (y - py)) inside = !inside;
     }
   }
-  return nearestEdge ?? smallestArea;
+  return (edgeDistance: edgeDistance, inside: inside, size: (maxX - minX) * (maxY - minY));
 }
 
 /// Fill and outline share one hex color and one alpha pair, the same way

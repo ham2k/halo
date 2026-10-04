@@ -173,6 +173,17 @@ void main() {
       expect(shapeAt(all, beside, toleranceMeters: 2000), same(trail));
     });
 
+    test('every shape a tap touches is listed with its size, for a caller ranking them all', () {
+      // Inside the park and the forest, and near neither the trail nor any
+      // edge: shapeAt would answer the park alone, hiding the forest.
+      final hits = shapesAt(all, const GridLocation(0.3, 0.3), toleranceMeters: 0);
+      expect(hits.map((hit) => hit.shape), unorderedEquals([park, forest]));
+      final size = {for (final hit in hits) hit.shape: hit.size};
+      expect(size[park]!, lessThan(size[forest]!));
+
+      expect(shapesAt(all, const GridLocation(0.5, 2.01), toleranceMeters: 2000).map((hit) => hit.shape), [trail], reason: 'a trail within reach counts');
+    });
+
     test('a tap near an edge takes that edge, even over an area it is also inside', () {
       // Just inside the park's west edge, and inside the forest too: the edge
       // the operator aimed at wins.

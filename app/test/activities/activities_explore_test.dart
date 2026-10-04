@@ -160,16 +160,24 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel('Show results on a map'));
+      await tester.tap(find.text(t.activitiesView.mapToggle));
       await tester.pumpAndSettle();
       return extensions;
     }
 
     ActivitiesResultsMap resultsMap(WidgetTester tester) => tester.widget<ActivitiesResultsMap>(find.byType(ActivitiesResultsMap));
 
+    /// Typed in the list, as an operator has to: on the map the search field
+    /// is disabled.
     Future<void> type(WidgetTester tester, String text) async {
+      await tester.tap(find.text(t.activitiesView.searchToggle));
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, text);
       await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      // By its name, not its text: with text in the field the button is
+      // down to its icon, which carries the name instead.
+      await tester.tap(find.bySemanticsLabel(t.activitiesView.mapToggle));
       await tester.pumpAndSettle();
     }
 
@@ -249,6 +257,7 @@ void main() {
       List<Map<String, dynamic>> refs = const [],
       String? fitKey = 'search-1',
       MapZoomController? withCamera,
+      bool located = true,
     }) async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
@@ -272,7 +281,7 @@ void main() {
                   return answersWhole;
                 },
                 fitKey: fitKey,
-                currentLocation: const GridLocation(40.2, -75.2),
+                currentLocation: located ? const GridLocation(40.2, -75.2) : null,
               ),
             ),
           ),
@@ -338,10 +347,26 @@ void main() {
       }
     });
 
-    testWidgets('every marker carries the search\'s key, and what panning found is never fitted', (tester) async {
+    testWidgets('with a "you are here", the camera fits that dot alone, once', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
       try {
         await pump(tester, exploredSuggestions: const [_far], refs: const [_operationPark]);
+
+        final markers = map(tester).markers;
+        // One fitted marker is what opens the map at the fit's zoom cap,
+        // centered on the operator; a search key would refit it for every
+        // search, pulling the map off wherever the operator took it.
+        expect(markers.where((m) => m.fitsCamera).map((m) => m.id), ['current-location']);
+        expect(markers.map((m) => m.fitKey).toSet(), {'current-location'});
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('without one, every marker carries the search\'s key, and what panning found is never fitted', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      try {
+        await pump(tester, exploredSuggestions: const [_far], refs: const [_operationPark], located: false);
 
         final markers = map(tester).markers;
         // Keyed, the camera refits for a new search only — not for a reference
@@ -361,7 +386,7 @@ void main() {
       try {
         // The real camera, not a faked report: flutter_map re-reports where it
         // actually is after every rebuild, and would undo a faked one.
-        await pump(tester, exploredSuggestions: const [_far], refs: const [_operationPark], withCamera: MapZoomController());
+        await pump(tester, exploredSuggestions: const [_far], refs: const [_operationPark], withCamera: MapZoomController(), located: false);
         // flutter_map's own zoom is one above the GL scale.
         camera.moveTo(40.5, -75.5, zoom: ActivitiesResultsMap.suggestionMarkersFromZoom + 1 - 0.5);
         await tester.pumpAndSettle();

@@ -973,6 +973,18 @@ class Translations$activitiesView$en {
 	/// en: 'Already selected'
 	String get alreadySelected => 'Already selected';
 
+	/// en: 'Selected'
+	String get selected => 'Selected';
+
+	/// en: '${index} of ${count}'
+	String pickPosition({required Object index, required Object count}) => '${index} of ${count}';
+
+	/// en: 'Previous match'
+	String get previousPick => 'Previous match';
+
+	/// en: 'Next match'
+	String get nextPick => 'Next match';
+
 	/// en: 'Retired'
 	String get retiredReference => 'Retired';
 
@@ -1018,14 +1030,17 @@ class Translations$activitiesView$en {
 	/// en: 'No matches Some extensions that might have results are not running. See Activity Types below.'
 	String get onlyNotRunningMatches => 'No matches\nSome extensions that might have results are not running.\nSee Activity Types below.';
 
-	/// en: 'Show results on a map'
-	String get showResultsMap => 'Show results on a map';
+	/// en: 'Map'
+	String get mapToggle => 'Map';
 
-	/// en: 'Show results as a list'
-	String get showResultsList => 'Show results as a list';
+	/// en: 'Search'
+	String get searchToggle => 'Search';
 
 	/// en: 'Add to Operation'
 	String get addToOperation => 'Add to Operation';
+
+	/// en: 'Add to Op.'
+	String get addToOperationShort => 'Add to Op.';
 
 	/// en: 'No results to show on the map'
 	String get mapEmptyState => 'No results to show on the map';
@@ -8179,6 +8194,10 @@ extension on Translations {
 			'activitiesView.deleteOperation' => 'Delete Operation',
 			'activitiesView.undeleteOperation' => 'Undelete Operation',
 			'activitiesView.alreadySelected' => 'Already selected',
+			'activitiesView.selected' => 'Selected',
+			'activitiesView.pickPosition' => ({required Object index, required Object count}) => '${index} of ${count}',
+			'activitiesView.previousPick' => 'Previous match',
+			'activitiesView.nextPick' => 'Next match',
 			'activitiesView.retiredReference' => 'Retired',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
@@ -8194,9 +8213,10 @@ extension on Translations {
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
 			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
 			'activitiesView.onlyNotRunningMatches' => 'No matches\nSome extensions that might have results are not running.\nSee Activity Types below.',
-			'activitiesView.showResultsMap' => 'Show results on a map',
-			'activitiesView.showResultsList' => 'Show results as a list',
+			'activitiesView.mapToggle' => 'Map',
+			'activitiesView.searchToggle' => 'Search',
 			'activitiesView.addToOperation' => 'Add to Operation',
+			'activitiesView.addToOperationShort' => 'Add to Op.',
 			'activitiesView.mapEmptyState' => 'No results to show on the map',
 			'activitiesView.mapEmptyStateHint' => 'Switch back to the list, or search for something else',
 			'activitiesView.imports' => 'Imports',
@@ -8498,13 +8518,13 @@ extension on Translations {
 			'settings.radio.cwMessages.deleteSet' => 'Delete Set',
 			'settings.radio.cwMessages.newSetName' => 'Name',
 			'settings.radio.cwMessages.setDefault' => 'Default',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM Messages',
 			'settings.radio.cwMessages.setSaved' => 'My Messages',
 			'settings.radio.cwMessages.repeat' => 'Repeat Message #1',
 			'settings.radio.cwMessages.repeatOff' => 'No',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.cwMessages.repeatWait' => 'Repeating',
 			'settings.radio.cwMessages.keyboard' => 'Type to send',
@@ -9012,13 +9032,13 @@ extension on Translations {
 			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
 			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
 			'settings.station.cwKeyerField' => 'CAT CW keyer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.cwKeyerFieldDescription' => 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.',
 			'settings.station.voiceMemories' => 'Voice memories',
 			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',
 			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',

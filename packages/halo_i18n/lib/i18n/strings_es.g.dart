@@ -451,6 +451,10 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get deleteOperation => 'Borrar operación';
 	@override String get undeleteOperation => 'Restaurar operación';
 	@override String get alreadySelected => 'Ya seleccionada';
+	@override String get selected => 'Seleccionada';
+	@override String pickPosition({required Object index, required Object count}) => '${index} de ${count}';
+	@override String get previousPick => 'Coincidencia anterior';
+	@override String get nextPick => 'Siguiente coincidencia';
 	@override String get retiredReference => 'Retirada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
@@ -466,9 +470,10 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get controlsUnavailableRetry => 'Reintentar';
 	@override String get onlyDisabledMatches => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.';
 	@override String get onlyNotRunningMatches => 'Sin coincidencias\nAlgunas extensiones que podrían tener resultados no están funcionando.\nMira en Tipos de actividad, más abajo.';
-	@override String get showResultsMap => 'Ver resultados en un mapa';
-	@override String get showResultsList => 'Ver resultados como lista';
+	@override String get mapToggle => 'Mapa';
+	@override String get searchToggle => 'Buscar';
 	@override String get addToOperation => 'Agregar a la operación';
+	@override String get addToOperationShort => 'Agregar a op.';
 	@override String get mapEmptyState => 'No hay resultados que mostrar en el mapa';
 	@override String get mapEmptyStateHint => 'Vuelve a la lista o busca otra cosa';
 }
@@ -4163,6 +4168,10 @@ extension on TranslationsEs {
 			'activitiesView.deleteOperation' => 'Borrar operación',
 			'activitiesView.undeleteOperation' => 'Restaurar operación',
 			'activitiesView.alreadySelected' => 'Ya seleccionada',
+			'activitiesView.selected' => 'Seleccionada',
+			'activitiesView.pickPosition' => ({required Object index, required Object count}) => '${index} de ${count}',
+			'activitiesView.previousPick' => 'Coincidencia anterior',
+			'activitiesView.nextPick' => 'Siguiente coincidencia',
 			'activitiesView.retiredReference' => 'Retirada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
@@ -4178,9 +4187,10 @@ extension on TranslationsEs {
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
 			'activitiesView.onlyNotRunningMatches' => 'Sin coincidencias\nAlgunas extensiones que podrían tener resultados no están funcionando.\nMira en Tipos de actividad, más abajo.',
-			'activitiesView.showResultsMap' => 'Ver resultados en un mapa',
-			'activitiesView.showResultsList' => 'Ver resultados como lista',
+			'activitiesView.mapToggle' => 'Mapa',
+			'activitiesView.searchToggle' => 'Buscar',
 			'activitiesView.addToOperation' => 'Agregar a la operación',
+			'activitiesView.addToOperationShort' => 'Agregar a op.',
 			'activitiesView.mapEmptyState' => 'No hay resultados que mostrar en el mapa',
 			'activitiesView.mapEmptyStateHint' => 'Vuelve a la lista o busca otra cosa',
 			'loggingControls.timeUtc' => 'Hora (UTC)',
@@ -4481,13 +4491,13 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.deleteSet' => 'Eliminar juego',
 			'settings.radio.cwMessages.newSetName' => 'Nombre',
 			'settings.radio.cwMessages.setDefault' => 'Predeterminado',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Mensajes ESM',
 			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
 			'settings.radio.cwMessages.repeat' => 'Repetir mensaje #1',
 			'settings.radio.cwMessages.repeatOff' => 'No',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
 			'settings.radio.cwMessages.keyboard' => 'Escribir para transmitir',
@@ -4995,13 +5005,13 @@ extension on TranslationsEs {
 			'settings.station.keyType' => 'Tipo de manipulador',
 			'settings.station.keyTypeRequired' => 'Elige un tipo de manipulador',
 			'settings.station.softwareIntermediaries' => 'Intermediarios de software',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.otherBrands' => 'Otras marcas',
 			'settings.station.otherEquipment' => 'Otros equipos (antenas, manipuladores, etc.)',
 			'settings.station.newAntenna' => 'Nueva antena',
 			'settings.station.newKey' => 'Nuevo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
 			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador en ${device}',
 			'settings.station.cwKeyerArea' => 'Área del manipulador',
