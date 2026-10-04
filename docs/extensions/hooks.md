@@ -429,7 +429,8 @@ interface RefHandlerHook {
   linkForRef?(args: { ref: Ref }, ctx): Promise<RefLink | null>   // {url, label?}
   geojsonUrlForRef?(args: { ref: Ref }, ctx): Promise<RefGeojson | null>
 }
-// Ref: {type, ref?, name?, label?, shortLabel?, grid?, location?, program?, ...}
+// Ref: {type, ref?, name?, label?, shortLabel?, grid?, lat?, lon?, location?, program?,
+//       activationRadiusInMeters?, activationRadiusInFeet?, ...}
 // TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
 // the operation's title/subtitle sentence (ham2k/halo-dist#174). Only
 // return one for the ref type that means "this operation is happening AT/FOR
@@ -516,6 +517,23 @@ of references, and further out a footprint is a few pixels across. Implemented b
 SOTLAS's `az.sotl.as`, used with the operators' permission) and `pota` (both
 types, via `services.ham2k.net/lookups/outlines/pota/`, which links parks to
 OpenStreetMap shapes; a park not yet linked answers 404).
+
+**An activation radius is a circle, drawn the same way.** A reference that
+carries `activationRadiusInMeters` or `activationRadiusInFeet` — how far from
+its point the program lets an activator be — is circled on both maps, in the
+same color and under the same rules as an outline: solid for the operation's
+own references and the open card, dashed for the other suggestions once
+zoomed in. It is set on the reference itself, by `suggest` and `decorateRef`,
+because some programs set different distances by region or by kind of
+reference; a suggestion is stored on the operation verbatim, so the Map tab
+draws it too. Give whichever unit the rules are written in; meters win when
+both are set. It is drawn only around `lat`/`lon`, never around a `grid`,
+whose centre can sit further from the reference than the whole radius
+(docs/design/locations.md). A reference with an outline AND a radius draws
+both. A circle has no source, so it adds nothing to the map's outline credits
+and is not offered for an outline report. Programs built on the SDK's
+`referenceActivity` factory get this from one `activationRadius` config line —
+a value, or a function of the list row for rules that vary.
 
 `suggestOperationTitle` lets an activity build a natural-language operation
 title/subtitle from its refs — "at Yosemite NP" (POTA), "for Field Day"

@@ -447,6 +447,10 @@ Map<String, dynamic> mapZoomFadesPayload(MapZoomFades? fades) => {
 /// a suggestion nobody has picked. It is a dashed edge with no fill, drawn
 /// under every solid shape, so the operation's own footprint and the one
 /// whose card is open still read as the subject where the two overlap.
+///
+/// An [isActivationRadius] shape is the circle a reference's activation
+/// radius draws around its coordinate (`refShapes`), not a fetched document:
+/// it has no source to credit and nothing for an outline report to name.
 @immutable
 class MapShapeData {
   /// `<ref type>/<reference>/<shape index>` — one source document can carry
@@ -456,6 +460,9 @@ class MapShapeData {
   final Color color;
   final bool isLine;
   final bool dashed;
+
+  /// Not part of equality: it is fixed by the id, like the rings.
+  final bool isActivationRadius;
 
   /// Who the shape comes from, as the map's credit line names it. Not part of
   /// equality: it is fixed by the id, like the rings.
@@ -473,13 +480,23 @@ class MapShapeData {
     required this.color,
     this.isLine = false,
     this.dashed = false,
+    this.isActivationRadius = false,
     this.sourceName,
     this.sourceUrl,
     this.refLabel,
   });
 
-  MapShapeData asDashed() =>
-      MapShapeData(id: id, rings: rings, color: color, isLine: isLine, dashed: true, sourceName: sourceName, sourceUrl: sourceUrl, refLabel: refLabel);
+  MapShapeData asDashed() => MapShapeData(
+    id: id,
+    rings: rings,
+    color: color,
+    isLine: isLine,
+    dashed: true,
+    isActivationRadius: isActivationRadius,
+    sourceName: sourceName,
+    sourceUrl: sourceUrl,
+    refLabel: refLabel,
+  );
 
   /// Compared by id, color and [dashed] alone. Shapes are content-addressed —
   /// a given id is always the same fetched document, parsed the same way — so

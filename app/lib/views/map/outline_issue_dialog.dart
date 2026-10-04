@@ -33,11 +33,13 @@ typedef OutlineIssueContext = ({MapCameraSettled? camera, GridLocation? operator
 /// them — only those with a piece inside [within] when given, so the list is
 /// what the operator can see rather than every outline the map has loaded.
 /// [keep] stays whether in view or not: the reference selected on the map.
+/// An activation radius is no outline: it is drawn from the reference's own
+/// coordinate, with no document behind it for a report to name.
 List<OutlineIssueCandidate> outlineIssueCandidates(List<MapShapeData> shapes, {MapViewBounds? within, String? keep}) {
   final seen = <String>{};
   return [
     for (final shape in shapes)
-      if ((within == null || markerIdOfShape(shape) == keep || _inView(shape, within)) && seen.add(markerIdOfShape(shape)))
+      if (!shape.isActivationRadius && (within == null || markerIdOfShape(shape) == keep || _inView(shape, within)) && seen.add(markerIdOfShape(shape)))
         (refId: markerIdOfShape(shape), label: shape.refLabel ?? markerIdOfShape(shape), sourceName: shape.sourceName, sourceUrl: shape.sourceUrl),
   ];
 }

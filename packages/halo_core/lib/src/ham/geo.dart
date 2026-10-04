@@ -158,3 +158,24 @@ List<List<GridLocation>> greatCirclePoints(GridLocation start, GridLocation end,
   }
   return segments;
 }
+
+/// A closed ring of [numPoints] + 1 points, [radiusKm] from [center] along
+/// the ground — an activation radius drawn as an area on the map.
+///
+/// Longitudes are left unwrapped, so a ring near the antimeridian may run a
+/// little past ±180 — unlike [greatCirclePoints], it is never split there: an
+/// area cut in two is two open halves with nothing to fill.
+List<GridLocation> circleOnEarth(GridLocation center, double radiusKm, {int numPoints = 64}) {
+  final phi1 = _deg2rad(center.latitude);
+  final lam1 = _deg2rad(center.longitude);
+  final delta = radiusKm / _earthRadiusKm;
+  GridLocation pointAt(double theta) {
+    final phi2 = asin(sin(phi1) * cos(delta) + cos(phi1) * sin(delta) * cos(theta));
+    final lam2 = lam1 + atan2(sin(theta) * sin(delta) * cos(phi1), cos(delta) - sin(phi1) * sin(phi2));
+    return GridLocation(phi2 * 180 / pi, lam2 * 180 / pi);
+  }
+
+  // `i % numPoints`: the last point repeats the first exactly, so the ring
+  // closes as GeoJSON and MapLibre require.
+  return [for (var i = 0; i <= numPoints; i++) pointAt(2 * pi * (i % numPoints) / numPoints)];
+}

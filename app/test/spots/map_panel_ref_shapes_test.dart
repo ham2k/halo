@@ -208,6 +208,39 @@ void main() {
     }
   });
 
+  testWidgets('a reference with an activation radius is circled around its own coordinate, with no outline credits', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      await pump(
+        tester,
+        operation: _operationWith(
+          grid: 'FN31pr',
+          refs: const [
+            // Stored the way an added suggestion is: verbatim, radius and all.
+            {'type': 'sotaActivation', 'ref': 'W2/GC-099', 'lat': 41.85, 'lon': -74.35, 'activationRadiusInMeters': 1000},
+            // A square's centre can sit further from the reference than the
+            // whole radius: no circle without a coordinate.
+            {'type': 'potaActivation', 'ref': 'US-0001', 'grid': 'FN31', 'activationRadiusInMeters': 1000},
+          ],
+        ),
+        answers: const {},
+        controls: const [_summitControl],
+      );
+      await tester.pumpAndSettle();
+
+      final shapes = tester.widget<OsmMapView>(find.byType(OsmMapView)).shapes;
+      expect(shapes, hasLength(1));
+      expect(shapes.single.isActivationRadius, isTrue);
+      expect(shapes.single.color, const Color(0xFF1B5E20));
+      expect(distanceOnEarthKm(const GridLocation(41.85, -74.35), shapes.single.rings.single.first), closeTo(1.0, 0.001));
+      // The credits name who drew an outline and offer to report a wrong
+      // one; a circle has neither a source nor a document to correct.
+      expect(find.text('Outlines are for reference only. Do your own research!'), findsNothing);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
   testWidgets('an operation with nothing to draw asks for no outlines at all', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.linux;
     try {

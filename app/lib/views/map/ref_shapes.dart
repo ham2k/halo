@@ -177,10 +177,48 @@ class RefShapeLoader {
 /// only: a SOTA reference carries a slash of its own.
 String markerIdOfShape(MapShapeData shape) => shape.id.substring(0, shape.id.lastIndexOf('/'));
 
-/// The outlines for every reference in [refs], in each one's own activity
-/// color — the same pair its row and its marker use, so a dot, a row and an
-/// outline all read as one object. A reference with no shape contributes
-/// nothing.
+/// How far from its point [ref] may be activated, in meters, or null for a
+/// reference that declares no radius.
+///
+/// `activationRadiusInMeters` wins over `activationRadiusInFeet` when a
+/// reference carries both. Read, not cast — the values come from an
+/// extension, and stored refs keep whatever it answered — so anything but a
+/// positive, finite number counts as none.
+double? activationRadiusMeters(Map<String, dynamic> ref) {
+  double? positive(Object? value) => value is num && value.isFinite && value > 0 ? value.toDouble() : null;
+  if (positive(ref['activationRadiusInMeters']) case final meters?) return meters;
+  if (positive(ref['activationRadiusInFeet']) case final feet?) return feet * 0.3048;
+  return null;
+}
+
+/// The circle [ref]'s activation radius draws around its coordinate, or null
+/// for a reference with no radius or no `lat`/`lon`.
+///
+/// Never around a `grid`: a 6-character square is several kilometres
+/// across, so its centre can sit further from the reference than the whole
+/// radius, and a circle drawn there would put the activator in range where
+/// they are not (docs/design/locations.md).
+///
+/// The radius and the centre are in the id: a map compares shapes by id and
+/// skips redrawing an equal list, so a reference that moved, or whose radius
+/// changed, would otherwise keep its circle where it was.
+MapShapeData? activationRadiusShape(Map<String, dynamic> ref, {required String id, required Color color}) {
+  final meters = activationRadiusMeters(ref);
+  final center = locationFromLatLon(ref['lat'], ref['lon']);
+  if (meters == null || center == null) return null;
+  return MapShapeData(
+    id: '$id/radius-$meters@${center.latitude},${center.longitude}',
+    rings: [circleOnEarth(center, meters / 1000)],
+    color: color,
+    isActivationRadius: true,
+    refLabel: outlineRefLabel(ref),
+  );
+}
+
+/// The outlines and activation radii for every reference in [refs], in each
+/// one's own activity color — the same pair its row and its marker use, so a
+/// dot, a row and an outline all read as one object. A reference with
+/// neither contributes nothing; one with both draws both.
 ///
 /// [markerIdFor] names the shape after whatever the calling pane calls that
 /// reference's marker.
@@ -190,14 +228,16 @@ List<MapShapeData> refShapes(
   required List<Map<String, dynamic>> controls,
   required Color fallbackColor,
   required String Function(Map<String, dynamic> ref) markerIdFor,
-}) => [
-  for (final ref in refs)
-    ...?loader.shapeFor(
-      ref,
-      id: markerIdFor(ref),
-      color: colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor,
-    ),
-];
+}) {
+  final shapes = <MapShapeData>[];
+  for (final ref in refs) {
+    final id = markerIdFor(ref);
+    final color = colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor;
+    shapes.addAll(loader.shapeFor(ref, id: id, color: color) ?? const []);
+    if (activationRadiusShape(ref, id: id, color: color) case final circle?) shapes.add(circle);
+  }
+  return shapes;
+}
 
 /// The line under a map showing reference outlines: they are no survey, and
 /// here is who drew them. Nothing at all while [shapes] is empty.
@@ -222,9 +262,12 @@ class MapOutlinesNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (shapes.isEmpty) return const SizedBox.shrink();
+    // An activation radius is the program's own rule drawn around its own
+    // coordinate: nobody to credit, and nothing for a report to correct.
+    final outlines = shapes.where((shape) => !shape.isActivationRadius);
+    if (outlines.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final sources = {for (final shape in shapes) ?shape.sourceName}.toList()..sort();
+    final sources = {for (final shape in outlines) ?shape.sourceName}.toList()..sort();
     final style = theme.textTheme.bodySmall;
     final camera = this.camera;
     final onReportIssue = ErrorReportingService.reportingEnabled ? this.onReportIssue : null;

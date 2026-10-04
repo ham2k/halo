@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "New Stash button sends exports to stash.ham2k.net (phones and web, with sync on)"
     - "New unstable extension releases install from a catalog link, and keep updating"
+    - "Maps circle the activation radius of castles, bunkers, mills, silos, towers and huts"
 
 "176":
   changes:

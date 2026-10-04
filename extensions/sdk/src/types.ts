@@ -335,6 +335,16 @@ export interface Ref {
   location?: string
   program?: string
 
+  /// How far from [lat]/[lon] the program lets an activator be, drawn as a
+  /// circle on the maps alongside any outline `geojsonUrlForRef` names. Per
+  /// reference, not per program: some programs set different distances by
+  /// region or by kind of reference. Give whichever unit the program's rules
+  /// are written in; meters win when both are set. Drawn only around a
+  /// coordinate, never around [grid] — a square's centre can be further from
+  /// the reference than the whole radius.
+  activationRadiusInMeters?: number
+  activationRadiusInFeet?: number
+
   /// The program has RETIRED this reference — it still exists and still names
   /// itself, but it can no longer be activated. The app marks such a row
   /// rather than hiding it, so an operator who asked for it by name learns why

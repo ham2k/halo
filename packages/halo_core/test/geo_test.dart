@@ -193,4 +193,33 @@ void main() {
       }
     });
   });
+
+  group('circleOnEarth', () {
+    test('every point is the radius away from the centre, at any latitude', () {
+      // A circle built in raw degrees is an ellipse everywhere but the
+      // equator — at 64°N a degree of longitude is less than half a degree of
+      // latitude, and an activator would be told they were in range when
+      // they were not.
+      for (final center in const [GridLocation(0, 0), GridLocation(51.5, -0.12), GridLocation(64.1, -21.9), GridLocation(-45.0, 170.5)]) {
+        for (final point in circleOnEarth(center, 1.0)) {
+          expect(distanceOnEarthKm(center, point), closeTo(1.0, 0.001), reason: 'around $center');
+        }
+      }
+    });
+
+    test('closes the ring on its own first point', () {
+      final ring = circleOnEarth(const GridLocation(41.9, -74.4), 0.5, numPoints: 16);
+      expect(ring, hasLength(17));
+      expect(ring.last, ring.first);
+    });
+
+    test('stays continuous across the antimeridian', () {
+      // Split like a great-circle line, an area would become two open halves
+      // with nothing to fill.
+      final ring = circleOnEarth(const GridLocation(-44.0, 179.999), 1.0);
+      for (var i = 1; i < ring.length; i++) {
+        expect((ring[i].longitude - ring[i - 1].longitude).abs(), lessThan(1));
+      }
+    });
+  });
 }

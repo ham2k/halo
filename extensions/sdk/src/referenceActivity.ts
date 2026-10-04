@@ -109,7 +109,15 @@ export interface ReferenceActivityConfig {
   /// hunter/activator rule. What it answers wins over `placeholder` and
   /// `transforms`; what it leaves out falls back to them.
   refInput?: (args: RefInputArgs, ctx: HookContext) => Promise<RefInputExtras> | RefInputExtras
+  /// How far from a reference the program lets an activator be (see
+  /// `Ref.activationRadiusInMeters`), set on every suggestion and decoration
+  /// built from a list row. A function of the row for a program whose rules
+  /// differ by region or by kind of reference; answer `undefined` for a row
+  /// the rules give no distance for.
+  activationRadius?: ActivationRadius | ((row: LookupRow) => ActivationRadius | undefined)
 }
+
+export type ActivationRadius = Pick<Ref, "activationRadiusInMeters" | "activationRadiusInFeet">
 
 export interface RefInputArgs {
   operation: Record<string, JSONValue>
@@ -224,6 +232,13 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
   const program = config.adifProgram ?? config.label
   const allowsMultiple = config.allowsMultiple ?? false
 
+  /// Both fields always present, so a decoration that spreads over an older
+  /// one clears a radius the row no longer has rather than keeping it.
+  function radiusFor(row: LookupRow | null | undefined): ActivationRadius {
+    const radius = row ? (typeof config.activationRadius === "function" ? config.activationRadius(row) : config.activationRadius) : undefined
+    return { activationRadiusInMeters: radius?.activationRadiusInMeters, activationRadiusInFeet: radius?.activationRadiusInFeet }
+  }
+
   /// A reference as the local list knows it. Everything here is offline: unlike
   /// POTA these programs have no per-reference API, so an unknown code stays
   /// unknown until the list is refreshed.
@@ -255,6 +270,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       lat: undefined,
       lon: undefined,
       location: undefined,
+      ...radiusFor(null),
     }
   }
 
@@ -268,6 +284,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       grid: data.grid,
       lat: row.lat,
       lon: row.lon,
+      ...radiusFor(row),
       location: data.location,
       program,
       label: `${config.label} ${reference}: ${row.name}`,
@@ -402,6 +419,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
           grid: data.grid,
           lat: row.lat,
           lon: row.lon,
+          ...radiusFor(row),
           location: data.location,
           program,
           label: `${config.label} ${row.key}: ${row.name ?? ""}`,
@@ -442,6 +460,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
           grid: data.grid,
           lat: row?.lat,
           lon: row?.lon,
+          ...radiusFor(row),
           location: data.location,
           program,
           label: `${config.label} ${typed}: ${name}`,

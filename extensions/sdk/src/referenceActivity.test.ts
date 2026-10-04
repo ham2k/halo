@@ -39,3 +39,46 @@ test("operationControls defaults allowsMultiple to false when omitted", async ()
   const controls = await (activityHook.operationControls as any)({ operation: {} as Record<string, JSONValue> }, ctx)
   assert.equal(controls[0].allowsMultiple, false)
 })
+
+// The activation radius is per reference — a program whose rules differ by
+// region answers per row — and a decoration REPLACES the stored ref, so a
+// radius the new row lacks must go with the old row. Kept, it would circle a
+// reference the operation no longer carries.
+const ROWS: Record<string, Record<string, unknown>> = {
+  "X-1": { key: "X-1", name: "Near", lat: 48, lon: 2, data: { region: "a" } },
+  "X-2": { key: "X-2", name: "Far", lat: 49, lon: 3, data: { region: "b" } },
+}
+;(globalThis as Record<string, unknown>).__polo = {
+  hostCall: async (method: string, params: Record<string, unknown>) => {
+    if (method === "dbLookupSelectOne") return ROWS[params.key as string] ?? null
+    if (method === "dbLookupSelectAll") return Object.values(ROWS)
+    return null
+  },
+}
+
+function radiusConfig() {
+  return {
+    ...baseConfig(),
+    activationRadius: (row: { data?: unknown }) =>
+      (row.data as { region?: string })?.region === "a" ? { activationRadiusInMeters: 1000 } : { activationRadiusInFeet: 500 },
+  }
+}
+
+test("suggestions carry the radius the config answers for their own row", async () => {
+  const { activityHook } = referenceActivity(radiusConfig())
+  const suggestions = await (activityHook.suggest as any)({ operation: {}, searchTerm: "X" }, ctx)
+  const byRef = Object.fromEntries(suggestions.map((s: any) => [s.ref, s]))
+  assert.equal(byRef["X-1"].activationRadiusInMeters, 1000)
+  assert.equal(byRef["X-2"].activationRadiusInFeet, 500)
+  assert.equal(byRef["X-2"].activationRadiusInMeters, undefined)
+})
+
+test("a redecorated reference drops a radius its new row does not have", async () => {
+  const { refHandler } = referenceActivity(radiusConfig())
+  const decorated = await (refHandler.decorateRef as any)({ ref: { type: "testActivation", ref: "X-2", activationRadiusInMeters: 1000 } }, ctx)
+  assert.equal(decorated.activationRadiusInFeet, 500)
+  assert.equal(decorated.activationRadiusInMeters, undefined)
+
+  const unknown = await (refHandler.decorateRef as any)({ ref: { type: "testActivation", ref: "X-9", activationRadiusInMeters: 1000 } }, ctx)
+  assert.equal(unknown.activationRadiusInMeters, undefined)
+})
