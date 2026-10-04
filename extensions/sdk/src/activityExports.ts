@@ -33,6 +33,7 @@ import type {
   HookContext,
   JSONValue,
   OperationSegmentPayload,
+  OperatorFallback,
 } from "./types.ts"
 import { exportTypeDefinition } from "./exportSettings.ts"
 import { exportFilename, startMillisOf } from "./exportNames.ts"
@@ -62,6 +63,9 @@ export interface ActivityExportRules {
   /// stays out: this file claims ONE program (see `generateExport`), and only
   /// the program itself can say what else it reads.
   includeFieldsFrom?: string[]
+  /// OPERATOR on every record of this program's file, falling back to the
+  /// station call or its base call — `ExportRequest.operatorFallback`.
+  operatorFallback?: OperatorFallback
 }
 
 /// Separates the program's own exportKey prefix from the reference it names.
@@ -199,6 +203,7 @@ export function activityExportHook(rules: ActivityExportRules) {
         exportTitle: args.exportTitle,
         mainHandler: rules.key,
         includeFieldsFrom: rules.includeFieldsFrom,
+        operatorFallback: rules.operatorFallback,
       })
       return {
         filename: filenameFor(args.operation, args.qsos, wanted, args.compactFilenames),
@@ -238,6 +243,9 @@ export interface HuntingExportRules {
   /// stays out: this file claims ONE program (see `generateExport`), and only
   /// the program itself can say what else it reads.
   includeFieldsFrom?: string[]
+  /// OPERATOR on every record of this program's file, falling back to the
+  /// station call or its base call — `ExportRequest.operatorFallback`.
+  operatorFallback?: OperatorFallback
 }
 
 /// Shared by the option listing and the generated result, which must agree —
@@ -330,6 +338,7 @@ export function huntingExportHook(rules: HuntingExportRules) {
         // the '-hunter' suffix belongs to the export registration alone.
         mainHandler: rules.key,
         includeFieldsFrom: rules.includeFieldsFrom,
+        operatorFallback: rules.operatorFallback,
       })
       return {
         // The FULL qsos list, matching the option's filename — see
@@ -369,6 +378,7 @@ export async function adifForExport({
   exportTitle,
   mainHandler,
   includeFieldsFrom,
+  operatorFallback,
 }: {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
@@ -383,6 +393,7 @@ export async function adifForExport({
   exportTitle?: string
   mainHandler: string
   includeFieldsFrom?: string[]
+  operatorFallback?: OperatorFallback
 }): Promise<string> {
   // Imported dynamically: a static import of the SDK barrel from inside the SDK
   // is circular (the barrel re-exports this module), and it would drag
@@ -403,6 +414,7 @@ export async function adifForExport({
     exportTitle,
     mainHandler,
     includeFieldsFrom,
+    operatorFallback,
   })
   const content = (entries.find((e) => e.ok)?.value as ExportResult | undefined)?.content
   // A throw inside the delegate comes back as a not-ok entry, so a caller that

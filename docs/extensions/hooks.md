@@ -834,7 +834,13 @@ Field Day station sent, a satellite's downlink band). The exception is what
 identifies the contact — `CALL`, `QSO_DATE`, `TIME_ON`, `QSO_DATE_OFF`,
 `TIME_OFF`, `BAND`, `FREQ`, `MODE`, `SUBMODE`, `STATION_CALLSIGN`,
 `OPERATOR`: a hook answering one of those is dropped, since it would rewrite
-every record it is asked about, the whole-log backup included. This is a
+every record it is asked about, the whole-log backup included. A program whose
+uploader needs `OPERATOR` on every record asks for it on the export instead,
+`ExportRequest.operatorFallback` (`operatorFallback` on `activityExportHook`'s
+and `huntingExportHook`'s rules): the core writes `OPERATOR` only where it says
+something `STATION_CALLSIGN` doesn't, and with `'base'` or `'station'` it
+writes the contact's own operator on every record, falling back to the station
+call's base call or the station call itself. This is a
 deliberate divergence from app-polo, whose contact fields come first and whose
 main handler's are appended unchecked, so a name both answer is written twice. The **full export**, which asks every
 program on the contact, has no such order: hooks answering `fieldCombinationsForOneQSO` are asked as one

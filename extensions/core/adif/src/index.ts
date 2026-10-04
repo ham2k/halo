@@ -34,6 +34,7 @@ import { adifCounty } from "./county.ts"
 import { field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
 import { filenameFor } from "./filename.ts"
+import { baseCallOf } from "../../../sdk/src/callsigns.ts"
 
 const ADIF_VERSION = "3.1.5"
 const DEFAULT_PROGRAM_ID = "Ham2K Logger"
@@ -269,6 +270,9 @@ function baseFieldsFor(
   /// The free-text fields that say the same thing on every record, rendered
   /// once for the whole file.
   constantTextFields: AdifField[],
+  /// OPERATOR for a contact that names none — `ExportRequest.operatorFallback`,
+  /// resolved once for the file. Empty, such a contact carries no OPERATOR.
+  fallbackOperator: string,
 ): AdifField[] {
   const our = (qso.our ?? {}) as Record<string, unknown>
   const their = (qso.their ?? {}) as Record<string, unknown>
@@ -332,8 +336,13 @@ function baseFieldsFor(
   // Case-insensitive and trimmed: the dialog and the OPER command uppercase
   // what they store, but a WSJT-X or N1MM capture keeps whatever the datagram
   // spelled, and `ki2d` against a station running `KI2D` is the same operator.
+  //
+  // A file that asked for `operatorFallback` gets one on every record instead:
+  // the contact's own operator, repeat or not, or else the fallback.
   const operatorCall = String(our.operatorCall ?? "").trim()
-  if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
+  if (fallbackOperator) {
+    add("OPERATOR", operatorCall || fallbackOperator)
+  } else if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
     add("OPERATOR", operatorCall)
   }
   add("TX_PWR", qso.power)
@@ -672,6 +681,7 @@ const ExportHandler = {
       exportTitle,
       mainHandler,
       includeFieldsFrom,
+      operatorFallback,
     }: ExportRequest,
     ctx: HookContext,
   ): Promise<ExportResult> {
@@ -682,6 +692,16 @@ const ExportHandler = {
     // operation that changed call produces one file per call (the caller has
     // already picked which).
     const ourEntity = entityForCall(stationCall)
+    // Not from "UNKNOWN": a file with no station call has no operator to name.
+    const knownStationCall = String(operation.stationCall ?? "").trim()
+    const fallbackOperator =
+      knownStationCall === ""
+        ? ""
+        : operatorFallback === "base"
+          ? baseCallOf(knownStationCall)
+          : operatorFallback === "station"
+            ? knownStationCall.toUpperCase()
+            : ""
     // Decided once, for the file: what a template is withheld for is a
     // property of the export, not of the contact it would have been written on.
     const configured = TEXT_FIELD_TEMPLATES.map((field) => {
@@ -773,6 +793,7 @@ const ExportHandler = {
             ourEntity,
             textFields,
             constantTextFields,
+            fallbackOperator,
           ),
         )
         // Assembled and then rendered, rather than appended field by field, so

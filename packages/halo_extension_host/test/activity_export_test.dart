@@ -916,4 +916,49 @@ void main() {
     expect(uploaded, contains('<OPERATOR:5>W1ABC'), reason: 'who transmitted is part of the contact');
     expect(uploaded, isNot(contains('<APP_HAM2K_POSITION:')));
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A program whose uploader credits the operator by OPERATOR asks for it on
+  // every record (`ExportRequest.operatorFallback`): the contact's own
+  // operator where it has one, even one repeating the station call, and
+  // otherwise the station call or its base call. No hook can supply it
+  // instead — OPERATOR identifies the contact, and hooks' answers for it are
+  // dropped.
+  test('a file that asks for an operator fallback carries OPERATOR on every record', () async {
+    final host = await startHost();
+
+    Future<String> adifFor(Map<String, dynamic> our, String? operatorFallback) async {
+      final result =
+          await host.invokeHook(
+                'export',
+                key: 'adif',
+                method: 'generateExport',
+                args: {
+                  'operation': {
+                    ...operation(['US-0001']),
+                    'stationCall': 'VE3/N0DEV/P',
+                  },
+                  'qsos': [
+                    {
+                      ...qsos.first,
+                      'our': {...qsos.first['our'] as Map<String, dynamic>, ...our},
+                    },
+                  ],
+                  'exportType': 'adif',
+                  'operatorFallback': ?operatorFallback,
+                },
+                timeout: const Duration(seconds: 20),
+              )
+              as Map;
+      return result['content'] as String;
+    }
+
+    expect(await adifFor({}, 'base'), contains('<OPERATOR:5>N0DEV'));
+    expect(await adifFor({}, 'station'), contains('<OPERATOR:11>VE3/N0DEV/P'));
+    expect(await adifFor({}, null), isNot(contains('<OPERATOR:')), reason: 'no fallback asked for, none given');
+
+    // The contact's own operator outranks the fallback, and is written even
+    // where it repeats the station call: the file asked for one on every record.
+    expect(await adifFor({'operatorCall': 'W1ABC'}, 'base'), contains('<OPERATOR:5>W1ABC'));
+    expect(await adifFor({'operatorCall': 'VE3/N0DEV/P'}, 'base'), contains('<OPERATOR:11>VE3/N0DEV/P'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }

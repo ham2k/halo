@@ -966,7 +966,20 @@ export interface ExportRequest {
   ///
   /// Ignored without a `mainHandler` — that export already has every hook.
   includeFieldsFrom?: string[]
+  /// What OPERATOR says on a record whose contact names no operator of its
+  /// own. Omitted, the record carries none, and the core writes OPERATOR only
+  /// where it says something STATION_CALLSIGN doesn't. Set, every record
+  /// carries one: the contact's own operator if it has one — even when that
+  /// repeats the station call — or else the station call (`'station'`) or its
+  /// base call (`'base'`: "KI2D" for "VE3/KI2D/P"), for a program whose
+  /// uploader credits the operator by OPERATOR on every record.
+  ///
+  /// The file's own setting rather than an `adifFields` answer, because
+  /// OPERATOR identifies the contact and hooks cannot write it.
+  operatorFallback?: OperatorFallback
 }
+
+export type OperatorFallback = "base" | "station"
 
 export interface ExportResult {
   filename: string
