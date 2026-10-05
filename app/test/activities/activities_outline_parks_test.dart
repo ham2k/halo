@@ -6,6 +6,8 @@
 // from where it passes the operator. A typed search is answered by what it
 // names, so it never asks.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -16,7 +18,6 @@ import 'package:ham2k_logger/services/outline_grid_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
 import '../support/halo_test_support.dart';
-import '../support/no_outline_grid.dart';
 
 const _potaControl = {
   'key': 'pota/activation',
@@ -40,13 +41,16 @@ class _PotaExtensions extends ExtensionServiceWithFakeHost {
       (controls: const [_potaControl], loadFailed: false);
 }
 
-/// The Appalachian Trail, 170 m from the operation by its outline.
+/// The Appalachian Trail, 170 m from the operation by its outline — once
+/// [bundle] completes, as a first download would.
 class _Trail extends NoOutlineGrid {
   final asked = <double>[];
+  final bundle = Completer<void>();
 
   @override
   Future<OutlineParks> parksNear(GridLocation center, double radiusKm, {GridLocation? measureFrom, Set<String> known = const {}}) async {
     asked.add(radiusKm);
+    await bundle.future;
     return (
       distances: const <String, double?>{'US-4556': 0.17},
       found: const [
@@ -74,9 +78,22 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // Stepped, not settled: the progress bar runs for as long as the bundle
+    // is pending.
+    await tester.pump(const Duration(seconds: 1));
 
+    // While the bundle downloads the sheet is still looking — not telling an
+    // operator standing in the park that nothing is nearby.
+    expect(find.text('POTA US-4556'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    // However long the first download takes, the park joins when it is read:
+    // nothing here is held up by it, so nothing gives up on it.
+    await tester.pump(const Duration(seconds: 5));
+    trail.bundle.complete();
+    await tester.pumpAndSettle();
     expect(find.text('POTA US-4556'), findsOneWidget, reason: 'its point is nowhere near; its outline is');
+    expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(trail.asked, [OutlineGridService.nearbyRadiusKm]);
 
     await tester.enterText(find.byType(TextField).first, 'bear');

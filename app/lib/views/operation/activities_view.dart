@@ -965,16 +965,16 @@ class OperationSheetState extends State<OperationSheet> {
     return word.isEmpty ? null : word;
   }
 
-  /// The POTA parks whose outline comes within [radiusKm] of [center] (see
-  /// OutlineGridService), when POTA is in [keys], the search's scope —
-  /// nothing, settled, otherwise.
+  /// The POTA parks whose outline comes within [km] of [center], measured
+  /// [from] (see OutlineGridService), when POTA is in [keys], the search's
+  /// scope — nothing, settled, otherwise.
   ///
-  /// Waited on for a few seconds at most: read from the device it is
-  /// instant, and a first download that takes longer is left to finish and
-  /// cache for the next search, rather than holding this one back. That, or
-  /// a failure, comes back unsettled — a failure reported, since the fetch
-  /// itself already answers offline with what the device holds.
-  Future<OutlineParks> _outlineParks(List<String>? keys, GridLocation center, double radiusKm, GridLocation? measureFrom, {required Set<String> known}) async {
+  /// Given [within], waited on no longer, so a pan's answer is not held
+  /// back: a first download that takes longer is left to finish and cache
+  /// for the next. That, or a failure, comes back unsettled — a failure
+  /// reported, since the fetch itself already answers offline with what the
+  /// device holds.
+  Future<OutlineParks> _outlineParks(List<String>? keys, GridLocation center, double km, GridLocation? from, Set<String> known, [Duration? within]) async {
     const none = (distances: <String, double?>{}, found: <Map<String, dynamic>>[], settled: true);
     // Asked before the controls have loaded too — the first nearby search
     // races them — since POTA's own labelling drops every park while POTA is
@@ -984,7 +984,8 @@ class OperationSheetState extends State<OperationSheet> {
     if (skip) return none;
     final unsettled = (distances: const <String, double?>{}, found: const <Map<String, dynamic>>[], settled: false);
     try {
-      return await widget.services.outlineGrid.parksNear(center, radiusKm, measureFrom: measureFrom, known: known).timeout(const Duration(seconds: 3));
+      final parks = widget.services.outlineGrid.parksNear(center, km, measureFrom: from, known: known);
+      return await (within == null ? parks : parks.timeout(within));
     } on TimeoutException {
       return unsettled;
     } catch (e, stack) {
@@ -1022,7 +1023,8 @@ class OperationSheetState extends State<OperationSheet> {
             center,
             distanceOnEarthKm(center, GridLocation(bounds.north, bounds.east)),
             _operation.location ?? fallback,
-            known: OutlineGridService.potaRefsIn([..._suggestions, ..._exploredSuggestions, ...results.suggestions]),
+            OutlineGridService.potaRefsIn([..._suggestions, ..._exploredSuggestions, ...results.suggestions]),
+            const Duration(seconds: 3),
           );
     // A search that started or landed meanwhile has cleared the map's
     // extras, or is about to; these answer the question it replaced.
@@ -1030,8 +1032,6 @@ class OperationSheetState extends State<OperationSheet> {
     final known = {
       for (final suggestion in [..._suggestions, ..._exploredSuggestions]) '${suggestion['type']}/${suggestion['ref']}',
     };
-    // Appended in arrival order, never re-sorted: a marker's id is its index
-    // into these, and an open card names its reference by that id.
     final fresh = [
       for (final suggestion in [...results.suggestions, ...?outline?.found])
         if (known.add('${suggestion['type']}/${suggestion['ref']}')) suggestion,
@@ -1048,7 +1048,7 @@ class OperationSheetState extends State<OperationSheet> {
     final location = widget.services.location;
     final fallbackPosition = location.position;
     final fallback = fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude);
-    var results = await widget.services.extensions.suggestActivities(
+    final results = await widget.services.extensions.suggestActivities(
       _operation.data,
       searchTerm: query.otherTerm.isEmpty ? null : query.otherTerm,
       activityKeys: query.activityKeys,
@@ -1058,16 +1058,7 @@ class OperationSheetState extends State<OperationSheet> {
     );
     // The nearby list only: a typed search is answered by what it names.
     final here = _operation.location ?? fallback;
-    if (query.otherTerm.isEmpty && here != null && requestId == _searchRequestId) {
-      final parks = await _outlineParks(
-        query.activityKeys,
-        here,
-        OutlineGridService.nearbyRadiusKm,
-        here,
-        known: OutlineGridService.potaRefsIn(results.suggestions),
-      );
-      results = (suggestions: OutlineGridService.withParks(results.suggestions, parks), allSourcesFailed: results.allSourcesFailed);
-    }
+    final outlineParksToCome = query.otherTerm.isEmpty && here != null;
     // A newer search may have fired (and even resolved) while this one was
     // in flight — only the still-current request gets to apply its results.
     if (mounted && requestId == _searchRequestId) {
@@ -1105,7 +1096,9 @@ class OperationSheetState extends State<OperationSheet> {
         // searches: it can only scope to a type whose control is loaded, and a
         // loaded control means an enabled extension, which never matches here.
         if (_disabledMatches.isNotEmpty) _allOptionsExpanded = true;
-        _loadingSuggestions = false;
+        // Still looking while parks found by their outline are: otherwise one
+        // whose point is far off is "not nearby" moments before it appears.
+        _loadingSuggestions = outlineParksToCome;
       });
       // A box that would match nothing asks the catalog nothing — the same
       // emptiness test the matching uses — and neither does a recognized
@@ -1114,7 +1107,28 @@ class OperationSheetState extends State<OperationSheet> {
       if (query.activityKeys == null && extensionSearchCandidates(term).search.isNotEmpty) _ensureCatalogFetched();
       // After the assignment, not before: it reads `_suggestions`.
       unawaited(_loadSuggestionLinks());
+
+      // Parks found by their outline join the nearby list as their bundle is
+      // read — merged into the list as it is then, and re-ranked: the map
+      // names a suggestion by what it is, so an open card stays on its park.
+      if (outlineParksToCome) unawaited(_addOutlineParks(requestId, query.activityKeys, here));
     }
+  }
+
+  /// The nearby list's parks found by their outline — see [_search].
+  Future<void> _addOutlineParks(int requestId, List<String>? keys, GridLocation here) async {
+    final parks = await _outlineParks(keys, here, OutlineGridService.nearbyRadiusKm, here, OutlineGridService.potaRefsIn(_suggestions));
+    if (!mounted || requestId != _searchRequestId) return;
+    final merged = OutlineGridService.withParks(_suggestions, parks);
+    final changed = !identical(merged, _suggestions);
+    setState(() {
+      _loadingSuggestions = false;
+      if (!changed) return;
+      _suggestions = merged;
+      // One a pan already put on the map moves to the list, now it is near.
+      _exploredSuggestions = OutlineGridService.withoutParksIn(_exploredSuggestions, merged);
+    });
+    if (changed) unawaited(_loadSuggestionLinks());
   }
 
   /// The operation's refs minus the ones a new ref of [type] displaces (see

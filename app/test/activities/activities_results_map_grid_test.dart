@@ -25,7 +25,6 @@ import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
 
 import '../support/halo_test_support.dart';
-import '../support/no_outline_grid.dart';
 
 // Its point in a corner, out of reach of the tap below, so only its area
 // can answer it.

@@ -253,6 +253,7 @@ void main() {
 
     Future<void> pump(
       WidgetTester tester, {
+      List<Map<String, dynamic>> suggestions = const [_home],
       List<Map<String, dynamic>> exploredSuggestions = const [],
       List<Map<String, dynamic>> refs = const [],
       String? fitKey = 'search-1',
@@ -269,7 +270,7 @@ void main() {
           child: MaterialApp(
             home: Scaffold(
               body: ActivitiesResultsMap(
-                suggestions: const [_home],
+                suggestions: suggestions,
                 controls: const [],
                 refs: refs,
                 settings: settings,
@@ -315,6 +316,31 @@ void main() {
 
         await tester.pump(const Duration(milliseconds: 500));
         expect(explored.single.west, closeTo(-77.0, 0.001));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('the same search growing does not forget the views already asked about; a new one does', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      try {
+        await pump(tester);
+        settle(tester, _view, ActivitiesResultsMap.exploreFromZoom);
+        await tester.pump(const Duration(milliseconds: 500));
+        explored.clear();
+
+        // Late answers for the same search — parks found by their outline,
+        // landing in its own list — are no reason to ask about the same view
+        // again.
+        await pump(tester, suggestions: const [_farther, _home]);
+        settle(tester, _view, ActivitiesResultsMap.exploreFromZoom);
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(explored, isEmpty);
+
+        await pump(tester, fitKey: 'search-2');
+        settle(tester, _view, ActivitiesResultsMap.exploreFromZoom);
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(explored, hasLength(1), reason: 'a new search asks about every view anew');
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -372,10 +398,10 @@ void main() {
         // Keyed, the camera refits for a new search only — not for a reference
         // added from a card, whose suggestion dot turns into its marker.
         expect(markers.map((m) => m.fitKey).toSet(), {'search-1'});
-        expect(markers.singleWhere((m) => m.id == '0').fitsCamera, isTrue);
+        expect(markers.singleWhere((m) => m.id == 'ref-pota/US-0001').fitsCamera, isTrue);
         // Fitted, each batch would snap the map back from where the operator
         // had just dragged it.
-        expect(markers.singleWhere((m) => m.id == '1').fitsCamera, isFalse);
+        expect(markers.singleWhere((m) => m.id == 'ref-pota/US-0002').fitsCamera, isFalse);
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -392,15 +418,17 @@ void main() {
         await tester.pumpAndSettle();
         // Still sent: left out, a search answered zoomed out would fit the
         // camera to everything but its own results.
-        final dot = map(tester).markers.singleWhere((m) => m.id == '0');
+        final dot = map(tester).markers.singleWhere((m) => m.id == 'ref-pota/US-0001');
         expect(dot.fadesWithZoom, isTrue);
         expect(dot.fitsCamera, isTrue);
         final opacity = tester
-            .widget<Opacity>(find.ancestor(of: find.byWidgetPredicate((w) => w is MapCircleMarker && w.marker.id == '0'), matching: find.byType(Opacity)).first)
+            .widget<Opacity>(
+              find.ancestor(of: find.byWidgetPredicate((w) => w is MapCircleMarker && w.marker.id == 'ref-pota/US-0001'), matching: find.byType(Opacity)).first,
+            )
             .opacity;
         expect(opacity, 0);
 
-        map(tester).onMarkerTap!('0');
+        map(tester).onMarkerTap!('ref-pota/US-0001');
         await tester.pumpAndSettle();
         expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_RevealCard'), findsNothing, reason: 'a dot faded to nothing is not there to tap');
       } finally {
@@ -412,12 +440,12 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
       try {
         await pump(tester, exploredSuggestions: const [_far], refs: const [_operationPark], withCamera: MapZoomController());
-        map(tester).onMarkerTap!('1');
+        map(tester).onMarkerTap!('ref-pota/US-0002');
         await tester.pumpAndSettle();
 
         final byId = {for (final m in map(tester).markers) m.id: m};
-        expect(byId['0']!.fadesWithZoom, isTrue);
-        expect(byId['1']!.fadesWithZoom, isFalse, reason: 'its card is open; a faded dot would not say which');
+        expect(byId['ref-pota/US-0001']!.fadesWithZoom, isTrue);
+        expect(byId['ref-pota/US-0002']!.fadesWithZoom, isFalse, reason: 'its card is open; a faded dot would not say which');
         expect(byId['ref-potaActivation/US-0009']!.fadesWithZoom, isFalse);
         expect(byId['current-location']!.fadesWithZoom, isFalse);
         expect(map(tester).zoomFades, ActivitiesResultsMap.zoomFades);
@@ -426,7 +454,7 @@ void main() {
         const f = ActivitiesResultsMap.zoomFades;
         camera.moveTo(40.5, -75.5, zoom: (f.markers!.from + f.markers!.to) / 2 + 1);
         await tester.pumpAndSettle();
-        final dot = find.byWidgetPredicate((w) => w is MapCircleMarker && w.marker.id == '0');
+        final dot = find.byWidgetPredicate((w) => w is MapCircleMarker && w.marker.id == 'ref-pota/US-0001');
         final opacity = tester.widget<Opacity>(find.ancestor(of: dot, matching: find.byType(Opacity)).first).opacity;
         expect(opacity, closeTo(0.5, 0.01));
       } finally {
@@ -452,20 +480,20 @@ void main() {
       try {
         await pump(tester, exploredSuggestions: const [_far], refs: const [_operationPark]);
         MapMarkerData marker(String id) => map(tester).markers.singleWhere((m) => m.id == id);
-        final before = marker('0');
+        final before = marker('ref-pota/US-0001');
 
-        map(tester).onMarkerTap!('0');
+        map(tester).onMarkerTap!('ref-pota/US-0001');
         await tester.pumpAndSettle();
-        final chosen = marker('0');
+        final chosen = marker('ref-pota/US-0001');
         expect(chosen.color, Colors.black);
         // The program's colour moves to the ring, so the dot still says whose.
         expect(chosen.strokeColor, before.color);
         expect(chosen.strokeWidth, greaterThan(2));
-        expect(marker('1').color, isNot(Colors.black), reason: 'only the chosen one');
+        expect(marker('ref-pota/US-0002').color, isNot(Colors.black), reason: 'only the chosen one');
 
-        map(tester).onMarkerTap!('0');
+        map(tester).onMarkerTap!('ref-pota/US-0001');
         await tester.pumpAndSettle();
-        expect(marker('0'), before, reason: 'closing its card puts it back as it was');
+        expect(marker('ref-pota/US-0001'), before, reason: 'closing its card puts it back as it was');
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }
@@ -498,12 +526,34 @@ void main() {
       }
     });
 
+    testWidgets('zoomed out past the suggestions, tapping "you are here" still closes a card', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+      try {
+        await pump(tester, refs: const [_operationPark], withCamera: MapZoomController());
+        final card = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_RevealCard');
+        map(tester).onMarkerTap!('ref-potaActivation/US-0009');
+        await tester.pumpAndSettle();
+        expect(card, findsOneWidget);
+
+        // flutter_map's own zoom is one above the GL scale.
+        camera.moveTo(40.5, -75.5, zoom: ActivitiesResultsMap.suggestionMarkersFromZoom + 1 - 0.5);
+        await tester.pumpAndSettle();
+        // Only a faded suggestion is not there to tap; the dot that stands
+        // for no reference is, and closing a card is all it does.
+        map(tester).onMarkerTap!('current-location');
+        await tester.pumpAndSettle();
+        expect(card, findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     testWidgets('tapping "you are here" closes a card and marks nothing chosen', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.linux;
       try {
         await pump(tester);
         final card = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_RevealCard');
-        map(tester).onMarkerTap!('0');
+        map(tester).onMarkerTap!('ref-pota/US-0001');
         await tester.pumpAndSettle();
         expect(card, findsOneWidget);
 
@@ -522,10 +572,10 @@ void main() {
         await pump(tester, refs: const [_operationPark]);
         final card = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_RevealCard');
 
-        map(tester).onMarkerTap!('0');
+        map(tester).onMarkerTap!('ref-pota/US-0001');
         await tester.pumpAndSettle();
         expect(card, findsOneWidget);
-        map(tester).onMarkerTap!('0');
+        map(tester).onMarkerTap!('ref-pota/US-0001');
         await tester.pumpAndSettle();
         expect(card, findsNothing);
 

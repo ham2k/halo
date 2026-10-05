@@ -220,6 +220,23 @@ void main() {
       expect(parks.found, isEmpty);
     });
 
+    test('a park the nearby list gains leaves what panning found, and nothing else does', () {
+      const found = [
+        {'type': 'potaActivation', 'ref': 'US-0001'},
+        {'type': 'sotaActivation', 'ref': 'US-0002'},
+        {'type': 'potaActivation', 'ref': 'US-0003'},
+      ];
+      const nearby = [
+        {'type': 'potaActivation', 'ref': 'US-0001'},
+        {'type': 'potaActivation', 'ref': 'US-0002'},
+      ];
+
+      // Left in both, the map would draw one park twice; left only on the map,
+      // the list would miss a park the operator is standing in.
+      expect(OutlineGridService.withoutParksIn(found, nearby).map((s) => s['ref']), ['US-0002', 'US-0003']);
+      expect(identical(OutlineGridService.withoutParksIn(found, const []), found), isTrue);
+    });
+
     test('merge into the list as it stands, leaving it as it was when nothing changes', () {
       const parks = (
         distances: <String, double?>{'US-0001': 0.0},

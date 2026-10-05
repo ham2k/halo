@@ -265,6 +265,17 @@ class OutlineGridService {
     );
   }
 
+  /// [suggestions] less the POTA parks [listed] holds — [suggestions]
+  /// itself when that is none of them.
+  static List<Map<String, dynamic>> withoutParksIn(List<Map<String, dynamic>> suggestions, List<Map<String, dynamic>> listed) {
+    final parks = potaRefsIn(listed);
+    final kept = [
+      for (final suggestion in suggestions)
+        if (suggestion['type'] != potaActivationType || !parks.contains(suggestion['ref'])) suggestion,
+    ];
+    return kept.length == suggestions.length ? suggestions : kept;
+  }
+
   /// The POTA references in [suggestions].
   static Set<String> potaRefsIn(Iterable<Map<String, dynamic>> suggestions) => {
     for (final suggestion in suggestions)

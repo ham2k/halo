@@ -64,7 +64,7 @@ void main() {
     );
     expect(markers, hasLength(1));
     expect(markers.single.color, defaultColor);
-    expect(markers.single.id, '0');
+    expect(markers.single.id, 'ref-pota/K-1234');
   });
 
   test('drops an already-added suggestion, whichever list it came from, once its ref marker covers it', () {
@@ -285,18 +285,20 @@ void main() {
     expect(markers.single.longitude, closeTo(gridCenter.longitude, 1e-9));
   });
 
-  test('marker id is the index into suggestions, skipping unlocatable entries', () {
+  test('a marker is named by its reference, not its place in the list, and drawn once', () {
     final markers = activitySuggestionMarkers(
       [
         {'type': 'pota', 'ref': 'K-1', 'shortLabel': 'K-1'},
         {'type': 'pota', 'ref': 'K-2', 'shortLabel': 'K-2', 'grid': 'FN21ab'},
+        {'type': 'pota', 'ref': 'K-2', 'shortLabel': 'K-2 again', 'grid': 'FN21ab'},
       ],
       controls: controls,
       refs: const [],
       defaultColor: defaultColor,
       strokeColor: strokeColor,
     );
-    expect(markers, hasLength(1));
-    expect(markers.single.id, '1');
+    // By position, a list re-ranked under an open card would re-point it at
+    // whichever park moved into its place.
+    expect(markers.map((marker) => marker.id), ['ref-pota/K-2']);
   });
 }

@@ -112,7 +112,7 @@ Future<(HaLoServices, Operation)> _harness(LocationStatus status, {String? grid,
   final extensions = _NoActivityExtensions(offersNearby: offersNearby, allSourcesFail: allSourcesFail)..settings = settings;
   extensions.debugSetAvailableExtensions(const []);
   return (
-    HaLoServices(db, settings, extensions: extensions, location: _FixedLocation(status)),
+    HaLoServices(db, settings, extensions: extensions, location: _FixedLocation(status), outlineGrid: const NoOutlineGrid()),
     Operation(uuid: 'op-1', data: {'refs': const [], 'grid': ?grid}),
   );
 }
@@ -158,7 +158,7 @@ void main() {
     // No `extensions:` on purpose — production passes none, and the
     // default-built service is the one whose wiring is under test.
     final HaLoHarness(:db, :settings) = await makeHaLoServices();
-    final services = HaLoServices(db, settings);
+    final services = HaLoServices(db, settings, outlineGrid: const NoOutlineGrid());
     expect(identical(services.extensions.location, services.location), isTrue);
   });
 

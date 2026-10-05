@@ -60,11 +60,11 @@ GridLocation? locationForSuggestion(Map<String, dynamic> suggestion) =>
 /// One marker per [suggestions] entry that is NOT already on the operation
 /// and has a resolvable location (see [locationForSuggestion]) — entries
 /// without one are silently omitted, the same treatment a location-less QSO
-/// gets on the Map tab. The id is the entry's own index into [suggestions]
-/// (stringified): all a tap handler needs to look the entry back up, and
-/// stable enough across a rebuild since a fresh search always replaces the
-/// whole list rather than mutating it in place. Contrast
-/// [selectedRefMarkerId], which cannot be positional.
+/// gets on the Map tab. The id is [selectedRefMarkerId], what the entry IS
+/// rather than where it sits in the list: suggestions arrive late (a pan,
+/// parks found by their outline) and are re-ranked, and an open card or a
+/// tap's pager has to keep naming the same reference through that. One
+/// marker per reference — the first of two that share one wins.
 ///
 /// Unlike the list rows, this takes no "are these search results?" — the
 /// rows keep an already-added search hit and fade it (`suggestionHidesAsAlreadyAdded`),
@@ -82,17 +82,17 @@ List<MapMarkerData> activitySuggestionMarkers(
   required Color strokeColor,
 }) {
   final markers = <MapMarkerData>[];
-  for (var i = 0; i < suggestions.length; i++) {
-    final suggestion = suggestions[i];
+  final drawn = <String>{};
+  for (final suggestion in suggestions) {
     final storedRef = refs.where((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']).firstOrNull;
     if (storedRef != null && locationForSuggestion(storedRef) != null) continue;
     final location = locationForSuggestion(suggestion);
-    if (location == null) continue;
+    if (location == null || !drawn.add(selectedRefMarkerId(suggestion))) continue;
     final control = controlForRefType(controls, suggestion['type'] as String?);
     final baseColor = colorForRefType(controls, suggestion['type'] as String?) ?? defaultColor;
     markers.add(
       MapMarkerData(
-        id: '$i',
+        id: selectedRefMarkerId(suggestion),
         latitude: location.latitude,
         longitude: location.longitude,
         label: activityRowTitle(control, suggestion),
@@ -110,18 +110,22 @@ List<MapMarkerData> activitySuggestionMarkers(
   return markers;
 }
 
+/// What a reference is named by on the map — its marker, its card, a tap's
+/// pager — whether it is on the operation or suggested.
+String selectedRefMarkerId(Map<String, dynamic> ref) => 'ref-${ref['type']}/${ref['ref']}';
+
 /// One marker per operation reference with a resolvable location, in the
 /// reference type's own icon and color — the same pair the Current
 /// Activities rows above the map use, so a dot and its row read as the same
-/// object. Ids are `ref-<index>` so a tap can tell a chosen reference from a
-/// suggestion, which is the difference between a card that offers Add and
-/// one that says the reference is already on the operation.
+/// object. Ids are [selectedRefMarkerId], the same a suggestion of that
+/// reference carries: removed from the operation, a reference's card stays
+/// open on the suggestion it becomes, now offering Add — the undo for a
+/// removal made by mistake. Whether an id names one of the operation's own
+/// references is a question for the refs, not for the id.
 ///
 /// [glyphFor] returns null while a marker's pixels are still being drawn;
 /// that reference falls back to a plain dot in its color for those frames
 /// rather than vanishing from the map.
-String selectedRefMarkerId(Map<String, dynamic> ref) => 'ref-${ref['type']}/${ref['ref']}';
-
 List<MapMarkerData> activitySelectedRefMarkers(
   List<Map<String, dynamic>> refs, {
   required List<Map<String, dynamic>> controls,
@@ -281,10 +285,9 @@ class ActivitiesResultsMap extends StatefulWidget {
 }
 
 class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with WebviewSupportProbe<ActivitiesResultsMap> {
-  /// Which marker's reveal card is open: a suggestion's index as a string,
-  /// one of [selectedRefMarkerId]'s content-addressed `ref-` ids, or the
-  /// current-location dot (which reveals nothing and so just closes the
-  /// card).
+  /// Which marker's reveal card is open, by [selectedRefMarkerId] — or the
+  /// current-location dot, which reveals nothing and so just closes the
+  /// card.
   String? _selectedMarkerId;
 
   /// The rasterized halves of this map's glyph markers.
@@ -508,9 +511,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     super.dispose();
   }
 
-  /// The map's suggestions: the search's own, then the ones panning found.
-  /// In that order, so a marker's index id keeps naming the same entry as
-  /// more arrive.
+  /// The map's suggestions: the search's own, then the ones panning found —
+  /// in that order, so a reference both list is drawn as the search's.
   List<Map<String, dynamic>> get _allSuggestions => [...widget.suggestions, ...widget.exploredSuggestions];
 
   /// Whether the map is close enough in for the suggestions' own markers —
@@ -575,41 +577,35 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   @override
   void didUpdateWidget(ActivitiesResultsMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A fresh search invalidates a revealed SUGGESTION — its id is an index,
-    // which may now point at an unrelated result or past the end of the
-    // list. A revealed reference is addressed by what it is, so a search
-    // resolving underneath it (or the nearby list refreshing on a GPS fix)
-    // says nothing about it and must not close its card.
-    final revealedSuggestion = !(_selectedMarkerId?.startsWith('ref-') ?? true);
-    if (revealedSuggestion && !identical(oldWidget.suggestions, widget.suggestions)) {
-      setState(() => _selectedMarkerId = null);
-    }
+    // An open card follows its reference through whatever the lists do —
+    // a late addition, a re-ranking, a search re-run on a GPS fix — and
+    // closes only once nothing listed is that reference any more. The pager
+    // keeps the rest of what the tap found, less what has gone.
+    if (_selectedMarkerId != null && _markerEntry(_selectedMarkerId) == null) _selectedMarkerId = null;
+    final picks = [
+      for (final id in _picks)
+        if (_markerEntry(id) != null) id,
+    ];
+    if (picks.length != _picks.length) _picks = picks.length > 1 ? picks : const [];
     // A POTA suggestion that arrives with the camera at rest still needs its
     // bundles: nothing else asks until the map moves.
     if (!identical(oldWidget.suggestions, widget.suggestions) || !identical(oldWidget.exploredSuggestions, widget.exploredSuggestions)) {
       if (_cameraReport.value case (:final camera, :final bounds)?) _readGridFor(bounds, camera.zoom);
     }
     // A new search starts the exploring over: what was found for the last
-    // one is gone from the map. The pager's ids go too: a suggestion's is an
-    // index into the list just replaced.
-    if (!identical(oldWidget.suggestions, widget.suggestions)) {
+    // one is gone from the map. Its key, not the list: the same search's list
+    // changes as late answers land, and that is no reason to ask again.
+    if (oldWidget.fitKey != widget.fitKey) {
       _exploreDebounce?.cancel();
       _explored.clear();
       _exploreGeneration++;
-      _picks = const [];
-    }
-    // A revealed reference taken off the operation stays revealed as the
-    // suggestion the pane offers it back as, so its card turns to Add — the
-    // undo for a removal made by mistake. Gone from both, the card closes.
-    if (_selectedMarkerId case final id? when id.startsWith('ref-') && _markerEntry(id) == null) {
-      _selectedMarkerId = _markerIdForRef(id);
     }
   }
 
   void _onMarkerTap(String id) {
     // Faded out, a suggestion is not there to tap; and a marker that stands
     // for no entry ("you are here") reveals nothing — it only closes a card.
-    if (!_suggestionMarkers && int.tryParse(id) != null) return;
+    if (!_suggestionMarkers && !_isOwnRef(id) && _markerEntry(id) != null) return;
     final entry = _markerEntry(id);
     if (entry == null) {
       setState(() => _selectedMarkerId = null);
@@ -627,7 +623,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // question they did not ask — as would flying to the first of several
     // they are about to step through. Tapping the same reference's row does
     // the same thing — see activities_view.dart.
-    if (_picks.isNotEmpty || !id.startsWith('ref-') || _selectedMarkerId != id) return;
+    if (_picks.isNotEmpty || !_isOwnRef(id) || _selectedMarkerId != id) return;
     if (location != null) widget.camera?.moveTo(location.latitude, location.longitude);
   }
 
@@ -686,13 +682,12 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       if (under(ref)) found(selectedRefMarkerId(ref), 0);
     }
     if (_suggestionMarkers) {
-      final suggestions = _allSuggestions;
-      for (var i = 0; i < suggestions.length; i++) {
-        if (under(suggestions[i])) found(_markerIdForRef(selectedRefMarkerId(suggestions[i])) ?? '$i', 0);
+      for (final suggestion in _allSuggestions) {
+        if (under(suggestion)) found(selectedRefMarkerId(suggestion), 0);
       }
     }
     for (final hit in shapesAt([..._shapes, ..._gridAreas], point, toleranceMeters: radius)) {
-      found(_markerIdForRef(markerIdOfShape(hit.shape)), hit.size);
+      found(markerIdOfShape(hit.shape), hit.size);
     }
     return sizes.keys.toList()..sort((a, b) {
       final bySize = sizes[a]!.compareTo(sizes[b]!);
@@ -700,14 +695,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     });
   }
 
-  /// The marker id a reference's content id is drawn under: its own when the
-  /// operation has it, otherwise its index among the suggestions, or null for
-  /// one the map is not showing.
-  String? _markerIdForRef(String id) {
-    if (widget.refs.any((ref) => selectedRefMarkerId(ref) == id)) return id;
-    final index = _allSuggestions.indexWhere((suggestion) => selectedRefMarkerId(suggestion) == id);
-    return index < 0 ? null : '$index';
-  }
+  /// Whether [id] names one of the operation's own references.
+  bool _isOwnRef(String id) => widget.refs.any((ref) => selectedRefMarkerId(ref) == id);
 
   /// The open card's link, asked for once per card rather than once per
   /// build — every camera move rebuilds this pane.
@@ -723,24 +712,15 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     return _link;
   }
 
-  /// The entry a marker id stands for, or null when it stands for none — the
-  /// current-location dot, or an index left over from a list that has since
-  /// been replaced by a fresh search.
+  /// The entry a marker id stands for — the operation's own reference first,
+  /// then a suggestion of it — or null when it stands for none: the
+  /// current-location dot, or a reference no longer listed anywhere.
   Map<String, dynamic>? _markerEntry(String? id) {
     if (id == null) return null;
-    if (id.startsWith('ref-')) {
-      for (final ref in widget.refs) {
-        if (selectedRefMarkerId(ref) == id) return ref;
-      }
-      // The operator removed it from the rows above while its card was open.
-      return null;
+    for (final entry in [...widget.refs, ..._allSuggestions]) {
+      if (selectedRefMarkerId(entry) == id) return entry;
     }
-    final index = int.tryParse(id);
-    // Lower bound too: the id makes a round trip through the backend's JS,
-    // and this promises null for one that stands for no entry rather than a
-    // RangeError.
-    final all = _allSuggestions;
-    return index != null && index >= 0 && index < all.length ? all[index] : null;
+    return null;
   }
 
   @override
@@ -758,6 +738,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // on a saturated fill, and one shared foreground is what makes the
     // chosen references and the "you are here" dot read as one family.
     const glyphForeground = Colors.white;
+    final searched = {for (final suggestion in widget.suggestions) selectedRefMarkerId(suggestion)};
     final markers = [
       for (final marker in activitySuggestionMarkers(
         _allSuggestions,
@@ -766,7 +747,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         defaultColor: theme.colorScheme.primary,
         strokeColor: strokeColor,
       ))
-        marker.withFit(fitsCamera: int.parse(marker.id) < widget.suggestions.length, fadesWithZoom: true),
+        // What panning found is never fitted: each batch would snap the map
+        // back from where the operator had just dragged it.
+        marker.withFit(fitsCamera: searched.contains(marker.id), fadesWithZoom: true),
     ];
     final refMarkers = activitySelectedRefMarkers(
       widget.refs,
@@ -806,8 +789,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     }
 
     // The "you are here" dot, in the search band's own pill color — given an
-    // id that matches neither a suggestion index nor a `ref-` one, so a tap
-    // on it reveals nothing and just dismisses whatever card was open.
+    // id that names no reference, so a tap on it reveals nothing and just
+    // dismisses whatever card was open.
     final currentLocation = widget.currentLocation;
     final currentLocationIcon = widget.currentLocationIcon;
     final currentLocationColor = widget.currentLocationColor;

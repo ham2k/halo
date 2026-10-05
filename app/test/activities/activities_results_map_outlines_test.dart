@@ -219,7 +219,7 @@ void main() {
       await zoomTo(tester, ActivitiesResultsMap.suggestionOutlinesFromZoom + 1);
       final before = geoshapes.asked.length;
 
-      map(tester).onMarkerTap!('0');
+      map(tester).onMarkerTap!('ref-pota/US-0002');
       await tester.pumpAndSettle();
 
       final shapes = map(tester).shapes;

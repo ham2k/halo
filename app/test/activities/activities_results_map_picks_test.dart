@@ -61,7 +61,7 @@ void main() {
     try {
       await pump(tester, suggestions: const [_third, _second, _first, _far]);
 
-      map(tester).onMarkerTap!('1');
+      map(tester).onMarkerTap!('ref-pota/US-0002');
       await tester.pumpAndSettle();
       // The dot aimed at leads, even though it sorts second: opening a
       // neighbour's card instead reads as the tap missing.
@@ -88,7 +88,7 @@ void main() {
       expect(find.text('US-0001'), findsOneWidget);
       expect(find.text(t.activitiesView.pickPosition(index: 1, count: 3)), findsOneWidget);
 
-      map(tester).onMarkerTap!('3');
+      map(tester).onMarkerTap!('ref-pota/US-0009');
       await tester.pumpAndSettle();
       expect(find.text('US-0009'), findsOneWidget);
       expect(find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == t.activitiesView.nextPick), findsNothing);
@@ -114,6 +114,45 @@ void main() {
       expect(find.text('US-0005'), findsOneWidget);
       expect(find.text(t.activitiesView.selected), findsNothing);
       expect(find.byType(FilledButton), findsOneWidget, reason: 'Add, in whichever length the width allows');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('an open card follows its park through a re-ranked, grown list, and closes once it is gone', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      await pump(tester, suggestions: const [_far, _second]);
+      map(tester).onMarkerTap!('ref-pota/US-0002');
+      await tester.pumpAndSettle();
+      expect(find.text('US-0002'), findsOneWidget);
+
+      // Parks found later land ranked ahead of it: by position, the card would
+      // now show whichever park moved into its place.
+      await pump(tester, suggestions: const [_first, _third, _second, _far]);
+      expect(find.text('US-0002'), findsOneWidget);
+
+      await pump(tester, suggestions: const [_first, _far]);
+      expect(find.text('US-0002'), findsNothing, reason: 'no longer listed, there is nothing for its card to offer');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('the pager keeps what the tap found while it is still listed', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      await pump(tester, suggestions: const [_third, _second, _first, _far]);
+      map(tester).onMarkerTap!('ref-pota/US-0002');
+      await tester.pumpAndSettle();
+      expect(find.text(t.activitiesView.pickPosition(index: 1, count: 3)), findsOneWidget);
+
+      await pump(tester, suggestions: const [_second, _first, _far]);
+      expect(find.text('US-0002'), findsOneWidget);
+      expect(find.text(t.activitiesView.pickPosition(index: 1, count: 2)), findsOneWidget, reason: 'one park dropped out; the rest are still under the tap');
+
+      await pump(tester, suggestions: const [_second, _far]);
+      expect(find.byWidgetPredicate((w) => w is Icon && w.semanticLabel == t.activitiesView.nextPick), findsNothing, reason: 'alone, it needs no pager');
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
