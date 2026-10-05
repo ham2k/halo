@@ -621,7 +621,7 @@ MapShapeData? shapeAt(List<MapShapeData> shapes, GridLocation point, {required d
   MapShapeData? smallestArea;
   var smallestSize = double.infinity;
   for (final shape in shapes) {
-    final (:edgeDistance, :inside, :size) = _measureShape(shape, point);
+    final (:edgeDistance, :inside, :size) = measureShape(shape, point);
     if (edgeDistance <= toleranceMeters && edgeDistance < nearestDistance) {
       nearestDistance = edgeDistance;
       nearestEdge = shape;
@@ -639,7 +639,7 @@ MapShapeData? shapeAt(List<MapShapeData> shapes, GridLocation point, {required d
 /// box in square metres, for a caller that ranks them itself.
 List<({MapShapeData shape, double size})> shapesAt(List<MapShapeData> shapes, GridLocation point, {required double toleranceMeters}) => [
   for (final shape in shapes)
-    if (_measureShape(shape, point) case (:final edgeDistance, :final inside, :final size) when inside || edgeDistance <= toleranceMeters)
+    if (measureShape(shape, point) case (:final edgeDistance, :final inside, :final size) when inside || edgeDistance <= toleranceMeters)
       (shape: shape, size: size),
 ];
 
@@ -648,7 +648,7 @@ List<({MapShapeData shape, double size})> shapesAt(List<MapShapeData> shapes, Gr
 ///
 /// Measured on a local flat projection around [point], which is exact enough
 /// for the few pixels a tap spans and the areas a map on screen can show.
-({double edgeDistance, bool inside, double size}) _measureShape(MapShapeData shape, GridLocation point) {
+({double edgeDistance, bool inside, double size}) measureShape(MapShapeData shape, GridLocation point) {
   final cosLat = math.cos(point.latitude * math.pi / 180);
   const metersPerDegree = 111320.0;
   (double, double) local(GridLocation p) => ((p.longitude - point.longitude) * cosLat * metersPerDegree, (p.latitude - point.latitude) * metersPerDegree);

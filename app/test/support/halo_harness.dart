@@ -14,10 +14,12 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/cat_traffic_log.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
+import 'package:ham2k_logger/services/outline_grid_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
 import 'fake_extension_host.dart';
 import 'fake_secure_storage.dart';
+import 'no_outline_grid.dart';
 
 /// The service graph a test runs against, with the pieces it most often
 /// needs to reach past [services] for.
@@ -47,7 +49,9 @@ class HaLoHarness {
 /// settings this creates — a builder, because CatService needs them and they
 /// do not exist until here — and stands in for one that can otherwise only
 /// reach a radio through hardware. [db] hands in a database double; one made
-/// here is closed for you, one handed in is yours to manage.
+/// here is closed for you, one handed in is yours to manage. [outlineGrid]
+/// replaces the POTA outline bundles, which by default find nothing — the
+/// real ones reach services.ham2k.net.
 Future<HaLoHarness> makeHaLoServices({
   Map<String, Object>? prefs = const {},
   Map<String, Object?> stubs = const {},
@@ -57,6 +61,7 @@ Future<HaLoHarness> makeHaLoServices({
   HaLoDatabase? db,
   CatService Function(SettingsService settings)? cat,
   CatTrafficLog? catTrafficLog,
+  OutlineGridService? outlineGrid,
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage ?? FakeSecureStorage());
@@ -76,7 +81,15 @@ Future<HaLoHarness> makeHaLoServices({
   }
   final ext = (extensions ?? ExtensionServiceWithFakeHost(FakeExtensionHost(stubs)))..settings = settings;
   return HaLoHarness(
-    services: HaLoServices(database, settings, extensions: ext, catalog: catalog, cat: cat?.call(settings), catTrafficLog: catTrafficLog),
+    services: HaLoServices(
+      database,
+      settings,
+      extensions: ext,
+      catalog: catalog,
+      cat: cat?.call(settings),
+      catTrafficLog: catTrafficLog,
+      outlineGrid: outlineGrid ?? const NoOutlineGrid(),
+    ),
     db: database,
     settings: settings,
     extensions: ext,

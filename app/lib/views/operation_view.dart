@@ -1257,6 +1257,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     setState(() => _operation = patched);
     _setCommandContext(patched);
     if (operation == null) return;
+    widget.services.outlineGrid.prefetchFor(operation.refs); // kept on the device for the field
     // A saved change to the operation itself — a reference corrected, an
     // exchange edited — changes what every contact scores as, so it is a
     // rescore like a logged contact is. Only once one is held: on open the

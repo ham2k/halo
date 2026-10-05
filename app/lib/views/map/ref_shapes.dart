@@ -50,13 +50,18 @@ String outlineRefLabel(Map<String, dynamic> ref) =>
 /// handler is an ordinary `setState((){})` — and must check `mounted` itself,
 /// since an answer can land after the pane is gone.
 class RefShapeLoader {
-  RefShapeLoader({required this.geoshapes, required this.onChanged});
+  RefShapeLoader({required this.geoshapes, required this.onChanged, this.keptOnly = false});
 
   /// Null in a harness with no database to cache in. Every lookup then answers
   /// "nothing", which is also what an operator sees for a program that
   /// publishes no shapes.
   final GeoshapeService? geoshapes;
   final VoidCallback onChanged;
+
+  /// Draws only what the device already holds, never starting a download —
+  /// for an outline shown in place of one that could not be read, where
+  /// fetching it would be the very download it stands in for.
+  final bool keptOnly;
 
   /// How long a reference that could NOT be looked up is left alone.
   ///
@@ -135,7 +140,7 @@ class RefShapeLoader {
     required Color color,
   }) async {
     try {
-      final shape = await geoshapes.shapeFromSource(source);
+      final shape = await (keptOnly ? geoshapes.keptShapeFromSource(source) : geoshapes.shapeFromSource(source));
       final geojson = shape.geojson;
       if (geojson != null) {
         _shapes[key] = mapShapesFromGeojson(

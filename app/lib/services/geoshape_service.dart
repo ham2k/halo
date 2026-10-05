@@ -127,6 +127,16 @@ class GeoshapeService {
     });
   }
 
+  /// What [shapeFromSource] answers from this device alone, whatever the
+  /// copy's age — never a download. Unknown when the device holds nothing.
+  Future<Geoshape> keptShapeFromSource(RefGeojsonAnswer answer) async {
+    if (!answer.answered) return Geoshape.unknown;
+    final source = answer.source;
+    if (source == null) return Geoshape.none;
+    final cached = await _cached(source.url);
+    return cached == null ? Geoshape.unknown : Geoshape(cached.geojson, resolved: true);
+  }
+
   /// The cached shape for [url] if this device holds one, whatever its age.
   Future<CachedGeoshape?> _cached(String url) async {
     final row = await lookups.getLookup(geoshapeLookupCategory, url);
@@ -177,6 +187,7 @@ class GeoshapeService {
       // redirect, or a transport failure is treated as "ask again later" —
       // see the catch.
       if (response.statusCode >= 400 && response.statusCode < 500) {
+        debugPrint('[geoshape] ${source.url} answered ${response.statusCode}; kept as having no shape');
         await _store(source.url, null);
         return Geoshape.none;
       }

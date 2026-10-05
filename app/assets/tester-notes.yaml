@@ -10,6 +10,7 @@ upcoming:
     - "New unstable extension releases install from a catalog link, and keep updating"
     - "Maps circle the activation radius of castles, bunkers, mills, silos, towers and huts"
     - "Added stepping through overlapping parks and trails on the activities map"
+    - "Improved nearby park suggestions: trails and big parks passing close by now count"
 
 "176":
   changes:

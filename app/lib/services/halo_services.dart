@@ -52,6 +52,7 @@ import 'extensions/extension_installer.dart';
 import 'extensions/extension_service.dart';
 import 'opened_files_service.dart';
 import 'geoshape_service.dart';
+import 'outline_grid_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
 import 'cat/cat_traffic_log.dart';
@@ -318,6 +319,11 @@ class HaLoServices {
   /// demand and cached on the device. Lazy like the rest: an operator who
   /// never opens the Activities map never builds one.
   late final GeoshapeService geoshapes = GeoshapeService(extensions: extensions, lookups: lookups);
+
+  /// POTA park outlines in grid bundles, for nearby parks by outline and the Activities map's dashed ones. Injectable like
+  /// [_exportsOverride]: the real one's fetch and drift cache never complete under `testWidgets`.
+  late final OutlineGridService outlineGrid = _outlineGridOverride ?? OutlineGridService(geoshapes: geoshapes, extensions: extensions);
+  final OutlineGridService? _outlineGridOverride;
   late final InboundCaptureRepository inboundCaptures = InboundCaptureRepository(db);
   final ExportService? _exportsOverride;
   late final ExportService exports = _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
@@ -1007,6 +1013,7 @@ class HaLoServices {
     DataFileManager? dataFiles,
     LookupQueueService? lookupQueue,
     ExportService? exports,
+    OutlineGridService? outlineGrid,
     CatService? cat,
     CatTrafficLog? catTrafficLog,
     PusherService? pusher,
@@ -1043,7 +1050,8 @@ class HaLoServices {
        // A widget test of the Exports panel can't use the real one: its
        // option listing awaits a drift stream's `.first`, which never
        // resolves under `testWidgets` (see operation_export_panel_test).
-       _exportsOverride = exports {
+       _exportsOverride = exports,
+       _outlineGridOverride = outlineGrid {
     _wireExtensions();
     // Time travel is developer-mode-only, and this is the ONE place that can
     // see developer mode go off no matter which surface turned it off (DEVMODE,

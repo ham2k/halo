@@ -518,6 +518,18 @@ SOTLAS's `az.sotl.as`, used with the operators' permission) and `pota` (both
 types, via `services.ham2k.net/lookups/outlines/pota/`, which links parks to
 OpenStreetMap shapes; a park not yet linked answers 404).
 
+**POTA is the one exception, and the core makes it, not the hook.** For a
+POTA suggestion's dashed outline the core skips `geojsonUrlForRef` and reads
+`services.ham2k.net`'s grid bundles instead — every outlined park touching a
+Maidenhead cell, simplified and clipped to it, one cached document per cell
+(500 m blocks below GL zoom 9, 10 m squares from 9). A long trail's whole
+outline runs to megabytes; its pieces in a cell, to kilobytes. The same
+bundles add to `suggest`'s answers the parks whose outline, not just whose
+point, is near: within 5 km for the nearby list, touching the view for a pan
+close in (from about GL zoom 10; see `suggest` below). An open card's POTA suggestion is drawn solid from the
+same pieces; the operation's own references still come from
+`geojsonUrlForRef`.
+
 **An activation radius is a circle, drawn the same way.** A reference that
 carries `activationRadiusInMeters` or `activationRadiusInFeet` — how far from
 its point the program lets an activator be — is circled on both maps, in the
@@ -665,7 +677,12 @@ an app that sends `bounds` answers that call, so an extension that calls it
 only then runs on older apps unchanged, and one that predates `bounds` answers
 with what is nearest the view's centre. Measure `distance` from the `location`
 given either way; the core re-measures a panned answer from the operation's own
-place before any card shows it. Called with no
+place before any card shows it. For POTA only, the core also adds the parks
+whose OUTLINE is near (from the grid bundles above) to the nearby list and to a
+pan, labelled by POTA's own `decorateRef`, and gives a park POTA already
+suggested the nearer of its point's and its outline's distance — so `pota`'s
+`suggest` keeps answering by point, and a trail whose point is a state away
+still reaches an operator standing on it. Called with no
 `searchTerm` for nearby suggestions, or with one for name/code search — an
 extension may honor either, both, or neither (returning `[]`). `scoped` is
 true when THIS extension alone was asked — the operator tapped its "Activity

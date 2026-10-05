@@ -28,7 +28,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/extensions/extension_ref_results.dart';
+import '../../services/error_reporting_service.dart';
 import '../../services/geoshape_service.dart';
+import '../../services/outline_grid_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
@@ -164,6 +166,11 @@ class ActivitiesResultsMap extends StatefulWidget {
   /// publishes none.
   final GeoshapeService? geoshapes;
 
+  /// Where POTA suggestions' outlines come from: the bundles for the cells in
+  /// view, rather than each park's whole outline. Null draws every
+  /// suggestion's outline whole.
+  final OutlineGridService? outlineGrid;
+
   /// The camera, shared with the Current Activities rows above the map so a
   /// row and its own dot point the map at the same place. Owned by the pane
   /// that builds both (activities_view.dart) rather than by this widget: the
@@ -226,6 +233,7 @@ class ActivitiesResultsMap extends StatefulWidget {
     required this.refs,
     required this.settings,
     this.geoshapes,
+    this.outlineGrid,
     this.camera,
     required this.onAdd,
     this.onRemove,
@@ -368,6 +376,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     }
     final (:camera, :bounds) = settled;
     _onZoomChanged(camera.zoom);
+    _readGridFor(bounds, camera.zoom);
     final onExplore = widget.onExplore;
     if (onExplore == null || camera.zoom < ActivitiesResultsMap.exploreFromZoom) return;
     // flutter_map reports every frame of a drag; GL only where it came to
@@ -394,9 +403,107 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   /// Web Mercator at 512-pixel tiles, [zoom] on the GL scale.
   static double _metersPerPixel(GridLocation at, double zoom) => 40075016.686 * math.cos(at.latitude * math.pi / 180) / (512 * math.pow(2, zoom));
 
+  /// The POTA parks in the outline bundles for the cells in view, and which
+  /// cells those were.
+  Map<String, OutlinePieces> _gridParks = const {};
+  String _gridCells = '';
+  String? _gridPending;
+
+  /// Whether the last read of the cells in view was whole — null before one
+  /// lands. Not whole (offline, with no copy kept), a POTA suggestion the
+  /// bundles lack is drawn from whatever whole outline the device still
+  /// holds, never downloaded ([_keptShapeLoader]); null, it waits.
+  bool? _gridSettled;
+  Timer? _gridDebounce;
+
+  /// The outline bundles' areas for the parks drawn from them: tapped like
+  /// any outline, never drawn — their sides along a cell's edge are seams.
+  List<MapShapeData> _gridAreas = const [];
+
+  /// From this zoom, on the GL scale, the 10 m square bundles; further out,
+  /// the 500 m blocks. The public map at geo.ham2k.net switches at the same
+  /// zoom.
+  static const _gridSquaresFromZoom = 9.0;
+
+  /// Reads the bundles for the cells in [bounds] once the camera has stayed
+  /// there a moment — flutter_map reports every frame of a drag.
+  void _readGridFor(MapViewBounds bounds, double zoom) {
+    final grid = widget.outlineGrid;
+    // Nothing to draw from them without a POTA suggestion on the map.
+    if (grid == null || !_allSuggestions.any((suggestion) => suggestion['type'] == OutlineGridService.potaActivationType)) return;
+    if (zoom < ActivitiesResultsMap.suggestionOutlinesFromZoom) {
+      // Out past the bundles: what was read is for a view no longer shown,
+      // and coming back in reads the cells then in view.
+      _gridDebounce?.cancel();
+      _gridCells = '';
+      _gridPending = null;
+      _gridSettled = null;
+      return;
+    }
+    List<String> cellsAt(OutlineGridScale scale) =>
+        OutlineGridService.cellsCovering(south: bounds.south, west: bounds.west, north: bounds.north, east: bounds.east, scale: scale);
+    final squares = zoom >= _gridSquaresFromZoom;
+    final cells = cellsAt(squares ? OutlineGridScale.square : OutlineGridScale.block);
+    final key = cells.join(',');
+    // Cancelled first, and an in-flight read disowned: back on the cells
+    // already read, one of the cells just passed through would otherwise
+    // land over them.
+    _gridDebounce?.cancel();
+    if (key == _gridCells) {
+      _gridPending = null;
+      return;
+    }
+    _gridDebounce = Timer(const Duration(milliseconds: 300), () async {
+      _gridPending = key;
+      try {
+        var (:parks, :settled) = await grid.piecesIn(cells);
+        // The detailed squares not on the device, the coarser blocks may be
+        // — they are what a planned operation keeps there (prefetchFor).
+        // Taken only whole: the squares that were read still draw better than
+        // blocks that were not.
+        final coarser = squares && !settled;
+        if (coarser) {
+          final blocks = await grid.piecesIn(cellsAt(OutlineGridScale.block));
+          if (blocks.settled) (:parks, :settled) = blocks;
+        }
+        if (!mounted || key != _gridPending) return;
+        // A cell that could not be read — or was read coarser than asked —
+        // is asked about again on the next camera report, rather than taken
+        // as having no parks.
+        _gridCells = settled && !coarser ? key : '';
+        setState(() {
+          _gridParks = parks;
+          _gridSettled = settled;
+        });
+      } catch (e, stack) {
+        ErrorReportingService.report(e, stack, context: 'activities:outlineGrid');
+      }
+    });
+  }
+
+  /// The bundle pieces of each of [refs], as shapes named after its marker —
+  /// the cell and piece in the id, so a map comparing shapes by id redraws
+  /// when the cells in view change.
+  List<MapShapeData> _gridShapes(Iterable<Map<String, dynamic>> refs, {required bool areas, required bool dashed, required Color fallbackColor}) => [
+    for (final ref in refs)
+      if (_gridParks[ref['ref']] case final park?)
+        for (final piece in areas ? park.areas : park.lines)
+          MapShapeData(
+            id: '${selectedRefMarkerId(ref)}/${piece.id.replaceAll('/', ':')}',
+            rings: piece.rings,
+            color: colorForRefType(widget.controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor,
+            isLine: piece.isLine,
+            dashed: dashed,
+            sourceName: piece.sourceName,
+            sourceUrl: OutlineGridService.outlineUrlFor(ref['ref'] as String),
+            refLabel: outlineRefLabel(ref),
+          ),
+  ];
+
   @override
   void dispose() {
     _exploreDebounce?.cancel();
+    _gridDebounce?.cancel();
     _cameraReport.dispose();
     super.dispose();
   }
@@ -443,6 +550,16 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     },
   );
 
+  /// For a POTA suggestion's outline when the bundles could not be read:
+  /// whatever whole one the device still holds, and never a download of it.
+  late final RefShapeLoader _keptShapeLoader = RefShapeLoader(
+    geoshapes: widget.geoshapes,
+    keptOnly: true,
+    onChanged: () {
+      if (mounted) setState(() {});
+    },
+  );
+
   @override
   void initState() {
     super.initState();
@@ -466,6 +583,11 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     final revealedSuggestion = !(_selectedMarkerId?.startsWith('ref-') ?? true);
     if (revealedSuggestion && !identical(oldWidget.suggestions, widget.suggestions)) {
       setState(() => _selectedMarkerId = null);
+    }
+    // A POTA suggestion that arrives with the camera at rest still needs its
+    // bundles: nothing else asks until the map moves.
+    if (!identical(oldWidget.suggestions, widget.suggestions) || !identical(oldWidget.exploredSuggestions, widget.exploredSuggestions)) {
+      if (_cameraReport.value case (:final camera, :final bounds)?) _readGridFor(bounds, camera.zoom);
     }
     // A new search starts the exploring over: what was found for the last
     // one is gone from the map. The pager's ids go too: a suggestion's is an
@@ -569,7 +691,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         if (under(suggestions[i])) found(_markerIdForRef(selectedRefMarkerId(suggestions[i])) ?? '$i', 0);
       }
     }
-    for (final hit in shapesAt(_shapes, point, toleranceMeters: radius)) {
+    for (final hit in shapesAt([..._shapes, ..._gridAreas], point, toleranceMeters: radius)) {
       found(_markerIdForRef(markerIdOfShape(hit.shape)), hit.size);
     }
     return sizes.keys.toList()..sort((a, b) {
@@ -735,11 +857,19 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // The operation's own references, plus the one whose reveal card is open
     // — the summit an operator is looking at is as worth an outline as one
     // they have already added.
-    final shapeRefs = [
-      ...widget.refs,
-      if (_markerEntry(_selectedMarkerId) case final revealed? when !widget.refs.any((r) => selectedRefMarkerId(r) == selectedRefMarkerId(revealed))) revealed,
-    ];
+    final revealed = switch (_markerEntry(_selectedMarkerId)) {
+      final revealed? when !widget.refs.any((r) => selectedRefMarkerId(r) == selectedRefMarkerId(revealed)) => revealed,
+      _ => null,
+    };
+    final shapeRefs = [...widget.refs, ?revealed];
     final solidIds = {for (final ref in shapeRefs) selectedRefMarkerId(ref)};
+    // A POTA suggestion's outline is the bundles' pieces in view: kilobytes,
+    // where a long trail's whole outline runs to megabytes. The operation's
+    // own references keep theirs whole.
+    bool fromGrid(Map<String, dynamic> ref) => widget.outlineGrid != null && ref['type'] == OutlineGridService.potaActivationType;
+    // The open card's outline is drawn whole while the bundles in view have
+    // none of it — zoomed out past them, or before they arrive.
+    final revealedFromGrid = [if (revealed != null && fromGrid(revealed) && _suggestionOutlines && _gridParks.containsKey(revealed['ref'])) revealed];
     // Every other suggestion on the map, dashed, once the map is close enough
     // for a footprint to be worth its fetch. First in the list, so a backend
     // that stacks in list order agrees with the ones that layer by kind.
@@ -750,16 +880,36 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         for (final suggestion in _allSuggestions)
           if (locationForSuggestion(suggestion) != null && !solidIds.contains(selectedRefMarkerId(suggestion))) suggestion,
     ];
+    final fallbackColor = theme.colorScheme.primary;
+    final dashedFromGrid = dashedRefs.where(fromGrid);
+    final dashedKept = dashedRefs.where((ref) => fromGrid(ref) && _gridSettled == false && !_gridParks.containsKey(ref['ref']));
+    _gridAreas = _gridShapes([...dashedFromGrid, ...revealedFromGrid], areas: true, dashed: false, fallbackColor: fallbackColor);
     final shapes = _shapes = [
       for (final shape in refShapes(
-        dashedRefs,
+        dashedRefs.where((ref) => !fromGrid(ref)),
         loader: _shapeLoader,
         controls: widget.controls,
-        fallbackColor: theme.colorScheme.primary,
+        fallbackColor: fallbackColor,
         markerIdFor: selectedRefMarkerId,
       ))
         shape.asDashed(),
-      ...refShapes(shapeRefs, loader: _shapeLoader, controls: widget.controls, fallbackColor: theme.colorScheme.primary, markerIdFor: selectedRefMarkerId),
+      for (final shape in refShapes(
+        dashedKept,
+        loader: _keptShapeLoader,
+        controls: widget.controls,
+        fallbackColor: fallbackColor,
+        markerIdFor: selectedRefMarkerId,
+      ))
+        shape.asDashed(),
+      ..._gridShapes(dashedFromGrid, areas: false, dashed: true, fallbackColor: fallbackColor),
+      ...refShapes(
+        [...widget.refs, if (revealed != null && revealedFromGrid.isEmpty) revealed],
+        loader: _shapeLoader,
+        controls: widget.controls,
+        fallbackColor: fallbackColor,
+        markerIdFor: selectedRefMarkerId,
+      ),
+      ..._gridShapes(revealedFromGrid, areas: false, dashed: false, fallbackColor: fallbackColor),
     ];
 
     final pinnedStyle = widget.settings.mapStyle;
