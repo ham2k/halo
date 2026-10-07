@@ -591,8 +591,8 @@
       },
       "includePrivateData": {
         "title": "Incluir información privada",
-        "descriptionOn": "Se incluyen nombres, ciudades, cuadrículas y notas",
-        "descriptionOff": "Se omiten nombres, ciudades, cuadrículas y notas",
+        "descriptionOn": "Se incluyen nombres, direcciones, correos, cuadrículas y notas",
+        "descriptionOff": "Se omiten nombres, direcciones, correos, cuadrículas y notas",
         "note": "La Exportación ADIF Completa siempre incluye todo"
       },
       "resultTitle": "Exportación completa",
@@ -2368,8 +2368,8 @@
     "retry": "Reintentar",
     "compactFileNamesDescriptionOn": "Nombres compactos, como N0CALL@US-1234-20260715.adi.",
     "compactFileNamesDescriptionOff": "Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.",
-    "includePrivateDataDescriptionOn": "Incluyendo nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.",
-    "includePrivateDataDescriptionOff": "Omitiendo nombres, ciudades y notas; limitando las ubicaciones a cuadrículas de seis caracteres.",
+    "includePrivateDataDescriptionOn": "Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.",
+    "includePrivateDataDescriptionOff": "Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.",
     "includeLookupDataDescriptionOn": "Incluyendo la información de los servicios de consulta de indicativos.",
     "includeLookupDataDescriptionOff": "Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.",
     "customTemplatesDescriptionOn": "Tus plantillas personalizadas están activas y se pueden editar a continuación.",

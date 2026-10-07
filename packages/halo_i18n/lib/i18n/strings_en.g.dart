@@ -2530,11 +2530,11 @@ class Translations$exportSettings$en {
 	/// en: 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.'
 	String get compactFileNamesDescriptionOff => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.';
 
-	/// en: 'Including names, towns, notes and precise locations in ADIF files.'
-	String get includePrivateDataDescriptionOn => 'Including names, towns, notes and precise locations in ADIF files.';
+	/// en: 'Including names, addresses, emails, notes and precise locations in ADIF files.'
+	String get includePrivateDataDescriptionOn => 'Including names, addresses, emails, notes and precise locations in ADIF files.';
 
-	/// en: 'Omitting names, towns and notes; limiting locations to six-character grids.'
-	String get includePrivateDataDescriptionOff => 'Omitting names, towns and notes; limiting locations to six-character grids.';
+	/// en: 'Omitting names, addresses, emails and notes; limiting locations to six-character grids.'
+	String get includePrivateDataDescriptionOff => 'Omitting names, addresses, emails and notes; limiting locations to six-character grids.';
 
 	/// en: 'Including information from callsign lookup services.'
 	String get includeLookupDataDescriptionOn => 'Including information from callsign lookup services.';
@@ -6151,11 +6151,11 @@ class Translations$operation$export$includePrivateData$en {
 	/// en: 'Include private info'
 	String get title => 'Include private info';
 
-	/// en: 'Names, towns, gridsquares and notes are included'
-	String get descriptionOn => 'Names, towns, gridsquares and notes are included';
+	/// en: 'Names, addresses, emails, gridsquares and notes are included'
+	String get descriptionOn => 'Names, addresses, emails, gridsquares and notes are included';
 
-	/// en: 'Names, towns, gridsquares and notes are left out'
-	String get descriptionOff => 'Names, towns, gridsquares and notes are left out';
+	/// en: 'Names, addresses, emails, gridsquares and notes are left out'
+	String get descriptionOff => 'Names, addresses, emails, gridsquares and notes are left out';
 
 	/// en: 'The Full ADIF Export always includes everything'
 	String get note => 'The Full ADIF Export always includes everything';
@@ -7983,8 +7983,8 @@ extension on Translations {
 			'operation.export.compactFileNames.descriptionOn' => 'Short names built for uploaders, like N0CALL@US-1234-20260727.adi',
 			'operation.export.compactFileNames.descriptionOff' => 'Readable names, like 2026-07-27 N0CALL at US-1234.adi',
 			'operation.export.includePrivateData.title' => 'Include private info',
-			'operation.export.includePrivateData.descriptionOn' => 'Names, towns, gridsquares and notes are included',
-			'operation.export.includePrivateData.descriptionOff' => 'Names, towns, gridsquares and notes are left out',
+			'operation.export.includePrivateData.descriptionOn' => 'Names, addresses, emails, gridsquares and notes are included',
+			'operation.export.includePrivateData.descriptionOff' => 'Names, addresses, emails, gridsquares and notes are left out',
 			'operation.export.includePrivateData.note' => 'The Full ADIF Export always includes everything',
 			'operation.export.resultTitle' => 'Export complete',
 			'operation.export.resultFailedTitle' => 'Export failed',
@@ -9461,8 +9461,8 @@ extension on Translations {
 			'exportSettings.retry' => 'Retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.',
-			'exportSettings.includePrivateDataDescriptionOn' => 'Including names, towns, notes and precise locations in ADIF files.',
-			'exportSettings.includePrivateDataDescriptionOff' => 'Omitting names, towns and notes; limiting locations to six-character grids.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Including names, addresses, emails, notes and precise locations in ADIF files.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Omitting names, addresses, emails and notes; limiting locations to six-character grids.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Including information from callsign lookup services.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Omitting information from callsign lookup services; keeping manually entered values.',
 			'exportSettings.customTemplatesDescriptionOn' => 'Your custom templates are active and can be edited below.',

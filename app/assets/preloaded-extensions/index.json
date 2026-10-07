@@ -146,9 +146,9 @@
     },
     {
       "key": "ham2k-qrz",
-      "version": "0.2.1",
-      "file": "ham2k-qrz-0.2.1.h2kext",
-      "sha256": "111487aee13027496c7438213704c30898b01ec24be8b121e5994d18bb1cc6db"
+      "version": "0.2.2",
+      "file": "ham2k-qrz-0.2.2.h2kext",
+      "sha256": "2c06f2714810368ff99c81c5b8940ca2a67cc33a4a720e93bf93899846f1897a"
     },
     {
       "key": "ham2k-r1-fd",

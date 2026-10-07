@@ -96,7 +96,7 @@ export function resolveExportSettings(definition: ExportTypeDefinition, global: 
 }
 
 /// What "include private data" withholds, from a station and from its guess.
-const PRIVATE_STATION_FIELDS = ["name", "city", "street", "email", "notes", "lat", "lon", "multiIdentifier"]
+const PRIVATE_STATION_FIELDS = ["name", "city", "street", "postal", "email", "qslVia", "url", "notes", "lat", "lon", "multiIdentifier"]
 
 /// Templates see a copy with withheld data removed, including nested guesses.
 export function exportQso(qso: Record<string, JSONValue>, settings: ExportSettings): Record<string, JSONValue> {

@@ -1169,8 +1169,8 @@ class _Translations$exportSettings$es extends Translations$exportSettings$en {
 	@override String get retry => 'Reintentar';
 	@override String get compactFileNamesDescriptionOn => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.';
 	@override String get compactFileNamesDescriptionOff => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.';
-	@override String get includePrivateDataDescriptionOn => 'Incluyendo nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.';
-	@override String get includePrivateDataDescriptionOff => 'Omitiendo nombres, ciudades y notas; limitando las ubicaciones a cuadrículas de seis caracteres.';
+	@override String get includePrivateDataDescriptionOn => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.';
+	@override String get includePrivateDataDescriptionOff => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.';
 	@override String get includeLookupDataDescriptionOn => 'Incluyendo la información de los servicios de consulta de indicativos.';
 	@override String get includeLookupDataDescriptionOff => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.';
 	@override String get customTemplatesDescriptionOn => 'Tus plantillas personalizadas están activas y se pueden editar a continuación.';
@@ -2760,8 +2760,8 @@ class _Translations$operation$export$includePrivateData$es extends Translations$
 
 	// Translations
 	@override String get title => 'Incluir información privada';
-	@override String get descriptionOn => 'Se incluyen nombres, ciudades, cuadrículas y notas';
-	@override String get descriptionOff => 'Se omiten nombres, ciudades, cuadrículas y notas';
+	@override String get descriptionOn => 'Se incluyen nombres, direcciones, correos, cuadrículas y notas';
+	@override String get descriptionOff => 'Se omiten nombres, direcciones, correos, cuadrículas y notas';
 	@override String get note => 'La Exportación ADIF Completa siempre incluye todo';
 }
 
@@ -3955,8 +3955,8 @@ extension on TranslationsEs {
 			'operation.export.compactFileNames.descriptionOn' => 'Nombres cortos pensados para los cargadores, como N0CALL@US-1234-20260727.adi',
 			'operation.export.compactFileNames.descriptionOff' => 'Nombres legibles, como 2026-07-27 N0CALL at US-1234.adi',
 			'operation.export.includePrivateData.title' => 'Incluir información privada',
-			'operation.export.includePrivateData.descriptionOn' => 'Se incluyen nombres, ciudades, cuadrículas y notas',
-			'operation.export.includePrivateData.descriptionOff' => 'Se omiten nombres, ciudades, cuadrículas y notas',
+			'operation.export.includePrivateData.descriptionOn' => 'Se incluyen nombres, direcciones, correos, cuadrículas y notas',
+			'operation.export.includePrivateData.descriptionOff' => 'Se omiten nombres, direcciones, correos, cuadrículas y notas',
 			'operation.export.includePrivateData.note' => 'La Exportación ADIF Completa siempre incluye todo',
 			'operation.export.resultTitle' => 'Exportación completa',
 			'operation.export.resultFailedTitle' => 'Exportación fallida',
@@ -5423,8 +5423,8 @@ extension on TranslationsEs {
 			'exportSettings.retry' => 'Reintentar',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
-			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.',
-			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, ciudades y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.',
 			'exportSettings.customTemplatesDescriptionOn' => 'Tus plantillas personalizadas están activas y se pueden editar a continuación.',

@@ -498,3 +498,35 @@ test("a zone the seed already held, rather than the annotation's, is not replace
   const { guess } = runLookupPipeline({ call: "W6XYZ", cqZone: 4 }, [W6_ANNOTATION, W6_QRZ])
   assert.equal(preferStationValues(guess, W6_ANNOTATION, [W6_QRZ]).cqZone, 4)
 })
+
+// Without street/postal in the location group, a portable contact would keep
+// QRZ's home street under the park's town, and ADIF's ADDRESS would mail a
+// card to a place that does not exist.
+test("a mailing address travels with its town: a portable takeover clears the street and postal code too", () => {
+  let guess: CallInfo = { call: "KI2D", locationScope: "qth" }
+  const qrz = {
+    call: "KI2D",
+    source: "qrz",
+    scope: "general",
+    locationScope: "qth",
+    grid: "FN21rq",
+    street: "1 Main St",
+    city: "Woodridge",
+    state: "NY",
+    postal: "12789",
+  }
+  guess = mergeLookupIntoGuess(guess, qrz as CallInfoLookup)
+  assert.equal((guess as Record<string, unknown>).street, "1 Main St")
+
+  guess = mergeLookupIntoGuess(guess, {
+    call: "KI2D",
+    source: "pota",
+    scope: "qso",
+    locationScope: "portable",
+    grid: "DN60ns",
+    city: "Glacier",
+  } as CallInfoLookup)
+  assert.equal(guess.city, "Glacier")
+  assert.equal((guess as Record<string, unknown>).street, undefined)
+  assert.equal((guess as Record<string, unknown>).postal, undefined)
+})

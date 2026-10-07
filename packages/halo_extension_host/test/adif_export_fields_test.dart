@@ -57,7 +57,9 @@ void main() {
       'guess': {
         'call': 'W1AW',
         'name': 'ARRL HQ',
+        'street': '225 Main St',
         'city': 'Newington',
+        'postal': '06111',
         'county': 'Hartford',
         'state': 'CT',
         'country': 'United States',
@@ -69,6 +71,8 @@ void main() {
         // the log could hold is the only way to prove it.
         'cqZone': 9,
         'ituZone': 8,
+        'qslVia': 'LoTW',
+        'url': 'https://www.arrl.org/w1aw',
       },
     },
     'band': '20m',
@@ -213,6 +217,17 @@ void main() {
     expect(content, contains('<EMAIL:16>w1aw@example.org'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  // What a QSL card needs, from the lookup that found it. ADDRESS is a
+  // MultilineString, so its lines break on CR LF.
+  test('the mailing address, QSL route and web page reach the file with private data', () async {
+    final content = await export(includePrivateData: true);
+
+    const address = 'ARRL HQ\r\n225 Main St\r\nNewington, CT 06111\r\nUnited States';
+    expect(content, contains('<ADDRESS:${address.length}>$address'));
+    expect(content, contains('<QSL_VIA:4>LoTW'));
+    expect(content, contains('<WEB:25>https://www.arrl.org/w1aw'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   // An operator correcting a bad lookup's state leaves its county behind.
   // Qualifying it with the correction files Hartford County into Ontario;
   // qualifying it with the guess makes STATE and CNTY name two different
@@ -338,6 +353,10 @@ void main() {
     final content = await export(includePrivateData: false);
 
     expect(content, isNot(contains('EMAIL')));
+    expect(content, isNot(contains('ADDRESS')));
+    expect(content, isNot(contains('225 Main St')));
+    expect(content, isNot(contains('QSL_VIA')));
+    expect(content, isNot(contains('<WEB:')));
     expect(content, isNot(contains('first QSO of the day')), reason: 'NOTES and COMMENT are both the operator\'s words');
 
     // Still a submittable log: everything implied by the callsign stays.

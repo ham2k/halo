@@ -209,9 +209,11 @@ interface LookupServiceHook {
 **locationScope merge rules** (`CallInfo.locationScope`, ranked
 `qth < prefixed < portable`, most general to most specific):
 - A result whose `locationScope` is strictly more specific than the current
-  guess's clears all location fields (`locSource, lat, lon, grid, city,
-  state, county, country`) before merging the result in, and the guess
-  adopts the more specific scope.
+  guess's clears all location fields (`locSource, lat, lon, grid, street,
+  city, state, postal, county, country`) before merging the result in, and
+  the guess adopts the more specific scope. `street` and `postal` are the
+  mailing address's own lines, grouped with the town they complete so an
+  address never puts one source's street on another source's town.
 - Otherwise, priority order applies as usual: a field already present in the
   guess is never overwritten by a later (lower-priority) result. A
   location field additionally requires the result's own scope to be at
@@ -231,8 +233,8 @@ interface LookupServiceHook {
 - Grid/lat-lon reconciliation, scoped to fields the result actually set:
   grid-only → lat/lon computed from the grid; lat/lon-only → a 6-digit grid
   computed from them; both given → taken verbatim. Setting grid/lat/lon
-  clears city/state/country/county unless the *same* result also supplies
-  them. The converse clause — a town write clearing grid/lat/lon — can only
+  clears street/city/state/postal/country/county unless the *same* result
+  also supplies them. The converse clause — a town write clearing grid/lat/lon — can only
   sweep a leftover half lat/lon pair: the group rule above blocks a town
   from landing at all where a full pin already stands.
 - `notes`/`history` are per-`CallInfoLookup` fields, not part of the merged

@@ -114,10 +114,15 @@ test("private operation grids and internal positions stay out of public template
   assert.deepEqual(exportQso({ our: { multiIdentifier: "Private desk", grid: "FN31pr12" } }, { includePrivateData: false }), { our: { grid: "FN31pr" } })
 })
 
-// A lookup fills `street` and `email` on the guess, never on `their`: a strip
-// that only cleaned the station itself would leak both through a template.
-test("a looked-up mailing address and email stay out of output that withholds private data", () => {
-  const qso = { their: { call: "W1AW", guess: { street: "225 Main St", email: "w1aw@example.org", county: "Hartford" } } }
+// A lookup fills these on the guess, never on `their`: a strip that only
+// cleaned the station itself would leak them all through a template.
+test("a looked-up mailing address, email, QSL route and web page stay out of output that withholds private data", () => {
+  const qso = {
+    their: {
+      call: "W1AW",
+      guess: { street: "225 Main St", postal: "06111", email: "w1aw@example.org", qslVia: "LoTW", url: "https://www.arrl.org/w1aw", county: "Hartford" },
+    },
+  }
   assert.deepEqual(exportQso(qso, { includePrivateData: false }), { their: { call: "W1AW", guess: { county: "Hartford" } } })
   assert.deepEqual(exportQso(qso, { includePrivateData: true }), qso)
 })

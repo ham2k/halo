@@ -592,8 +592,8 @@
       },
       "includePrivateData": {
         "title": "Include private info",
-        "descriptionOn": "Names, towns, gridsquares and notes are included",
-        "descriptionOff": "Names, towns, gridsquares and notes are left out",
+        "descriptionOn": "Names, addresses, emails, gridsquares and notes are included",
+        "descriptionOff": "Names, addresses, emails, gridsquares and notes are left out",
         "note": "The Full ADIF Export always includes everything"
       },
       "resultTitle": "Export complete",
@@ -2379,8 +2379,8 @@
     "retry": "Retry",
     "compactFileNamesDescriptionOn": "Compact filenames, such as N0CALL@US-1234-20260715.adi.",
     "compactFileNamesDescriptionOff": "Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.",
-    "includePrivateDataDescriptionOn": "Including names, towns, notes and precise locations in ADIF files.",
-    "includePrivateDataDescriptionOff": "Omitting names, towns and notes; limiting locations to six-character grids.",
+    "includePrivateDataDescriptionOn": "Including names, addresses, emails, notes and precise locations in ADIF files.",
+    "includePrivateDataDescriptionOff": "Omitting names, addresses, emails and notes; limiting locations to six-character grids.",
     "includeLookupDataDescriptionOn": "Including information from callsign lookup services.",
     "includeLookupDataDescriptionOff": "Omitting information from callsign lookup services; keeping manually entered values.",
     "customTemplatesDescriptionOn": "Your custom templates are active and can be edited below.",

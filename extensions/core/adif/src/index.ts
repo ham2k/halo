@@ -30,6 +30,7 @@ import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, H
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
 import { isGridCenter } from "./grid.ts"
+import { adifAddress } from "./address.ts"
 import { adifCounty } from "./county.ts"
 import { field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
@@ -367,6 +368,9 @@ function baseFieldsFor(
     add("NAME", their.name ?? theirGuess.name)
     add("QTH", their.city ?? theirGuess.city)
     add("EMAIL", their.email ?? theirGuess.email)
+    add("ADDRESS", adifAddress(their.name ?? theirGuess.name, their.street != null ? their : theirGuess))
+    add("QSL_VIA", their.qslVia ?? theirGuess.qslVia)
+    add("WEB", their.url ?? theirGuess.url)
   }
   // STATE and COUNTRY stay: awards are claimed on them, and both are
   // implied by the callsign anyway. app-polo draws the line in the same

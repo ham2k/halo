@@ -16,7 +16,10 @@ import { LOCATION_ACCURACY } from "../../../sdk/src/location.ts"
 
 const LOCATION_SCOPE_RANK: Record<string, number> = { qth: 0, prefixed: 1, portable: 2 }
 
-const LOCATION_FIELDS = ["locSource", "lat", "lon", "grid", "city", "state", "county", "country", "location"] as const
+// `street` and `postal` are the mailing address's own lines: grouped with the
+// town they complete, so an address is never one source's street on another
+// source's town.
+const LOCATION_FIELDS = ["locSource", "lat", "lon", "grid", "street", "city", "state", "postal", "county", "country", "location"] as const
 type LocationField = (typeof LOCATION_FIELDS)[number]
 
 // Meta fields ABOUT a result, never folded into the flat guess merge below —
@@ -42,7 +45,7 @@ function hasValue(value: unknown): boolean {
 /// object — never mutates its input, so callers/tests can compare before
 /// and after freely.
 export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): CallInfo {
-  const next = { ...guess } as CallInfo & { locAccuracy?: number }
+  const next = { ...guess } as CallInfo & { locAccuracy?: number; street?: string; postal?: string }
   const res = result as CallInfoLookup & { locAccuracy?: number }
   const resultScope = result.locationScope
   // Per-source location accuracy (lower = more precise); rides along untyped
@@ -186,7 +189,7 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
     // supplied them. (A pin write only happens into a pinless guess — rule
     // 1b already replaced the established town — so this clears at most the
     // writer's own leftovers, keeping town and pin from one source.)
-    for (const field of ["city", "state", "country", "county", "location"] as const) {
+    for (const field of ["street", "city", "state", "postal", "country", "county", "location"] as const) {
       if (!written.has(field)) delete next[field]
     }
   } else if (setCityStateCountry && !written.has("county")) {
