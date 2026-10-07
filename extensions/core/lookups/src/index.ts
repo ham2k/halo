@@ -11,7 +11,7 @@ import { defineExtension, hooks, host } from "@ham2k/extension-sdk"
 import type { CallInfo, CallInfoLookup, HookContext, LookupServiceRequest, LookupServiceResult } from "@ham2k/extension-sdk"
 
 import { annotateCallsign } from "./annotate"
-import { runLookupPipeline } from "./mergeLookup"
+import { preferStationValues, runLookupPipeline } from "./mergeLookup"
 import { normalizeGuess } from "./normalizeGuess"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -49,6 +49,8 @@ async function lookupCallInfo(args: LookupServiceRequest, ctx: HookContext): Pro
       )),
     )
   }
+
+  guess = preferStationValues(guess, preAnnotation, lookups.slice(seeded.lookups.length))
 
   // A hook that threw has already been isolated (its entry carries the
   // error instead of poisoning the others) — but it must not be *silent*,

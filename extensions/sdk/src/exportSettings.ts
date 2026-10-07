@@ -95,6 +95,9 @@ export function resolveExportSettings(definition: ExportTypeDefinition, global: 
   return resolved
 }
 
+/// What "include private data" withholds, from a station and from its guess.
+const PRIVATE_STATION_FIELDS = ["name", "city", "street", "email", "notes", "lat", "lon", "multiIdentifier"]
+
 /// Templates see a copy with withheld data removed, including nested guesses.
 export function exportQso(qso: Record<string, JSONValue>, settings: ExportSettings): Record<string, JSONValue> {
   const copy = { ...qso }
@@ -103,11 +106,11 @@ export function exportQso(qso: Record<string, JSONValue>, settings: ExportSettin
       const station = { ...(copy[side] as Record<string, JSONValue>) }
       if (settings.includeLookupData === false) delete station.guess
       if (settings.includePrivateData === false) {
-        for (const key of ["name", "city", "email", "notes", "lat", "lon", "multiIdentifier"]) delete station[key]
+        for (const key of PRIVATE_STATION_FIELDS) delete station[key]
         if (typeof station.grid === "string") station.grid = station.grid.slice(0, 6)
         if (station.guess && typeof station.guess === "object") {
           const guess = { ...(station.guess as Record<string, JSONValue>) }
-          for (const key of ["name", "city", "email", "notes", "lat", "lon", "multiIdentifier"]) delete guess[key]
+          for (const key of PRIVATE_STATION_FIELDS) delete guess[key]
           if (typeof guess.grid === "string") guess.grid = guess.grid.slice(0, 6)
           station.guess = guess
         }

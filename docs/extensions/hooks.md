@@ -238,6 +238,15 @@ interface LookupServiceHook {
 - `notes`/`history` are per-`CallInfoLookup` fields, not part of the merged
   `guess` — they simply accumulate, unconditionally, in the returned
   `lookups[]` array.
+- **`cqZone`, `ituZone` and `tz` are the exception to first-answer-wins.** The
+  pre-step can only answer them for a whole entity or call area (a W6 call
+  reads CQ zone 3 wherever the station lives), so once every hook has run,
+  a value the pre-step still holds goes to the first hook result that
+  carried one (`preferStationValues`) — only while the guess's scope is
+  `qth`, since on a portable or prefixed contact a source describes the
+  home QTH. `tz` is a UTC offset with its ordinary sign, `"GMT-5"` being
+  five hours behind; the SDK's `annotateCallAgainstCountryFile` flips the
+  country file's west-positive offsets to match.
 - **`locSource: 'prefix'` is reserved**, and a `lat`/`lon` merged under it is
   never read as a coordinate (`locationFromGuess`, halo_core). It marks
   lib-country-files' DXCC entity centroid, whose longitude follows cty.dat's

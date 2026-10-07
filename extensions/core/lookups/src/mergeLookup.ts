@@ -224,3 +224,26 @@ export function runLookupPipeline(initialGuess: CallInfo, orderedResults: CallIn
   }
   return { lookups, guess }
 }
+
+/// What the callsign annotation can only answer for a whole entity or call
+/// area, and a source that knows the station answers better: a W6 call
+/// living in New England is in CQ zone 5, not the 3 its prefix says.
+const ENTITY_DEFAULT_FIELDS = ["cqZone", "ituZone", "tz"] as const
+
+/// Run once every lookup has folded in: each entity-default field the
+/// annotation's value still holds goes to the first of [results] (priority
+/// order) that answered it — the one exception to "the first source to answer
+/// keeps a field", since the annotation always answers first. Only for a
+/// station at home: on a portable or prefixed contact a source's answer
+/// describes the home QTH, and the annotation's call-area value is the better
+/// guess.
+export function preferStationValues(guess: CallInfo, annotation: CallInfoLookup, results: CallInfoLookup[]): CallInfo {
+  if ((guess.locationScope ?? "qth") !== "qth") return guess
+  const next = { ...guess } as Record<string, unknown>
+  for (const field of ENTITY_DEFAULT_FIELDS) {
+    if (!hasValue(annotation[field]) || next[field] !== annotation[field]) continue
+    const station = results.find((result) => hasValue(result[field]))
+    if (station) next[field] = station[field]
+  }
+  return next as CallInfo
+}

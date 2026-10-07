@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { mergeLookupIntoGuess, runLookupPipeline } from "./mergeLookup.ts"
+import { mergeLookupIntoGuess, preferStationValues, runLookupPipeline } from "./mergeLookup.ts"
 import type { CallInfo, CallInfoLookup } from "@ham2k/extension-sdk"
 // Relative import (the SDK bare specifier is tsc-only, unresolvable under
 // `node --test` — see annotate.ts).
@@ -458,4 +458,43 @@ test("#185: a home lookup that INHERITED the portable scope can't thrash away a 
   assert.equal(guess.grid, "FN41bb")
   assert.equal(guess.location, "US-2005 US-NY Amsterdam Beach State Park")
   assert.equal(guess.name, "Some Op") // non-location fields still merge normally
+})
+
+// The annotation always folds in first, so without preferStationValues the
+// plain first-answer-wins merge would keep a W6 call's prefix zone (3) over
+// the zone QRZ knows the station is actually in.
+const W6_ANNOTATION: CallInfoLookup = {
+  call: "W6XYZ",
+  source: "callsign-annotation",
+  scope: "general",
+  locationScope: "qth",
+  cqZone: 3,
+  ituZone: 6,
+  tz: "GMT-5",
+}
+const W6_QRZ: CallInfoLookup = { call: "W6XYZ", source: "qrz.com", scope: "general", locationScope: "qth", cqZone: 5, ituZone: 8, tz: "GMT-5" }
+
+test("a station source's zones replace the ones the callsign prefix implied", () => {
+  const { guess } = runLookupPipeline({ call: "W6XYZ" }, [W6_ANNOTATION, W6_QRZ])
+  assert.equal(guess.cqZone, 3)
+  const final = preferStationValues(guess, W6_ANNOTATION, [W6_QRZ])
+  assert.equal(final.cqZone, 5)
+  assert.equal(final.ituZone, 8)
+})
+
+test("the first station source in priority order is the one that answers", () => {
+  const history: CallInfoLookup = { call: "W6XYZ", source: "call-history", scope: "general", cqZone: 4 }
+  const { guess } = runLookupPipeline({ call: "W6XYZ" }, [W6_ANNOTATION, W6_QRZ, history])
+  assert.equal(preferStationValues(guess, W6_ANNOTATION, [W6_QRZ, history]).cqZone, 5)
+})
+
+test("a station away from home keeps the prefix's zones — the source describes the home QTH", () => {
+  const portable: CallInfoLookup = { ...W6_ANNOTATION, call: "W6XYZ/P", locationScope: "portable" }
+  const { guess } = runLookupPipeline({ call: "W6XYZ/P" }, [portable, { ...W6_QRZ, locationScope: "portable" }])
+  assert.equal(preferStationValues(guess, portable, [W6_QRZ]).cqZone, 3)
+})
+
+test("a zone the seed already held, rather than the annotation's, is not replaced", () => {
+  const { guess } = runLookupPipeline({ call: "W6XYZ", cqZone: 4 }, [W6_ANNOTATION, W6_QRZ])
+  assert.equal(preferStationValues(guess, W6_ANNOTATION, [W6_QRZ]).cqZone, 4)
 })

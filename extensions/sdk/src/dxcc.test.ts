@@ -24,6 +24,14 @@ test("annotateCallAgainstCountryFile carries the parsed callsign's own fields th
   assert.ok(info.indicators?.includes("P"))
 })
 
+// The country file's offsets are west-positive; passed through, the United
+// States would read "GMT+5" beside QRZ's "GMT-5" for the same station.
+test("annotateCallAgainstCountryFile states the entity's UTC offset with its ordinary sign", () => {
+  assert.equal(annotateCallAgainstCountryFile("W1AW").tz, "GMT-5")
+  assert.equal(annotateCallAgainstCountryFile("3A2MW").tz, "GMT+1")
+  assert.equal(annotateCallAgainstCountryFile("3D2AG").tz, "GMT+12")
+})
+
 test("flagForDxccCode resolves a known entity's flag", () => {
   const info = annotateCallAgainstCountryFile("W1AW")
   assert.equal(flagForDxccCode(info.dxccCode), "🇺🇸")

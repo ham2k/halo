@@ -30,8 +30,24 @@ useBuiltinCountryFile()
 /// entities carry starred prefixes (`*IT9`, `*TA1`, `*4U1V`) and their WAE
 /// continent — European Turkey is EU there, not AS — which is what a
 /// WAE-multiplier contest scores by.
+///
+/// `tz` reads as a UTC offset with its ordinary sign: "GMT-5" is five hours
+/// behind UTC, as every lookup source writes it.
 export function annotateCallAgainstCountryFile(call: string, options?: { wae?: boolean }): AnnotatedCallInfo {
-  return annotateFromCountryFile(parseCallsign(call), options)
+  const annotated = annotateFromCountryFile(parseCallsign(call), options)
+  return annotated.tz ? { ...annotated, tz: ordinarySignTz(annotated.tz) } : annotated
+}
+
+/// The country file states offsets west-positive, and
+/// `@ham2k/lib-country-files` passes that sign through as it is: Monaco reads
+/// "GMT-1". Flipped here, the one place the country file enters a guess. If
+/// that library ever adopts the ordinary sign, this must go with it or every
+/// offset inverts again.
+function ordinarySignTz(tz: string): string {
+  const match = /^GMT([+-]?\d+(?:\.\d+)?)$/.exec(tz)
+  if (!match) return tz
+  const offset = -Number(match[1])
+  return offset > 0 ? `GMT+${offset}` : `GMT${offset === 0 ? 0 : offset}`
 }
 
 export function entityPrefixForCall(call: string | undefined): string | undefined {
