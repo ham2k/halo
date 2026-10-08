@@ -3,7 +3,7 @@
 //
 // GENERATED FILE — do not edit by hand.
 // Regenerate with: node packages/halo_core/tool/generate_entity_locations.mjs
-// Sources: @ham2k/lib-dxcc-data 1.1.0 (entity centroids),
+// Sources: @ham2k/lib-dxcc-data 1.1.1 (entity centroids),
 //          @ham2k/lib-geo-tools 1.1.1 (entityRegionLocations).
 //
 // Coarse fallback coordinates for QSOs that have no grid square: a DXCC
@@ -21,7 +21,7 @@ import 'grid.dart';
 const Map<String, GridLocation> entityLocations = {
   '1A': GridLocation(41.9, 12.5),
   '1S': GridLocation(9.7, 114.4),
-  '3A': GridLocation(47.7, 14.3),
+  '3A': GridLocation(43.7, 7.4),
   '3B6': GridLocation(-16.4, 59.5),
   '3B8': GridLocation(-20.3, 57.8),
   '3B9': GridLocation(-19.7, 63.3),
@@ -153,7 +153,7 @@ const Map<String, GridLocation> entityLocations = {
   'FT/j': GridLocation(-17, 42.6),
   'FT/t': GridLocation(-15.9, 54.5),
   'FT/w': GridLocation(-46.3, 51),
-  'FT/x': GridLocation(-38.3, 77.5),
+  'FT/x': GridLocation(-49, 69.3),
   'FT/z': GridLocation(-38.3, 77.5),
   'FW': GridLocation(-13.9, -177.6),
   'FY': GridLocation(4.1, -53.1),
