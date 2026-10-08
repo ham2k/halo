@@ -765,6 +765,17 @@ class DataFileManager {
       return false;
     }
 
+    // The runtime this import runs against. A host failure once it is gone or
+    // replaced is the restart's doing, and on an unforced pass the replacement's
+    // own sync (`_onRuntimeReplaced`) redoes this file, since it is still stale
+    // — see the notice below. Not a forced one (a Refresh tap, Update All,
+    // RELOAD): that pass skips a file whose stamp is fresh, so the cut would go
+    // unredone and unsaid. Not a crashed runtime still in place either: a crash
+    // is not a restart, and the import may be what caused it. Any other failure
+    // (a parse, a mapper) is this file's, restart or not.
+    final host = extensions.host;
+    bool cutByRestart(Object error) => !force && error is ExtensionHostException && (host == null || !identical(extensions.host, host));
+
     try {
       if (fetchType == 'csv') {
         await _processCsv(key, def, body, force: force, showProgress: showProgress);
@@ -778,6 +789,9 @@ class DataFileManager {
       await prefs.remove(_refusedKey(key));
       return true;
     } catch (e) {
+      // Judged before any await below: a replacement landing during one would
+      // otherwise mute a failure the runtime still in place raised.
+      final cut = cutByRestart(e);
       // A failure part way through can leave some lookup batches committed
       // (see _batchWriteToDatabase), and those rows are searchable now.
       _dataRevision.value++;
@@ -794,7 +808,13 @@ class DataFileManager {
       // parsing error after a successful download is a config/data problem,
       // not a network one, and labeling it "Couldn't download" misdiagnoses
       // it.
-      if (notifyOnFailure) {
+      //
+      // Not for an unforced import its runtime was replaced under: a restart
+      // cuts every import in flight, and the pass it starts imports them
+      // again, so a notice per file would announce failures that fix
+      // themselves seconds later — once per restart, and an extension update
+      // is one.
+      if (notifyOnFailure && !cut) {
         statusBar?.showNotice(
           key: statusKey,
           icon: 'alert-circle',
@@ -890,9 +910,11 @@ class DataFileManager {
     // the import (a restart — an extension toggled, the catalog upgrade).
     // Returning quietly reads as success to processDataFile, which stamps the
     // file fresh for maxAgeInDays with NOTHING imported and leaves its
-    // progress bar in the footer with nobody left to clear it. The throw runs
-    // the same catch a mid-loop disposal already runs.
-    if (host == null) throw ExtensionHostException('dataFile $key: no runtime to import into');
+    // progress bar in the footer with nobody left to clear it. Thrown as the
+    // host's own disposal because that is what it is, one await earlier: the
+    // same catch runs, and ErrorPolicy's `extension-host-disposed` keeps it
+    // off the backend and the operator's screen, as it does for that one.
+    if (host == null) throw ExtensionHostException('extension host disposed');
 
     // 1. Pass down to JS converter rawToJSONData
     final dynamic processedJson = await host.invoke(
@@ -1232,9 +1254,11 @@ class DataFileManager {
     // the import (a restart — an extension toggled, the catalog upgrade).
     // Returning quietly reads as success to processDataFile, which stamps the
     // file fresh for maxAgeInDays with NOTHING imported and leaves its
-    // progress bar in the footer with nobody left to clear it. The throw runs
-    // the same catch a mid-loop disposal already runs.
-    if (host == null) throw ExtensionHostException('dataFile $key: no runtime to import into');
+    // progress bar in the footer with nobody left to clear it. Thrown as the
+    // host's own disposal because that is what it is, one await earlier: the
+    // same catch runs, and ErrorPolicy's `extension-host-disposed` keeps it
+    // off the backend and the operator's screen, as it does for that one.
+    if (host == null) throw ExtensionHostException('extension host disposed');
 
     final updatedFlag = nowMillis();
     final existing = await lookups.countCategory(category);

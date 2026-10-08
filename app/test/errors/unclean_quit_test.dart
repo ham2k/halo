@@ -12,11 +12,14 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/unclean_quit.dart';
+
+import '../support/error_reporting_fakes.dart';
 
 Future<List<String>> capturedPrints(Future<void> Function() body) async {
   final lines = <String>[];
@@ -87,6 +90,48 @@ void main() {
     final prefs = await _prefs();
     final lines = await capturedPrints(() => reportUncleanQuit(prefs));
     expect(lines, isEmpty);
+  });
+
+  group('one upload per stage per day', () {
+    // A quit that dies at the radios dies there on every quit, so a device
+    // with a wedging rig would upload once per launch and drown out every
+    // other install. The window has to mute the REPEAT without muting a
+    // different step, a stale stamp, or the mark's own clearing.
+    Future<List<String?>> uploadedContexts(SharedPreferences prefs) async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(backend: backend, () => reportUncleanQuit(prefs));
+      return [for (final e in backend.exceptions) e.context];
+    }
+
+    int hoursAgo(int hours) => realNowMillis() - Duration(hours: hours).inMilliseconds;
+
+    test('a second quit dying at the same step within the day is not uploaded, and is still consumed', () async {
+      final prefs = await _prefs({quitStageKey: QuitStage.cat.name});
+      expect(await uploadedContexts(prefs), ['db:unclean-quit:cat']);
+
+      await markQuitStage(prefs, QuitStage.cat);
+      expect(await uploadedContexts(prefs), isEmpty);
+      expect(lastQuitStage(prefs), isNull, reason: 'a muted report must not leave the mark for the next boot to find');
+    });
+
+    test('a quit dying at a different step still uploads inside the window', () async {
+      // The stages are different bugs; a wedged radio must not hide a lost
+      // database write on the same device.
+      final prefs = await _prefs({quitStageKey: QuitStage.databaseClose.name, quitReportedAtKey(QuitStage.cat.name): hoursAgo(1)});
+      expect(await uploadedContexts(prefs), ['db:unclean-quit:databaseClose']);
+    });
+
+    test('the same step uploads again once the day is over', () async {
+      final prefs = await _prefs({quitStageKey: QuitStage.cat.name, quitReportedAtKey(QuitStage.cat.name): hoursAgo(25)});
+      expect(await uploadedContexts(prefs), ['db:unclean-quit:cat']);
+    });
+
+    test('a stamp from the future does not mute the report', () async {
+      // Written while the device clock was wrong; trusting it would mute this
+      // step for as long as the stamp stays ahead of real time.
+      final prefs = await _prefs({quitStageKey: QuitStage.cat.name, quitReportedAtKey(QuitStage.cat.name): hoursAgo(-48)});
+      expect(await uploadedContexts(prefs), ['db:unclean-quit:cat']);
+    });
   });
 
   test('the report is uploaded but never shown to the operator', () {

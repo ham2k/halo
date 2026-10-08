@@ -18,6 +18,8 @@
 // clean-exit marker written by the runner after the message loop, across a
 // store neither side owns.
 
+import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'error_reporting_service.dart';
@@ -144,14 +146,29 @@ String? unknownQuitStageName(SharedPreferences prefs) {
   return QuitStage.values.any((stage) => stage.name == name) ? null : name;
 }
 
+/// When this device last uploaded an unclean quit at [stageName], as real
+/// epoch millis.
+String quitReportedAtKey(String stageName) => 'quit:reportedAt:$stageName';
+
+/// How long one upload per stage speaks for this device.
+///
+/// A quit that dies at the same step dies there on every quit, so without a
+/// window each launch uploads the same fact again and one wedged radio
+/// outweighs every other install in the backend. A day keeps "this device
+/// still hits it" without the per-launch count.
+const quitReportWindow = Duration(days: 1);
+
 /// Reports — and clears — the mark left by the previous run.
 ///
 /// Cleared even if the report goes nowhere: one unclean quit must not report
-/// on every boot forever after.
+/// on every boot forever after. Uploaded at most once per stage per
+/// [quitReportWindow]; a repeat inside it is console-only.
 Future<void> reportUncleanQuit(SharedPreferences prefs) async {
   final stage = lastQuitStage(prefs);
   if (stage == null) return;
   final unknownName = unknownQuitStageName(prefs);
+  final stageName = unknownName != null ? 'unknown' : stage.name;
+  final error = UncleanDatabaseQuit(stage, unknownName);
 
   // Reported BEFORE the clear, and the clear in a finally. The mark is
   // consumed either way — one unclean quit must not report on every boot
@@ -159,11 +176,19 @@ Future<void> reportUncleanQuit(SharedPreferences prefs) async {
   // take the only record of that quit with it, which is the failure this
   // whole file exists to prevent.
   try {
-    ErrorReportingService.report(
-      UncleanDatabaseQuit(stage, unknownName),
-      StackTrace.current,
-      context: 'db:unclean-quit:${unknownName != null ? 'unknown' : stage.name}',
-    );
+    // The REAL clock, as for every stamp that persists: a travelled one would
+    // outlive the travel (time.md).
+    final now = realNowMillis();
+    final reportedAt = prefs.getInt(quitReportedAtKey(stageName));
+    final age = reportedAt == null ? null : now - reportedAt;
+    // A stamp in the future cannot be judged (the device clock was wrong when
+    // it was written), so it reports rather than muting for as long as it stands.
+    if (age != null && !age.isNegative && age < quitReportWindow.inMilliseconds) {
+      debugPrint('[unclean-quit] $error (already reported in the last ${quitReportWindow.inHours}h)');
+    } else {
+      ErrorReportingService.report(error, StackTrace.current, context: 'db:unclean-quit:$stageName');
+      await prefs.setInt(quitReportedAtKey(stageName), now);
+    }
   } finally {
     try {
       await clearQuitStage(prefs);

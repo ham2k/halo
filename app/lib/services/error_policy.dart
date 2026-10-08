@@ -690,6 +690,10 @@ class ErrorPolicy {
   /// under expected churn (every subsystem with a call in flight reports
   /// the same teardown at once).
   ///
+  /// `DataFileManager` raises the same exception when it finds no host at
+  /// all between a download and its import: the same restart, caught one
+  /// await earlier.
+  ///
   /// Matched on the exact message, and only on the host's own exception
   /// type: a wrapper of ours quoting the text stays loud.
   static bool _isExtensionHostDisposed(Object error, FlutterErrorDetails? details) =>

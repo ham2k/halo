@@ -17,6 +17,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/app_storage.dart' show kDataFilesDirName;
 import 'package:ham2k_logger/services/data_file_manager.dart';
+import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
@@ -498,13 +499,69 @@ REF-002,Summit Two,45.56,-122.78
 
     final def = {'key': 'parks', 'name': 'All Parks', 'url': 'https://example.com/parks.txt', 'fetchType': 'raw', 'category': 'parks'};
 
-    await expectLater(
-      managerWithMock.processDataFile('parks', def, showProgress: true),
-      throwsA(isA<ExtensionHostException>()),
-      reason: 'the sync loop stamps the file fresh unless this throws',
-    );
+    Object? thrown;
+    try {
+      await managerWithMock.processDataFile('parks', def, showProgress: true);
+    } catch (e) {
+      thrown = e;
+    }
+    expect(thrown, isA<ExtensionHostException>(), reason: 'the sync loop stamps the file fresh unless this throws');
 
     expect(statusBar.itemForKey('dataFile:parks'), isNull, reason: 'the progress line is left spinning forever');
+
+    // A restart cuts every import in flight, and the pass it starts redoes
+    // them. Reported as anything but the disposal it is, each extension
+    // update uploads one event per file and puts "Something went wrong" plus
+    // a per-file failure on screen for data that arrives seconds later.
+    expect(ErrorPolicy.decide(thrown!).rule?.id, 'extension-host-disposed');
+    expect(statusBar.activeNotices.where((n) => n.key == 'dataFile:parks'), isEmpty);
+  });
+
+  group('DataFileManager: an import cut by a runtime restart', () {
+    // The host was there when the import began and is swapped while it runs.
+    // An unforced pass is redone by the replacement's own sync — the file is
+    // still stale — so a notice would announce a failure that fixes itself.
+    // Every other shape has no such redo and must keep its notice, or the
+    // failure is unsaid: a forced pass (the redo skips a file stamped fresh),
+    // a failure that is not the host's, and a crash with no replacement.
+    final def = {'key': 'parks', 'name': 'All Parks', 'url': 'https://example.com/parks.txt', 'fetchType': 'raw', 'category': 'parks'};
+
+    Future<bool> noticed({required Object error, bool replace = true, bool crash = false, bool force = false}) async {
+      final statusBar = StatusBarService(prefs);
+      final service = _SwappableExtensionService();
+      late final FakeExtensionHost running;
+      running = FakeExtensionHost({
+        'dataFile:parks:rawToJSONData': (Object? _) {
+          if (replace) service.current = FakeExtensionHost();
+          if (crash) running.dead = true;
+          throw error;
+        },
+      });
+      service.current = running;
+      final manager = TestDataFileManager(lookups: lookups, extensions: service, prefs: prefs, statusBar: statusBar)..mockDownloadBody = 'anything';
+      await expectLater(manager.processDataFile('parks', def, force: force), throwsA(same(error)));
+      return statusBar.activeNotices.any((n) => n.key == 'dataFile:parks' && n.title == t.dataFiles.processingFailedTitle(name: 'All Parks'));
+    }
+
+    test('an unforced import whose runtime was replaced fails quietly', () async {
+      expect(await noticed(error: ExtensionHostException('extension host disposed')), isFalse);
+    });
+
+    test('the same failure against the runtime still in place says so', () async {
+      expect(await noticed(error: ExtensionHostException('extension host disposed'), replace: false), isTrue);
+    });
+
+    test('a forced import keeps its notice, since the replacement pass will not redo it', () async {
+      expect(await noticed(error: ExtensionHostException('extension host disposed'), force: true), isTrue);
+    });
+
+    test("a failure that is not the host's keeps its notice through a replacement", () async {
+      expect(await noticed(error: StateError('mapper bug')), isTrue);
+    });
+
+    test('a crashed runtime not yet replaced keeps the notice that names the file', () async {
+      expect(await noticed(error: ExtensionHostException('worker out of memory'), replace: false, crash: true), isTrue);
+    });
   });
 
   test('DataFileManager: a malformed definition (missing url/fetchType) still raises a notice, not a silent throw', () async {
@@ -1595,6 +1652,14 @@ class _BlockingDownloadManager extends DataFileManager {
 class _HostlessExtensionService extends ExtensionServiceWithFakeHost {
   @override
   ExtensionHost? get host => null;
+}
+
+/// A service whose runtime a test can replace mid-call, the way a restart does.
+class _SwappableExtensionService extends ExtensionServiceWithFakeHost {
+  ExtensionHost? current;
+
+  @override
+  ExtensionHost? get host => current;
 }
 
 class MockExtensionService extends ExtensionServiceWithFakeHost {
