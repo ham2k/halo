@@ -441,7 +441,7 @@ interface RefHandlerHook {
   geojsonUrlForRef?(args: { ref: Ref }, ctx): Promise<RefGeojson | null>
 }
 // Ref: {type, ref?, name?, label?, shortLabel?, grid?, lat?, lon?, location?, program?,
-//       activationRadiusInMeters?, activationRadiusInFeet?, ...}
+//       activationRadiusInMeters?, activationRadiusInFeet?, largeArea?, ...}
 // TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
 // the operation's title/subtitle sentence (ham2k/halo-dist#174). Only
 // return one for the ref type that means "this operation is happening AT/FOR
@@ -557,6 +557,15 @@ both. A circle has no source, so it adds nothing to the map's outline credits
 and is not offered for an outline report. Programs built on the SDK's
 `referenceActivity` factory get this from one `activationRadius` config line —
 a value, or a function of the list row for rules that vary.
+
+**A reference too large to stand for one place says so.** An operation with
+no location of its own takes the first of its references that has one
+(docs/design/locations.md), which is right for a summit or a park a few
+kilometres across and wrong for a 3,500 km trail. A reference whose point is
+representative rather than where an activator stands — POTA's parks that span
+several states — carries `largeArea: true`, and that reference never places
+the operation. Nothing else reads it: the maps draw it, and the nearby search
+finds it, exactly as before.
 
 `suggestOperationTitle` lets an activity build a natural-language operation
 title/subtitle from its refs — "at Yosemite NP" (POTA), "for Field Day"

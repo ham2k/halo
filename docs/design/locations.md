@@ -38,7 +38,7 @@ The other half is what keeps that honest: **a writer that states a grid must
 replace `lat`/`lon` in the same write.** A stale coordinate outranks the grid
 everywhere it is read, so leaving one behind silently discards what the
 operator just entered. The writers that carry this today are
-`OperationLocationScreen._save`, `ActivitiesView._maybeAdoptLocationFromNewRef`,
+`OperationLocationScreen._save`, `locationFollowsRefs` (below),
 and the QSO editor's grid field (`logging_controls.dart`) — which the More
 pane's own Grid field reaches through, blanking its Latitude and Longitude
 fields on the same edit. Those fields hold a coordinate the operator STATED,
@@ -81,6 +81,44 @@ and would otherwise plant a station off Antarctica, outranking every coarser
 source that could have answered honestly. And it must not lengthen the
 locator on screen — see Display.
 
+### Located by its references
+
+An operation with no location of its own takes one from its references, so
+the nearby search and the maps work without the operator setting one by hand.
+`locationFollowsRefs` (halo_core) decides it, on every local write that
+changes the refs: `OperationsRepository.saveData` runs it, so no writer of
+refs can skip it. A sync or peer merge never runs it — the device that changed
+the refs did.
+
+- The first ref with a location places it: the ref's own coordinate where its
+  program publishes one, its square's center otherwise, with
+  `gridSource: 'refs'` — app-polo's value, which it follows the same way.
+- A ref marked `largeArea` (SDK `Ref.largeArea`) never places anything. A
+  long trail or a park across several states publishes one point for the
+  whole of it, and the operator could be hundreds of kilometres from it.
+  app-polo makes the same call by withholding the grid from POTA's
+  multi-state parks; here the ref keeps its point, so the maps still draw it.
+  A ref without the flag is placeable.
+- A `refs` location keeps following: replacing the park moves it, and
+  removing the last ref that could place it clears all four keys at once.
+  Adding a second park leaves it where the first one put it. Any other
+  source — the operator, a GPS adoption — is never overridden, and neither is
+  a location stated in the same write as the refs.
+
+**The device's position plays no part.** A park picked while the operator
+stands in it is better placed by the fix, and the Location screen offers that
+fix in one tap — but read here, the answer would depend on when the write
+runs: the Activities view's draft and the save that commits it would see
+different fixes, or one and none, and the service keeps its last position
+after it stops, so a fix can be hours old. app-polo makes the same call.
+
+The Activities view runs the rule on its draft, on every refs edit, so the
+nearby search recentres on the park just added while the sheet is still open.
+Its save then passes `followRefs: false`: against the stored row, which
+predates the sheet, the rule would see the refs changed and the location
+empty, and put back a location the operator cleared on the Location screen
+after adding the park.
+
 ### Records from another writer
 
 The invariant holds for everything this app writes. It cannot hold for what
@@ -93,9 +131,7 @@ operator has moved away from while the location screen shows the locator they
 typed. The same screen writes `''` for a field never filled in, and `''` is not
 null: every reader asking whether the record has a grid is told yes, while
 `gridToLocation` gets nothing out of it. That operation is unplaceable and
-claims to be located — no QTH on the map, no lines, no nearby suggestions, and
-`ActivitiesView._maybeAdoptLocationFromNewRef` will not offer it a location
-either, because it already has a grid.
+claims to be located — no QTH on the map, no lines, no nearby suggestions.
 
 `repairStatedLocation` reconciles the two halves as such a record enters, in
 `OperationsRepository.mergeFromSync`. Two rules, and only those two:
@@ -109,10 +145,15 @@ either, because it already has a grid.
   its own boundary and never less than ADIF's own thousandth of a minute,
   which is all the precision a coordinate keeps through a file.
 - **A locator that names no place is dropped**, with the `gridSource` that
-  describes it. `''` and a fragment (`IL2`) alike: this app's own editor
-  refuses to store either (`isWellFormedGrid`), so nothing is lost that a
-  local edit could have made. An explicit `grid: null` is a record with no
-  locator rather than a broken one, and is left as it is.
+  describes it and any coordinate beside it. `''` and a fragment (`IL2`)
+  alike: this app's own editor refuses to store either (`isWellFormedGrid`),
+  so nothing is lost that a local edit could have made. The coordinate goes
+  for the same reason as in the first rule — both halves are written
+  together, so a pair beside an emptied grid is the half a grid-only writer
+  left when it cleared the location. app-polo does exactly that when the park
+  that placed an operation (`gridSource: 'refs'`, above) is removed there. An
+  explicit `grid: null` is a record with no locator rather than a broken one,
+  and is left as it is.
 
 The coordinate is read with `asQsonCoordinate`, not as a bare number: polo's
 ADIF import copies `MY_LAT`/`LAT` verbatim, so a well-formed coordinate

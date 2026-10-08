@@ -27,7 +27,7 @@ import 'qson_values.dart';
 ///    reader asking "does this operation have a grid?" is told yes while
 ///    `gridToLocation` gets nothing — a record that is unplaceable and claims
 ///    to be located. A fragment (`IL2`) does the same; this app's own editor
-///    refuses to store either.
+///    refuses to store either. Any coordinate beside it goes with it.
 ///
 /// **An operation's record, and nothing else.** The first rule rests entirely
 /// on both halves being written together, which holds for every writer of an
@@ -54,6 +54,16 @@ bool repairStatedLocation(Map<String, dynamic> data) {
     // explicit `grid: null` is a record with no locator, not a broken one,
     // and rewriting the row to say so would touch every log for nothing.
     if (!_holds(data, 'grid') && !_holds(data, 'gridSource')) return false;
+    // The pair goes too when a locator was there to empty. Every writer here
+    // states both halves together, so a coordinate beside an emptied grid is
+    // what a grid-only writer left behind when it cleared the location —
+    // app-polo removing the park that placed it writes `grid: ''` and keeps
+    // the rest — and it would go on placing the operation where it no longer
+    // is.
+    if (_holds(data, 'grid')) {
+      data.remove('lat');
+      data.remove('lon');
+    }
     data.remove('grid');
     data.remove('gridSource');
     return true;

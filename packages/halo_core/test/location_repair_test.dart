@@ -56,6 +56,16 @@ void main() {
       }
     });
 
+    // app-polo follows `gridSource: 'refs'` as this app writes it, and
+    // removing the park clears the grid to `''` while its merge keeps the
+    // pair. Left behind, that pair places the operation at the park it no
+    // longer references, as a location no rule here will ever move again.
+    test('drops the coordinate beside a locator that was emptied', () {
+      final fields = <String, dynamic>{'grid': '', 'gridSource': '', 'lat': 41.7292, 'lon': -72.7292};
+      expect(repairStatedLocation(fields), isTrue);
+      expect(fields, isEmpty);
+    });
+
     test('leaves a record that states no grid at all', () {
       final fields = <String, dynamic>{'lat': 41.7292, 'lon': -72.7292};
       expect(repairStatedLocation(fields), isFalse);
@@ -153,7 +163,7 @@ void main() {
       final stored = (await operations.get('op'))!;
       // Not `''`: every reader asking whether this operation has a grid gets
       // a straight answer, including the one that decides whether to offer it
-      // a location at all (`locationToAdoptAfterAddingRef`).
+      // a location at all (`locationFollowsRefs`).
       expect(stored.grid, isNull);
       expect(stored.location, isNull);
     });

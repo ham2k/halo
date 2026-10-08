@@ -103,11 +103,6 @@ class _HeaderPill {
 /// line in every layout they fit.
 const _headerTitleMinWidth = 200.0;
 
-// Close enough that the operation's grid and the caller's live GPS grid
-// would round to the same (or an adjacent) square anyway, so adopting it
-// isn't a meaningful accuracy loss.
-const _nearbyGridAdoptionKm = 15;
-
 /// Height of the search section's progress bar — reserved whether or not a
 /// search is running, so the results below never shift. Matches
 /// LinearProgressIndicator's own default thickness.
@@ -162,43 +157,6 @@ const _currentActivitiesMapRows = 1.6;
 /// ever subtracted, so erring high costs the peek a few pixels and erring
 /// low would eat the results area it is there to protect.
 const _accordionHeaderHeight = 48.0 + Space.sm * 2;
-
-/// Decides which location (if any) an operation should adopt right after a new
-/// activity ref is added, given it has no resolved location of its own:
-///  - if live GPS is available, adopt it — but only when the just-added ref
-///    is within [_nearbyGridAdoptionKm] of it (a far-away ref added while
-///    away from the shack shouldn't imply "this is where I am").
-///  - otherwise (no GPS fix), adopt the first ref's own location, if it has
-///    one — the most that can be inferred without a location source at all.
-///
-/// Returns a coordinate as well as the locator, since that pair is what the
-/// operation stores: the source's own where it knew one (a fix always does; a
-/// ref does when its table publishes coordinates), otherwise the square's own
-/// center, exactly as a hand-stated grid is written (docs/design/locations.md).
-/// `grid` is always the locator for `location`, so they can't disagree.
-///
-/// A pure function (no Flutter/service dependencies) so this decision is
-/// unit-testable without exercising the whole ActivitiesView widget tree.
-({String grid, GridLocation location, String source})? locationToAdoptAfterAddingRef({
-  required GridLocation? operationLocation,
-  required GridLocation? gpsPosition,
-  required num? distanceKm,
-  required List<Map<String, dynamic>> refsAfterAdd,
-}) {
-  if (operationLocation != null) return null;
-
-  if (gpsPosition != null) {
-    if (distanceKm == null || distanceKm > _nearbyGridAdoptionKm) return null;
-    return (grid: gridForLocation(gpsPosition.latitude, gpsPosition.longitude), location: gpsPosition, source: 'gps');
-  }
-
-  if (refsAfterAdd.isEmpty) return null;
-  final first = refsAfterAdd.first;
-  final grid = gridForDisplay(lat: first['lat'], lon: first['lon'], grid: first['grid'] as String?);
-  final location = locationFromLatLon(first['lat'], first['lon']) ?? locationForStatedGrid(grid);
-  if (grid == null || location == null) return null;
-  return (grid: grid, location: location, source: 'manual');
-}
 
 /// Whether an operation may carry more than one ref of [type] at a time, as
 /// the extension declared it: on the [suggestion] being added, or — for a
@@ -779,9 +737,14 @@ class OperationSheetState extends State<OperationSheet> {
   }
 
   void _saveOperationData(Map<String, dynamic> patch) {
+    final data = {..._operation.data, ...patch};
+    // On the draft rather than at save, so the nearby search recentres on the
+    // park just added while the sheet is still open — and [saveAndClose]
+    // tells the repository not to decide it again.
+    locationFollowsRefs(_operation.data, data);
     final updated = Operation(
       uuid: _operation.uuid,
-      data: {..._operation.data, ...patch},
+      data: data,
       qsoCount: _operation.qsoCount,
       startAtMillisMin: _operation.startAtMillisMin,
       startAtMillisMax: _operation.startAtMillisMax,
@@ -792,39 +755,13 @@ class OperationSheetState extends State<OperationSheet> {
       setState(() => _operation = updated);
       widget.onOperationChanged?.call(updated);
       _reloadControlsIfRefsChanged(before, updated);
-      // The other path that replaces `_operation` — adopting a grid off a
-      // newly added ref comes through here, not through [updateOperation].
+      // The other path that replaces `_operation` — a location placed by the
+      // refs comes through here, not through [updateOperation].
       _researchIfLocationChanged(before, updated);
     }
   }
 
   void _saveRefs(List<Map<String, dynamic>> refs) => _saveOperationData({'refs': refs});
-
-  /// Opportunistically fills in the operation's own (still-unset) location
-  /// right after a new activity ref is added — from live GPS if that ref is
-  /// close by, or otherwise from the first ref's own position once GPS isn't
-  /// available — so features that need a location (nearby suggestions, the
-  /// Map tab) work without the user having to set one by hand via
-  /// OperationLocationScreen. The coordinate is stored with the locator
-  /// wherever the source knew one; see [locationToAdoptAfterAddingRef].
-  void _maybeAdoptLocationFromNewRef({num? distanceKm}) {
-    final adopted = locationToAdoptAfterAddingRef(
-      operationLocation: _operation.location,
-      gpsPosition: widget.services.location.location,
-      distanceKm: distanceKm,
-      refsAfterAdd: _operation.refs,
-    );
-    if (adopted != null) {
-      _saveOperationData({
-        'grid': adopted.grid,
-        'gridSource': adopted.source,
-        // Written unconditionally: the pair belongs to the grid beside it, and
-        // a stale one from whatever set the location before would outrank both.
-        'lat': adopted.location.latitude,
-        'lon': adopted.location.longitude,
-      });
-    }
-  }
 
   /// Opens an `input.kind == 'form'` control's setup form (a contest's
   /// identifier, sent exchange, mode…), pre-filled from [existing] if this ref
@@ -1149,7 +1086,6 @@ class OperationSheetState extends State<OperationSheet> {
     }
     _saveRefs([..._refsKeeping(type, suggestion: suggestion), suggestion]);
     widget.services.track('activity_added', {'activity': type});
-    _maybeAdoptLocationFromNewRef(distanceKm: suggestion['distance'] as num?);
 
     // SAVE FIRST, then configure — the opposite order from [_addFormActivity],
     // and deliberately so. That path runs the form as the act of adding, with
@@ -1911,6 +1847,10 @@ class OperationSheetState extends State<OperationSheet> {
         startAtMillisMax: _operation.startAtMillisMax,
         localData: _operation.localData,
       ),
+      // Every refs edit already ran the rule on the draft. Run again against
+      // the stored row, it would put back a location the operator cleared on
+      // the Location screen after adding the park.
+      followRefs: false,
     );
     if (mounted) Navigator.of(context).pop();
   }

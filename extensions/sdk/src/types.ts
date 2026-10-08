@@ -345,6 +345,16 @@ export interface Ref {
   activationRadiusInMeters?: number
   activationRadiusInFeet?: number
 
+  /// The reference covers more ground than one point can stand for — a long
+  /// trail, a park across several states — so [lat]/[lon] are a
+  /// representative point rather than where an activator would be. The maps
+  /// draw it like any other reference; the app only refuses to place an
+  /// operation that has no location of its own there (docs/design/locations.md).
+  /// Set it on `suggest` answers and in `decorateRef` alike, and always to a
+  /// boolean, so a re-decoration can clear it. `referenceActivity` neither
+  /// sets nor clears it.
+  largeArea?: boolean
+
   /// The program has RETIRED this reference — it still exists and still names
   /// itself, but it can no longer be activated. The app marks such a row
   /// rather than hiding it, so an operator who asked for it by name learns why

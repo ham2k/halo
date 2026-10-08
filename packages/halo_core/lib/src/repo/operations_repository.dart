@@ -11,6 +11,7 @@ import 'package:drift/drift.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
+import '../models/location_from_refs.dart';
 import '../models/location_repair.dart';
 import '../models/models.dart';
 import '../models/operation_operator.dart';
@@ -130,13 +131,20 @@ class OperationsRepository {
 
   /// Throws [WriteRefused] while the clock is travelled unless BOTH the stored
   /// operation and the edit are test data — see [WritePolicy].
-  Future<void> saveData(Operation operation) async {
+  ///
+  /// An operation with no location of its own is placed by the refs it saves
+  /// ([locationFollowsRefs]), unless [followRefs] is false: a caller that
+  /// already ran the rule on every edit of its own draft passes that, because
+  /// re-deciding against the stored row would undo what the operator did
+  /// between those edits — a location they cleared would come back.
+  Future<void> saveData(Operation operation, {bool followRefs = true}) async {
     final now = realNowMillis();
     final data = {...operation.data, 'updatedAtMillis': now};
     // Read before anything is written, and judged on the STORED row: an edit
     // that adds /TEST to a real operation must not be the thing that lets
     // itself through.
     final existing = await get(operation.uuid);
+    if (followRefs) locationFollowsRefs(existing?.data, data);
     final refusal = WritePolicy.forOperation(existing) ?? WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
     if (refusal != null) throw refusal;
     var companion = OperationsCompanion(data: Value(encodeOperationData(data, 'operations:saveData')), synced: const Value(false), updatedAtMillis: Value(now));
