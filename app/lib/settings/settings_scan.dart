@@ -103,6 +103,17 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
     }
   }
 
+  // Waits for the runtime: a scan that lands during a boot or a
+  // replacement would otherwise find no extension settings at all, and a SET
+  // naming one would be refused as unknown.
+  scanned.addAll(await services.extensions.whenSettled(() => _scanExtensionSettings(services)));
+
+  return scanned;
+}
+
+/// The extension-contributed half of [scanSettings], asked of one runtime.
+Future<List<ScannedSetting>> _scanExtensionSettings(HaLoServices services) async {
+  final scanned = <ScannedSetting>[];
   for (final panel in await services.extensions.getSettingsPanels()) {
     final hookKey = panel['hookKey'] as String?;
     final panelKey = panel['panelKey'] as String?;
@@ -135,7 +146,6 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
       );
     }
   }
-
   return scanned;
 }
 

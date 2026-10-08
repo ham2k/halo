@@ -191,7 +191,7 @@ class _SettingsViewState extends State<SettingsView> {
     // Generations can follow each other faster than a load settles (a late
     // activation bumps one on the same host), and only the latest may land.
     final request = ++_extensionPanelsRequest;
-    final panels = await widget.services.extensions.settledSettingsPanels();
+    final panels = await widget.services.extensions.whenSettled(widget.services.extensions.getSettingsPanels);
     if (!mounted) return;
     // Decided by every load, superseded or not: each reads the runtime as it
     // settled, and a failed boot bumps no generation — the last load to
@@ -933,7 +933,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
 
   Future<void> _loadExtensionPanels() async {
     final request = ++_extensionPanelsRequest;
-    final panels = await widget.services.extensions.settledSettingsPanels();
+    final panels = await widget.services.extensions.whenSettled(widget.services.extensions.getSettingsPanels);
     if (!mounted || request != _extensionPanelsRequest) return;
     setState(() {
       _extensionPanels = panels;

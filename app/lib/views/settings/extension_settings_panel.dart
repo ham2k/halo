@@ -260,7 +260,8 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     // couldn't be asked (dead runtime, a hook timing out), and caching that
     // would freeze this panel into "no accounts" for the rest of its life —
     // every later tap on the field would then do nothing.
-    final accounts = _accountsCache ?? await widget.services.extensions.getAccounts();
+    final extensions = widget.services.extensions;
+    final accounts = _accountsCache ?? await extensions.whenSettled(extensions.getAccounts);
     if (accounts == null) {
       // Say so: the user pressed Connect and no dialog is coming, which
       // otherwise reads as a dead button with the reason only in the log.

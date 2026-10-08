@@ -12,7 +12,6 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
   ExtensionHost? get host;
   SettingsService? get settings;
   Future<void>? get _restartFuture;
-  Future<void> start();
   Future<void> restartRuntime({bool fresh});
   FlutterSecureStorage get _secureStorage;
   Future<Map<String, String>?> getAccountCredentials(String kvKey);
@@ -41,23 +40,6 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     } catch (e) {
       debugPrint('[extensions] getSettingsPanels failed: $e');
       return const [];
-    }
-  }
-
-  /// [getSettingsPanels] once the runtime has settled, for a caller that
-  /// reads `ready` afterwards to tell "no panels" from "no runtime".
-  ///
-  /// A replacement fails every call pending on the host it disposes, so a
-  /// query caught by one answers empty while no host is up — which reads as
-  /// a runtime that failed to start. It is asked again of whatever the
-  /// replacement brought up, and a runtime that did fail to come up answers
-  /// empty with no host, as it should.
-  Future<List<Map<String, dynamic>>> settledSettingsPanels() async {
-    while (true) {
-      await start();
-      final asked = host;
-      final panels = await getSettingsPanels();
-      if (identical(asked, host)) return panels;
     }
   }
 

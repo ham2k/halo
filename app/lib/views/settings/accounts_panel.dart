@@ -65,10 +65,10 @@ class _AccountsPanelState extends State<AccountsPanel> {
   }
 
   Future<void> _loadAccounts() async {
-    await widget.services.extensions.start();
+    final extensions = widget.services.extensions;
     // A failure (null) shows the panel empty — but this panel
     // re-asks on every open and after every save, so it recovers on its own.
-    final accounts = await widget.services.extensions.getAccounts() ?? const <Map<String, dynamic>>[];
+    final accounts = await extensions.whenSettled(extensions.getAccounts) ?? const <Map<String, dynamic>>[];
     final identities = <String, String>{};
     var storageUnavailable = false;
     for (final account in accounts) {
@@ -172,7 +172,7 @@ Future<void> showAccountDialogByKey(HaLoServices services, String accountKey, {S
   // with a dialog expected, so a failed lookup has to say so rather than
   // leave the press looking ignored. Nothing is cached here, so the next
   // press asks again.
-  final accounts = await services.extensions.getAccounts();
+  final accounts = await services.extensions.whenSettled(services.extensions.getAccounts);
   if (accounts == null) {
     services.statusBar.setMessage(key: 'accounts:lookup', text: t.settings.accounts.lookupFailed);
     return;

@@ -169,6 +169,29 @@ class ExtensionService
     return _starting ??= _start();
   }
 
+  /// What [ask] answers from a runtime that is up, or from none once a boot
+  /// or replacement has settled without one.
+  ///
+  /// A replacement fails every call pending on the host it disposes, so a
+  /// call it catches answers empty or null while no runtime is up — which
+  /// reads as "nothing registered", or as a runtime that failed to start.
+  /// It is asked again of whatever the replacement brought up. A runtime
+  /// that did fail to come up answers as no host does, and [ready] says so.
+  ///
+  /// With no host up it waits for the whole replacement, not just [start]:
+  /// a caller that queued on a boot behind a replacement resumes after the
+  /// replacement has taken the host down. With a host up it asks at once, so
+  /// a call made from inside a hook — `searchSettings`, during activation —
+  /// never waits on the boot that is running it.
+  Future<T> whenSettled<T>(Future<T> Function() ask) async {
+    while (true) {
+      if (host == null) await (_restartFuture?.catchError((_) {}) ?? start());
+      final asked = host;
+      final answer = await ask();
+      if (identical(asked, host)) return answer;
+    }
+  }
+
   bool _clockListenerAttached = false;
 
   /// The app clock's travel state, in the form the sandbox needs

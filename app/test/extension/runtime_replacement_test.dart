@@ -31,52 +31,75 @@ class _BootWatchingExtensions extends ExtensionService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late _BootWatchingExtensions extensions;
+  group('on a booted runtime', () {
+    late _BootWatchingExtensions extensions;
 
-  setUp(() async {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues(const {});
+      final prefs = await SharedPreferences.getInstance();
+      extensions = _BootWatchingExtensions()
+        ..settings = SettingsService(prefs)
+        ..statusBar = StatusBarService(prefs);
+      await startWithShippedExtensions(extensions);
+      expect(extensions.ready, isTrue, reason: 'extension runtime failed to boot');
+    });
+
+    tearDown(() => extensions.shutdownForExit());
+
+    test('a settings query caught by a replacement is answered by the runtime that replaced it', () async {
+      final expected = [for (final panel in await extensions.getSettingsPanels()) panel['panelKey']];
+      expect(expected, isNotEmpty, reason: 'the extensions an install runs contribute settings panels');
+      final before = extensions.host;
+
+      // Sent before the replacement takes the host down: the dispose fails it,
+      // and the empty answer arrives while no runtime is up at all.
+      final query = extensions.whenSettled(extensions.getSettingsPanels);
+      final replacement = extensions.restartRuntime();
+      final panels = await query;
+      await replacement;
+
+      expect(extensions.host, isNot(same(before)));
+      expect([for (final panel in panels) panel['panelKey']], expected);
+    });
+
+    test('a start during the old runtime\'s disposal waits for the replacement\'s own boot', () async {
+      // A boot begun inside the dispose runs beside the dying runtime and ahead
+      // of the sweep that clears the old generation's status after it.
+      extensions.debugLoadedExtensionKeys = {'probe-extension'};
+      extensions.statusBar!.setProgress(key: _dyingProgress, text: 'Downloading');
+      extensions.sweptAtBoot.clear();
+
+      final replacement = extensions.restartRuntime();
+      while (extensions.host != null) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      final joined = extensions.start();
+      await replacement;
+      await joined;
+
+      expect(extensions.sweptAtBoot, [true], reason: 'one boot, begun only once the old generation was cleared away');
+      expect(extensions.ready, isTrue);
+    });
+  });
+
+  test('a query queued on a boot that a replacement also waits on is answered by the replacement', () async {
+    // The replacement queued on the boot first, so it resumes first and takes
+    // the host down before the query looks: waiting on the boot alone answers
+    // as if no runtime were up.
     SharedPreferences.setMockInitialValues(const {});
     final prefs = await SharedPreferences.getInstance();
-    extensions = _BootWatchingExtensions()
+    final extensions = ExtensionService()
       ..settings = SettingsService(prefs)
       ..statusBar = StatusBarService(prefs);
-    await startWithShippedExtensions(extensions);
-    expect(extensions.ready, isTrue, reason: 'extension runtime failed to boot');
-  });
+    addTearDown(extensions.shutdownForExit);
+    await preloadShippedExtensionsForTest(extensions);
 
-  tearDown(() => extensions.shutdownForExit());
-
-  test('a settings query caught by a replacement is answered by the runtime that replaced it', () async {
-    final expected = [for (final panel in await extensions.getSettingsPanels()) panel['panelKey']];
-    expect(expected, isNotEmpty, reason: 'the extensions an install runs contribute settings panels');
-    final before = extensions.host;
-
-    // Sent before the replacement takes the host down: the dispose fails it,
-    // and the empty answer arrives while no runtime is up at all.
-    final query = extensions.settledSettingsPanels();
+    final booting = extensions.start();
     final replacement = extensions.restartRuntime();
-    final panels = await query;
+    final panels = extensions.whenSettled(extensions.getSettingsPanels);
+    await booting;
     await replacement;
 
-    expect(extensions.host, isNot(same(before)));
-    expect([for (final panel in panels) panel['panelKey']], expected);
-  });
-
-  test('a start during the old runtime\'s disposal waits for the replacement\'s own boot', () async {
-    // A boot begun inside the dispose runs beside the dying runtime and ahead
-    // of the sweep that clears the old generation's status after it.
-    extensions.debugLoadedExtensionKeys = {'probe-extension'};
-    extensions.statusBar!.setProgress(key: _dyingProgress, text: 'Downloading');
-    extensions.sweptAtBoot.clear();
-
-    final replacement = extensions.restartRuntime();
-    while (extensions.host != null) {
-      await Future<void>.delayed(Duration.zero);
-    }
-    final joined = extensions.start();
-    await replacement;
-    await joined;
-
-    expect(extensions.sweptAtBoot, [true], reason: 'one boot, begun only once the old generation was cleared away');
-    expect(extensions.ready, isTrue);
+    expect(await panels, isNotEmpty);
   });
 }

@@ -86,7 +86,9 @@ void main() {
     if (developerMode) await settings.setDeveloperMode(true);
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final services = HaLoServices(db, settings);
+    // The default service would boot a real runtime the moment the scan asks
+    // for extension settings, and these groups are all the catalog needs.
+    final services = HaLoServices(db, settings, extensions: ExtensionServiceWithFakeHost());
     services.settingsRegistry.register(_TestGroup(elements));
     return services;
   }
