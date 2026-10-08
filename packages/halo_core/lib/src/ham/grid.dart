@@ -206,8 +206,9 @@ GridLocation? locationFromLatLon(Object? lat, Object? lon) {
 /// `annotateFromCountryFile` sets it — no lookup source of ours writes
 /// `locSource` at all, though `mergeLookup` plumbs it so one can later say
 /// where its location came from. Two reasons never to read a 'prefix' pair as
-/// a coordinate: its `lon` follows cty.dat's WEST-POSITIVE convention, which
-/// every other coordinate in the app contradicts, so taking it at face value
+/// a coordinate: its `lon` arrives signed either way — cty.dat's WEST-POSITIVE
+/// convention from lib-country-files before 1.1, east-positive since — with
+/// nothing on the record to tell which, so taking an old one at face value
 /// mirrors the station about the prime meridian; and it is an entity
 /// centroid, which [locationForQsoInfoWithSource] resolves for itself further
 /// down, from a table signed the way the rest of the world is.

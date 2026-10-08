@@ -87,10 +87,10 @@ bool _holds(Map<String, dynamic> data, String key) => data[key] != null;
 /// records written by the program this repair exists for.
 ///
 /// A `locSource: 'prefix'` pair is refused here as it is everywhere
-/// ([locationFromGuess]): it is a west-positive entity centroid, so judging a
-/// locator against it would place the station on the wrong side of the
-/// meridian, and dropping the pair it disagrees with would cost the record
-/// the coordinate its own locator was written from.
+/// ([locationFromGuess]): it is an entity centroid that may be west-positive,
+/// so judging a locator against it could place the station on the wrong side
+/// of the meridian, and dropping the pair it disagrees with would cost the
+/// record the coordinate its own locator was written from.
 GridLocation? _statedCoordinate(Map<String, dynamic> data) {
   if (data['locSource'] == 'prefix') return null;
   return locationFromLatLon(asQsonCoordinate(data['lat'], latitude: true), asQsonCoordinate(data['lon'], latitude: false));

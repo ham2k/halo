@@ -3,7 +3,7 @@
 //
 // GENERATED FILE — do not edit by hand.
 // Regenerate with: node packages/halo_core/tool/generate_entity_locations.mjs
-// Sources: @ham2k/lib-dxcc-data 1.0.1 (entity centroids),
+// Sources: @ham2k/lib-dxcc-data 1.1.0 (entity centroids),
 //          @ham2k/lib-geo-tools 1.1.1 (entityRegionLocations).
 //
 // Coarse fallback coordinates for QSOs that have no grid square: a DXCC

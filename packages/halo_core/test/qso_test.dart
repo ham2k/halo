@@ -131,8 +131,9 @@ void main() {
 
     test("a country-file centroid on the guess is not a coordinate, and the guess's own grid answers instead", () {
       // What app-polo puts on every guess it syncs to us: the country file's
-      // DXCC centroid, tagged `locSource: 'prefix'` and carrying cty.dat's
-      // WEST-POSITIVE longitude. Read as a coordinate it outranks the grid and
+      // DXCC centroid, tagged `locSource: 'prefix'` and — from lib-country-files
+      // before 1.1 — carrying cty.dat's WEST-POSITIVE longitude. Read as a
+      // coordinate it outranks the grid and
       // lands W1AW at 72.7°E, mirrored into China.
       final q = _qso({
         'call': 'W1AW',

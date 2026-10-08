@@ -329,7 +329,7 @@ class QsoDraft extends ChangeNotifier with PanelModel {
         // More pane still wins, and tested AS a pair: the pane records its two
         // fields apart, and a typed latitude beside a center's longitude is a
         // point nobody stated. `locSource` goes too — app-polo sends it tagging
-        // a pair a west-positive centroid, and it would tag this center.
+        // a pair an entity centroid, and it would tag this center.
         if (gridTouched && locationFromLatLon(theirExtra['lat'], theirExtra['lon']) == null) ...{
           'lat': locationForStatedGrid(config.gridController.text)?.latitude,
           'lon': locationForStatedGrid(config.gridController.text)?.longitude,

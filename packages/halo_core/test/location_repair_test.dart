@@ -82,7 +82,7 @@ void main() {
     });
 
     test('never reads a country-file centroid as the coordinate to judge', () {
-      // A `locSource: 'prefix'` pair is west-positive and is refused wherever
+      // A `locSource: 'prefix'` pair may be west-positive and is refused wherever
       // one is read; judging the grid against it would mirror the station
       // about the prime meridian and then drop the locator's own coordinate
       // for disagreeing with a pair nothing trusts.

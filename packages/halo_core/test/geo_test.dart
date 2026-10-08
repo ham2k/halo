@@ -112,9 +112,10 @@ void main() {
 
   group('locationFromGuess', () {
     test('a coordinate tagged as a country-file centroid is refused, whatever its sign', () {
-      // `locSource: 'prefix'` is lib-country-files' tag, and the `lon` under
-      // it is cty.dat's WEST-POSITIVE one: K's centroid arrives as +91.87, in
-      // Kazakhstan. Reading it would beat the guess's own grid AND the
+      // `locSource: 'prefix'` is lib-country-files' tag, and on a record from
+      // before its 1.1 the `lon` under it is cty.dat's WEST-POSITIVE one: K's
+      // centroid arrives as +91.87, in Kazakhstan. Reading it would beat the
+      // guess's own grid AND the
       // correctly-signed entityLocations table, so both signs are refused —
       // one that happens to look plausible is still the wrong convention.
       expect(locationFromGuess({'lat': 37.6, 'lon': 91.87, 'locSource': 'prefix'}), isNull);

@@ -200,12 +200,13 @@ count of the rows it changed, and changes nothing else.
 ### One pair is not a coordinate
 
 A pair tagged `locSource: 'prefix'` is lib-country-files' DXCC entity centroid,
-and its `lon` follows cty.dat's **west-positive** convention — the opposite of
-every other coordinate here. `locationFromGuess` refuses that pair wherever one
-is read, so the resolver falls through to the grid and then to
-`entity_locations.dart`, which holds the same centroids signed the way the rest
-of the world signs them. Read as a coordinate it would outrank both and mirror
-the station about the prime meridian.
+and a synced record carries it signed either way: **west-positive**, as cty.dat
+states it, when lib-country-files before 1.1 wrote it, and east-positive since —
+with nothing on the record to tell the two apart. `locationFromGuess` refuses
+that pair wherever one is read, so the resolver falls through to the grid and
+then to `entity_locations.dart`, which holds the same centroids signed the way
+the rest of the world signs them. Read as a coordinate it would outrank both,
+and an old one would mirror the station about the prime meridian.
 
 No lookup source of ours sets `locSource` today (`annotate.ts` blanks it, and
 the merge plumbs it so a source can later say where its location came from).

@@ -247,14 +247,17 @@ interface LookupServiceHook {
   carried one (`preferStationValues`) — only while the guess's scope is
   `qth`, since on a portable or prefixed contact a source describes the
   home QTH. `tz` is a UTC offset with its ordinary sign, `"GMT-5"` being
-  five hours behind; the SDK's `annotateCallAgainstCountryFile` flips the
-  country file's west-positive offsets to match.
+  five hours behind. lib-country-files states it that way from 1.1; the
+  SDK's `annotateCallAgainstCountryFile` answers with the ordinary signs
+  whichever version the app ships, flipping an older one's west-positive
+  `tz` and `lon`.
 - **`locSource: 'prefix'` is reserved**, and a `lat`/`lon` merged under it is
   never read as a coordinate (`locationFromGuess`, halo_core). It marks
-  lib-country-files' DXCC entity centroid, whose longitude follows cty.dat's
-  west-positive convention — the opposite of every other coordinate here. A
-  source reporting a real position must leave `locSource` unset or name
-  itself; tagging one `'prefix'` gets its coordinate discarded.
+  lib-country-files' DXCC entity centroid, which synced records carry signed
+  either way — west-positive from versions before 1.1 — with nothing to tell
+  the two apart. A source reporting a real position must leave `locSource`
+  unset or name itself; tagging one `'prefix'` gets its coordinate
+  discarded.
 
 Implemented by: `lookups` (key `core`). The merge algorithm itself
 (`mergeLookupIntoGuess`/`runLookupPipeline` in

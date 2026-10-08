@@ -47,9 +47,9 @@ const DEFAULT_PROGRAM_ID = "Ham2K Logger"
 /// overrode; only then does the guess answer.
 ///
 /// A pair tagged `locSource: 'prefix'` is no coordinate for this purpose, at
-/// either level: it is lib-country-files' DXCC entity centroid, whose `lon`
-/// follows cty.dat's west-positive convention, and exporting it would state
-/// the mirror image of a country's middle as the station's position. A synced
+/// either level: it is lib-country-files' DXCC entity centroid — a country's
+/// middle, not the station's position, and on a record written before that
+/// library's 1.1 its west-positive mirror image besides. A synced
 /// QSO carries that pair on `their` as well as on the guess (see halo_core's
 /// `locationFromGuess`).
 ///

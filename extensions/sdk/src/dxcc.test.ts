@@ -24,12 +24,17 @@ test("annotateCallAgainstCountryFile carries the parsed callsign's own fields th
   assert.ok(info.indicators?.includes("P"))
 })
 
-// The country file's offsets are west-positive; passed through, the United
-// States would read "GMT+5" beside QRZ's "GMT-5" for the same station.
-test("annotateCallAgainstCountryFile states the entity's UTC offset with its ordinary sign", () => {
+// The country file states both west-positive, and lib-country-files before
+// 1.1 passed that through; the app may ship either. Passed through, the United
+// States would read "GMT+5" beside QRZ's "GMT-5" for the same station, and its
+// centroid would sit in Central Asia. This holds whichever library is
+// installed — run it on both sides of a lib-country-files bump.
+test("annotateCallAgainstCountryFile states longitude and UTC offset with their ordinary signs", () => {
   assert.equal(annotateCallAgainstCountryFile("W1AW").tz, "GMT-5")
   assert.equal(annotateCallAgainstCountryFile("3A2MW").tz, "GMT+1")
   assert.equal(annotateCallAgainstCountryFile("3D2AG").tz, "GMT+12")
+  assert.ok(annotateCallAgainstCountryFile("W1AW").lon! < 0)
+  assert.ok(annotateCallAgainstCountryFile("3A2MW").lon! > 0)
 })
 
 test("flagForDxccCode resolves a known entity's flag", () => {

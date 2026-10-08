@@ -14,7 +14,7 @@
 // plain `node --test`, or via the `@ham2k/extension-sdk` re-export otherwise.
 
 import { parseCallsign } from "@ham2k/lib-callsigns"
-import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
+import { annotateFromCountryFile, BIGCTY, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import type { AnnotatedCallInfo } from "@ham2k/lib-country-files"
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 
@@ -31,23 +31,32 @@ useBuiltinCountryFile()
 /// continent — European Turkey is EU there, not AS — which is what a
 /// WAE-multiplier contest scores by.
 ///
-/// `tz` reads as a UTC offset with its ordinary sign: "GMT-5" is five hours
-/// behind UTC, as every lookup source writes it.
+/// `lon` is east-positive and `tz` reads as a UTC offset with its ordinary
+/// sign — "GMT-5" is five hours behind UTC — as every lookup source writes them.
 export function annotateCallAgainstCountryFile(call: string, options?: { wae?: boolean }): AnnotatedCallInfo {
   const annotated = annotateFromCountryFile(parseCallsign(call), options)
-  return annotated.tz ? { ...annotated, tz: ordinarySignTz(annotated.tz) } : annotated
+  if (!WEST_POSITIVE) return annotated
+  return {
+    ...annotated,
+    ...(typeof annotated.lon === "number" ? { lon: 0 - annotated.lon } : {}),
+    ...(annotated.tz ? { tz: flippedTz(annotated.tz) } : {}),
+  }
 }
 
-/// The country file states offsets west-positive, and
-/// `@ham2k/lib-country-files` passes that sign through as it is: Monaco reads
-/// "GMT-1". Flipped here, the one place the country file enters a guess. If
-/// that library ever adopts the ordinary sign, this must go with it or every
-/// offset inverts again.
-function ordinarySignTz(tz: string): string {
+/// `@ham2k/lib-country-files` before 1.1 passes the country file's
+/// west-positive longitude and UTC offset through as they are; 1.1 states
+/// both with the ordinary sign. The app supplies that library to every
+/// extension, while each extension bundles its own copy of this file, so which
+/// convention this code meets depends on the app it runs in — and is read off
+/// the data: the United States' centroid is west of Greenwich, so a positive
+/// longitude there is the old convention.
+const WEST_POSITIVE = (BIGCTY.entities.K?.lon ?? 0) > 0
+
+function flippedTz(tz: string): string {
   const match = /^GMT([+-]?\d+(?:\.\d+)?)$/.exec(tz)
   if (!match) return tz
-  const offset = -Number(match[1])
-  return offset > 0 ? `GMT+${offset}` : `GMT${offset === 0 ? 0 : offset}`
+  const offset = 0 - Number(match[1])
+  return offset > 0 ? `GMT+${offset}` : `GMT${offset}`
 }
 
 export function entityPrefixForCall(call: string | undefined): string | undefined {

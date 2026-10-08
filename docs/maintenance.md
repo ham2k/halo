@@ -88,7 +88,7 @@ Worth spot-checking that a known reference still resolves.
 
 `extensions/package.json` pins the `@ham2k/lib-*` packages. Note
 `@ham2k/lib-country-files` is version-stamped by date
-(`^1.0.202605301` ≈ 2026-05), which is exactly the shape of a dependency that
+(`^1.1.20260530` ≈ 2026-05), which is exactly the shape of a dependency that
 goes quietly out of date.
 
 **Check:** `cd extensions && npm outdated`. DXCC entities and prefixes do

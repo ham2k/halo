@@ -819,9 +819,10 @@ void main() {
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // What app-polo puts on every guess it syncs to us: lib-country-files' DXCC
-  // centroid, tagged `locSource: 'prefix'` and carrying cty.dat's
-  // WEST-POSITIVE longitude. The pair is neither the station's position nor
-  // even the right side of the planet, so it must never leave as one — and
+  // centroid, tagged `locSource: 'prefix'` and — before that library's 1.1 —
+  // carrying cty.dat's WEST-POSITIVE longitude. The pair is not the station's
+  // position, nor always the right side of the planet, so it must never leave
+  // as one — and
   // the guess's own grid still can.
   test('a country-file centroid on the guess is not exported as the station coordinate', () async {
     final host = await startHost();
