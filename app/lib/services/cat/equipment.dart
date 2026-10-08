@@ -451,6 +451,31 @@ class SwitchPort {
       '${transmitting ? ', TX' : ''}${inhibited ? ', inhibited' : ''})';
 }
 
+/// One voice memory as the radio describes it — see
+/// [EquipmentSink.reportVoiceMemories].
+@immutable
+class VoiceMemory {
+  /// 1-based, as the radio numbers it.
+  final int memory;
+
+  /// Empty when the radio's name for it is only its default.
+  final String name;
+
+  /// How long the recording runs, zero for an empty memory.
+  final int durationMs;
+
+  const VoiceMemory({required this.memory, this.name = '', this.durationMs = 0});
+
+  @override
+  bool operator ==(Object other) => other is VoiceMemory && other.memory == memory && other.name == name && other.durationMs == durationMs;
+
+  @override
+  int get hashCode => Object.hash(memory, name, durationMs);
+
+  @override
+  String toString() => 'VoiceMemory($memory "$name" ${durationMs}ms)';
+}
+
 /// Everything the UI needs to know about one node's connection.
 @immutable
 class EquipmentState {
@@ -535,6 +560,12 @@ class EquipmentState {
   /// a port names its antenna by key.
   final List<SwitchPort> switchPorts;
 
+  /// What the radio calls its voice memories and how long each runs, for a
+  /// radio that holds them itself — see [EquipmentSink.reportVoiceMemories].
+  /// Null for every other radio, and for one that has not said yet; empty
+  /// for one that said it holds none (a FlexRadio without the DVK licence).
+  final List<VoiceMemory>? voiceMemories;
+
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
@@ -549,6 +580,7 @@ class EquipmentState {
     this.channels = const [],
     this.switchAntennas = const [],
     this.switchPorts = const [],
+    this.voiceMemories,
   });
 
   EquipmentState copyWith({
@@ -567,6 +599,7 @@ class EquipmentState {
     List<EquipmentChannel>? channels,
     List<SwitchAntenna>? switchAntennas,
     List<SwitchPort>? switchPorts,
+    List<VoiceMemory>? voiceMemories,
   }) => EquipmentState(
     status: status ?? this.status,
     // An explicit null clears it: any transition out of `error` should
@@ -588,5 +621,6 @@ class EquipmentState {
     channels: channels ?? this.channels,
     switchAntennas: switchAntennas ?? this.switchAntennas,
     switchPorts: switchPorts ?? this.switchPorts,
+    voiceMemories: voiceMemories ?? this.voiceMemories,
   );
 }

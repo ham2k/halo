@@ -47,6 +47,9 @@ class _Sink implements EquipmentSink {
 
   @override
   void reportVoiceActivity(VoiceActivity? activity) => activities.add(activity);
+
+  @override
+  void reportVoiceMemories(List<VoiceMemory> memories) {}
   @override
   void report(VfoReading reading) {}
   @override

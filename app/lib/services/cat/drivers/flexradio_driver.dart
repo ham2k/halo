@@ -26,6 +26,7 @@ import '../transports/udp_broadcast.dart';
 import 'cw_send_queue.dart';
 import 'line_framer.dart';
 import 'flex_meter_codec.dart';
+import 'voice_activity_tracker.dart';
 import '../transports/flex_meter_socket.dart';
 
 /// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
@@ -101,9 +102,18 @@ class FlexRadioDriver extends EquipmentDriver {
   @override
   bool get canKeyCw => true;
 
+  /// The DVK holds twelve; the app offers one per function key. Whether the
+  /// radio's licence lets it play any is known only once connected, when
+  /// the session's own count says so ([FlexRadioSession.voiceMemoryCount]).
+  @override
+  int voiceMemoryCountWith(Map<String, dynamic> config) => maxVoiceMemories;
+
+  @override
+  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, voiceCeilingConfigKey};
+
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      FlexRadioSession(sink, slice: sliceFromConfig(config), meterHost: config['host'] as String?);
+      FlexRadioSession(sink, slice: sliceFromConfig(config), meterHost: config['host'] as String?, voiceMemoryCeiling: voiceCeilingFromConfig(config));
 
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) =>
@@ -257,7 +267,17 @@ const _cwxChunkLength = 128;
 const _flexKeyerSpeedMin = 5;
 const _flexKeyerSpeedMax = 100;
 
-class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession {
+/// Past a recording's own length, how long a play may run before the session
+/// stops it: the radio's end report travels the same socket as everything
+/// else, and a busy link should not cut the last word of a CQ.
+const _dvkPlayMargin = Duration(seconds: 3);
+
+/// What SmartSDR names a DVK slot nobody has named. Shown as no label at
+/// all, so the key ("M3") stands in for it the way it does for every other
+/// radio's unnamed memory.
+String _dvkDefaultName(int id) => 'Recording $id';
+
+class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession, RadioNamedVoiceMemories {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -265,7 +285,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   /// the operator never transmitted on.
   final int slice;
 
-  FlexRadioSession(this._sink, {this.slice = 0, this.meterHost, this.openMeterSocket = FlexMeterSocket.open});
+  FlexRadioSession(this._sink, {this.slice = 0, this.meterHost, this.openMeterSocket = FlexMeterSocket.open, this.voiceMemoryCeiling = voiceActivityCeiling});
   final String? meterHost;
 
   /// How the receive-meter UDP socket is opened. A parameter because the real
@@ -397,7 +417,13 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     onProgress: _sink.reportCwProgress,
   );
 
-  void _sendCommand(String command) => _sink.send(utf8.encode('C${_seq++}|$command\n'));
+  /// Answers the sequence number the command went out under, which its
+  /// `R<seq>|` reply names.
+  int _sendCommand(String command) {
+    final seq = _seq++;
+    _sink.send(utf8.encode('C$seq|$command\n'));
+    return seq;
+  }
 
   void _subscribe() {
     // Each subscription answers with a full status refresh, so this is also
@@ -413,6 +439,11 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     // The keyer speed: `cwx wpm=` arrives on this subscription, with the
     // refresh, so the speed is known without asking for it.
     _sendCommand('sub cwx all');
+    // The voice keyer's slots — names and lengths — and what it is doing.
+    _sendCommand('sub dvk all');
+    // Whether the radio's licence lets it play them: the DVK is a
+    // SmartSDR+ feature.
+    _sendCommand('sub license all');
     _bindTrackedClient();
     _startMeters();
   }
@@ -422,6 +453,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     _sendCommand('unsub tx all');
     _sendCommand('unsub client all');
     _sendCommand('unsub cwx all');
+    _sendCommand('unsub dvk all');
+    _sendCommand('unsub license all');
   }
 
   void _armSettleTimer() {
@@ -467,7 +500,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
       _handleHandshakeLine(line);
     } else if (line.startsWith('S')) {
       _handleStatusLine(line);
-    } else if (_replyPattern.hasMatch(line)) {
+    } else if (_replyPattern.firstMatch(line) case final reply?) {
+      _handleReply(int.parse(reply[1]!), int.tryParse(reply[2]!, radix: 16) ?? 0);
       // A command acknowledgement: the radio answered, so it is alive. WHICH
       // command does not matter — the ping exists only so that there is one
       // to answer while the dial is still. Status and acknowledgements share
@@ -479,7 +513,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   }
 
   static final _handshakePattern = RegExp(r'^H[0-9a-fA-F]+$');
-  static final _replyPattern = RegExp(r'^R\d+\|');
+  static final _replyPattern = RegExp(r'^R(\d+)\|([0-9a-fA-F]*)');
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
   static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
 
@@ -490,6 +524,17 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
   static final _interlockPattern = RegExp(r'^S[0-9a-fA-F]+\|interlock (.+)$');
   static final _clientPattern = RegExp(r'^S[0-9a-fA-F]+\|client (0x[0-9a-fA-F]+) (.+)$');
+
+  /// Captured from a FLEX-6600 on 4.2.20, on `sub dvk all`:
+  /// `dvk status=idle enabled=1`, then one `dvk added id=3 name="59-NY-TU"
+  /// duration=2165` per slot. `status=` also reads `playback`, `recording`,
+  /// `preview` and `disabled`, with an `id=`.
+  static final _dvkPattern = RegExp(r'^S[0-9a-fA-F]+\|dvk (.+)$');
+
+  /// Captured from a FLEX-6600 on 4.2.20, one of a burst answering
+  /// `sub license all` at once: `license feature name=DIGITAL_VOICE_KEYER
+  /// enabled=1 reason=PLUS`.
+  static final _licenseFeaturePattern = RegExp(r'^S[0-9a-fA-F]+\|license feature (.+)$');
 
   void _handleHandshakeLine(String line) {
     if (_handshakeDone || !_handshakePattern.hasMatch(line)) return;
@@ -514,6 +559,10 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     if (cwxMatch != null) _handleCwxLine(cwxMatch);
     final interlockMatch = _interlockPattern.firstMatch(line);
     if (interlockMatch != null) _handleInterlockLine(interlockMatch);
+    final dvkMatch = _dvkPattern.firstMatch(line);
+    if (dvkMatch != null) _handleDvkLine(dvkMatch.group(1)!);
+    final licenseMatch = _licenseFeaturePattern.firstMatch(line);
+    if (licenseMatch != null) _handleLicenseFeatureLine(licenseMatch.group(1)!);
   }
 
   /// `interlock state=TRANSMITTING …`, on the `tx` subscription this driver
@@ -789,6 +838,227 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     _keyedByUs = on;
   }
 
+  // ------------------------------------------------------- voice keyer (DVK)
+  //
+  // Per FlexRadio's API reference for the DVK
+  // (https://github.com/flexradio/smartsdr-api-docs/wiki/TCPIP-dvk): every
+  // state change — the radio ending a play or a recording by itself included
+  // — is pushed to every client on `sub dvk all`, so the status drives the
+  // activity and nothing is polled.
+
+  /// The memory length the entry pinned, or [voiceActivityCeiling]: what
+  /// bounds a RECORDING, as a backstop to the radio's own ten-second limit.
+  /// A play is bounded by its slot's own length instead ([_activityCeiling]).
+  @override
+  final Duration voiceMemoryCeiling;
+
+  /// None once the radio says the DVK is unavailable — its licence off, or
+  /// its status disabled: it is then a radio with no voice keyer, its keys
+  /// disabled and F1-F8 left to whatever else they do, not a radio whose
+  /// every memory is refused.
+  @override
+  int get voiceMemoryCount => _dvkLicensed == false || _dvkDisabled ? 0 : maxVoiceMemories;
+
+  @override
+  bool get canRecordVoice => true;
+
+  /// Every slot the radio has described, by id — all twelve, though only
+  /// the first [maxVoiceMemories] are reported.
+  final Map<int, VoiceMemory> _dvkSlots = {};
+
+  /// What was last reported, so a refresh that changed nothing is not
+  /// reported again.
+  List<VoiceMemory>? _reportedSlots;
+
+  /// Whether the radio is licensed for the DVK: the licence line's
+  /// `enabled=`, or a `50004001` answer to any `dvk` command. Null until
+  /// either has said — unknown is offered.
+  bool? _dvkLicensed;
+
+  /// `status=disabled` or `enabled=0` on the status line, which the API
+  /// reference defines as the DVK being unavailable.
+  bool _dvkDisabled = false;
+
+  /// The `dvk` starts still awaiting their `R` line, by sequence number, each
+  /// with the [_voiceStarts] it began — a refusal is about THAT start, and a
+  /// later play of the same memory is not the one refused.
+  final Map<int, ({int memory, int start})> _dvkStarts = {};
+
+  /// Counts starts, so a reply can tell its own from a later one.
+  int _voiceStarts = 0;
+
+  /// The `dvk set_name` commands still awaiting their `R` line: memory by
+  /// sequence number.
+  final Map<int, int> _dvkRenames = {};
+
+  /// The bound for the activity [_voice] is about to start, set just before
+  /// each start — the tracker asks for it as it starts.
+  Duration _activityCeiling = voiceActivityCeiling;
+
+  late final VoiceActivityTracker _voice = VoiceActivityTracker(
+    report: _sink.reportVoiceActivity,
+    stop: stopVoice,
+    ceiling: () => _activityCeiling,
+    onCeiling: (limit) => _sink.reportDiagnostic('DVK stopped at the ${limit.inSeconds} s ceiling'),
+  );
+
+  /// The four forms the API reference gives: `status=…`, `added …`,
+  /// `deleted id=…`, and the bare `id=… name=… duration=…` update the radio
+  /// pushes after a recording, a rename or a clear.
+  void _handleDvkLine(String text) {
+    final fields = _parseQuotedFields(text);
+    final id = int.tryParse(fields['id'] ?? '');
+    final status = fields['status'];
+    if (status != null) {
+      _handleDvkStatus(status, id, enabled: fields['enabled']);
+      return;
+    }
+    if (id == null) return;
+    if (text.startsWith('deleted')) {
+      _dvkSlots.remove(id);
+    } else {
+      final previous = _dvkSlots[id];
+      final name = fields['name'] ?? previous?.name ?? '';
+      _dvkSlots[id] = VoiceMemory(
+        memory: id,
+        name: name == _dvkDefaultName(id) ? '' : name,
+        durationMs: int.tryParse(fields['duration'] ?? '') ?? previous?.durationMs ?? 0,
+      );
+    }
+    _reportSlots();
+  }
+
+  /// An unavailable keyer reports holding none — which is also what tells
+  /// the surfaces, through the state, that [voiceMemoryCount] just changed.
+  void _reportSlots() {
+    final slots = [for (var n = 1; n <= voiceMemoryCount; n++) _dvkSlots[n] ?? VoiceMemory(memory: n)];
+    if (listEquals(slots, _reportedSlots)) return;
+    _reportedSlots = slots;
+    _sink.reportVoiceMemories(slots);
+  }
+
+  /// What the keyer is doing, against what the app asked it to do. A status
+  /// naming another slot, or `preview` (another client auditioning one), is
+  /// as much "not ours" as `idle` is.
+  void _handleDvkStatus(String status, int? id, {String? enabled}) {
+    final disabled = status == 'disabled' || enabled == '0';
+    if (disabled != _dvkDisabled) {
+      _dvkDisabled = disabled;
+      _reportSlots();
+    }
+    final activity = _voice.activity;
+    if (activity == null) return;
+    final ours = id == null || id == activity.memory;
+    final going = ours && (activity.recording ? status == 'recording' : status == 'playback');
+    if (going) {
+      _voice.confirm();
+    } else {
+      _voice.endFromPoll();
+    }
+  }
+
+  void _handleLicenseFeatureLine(String text) {
+    final fields = _parseFields(text);
+    if (fields['name']?.toLowerCase() != 'digital_voice_keyer') return;
+    final licensed = switch (fields['enabled']) {
+      '1' => true,
+      '0' => false,
+      _ => null,
+    };
+    if (licensed == null) return;
+    _setLicensed(licensed);
+  }
+
+  void _setLicensed(bool licensed) {
+    _dvkLicensed = licensed;
+    _reportSlots();
+  }
+
+  /// What the API reference answers a `dvk` command with, on a radio
+  /// without the feature licence — every `dvk` command, `sub dvk all` aside.
+  static const _dvkNotLicensed = 0x50004001;
+
+  /// A non-zero answer to a start is the radio refusing it — no licence, an
+  /// unparseable command, no such slot — which no status would say: nothing
+  /// starts, so nothing changes. One to a rename leaves the slot showing a
+  /// name the radio never took, so the slots are asked for again.
+  void _handleReply(int seq, int code) {
+    final start = _dvkStarts.remove(seq);
+    final renamed = _dvkRenames.remove(seq);
+    if (code == 0 || (start == null && renamed == null)) return;
+    if (code == _dvkNotLicensed) _setLicensed(false);
+    final hex = '0x${code.toRadixString(16).toUpperCase()}';
+    if (renamed != null) {
+      _sink.reportDiagnostic('DVK refused to rename memory $renamed: $hex');
+      if (_handshakeDone && _wantUpdates) _sendCommand('sub dvk all');
+      return;
+    }
+    _sink.reportDiagnostic('DVK refused memory ${start!.memory}: $hex');
+    if (start.start == _voiceStarts) _voice.refuse();
+  }
+
+  /// An EMPTY slot is refused here rather than sent: the API reference says
+  /// a play of one answers `0` and can leave the radio keyed.
+  @override
+  void playVoiceMemory(int n) {
+    final slot = _dvkSlots[n];
+    if (slot != null && slot.durationMs == 0) {
+      stopVoice();
+      _activityCeiling = voiceMemoryCeiling;
+      _voice.start(VoiceActivity(memory: n));
+      _voice.refuse();
+      return;
+    }
+    final length = slot?.durationMs ?? 0;
+    _startVoice('dvk playback_start id=$n', VoiceActivity(memory: n), length > 0 ? Duration(milliseconds: length) + _dvkPlayMargin : voiceMemoryCeiling);
+  }
+
+  @override
+  void recordVoiceMemory(int n) => _startVoice('dvk rec_start id=$n', VoiceActivity(memory: n, recording: true), voiceMemoryCeiling);
+
+  /// Whatever is going is stopped first: the API reference warns that an
+  /// operation started over another can leave the DVK inconsistent, and once
+  /// the tracker follows the new one, nothing would stop the old one.
+  void _startVoice(String command, VoiceActivity activity, Duration ceiling) {
+    stopVoice();
+    _activityCeiling = ceiling;
+    _dvkStarts[_sendCommand(command)] = (memory: activity.memory, start: ++_voiceStarts);
+    _voice.start(activity);
+  }
+
+  /// The stops name no slot: there is one DVK, doing one thing. A recording
+  /// stopped is saved, and the radio pushes the slot's new length.
+  @override
+  void stopVoice() {
+    final activity = _voice.activity;
+    if (activity == null) return;
+    _sendCommand(activity.recording ? 'dvk rec_stop' : 'dvk playback_stop');
+    _voice.end();
+  }
+
+  /// The longest name the radio takes inside its quotes.
+  static const _dvkNameMax = 61;
+
+  /// Shown at once, as the radio will hold it: no `"` or `|`, which the API
+  /// reference forbids, runs of spaces collapsed the way the radio collapses
+  /// them, and no longer than it takes. The radio pushes the slot back
+  /// renamed; a refusal re-reads it ([_handleReply]).
+  @override
+  void renameVoiceMemory(int n, String name) {
+    var clean = name.replaceAll(RegExp(r'["|]'), '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    if (clean.length > _dvkNameMax) clean = clean.substring(0, _dvkNameMax).trimRight();
+    _dvkRenames[_sendCommand('dvk set_name id=$n name="${clean.isEmpty ? _dvkDefaultName(n) : clean}"')] = n;
+    final previous = _dvkSlots[n];
+    _dvkSlots[n] = VoiceMemory(memory: n, name: clean, durationMs: previous?.durationMs ?? 0);
+    _reportSlots();
+  }
+
+  /// [_parseFields] for a line whose values may be quoted with spaces in
+  /// them — a DVK slot's name.
+  static Map<String, String> _parseQuotedFields(String text) => {
+    for (final match in RegExp(r'(\w+)=(?:"([^"]*)"|(\S*))').allMatches(text)) match[1]!: match[2] ?? match[3]!,
+  };
+
   /// FlexRadio pushes status on its own — "starting updates" just means
   /// subscribing.
   @override
@@ -828,6 +1098,12 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
       _keyedByUs = false;
       _sendCommand('xmit 0');
     }
+    // A memory transmits, and nothing else will stop it once this client
+    // is gone.
+    stopVoice();
+    _voice.dispose();
+    _dvkStarts.clear();
+    _dvkRenames.clear();
     _cwQueue.clear();
     _stopPeriodicTimers();
     if (_wantUpdates && _handshakeDone) _unsubscribe();

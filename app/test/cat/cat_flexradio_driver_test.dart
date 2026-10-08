@@ -33,6 +33,17 @@ const _sliceBStatusLine = 'S5AC2F980|slice 1 in_use=1 RF_frequency=7.123000 clie
 const _clientConnectedLine = 'S5AC2F980|client 0x9F0012AB connected client_id=42 local_ptt=0 program=SmartSDR-Win station=SHACK-PC';
 const _clientDisconnectedLine = 'S5AC2F980|client 0x9F0012AB disconnected forced=0';
 
+/// What `sub dvk all` answered on the FLEX-6600 (4.2.20), verbatim but for
+/// the slots past 8 — the app offers one memory per function key.
+const _dvkStatusLines = [
+  'S7C1A8533|dvk status=idle enabled=1',
+  'S7C1A8533|dvk added id=1 name="Recording 1" duration=2165',
+  'S7C1A8533|dvk added id=2 name="Recording 2" duration=0',
+  'S7C1A8533|dvk added id=3 name="59-NY-TU" duration=2165',
+  'S7C1A8533|dvk added id=4 name="KI2D" duration=1925',
+  'S7C1A8533|dvk added id=12 name="Recording 12" duration=1952',
+];
+
 class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
@@ -62,8 +73,13 @@ class _FakeSink implements EquipmentSink {
   void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
   @override
   void reportCwProgress(CwSendProgress? progress) {}
+  final voices = <VoiceActivity?>[];
   @override
-  void reportVoiceActivity(VoiceActivity? activity) {}
+  void reportVoiceActivity(VoiceActivity? activity) => voices.add(activity);
+
+  final memoryLists = <List<VoiceMemory>>[];
+  @override
+  void reportVoiceMemories(List<VoiceMemory> memories) => memoryLists.add(memories);
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -980,6 +996,361 @@ void main() {
         expect(commands().where((c) => c.startsWith('xmit')), isEmpty);
         async.flushTimers();
       });
+    });
+  });
+
+  group('the voice keyer (DVK)', () {
+    List<String> commands() => [for (final line in sink.sent) line.substring(line.indexOf('|') + 1).trim()];
+
+    /// The sequence number [command] last went out under, which its reply names.
+    int seqOf(String command) => int.parse(RegExp(r'^C(\d+)\|').firstMatch(sink.sent.lastWhere((line) => line.contains(command)))!.group(1)!);
+
+    void connect() {
+      session.feed('${_handshakeLines.join('\n')}\n');
+      session.startUpdates();
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      sink.sent.clear();
+    }
+
+    test('subscribes to the keyer and the licence with the rest, and lets go of both', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        expect(commands(), containsAll(['sub dvk all', 'sub license all']));
+        session.stopUpdates();
+        expect(commands(), containsAll(['unsub dvk all', 'unsub license all']));
+        async.flushTimers();
+      });
+    });
+
+    test("reports the radio's names and lengths, the first eight, with its default names as none", () {
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      final slots = sink.memoryLists.last;
+      expect(slots, hasLength(maxVoiceMemories), reason: 'one per function key; slot 12 has no key to play it');
+      // "Recording 1" is only what SmartSDR calls a slot nobody named: shown,
+      // it would push the key ("M1") out of the strip with a word that says
+      // nothing about the audio.
+      expect(slots[0], const VoiceMemory(memory: 1, durationMs: 2165));
+      expect(slots[2], const VoiceMemory(memory: 3, name: '59-NY-TU', durationMs: 2165));
+      expect(slots[3], const VoiceMemory(memory: 4, name: 'KI2D', durationMs: 1925));
+      expect(slots[4], const VoiceMemory(memory: 5), reason: 'a slot the radio has not described is empty, not missing');
+    });
+
+    test('a name with spaces in it is read whole', () {
+      session.feed('S7C1A8533|dvk added id=2 name="CQ POTA K-1234" duration=3100\n');
+      expect(sink.memoryLists.last[1], const VoiceMemory(memory: 2, name: 'CQ POTA K-1234', durationMs: 3100));
+    });
+
+    test('a refresh that changes nothing reports nothing', () {
+      // The keyer is re-asked every second while a memory plays; reporting
+      // each answer would rebuild every keying surface once a second.
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      final before = sink.memoryLists.length;
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      expect(sink.memoryLists, hasLength(before));
+    });
+
+    test('a deleted slot is reported empty', () {
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      session.feed('S7C1A8533|dvk deleted id=3\n');
+      expect(sink.memoryLists.last[2], const VoiceMemory(memory: 3));
+    });
+
+    test('plays with playback_start, and the radio saying idle is the end', () {
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        expect(commands(), ['dvk playback_start id=3']);
+        expect(sink.voices, [const VoiceActivity(memory: 3)]);
+        session.feed('S7C1A8533|dvk status=playback id=3\n');
+        async.elapse(const Duration(seconds: 2));
+        session.feed('S7C1A8533|dvk status=idle\n');
+        expect(sink.voices.last, isNull);
+        expect(sink.voices.whereType<VoiceActivity>().where((a) => a.doubtful), isEmpty, reason: 'a play the radio confirmed is not doubted at its end');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('asks the radio nothing while it plays: the status is pushed', () {
+      // The API reference publishes every DVK state change to every
+      // subscribed client, the radio's own end of a play included; a poll
+      // would cost thirteen lines a second for nothing.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 2));
+        expect(commands(), isEmpty);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('another slot, or another client previewing, is not this play going on', () {
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        session.feed('S7C1A8533|dvk status=playback id=3\n');
+        async.elapse(const Duration(seconds: 1));
+        session.feed('S7C1A8533|dvk status=preview id=4\n');
+        expect(sink.voices.last, isNull);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a refused start is doubted at once, then stopped and cleared', () {
+      // An error answer arrives in milliseconds — before the tracker would
+      // believe a poll's "not going" — and is the only word a radio without
+      // the licence, or with an empty slot, ever gives.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(5);
+        session.feed('R${seqOf('dvk playback_start id=5')}|50000016|\n');
+        expect(sink.voices.last, const VoiceActivity(memory: 5, doubtful: true));
+        expect(sink.diagnostics.last, contains('0x50000016'));
+        async.elapse(voiceDoubtLinger);
+        expect(commands(), contains('dvk playback_stop'));
+        expect(sink.voices.last, isNull);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('an accepted start is not doubted by its reply', () {
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        session.feed('R${seqOf('dvk playback_start id=3')}|0|\n');
+        expect(sink.voices, [const VoiceActivity(memory: 3)]);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test("a play the radio never ends is stopped just past the slot's own length", () {
+      // The radio said how long slot 3 runs, so fifteen seconds of
+      // "playing" for a two-second memory would be a guess beaten by a fact.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        // Kept "going" by every poll, so only the ceiling can end it.
+        void playing() => session.feed('S7C1A8533|dvk status=playback id=3\n');
+        playing();
+        async.elapse(const Duration(milliseconds: 2165 + 2900));
+        playing();
+        expect(sink.voices.last, isNotNull);
+        async.elapse(const Duration(milliseconds: 200));
+        expect(commands(), contains('dvk playback_stop'));
+        expect(sink.voices.last, isNull);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('records with rec_start and stops with a bare rec_stop', () {
+      fakeAsync((async) {
+        connect();
+        expect(session.canRecordVoice, isTrue);
+        session.recordVoiceMemory(2);
+        expect(commands(), ['dvk rec_start id=2']);
+        expect(sink.voices.last, const VoiceActivity(memory: 2, recording: true));
+        sink.sent.clear();
+        session.stopVoice();
+        expect(commands(), ['dvk rec_stop'], reason: 'the radio pushes the new length itself');
+        expect(sink.voices.last, isNull);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a memory pressed while another plays stops the one on the air first', () {
+      // Once the tracker follows M4, nothing would stop M1 — it would
+      // transmit to its end behind a strip showing M4 — and the API
+      // reference warns that an operation started over another can leave
+      // the keyer inconsistent.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(1);
+        sink.sent.clear();
+        session.playVoiceMemory(4);
+        expect(commands(), ['dvk playback_stop', 'dvk playback_start id=4']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a refusal of an earlier start does not doubt a later play of the same memory', () {
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(1);
+        final first = seqOf('dvk playback_start id=1');
+        session.playVoiceMemory(1);
+        session.feed('R${seqOf('dvk playback_start id=1')}|0|\n');
+        session.feed('R$first|50000016|\n');
+        expect(sink.voices.last, const VoiceActivity(memory: 1), reason: 'the play the radio accepted is the one on the air');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a refused rename asks the radio again, so the slot does not keep a name it never took', () {
+      fakeAsync((async) {
+        connect();
+        session.renameVoiceMemory(3, 'CQ contest');
+        final rename = seqOf('dvk set_name');
+        sink.sent.clear();
+        session.feed('R$rename|50000016|\n');
+        expect(commands(), ['sub dvk all']);
+        expect(sink.diagnostics.last, contains('rename memory 3'));
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a stop names no slot: there is one keyer, doing one thing', () {
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(4);
+        sink.sent.clear();
+        session.stopVoice();
+        expect(commands(), ['dvk playback_stop']);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('renames on the radio, as the radio will hold the name, an empty one back to its default', () {
+      fakeAsync((async) {
+        connect();
+        session.renameVoiceMemory(3, 'Say "hi"  |  there');
+        // No `"` or `|`, which the API forbids; runs of spaces collapse as
+        // the radio collapses them, so what shows is what it will hold.
+        expect(commands(), ['dvk set_name id=3 name="Say hi there"']);
+        expect(
+          sink.memoryLists.last[2],
+          const VoiceMemory(memory: 3, name: 'Say hi there', durationMs: 2165),
+          reason: 'shown at once, not after the round trip',
+        );
+        sink.sent.clear();
+        session.renameVoiceMemory(3, 'x' * 70);
+        expect(commands().single, 'dvk set_name id=3 name="${'x' * 61}"', reason: 'the radio takes 61 characters inside the quotes');
+        sink.sent.clear();
+        session.renameVoiceMemory(3, '  ');
+        expect(commands().single, 'dvk set_name id=3 name="Recording 3"');
+        expect(sink.memoryLists.last[2].name, '');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('the radio pushing a slot back renamed updates it', () {
+      // The bare `id=` form, pushed after a rename, a recording or a clear.
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      session.feed('S5A3C2B1F|dvk id=3 name="CQ Contest" duration=4210\n');
+      expect(sink.memoryLists.last[2], const VoiceMemory(memory: 3, name: 'CQ Contest', durationMs: 4210));
+    });
+
+    test('an empty slot is refused here, never sent', () {
+      // Per the API reference a play of an empty slot answers 0 and can
+      // leave the radio keyed.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(2);
+        expect(commands().where((c) => c.startsWith('dvk playback_start')), isEmpty);
+        expect(sink.voices.last, const VoiceActivity(memory: 2, doubtful: true));
+        async.elapse(voiceDoubtLinger);
+        expect(sink.voices.last, isNull);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('an unlicensed answer to any dvk command turns the keyer off', () {
+      // The API reference's own word for an unlicensed radio — the status
+      // line's enabled= says nothing about the licence.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        session.feed('R${seqOf('dvk playback_start id=3')}|50004001|\n');
+        expect(session.voiceMemoryCount, 0);
+        expect(sink.memoryLists.last, isEmpty);
+        expect(sink.voices.last, const VoiceActivity(memory: 3, doubtful: true));
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a status saying disabled, or enabled=0, holds no memories until it says otherwise', () {
+      session.feed('${_dvkStatusLines.join('\n')}\n');
+      session.feed('S7C1A8533|dvk status=disabled enabled=1\n');
+      expect(session.voiceMemoryCount, 0);
+      session.feed('S7C1A8533|dvk status=idle enabled=0\n');
+      expect(session.voiceMemoryCount, 0);
+      session.feed('S7C1A8533|dvk status=idle enabled=1\n');
+      expect(session.voiceMemoryCount, maxVoiceMemories);
+      expect(sink.memoryLists.last, hasLength(maxVoiceMemories));
+    });
+
+    test('a licence value that is neither 0 nor 1 says nothing', () {
+      session.feed('S53C4018F|license feature name=DIGITAL_VOICE_KEYER enabled=maybe reason=PLUS\n');
+      expect(session.voiceMemoryCount, maxVoiceMemories);
+    });
+
+    test('a keyer the licence turns off holds no memories, and says so the moment it is told', () {
+      // A FLEX without SmartSDR+ is a radio with no voice keyer: its keys
+      // disabled and F1-F8 free, like any other radio without one — not
+      // eight live keys whose every press the radio refuses.
+      fakeAsync((async) {
+        connect();
+        expect(session.voiceMemoryCount, maxVoiceMemories, reason: 'nothing said about the licence yet: offered');
+        // As captured, but for the flag.
+        session.feed('S53C4018F|license feature name=DIGITAL_VOICE_KEYER enabled=0 reason=PLUS\n');
+        expect(session.voiceMemoryCount, 0);
+        expect(sink.memoryLists.last, isEmpty, reason: 'the report is what makes the surfaces read the new count');
+        expect(sink.problems.whereType<String>(), isEmpty, reason: 'a radio without the licence is not a radio with a problem');
+        session.feed('S53C4018F|license feature name=DIGITAL_VOICE_KEYER enabled=1 reason=PLUS\n');
+        expect(session.voiceMemoryCount, maxVoiceMemories);
+        expect(sink.memoryLists.last[2].name, '59-NY-TU', reason: 'the slots come back with the licence');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('an unlicensed answer before the slots still holds none', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('S53C4018F|license feature name=DIGITAL_VOICE_KEYER enabled=0 reason=PLUS\n');
+        session.feed('${_dvkStatusLines.join('\n')}\n');
+        expect(sink.memoryLists.last, isEmpty);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('other licence features say nothing about the keyer', () {
+      session.feed('S53C4018F|license feature name=ALPHA enabled=0 reason=LICENSE_FILE\n');
+      expect(session.voiceMemoryCount, maxVoiceMemories);
+    });
+
+    test('teardown stops a memory on the air', () {
+      // A memory transmits, and nothing else will stop it once this client
+      // has gone.
+      fakeAsync((async) {
+        connect();
+        session.playVoiceMemory(3);
+        sink.sent.clear();
+        session.teardown();
+        expect(commands().first, 'dvk playback_stop');
+        expect(sink.voices.last, isNull);
+        async.flushTimers();
+      });
+    });
+
+    test('the driver offers a memory per function key, before any connection', () {
+      expect(const FlexRadioDriver().voiceMemoryCountWith(const {}), maxVoiceMemories);
     });
   });
 }

@@ -65,6 +65,9 @@ class _FakeSink implements EquipmentSink {
   void reportVoiceActivity(VoiceActivity? activity) {}
 
   @override
+  void reportVoiceMemories(List<VoiceMemory> memories) {}
+
+  @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
   @override
   void reportProblem(String? message) => problems.add(message);

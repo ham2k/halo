@@ -49,6 +49,8 @@ import 'vfo_snap.dart';
 export 'keyer_repeat.dart' show KeyerRepeatWait;
 export 'main_vfo.dart';
 
+part 'cat_node_sink.dart';
+
 const _uuidGenerator = Uuid();
 
 /// Bump when the stored shape changes in a way a reader has to know about.
@@ -875,8 +877,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   int get voiceMemoryCount => _keying.voiceMemoryCount;
   bool get canRecordVoice => _keying.canRecordVoice;
   bool get voiceMessagesAreLocal => _keying.voiceMessagesAreLocal;
+  bool get voiceMessagesNamedOnRadio => _keying.voiceMessagesNamedOnRadio;
   String voiceMessageLabel(int n) => _keying.voiceMessageLabel(n);
   int voiceMessageDuration(int n) => _keying.voiceMessageDuration(n);
+  Future<void> setVoiceMessageLabel(int n, String label) => _keying.setVoiceMessageLabel(n, label);
   ({String model, String text})? get voiceRecordingHelp => _keying.voiceRecordingHelp;
   ValueNotifier<VoiceActivity?> get voiceActivity => _keying.voiceActivity;
   void playVoiceMemory(int n, {bool repeat = true}) => _keying.playVoiceMemory(n, repeat: repeat);
@@ -1819,6 +1823,16 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // that end one feed the watch through the normal reading path.
         _keying.noteVoiceActivity(uuid, activity);
       },
+      onVoiceMemories: (memories) {
+        if (runtime.connection != connection) return;
+        // NOT _noteAlive: a rename reports the slots itself, from the app's
+        // own keypress rather than a byte off the radio.
+        if (listEquals(stateFor(uuid).voiceMemories, memories)) return;
+        _setState(uuid, stateFor(uuid).copyWith(voiceMemories: memories));
+        // A peer following this radio reads the names and lengths off its
+        // status, which only a keying change republishes.
+        _keying.onKeyingChanged();
+      },
       onProblem: (message) {
         if (runtime.connection != connection) return;
         if (stateFor(uuid).problem == message) return;
@@ -2649,80 +2663,4 @@ class _NodeRuntime {
   /// per retry for the rest of the session. Cleared by [connect], the
   /// operator's own try after replugging.
   bool linesRefused = false;
-}
-
-class _NodeSink implements EquipmentSink {
-  final EquipmentConnection connection;
-  final void Function(VfoReading) onReading;
-  final void Function(num) onPower;
-  final void Function(bool) onTransmitting;
-  final void Function(RadioMeter, num) onMeter;
-  final void Function(int) onKeyerSpeed;
-  final void Function(CwSendProgress?) onCwProgress;
-  final void Function(VoiceActivity?) onVoiceActivity;
-  final void Function(String?) onDiagnostic;
-  final void Function(String?) onProblem;
-  final void Function(List<EquipmentChannel>) onChannels;
-  final void Function(List<SwitchAntenna>, List<SwitchPort>) onSwitchState;
-  final void Function() onAlive;
-  final void Function(List<int> bytes) onSend;
-
-  _NodeSink({
-    required this.connection,
-    required this.onSend,
-    required this.onReading,
-    required this.onPower,
-    required this.onTransmitting,
-    required this.onMeter,
-    required this.onKeyerSpeed,
-    required this.onCwProgress,
-    required this.onVoiceActivity,
-    required this.onDiagnostic,
-    required this.onProblem,
-    required this.onChannels,
-    required this.onSwitchState,
-    required this.onAlive,
-  });
-
-  @override
-  void send(List<int> bytes) {
-    onSend(bytes);
-    connection.send(bytes);
-  }
-
-  @override
-  void report(VfoReading reading) => onReading(reading);
-
-  @override
-  void reportPower(num watts) => onPower(watts);
-
-  @override
-  void reportTransmitting(bool transmitting) => onTransmitting(transmitting);
-
-  @override
-  void reportMeter(RadioMeter meter, num value) => onMeter(meter, value);
-
-  @override
-  void reportKeyerSpeed(int wpm) => onKeyerSpeed(wpm);
-
-  @override
-  void reportCwProgress(CwSendProgress? progress) => onCwProgress(progress);
-
-  @override
-  void reportVoiceActivity(VoiceActivity? activity) => onVoiceActivity(activity);
-
-  @override
-  void reportDiagnostic(String? note) => onDiagnostic(note);
-
-  @override
-  void reportProblem(String? message) => onProblem(message);
-
-  @override
-  void reportChannels(List<EquipmentChannel> channels) => onChannels(channels);
-
-  @override
-  void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) => onSwitchState(antennas, ports);
-
-  @override
-  void reportAlive() => onAlive();
 }

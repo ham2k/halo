@@ -782,6 +782,9 @@ class _CountingSink implements EquipmentSink {
   void reportCwProgress(CwSendProgress? progress) {}
   @override
   void reportVoiceActivity(VoiceActivity? activity) {}
+
+  @override
+  void reportVoiceMemories(List<VoiceMemory> memories) {}
   @override
   void reportDiagnostic(String? note) {}
   @override

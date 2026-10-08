@@ -12,19 +12,21 @@
 //
 // An answer of "not going" that arrives before any answer of "going" is
 // the one thing the polls can say about a REFUSED play — the memory empty,
-// the radio not in a voice mode — which no protocol here reports outright.
-// It is shown as doubtful (a question mark) for a second rather than as a
-// play that simply ended, so an unrecorded memory does not pass for a
-// short one. Doubt is not an end: the polls and the ceiling run on
+// the radio not in a voice mode — which most protocols here never report
+// outright. It is shown as doubtful (a question mark) for a second rather
+// than as a play that simply ended, so an unrecorded memory does not pass
+// for a short one. A protocol that DOES refuse outright (SmartSDR's error
+// answer) doubts at once through [VoiceActivityTracker.refuse], recording or
+// not: a refusal is the radio's word, not a read that cannot tell. Doubt is not an end: the polls and the ceiling run on
 // through it, a "going" answer takes the question mark away (a radio can
 // need more than one poll to key up), and the doubt expiring stops the
 // radio before clearing — an activity the app no longer shows must never
 // be one it can no longer stop.
 //
-// A RECORDING is never doubted. The FT-891 answers its recording read with
-// "idle" while its own panel blinks REC, so an unconfirmed recording says
-// more about the read than about the radio — and a doubt that stopped one
-// would take the operator's audio with it. A recording ends at its ceiling
+// A RECORDING is never doubted by a poll. The FT-891 answers its recording
+// read with "idle" while its own panel blinks REC, so an unconfirmed
+// recording says more about the read than about the radio — and a doubt
+// that stopped one would take the operator's audio with it. A recording ends at its ceiling
 // or when the operator stops it, which is what ends one anyway.
 
 import 'dart:async';
@@ -155,6 +157,20 @@ class VoiceActivityTracker {
     // A second "not going" while already in doubt changes nothing: the
     // linger runs its course, so the question mark is seen.
     if (activity.doubtful) return;
+    _beginDoubt(activity);
+  }
+
+  /// The radio REFUSED the command outright — an error answer to it, which
+  /// only some protocols give (SmartSDR's). Doubtful at once, recording or
+  /// not and however soon: unlike a poll's "not going", a refusal cannot be
+  /// a radio that has not keyed up yet, nor a read that cannot tell.
+  void refuse() {
+    final activity = _activity;
+    if (activity == null || activity.doubtful) return;
+    _beginDoubt(activity);
+  }
+
+  void _beginDoubt(VoiceActivity activity) {
     _activity = activity.asDoubtful();
     report(_activity);
     _doubt = Timer(voiceDoubtLinger, () {

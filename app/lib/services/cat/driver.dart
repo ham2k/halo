@@ -74,6 +74,13 @@ abstract class EquipmentSink {
   /// at [voiceActivityCeiling] when it never does.
   void reportVoiceActivity(VoiceActivity? activity);
 
+  /// What the radio itself calls its voice memories and how long each runs
+  /// — the whole list each time any of it changes, like [reportChannels].
+  /// Only from a [RadioNamedVoiceMemories] session; what it reports outranks
+  /// the labels and measured lengths the app keeps for a radio that holds
+  /// neither (docs/design/cat.md § Voice keying).
+  void reportVoiceMemories(List<VoiceMemory> memories);
+
   /// Something a DEVELOPER would want to know about this session — what a
   /// protocol negotiated, what a driver had to work out for itself. Not an
   /// error (nothing is wrong) and not a reading (it is about the session, not
@@ -414,6 +421,17 @@ abstract class VoiceKeyerSession implements EquipmentSession {
 
   /// Stops whatever is playing or recording.
   void stopVoice();
+}
+
+/// A voice keyer whose memories carry their names and lengths ON THE RADIO
+/// — a FlexRadio's DVK — and report them through
+/// [EquipmentSink.reportVoiceMemories]. Naming one is then the radio's
+/// business too: a name kept in the app as well would be a second answer to
+/// "what is memory 3", and every other client of the radio sees the radio's.
+abstract class RadioNamedVoiceMemories implements VoiceKeyerSession {
+  /// Names memory [n] on the radio; an empty [name] gives it back the
+  /// radio's own default.
+  void renameVoiceMemory(int n, String name);
 }
 
 /// A transceiver whose CAT can key and unkey the transmitter outright —

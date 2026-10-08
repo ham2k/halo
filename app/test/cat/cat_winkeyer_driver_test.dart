@@ -40,6 +40,9 @@ class _FakeSink implements EquipmentSink {
   void reportCwProgress(CwSendProgress? p) => progress.add(p);
   @override
   void reportVoiceActivity(VoiceActivity? activity) => fail('a keyer has no voice memories');
+
+  @override
+  void reportVoiceMemories(List<VoiceMemory> memories) {}
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
   @override

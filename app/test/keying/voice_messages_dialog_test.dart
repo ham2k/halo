@@ -87,6 +87,20 @@ void main() {
     expect(find.textContaining('Exchange'), findsOneWidget, reason: 'the list behind shows it');
   });
 
+  testWidgets('a Save with nothing typed writes nothing over a name that changed underneath', (tester) async {
+    // On a radio that names its own memories the field can open on a name
+    // the radio has since replaced; saving it unedited would rename the slot
+    // for every client of that radio.
+    await services.settings.setVoiceMessageLabel(3, 'CQ');
+    await open(tester);
+    await tester.tap(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
+    await services.settings.setVoiceMessageLabel(3, 'Renamed elsewhere');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(services.settings.voiceMessageLabel(3), 'Renamed elsewhere');
+  });
+
   /// The list names the memories; everything one DOES to a memory lives in
   /// its own dialog, which is where these tests go.
   Future<void> openMemory(WidgetTester tester, int n) async {

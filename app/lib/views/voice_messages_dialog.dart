@@ -17,7 +17,10 @@
 // The length is MEASURED, never typed and never asked for: every play times
 // itself (CatService.playVoiceMemory, docs/design/cat.md § Voice keying), so
 // a memory is measured the first time it is used and cannot drift from the
-// audio the way a number someone typed would. With no radio that can play, the rows
+// audio the way a number someone typed would. A radio that names and times
+// its own memories (a FlexRadio's DVK) is the exception: its names and
+// lengths are the ones shown, and a label saved here is saved on the radio.
+// With no radio that can play, the rows
 // stay editable and the buttons are gone: a label is worth setting before the
 // rig is on the desk.
 
@@ -123,7 +126,7 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   subtitle: Text(
                     activity?.memory == n
                         ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
-                        : (cat.voiceMessageDuration(n) > 0 ? voiceDurationText(context, cat.voiceMessageDuration(n)) : m.notMeasured),
+                        : (cat.voiceMessageDuration(n) > 0 ? voiceDurationText(context, cat.voiceMessageDuration(n)) : voiceUnknownLengthText(context, cat)),
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: activity?.memory == n || cat.voiceMessageDuration(n) > 0 ? null : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -166,7 +169,14 @@ class _VoiceMessageDialog extends StatefulWidget {
 }
 
 class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
-  late final _label = TextEditingController(text: widget.services.cat.voiceMessageLabel(widget.n));
+  late final _opened = widget.services.cat.voiceMessageLabel(widget.n);
+  late final _label = TextEditingController(text: _opened);
+
+  /// Whether the operator changed the label. A Save without a change writes
+  /// nothing: on a radio that names its own memories the field may hold what
+  /// was shown before the radio said otherwise, and saving that would rename
+  /// the slot for every client of the radio.
+  bool get _edited => _label.text != _opened;
 
   @override
   void dispose() {
@@ -179,8 +189,8 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     // Nothing to save for a peer's memory: the name is that device's, and
     // writing this station's own label would rename audio nobody is looking
     // at.
-    if (widget.services.cat.voiceMessagesAreLocal) {
-      await widget.services.settings.setVoiceMessageLabel(widget.n, _label.text.trim());
+    if (_edited && widget.services.cat.voiceMessagesAreLocal) {
+      await widget.services.cat.setVoiceMessageLabel(widget.n, _label.text.trim());
     }
     navigator.pop();
   }
@@ -234,6 +244,13 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                     m.namedOnDevice(device: peerDeviceLabel(cat.followedPeerRadio)),
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
                   ),
+                )
+              // A name typed here reaches every other client of that radio,
+              // which is worth knowing before typing one.
+              else if (cat.voiceMessagesNamedOnRadio)
+                Padding(
+                  padding: rowInset.copyWith(bottom: Space.md),
+                  child: Text(m.namedOnRadio, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8))),
                 ),
               // Shown, never asked for: every play times itself, so a memory
               // is measured the first time it is used and there is nothing
@@ -263,7 +280,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                       ),
                     Expanded(
                       child: Text(
-                        duration > 0 ? voiceDurationText(context, duration) : m.notMeasured,
+                        duration > 0 ? voiceDurationText(context, duration) : voiceUnknownLengthText(context, cat),
                         textAlign: TextAlign.center,
                         style: duration > 0
                             ? theme.textTheme.bodyLarge
@@ -326,6 +343,13 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
 /// has milliseconds in it (settings_service.dart), and a memory rounded to
 /// the second reads as if the app guessed.
 String voiceDurationText(BuildContext context, int millis) => context.t.settings.radio.voiceMessages.durationSeconds(n: (millis / 1000).toStringAsFixed(1));
+
+/// What a memory with no length says: on a radio that times its own
+/// memories, no length is an empty memory, and playing it measures nothing.
+String voiceUnknownLengthText(BuildContext context, CatService cat) {
+  final m = context.t.settings.radio.voiceMessages;
+  return cat.voiceMessagesNamedOnRadio ? m.emptyOnRadio : m.notMeasured;
+}
 
 /// What to CALL the device holding the memories — its name, or its id when a
 /// pick made as the peer dropped stored no name (`PeerRadioSelection`).

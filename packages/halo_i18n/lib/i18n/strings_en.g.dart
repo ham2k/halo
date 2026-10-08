@@ -6967,6 +6967,9 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: '$n s'
 	String durationSeconds({required Object n}) => '${n} s';
 
+	/// en: 'Empty'
+	String get emptyOnRadio => 'Empty';
+
 	/// en: 'Unknown length'
 	String get notMeasured => 'Unknown length';
 
@@ -6993,6 +6996,9 @@ class Translations$settings$radio$voiceMessages$en {
 
 	/// en: 'These memories are in $device's radio. Their names and lengths belong to that device.'
 	String namedOnDevice({required Object device}) => 'These memories are in ${device}\'s radio. Their names and lengths belong to that device.';
+
+	/// en: 'Saved in the radio, where its other clients see it too.'
+	String get namedOnRadio => 'Saved in the radio, where its other clients see it too.';
 
 	/// en: 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.'
 	String get recordHelpYaesuDvs => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
@@ -8565,6 +8571,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
+			'settings.radio.voiceMessages.emptyOnRadio' => 'Empty',
 			'settings.radio.voiceMessages.notMeasured' => 'Unknown length',
 			'settings.radio.voiceMessages.playButton' => 'Play',
 			'settings.radio.voiceMessages.recordButton' => 'Record',
@@ -8574,6 +8581,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notes:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'These memories are in ${device}\'s radio. Their names and lengths belong to that device.',
+			'settings.radio.voiceMessages.namedOnRadio' => 'Saved in the radio, where its other clients see it too.',
 			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.pill' => 'Voice',
@@ -9030,10 +9038,10 @@ extension on Translations {
 			'settings.station.placeholderPower' => 'Power (watts)',
 			'settings.station.placeholderPurpose' => 'Use this radio to keep track of which rig you\'re using for logging purposes',
 			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
-			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
-			'settings.station.cwKeyerField' => 'CAT CW keyer',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
+			'settings.station.cwKeyerField' => 'CAT CW keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.',
 			'settings.station.voiceMemories' => 'Voice memories',
 			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',

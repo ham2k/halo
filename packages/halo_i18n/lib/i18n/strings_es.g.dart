@@ -3218,6 +3218,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String get labelField => 'Etiqueta';
 	@override String labelKey({required Object n}) => 'Etiqueta de la memoria de voz ${n}';
 	@override String durationSeconds({required Object n}) => '${n} s';
+	@override String get emptyOnRadio => 'Vacía';
 	@override String get notMeasured => 'Duración desconocida';
 	@override String get playButton => 'Reproducir';
 	@override String get recordButton => 'Grabar';
@@ -3227,6 +3228,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String recordHelpTitle({required Object model}) => 'Notas del ${model}:';
 	@override String namedOnDevice({required Object device}) => 'Estas memorias están en la radio de ${device}. Sus nombres y duraciones pertenecen a ese dispositivo.';
+	@override String get namedOnRadio => 'Se guarda en la radio, donde también lo ven sus otros clientes.';
 	@override String get recordHelpYaesuDvs => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get recordHelpFt891 => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get pill => 'Voz';
@@ -4538,6 +4540,7 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etiqueta de la memoria de voz ${n}',
 			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
+			'settings.radio.voiceMessages.emptyOnRadio' => 'Vacía',
 			'settings.radio.voiceMessages.notMeasured' => 'Duración desconocida',
 			'settings.radio.voiceMessages.playButton' => 'Reproducir',
 			'settings.radio.voiceMessages.recordButton' => 'Grabar',
@@ -4547,6 +4550,7 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas del ${model}:',
 			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Estas memorias están en la radio de ${device}. Sus nombres y duraciones pertenecen a ese dispositivo.',
+			'settings.radio.voiceMessages.namedOnRadio' => 'Se guarda en la radio, donde también lo ven sus otros clientes.',
 			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.pill' => 'Voz',
@@ -5003,10 +5007,10 @@ extension on TranslationsEs {
 			'settings.station.antennaType' => 'Tipo de antena',
 			'settings.station.antennaTypeRequired' => 'Elige un tipo de antena',
 			'settings.station.keyType' => 'Tipo de manipulador',
-			'settings.station.keyTypeRequired' => 'Elige un tipo de manipulador',
-			'settings.station.softwareIntermediaries' => 'Intermediarios de software',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.keyTypeRequired' => 'Elige un tipo de manipulador',
+			'settings.station.softwareIntermediaries' => 'Intermediarios de software',
 			'settings.station.otherBrands' => 'Otras marcas',
 			'settings.station.otherEquipment' => 'Otros equipos (antenas, manipuladores, etc.)',
 			'settings.station.newAntenna' => 'Nueva antena',

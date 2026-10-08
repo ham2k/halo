@@ -1544,7 +1544,18 @@ operator logs CW keys CW.
 (Radio settings, like the CW ones) is the whole of it — nothing to render, nothing to sanitize, and
 no `voiceMessage$n` beside it. A memory is keyed by NUMBER, and every surface offers exactly as many
 as radio1's session says it has (`voiceMemoryCount`: 8 on an Icom, 5 on a Yaesu, 4 on a TS-590, 8
-on a K4, 2 on a KX2/KX3), which is why the labels are eight and a radio with fewer shows fewer.
+on a K4, 2 on a KX2/KX3, 8 of a FlexRadio's 12), which is why the labels are eight and a radio with fewer shows fewer.
+
+**Unless the radio names them itself.** A FlexRadio's DVK holds a name and an exact length per slot,
+which every SmartSDR client sees. A `RadioNamedVoiceMemories` session reports them
+(`EquipmentSink.reportVoiceMemories`, into `EquipmentState.voiceMemories`), and while that radio is
+radio1 — or is the radio a peer keys — they ARE the labels and lengths: the settings' copies are for
+radios that keep neither, and one shown over the radio's own would name audio by a label no other
+client of that radio sees. Renaming in the Phone Keyer dialog writes to the radio — only when the
+label was changed, since the field may hold what showed before the radio said otherwise — and a play
+is not measured, since the radio already said how long the memory runs; a memory with no length
+reads "Empty" rather than "Unknown length". Disconnected, the settings answer
+again.
 
 **Radio1 plays, not the key in use** — a peer's radio1 included, whose memories play over the link
 and whose labels and measured lengths come with them (§ Keying a peer's radio). `VoiceKeyerSession` (driver.dart) sits beside `CwKeyerSession`,
@@ -1624,8 +1635,37 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   and KX3 are `kx` — no message command at all, only switch emulation: `SWT11;` (MSG) then `SWT19;`
   or `SWT27;` (the 1 and 2 keys), `RX;` to stop, two memories. A K3 with a KDVR3 plays through
   different switches and is not covered.
-- **FlexRadio** has no voice memories in its API; the **placeholder radio** "plays" for four
-  seconds and records until stopped, so the surfaces run on a web build.
+- **FlexRadio** (SmartSDR+ only — its DVK is a licensed feature), from FlexRadio's own API reference,
+  [TCPIP-dvk](https://github.com/flexradio/smartsdr-api-docs/wiki/TCPIP-dvk), with the status and
+  licence lines captured from a FLEX-6600 on 4.2.20 and play, stop, record and rename verified on it.
+  `dvk playback_start id=n` plays and keys the radio itself, `dvk rec_start id=n` records (without
+  keying, ten seconds at most, the radio stopping and saving it there), and the stops are bare —
+  `dvk playback_stop`, `dvk rec_stop` — since there is one keyer doing one thing. `dvk set_name
+  id=n name="…"` names a slot: at most 61 characters, no `"` or `|`, runs of spaces collapsed, which
+  is how the name is shown before the radio confirms it. `sub dvk all` answers the status and one
+  `dvk added id=n name="…" duration=<ms>` per slot, and every state change after that — the radio
+  ending a play or a recording by itself included — is pushed to every subscribed client, as is the
+  bare `dvk id=n name="…" duration=<ms>` update after a rename or a recording. So nothing is polled:
+  the status (`playback`, `recording`, `preview`, `idle`) confirms and ends an activity, and a play's
+  ceiling — its slot's own length plus 3 s; a recording's is `voiceCeilingSeconds` — is only a
+  backstop. A non-zero `R` reply to a start is the radio REFUSING it (an unparseable command, no
+  such slot, no licence), which no status says, so it is doubtful at once — matched to the start it
+  answers, not to whatever plays that memory now. A start stops whatever is going first: the
+  reference warns that an operation started over another can leave the keyer inconsistent. A slot
+  the radio says is EMPTY is refused here and never sent, because a play of one answers `0` and can
+  leave the radio keyed. A refused rename re-reads the slots (`sub dvk all`), so the slot does not
+  keep a name the radio never took. SmartSDR's default names (`Recording 3`) read as no name.
+
+  An unlicensed radio answers every `dvk` command with `50004001`, and the status line's `enabled=`
+  is always 1. `sub license all` answers at once with every feature, the keyer's among them
+  (`license feature name=DIGITAL_VOICE_KEYER enabled=1 reason=PLUS`, captured). Either the licence
+  line's `enabled=0` or a `50004001` reply makes the session hold NO memories — `voiceMemoryCount` 0
+  and an empty `reportVoiceMemories`, which is what makes the surfaces read the new count — and so
+  does the `status=disabled` or `enabled=0` the reference defines as unavailable. A radio without
+  SmartSDR+ is then a radio without a voice keyer: its keys disabled, F1-F8 free, and no problem on
+  its row. Until any of these has said, the memories are offered.
+- The **placeholder radio** "plays" for four seconds and records until stopped, so the surfaces run
+  on a web build.
 
 ## PTT
 

@@ -462,6 +462,9 @@ class _RecordingSink implements EquipmentSink {
   void reportVoiceActivity(VoiceActivity? activity) {}
 
   @override
+  void reportVoiceMemories(List<VoiceMemory> memories) {}
+
+  @override
   void reportDiagnostic(String? note) => diagnostic = note;
   @override
   void reportProblem(String? message) => problems.add(message);

@@ -579,19 +579,57 @@ class CatKeying {
   /// owner's too — [voiceMessagesAreLocal] is what a surface asks before it
   /// offers to.
   String voiceMessageLabel(int n) {
-    if (!playsVoiceOverPeer) return settings.voiceMessageLabel(n);
+    if (!playsVoiceOverPeer) return _localVoiceLabel(station.localRadio1, n);
     return peer.voiceMessageLabel(n);
   }
 
   int voiceMessageDuration(int n) {
-    if (!playsVoiceOverPeer) return settings.voiceMessageDuration(n);
+    if (!playsVoiceOverPeer) return _localVoiceDuration(station.localRadio1, n);
     return peer.voiceMessageDuration(n);
+  }
+
+  /// What [uuid] itself says about its memories — empty unless it is a radio
+  /// that names and times them on the radio (a FlexRadio's DVK), and is
+  /// connected and has said so. Where it is not empty it is the whole
+  /// answer: the settings' labels and measured lengths are for radios that
+  /// keep neither, and one shown over the radio's own would name audio by a
+  /// label no other client of that radio sees.
+  List<VoiceMemory> _radioHeldMemories(String? uuid) => uuid == null ? const [] : station.stateFor(uuid).voiceMemories ?? const [];
+
+  /// [uuid]'s own account of memory [n]: null when it keeps none, so the
+  /// settings answer, and an empty memory when it keeps them but not this one.
+  VoiceMemory? _radioHeldMemory(String? uuid, int n) {
+    final held = _radioHeldMemories(uuid);
+    if (held.isEmpty) return null;
+    return held.where((m) => m.memory == n).firstOrNull ?? VoiceMemory(memory: n);
+  }
+
+  String _localVoiceLabel(String? uuid, int n) => _radioHeldMemory(uuid, n)?.name ?? settings.voiceMessageLabel(n);
+
+  int _localVoiceDuration(String? uuid, int n) => _radioHeldMemory(uuid, n)?.durationMs ?? settings.voiceMessageDuration(n);
+
+  /// Names memory [n] — on the radio when radio1 holds its own names, in
+  /// the settings otherwise. Nothing for a peer's memory: the name is that
+  /// device's ([voiceMessagesAreLocal]).
+  Future<void> setVoiceMessageLabel(int n, String label) async {
+    if (!voiceMessagesAreLocal) return;
+    final uuid = station.localRadio1;
+    final session = uuid == null ? null : station.connectedSession(uuid);
+    if (session is RadioNamedVoiceMemories && _radioHeldMemories(uuid).isNotEmpty) {
+      session.renameVoiceMemory(n, label);
+      return;
+    }
+    await settings.setVoiceMessageLabel(n, label);
   }
 
   /// Whether the memories in play are this device's own — false while a
   /// peer's radio holds them, which is what stops a label editor from
   /// writing a name onto audio it is not about.
   bool get voiceMessagesAreLocal => !playsVoiceOverPeer;
+
+  /// Whether radio1 names its memories itself, so a label typed here is
+  /// written to the radio rather than kept in the app.
+  bool get voiceMessagesNamedOnRadio => voiceMessagesAreLocal && _radioHeldMemories(station.localRadio1).isNotEmpty;
 
   /// How to record a memory on radio1, where the radio needs saying — see
   /// [EquipmentModel.recordingHelp]. Null when nothing can record, or when
@@ -781,6 +819,9 @@ class CatKeying {
     _playStart = null;
     _playDoubted = false;
     if (memory == null || start == null || doubted) return;
+    // A radio that times its own memories has already said how long this
+    // one runs, and a measurement stored here would never be read.
+    if (_radioHeldMemories(station.localRadio1).isNotEmpty) return;
     final elapsed = realNowMillis() - start;
     final ceiling = _voiceKeyer?.voiceMemoryCeiling ?? voiceActivityCeiling;
     if (elapsed >= ceiling.inMilliseconds) return;
@@ -953,8 +994,8 @@ class CatKeying {
       voice: voiceActivityToWire(voiceActivityFor(radioId)),
       // Only as many as that radio has: a label for a ninth memory is a
       // label for a button nobody will be shown.
-      voiceLabels: [for (var n = 1; n <= memories; n++) settings.voiceMessageLabel(n)],
-      voiceDurationsMs: [for (var n = 1; n <= memories; n++) settings.voiceMessageDuration(n)],
+      voiceLabels: [for (var n = 1; n <= memories; n++) _localVoiceLabel(radioId, n)],
+      voiceDurationsMs: [for (var n = 1; n <= memories; n++) _localVoiceDuration(radioId, n)],
     );
   }
 
