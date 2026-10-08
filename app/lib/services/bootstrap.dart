@@ -110,10 +110,11 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
       web: kIsWeb
           ? DriftWebOptions(sqlite3Wasm: Uri.parse('sqlite3.wasm'), driftWorker: Uri.parse('drift_worker.js'), onResult: (result) => webDbResult = result)
           : null,
-      // drift resolves this lazily, right before opening the file — which is
-      // what makes it the correct place to hang the one-shot relocation off
-      // Documents: no boot step can accidentally open the database first.
-      native: kIsWeb ? null : DriftNativeOptions(databaseDirectory: appDataDirectory),
+      // drift resolves these options' directory lazily, right before opening
+      // the file — which is what makes it the correct place to hang the
+      // one-shot relocation off Documents: no boot step can accidentally open
+      // the database first.
+      native: kIsWeb ? null : logDatabaseOptions(),
     ),
   );
   // Opened HERE rather than left to whichever query happens to be first.

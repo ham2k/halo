@@ -12,12 +12,15 @@
 
 import 'dart:io';
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show HaLoDatabase;
 import 'package:ham2k_logger/services/app_storage.dart';
 import 'package:ham2k_logger/services/app_storage_prefs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:path/path.dart' as p;
+import 'package:sqlite3/sqlite3.dart' show sqlite3;
 
 import '../support/error_reporting_fakes.dart';
 
@@ -451,6 +454,30 @@ void main() {
       SharedPreferences.resetStatic();
 
       expect((await SharedPreferences.getInstance()).getString('operatorCall'), isNull);
+    });
+  });
+
+  group('logDatabaseOptions', () {
+    // Something outside the app holding the log file for a moment must cost
+    // a short wait, not a failed write: without a busy timeout SQLite gives up
+    // at once, and a sync round's COMMIT fails with `database is locked`.
+    test('a write waits out another connection\'s lock instead of failing', () async {
+      final file = File(p.join(target.path, '$kDatabaseName.sqlite'));
+      // In the background, as the app opens it: the lock below is released by
+      // a timer on this isolate, which a write blocking HERE would starve.
+      final db = HaLoDatabase(NativeDatabase.createInBackground(file, setup: logDatabaseOptions().setup));
+      addTearDown(db.close);
+      // Open and migrate before the lock is taken, so the write below is the
+      // only statement that meets it.
+      await db.customSelect('SELECT 1').get();
+
+      final other = sqlite3.open(file.path);
+      addTearDown(other.dispose);
+      other.execute('BEGIN EXCLUSIVE');
+      final released = Future<void>.delayed(const Duration(milliseconds: 300), () => other.execute('COMMIT'));
+
+      await db.customStatement('CREATE TABLE probe (x)');
+      await released;
     });
   });
 }

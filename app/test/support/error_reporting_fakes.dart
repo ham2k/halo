@@ -40,7 +40,8 @@ class RecordedException {
 class RecordedUserContext {
   final String? callsign;
   final String? accountId;
-  RecordedUserContext(this.callsign, this.accountId);
+  final String? databasePath;
+  RecordedUserContext(this.callsign, this.accountId, this.databasePath);
 }
 
 class RecordedBreadcrumb {
@@ -102,8 +103,8 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   }
 
   @override
-  void updateUserContext({String? callsign, String? accountId}) {
-    userContextCalls.add(RecordedUserContext(callsign, accountId));
+  void updateUserContext({String? callsign, String? accountId, String? databasePath}) {
+    userContextCalls.add(RecordedUserContext(callsign, accountId, databasePath));
   }
 
   @override

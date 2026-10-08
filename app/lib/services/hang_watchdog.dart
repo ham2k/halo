@@ -45,7 +45,7 @@ import 'hang_watchdog_spawn.dart';
 ///
 /// Generous on purpose. Everything guarded here already carries its own
 /// budget — CAT's shutdown 5 s, the extension runtime 2 s, the database close
-/// about 4 s between its steps, a TCP connect 5 s — so this only ever fires
+/// about 8 s between its steps, a TCP connect 5 s — so this only ever fires
 /// past every one of them,
 /// and it measures silence rather than slowness, which no honest wait
 /// produces. The cost of firing early is an app killed under an operator who

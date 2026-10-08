@@ -8,11 +8,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:drift_flutter/drift_flutter.dart' show DriftNativeOptions;
 import 'package:flutter/foundation.dart';
 import 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition;
 import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/common.dart' show CommonDatabase;
 
 import '../config/dev_flags.dart';
 import 'app_storage_prefs.dart';
@@ -61,6 +63,36 @@ String get windowsDataFolderName => switch (kEdition) {
 /// Memoized, so every caller agrees on one answer even if a migration failed
 /// and the answer is "we're still on the old location".
 Future<Directory> appDataDirectory() async => (await _storage()).directory;
+
+/// The log database's full path, or null on web, where it lives in browser
+/// storage rather than a file. drift_flutter names the file the same way.
+Future<String?> databaseFilePath() async => kIsWeb ? null : p.join((await appDataDirectory()).path, '$kDatabaseName.sqlite');
+
+/// How the log's file is opened on every native platform. One function, so
+/// the test that proves the busy timeout opens the file exactly as bootstrap
+/// does.
+DriftNativeOptions logDatabaseOptions() => const DriftNativeOptions(databaseDirectory: appDataDirectory, setup: _configureLogConnection);
+
+/// How long a statement on the log's connection waits for a lock held by
+/// another connection to the file before failing — see
+/// [_configureLogConnection]. The quit's drain budget is sized from it.
+const logBusyTimeout = Duration(seconds: 5);
+
+/// Lets a statement on the log's connection wait [logBusyTimeout] for a lock
+/// held by another connection to the file.
+///
+/// The app reaches the log through one connection only, so a lock it runs
+/// into belongs to something else — another process with the file open.
+/// SQLite's default is to give up at once, which fails the statement (a sync
+/// round's COMMIT, a saved QSO) with `database is locked` over a lock that
+/// would have cleared moments later. SQLite still fails at once where waiting
+/// could deadlock: a transaction that has read and now wants to write while
+/// the other side already holds the write lock. The bound matters too: the
+/// connection is serialized, so every query behind the waiting one waits
+/// with it.
+///
+/// Top-level because drift sends it to the isolate that opens the file.
+void _configureLogConnection(CommonDatabase db) => db.execute('PRAGMA busy_timeout = ${logBusyTimeout.inMilliseconds}');
 
 /// What [guardPreferencesFile] had to do to hand the plugin a file it can
 /// read. Anything but [none] is worth telling the operator about, because

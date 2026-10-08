@@ -18,7 +18,7 @@
 // services. The StatusBar surface attaches later via [attachStatusBar]
 // (errors before that point are logged/uploaded but produce no notice).
 //
-// User context (callsign + LoFi account id) flows through [attachSettings]
+// User context (callsign, LoFi account id, log file path) flows through [attachSettings]
 // the same way: SettingsService already notifyListeners on a callsign
 // change, an account link/switch, and the consent toggle itself, so one
 // listener here re-evaluates on every trigger without duplicating this
@@ -26,7 +26,7 @@
 // SettingsService.consentAppData ("Share Usage Data") — reporting itself
 // (this file, and a real backend's crash uploads) is NOT consent-gated,
 // unlike app-polo's own Sentry integration, which disables Sentry entirely
-// without consent. Cleared (both fields null) the moment consent is off, so
+// without consent. Cleared (every field null) the moment consent is off, so
 // a prior opt-in's value can't linger in the backend's own scope.
 
 import 'dart:async';
@@ -239,14 +239,15 @@ class ErrorReportingService {
     _statusBar = statusBar;
   }
 
-  /// Keeps the backend's user context (callsign + LoFi account id) in step
-  /// with [settings] for the rest of the session — see file header.
-  static void attachSettings(SettingsService settings) {
-    _updateUserContext(settings);
-    settings.addListener(() => _updateUserContext(settings));
+  /// Keeps the backend's user context (callsign, LoFi account id, and the
+  /// log's [databasePath]) in step with [settings] for the rest of the
+  /// session — see file header.
+  static void attachSettings(SettingsService settings, {String? databasePath}) {
+    _updateUserContext(settings, databasePath);
+    settings.addListener(() => _updateUserContext(settings, databasePath));
   }
 
-  static void _updateUserContext(SettingsService settings) {
+  static void _updateUserContext(SettingsService settings, String? databasePath) {
     if (!settings.consentAppData) {
       _backend.updateUserContext();
       return;
@@ -254,7 +255,7 @@ class ErrorReportingService {
     final call = settings.activeProfile.operatorCall;
     final accountData = settings.syncState['accountData'] as Map?;
     final accountId = (accountData?['current_account'] as Map?)?['uuid'] as String?;
-    _backend.updateUserContext(callsign: call.isEmpty ? null : call, accountId: accountId);
+    _backend.updateUserContext(callsign: call.isEmpty ? null : call, accountId: accountId, databasePath: databasePath);
   }
 
   static void _installLocalHooks() {

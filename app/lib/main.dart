@@ -28,6 +28,7 @@ import 'views/map/map_gl_script.dart' show preloadMapGlLibrary;
 import 'views/operation_view.dart';
 import 'config/dev_bridge.dart';
 import 'config/dev_bridge_installer.dart';
+import 'services/app_storage.dart' show databaseFilePath;
 import 'services/auto_update_service.dart';
 
 import 'services/build_freshness_service.dart';
@@ -225,7 +226,7 @@ void _mainBody({
           'fontScale': services.settings.fontScale.name,
         });
         ErrorReportingService.attachStatusBar(services.statusBar);
-        ErrorReportingService.attachSettings(services.settings);
+        ErrorReportingService.attachSettings(services.settings, databasePath: await databaseFilePath());
         BuildFreshnessService(statusBar: services.statusBar).start();
         services.extensions.observeAppLifecycle();
 

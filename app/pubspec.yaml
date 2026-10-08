@@ -26,6 +26,10 @@ dependencies:
   collection: any
   drift: ^2.28.0
   drift_flutter: ^0.2.4
+  # The connection type drift_flutter's `setup` hook is handed (see
+  # logDatabaseOptions), and the raw connections tests open beside drift.
+  # Transitive via drift; named here to be importable.
+  sqlite3: ^2.4.0
   # Reading and unpacking .h2kext extension bundles (HALO-422). Already
   # present transitively; named here because a transitive dependency cannot
   # be imported.
@@ -146,10 +150,6 @@ dev_dependencies:
   # allowlist — see link_opener_test.dart. Same rule as fake_async: transitive
   # via url_launcher, but imported directly, so declared directly.
   plugin_platform_interface: ^2.1.8
-  # Opening a database snapshot WITHOUT the app's drift stack, to prove it
-  # is a usable backup — see database_snapshot_service_test.dart. Same rule
-  # as fake_async: transitive via drift, but imported directly.
-  sqlite3: ^2.4.0
   url_launcher_platform_interface: ^2.3.2
   # Faking the native updater to pin AutoUpdateService's once-per-process
   # setFeedURL contract — see auto_update_service_test.dart. Same rule again:

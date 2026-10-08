@@ -35,7 +35,7 @@ class _RecordingBackend implements ErrorReportingBackend {
   }
 
   @override
-  void updateUserContext({String? callsign, String? accountId}) {}
+  void updateUserContext({String? callsign, String? accountId, String? databasePath}) {}
 
   @override
   void updateEquipmentContext({String? radio}) {}

@@ -24,8 +24,12 @@ abstract class ErrorReportingBackend {
   /// Uploads an explicitly-caught error (ErrorReportingService.report()).
   void captureException(Object error, StackTrace? stackTrace, {String? context});
 
-  /// Updates the backend's user-identifying context. Both null clears it.
-  void updateUserContext({String? callsign, String? accountId});
+  /// Updates the backend's user-identifying context. All null clears it.
+  ///
+  /// [databasePath] is the log file's full path. It names the operator's OS
+  /// account (`C:\Users\<name>\…`), which is why it rides here, behind the
+  /// same consent as the callsign, rather than in a context of its own.
+  void updateUserContext({String? callsign, String? accountId, String? databasePath});
 
   /// Names the radio the app is driving, so every later event says what was
   /// on the other end of the cable. Null clears it — nothing is connected.
@@ -73,7 +77,7 @@ class NoopErrorReportingBackend implements ErrorReportingBackend {
   void captureException(Object error, StackTrace? stackTrace, {String? context}) {}
 
   @override
-  void updateUserContext({String? callsign, String? accountId}) {}
+  void updateUserContext({String? callsign, String? accountId, String? databasePath}) {}
 
   @override
   void updateEquipmentContext({String? radio}) {}

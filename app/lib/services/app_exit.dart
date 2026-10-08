@@ -10,6 +10,7 @@ import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
 
+import 'app_storage.dart' show logBusyTimeout;
 import 'error_policy.dart';
 import 'hang_watchdog.dart';
 
@@ -114,11 +115,16 @@ Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
 /// still gets its turn if the part that merely should takes too long.
 ///
 /// Both are bounded for the same reason CAT's shutdown is: a wedged write must
-/// not leave Cmd-Q hanging with no window and no feedback. Their sum is
-/// deliberately well under CAT's own ceiling — the steps are serialized and
-/// what an operator experiences is the total, so a matching 5s here would
-/// allow the very windowless wait each ceiling exists to prevent.
-const _drainBudget = Duration(milliseconds: 1500);
+/// not leave Cmd-Q hanging with no window and no feedback. The steps are
+/// serialized and what an operator experiences is the total, so neither is
+/// longer than its job needs.
+///
+/// The drain's job is to outlast one write waiting on another process's lock,
+/// which SQLite lets run for [logBusyTimeout]. Shorter, and a quit that meets
+/// such a lock times out the drain and then the close — the connection is
+/// still inside that write — so the write is lost AND the next launch reports
+/// an unclean quit instead of the `database is locked` that names the cause.
+final _drainBudget = logBusyTimeout + const Duration(seconds: 1);
 const _closeBudget = Duration(seconds: 2);
 const _markBudget = Duration(milliseconds: 500);
 

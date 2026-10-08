@@ -165,10 +165,15 @@ that with it.
 
 The public repo contains only the `ErrorReportingBackend` interface (no-op by
 default) and everything above. The Sentry SDK, the DSN, and the
-callsign/account-id attachment live entirely in `app_dist`. A plain
+user-context attachment live entirely in `app_dist`. A plain
 `flutter run` of the public repo uploads nothing at all, but still logs and
 still shows notices.
 
 Crash reporting itself is **not** consent-gated (unlike telemetry); only the
 identifying user context is, via `SettingsService.consentAppData`, and that
-gate lives in the public service so the backend can't bypass it.
+gate lives in the public service so the backend can't bypass it. That context
+is the callsign, the LoFi account id, and the log database's full path. The
+path is behind the gate because it names the operator's OS account
+(`C:\Users\<name>\…`); it is sent at all because which folder the log sits
+in — a synced Documents folder, or the app's own — is what a `database is
+locked` report needs to be read.

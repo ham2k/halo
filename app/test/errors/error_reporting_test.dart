@@ -250,14 +250,19 @@ void main() {
     }, backend: backend);
   });
 
-  test('attachSettings pushes callsign + account id only once consent is on, and clears both when it turns off', () async {
+  test('attachSettings pushes callsign, account id and log path only once consent is on, and clears them all when it turns off', () async {
+    // The log path names the operator's OS account, so it is personal data
+    // exactly as the callsign is — sent ungated, it would identify an
+    // operator who never opted in.
+    const path = r'C:\Users\someone\AppData\Local\Ham2K Logger\ham2k_logger.sqlite';
     final backend = FakeErrorReportingBackend();
     await withErrorHooks(() async {
       final settings = SettingsService(await SharedPreferences.getInstance());
-      ErrorReportingService.attachSettings(settings);
-      // Attaching itself evaluates once: no consent yet, both fields null.
+      ErrorReportingService.attachSettings(settings, databasePath: path);
+      // Attaching itself evaluates once: no consent yet, every field null.
       expect(backend.userContextCalls.last.callsign, isNull);
       expect(backend.userContextCalls.last.accountId, isNull);
+      expect(backend.userContextCalls.last.databasePath, isNull);
 
       await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
       // Not consented yet — the callsign must NOT reach the backend.
@@ -265,6 +270,7 @@ void main() {
 
       await settings.updateSettingsGroup(SettingsService.privacyGroup, {'consentAppData': true});
       expect(backend.userContextCalls.last.callsign, 'KI2D');
+      expect(backend.userContextCalls.last.databasePath, path);
 
       await settings.setSyncState({
         'accountData': {
@@ -277,6 +283,7 @@ void main() {
       await settings.updateSettingsGroup(SettingsService.privacyGroup, {'consentAppData': false});
       expect(backend.userContextCalls.last.callsign, isNull, reason: 'consent off must clear a prior opt-in');
       expect(backend.userContextCalls.last.accountId, isNull);
+      expect(backend.userContextCalls.last.databasePath, isNull);
     }, backend: backend);
   });
 

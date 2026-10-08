@@ -56,7 +56,7 @@ class _RecordingBackend implements ErrorReportingBackend {
   void captureException(Object error, StackTrace? stackTrace, {String? context}) => exceptions.add(error);
 
   @override
-  void updateUserContext({String? callsign, String? accountId}) {}
+  void updateUserContext({String? callsign, String? accountId, String? databasePath}) {}
 
   @override
   void updateEquipmentContext({String? radio}) {}
