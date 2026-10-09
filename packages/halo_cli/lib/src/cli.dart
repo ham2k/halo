@@ -61,7 +61,7 @@ Future<int> runHaloExt(List<String> argv) async {
     ..addOption('op', help: 'Operation: a file path, - for stdin, or inline JSON.')
     ..addOption('qso', help: 'A single QSO: a file path, - for stdin, or inline JSON.')
     ..addOption('qsos', help: 'QSOs as a JSON array: a file path, - for stdin, or inline JSON.')
-    ..addOption('spots', help: 'Spots the host has "already fetched", for getSpotsForCall.')
+    ..addOption('spots', help: 'Spots the host has "already fetched", for getSpotsForCall and getSpots.')
     ..addOption('location', help: 'Device location for getLocation, as "lat,lon".')
     ..addOption('timeout', help: 'Per-hook-call timeout in seconds.', defaultsTo: '30');
 

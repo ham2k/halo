@@ -792,6 +792,13 @@ class ExtensionService
   /// Unset in harnesses, which then report no match rather than failing.
   Future<Map<String, dynamic>> Function(String args, String? kind)? onSearchSettings;
 
+  /// Set by the app shell: backs the `getSpots` host call
+  /// (spots_for_extensions.dart), a callback for the same reason as
+  /// [onSearchSettings] — the operator's filters, the radio, the log and the
+  /// scorers all go into the answer. Unset in harnesses, which then answer an
+  /// empty board.
+  Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> params)? onGetSpots;
+
   /// Deterministic offline lookups: with `--dart-define=HALO_STUB_LOOKUPS=1`
   /// in a dev build, [lookupCall] returns a fixed canned result instead of
   /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`

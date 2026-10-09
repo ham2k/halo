@@ -14,6 +14,7 @@ export 'src/ham/entity_locations.dart';
 export 'src/ham/geo.dart';
 export 'src/ham/grid.dart';
 export 'src/ham/radio.dart';
+export 'src/ham/spots_query.dart';
 export 'src/number_formatting.dart';
 export 'src/models/models.dart';
 export 'src/models/call_change.dart';

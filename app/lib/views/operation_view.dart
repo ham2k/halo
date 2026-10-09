@@ -23,6 +23,7 @@ import '../services/cat/zero_beat.dart';
 import '../services/extensions/extension_service.dart' show TemplateError;
 import '../services/hook_payloads.dart';
 import '../services/scoring_service.dart' show checkpointDigestOf;
+import '../services/spot_board_service.dart' show SpotBoardSubscription;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
@@ -680,21 +681,21 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // [_onCallEdited]), and closing it lets go.
     _wakeHold.touch();
     HardwareKeyboard.instance.addHandler(_onWakeKeyEvent);
-    // Keeps spots flowing for as long as an operation is open, not just
-    // while the Spots Panel is on screen: the `spot-history` lookup reads
-    // that cache to pull a hunted park/summit into the QSO as the callsign
-    // is typed, which has to work from the logging panel alone. Refcounted,
-    // so closing every operation stops the fetching.
-    _unsubscribeSpots = widget.services.spots.subscribe();
-    widget.services.spots.addListener(_onSpotsChanged);
+    // Keeps spots flowing, judged against this operation and its log (shown
+    // to the board below, mounted Spots Panel or not), while it is open: the
+    // `spot-history` lookup reads that cache from the logging panel alone, and
+    // extension panels read the board through `getSpots`. Refcounted, so
+    // closing every operation stops the fetching.
+    _spotBoardView = widget.services.spotBoard.subscribe();
+    widget.services.spotBoard.addListener(_onSpotsChanged);
   }
 
-  /// Releases this view's spot-cache subscription (see initState).
-  VoidCallback? _unsubscribeSpots;
+  /// This view's hold on the spot board, and how it says what it shows.
+  late final SpotBoardSubscription _spotBoardView;
 
-  /// Counts spot refreshes rather than carrying the spots themselves: it
+  /// Counts board changes rather than carrying the spots themselves: it
   /// exists only to fire an extension panel's `spots` trigger, and the
-  /// panels that care read the cache themselves.
+  /// panels that care read the board themselves.
   int _spotsRevision = 0;
 
   /// Whether a key could transmit in a Phone mode — a function key playing a
@@ -735,8 +736,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   }
 
   void _onSpotsChanged() {
-    // Every other operation view would be rebuilding itself on a two-minute
-    // timer for nothing.
+    // Every other operation view would be rebuilding itself on every board
+    // change for nothing.
     if (!mounted || !_anyPanelWants('spots')) return;
     setState(() => _spotsRevision++);
   }
@@ -1216,8 +1217,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _spotsVisible.dispose();
     _sheetHeaderLines.dispose();
     widget.services.closeOperationContext(_commandContext);
-    _unsubscribeSpots?.call();
-    widget.services.spots.removeListener(_onSpotsChanged);
+    _spotBoardView.cancel();
+    widget.services.spotBoard.removeListener(_onSpotsChanged);
     // "Listen for other apps" stops routing captures here once this view
     // closes — but only if THIS operation is still the one receiving; a
     // second OperationView may have taken over already. Unconditional,
@@ -1256,6 +1257,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     }
     setState(() => _operation = patched);
     _setCommandContext(patched);
+    if (patched != null) _spotBoardView.show(patched, _latestQsos, logRevision: _fingerprintFor(_latestQsos));
     if (operation == null) return;
     widget.services.outlineGrid.prefetchFor(operation.refs); // kept on the device for the field
     // A saved change to the operation itself — a reference corrected, an
@@ -1431,6 +1433,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   void _onQsosChanged(List<Qso> qsos) {
     _latestQsos = qsos;
     _maybeScheduleRescore();
+    if (_operation case final operation?) _spotBoardView.show(operation, qsos, logRevision: _fingerprintFor(qsos));
   }
 
   /// Debounced live rescore. Fires only when the fingerprint moves, and

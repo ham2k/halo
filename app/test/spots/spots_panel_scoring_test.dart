@@ -8,7 +8,7 @@
 // wrong spot.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ham2k_logger/views/operation/spots_panel.dart';
+import 'package:ham2k_logger/services/spot_board.dart';
 
 Map<String, dynamic> _spot({required String call, double? freq, String? band, String? mode, List<Map<String, dynamic>>? refs}) => {
   'their': {'call': call},

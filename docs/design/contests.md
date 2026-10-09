@@ -87,7 +87,7 @@ and is the recommended first increment.
 | Day sections | `local_data.scoring.daySections` | `logging_panel.dart:370-383`, `qso_list.dart:155-163` |
 | Operation info | `local_data.scoring.operationSummary` (`dxcc`, `qsoCount.duplicates`) | `information_panel.dart:75-114` |
 | Live call info | `scoreQso → {notices, alerts}` (the hook, **not** the cache) | `call_info_panel.dart:40` |
-| Spot marking | `scoreCandidates → {key: {notices, alerts}}` (the hook, not the cache) | `spots_panel.dart` |
+| Spot marking | `scoreCandidates → {key: {notices, alerts}}` (the hook, not the cache) | `spot_board_service.dart` (read by `spots_panel.dart` and `getSpots`) |
 | Carry-forward on QSO rebuild | passes `scoreCache` through untouched | `logging_panel.dart:242`, `lookup_queue_service.dart:284` |
 
 > Worth knowing before designing around it: there are currently **zero
@@ -313,8 +313,9 @@ path replaces one scorer's contribution at a time.
 `{notices, alerts}` for the call-info pills.
 
 **Batched live path (`scoreCandidates`)** answers the same question for many
-not-yet-logged candidates at once — the Spots Panel, which judges every spot on
-the board against the log to strike the worked ones and accent what is new.
+not-yet-logged candidates at once — the spot board (`SpotBoardService`), which
+judges every spot against the log so the Spots Panel and extensions reading the
+board through `getSpots` can strike the worked ones and accent what is new.
 `scoreQso` would cost a bridge crossing *and* a whole-log fold per spot, so this
 folds once per scorer and scores every candidate against the result. Two rules
 the harness owns:

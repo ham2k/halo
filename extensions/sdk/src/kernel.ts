@@ -35,7 +35,17 @@
 import { installNumberFormatPolyfill } from "./number-format.ts"
 installNumberFormatPolyfill()
 
-import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot, HistoryForCallOptions } from "./types.ts"
+import type {
+  ExtensionDefinition,
+  RegisterHookParams,
+  FormDefinition,
+  FormField,
+  SettingsPanelDescriptor,
+  Spot,
+  HistoryForCallOptions,
+  GetSpotsOptions,
+  BoardSpot,
+} from "./types.ts"
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
@@ -480,6 +490,13 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
   return value
 }
 
+/// The uuid of the `operation` a hook was handed, if it was handed one — the
+/// operation a `getSpots` call judges its spots against unless told another.
+function operationUuidOf(args: unknown): string | undefined {
+  const uuid = (args as { operation?: { uuid?: unknown } } | null | undefined)?.operation?.uuid
+  return typeof uuid === "string" && uuid !== "" ? uuid : undefined
+}
+
 async function callHookMethod(record: HookRecord, method: string, args: unknown, online = true): Promise<unknown> {
   const member = record.hook[method]
   // Plain data members don't get a ctx — skip the context fetches entirely.
@@ -530,6 +547,14 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // HookContext.getSpotsForCall).
     getSpotsForCall: async (call: string, maxAgeMinutes?: number) =>
       ((await dispatchHostCall("getSpotsForCall", { call, maxAgeMinutes })) as Spot[] | null) ?? [],
+    // The whole board, defaulting its operation to the one this hook was
+    // handed so a panel's spots come back judged without asking — see
+    // HookContext.getSpots. `annotate: false` asks for none, so none is sent.
+    getSpots: async (options?: GetSpotsOptions) =>
+      ((await dispatchHostCall("getSpots", {
+        ...options,
+        operationUuid: options?.operationUuid ?? (options?.annotate === false ? undefined : operationUuidOf(args)),
+      })) as BoardSpot[] | null) ?? [],
     // Cross-operation log read, backing `call-history` — see
     // HookContext.getHistoryForCall.
     getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>

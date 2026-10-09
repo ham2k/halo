@@ -206,6 +206,14 @@ class CliHostCalls {
             if (_spotCall(spot) == call && _spotMillis(spot) >= cutoff) spot,
         ];
 
+      case 'getSpots':
+        // The CLI has no operator, so no filters of theirs and no scorers to
+        // judge with: `'user'` reads as every spot handed over, unannotated,
+        // and only the caller's own options narrow it. Parsed first, so a
+        // malformed option rejects here as it does in the app.
+        final query = SpotsQuery.fromParams(params);
+        return query.narrow(log.spots)..sort((a, b) => _spotMillis(b).compareTo(_spotMillis(a)));
+
       case 'getHistoryForCall':
         // Backs `call-history`'s `ctx.getHistoryForCall`. The app answers
         // across every operation; the CLI only ever has the one log handed

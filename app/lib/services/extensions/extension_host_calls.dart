@@ -24,6 +24,7 @@ class _ExtensionHostCalls {
       'getOperation' => _getOperation(params),
       'getQsos' => _getQsos(params),
       'getSpotsForCall' => _getSpotsForCall(params),
+      'getSpots' => _getSpots(params),
       'getHistoryForCall' => _getHistoryForCall(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
       'dbLookupSelectAll' => _dbLookupSelectAll(params),
@@ -238,6 +239,18 @@ class _ExtensionHostCalls {
     final maxAgeMinutes = params['maxAgeMinutes'];
     if (call == null || _service.spots == null) return const <Map<String, dynamic>>[];
     return _service.spots!.spotsForCall(call, maxAge: Duration(minutes: maxAgeMinutes is num ? maxAgeMinutes.toInt() : 30));
+  }
+
+  Future<dynamic> _getSpots(Map<String, dynamic> params) async {
+    // Reads only what SpotBoardService already worked out — no lookup, no
+    // scorer pass — so it can answer from inside a panel render or a lookup
+    // (see spots_for_extensions.dart).
+    final read = _service.onGetSpots;
+    if (read != null) return read(params);
+    // Parsed even with nothing to answer from, so a malformed option rejects
+    // the same everywhere rather than only where there are spots.
+    SpotsQuery.fromParams(params);
+    return const <Map<String, dynamic>>[];
   }
 
   Future<dynamic> _getHistoryForCall(Map<String, dynamic> params) async {

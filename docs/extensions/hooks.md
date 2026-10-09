@@ -70,6 +70,31 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   reads above it is cheap enough for the lookup path; it resolves `[]`
   whenever the cache is cold or the host keeps no spots. Used by
   `spot-history` to pull a hunted park or summit into the QSO being logged.
+* `getSpots?(options?)` — the whole spots board the host already holds,
+  for a panel showing spots its own way. Like `getSpotsForCall` it reads the
+  cache and never fetches, and resolves `[]` while the cache is cold. By
+  default it answers what the operator's Spots Panel shows: their sources,
+  enabled bands, band and mode filters (an "auto" filter follows the radio),
+  age and continents, merged and ordered as that panel does — so one spot
+  can stand for several stations, its `their.call` comma-joined
+  (`'K1ABC,W2XYZ'`). `filter: 'all'`
+  starts instead from every held spot, one per source report, newest first.
+  Either way `maxAgeMinutes`, `band`, `mode` (a mode, or `SSB`/`Phone`/`CW`/
+  `Digital` for a family) and `source` (a spot source's hook key, carried on
+  each spot as `hookKey`) narrow it further. Spots come back with
+  `annotations` — `worked`, `isSelf`, `notices`, judged the way the Spots
+  Panel strikes and accents its rows — whenever there is an operation to judge
+  them against: `operationUuid`, or the `operation` the calling hook was
+  handed, so a panel's render gets them without asking. The verdicts are the
+  ones the app already holds for the operation open on screen, so the call
+  never waits on a scorer; another operation's spots, and that one's until
+  its first verdicts land, come back unannotated rather than guessed.
+  `annotate: false` returns the spots as their sources gave them.
+  A panel's `'spots'` trigger fires whenever this answer may have moved: a
+  refresh, new verdicts, the operator's spot filters or bands, or the radio's
+  band or mode. A malformed or unknown option rejects the call. The CLI host
+  has no operator: its `'user'` board is every spot handed to it, never
+  annotated.
 * `getHistoryForCall?(call, options?)` — the most recent non-deleted contacts
   logged with `call` (five unless `limit` says otherwise, never more than
   50), across every operation, newest first, as raw QSON — the one log read
@@ -1975,7 +2000,9 @@ its first render.
 
 The whole log is deliberately absent from `render`'s args. A panel that
 needs it calls `ctx.getQsos(operation.uuid)` — right for a `'qsoLogged'`
-render, wrong for a per-keystroke one.
+render, wrong for a per-keystroke one. Spots are absent for the same reason:
+a panel showing them declares `'spots'` and calls `ctx.getSpots()`, which
+answers the operator's own filtered board, judged against this operation.
 
 ## ✅ `settingsPanel` — extension settings forms
 

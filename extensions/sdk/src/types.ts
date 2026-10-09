@@ -85,6 +85,29 @@ export interface HookContext {
   /// `[]` (not null) whenever the cache is cold or the host keeps no spots.
   /// Age is the spot's own `spot.timeInMillis`, not when it was fetched.
   getSpotsForCall?(call: string, maxAgeMinutes?: number): Promise<Spot[]>
+  /// The spots board the host already holds — never a fetch, like
+  /// `getSpotsForCall`, so `[]` before the first refresh lands or where the
+  /// host keeps no spots. A panel declaring `on: ['spots']` is re-rendered
+  /// when the board changes — a refresh, new verdicts, the operator's filters,
+  /// the radio's band or mode — which is the moment to call this.
+  ///
+  /// By default the board is the operator's: what their Spots Panel filters
+  /// admit (sources, enabled bands, band and mode — "auto" following the
+  /// radio — age and continents), merged and ordered as that panel shows it.
+  /// `filter: 'all'` starts instead from every held spot, unmerged, newest
+  /// first. The other options narrow either one further.
+  ///
+  /// Spots come back annotated — worked, our own, scoring notices — when
+  /// there is an operation to judge them against: `operationUuid`, or by
+  /// default the `operation` the calling hook was handed (a panel's render
+  /// args). The verdicts are the ones the app already holds for the
+  /// operation open on screen, so another operation's spots — and that one's,
+  /// until its first verdicts land — come back unannotated, never as a
+  /// guess. `annotate: false` returns them exactly as the sources gave
+  /// them.
+  /// A malformed or unknown option rejects the promise. Absent on hosts
+  /// older than it, so call it as `ctx.getSpots?.()`.
+  getSpots?(options?: GetSpotsOptions): Promise<BoardSpot[]>
   /// The most recent non-deleted contacts logged with [call]
   /// (case-insensitive), across every operation, newest first — the raw QSON
   /// `data` for each, same shape `getQsos` returns per-QSO, never event
@@ -252,6 +275,55 @@ export interface Spot {
     label?: string
     sourceInfo?: Record<string, JSONValue>
   }
+}
+
+/// Options for `HookContext.getSpots`. Every one is optional; a
+/// `string | string[]` option matches any of the values listed.
+export interface GetSpotsOptions {
+  /// `'user'` (the default): what the operator's own Spots Panel filters
+  /// admit. `'all'`: every spot the host holds.
+  filter?: "user" | "all"
+  /// Measured on the spot's own `spot.timeInMillis`; inclusive.
+  maxAgeMinutes?: number
+  /// Band names as the app spells them (`'20m'`).
+  band?: string | string[]
+  /// A mode (`'FT8'`), or a family: `'SSB'` also matches `USB`/`LSB`, and
+  /// `'Phone'`, `'CW'` and `'Digital'` match their whole super mode.
+  mode?: string | string[]
+  /// Spot-source hook keys, as in `BoardSpot.hookKey`.
+  source?: string | string[]
+  /// Default true when there is an operation to judge the spots against.
+  annotate?: boolean
+  /// The operation whose log the annotations judge against. Defaults to the
+  /// calling hook's `operation` argument.
+  operationUuid?: string
+}
+
+/// A spot as the host holds it: what a source returned, plus the key of the
+/// source that offered it.
+///
+/// On the operator's board (`filter: 'user'`), spots are merged as the Spots
+/// Panel merges them: one station reported by several sources is one spot,
+/// carrying every report's `refs` and one report's `hookKey`, and stations
+/// sharing a frequency and references are one spot whose `their.call` lists
+/// them comma-joined (`'K1ABC,W2XYZ'`). Split it before looking a call up.
+export interface BoardSpot extends Spot {
+  hookKey?: string
+  /// Present when the spots were judged against an operation.
+  annotations?: SpotAnnotations
+}
+
+/// What the Spots Panel shows about a spot, judged against an operation.
+export interface SpotAnnotations {
+  /// Every operator on the spot is already worked, by every scorer's rules,
+  /// and no scorer has anything new to say about them — the panel strikes the
+  /// row. Never claimed without a scorer having answered.
+  worked: boolean
+  /// One of the operators is the operation's own station.
+  isSelf: boolean
+  /// Scorers' reasons the contact would count anew (`'newBand'`,
+  /// `'newDXCC'`…; see `QsoScoreNotices`), across every operator on the spot.
+  notices: string[]
 }
 
 export interface SpotEligibility {
@@ -2690,7 +2762,7 @@ export interface StatusBarNoticeParams {
 ///   'qso'        the in-progress QSO changed (throttled, not per keystroke)
 ///   'qsoLogged'  a QSO was logged, deleted or edited
 ///   'lookup'     a callsign lookup resolved
-///   'spots'      the spot list was refreshed
+///   'spots'      the spots board changed (see HookContext.getSpots)
 ///   'tick:<n>'   every <n> seconds while the panel is visible (min 1)
 ///
 /// A panel with no triggers renders once when it appears, and again only

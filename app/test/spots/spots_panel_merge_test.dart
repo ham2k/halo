@@ -4,6 +4,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show bands;
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/spot_board.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
 Map<String, dynamic> _spot({required String call, double? freq, String? band, String? mode, List<Map<String, dynamic>>? refs, required int timeInMillis}) => {

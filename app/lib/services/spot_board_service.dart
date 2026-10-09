@@ -1,0 +1,399 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// What the spots board knows beyond the spots themselves — each spotted
+// call's note, emoji and continent, and each spot's scoring verdict against
+// the open operation — worked out once and read by everything that shows the
+// board: the Spots Panel, and extensions through `getSpots`.
+//
+// One owner because each of those costs the runtime: a lookup per spotted
+// call, and a pass of every scorer over the whole board. Worked out per
+// reader, every extension panel would double both on every refresh, and a
+// reader asking from inside a lookup would re-enter the lookup pipeline it is
+// part of. Readers here only read.
+
+import 'dart:async';
+import 'dart:collection';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
+
+import 'extensions/extension_service.dart';
+import 'radio_service.dart';
+import 'scoring_service.dart';
+import 'settings_service.dart';
+import 'spot_board.dart';
+import 'spots_service.dart';
+
+typedef SpotCallInfo = ({bool hasNote, String? emoji, String? continent});
+typedef SpotScore = ({List<String> notices, List<String> alerts});
+typedef _Shown = ({Operation operation, List<Qso> qsos, String logRevision});
+
+/// One viewer's hold on the board: an Operation View, a Spots Panel.
+class SpotBoardSubscription {
+  SpotBoardSubscription._(this._board, {required this.follower});
+
+  final SpotBoardService _board;
+
+  /// A follower's [show] counts only while no other viewer has shown
+  /// anything (see [SpotBoardService.subscribe]).
+  final bool follower;
+  _Shown? _shown;
+  bool _cancelled = false;
+
+  /// This viewer now shows [operation], whose log is [qsos] and
+  /// [logRevision] its fingerprint. Callable from a build or an update. A
+  /// viewer covered by another records it without taking the board.
+  void show(Operation operation, List<Qso> qsos, {required String logRevision}) {
+    if (_cancelled) return;
+    _shown = (operation: operation, qsos: qsos, logRevision: logRevision);
+    _board._reconcile();
+  }
+
+  /// Guarded like SpotsService.subscribe's callback: a State that releases
+  /// twice must not stop the board out from under the others.
+  void cancel() {
+    if (_cancelled) return;
+    _cancelled = true;
+    _board._release(this);
+  }
+}
+
+class SpotBoardService extends ChangeNotifier {
+  SpotBoardService({required this.extensions, required this.spots, required this.settings, required this.radio, required this.scoring});
+
+  final ExtensionService extensions;
+  final SpotsService spots;
+  final SettingsService settings;
+  final RadioService radio;
+  final ScoringService scoring;
+
+  /// Bumped whenever what a board reader would show may have changed: a spot
+  /// refresh, new verdicts or call info, an edit to the operator's spot
+  /// filters or bands, or the radio moving to another band or mode (which an
+  /// "auto" filter follows). What fires an extension panel's `spots` trigger.
+  int get revision => _revision;
+  int _revision = 0;
+
+  /// Each spotted call's note, marker emoji and continent, as the offline
+  /// lookup answered them — the Spots Panel's "Calls of Note" and emoji, and
+  /// the continent filter. Kept across refreshes: only calls not yet answered
+  /// for cost a lookup. A view, not a copy — the panel reads it per spot.
+  Map<String, SpotCallInfo> get callInfo => UnmodifiableMapView(_callInfo);
+  final Map<String, SpotCallInfo> _callInfo = {};
+
+  /// Scoring verdicts keyed by [spotCandidateKey] — what makes a spot show as
+  /// worked, or accented for a new band/mode/day/reference/multiplier — for
+  /// [operationUuid], or null until a pass has landed for it (it is not the
+  /// operation shown, or its first pass has not answered). Within a landed
+  /// pass, an absent key means "nothing to report".
+  Map<String, SpotScore>? scoresFor(String operationUuid) => _scoredUuid != null && _scoredUuid == operationUuid ? _scores : null;
+  Map<String, SpotScore> _scores = {};
+  String? _scoredUuid;
+
+  /// The operation the board is judged against: the one shown by the most
+  /// recent subscription that is still open and has shown one, followers
+  /// counting only when nothing else has. Operation Views stack — ⌘K and
+  /// deep links push one over another — so the view on top decides, and
+  /// closing it hands the board back to the one beneath rather than leaving
+  /// it judging an operation nobody sees.
+  Operation? get operation => _shown?.operation;
+  _Shown? get _shown => _shownBy(follower: false) ?? _shownBy(follower: true);
+  _Shown? _shownBy({required bool follower}) =>
+      _viewers.reversed.where((viewer) => viewer.follower == follower).map((viewer) => viewer._shown).nonNulls.firstOrNull;
+
+  final List<SpotBoardSubscription> _viewers = [];
+  int get _subscribers => _viewers.length;
+
+  /// What the board's verdicts were last asked about, to tell a switch from
+  /// a moved log.
+  String? _judgedUuid;
+  String? _judgedRevision;
+
+  VoidCallback? _unsubscribeSpots;
+
+  /// Keeps the board worked out — and the spots it reads fetched — while at
+  /// least one caller holds a subscription, through which it tells the board
+  /// what it shows ([SpotBoardSubscription.show]).
+  ///
+  /// A [follower] — the Spots Panel inside an Operation View — shows the same
+  /// operation its view does, but subscribes later and on its own schedule:
+  /// a covered view's lazily mounted panel would otherwise land on top of
+  /// the view in front and take the board from it. Its [show] is what feeds
+  /// a board nothing else feeds, a panel standing alone.
+  SpotBoardSubscription subscribe({bool follower = false}) {
+    final viewer = SpotBoardSubscription._(this, follower: follower);
+    _viewers.add(viewer);
+    if (_viewers.length == 1) {
+      _unsubscribeSpots = spots.subscribe();
+      spots.addListener(_onSpotsChanged);
+      settings.addListener(_onSettingsChanged);
+      radio.addListener(_onRadioChanged);
+      _filtersKey = _currentFiltersKey;
+      _disabledSources = settings.disabledSpotSources;
+      _vfoKey = _currentVfoKey;
+      if (spots.loaded) unawaited(refreshCallInfo());
+    }
+    return viewer;
+  }
+
+  void _release(SpotBoardSubscription viewer) {
+    _viewers.remove(viewer);
+    if (_viewers.isNotEmpty) {
+      _reconcile();
+      return;
+    }
+    spots.removeListener(_onSpotsChanged);
+    settings.removeListener(_onSettingsChanged);
+    radio.removeListener(_onRadioChanged);
+    _unsubscribeSpots?.call();
+    _unsubscribeSpots = null;
+    _scoreDebounce?.cancel();
+    _judgedUuid = null;
+    _judgedRevision = null;
+    _scores = {};
+    _scoredUuid = null;
+    _callInfo.clear();
+  }
+
+  /// Brings the verdicts in line with what the top viewer shows. Never
+  /// notifies synchronously, only schedules — it runs from builds and
+  /// updates.
+  ///
+  /// A different operation is scored straight away, since nothing on screen
+  /// was judged against it; a moved log waits out the debounce.
+  void _reconcile() {
+    final shown = _shown;
+    if (shown == null) return;
+    final switched = shown.operation.uuid != _judgedUuid;
+    final moved = shown.logRevision != _judgedRevision;
+    _judgedUuid = shown.operation.uuid;
+    _judgedRevision = shown.logRevision;
+    if (switched) {
+      _scores = {};
+      _scoredUuid = null;
+      // The pass made now answers whatever a pending debounce was waiting to.
+      _scoreDebounce?.cancel();
+      if (spots.loaded) scheduleMicrotask(() => unawaited(refreshScores()));
+    } else if (moved) {
+      _scheduleScores();
+    }
+  }
+
+  void _onSpotsChanged() {
+    _bump();
+    unawaited(refreshCallInfo());
+    _scheduleScores();
+  }
+
+  String _filtersKey = '';
+  Set<String> _disabledSources = const {};
+  String get _currentFiltersKey => '${jsonEncode(settings.spottingFilters)}|${settings.enabledBands.join(',')}';
+
+  /// Settings notify on every write; only the spot filters and the bands
+  /// they narrow by change a board. A source switched on or off changes which
+  /// spots merge, so which questions the scorers are asked.
+  void _onSettingsChanged() {
+    final key = _currentFiltersKey;
+    if (key == _filtersKey) return;
+    _filtersKey = key;
+    final disabled = settings.disabledSpotSources;
+    if (!setEquals(disabled, _disabledSources)) {
+      _disabledSources = disabled;
+      _scheduleScores();
+    }
+    _bump();
+  }
+
+  String _vfoKey = '';
+  String get _currentVfoKey => '${radio.vfoA.band}|${radio.vfoA.mode}';
+
+  /// Only the band and mode feed an "auto" filter, so a live CAT feed moving
+  /// the frequency alone costs nobody a render.
+  void _onRadioChanged() {
+    final key = _currentVfoKey;
+    if (key == _vfoKey) return;
+    _vfoKey = key;
+    _bump();
+  }
+
+  void _bump() {
+    _revision++;
+    notifyListeners();
+  }
+
+  /// Looks up (and caches) each currently-fetched spot's callsign info.
+  /// Always runs — only already-cached calls are skipped — so it is there
+  /// from the very first fetch, not only once a reader needs it.
+  /// `online: false`: call-notes' data comes from a cached, periodically
+  /// refreshed data file, and continent from the bundled DXCC country file
+  /// (`annotateCallsign` in the lookups extension), so the offline pass is
+  /// enough — and it skips every OTHER lookup hook's live fetch (QRZ,
+  /// HamDB…) for fields nothing here uses, on a board that can easily hold
+  /// far more distinct callsigns than the logging field ever looks up.
+  Future<void> refreshCallInfo() async {
+    final calls = <String>{
+      for (final list in spots.spotsBySource.values)
+        for (final spot in list) ...spotOperatorCalls(spot),
+    }..removeWhere(_callInfo.containsKey);
+    if (calls.isEmpty) return;
+    final operationData = operation?.data ?? const <String, dynamic>{};
+    final results = await Future.wait(
+      calls.map((call) async {
+        final result = await extensions.lookupCall(call, qso: const {}, operation: operationData, online: false);
+        // Null is no answer at all — a runtime still booting, a lookup timed
+        // out — not "nothing known", which comes back as a result. Cached, it
+        // would cost that call its note and emoji for the session; left out,
+        // the next refresh asks again.
+        if (result == null) return null;
+        final guess = result['guess'] as Map?;
+        final emoji = guess?['emoji'] as String?;
+        final hasNote = guess != null && (emoji != null || guess['note'] != null);
+        final continent = guess?['continent'] as String?;
+        return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent));
+      }),
+    );
+    if (_subscribers == 0) return;
+    _callInfo.addEntries(results.nonNulls);
+    _bump();
+  }
+
+  /// Coalesces bursts of triggers into one pass. A run of contacts logged in a
+  /// pileup moves the log per QSO, and each pass scores every spot on the
+  /// board on the same runtime that serves the logging panel's own call-info
+  /// scoring — so scoring every intermediate state costs the operator the
+  /// responsiveness of the field they are typing in. Longer than that panel's
+  /// own 300ms: nothing here is per-keystroke.
+  Timer? _scoreDebounce;
+
+  void _scheduleScores() {
+    _scoreDebounce?.cancel();
+    _scoreDebounce = Timer(const Duration(milliseconds: 600), () {
+      if (_subscribers > 0) unawaited(refreshScores());
+    });
+  }
+
+  /// Guards against a second scoring pass while one is in flight (a spot
+  /// refresh landing on a log edit) — the second would fold the same log again
+  /// for the same answer. The trailing flag re-runs once, so the pass that was
+  /// skipped isn't simply lost.
+  bool _scoring = false;
+  bool _scoresStale = false;
+
+  /// Scores every spot on the board against the operation's log, so readers
+  /// can strike the ones already worked and accent what is new.
+  ///
+  /// Scored per operator (a merged multi-op spot carries several), deduped by
+  /// [spotCandidateKey], and asked in ONE call per scorer — the runtime folds
+  /// the log once and judges every candidate against it. The candidates are
+  /// the merged board's AND every spot as its source reported it: the first
+  /// is what the Spots Panel shows, the second what `getSpots`' `'all'` board
+  /// hands out, and the two differ wherever a merge combined references.
+  ///
+  /// Scores the whole board rather than any filtered view of it: filtering is
+  /// a display choice the operator changes constantly, and re-scoring on each
+  /// change would refold the log to learn nothing new.
+  ///
+  /// Scored against the CURRENT segment, like the call-info pills
+  /// (`logging_controls.dart`) and for the same reason: the spots and the entry
+  /// row have to agree about which activities are running. A contest started at
+  /// a `start` event is named by no ref on the base operation, so without this
+  /// its scorer is never selected and no spot ever shows its multipliers; one
+  /// ended at a break would keep accenting them. The timeline goes along too,
+  /// so the log the candidates are judged against is folded per segment —
+  /// otherwise a pre-contest contact makes a fresh station read as a duplicate.
+  ///
+  /// Resumes from `ScoringService`'s cached checkpoints whenever the log is
+  /// what they folded plus appended contacts — the same rule the call-info
+  /// pills use (`ScoringService.liveResumeFor`), so the second after working a
+  /// station the new contact travels as the tail and the spot strikes at
+  /// once, and the 2-minute refresh replays nothing at all. Only a log the
+  /// checkpoints cannot account for (an edit, a delete, a change to the
+  /// operation) costs a whole-log fold.
+  Future<void> refreshScores() async {
+    if (_scoring) {
+      _scoresStale = true;
+      return;
+    }
+    _scoring = true;
+    try {
+      do {
+        _scoresStale = false;
+        final shown = _shown;
+        if (shown == null) return;
+        final (:operation, :qsos, logRevision: _) = shown;
+        final now = nowMillis();
+        final candidates = <String, Map<String, dynamic>>{};
+        void ask(Map<String, dynamic> spot) {
+          for (final call in spotOperatorCalls(spot)) {
+            candidates.putIfAbsent(spotCandidateKey(call, spot), () => spotCandidateQso(call, spot, now: now));
+          }
+        }
+
+        mergedSpotBoard(spots.spotsBySource, settings.disabledSpotSources).forEach(ask);
+        for (final list in spots.spotsBySource.values) {
+          list.forEach(ask);
+        }
+        if (candidates.isEmpty) {
+          // Already judged empty: nothing a reader shows has moved.
+          if (_scores.isNotEmpty || _scoredUuid != operation.uuid) {
+            _scores = {};
+            _scoredUuid = operation.uuid;
+            _bump();
+          }
+          continue;
+        }
+
+        final segmented = SegmentedOperation.from(operation: operation.data, qsos: qsos);
+        final scored = await extensions.scoreCandidates(
+          operation: segmented.current,
+          operationUuid: operation.uuid,
+          candidates: candidates,
+          segments: segmented.isSegmented ? segmented.payload : null,
+          resume: scoring.liveResumeFor(operation, qsos),
+          huntedRefTypes: _huntedRefTypesOf(operation),
+        );
+        // Nobody is left reading: the verdicts describe nothing on screen.
+        if (_subscribers == 0) return;
+        // Judged against an operation no longer shown. The switch that moved
+        // it asked for a pass of its own, which found this one running and
+        // left it the stale flag: go round for it rather than drop it.
+        if (operation.uuid != _shown?.operation.uuid) {
+          _scoresStale = true;
+          continue;
+        }
+        // A null result means no scorer ran at all (runtime not up yet, or none
+        // applies) — leave the previous verdicts alone rather than un-striking
+        // every worked spot on a transient miss. A scorer that RAN and failed
+        // is deliberately not that case: it comes back as the surviving
+        // scorers' verdicts, empty if it was the only one, so a board never
+        // keeps strikes put there by a scorer that is no longer answering.
+        if (scored != null) {
+          _scores = {for (final entry in scored.entries) entry.key: (notices: entry.value['notices'] ?? const [], alerts: entry.value['alerts'] ?? const [])};
+          _scoredUuid = operation.uuid;
+          _bump();
+        }
+      } while (_scoresStale && _subscribers > 0);
+    } finally {
+      _scoring = false;
+    }
+  }
+
+  /// The activity types this operation has hunted, cached by `ScoringService`.
+  /// What makes POTA's rules apply to a chaser's spots at all — an operation
+  /// that activates nothing names no activity on its own refs.
+  static Set<String> _huntedRefTypesOf(Operation operation) => ((operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
+
+  @override
+  void dispose() {
+    _scoreDebounce?.cancel();
+    if (_subscribers > 0) {
+      spots.removeListener(_onSpotsChanged);
+      settings.removeListener(_onSettingsChanged);
+      radio.removeListener(_onRadioChanged);
+      _unsubscribeSpots?.call();
+    }
+    super.dispose();
+  }
+}

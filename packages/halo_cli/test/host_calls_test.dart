@@ -172,6 +172,37 @@ void main() {
     });
   });
 
+  group('getSpots', () {
+    Map<String, Object?> spot(String call, {required int ageMinutes, String band = '20m'}) => {
+      'their': {'call': call},
+      'band': band,
+      'spot': {'timeInMillis': DateTime.now().millisecondsSinceEpoch - ageMinutes * Duration.millisecondsPerMinute},
+    };
+
+    test('narrows by the caller\'s options alone, newest first', () async {
+      // The CLI has no operator, so the default board is everything handed
+      // over: a CLI that dropped it would leave an extension's panel tests
+      // with no spots to draw at all.
+      final calls = host(
+        log: LogContext(
+          spots: [
+            spot('OLD', ageMinutes: 20),
+            spot('NEW', ageMinutes: 5),
+            spot('FORTY', ageMinutes: 1, band: '40m'),
+          ],
+        ),
+      );
+      final all = await calls.call('getSpots', {}) as List;
+      expect(all.map((s) => ((s as Map)['their'] as Map)['call']), ['FORTY', 'NEW', 'OLD']);
+      final twenty = await calls.call('getSpots', {'band': '20m'}) as List;
+      expect(twenty.map((s) => ((s as Map)['their'] as Map)['call']), ['NEW', 'OLD']);
+    });
+
+    test('rejects an option it does not know, as the app does', () async {
+      expect(() => host().call('getSpots', {'bands': '20m'}), throwsFormatException);
+    });
+  });
+
   group('getHistoryForCall', () {
     test('answers [] with no log, same as no match', () async {
       expect(await host().call('getHistoryForCall', {'call': 'KI2D'}), isEmpty);

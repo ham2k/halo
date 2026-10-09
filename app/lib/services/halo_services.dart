@@ -32,14 +32,13 @@ import '../views/operation/operation_location_screen.dart';
 import '../views/settings_view.dart';
 import '../views/cw_messages_dialog.dart';
 import '../views/voice_messages_dialog.dart';
-import '../views/settings/accounts_panel.dart';
 import '../views/notice_actions.dart';
 import '../views/extension_install_flow.dart' show updateAllFromCatalog;
 import '../config/experiments.dart';
 import '../config/secrets.dart';
 
-import 'extensions/extension_catalog_migration.dart';
 import 'extensions/catalog_service.dart';
+import 'extension_wiring.dart';
 import 'panel_radio_service.dart';
 import 'deep_link_service.dart';
 import 'export_service.dart';
@@ -82,6 +81,7 @@ import 'radio_service.dart';
 import 'operation_title_service.dart';
 import 'scoring_service.dart';
 import 'settings_service.dart';
+import 'spot_board_service.dart';
 import 'spots_service.dart';
 import 'status_bar_service.dart';
 import 'web_popup.dart';
@@ -535,6 +535,10 @@ class HaLoServices {
     offlineChanges: ConnectivityService.offlineChanges,
   );
 
+  /// The open operation's verdicts and the spotted calls' info, shared by the
+  /// Spots Panel and `getSpots` (see SpotBoardService).
+  late final SpotBoardService spotBoard = SpotBoardService(extensions: extensions, spots: spots, settings: settings, radio: radio, scoring: scoring);
+
   final LookupQueueService? _lookupQueueOverride;
   late final LookupQueueService lookupQueue =
       _lookupQueueOverride ??
@@ -627,7 +631,7 @@ class HaLoServices {
       );
 
   /// The extension catalog (services/extensions/catalog_service.dart). Built at
-  /// construction, because [_wireExtensions] hands it to the extension
+  /// construction, because [wireExtensions] hands it to the extension
   /// service there; every request it makes is still lazy.
   /// Injectable like [_exportsOverride], so a test hands in one over a
   /// MockClient rather than reaching catalog.ham2k.net.
@@ -1052,7 +1056,7 @@ class HaLoServices {
        // resolves under `testWidgets` (see operation_export_panel_test).
        _exportsOverride = exports,
        _outlineGridOverride = outlineGrid {
-    _wireExtensions();
+    wireExtensions(this);
     // Time travel is developer-mode-only, and this is the ONE place that can
     // see developer mode go off no matter which surface turned it off (DEVMODE,
     // the Settings toggle, a settings command). Leaving the clock travelled
@@ -1070,34 +1074,6 @@ class HaLoServices {
     // is already updated whichever order the listeners ran in.
     settings.addListener(_applyNumberFormatting);
     _applyNumberFormatting();
-  }
-
-  /// Hands the extension service everything it reaches back through.
-  ///
-  /// A METHOD, not a stretch of the constructor body, and that is the whole
-  /// point: several of these fields have a same-named constructor parameter
-  /// holding the test override, which is null in every production build and
-  /// shadows the field inside the constructor. Wiring one of those up from
-  /// there silently hands over the null — nothing reaches the service, and
-  /// the feature behind it simply never happens. Parameters are out of scope
-  /// here, so every bare name below is the field.
-  void _wireExtensions() {
-    extensions.settings = settings;
-    extensions.lookups = lookups;
-    extensions.statusBar = statusBar;
-    extensions.operations = operations;
-    extensions.qsos = qsos;
-    extensions.location = location;
-    extensions.radioCalls.radio = panelRadio;
-    extensions.spots = spots;
-    extensions.catalog = catalog;
-    extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
-    extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);
-    // The boot starts the runtime before the services exist, so one quick to
-    // come up has already run its catch-up — and stood it down, with no
-    // settings to carry choices or record installs in. Without this that
-    // session runs on the core extensions alone.
-    if (extensions.ready && !extensions.firstCatchUpSettled) unawaited(catchUpOnCatalogExtensions(extensions));
   }
 
   /// Resolves the operator's Number Formatting choice into the two characters
