@@ -25,7 +25,7 @@ export 'package:halo_build_tools/halo_build_tools.dart' show Edition, kEdition, 
 /// just its derived strings) so CI tooling can project it, together with
 /// [kBuildNumber], into the native per-platform version fields via
 /// [PlatformVersions] — see tool/print_build_versions.dart.
-const kPublicVersionInfo = PublicVersion(main: MainVersion(year: 26, month: 9), patch: 0);
+const kPublicVersionInfo = PublicVersion(main: MainVersion(year: 26, month: 10), patch: 0);
 
 /// The product-wide stage marker carried by every human version name —
 /// `August '26 ALPHA patch 1` — across all versions and editions. It is not
