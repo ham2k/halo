@@ -2,14 +2,6 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-"26.10.0":
-  name: "October '26"
-  photoCaption: "LB4FH at NO-2598"
-  changes:
-    - "CAT Control!"
-    - "Customizable layouts"
-    - "Third-party extensions for activities, spotting, dashboard panels and more"
-
 "26.9.0":
   name: "September '26"
   photoCaption: "M1SDH at GB-4724"
@@ -18,3 +10,4 @@
     - "All the features you love in Ham2K Portable Logger, now on Windows, macOS, Linux and Web as Power Logger — yes, still PoLo"
     - "POTA, SOTA, WWFF, LLOTA and dozens of other activities."
     - "ARRL Field Day, Winter Field Day, QSO Parties, CQ Contests, NAQP, ARRL Contests and many more"
+    - "Coming soon: CAT control and customizable layouts"
