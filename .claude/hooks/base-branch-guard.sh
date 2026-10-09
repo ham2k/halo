@@ -19,8 +19,12 @@
 # test false-positived on every active worktree. A genuinely wrong base is
 # hundreds of commits behind and the count catches it on its own.
 #
+# A branch off `prod` — a fix cherry-picked for a Regular patch release
+# (docs/releases.md §2.5) — is measured against origin/prod instead: it is
+# legitimately a whole release line behind `main`, and only `prod` moving on
+# without it makes it stale.
 # Escape hatch: HALO_ALLOW_STALE_BASE=1 skips the block, for the rare deliberate
-# case (a hotfix on an old release branch, archaeology in a stale worktree).
+# case (archaeology in a stale worktree).
 set -uo pipefail
 
 MODE="${1:-session}"
@@ -42,14 +46,29 @@ if [ "$MODE" = "session" ]; then
   # Timeout comes from the hook's own `timeout` field, not `timeout(1)` — that
   # is GNU coreutils and not present on a stock macOS.
   git fetch --quiet "$REMOTE" "$BASE" 2>/dev/null
+  # Separately: one fetch naming a ref the remote lacks fails WHOLE, and `prod`
+  # does not exist until the first promotion — folded into the line above, it
+  # would leave origin/main unrefreshed with nothing said.
+  git fetch --quiet "$REMOTE" prod 2>/dev/null
 fi
 
 git rev-parse --verify --quiet "refs/remotes/$REMOTE/$BASE" >/dev/null 2>&1 || exit 0
 
+# On `prod`'s line when the branch tracks it, or when it carries a commit of
+# `prod`'s that `main` never had (a release cut or a cherry-pick there). A
+# branch off `main` shares only `main`'s commits with `prod`.
+if git rev-parse --verify --quiet "refs/remotes/$REMOTE/prod" >/dev/null 2>&1; then
+  UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+  PROD_FORK="$(git merge-base HEAD "$REMOTE/prod" 2>/dev/null || true)"
+  if [ "$UPSTREAM" = "$REMOTE/prod" ] || { [ -n "$PROD_FORK" ] && ! git merge-base --is-ancestor "$PROD_FORK" "$REMOTE/$BASE" 2>/dev/null; }; then
+    BASE="prod"
+  fi
+fi
+
 BRANCH="$(git branch --show-current 2>/dev/null)"
 [ -n "$BRANCH" ] || BRANCH="(detached)"
 MERGE_BASE="$(git merge-base HEAD "$REMOTE/$BASE" 2>/dev/null)" || exit 0
-# How much of main this branch was never based on. Not "how far behind HEAD is"
+# How much of its base this branch was never based on. Not "how far behind HEAD is"
 # — that would count the branch's own commits and read clean work as stale.
 BEHIND="$(git rev-list --count "$MERGE_BASE..$REMOTE/$BASE" 2>/dev/null)" || exit 0
 
@@ -59,7 +78,7 @@ FIX="git fetch $REMOTE $BASE && git checkout -b <task-name> $REMOTE/$BASE"
 
 if [ "$BEHIND" -gt "$STALE_LIMIT" ]; then
   VERDICT="wrong"
-  MSG="Branch '$BRANCH' is based $BEHIND commits behind $REMOTE/$BASE (limit $STALE_LIMIT) — it was not cut from a fresh main. Re-cut the branch: $FIX"
+  MSG="Branch '$BRANCH' is based $BEHIND commits behind $REMOTE/$BASE (limit $STALE_LIMIT) — it was not cut from a fresh $BASE. Re-cut the branch: $FIX"
 elif [ "$BEHIND" -gt 0 ]; then
   VERDICT="ok"
   MSG="Branch '$BRANCH' is based $BEHIND commit(s) behind $REMOTE/$BASE — normal drift, no action needed."

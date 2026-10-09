@@ -37,7 +37,7 @@ void main() {
       const v = PublicVersion(main: august, patch: 1);
       expect(v.displayName(stageLabel: 'ALPHA'), contains('ALPHA'));
       expect(v.value, isNot(contains('ALPHA')));
-      expect(v.releaseTagName(126), 'v26.8.1+126');
+      expect(v.releaseTagName(126, edition: Edition.next), 'next-v26.8.1+126');
     });
   });
 

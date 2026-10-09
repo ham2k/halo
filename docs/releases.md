@@ -91,7 +91,10 @@ Section 2.3 explains how the patchable public version is stored.
   the next number arrives as a full binary instead, taking its place in the same
   sequence. The number never says which of the two it was — that is the build's
   job (§2.2), and wanting the version string to answer it is the mistake this
-  vocabulary exists to prevent.
+  vocabulary exists to prevent. **Next is always the line's `.0`**: the patch
+  moves only once the line ships on Regular — `.0` first, then `.1`, `.2` … as
+  fixes go out from the `prod` branch (§2.5). `halo-ops release` refuses a Next
+  cut whose patch isn't 0.
 - **stage** (Next only) — `-<label><N>`, marking a milestone within a cycle:
   `pre` by default (`26.9.0-pre1`, `-pre2`, …), or `alpha`/`beta`/`rc`. It is
   **coarse and hand-bumped** — a milestone you announce, typically spanning
@@ -162,8 +165,20 @@ The build number is a single **monotonic integer** — `kBuildNumber` in
 keeps it under every platform's field limit — including the 16-bit Windows/Linux
 `FILEVERSION` cap — so **all platforms share the one value** with no per-platform
 narrowing. `halo-ops release` advances it automatically: it takes the highest
-`+<build>` across the `v<version>+<build>` release tags, adds one, writes it into
+`+<build>` across every edition's release tags, adds one, writes it into
 `version.dart`, and tags the release — so nobody bumps it by hand.
+
+**One counter for every edition.** Next and Regular draw from the same
+sequence, so a build number names exactly one build whatever its edition — and
+anything keyed by it, such as a `minCodePush` floor (§4.6), reaches only that
+build's installs. Each tag names its edition, and the prefix is what routes it
+to that edition's builds on Codemagic:
+
+| Tag | Cut from | Starts |
+|---|---|---|
+| `next-v26.10.0+180` | `main` | the Next release builds |
+| `prod-v26.9.0+179` | `prod` | the Regular release builds |
+| `v26.9.0+178` | — | nothing: a Next release from before tags named their edition, still counted |
 
 The code-push counter is **not** part of it and reaches no native field: the
 platform tables below project the line, patch, stage and build only. A code
@@ -348,27 +363,34 @@ Independent semver per extension, gated by a minimum app/API version (see §6).
 
 ### 2.5 Release lifecycle (the `26.9` line, end to end)
 
-1. **Stage on Next.** Binary builds ship to **Logger Next** first, branded for
-   the coming month: `26.9.0-pre1`, `-pre2`, …. The patch component stays `.0`
-   for the whole cycle; the stage is the milestone and the build number is the
-   fine-grained identity, so several builds under one stage is normal, not a
-   mistake. Fixes between builds can go out as Next code pushes —
-   `26.9.0-pre3.1`.
-2. **Promote.** When a stage is judged stable enough it becomes the official
-   **`26.9.0`** on Regular. This is a **rebuild**, not a relabel: the version is
-   compiled in and the two editions are separate Shorebird apps, so the promoted
-   release carries its own new build number. Both Logger and Logger Next receive
-   it.
-3. **Patch through the month.** Subsequent fixes ship as code pushes —
-   `26.9.1`, `26.9.2`, … — all bound to the release build promoted in step 2.
+1. **Stage on Next.** Binary builds ship to **Logger Next** first, cut from
+   `main` and branded for the coming month: `26.9.0`, or `26.9.0-pre1`,
+   `-pre2`, … when a cycle marks milestones. The patch component stays `.0`
+   for the whole cycle; the build number is the fine-grained identity, so
+   several builds of one version is normal, not a mistake. A Next code push
+   keeps the version too, told apart by its build and push number —
+   `26.10.0 (199.1)`.
+2. **Promote.** When a Next build is judged stable enough, `halo-ops promote
+   <build>` points the long-lived **`prod`** branch at its commit, keeping the
+   line `prod` carried until then as `prod-<line>` (`prod-26.8`). `halo-ops
+   release` on `prod` then cuts the official **`26.9.0`** on Regular
+   (`prod-v26.9.0+179`). This is a **rebuild**, not a relabel: the version is
+   compiled in and the two editions are separate Shorebird apps, so the
+   promoted release carries its own new build number. `main` moves on to the
+   next month (`26.10.0`) on Next.
+3. **Patch through the month.** A fix lands on `main` first and is
+   cherry-picked onto `prod`, which bumps the patch in `version.dart` —
+   `26.9.1`, `26.9.2`, … — and ships it as a code push (`halo-ops code-push`
+   on `prod`), bound to the release build promoted in step 2.
 4. **Rebuild when a change can't ride a code push.** Native, engine, plugin or
    permission changes (§4.2) take the next patch number as a **full binary** —
-   `26.9.2` as build 131 — with its own build number. Code pushes then resume on
-   *that* release. Note what step 4 costs: devices still on the previous build
-   receive none of the code pushes published afterwards, so a fix that matters to
-   everyone belongs in the binary, not in a push layered on top of it.
+   `halo-ops release` on `prod` again, `26.9.2` as its own build number. Code
+   pushes then resume on *that* release. Note what step 4 costs: devices still
+   on the previous build receive none of the code pushes published afterwards,
+   so a fix that matters to everyone belongs in the binary, not in a push
+   layered on top of it.
 
-The cycle then restarts as `26.10` opens on Next.
+The cycle then restarts as `26.10` is promoted from Next.
 
 ### 2.6 Editions and identity
 
@@ -706,8 +728,7 @@ publishes only when Codemagic set `CM_TAG`, i.e. a release tag started the run.
 A `windows-next-release` started by hand from a branch builds, signs and uploads
 its symbols, then stops after the artifacts zip — which is how the pipeline is
 exercised without touching the download that every Next install points at. A
-manual-start Regular Windows workflow, like its macOS sibling, would need this
-gate revisited alongside the port.
+Regular Windows workflow would need this gate revisited alongside the port.
 
 The three Regular workflows (`ios-prod-release`, `macos-prod-release`,
 `android-prod-release`) set it from the `hold_regular` anchor in
@@ -877,7 +898,7 @@ Trigger it with **`halo-ops code-push`** (or manually from the Codemagic UI): it
 pushes a per-commit `code-push-<edition>-<sha>` tag, which fans out to that edition's
 iOS/macOS/Android code-push workflows (each `triggering:` on the `code-push-<edition>-*`
 pattern). A fresh tag per commit means every code push is a tag creation, so
-Codemagic triggers reliably. Before pushing, it diffs the current release tag →
+Codemagic triggers reliably. Before pushing, it diffs the edition's latest release tag →
 HEAD and **hard-blocks** when any change falls outside the pure-Dart/asset
 surface (native dirs, `pubspec.*`) — `--force` overrides that local pre-flight.
 It's only a heuristic; Shorebird's build-time diff of the compiled artifact is
@@ -893,11 +914,12 @@ the release's §2.2-projected version, so Shorebird's default lookup fails with
 either — `kBuildNumber` advances per release, so once it has been bumped past the
 target release the projection no longer names that release.
 
-**Wired so far:** iOS, macOS, and Android for **Next** (release + code push), and
-the same three for **Regular** (release only — `ios-prod-release`,
-`macos-prod-release`, `android-prod-release`, all manual-start, all holding their
-manifests per §3.5). Regular code-push workflows follow the same pattern via
-`HALO_EDITION=prod` when wanted; Windows/Linux are not wired for Regular at all.
+**Wired so far:** iOS, macOS, and Android for **Next** and for **Regular**
+(release + code push). Next's release builds run on a `next-v*` tag and
+Regular's (`ios-prod-release`, `macos-prod-release`, `android-prod-release`,
+all holding their manifests per §3.5) on a `prod-v*` tag; their code pushes run
+on `code-push-next-*` and `code-push-prod-*`. Windows/Linux are not wired for
+Regular at all.
 
 **Prerequisites (one-time):** run `shorebird init` (creates the apps and the
 committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,

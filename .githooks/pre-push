@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What lands on `main` must be the tree you have.
+# What lands on `main` or `prod` must be the tree you have.
 #
 # `main` takes one squash commit per task, built with
 # `git commit-tree "HEAD^{tree}"` — the tree of the last COMMIT. The test suite
@@ -21,8 +21,9 @@
 # suite and is absent from the tree — the same divergence, in the direction
 # that flatters the run.
 #
-# Only `refs/heads/main`. Every other branch is a backup or a share; nothing is
-# built on it and CI does not validate it.
+# Only `refs/heads/main` and `refs/heads/prod` — the branches Next and Regular
+# are cut from (docs/releases.md §2.5). Every other branch is a backup or a
+# share; nothing is built on it and CI does not validate it.
 #
 # Two ways past, for the case where the tree deliberately is not the branch tip
 # (importing a commit built elsewhere, a revert of a known-good older tree):
@@ -30,7 +31,8 @@
 #   git push --no-verify …
 #
 #
-# One worktree lands on `main` at a time.
+# One worktree lands on `main` or `prod` at a time — one lock for both, since
+# a cut on either takes the next number from the build counter they share.
 #
 # Several worktrees of this repo are commonly mid-task at once, and each merge
 # is the same stretch: rebase onto `main`, run the suite, push. Nothing there
@@ -58,7 +60,7 @@
 #   HALO_ALLOW_UNLOCKED_MERGE=1 git push …
 set -uo pipefail
 
-PROTECTED_REF="refs/heads/main"
+PROTECTED_REFS="refs/heads/main refs/heads/prod"
 EMPTY_SHA="$(git hash-object --stdin </dev/null | tr '0-9a-f' '0')"
 
 [ "${HALO_ALLOW_UNTESTED_MERGE:-}" = "1" ] && exit 0
@@ -87,14 +89,14 @@ LOCK="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)/ham2k
 LOCK_OWNER="$(head -1 "$LOCK/owner" 2>/dev/null || true)"
 
 fail() {
-  printf '\n  REFUSING to push to %s — %s\n\n' "$PROTECTED_REF" "$1" >&2
+  printf '\n  REFUSING to push to %s — %s\n\n' "$remote_ref" "$1" >&2
   printf '  %s\n\n' "$2" >&2
   printf '  Deliberate? %s git push …   (or --no-verify)\n\n' "${3:-HALO_ALLOW_UNTESTED_MERGE=1}" >&2
   exit 1
 }
 
 while read -r _local_ref local_sha remote_ref _remote_sha; do
-  [ "$remote_ref" = "$PROTECTED_REF" ] || continue
+  case " $PROTECTED_REFS " in *" $remote_ref "*) ;; *) continue ;; esac
   # An all-zero local sha is a branch DELETE, which carries no tree.
   [ "$local_sha" = "$EMPTY_SHA" ] && continue
 
@@ -110,7 +112,7 @@ $(printf '%s\n' "$WORKTREE_STATUS" | head -5 | sed 's/^/    /')" \
     if [ -d "$LOCK" ]; then
       fail "the merge lock is held by another worktree:
 $(sed 's/^/    /' "$LOCK/owner" 2>/dev/null || printf '    (no owner recorded)')" \
-        "Wait for it to be released, then rebase onto the new \`main\` and run the suite
+        "Wait for it to be released, then rebase onto the new tip and run the suite
   again — whatever it lands is no longer under what you tested." \
         HALO_ALLOW_UNLOCKED_MERGE=1
     fi

@@ -74,20 +74,34 @@ void main() {
   group('PublicVersion release identity', () {
     test('tag name + message for a pre-release', () {
       final v = parseVersionDart(_preRelease).version;
-      expect(v.releaseTagName(83), 'v26.8.1-alpha1+83');
-      expect(v.releaseMessage(83), 'Release 26.8.1 alpha 1 (83)');
+      expect(v.releaseTagName(83, edition: Edition.next), 'next-v26.8.1-alpha1+83');
+      expect(v.releaseMessage(83, edition: Edition.next), 'Release 26.8.1 alpha 1 (83)');
     });
 
     test('a stable release message has no pre-release clause', () {
       final v = parseVersionDart(_stable).version;
-      expect(v.releaseTagName(90), 'v26.9.0+90');
-      expect(v.releaseMessage(90), 'Release 26.9.0 (90)');
+      expect(v.releaseTagName(90, edition: Edition.next), 'next-v26.9.0+90');
+      expect(v.releaseMessage(90, edition: Edition.next), 'Release 26.9.0 (90)');
     });
 
     test('a shorebird-patched pre-release carries the .M patch counter', () {
       const v = PublicVersion(main: MainVersion(year: 26, month: 8), patch: 1, preRelease: 1, preReleaseLabel: 'pre', preReleasePatch: 2);
-      expect(v.releaseTagName(84), 'v26.8.1-pre1.2+84');
-      expect(v.releaseMessage(84), 'Release 26.8.1 pre 1.2 (84)');
+      expect(v.releaseTagName(84, edition: Edition.next), 'next-v26.8.1-pre1.2+84');
+      expect(v.releaseMessage(84, edition: Edition.next), 'Release 26.8.1 pre 1.2 (84)');
+    });
+
+    test('a prod cut is named for its edition, in the tag and in the log', () {
+      // The prefix is what Codemagic routes on: a prod tag spelled like a Next
+      // one would rebuild the Regular line's code as Next and hand it to Next
+      // testers. The message differs so the two cuts read apart in the log.
+      final v = parseVersionDart(_stable).version;
+      expect(v.releaseTagName(179, edition: Edition.prod), 'prod-v26.9.0+179');
+      expect(v.releaseMessage(179, edition: Edition.prod), 'Regular release 26.9.0 (179)');
+    });
+
+    test('dev has no release tag', () {
+      final v = parseVersionDart(_stable).version;
+      expect(() => v.releaseTagName(1, edition: Edition.dev), throwsArgumentError);
     });
   });
 

@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'edition.dart';
 import 'main_version.dart';
 
 /// The pieces of a version's human name, in the order a name spells them —
@@ -128,18 +129,24 @@ class PublicVersion {
     ].join(' ');
   }
 
-  /// The git ref name for a release of this version at [build] —
-  /// `v<value>+<build>` (e.g. `v26.8.1-alpha1+82`). Semver build-metadata
-  /// style, and a valid ref (no spaces). See docs/releases.md §2.2.
-  String releaseTagName(int build) => 'v$value+$build';
+  /// The git ref name for an [edition]'s release of this version at [build] —
+  /// `<edition>-v<value>+<build>` (e.g. `next-v26.10.0+180`). The prefix is
+  /// what Codemagic's tag patterns route on, so a prod tag can never start the
+  /// Next builds. Semver build-metadata style, and a valid ref (no spaces).
+  /// See docs/releases.md §2.2.
+  String releaseTagName(int build, {required Edition edition}) {
+    if (edition == Edition.dev) throw ArgumentError.value(edition, 'edition', 'dev is never cut from tags');
+    return '${edition.name}-v$value+$build';
+  }
 
   /// The human release message used for the release commit and annotated tag —
-  /// e.g. `Release 26.8.1 alpha 1 (82)`. Note this spells the numeric core
-  /// (`26.8.1`), not the [displayName] (`August '26 alpha 1`).
-  String releaseMessage(int build) {
+  /// e.g. `Release 26.10.0 (180)`, or `Regular release 26.9.1 (183)` for prod,
+  /// so the two editions' cuts read apart in the log. Note this spells the
+  /// numeric core (`26.8.1`), not the [displayName] (`August '26 alpha 1`).
+  String releaseMessage(int build, {required Edition edition}) {
     final core = '${main.year}.${main.month}.$patch';
     final pre = preRelease == null ? '' : ' $preReleaseLabel $preRelease${preReleasePatch == null ? '' : '.$preReleasePatch'}';
-    return 'Release $core$pre ($build)';
+    return '${edition == Edition.prod ? 'Regular release' : 'Release'} $core$pre ($build)';
   }
 
   @override

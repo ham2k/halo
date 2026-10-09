@@ -60,14 +60,12 @@ Edition? editionFromName(String name) => switch (name.trim().toLowerCase()) {
 
 /// The [Edition] a release cut from git branch [branch] targets.
 ///
-/// Today Next is
-/// cut from the `main` branch (a pushed `v*` tag builds the Next matrix), so
-/// `main` → `next` — `dist`, its pre-rename name, stays mapped while the
-/// transitional `dist` compat branch exists — and a dedicated `prod` branch
-/// → `prod`. Everything else — feature branches — is `dev`, which halo-ops
-/// won't tag. This is expected to change as the branch layout evolves
-/// (codemagic.yaml notes a future "separate next/prod branches");
-/// `--edition` overrides it meanwhile.
+/// Next is cut from `main` and Regular from the long-lived `prod` branch
+/// (docs/releases.md §2.5), so `main` → `next` and `prod` → `prod` — `dist`,
+/// `main`'s pre-rename name, stays mapped while the transitional `dist` compat
+/// branch exists. Everything else — feature branches — is `dev`, which
+/// halo-ops won't tag; `--edition` overrides it for a worktree whose local
+/// branch is named otherwise.
 Edition editionForBranch(String branch) => switch (branch.trim()) {
   'prod' => Edition.prod,
   'next' => Edition.next,

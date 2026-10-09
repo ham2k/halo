@@ -38,7 +38,7 @@ const kStageLabel = 'BETA';
 /// The native build number (`CFBundleVersion` / Android `versionCode` /
 /// Windows·Linux `FILEVERSION` build), shared across every platform — a simple
 /// monotonic integer. You don't edit it by hand: `halo-ops release` advances
-/// it per release from the `v<version>+<build>` tag ledger and writes it here
+/// it per release from the release-tag ledger of every edition and writes it here
 /// (§2.2). Must stay small enough to fit every platform's field —
 /// Windows/Linux cap it at 16 bits.
 const kBuildNumber = 186;
@@ -51,9 +51,9 @@ const kGitSha = String.fromEnvironment('HALO_GIT_SHA');
 
 /// Per-edition build expiration dates (`YYYY-MM-DD`, UTC; empty = never
 /// expires). You don't edit these by hand: `halo-ops release` writes them —
-/// today + 14 days for the cutting edition (Next), + 6 months for Regular,
-/// and Dev is re-stamped to today + 14 days on EVERY cut (dev builds are
-/// made from dist commits, so they inherit the latest stamp) — so a stale
+/// today + 14 days for Next, + 6 months for Regular, and a Next cut re-stamps
+/// Dev to today + 14 days too (dev builds are made from main commits, so they
+/// inherit the latest stamp) — so a stale
 /// install nags on every launch to go get a newer build (the dialog in
 /// views/staleness_dialog.dart). Like [kBuildNumber] these live in
 /// compiled Dart so a Shorebird patch can rewrite them.

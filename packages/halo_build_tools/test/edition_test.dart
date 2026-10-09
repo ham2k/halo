@@ -53,8 +53,8 @@ void main() {
 
   group('editionForBranch (#241)', () {
     test('main (and the transitional dist name) map to next — where Next is cut today', () {
-      // A pushed v* tag from main builds the Next matrix, so a release cut from
-      // main is a Next release. `dist` is the pre-rename name, kept while the
+      // Next is cut from main, so a release cut there must be tagged next-v…,
+      // the prefix that starts the Next matrix. `dist` is the pre-rename name, kept while the
       // transitional compat branch exists.
       expect(editionForBranch('main'), Edition.next);
       expect(editionForBranch('dist'), Edition.next);
