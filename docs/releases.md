@@ -99,7 +99,7 @@ Section 2.3 explains how the patchable public version is stored.
   identity. A code push applied on top of a stage appends its own counter:
   `26.9.0-pre3.1`.
 - **product stage label** — `kStageLabel` in `config/version.dart`, currently
-  `ALPHA`. Not a coordinate and deliberately not part of the version. The stage
+  `BETA`. Not a coordinate and deliberately not part of the version. The stage
   suffix marks one build's place within a cycle; this marks how mature the
   *product as a whole* is, and applies to every version and every edition until
   deliberately changed (`''` removes it). It exists only in the human name —

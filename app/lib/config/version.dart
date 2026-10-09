@@ -33,7 +33,7 @@ const kPublicVersionInfo = PublicVersion(main: MainVersion(year: 26, month: 9), 
 /// build's place in a release cycle (§2.1), while this marks the product's
 /// maturity and outlives any single version. Set it to `''` to drop it
 /// everywhere at once.
-const kStageLabel = 'ALPHA';
+const kStageLabel = 'BETA';
 
 /// The native build number (`CFBundleVersion` / Android `versionCode` /
 /// Windows·Linux `FILEVERSION` build), shared across every platform — a simple
