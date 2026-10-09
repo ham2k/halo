@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"178":
   changes:
     - "New Stash button sends exports to stash.ham2k.net (phones and web, with sync on)"
     - "New unstable extension releases install from a catalog link, and keep updating"
