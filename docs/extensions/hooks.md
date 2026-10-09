@@ -1659,6 +1659,7 @@ the extension. `value` names what it shows and sets.
 | `nativeSwitch`, `nativeCheckbox` | number, 1 or 0 | `commit` | — (shows `label` beside it) |
 | `nativeChip` | number, 1 or 0; or none | `commit`; `activate` without a value | `icon`; needs `event` without a value |
 | `nativeText` | number, string, or none | nothing | `style` (a typography role), `align` (`start`, `center`, `end`) |
+| `spectrum` | — | `commit` with the frequency clicked; `activate` from an annotation | see *Spectrum* below |
 
 The three drawn kinds are invisible hit areas over artwork the extension paints;
 the native kinds are Material widgets the app paints and themes. Every control
@@ -1770,6 +1771,38 @@ export const spotter: PanelHook = {
 }
 ```
 
+#### Spectrum
+
+A `spectrum` control is a radio's panadapter and waterfall, drawn by the host
+from sweeps that never reach the extension, on a host with the panadapter
+enabled. It is **extension API 6**, as is `host.setRadioSpectrum`: a bundle
+using either declares `"api": 6`, and an app speaking less refuses it at install
+rather than failing to render the scene. It needs `requiresRadioRead`; without it, or on a host or radio
+without a spectrum, the control says why instead. It is placed like a native
+control and takes the fields of `PanelSceneSpectrum` in the SDK:
+
+- `radio` (an id from `listRadios`; omitted, the designated radio), `display`
+  (`both`, `pan`, `waterfall`), `split`, and `flow` — which way the waterfall
+  moves (`down`, `up`, `right`, `left`), the panadapter on the side it comes
+  from.
+- `floor`, `range`, `average` (0–99, default 40), `fps` (default 15),
+  `waterfallSpeed`, `waterfallFloor`, `waterfallRange`: numbers, or the names
+  of scene values the control reads on every sweep.
+- Colors (`#RRGGBB` or `#AARRGGBB`): `palette` or `waterfallColors`,
+  `traceColor`/`traceWidth`, `fillColor`/`fillColorBottom`, `backgroundColor`,
+  `gridColor`/`gridDashed`, `waterfallGridColor`.
+- `center`: the tuned-frequency line, styled per part.
+- `overlays`: up to 16 lines (`at`) and areas (`from`, `to`) in Hz from the
+  tuned frequency, the sweep's middle, or absolute, each styled per part.
+- `scale`: the gap between the panadapter and the waterfall, its fill and
+  borders, and frequency `labels` and `ticks`.
+- `annotations`: up to 64 pieces of text at frequencies, with a pointer to
+  where they sit. One with an `event` sends `activate` when clicked, its
+  frequency as `value` and its `id` as `annotation`, and does not tune.
+- `hoverHz`, `hoverDb`: scene values the pointer writes, for a text layer.
+- `tuneStep`: a click elsewhere sends `commit` with the frequency under it,
+  rounded to this many Hz. The extension decides whether to tune.
+
 The callsign comes back upper-cased, and the field shows the extension's
 version once the typing is committed. A bundle carrying this declares
 `"api": 5`. The `k2hrc-panel-scenes` sample in the SDK has every kind, a
@@ -1785,8 +1818,8 @@ repository's dashboard README for building them.
 The radio host calls are manifest capabilities, refused unless declared — the
 same shape as `requiresLocation`, and shown to the operator at install:
 `"requiresRadioRead": true` allows `host.listRadios()` and `host.readRadio()`;
-`"requiresRadioWrite": true` allows `host.tuneRadio()` and
-`host.setRadioConnection()`, and implies read, since a command answers with the
+`"requiresRadioWrite": true` allows `host.tuneRadio()`,
+`host.setRadioConnection()` and `host.setRadioSpectrum()`, and implies read, since a command answers with the
 radio's state. An undeclared call rejects rather than answering null.
 A capability belongs to the bundle that declared it, and to the sub-extensions
 that bundle defines under its own key. A separately installed bundle never
@@ -1817,7 +1850,17 @@ reported state confirms it. Drivers retain their own protocol/echo handling.
 `host.setRadioConnection({id, selection?, connected})` starts or ends a local CAT
 connection using the same selection and identity checks. Acceptance starts the
 operation; follow reported connection state for completion. It does not switch
-the hardware's mains power or initiate transmission. The reference panel samples
+the hardware's mains power or initiate transmission.
+On a host with the panadapter enabled, `readRadio()` carries `spectrum`: null
+for a radio without a scope, otherwise its settings as the radio reports them
+(`mode`, `spanHz`, `lowHz`/`highHz`, `refLevelDb`, `speed`), what it accepts
+(`spansHz`, `refMinDb`…`refStepDb`, `modes`, `speeds`) and `problem`, why it
+cannot run, in the operator's language. The settings are known only while a
+`spectrum` control has the scope running, and null otherwise.
+`host.setRadioSpectrum({id, selection?, mode?, spanHz?, refLevelDb?, speed?})`
+changes them; a span between two the radio offers is snapped to the nearer. It
+answers `stopped` when no control is running the scope: nothing is queued for
+later. The reference panel samples
 state once per second while visible; knob motion and LCD digit updates run locally,
 and tuning is sent continuously during dragging, paced by the CAT adapter. The
 main readout follows the requested value immediately; confirmation status distinguishes pending requests from the radio

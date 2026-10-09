@@ -26,6 +26,7 @@ import type {
   StatusBarNoticeParams,
   VersionInfo,
   PanelRadioState,
+  PanelRadioSpectrumSet,
   PanelRadioTune,
   PanelRadioTuneResult,
   ExtensionWebSocket,
@@ -287,6 +288,10 @@ export const host = {
   },
   async tuneRadio(args: PanelRadioTune): Promise<PanelRadioTuneResult> {
     return (await hostCallFn()("tuneRadio", { ...args })) as PanelRadioTuneResult
+  },
+  /** Changes the radio's scope. Needs `requiresRadioWrite` and extension API 6; the result's state reports what the radio took. */
+  async setRadioSpectrum(args: PanelRadioSpectrumSet): Promise<PanelRadioTuneResult> {
+    return (await hostCallFn()("setRadioSpectrum", { ...args })) as PanelRadioTuneResult
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse

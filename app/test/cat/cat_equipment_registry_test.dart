@@ -28,6 +28,14 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 void main() {
   final registry = EquipmentRegistry();
 
+  test("a baud rate the node's transport has no field for never reaches the driver", () {
+    // Left over from a serial pairing the node was switched from, it would
+    // pace a WiFi link like a 19200 cable and refuse its scope as too slow.
+    const stale = {'host': '10.0.0.5', 'baudRate': 19200};
+    expect(registry.typeFor('ic705-network')!.driverConfig(stale)['baudRate'], isNull);
+    expect(registry.typeFor('ic705-serial')!.driverConfig(stale)['baudRate'], 19200);
+  });
+
   for (final type in registry.types) {
     group(type.key, () {
       // Every key the transport/driver actually reads — whether or not it

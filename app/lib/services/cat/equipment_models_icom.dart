@@ -145,6 +145,7 @@ const ic7300Model = EquipmentModel(
         civRadioModesConfigKey: _civHfDataModes,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
+        civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       notes: _ic7300SerialNotes,
@@ -192,6 +193,7 @@ const ic7300mk2Model = EquipmentModel(
         civRadioModesConfigKey: _civHfDataModes,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
+        civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       // Unlike the original IC-7300's single bridge, the MK2 presents two
@@ -291,6 +293,7 @@ const ic7610Model = EquipmentModel(
         civRadioModesConfigKey: _civHfDataModes,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
+        civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       restrictions: {'port': _icomCatPort},
@@ -325,6 +328,7 @@ const ic7760Model = EquipmentModel(
         'maxWatts': 200,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
+        civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       restrictions: {'port': _icomCatPort},
@@ -446,6 +450,7 @@ const ic705Model = EquipmentModel(
         'batteryMaxWatts': 5,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
+        civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       // The failure this transport actually produces is silence: the
@@ -473,6 +478,7 @@ const ic705Model = EquipmentModel(
         'batteryMaxWatts': 5,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
+        civScopeConfigKey: true,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       // The radio [_icomCatPort] was actually observed on: two ports under

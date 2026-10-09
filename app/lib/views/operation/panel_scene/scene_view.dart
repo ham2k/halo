@@ -12,6 +12,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../panel_environment.dart';
 import 'scene_model.dart';
+import 'scene_spectrum.dart';
 
 /// Sends one control event and answers with the values to show: a patch keyed
 /// by value name, a double for a number and a String for a string.
@@ -28,7 +29,11 @@ typedef SceneEventHandler = Future<Map<String, Object>> Function(Map<String, dyn
 class PanelSceneView extends StatefulWidget {
   final PanelScene scene;
   final SceneEventHandler? onEvent;
-  const PanelSceneView({super.key, required this.scene, this.onEvent});
+
+  /// Where `spectrum` controls get their sweeps — null for a panel that may
+  /// not read the radio.
+  final SceneSpectrumSource? spectrum;
+  const PanelSceneView({super.key, required this.scene, this.onEvent, this.spectrum});
   @override
   State<PanelSceneView> createState() => _PanelSceneViewState();
 }
@@ -83,7 +88,11 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     // Local-only values (inspection cursor, a switch that sends nothing)
     // survive document refreshes. A `nativeText` has no event and is not
     // one: it only shows its value, so it follows the document.
-    final local = widget.scene.controls.where((c) => c.event == null && !c.isAction && c.kind != 'nativeText').map((c) => c.value).toSet();
+    final local = {
+      ...widget.scene.controls.where((c) => c.event == null && !c.isAction && c.kind != 'nativeText').map((c) => c.value),
+      // Written by the pointer, never by the extension.
+      for (final c in widget.scene.controls) ...[?c.spectrum?.hoverHz, ?c.spectrum?.hoverDb],
+    };
     bool keep(String key) => _dirty.contains(key) || _active.contains(key) || local.contains(key);
     _values = {for (final entry in widget.scene.values.entries) entry.key: keep(entry.key) ? _values[entry.key] ?? entry.value : entry.value};
     _strings = {for (final entry in widget.scene.strings.entries) entry.key: keep(entry.key) ? _strings[entry.key] ?? entry.value : entry.value};
@@ -123,7 +132,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     }
   }
 
-  void _sendControl(SceneControl control, String phase, {String? action}) {
+  /// [value] stands in for the control's bound value — the frequency a
+  /// spectrum was clicked at, which no scene value holds.
+  void _sendControl(SceneControl control, String phase, {String? action, double? value, String? annotation}) {
     // Touch never blurs a field by tapping a button, and a Material button
     // takes no focus: without this, Spot goes out before its callsign.
     if (phase == 'activate') {
@@ -140,15 +151,22 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       'action': action ?? control.event,
       'phase': phase,
       'sequence': ++_sequence,
-      if (control.value != null)
+      'annotation': ?annotation,
+      if (value != null)
+        'value': value
+      else if (control.value != null)
         if (_strings.containsKey(control.value)) 'text': _strings[control.value] else 'value': _values[control.value],
     };
     // Buttons are disabled while outstanding; repeated control commits keep
-    // only their newest desired value. Bound by the scene's 64 controls.
+    // only their newest desired value. Bound by the scene's 64 controls, and
+    // a spectrum's 64 annotations each.
     // Move a replacement to the end, preserving commit order across controls
     // that share a value (for example a tuning knob and its band slider).
-    _queue.remove(control.id);
-    _queue[control.id] = event;
+    // An annotation's click is its own entry: a spot clicked, then the
+    // waterfall clicked to tune, are two things the extension must hear.
+    final key = annotation == null ? control.id : '${control.id}\u0000$annotation';
+    _queue.remove(key);
+    _queue[key] = event;
     setState(() => _failed = false);
     _drain();
   }
@@ -181,7 +199,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
           _failed = true;
           // An action queued behind a refused value would act on the value
           // the extension has, not the one the operator just gave it.
-          if (event['phase'] != 'activate') _queue.removeWhere((_, queued) => queued['phase'] == 'activate');
+          // An annotation's click carries its own frequency, so it does not
+          // act on a value the extension refused, and still goes.
+          if (event['phase'] != 'activate') _queue.removeWhere((_, queued) => queued['phase'] == 'activate' && queued['annotation'] == null);
           if (event['sequence'] == _sequence) {
             for (final key in _dirty) {
               if (_active.contains(key)) continue;
@@ -225,7 +245,35 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     );
   }
 
-  Widget _native(SceneControl control) => _faded(control, _nativeView(control));
+  Widget _native(SceneControl control) => _faded(control, control.spectrum == null ? _nativeView(control) : _spectrumView(control));
+
+  Widget _spectrumView(SceneControl control) {
+    final spec = control.spectrum!;
+    return SceneSpectrumView(
+      key: ValueKey('${control.id}:${control.kind}'),
+      control: control,
+      source: widget.spectrum,
+      awake: _appVisible && DockPaneVisibility.of(context),
+      values: _values,
+      onHover: spec.hoverHz == null && spec.hoverDb == null
+          ? null
+          : (hz, db) => setState(() {
+              if (spec.hoverHz case final key?) _values[key] = hz;
+              if (spec.hoverDb case final key?) _values[key] = db;
+            }),
+      // Shown but inert, like every disabled control: no tune, no annotation
+      // click. Hover still reads, since it acts on nothing.
+      onAnnotation: control.disabled
+          ? null
+          : (annotation, hz) => _sendControl(control, 'activate', action: annotation.event, value: hz, annotation: annotation.id),
+      onTune: control.event == null || control.disabled
+          ? null
+          : (hz) {
+              final step = spec.tuneStep?.resolve(_values);
+              _sendControl(control, 'commit', value: step == null || step <= 0 ? hz : (hz / step).round() * step);
+            },
+    );
+  }
 
   Widget _nativeView(SceneControl control) => _NativeControlView(
     // With the kind: a render that turns a control into a text field must not

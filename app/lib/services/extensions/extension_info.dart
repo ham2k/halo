@@ -212,8 +212,9 @@ class ExtensionInfo with ExtensionSearchable {
   final bool requiresLocation;
 
   /// Whether this extension may read the operator's radios (`listRadios`,
-  /// `readRadio`; the manifest's `requiresRadioRead`) and whether it may
-  /// command them (`tuneRadio`, `setRadioConnection`; `requiresRadioWrite`).
+  /// `readRadio`, a scene's `spectrum` control; the manifest's
+  /// `requiresRadioRead`) and whether it may command them (`tuneRadio`,
+  /// `setRadioConnection`, `setRadioSpectrum`; `requiresRadioWrite`).
   /// A command answers with the radio's state, so write implies read.
   final bool requiresRadioRead;
   final bool requiresRadioWrite;

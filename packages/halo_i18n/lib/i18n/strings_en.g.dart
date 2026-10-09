@@ -4701,6 +4701,39 @@ class Translations$settings$station$en {
 	/// en: 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe'
 	String get flexNoSlices => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe';
 
+	/// en: 'This radio sends no spectrum over CAT'
+	String get spectrumUnsupported => 'This radio sends no spectrum over CAT';
+
+	/// en: 'Requires CAT at 115200 bps'
+	String get spectrumRequiresBaud => 'Requires CAT at 115200 bps';
+
+	/// en: 'No radio connected'
+	String get spectrumNoRadio => 'No radio connected';
+
+	/// en: 'Waiting for the radio's spectrum…'
+	String get spectrumWaiting => 'Waiting for the radio\'s spectrum…';
+
+	/// en: 'Spectrum display is not available'
+	String get spectrumUnavailable => 'Spectrum display is not available';
+
+	/// en: 'Every DAX IQ channel on this radio is in use'
+	String get spectrumNoDaxChannel => 'Every DAX IQ channel on this radio is in use';
+
+	/// en: 'This slice has no panadapter on the radio'
+	String get spectrumNoPanadapter => 'This slice has no panadapter on the radio';
+
+	/// en: 'The radio refused a DAX IQ stream (error ${code})'
+	String spectrumStreamRefused({required Object code}) => 'The radio refused a DAX IQ stream (error ${code})';
+
+	/// en: 'The radio's spectrum data cannot reach this device'
+	String get spectrumNoUdp => 'The radio\'s spectrum data cannot reach this device';
+
+	/// en: 'The radio refused its scope commands'
+	String get spectrumScopeRefused => 'The radio refused its scope commands';
+
+	/// en: 'The radio's scope is set outside the range it can show'
+	String get spectrumOutOfRange => 'The radio\'s scope is set outside the range it can show';
+
 	/// en: 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio'
 	String get n3fjpNoRig => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio';
 
@@ -8842,6 +8875,17 @@ extension on Translations {
 			'settings.station.channelNotInUse' => 'not in use',
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
+			'settings.station.spectrumUnsupported' => 'This radio sends no spectrum over CAT',
+			'settings.station.spectrumRequiresBaud' => 'Requires CAT at 115200 bps',
+			'settings.station.spectrumNoRadio' => 'No radio connected',
+			'settings.station.spectrumWaiting' => 'Waiting for the radio\'s spectrum…',
+			'settings.station.spectrumUnavailable' => 'Spectrum display is not available',
+			'settings.station.spectrumNoDaxChannel' => 'Every DAX IQ channel on this radio is in use',
+			'settings.station.spectrumNoPanadapter' => 'This slice has no panadapter on the radio',
+			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'The radio refused a DAX IQ stream (error ${code})',
+			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
+			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
+			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.n3fjpNoRig' => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio',
 			'settings.station.winkeyerKeyPort' => 'Key output',
 			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
@@ -9027,6 +9071,8 @@ extension on Translations {
 			'settings.station.trackFieldKey' => 'CW Key',
 			'settings.station.placeholderConnectDelay' => 'Connect delay (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderDropAfter' => 'Drop after (seconds)',
 			'settings.station.placeholderDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.placeholderFailConnect' => 'Always fail to connect',
@@ -9038,8 +9084,6 @@ extension on Translations {
 			'settings.station.placeholderPower' => 'Power (watts)',
 			'settings.station.placeholderPurpose' => 'Use this radio to keep track of which rig you\'re using for logging purposes',
 			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
 			'settings.station.cwKeyerField' => 'CAT CW keyer',
 			'settings.station.cwKeyerFieldDescription' => 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.',

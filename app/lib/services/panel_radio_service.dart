@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:halo_core/halo_core.dart' show realNowMillis, nowMillis;
 import 'cat/cat_service.dart';
 import 'cat/equipment.dart';
+import 'cat/spectrum.dart';
 import 'radio_service.dart';
 
 /// Narrow extension adapter. CAT retains sessions, telemetry and echo handling.
@@ -12,7 +13,12 @@ class PanelRadioService {
   final RadioService radio;
   Future<void> _tail = Future.value();
   int _lastCommand = 0;
-  PanelRadioService(this.cat, this.radio);
+
+  /// Whether `spectrum` is reported and set at all — `EXP FALL`.
+  final bool Function() spectrumEnabled;
+  PanelRadioService(this.cat, this.radio, {this.spectrumEnabled = _never});
+
+  static bool _never() => false;
 
   List<Map<String, dynamic>> list() => [
     for (final node in cat.nodes)
@@ -51,7 +57,62 @@ class PanelRadioService {
               meter.name: reading.value,
       },
       'canTune': live && state.vfo.freqKHz != null,
+      if (spectrumEnabled()) 'spectrum': node == null || !live ? null : _spectrum(node.uuid, state),
     };
+  }
+
+  /// The radio's scope as the radio reports it, and what it accepts. Null for
+  /// a radio with none; the sweeps themselves are drawn by the host.
+  Map<String, dynamic>? _spectrum(String uuid, EquipmentState state) {
+    final session = cat.spectrumSessionFor(uuid);
+    if (session == null) return null;
+    final settings = state.spectrum;
+    final caps = session.spectrumCapabilities;
+    return {
+      'problem': session.spectrumUnavailable ?? state.spectrumProblem,
+      'mode': settings?.mode.name,
+      'spanHz': settings?.spanHz,
+      'lowHz': settings?.lowHz,
+      'highHz': settings?.highHz,
+      'refLevelDb': settings?.refLevelDb,
+      'speed': settings?.speed?.name,
+      'spansHz': caps.spansHz,
+      'refMinDb': caps.refMinDb,
+      'refMaxDb': caps.refMaxDb,
+      'refStepDb': caps.refStepDb,
+      'modes': [for (final m in caps.modes) m.name],
+      'speeds': [for (final s in caps.speeds) s.name],
+    };
+  }
+
+  /// Changes the radio's scope. Unpaced, unlike [tune]: a scope setting does
+  /// not move the radio off a frequency, and the radio's answer comes back in
+  /// [read] like every other reading.
+  Map<String, dynamic> setSpectrum(Map<String, dynamic> args) {
+    final selection = args['selection'] as String?;
+    final state = read(selection);
+    if (!spectrumEnabled() || args['id'] == null || args['id'] != state['id']) return {'accepted': false, 'reason': 'changed', 'state': state};
+    final session = cat.spectrumSessionFor(state['id'] as String);
+    if (session == null || session.spectrumUnavailable != null) return {'accepted': false, 'reason': 'disconnected', 'state': state};
+    T? pick<T extends Enum>(List<T> values, Object? name) => name == null ? null : values.asNameMap()[name];
+    final span = args['spanHz'], ref = args['refLevelDb'];
+    final mode = pick(SpectrumMode.values, args['mode']), speed = pick(SpectrumSpeed.values, args['speed']);
+    final caps = session.spectrumCapabilities;
+    // A mode or a speed this radio does not have would be dropped by its
+    // driver and answered as accepted.
+    if ((span != null && (span is! num || !span.isFinite || span <= 0)) ||
+        (ref != null && (ref is! num || !ref.isFinite)) ||
+        (args['mode'] != null && (mode == null || !caps.modes.contains(mode))) ||
+        (args['speed'] != null && (speed == null || !caps.speeds.contains(speed))) ||
+        (span == null && ref == null && mode == null && speed == null)) {
+      return {'accepted': false, 'reason': 'invalid', 'state': state};
+    }
+    final taken = cat.setSpectrum(
+      state['id'] as String,
+      SpectrumRequest(mode: mode, spanHz: (span as num?)?.round(), refLevelDb: (ref as num?)?.toDouble(), speed: speed),
+    );
+    // Not queued for later: a scope runs only while a display shows it.
+    return {'accepted': taken, if (!taken) 'reason': 'stopped', 'state': read(selection)};
   }
 
   Map<String, dynamic> setConnection(Map<String, dynamic> args) {

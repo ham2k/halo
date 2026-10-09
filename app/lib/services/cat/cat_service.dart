@@ -31,6 +31,7 @@ import 'cat_traffic_log.dart';
 import 'connect_failure.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
+import 'spectrum.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
@@ -50,6 +51,7 @@ export 'keyer_repeat.dart' show KeyerRepeatWait;
 export 'main_vfo.dart';
 
 part 'cat_node_sink.dart';
+part 'cat_spectrum.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -1353,7 +1355,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // being removed goes on sending regardless.
     _withKeyInUseTidied(() {
       _nodes.remove(uuid);
-      _runtimes.remove(uuid);
+      unawaited(_runtimes.remove(uuid)?.spectrum?.close());
       // Removing the designated radio clears the choice rather than quietly
       // moving the logging panel onto a different rig immediately after a
       // destructive action. The dropdown is right there.
@@ -1879,6 +1881,21 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         if (runtime.connection != connection) return;
         _noteAlive(uuid, runtime);
       },
+      onSpectrum: (frame) {
+        if (runtime.connection != connection) return;
+        // NOT _noteAlive: a Flex sweep is computed from a UDP stream that
+        // outlives the command socket the silence watch is about.
+        runtime.spectrum?.add(frame);
+      },
+      onSpectrumSettings: (settings) {
+        if (runtime.connection != connection) return;
+        if (stateFor(uuid).spectrum == settings) return;
+        _setState(uuid, stateFor(uuid).copyWith(spectrum: settings));
+      },
+      onSpectrumProblem: (message) {
+        if (runtime.connection != connection || stateFor(uuid).spectrumProblem == message) return;
+        _setState(uuid, stateFor(uuid).copyWith(spectrumProblem: message, clearSpectrumProblem: message == null));
+      },
     );
     // driverConfig, not config: a type may know something about its
     // protocol that is not a setting anyone should be asked for — the
@@ -1945,6 +1962,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:start-updates:${type.driver.key}');
     }
+    runtime.spectrumStarted = false;
+    if (runtime.spectrum?.hasListener ?? false) _spectrumDemand(runtime, true);
     return _ConnectOutcome.connected;
   }
 
@@ -2596,6 +2615,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     for (final runtime in _runtimes.values) {
       runtime.cancel?.cancel();
       unawaited(_teardown(runtime));
+      unawaited(runtime.spectrum?.close());
     }
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
@@ -2663,4 +2683,10 @@ class _NodeRuntime {
   /// per retry for the rest of the session. Cleared by [connect], the
   /// operator's own try after replugging.
   bool linesRefused = false;
+
+  /// See [CatService.spectrumFrames]. Created by the first display to ask.
+  StreamController<SpectrumFrame>? spectrum;
+
+  /// Whether this connection's scope was started — what a demand changes.
+  bool spectrumStarted = false;
 }

@@ -34,6 +34,7 @@ import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 import 'panel_environment.dart';
 import 'panel_scene/scene_model.dart';
+import 'panel_scene/scene_spectrum.dart';
 
 /// An operation as a hook sees it — what a panel's `render` and the
 /// `template` hook (a CW message about to be keyed) are handed, so
@@ -90,7 +91,11 @@ class ExtensionPanel extends StatefulWidget {
   /// handed upward — and it can only be known once the panel has answered.
   final ValueChanged<String?>? onTitle;
 
-  const ExtensionPanel({super.key, required this.panel, required this.panels, required this.renderContext, this.onTitle});
+  /// For a scene's `spectrum` controls; null when this panel may not read
+  /// the radio.
+  final SceneSpectrumSource? spectrum;
+
+  const ExtensionPanel({super.key, required this.panel, required this.panels, required this.renderContext, this.onTitle, this.spectrum});
 
   @override
   State<ExtensionPanel> createState() => _ExtensionPanelState();
@@ -669,6 +674,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         error: _error,
         onRetry: _error == null ? null : _retry,
         onSceneEvent: _sceneEvent,
+        spectrum: widget.spectrum,
       );
     },
   );

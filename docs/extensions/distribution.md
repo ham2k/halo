@@ -262,7 +262,7 @@ It reports every problem at once rather than one per run:
 h2kext-pack: ./build is not ready to package:
 manifest.json: missing required field 'name'
 manifest.json: key 'my-clock' must start with your callsign — 'my' is not one (e.g. ki2d-my-clock)
-manifest.json: missing 'api' — declare the extension API this was built against (currently 5)
+manifest.json: missing 'api' — declare the extension API this was built against (currently 6)
 ```
 
 `--force-name` waives the naming convention below. It exists for Ham2K's own

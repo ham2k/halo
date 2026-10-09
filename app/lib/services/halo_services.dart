@@ -422,7 +422,7 @@ class HaLoServices {
 
   /// DEVLOGCAT itself — see [CatTrafficRecording].
   late final CatTrafficRecording catTraffic = CatTrafficRecording(catTrafficLog, settings: settings, cat: () => cat, statusBar: statusBar);
-  late final PanelRadioService panelRadio = PanelRadioService(cat, radio);
+  late final PanelRadioService panelRadio = PanelRadioService(cat, radio, spectrumEnabled: () => settings.experimentEnabled('fall'));
 
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
   /// are reachable only by denying an OS permission or losing a GPS fix, so a

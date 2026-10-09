@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/panel_radio_service.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 
@@ -53,8 +55,28 @@ class TestCat extends Fake implements CatService {
 
   @override
   EquipmentState stateFor(String uuid) => state;
+
+  EquipmentSession? session;
+  @override
+  EquipmentSession? connectedSession(String uuid) => session;
   @override
   String displayNameFor(EquipmentNode node) => 'Test radio';
+}
+
+class TestScope extends Fake implements SpectrumSession {
+  String? unavailable;
+  final requests = <SpectrumRequest>[];
+  bool running = true;
+  @override
+  String? get spectrumUnavailable => unavailable;
+  @override
+  SpectrumCapabilities get spectrumCapabilities =>
+      const SpectrumCapabilities(spansHz: [25000, 50000], refMinDb: -20, refMaxDb: 20, refStepDb: .5, speeds: {SpectrumSpeed.slow, SpectrumSpeed.fast});
+  @override
+  bool setSpectrum(SpectrumRequest request) {
+    if (running) requests.add(request);
+    return running;
+  }
 }
 
 class TestRadio extends Fake implements RadioService {
@@ -148,5 +170,60 @@ void main() {
     expect(read['status'], const EquipmentState().status.name);
     expect(read['frequencyHz'], isNull);
     expect(read.values, isNot(contains('relay 3 stuck')));
+  });
+
+  group('the scope', () {
+    late TestCat cat;
+    late TestScope scope;
+    var enabled = true;
+    setUp(() {
+      enabled = true;
+      scope = TestScope();
+      cat = TestCat()
+        ..session = scope
+        ..state = const EquipmentState(
+          status: EquipmentStatus.connected,
+          vfo: VfoReading(freqKHz: 14074, mode: 'USB'),
+          spectrum: SpectrumSettings(spanHz: 25000, refLevelDb: -4.5, speed: SpectrumSpeed.slow),
+        );
+    });
+    PanelRadioService bridge() => PanelRadioService(cat, TestRadio(), spectrumEnabled: () => enabled);
+
+    test('is reported, with what it accepts, only where the feature is on', () {
+      final spectrum = bridge().read()['spectrum'] as Map;
+      expect((spectrum['spanHz'], spectrum['refLevelDb'], spectrum['speed']), (25000, -4.5, 'slow'));
+      expect(spectrum['spansHz'], [25000, 50000]);
+      enabled = false;
+      // Absent, not null: null says this radio has no scope, which is a
+      // different thing to tell an extension than "this host has none".
+      expect(bridge().read().containsKey('spectrum'), isFalse);
+      expect(bridge().setSpectrum({'id': 'a', 'spanHz': 50000})['accepted'], isFalse);
+      expect(scope.requests, isEmpty);
+    });
+
+    test('a change reaches the radio as asked; a malformed one does not', () {
+      expect(bridge().setSpectrum({'id': 'a', 'spanHz': 50000, 'speed': 'fast'})['accepted'], isTrue);
+      expect((scope.requests.single.spanHz, scope.requests.single.speed), (50000, SpectrumSpeed.fast));
+      expect(bridge().setSpectrum({'id': 'a', 'speed': 'warp'})['reason'], 'invalid');
+      // A mode the radio has no such thing as would be dropped by its driver
+      // and answered as accepted.
+      expect(bridge().setSpectrum({'id': 'a', 'mode': 'fixed'})['reason'], 'invalid');
+      expect(bridge().setSpectrum({'id': 'a', 'speed': 'mid'})['reason'], 'invalid');
+      expect(bridge().setSpectrum({'id': 'a'})['reason'], 'invalid');
+      expect(bridge().setSpectrum({'id': 'b', 'spanHz': 50000})['reason'], 'changed');
+      expect(scope.requests, hasLength(1));
+    });
+
+    test('a scope no display is running says so, rather than accepting a change it never sent', () {
+      scope.running = false;
+      final answer = bridge().setSpectrum({'id': 'a', 'spanHz': 50000});
+      expect((answer['accepted'], answer['reason']), (false, 'stopped'));
+    });
+
+    test('a scope that cannot run refuses a change rather than queueing it', () {
+      scope.unavailable = 'Requires CAT at 115200 bps';
+      expect(bridge().setSpectrum({'id': 'a', 'spanHz': 50000})['reason'], 'disconnected');
+      expect(scope.requests, isEmpty);
+    });
   });
 }

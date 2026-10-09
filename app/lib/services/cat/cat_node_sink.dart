@@ -6,7 +6,7 @@
 
 part of 'cat_service.dart';
 
-class _NodeSink implements EquipmentSink {
+class _NodeSink implements EquipmentSink, SpectrumSink {
   final EquipmentConnection connection;
   final void Function(VfoReading) onReading;
   final void Function(num) onPower;
@@ -21,6 +21,9 @@ class _NodeSink implements EquipmentSink {
   final void Function(List<EquipmentChannel>) onChannels;
   final void Function(List<SwitchAntenna>, List<SwitchPort>) onSwitchState;
   final void Function() onAlive;
+  final void Function(SpectrumFrame) onSpectrum;
+  final void Function(SpectrumSettings) onSpectrumSettings;
+  final void Function(String?) onSpectrumProblem;
   final void Function(List<int> bytes) onSend;
 
   _NodeSink({
@@ -39,6 +42,9 @@ class _NodeSink implements EquipmentSink {
     required this.onChannels,
     required this.onSwitchState,
     required this.onAlive,
+    required this.onSpectrum,
+    required this.onSpectrumSettings,
+    required this.onSpectrumProblem,
   });
 
   @override
@@ -85,4 +91,13 @@ class _NodeSink implements EquipmentSink {
 
   @override
   void reportAlive() => onAlive();
+
+  @override
+  void reportSpectrum(SpectrumFrame frame) => onSpectrum(frame);
+
+  @override
+  void reportSpectrumSettings(SpectrumSettings settings) => onSpectrumSettings(settings);
+
+  @override
+  void reportSpectrumProblem(String? message) => onSpectrumProblem(message);
 }

@@ -168,6 +168,63 @@ The public contract is in [the panel hook](../extensions/hooks.md) and
   ([logging-fields.md](logging-fields.md)): a text field or dropdown keeps what
   it is given, and a clicked button hands focus back to the callsign field.
 
+## Spectrum
+
+A `spectrum` control shows a radio's panadapter and waterfall, painted by the
+host from sweeps that never reach the extension
+([cat.md § Spectrum](cat.md#spectrum)). Behind `EXP FALL`, and extension API 6:
+an older app does not know the kind and would refuse the whole scene, so a
+bundle using it declares `"api": 6` and is refused at install there instead. The public contract
+is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
+`k2hrc-panafall` sample uses all of it.
+
+- **A control, not a layer.** It takes clicks, sends events and fills space in
+  the layout — all things only controls do here. Layers are click-through
+  artwork.
+- **The panel must be allowed to read the radio.** The dock hands the scene a
+  source only when the experiment is on and the extension declares
+  `requiresRadioRead`; without one the control says the display is not
+  available. Subscribing to the sweeps is what starts the radio's scope, so
+  the control subscribes only while its pane and the app are visible.
+- **Display settings are the host's; scope settings are the radio's.**
+  Averaging, frame rate, waterfall pace, colors, the gap, labels, overlays and
+  annotations are applied after a sweep arrives and mean the same on every
+  radio. Span, reference level, center/fixed mode and sweep speed belong to the
+  radio and go through `setRadioSpectrum`.
+- **Every number may name a scene value.** The control reads it on each sweep,
+  so a slider with no `event` retunes contrast, averaging or an overlay's edge
+  with no bridge call. `hoverHz`/`hoverDb` work the other way: the pointer
+  writes them, and they survive a document refresh, for a text layer to show.
+- **Three painters, three paces.** The panadapter repaints at `fps`; the
+  waterfall per row, at `waterfallSpeed` — a row keeping the loudest reading
+  since the last, so a short signal still marks a slow waterfall; labels,
+  ticks and annotations with the panadapter. Waterfall rows are colored as
+  they arrive, so a contrast change affects rows from then on.
+- **Overlays sit relative to the tuned frequency, the sweep's middle, or
+  nothing.** On a Flex the panadapter is not centered on its slice, which is
+  why `center` exists. On the panadapter an area is drawn behind the trace and
+  a line in front of it unless `behind` — which absolute overlays, scenery
+  such as a band edge, default to. On the waterfall everything is drawn over
+  the rows, since nothing under them would show.
+- **The scale is a gap plus a layer.** The gap's fill and borders sit between
+  the panadapter and the waterfall; labels and ticks are drawn over the whole
+  control so an `offset` can put them anywhere, measured from the panadapter's
+  base. A label that would touch the last one is skipped, so a narrow pane
+  shows every other label rather than a run of digits.
+- **One layout, four flows.** `flow` turns the whole control: the panadapter,
+  gap and waterfall are laid out as if the waterfall moved down, and one
+  matrix mirrors that for `up` or turns it a quarter for `right` and `left`,
+  where frequency rises up the screen. Lines, fills and rows are drawn through
+  the matrix; text is not — a label's or an annotation's box is mapped, and
+  the text set upright in it — so offsets and pointer corners keep their
+  meaning in every flow. Clicks and the pointer go back through the same
+  mapping.
+- **Clicks.** A click tunes — a `commit` with the frequency as `value`, rounded
+  to `tuneStep` — unless it lands on an annotation with an `event`, which sends
+  `activate` with its frequency and its `annotation` id instead. Each
+  annotation's clicks queue on their own, so a spot clicked while a tune is in
+  flight is not replaced by the next click on the control.
+
 ## Comparable systems and reuse decision
 
 [Vega signals](https://vega.github.io/vega/docs/signals/) and

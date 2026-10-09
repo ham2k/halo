@@ -363,6 +363,7 @@ const IDENTITY_HOST_METHODS = new Set([
   "readRadio",
   "setRadioConnection",
   "tuneRadio",
+  "setRadioSpectrum",
   "secret",
   "kvGet",
   "kvSet",

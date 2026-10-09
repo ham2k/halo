@@ -22,9 +22,11 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../spectrum.dart';
 import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
 import 'civ_codec.dart';
+import 'civ_scope_codec.dart';
 import 'cw_send_queue.dart';
 import 'keyer_config.dart';
 import 'meter_calibration.dart';
@@ -119,6 +121,16 @@ const civDataModeConfigKey = 'civDataMode';
 /// without DV, WFM or a DATA submode. Unpinned, the driver offers every mode
 /// it can send, less the DATA ones where [civDataModeConfigKey] is off.
 const civRadioModesConfigKey = 'radioModes';
+
+/// Pinned `true` by an entry whose radio streams its scope over CI-V (0x27).
+/// Never a field: it is a fact about the model, and a radio without one
+/// answers every scope command with a NAK.
+const civScopeConfigKey = 'civScope';
+
+/// The slowest line a sweep fits on. At fast speed a sweep is ~500 bytes
+/// thirty times a second, and a slower line would carry little else — the
+/// VFO, the TX watch and the keyer share it.
+const civScopeMinBaud = 115200;
 
 /// The TX watch is one exchange; the meter cycle is one per meter read.
 const civTxWatchBytes = _civExchangeBytes;
@@ -231,6 +243,7 @@ class IcomCivDriver extends EquipmentDriver {
     cwKeyerConfigKey,
     voiceMemoriesConfigKey,
     voiceCeilingConfigKey,
+    civScopeConfigKey,
   };
 
   @override
@@ -297,7 +310,7 @@ class IcomCivDriver extends EquipmentDriver {
   static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
-class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
+class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, SpectrumSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).
@@ -396,6 +409,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   }) : _config = config,
        _modeWithFilter = config[civModeWithFilterConfigKey] == true,
        _dataModeSupported = config[civDataModeConfigKey] != false,
+       _scopeSupported = config[civScopeConfigKey] == true,
        _baudRate = serialBaudRateOrNull(config);
 
   /// See [civModeWithFilterConfigKey].
@@ -497,7 +511,13 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// its command byte, so one arriving late for a command that timed out
   /// does not free the wire for the next; ACK and NAK name no command and
   /// are taken as the answer to whatever is waiting.
-  bool _answers(CivFrame frame) => frame.isAck || frame.isNak || frame.command == _awaiting;
+  ///
+  /// A sweep is never an answer, though it repeats the scope's command byte:
+  /// it streams many times a second, and taking one as the answer to a
+  /// scope setting would free the wire for a burst the radio drops.
+  bool _answers(CivFrame frame) => frame.isAck || frame.isNak || (frame.command == _awaiting && !_isSweep(frame));
+
+  static bool _isSweep(CivFrame frame) => frame.command == civScopeCommand && frame.data.isNotEmpty && frame.data[0] == civScopeWaveform;
 
   void _answered() {
     _answerTimer?.cancel();
@@ -617,6 +637,9 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // status or a meter reading carries no VFO reading, and a radio answering
     // only those would otherwise be marked not responding.
     _sink.reportAlive();
+    // What this answers — a NAK names no command, so it is the one on the
+    // wire, read before the answer frees it.
+    final answering = _awaiting;
     // An answer to us, not a transceive broadcast, is what frees the wire.
     if (frame.to == controllerAddress && _answers(frame)) _answered();
 
@@ -625,6 +648,8 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       // refusal was indistinguishable from silence and the app went on
       // believing the radio had moved.
       debugPrint('[cat] CI-V: radio rejected the last command');
+      // A scope that refuses is a display that would otherwise wait forever.
+      if (answering == civScopeCommand && _scopeWanted) _reportScopeProblem(t.settings.station.spectrumScopeRefused);
       return;
     }
     if (frame.isAck) return;
@@ -740,6 +765,9 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         // derated to 5W by its own battery is putting out at most 5W however
         // hard the meter swings.
         _sink.reportMeter(_metersByTable[table]!, table == MeterTable.powerFraction ? _wattsForFraction(reading) : reading);
+
+      case civScopeCommand:
+        _handleScope(frame.data);
 
       case CivCommand.transmitStatus:
         // Asked by two things now — the voice tracker, to learn when a
@@ -912,8 +940,169 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   @override
   Duration? get expectedUpdateInterval => _sawTransceive ? null : _pollInterval;
 
+  final bool _scopeSupported;
+  bool _scopeWanted = false;
+
+  /// The radio's scope was off when the display asked for it, so it goes off
+  /// again with the display — the operator's own screen is not ours to keep.
+  bool _scopeTurnedOn = false;
+
+  final _scopeAssembler = CivScopeAssembler();
+  SpectrumSettings _scopeSettings = const SpectrumSettings();
+
+  SpectrumSink? get _spectrumSink => switch (_sink) {
+    final SpectrumSink sink => sink,
+    _ => null,
+  };
+
+  @override
+  String? get spectrumUnavailable {
+    if (!_scopeSupported) return t.settings.station.spectrumUnsupported;
+    final baud = _baudRate;
+    if (baud != null && baud < civScopeMinBaud) return t.settings.station.spectrumRequiresBaud;
+    return null;
+  }
+
+  @override
+  SpectrumCapabilities get spectrumCapabilities => const SpectrumCapabilities(
+    spansHz: civScopeSpans,
+    refMinDb: civScopeRefMinDb,
+    refMaxDb: civScopeRefMaxDb,
+    refStepDb: civScopeRefStepDb,
+    modes: {SpectrumMode.center, SpectrumMode.fixed},
+    speeds: {SpectrumSpeed.slow, SpectrumSpeed.mid, SpectrumSpeed.fast},
+  );
+
+  @override
+  void startSpectrum() {
+    if (_scopeWanted || spectrumUnavailable != null) return;
+    _scopeWanted = true;
+    // Whether the screen shows the scope decides what [stopSpectrum] leaves
+    // behind; the answer turns it on if it is off.
+    _send(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress));
+    _send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: true));
+    _readScopeSettings();
+  }
+
+  @override
+  void stopSpectrum() {
+    if (!_scopeWanted) return;
+    _scopeWanted = false;
+    _send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: false));
+    if (_scopeTurnedOn) _send(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress, on: false));
+    _scopeTurnedOn = false;
+    // Forgotten with the display, so the next one hears them again.
+    _scopeSettings = const SpectrumSettings();
+    _scopeProblem = null;
+  }
+
+  @override
+  bool setSpectrum(SpectrumRequest request) {
+    if (!_scopeWanted) return false;
+    final caps = spectrumCapabilities;
+    if (request.mode case final mode?) _send(buildScopeModeFrame(to: radioAddress, from: controllerAddress, fixed: mode == SpectrumMode.fixed));
+    if (request.spanHz case final span?) _send(buildScopeSpanFrame(to: radioAddress, from: controllerAddress, spanHz: caps.snapSpan(span)));
+    if (request.refLevelDb case final ref?) _send(buildScopeRefFrame(to: radioAddress, from: controllerAddress, refDb: caps.snapRef(ref)));
+    if (request.speed case final speed?) _send(buildScopeSpeedFrame(to: radioAddress, from: controllerAddress, speed: _civSpeeds[speed]));
+    // A set is ACKed, not echoed, and the ACK names no command — so what the
+    // radio actually took is read back rather than assumed.
+    _readScopeSettings();
+    return true;
+  }
+
+  static const _civSpeeds = {SpectrumSpeed.fast: 0x00, SpectrumSpeed.mid: 0x01, SpectrumSpeed.slow: 0x02};
+
+  void _readScopeSettings() {
+    _poll(buildScopeModeFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildScopeSpanFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildScopeRefFrame(to: radioAddress, from: controllerAddress));
+    _poll(buildScopeSpeedFrame(to: radioAddress, from: controllerAddress));
+  }
+
+  String? _scopeProblem;
+
+  void _reportScopeProblem(String? message) {
+    if (message == _scopeProblem) return;
+    _scopeProblem = message;
+    _spectrumSink?.reportSpectrumProblem(message);
+  }
+
+  void _reportScopeSettings(SpectrumSettings settings) {
+    if (settings == _scopeSettings) return;
+    _scopeSettings = settings;
+    _spectrumSink?.reportSpectrumSettings(settings);
+  }
+
+  void _handleScope(List<int> data) {
+    if (data.isEmpty) return;
+    switch (data[0]) {
+      case civScopeWaveform:
+        if (!_scopeWanted) return;
+        final sweep = _scopeAssembler.add(data);
+        if (sweep == null) return;
+        // The header restates mode and span on every sweep, so a turn of the
+        // radio's own span knob reaches the settings without a read.
+        final fixed = sweep.fixed ? SpectrumMode.fixed : SpectrumMode.center;
+        _reportScopeSettings(
+          sweep.fixed
+              ? _scopeSettings.copyWith(mode: fixed, lowHz: sweep.lowHz, highHz: sweep.highHz)
+              : SpectrumSettings(mode: fixed, spanHz: sweep.secondHz, refLevelDb: _scopeSettings.refLevelDb, speed: _scopeSettings.speed),
+        );
+        // The radio says why there is nothing to draw: say it, rather than
+        // let the display go stale.
+        if (sweep.outOfRange) return _reportScopeProblem(t.settings.station.spectrumOutOfRange);
+        _reportScopeProblem(null);
+        _spectrumSink?.reportSpectrum(
+          SpectrumFrame(
+            lowHz: sweep.lowHz,
+            highHz: sweep.highHz,
+            // Each step is half a dB of the radio's screen — a scale, not a
+            // calibration: what the bottom of the screen means moves with REF.
+            levels: Float32List.fromList([for (final a in sweep.amplitudes) a / 2]),
+            floorDb: 0,
+            ceilingDb: civScopeAmplitudeMax / 2,
+            atMillis: nowMillis(),
+          ),
+        );
+      case civScopeOnOff:
+        if (parseScopeFlag(data) == false && _scopeWanted && !_scopeTurnedOn) {
+          _scopeTurnedOn = true;
+          _send(buildScopeOnOffFrame(to: radioAddress, from: controllerAddress, on: true));
+          // The output again, after the scope: whether turning the scope on
+          // resets it has not been pinned down, and asking twice costs one
+          // exchange.
+          _send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: true));
+        }
+      case civScopeMode:
+        if (parseScopeFixed(data) case final fixed?) {
+          final was = _scopeSettings;
+          // Edges belong to fixed mode only: a centered scope has none.
+          _reportScopeSettings(
+            fixed ? was.copyWith(mode: SpectrumMode.fixed) : SpectrumSettings(spanHz: was.spanHz, refLevelDb: was.refLevelDb, speed: was.speed),
+          );
+        }
+      case civScopeSpan:
+        if (parseScopeSpan(data) case final span?) _reportScopeSettings(_scopeSettings.copyWith(spanHz: span));
+      case civScopeRef:
+        if (parseScopeRef(data) case final ref?) _reportScopeSettings(_scopeSettings.copyWith(refLevelDb: ref));
+      case civScopeSpeed:
+        if (parseScopeSpeed(data) case final code?) {
+          _reportScopeSettings(_scopeSettings.copyWith(speed: _civSpeeds.entries.firstWhere((e) => e.value == code).key));
+        }
+    }
+  }
+
   @override
   void teardown() {
+    // Straight to the wire, like the unkey below: the outbox is cleared
+    // next, and a radio left streaming its scope spends a serial line on
+    // sweeps for whoever connects after us.
+    if (_scopeWanted) {
+      _scopeWanted = false;
+      // The output alone: a radio keeps only the last of two frames sent back
+      // to back, and the stream matters more than what its screen shows.
+      _sink.send(buildScopeOutputFrame(to: radioAddress, from: controllerAddress, on: false));
+    }
     if (_keyedByUs) {
       // Straight to the wire, not through the outbox: an unkey that waits
       // for the exchange in flight may not go out at all, and nothing else

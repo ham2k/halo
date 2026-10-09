@@ -317,7 +317,15 @@ class EquipmentType {
   /// The configuration the DRIVER sees — the merged config, overrides
   /// included, since a driver reads whatever keys it needs straight out of
   /// the map rather than through a narrowed shape like [targetFor].
-  Map<String, dynamic> driverConfig(Map<String, dynamic> config) => _merged(config);
+  ///
+  /// Less a baud rate the transport has no field for: a node switched from
+  /// serial to the network keeps the one it had, and a driver that budgets
+  /// by baud would pace a WiFi link like a 19200 cable — and refuse a scope
+  /// as too slow for it.
+  Map<String, dynamic> driverConfig(Map<String, dynamic> config) => {
+    ..._merged(config),
+    if (!transport.recognizedConfigKeys.contains('baudRate') && !overrides.containsKey('baudRate')) 'baudRate': null,
+  };
 
   /// Which meters a node on this pairing can show — the driver's answer for
   /// the MERGED config, so the entry's own overrides (the calibration file

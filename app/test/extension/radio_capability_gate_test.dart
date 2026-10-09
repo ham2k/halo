@@ -50,6 +50,12 @@ class FakeRadio extends Fake implements PanelRadioService {
     commands.add('tune');
     return {'accepted': true, 'state': null};
   }
+
+  @override
+  Map<String, dynamic> setSpectrum(Map<String, dynamic> args) {
+    commands.add('spectrum');
+    return {'accepted': true, 'state': null};
+  }
 }
 
 ({String source, ExtensionInfo info}) bundle(String key, {bool read = false, bool write = false}) => (
@@ -86,6 +92,7 @@ void main() {
     await expectLater(call('plain', 'readRadio'), blockedFor('requiresRadioRead'));
     await expectLater(call('plain', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}), blockedFor('requiresRadioWrite'));
     await expectLater(call('plain', 'setRadioConnection', {'id': 'a', 'connected': false}), blockedFor('requiresRadioWrite'));
+    await expectLater(call('plain', 'setRadioSpectrum', {'id': 'a', 'spanHz': 50000}), blockedFor('requiresRadioWrite'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -93,14 +100,18 @@ void main() {
     expect(await call('reader', 'listRadios'), hasLength(1));
     expect((await call('reader', 'readRadio', {'id': 'b'}) as Map)['id'], 'b');
     await expectLater(call('reader', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}), blockedFor('requiresRadioWrite'));
+    // A scope setting moves nothing on the air, but it is still the radio's
+    // state another program shares — a reader must not change it.
+    await expectLater(call('reader', 'setRadioSpectrum', {'id': 'a', 'spanHz': 50000}), blockedFor('requiresRadioWrite'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('write grants both: a command answers with the state a read would', () async {
     expect((await call('writer', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}) as Map)['accepted'], true);
     expect((await call('writer', 'setRadioConnection', {'id': 'a', 'connected': false}) as Map)['accepted'], true);
+    expect((await call('writer', 'setRadioSpectrum', {'id': 'a', 'spanHz': 50000}) as Map)['accepted'], true);
     expect(await call('writer', 'listRadios'), hasLength(1));
-    expect(commands, ['tune', 'connection']);
+    expect(commands, ['tune', 'connection', 'spectrum']);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('naming a capable extension in the call does not borrow its capability', () async {

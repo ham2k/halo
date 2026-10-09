@@ -14,6 +14,7 @@
 import 'dart:convert';
 
 import 'panel_scene/scene_model.dart';
+import 'panel_scene/scene_spectrum.dart';
 import 'panel_scene/scene_view.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
@@ -126,8 +127,9 @@ class PanelContentView extends StatelessWidget {
   /// restart is exactly the case that would succeed a moment later.
   final VoidCallback? onRetry;
   final SceneEventHandler? onSceneEvent;
+  final SceneSpectrumSource? spectrum;
 
-  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent});
+  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent, this.spectrum});
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +138,7 @@ class PanelContentView extends StatelessWidget {
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
       case 'scene' when content.scene != null:
-        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent);
+        return PanelSceneView(scene: content.scene!, onEvent: onSceneEvent, spectrum: spectrum);
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),

@@ -8,7 +8,7 @@ import '../panel_radio_service.dart';
 
 /// The radio host calls and the manifest capabilities that gate them:
 /// `requiresRadioRead` for `listRadios`/`readRadio`, `requiresRadioWrite` for
-/// `tuneRadio`/`setRadioConnection`. Without the gate any installed bundle
+/// `tuneRadio`/`setRadioConnection`/`setRadioSpectrum`. Without the gate any installed bundle
 /// could retune the rig or drop the CAT link from any hook, with nothing in
 /// its manifest saying so.
 ///
@@ -17,7 +17,7 @@ import '../panel_radio_service.dart';
 /// list arrives carrying whatever the extension chose to write there.
 class RadioHostCalls {
   static const _reads = {'listRadios', 'readRadio'};
-  static const _writes = {'tuneRadio', 'setRadioConnection'};
+  static const _writes = {'tuneRadio', 'setRadioConnection', 'setRadioSpectrum'};
 
   static bool handles(String method) => _reads.contains(method) || _writes.contains(method);
 
@@ -35,6 +35,10 @@ class RadioHostCalls {
     _write = CapabilityGrant.among(loaded, (info) => info.requiresRadioWrite);
   }
 
+  /// Whether [extensionKey] may read the radio — and so be shown its
+  /// spectrum, which the host draws for it without the data crossing.
+  bool canRead(String? extensionKey) => _read.allows(extensionKey);
+
   Future<dynamic> handle(String method, Map<String, dynamic> params) async {
     final write = _writes.contains(method);
     final extensionKey = params['extensionKey'] as String?;
@@ -49,6 +53,7 @@ class RadioHostCalls {
       'listRadios' => radio?.list() ?? [],
       'readRadio' => radio?.read(params['id'] as String?),
       'setRadioConnection' => radio?.setConnection(params) ?? unavailable,
+      'setRadioSpectrum' => radio?.setSpectrum(params) ?? unavailable,
       _ => await radio?.tune(params) ?? unavailable,
     };
   }

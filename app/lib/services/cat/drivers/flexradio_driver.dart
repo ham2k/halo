@@ -22,11 +22,13 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../discovery.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../spectrum.dart';
 import '../transports/udp_broadcast.dart';
 import 'cw_send_queue.dart';
 import 'line_framer.dart';
 import 'flex_meter_codec.dart';
 import 'voice_activity_tracker.dart';
+import 'flex_spectrum.dart';
 import '../transports/flex_meter_socket.dart';
 
 /// App mode names → SmartSDR's, where the spellings differ. SmartSDR calls
@@ -277,7 +279,7 @@ const _dvkPlayMargin = Duration(seconds: 3);
 /// radio's unnamed memory.
 String _dvkDefaultName(int id) => 'Recording $id';
 
-class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession, RadioNamedVoiceMemories {
+class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession, RadioNamedVoiceMemories, SpectrumSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -323,6 +325,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     unawaited(
       openMeterSocket(meterHost!, (data) {
         if (generation != _meterGeneration || !_wantUpdates) return;
+        if (_spectrum.packet(data)) return;
         final dbm = _meters.signal(data);
         if (dbm == null) return;
         // The real clock: a rate limit on wire data must not travel.
@@ -337,16 +340,19 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
           _openingMeters = false;
           _meterSocket = socket;
           _metersUnavailable = socket == null;
+          if (socket == null) _spectrum.socketUnavailable();
           if (socket != null) {
             _sendCommand('client udpport ${socket.port}');
             _sendCommand('sub meter all');
             _sendCommand('meter list');
+            _spectrum.socketReady();
           }
         },
         onError: (Object error, StackTrace stack) {
           if (generation == _meterGeneration) {
             _openingMeters = false;
             _metersUnavailable = true;
+            _spectrum.socketUnavailable();
           }
           failed(error, stack);
         },
@@ -359,6 +365,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     _openingMeters = false;
     _metersUnavailable = false;
     if (_meterSocket != null && _handshakeDone) _sendCommand('unsub meter all');
+    if (_meterSocket != null) _spectrum.socketLost();
     _meterSocket?.close();
     _meterSocket = null;
   }
@@ -418,12 +425,43 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   );
 
   /// Answers the sequence number the command went out under, which its
-  /// `R<seq>|` reply names.
-  int _sendCommand(String command) {
+  /// `R<seq>|` reply names. [onReply], when given, is handed that reply's
+  /// code and body.
+  int _sendCommand(String command, {void Function(int code, String body)? onReply}) {
     final seq = _seq++;
+    if (onReply != null) _replies[seq] = onReply;
     _sink.send(utf8.encode('C$seq|$command\n'));
     return seq;
   }
+
+  /// Answers awaited by sequence number — the only commands whose answer
+  /// carries something, like a stream id.
+  final _replies = <int, void Function(int code, String body)>{};
+
+  late final _spectrum = FlexDaxSpectrum(
+    send: _sendCommand,
+    sink: switch (_sink) {
+      final SpectrumSink sink => sink,
+      _ => null,
+    },
+  );
+
+  /// The bound client's own panadapter streams never reach this one; see
+  /// flex_spectrum.dart for why the spectrum is mirrored through DAX IQ.
+  @override
+  String? get spectrumUnavailable => meterHost == null ? t.settings.station.spectrumUnsupported : null;
+
+  @override
+  SpectrumCapabilities get spectrumCapabilities => _spectrum.capabilities;
+
+  @override
+  void startSpectrum() => _spectrum.start();
+
+  @override
+  void stopSpectrum() => _spectrum.stop();
+
+  @override
+  bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
 
   void _subscribe() {
     // Each subscription answers with a full status refresh, so this is also
@@ -444,6 +482,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     // Whether the radio's licence lets it play them: the DVK is a
     // SmartSDR+ feature.
     _sendCommand('sub license all');
+    _spectrum.subscribe();
     _bindTrackedClient();
     _startMeters();
   }
@@ -501,7 +540,9 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     } else if (line.startsWith('S')) {
       _handleStatusLine(line);
     } else if (_replyPattern.firstMatch(line) case final reply?) {
-      _handleReply(int.parse(reply[1]!), int.tryParse(reply[2]!, radix: 16) ?? 0);
+      final seq = int.parse(reply[1]!), code = int.tryParse(reply[2]!, radix: 16);
+      _handleReply(seq, code ?? 0);
+      _replies.remove(seq)?.call(code ?? -1, reply[3]!);
       // A command acknowledgement: the radio answered, so it is alive. WHICH
       // command does not matter — the ping exists only so that there is one
       // to answer while the dial is still. Status and acknowledgements share
@@ -513,7 +554,9 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   }
 
   static final _handshakePattern = RegExp(r'^H[0-9a-fA-F]+$');
-  static final _replyPattern = RegExp(r'^R(\d+)\|([0-9a-fA-F]*)');
+  static final _replyPattern = RegExp(r'^R(\d+)\|([0-9A-Fa-f]*)\|?(.*)$');
+  static final _panPattern = RegExp(r'^S[0-9a-fA-F]+\|display pan (0x[0-9a-fA-F]+) (.+)$');
+  static final _streamPattern = RegExp(r'^S[0-9a-fA-F]+\|stream (0x[0-9a-fA-F]+) (.+)$');
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
   static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
 
@@ -551,6 +594,16 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     final clientMatch = _clientPattern.firstMatch(line);
     if (clientMatch != null) {
       _handleClientLine(clientMatch);
+      return;
+    }
+    if (_panPattern.firstMatch(line) case final pan?) {
+      final rest = pan[2]!;
+      _spectrum.panStatus(pan[1]!.toLowerCase(), rest == 'removed' ? const {'removed': '1'} : _parseFields(rest));
+      return;
+    }
+    if (_streamPattern.firstMatch(line) case final stream?) {
+      final rest = stream[2]!;
+      _spectrum.streamStatus(stream[1]!.toLowerCase(), rest == 'removed' ? const {'removed': '1'} : _parseFields(rest));
       return;
     }
     final transmitMatch = _transmitPattern.firstMatch(line);
@@ -636,11 +689,13 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
         freqKHz: freqKHz ?? previous?.freqKHz,
         mode: mode ?? previous?.mode,
         clientHandle: fields['client_handle'] ?? previous?.clientHandle,
+        pan: fields['pan'] ?? previous?.pan,
       );
     }
     _publishChannels();
 
     if (index != slice) return;
+    _spectrum.slicePan(_slices[index]?.pan?.toLowerCase());
     _bindTrackedClient();
     _checkTrackedSlice();
 
@@ -1104,6 +1159,9 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     _voice.dispose();
     _dvkStarts.clear();
     _dvkRenames.clear();
+    _spectrum.teardown();
+    // Answers to a connection that is closing would come to nobody.
+    _replies.clear();
     _cwQueue.clear();
     _stopPeriodicTimers();
     if (_wantUpdates && _handshakeDone) _unsubscribe();
@@ -1127,5 +1185,8 @@ class _SliceStatus {
   final String? mode;
   final String? clientHandle;
 
-  const _SliceStatus({required this.label, required this.inUse, this.freqKHz, this.mode, this.clientHandle});
+  /// The panadapter showing this slice, as `0x40000000`.
+  final String? pan;
+
+  const _SliceStatus({required this.label, required this.inUse, this.freqKHz, this.mode, this.clientHandle, this.pan});
 }

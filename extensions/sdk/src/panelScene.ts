@@ -89,6 +89,10 @@ export interface PanelSceneLayer {
  * - `nativeSwitch`, `nativeCheckbox`: a number, 1 or 0. Shows `label` beside it.
  * - `nativeChip`: with `value`, a toggle (1 or 0); without, an action that sends `activate`.
  * - `nativeText`: shows `label`, or its bound value. Sends nothing.
+ * - `spectrum`: the radio's panadapter and waterfall, drawn by the host from sweeps that never
+ *   reach the extension. Needs `requiresRadioRead`; a host without the feature, or a radio
+ *   without a scope, shows why instead. A click sends `commit` with the frequency as `value`.
+ *   Takes no `value`; see `PanelSceneSpectrum` for the rest. Extension API 6: declare `"api": 6`.
  *
  * `label` is every control's accessible name. There are no tooltips.
  */
@@ -106,8 +110,184 @@ export type PanelSceneControlKind =
   | "nativeSegmented"
   | "nativeChip"
   | "nativeText"
+  | "spectrum"
 
-export interface PanelSceneControl {
+/** A literal, or the name of a scene value — which a slider with no `event` retunes with no bridge call. */
+export type PanelSceneSpectrumNumber = number | string
+
+/**
+ * A `spectrum` control's display. All of it happens on the host after the sweep arrives, so it
+ * means the same on every radio; the radio's own scope (span, reference level, sweep speed) is
+ * `host.setRadioSpectrum`'s. Colors are `#RRGGBB`, or `#AARRGGBB` with transparency. Defaults
+ * follow the app's theme.
+ */
+export interface PanelSceneSpectrum {
+  /** A radio's id from `listRadios`. Omitted, the designated radio. */
+  radio?: string
+  /** Default `both`. */
+  display?: "both" | "pan" | "waterfall"
+  /**
+   * Which way the waterfall moves; the panadapter sits on the side it comes from. Frequency rises
+   * left to right for `down` (the default) and `up`, bottom to top for `right` and `left`. Text
+   * stays upright; offsets and `corner`s are measured as if flowing down.
+   */
+  flow?: "down" | "up" | "right" | "left"
+  /** The panadapter's share of the height with `both`, 0.1–0.9. Default 0.4. */
+  split?: number
+  /** dB added to the radio's own floor. */
+  floor?: PanelSceneSpectrumNumber
+  /** The panadapter's height in dB. Omitted, the radio's. */
+  range?: PanelSceneSpectrumNumber
+  /** Written as the pointer moves: the frequency and level under it. */
+  hoverHz?: string
+  hoverDb?: string
+  /** 0–99: the share of the trace each sweep keeps from the last. Default 40. The waterfall stays raw. */
+  average?: PanelSceneSpectrumNumber
+  /** The most times a second the panadapter redraws, 1–60. Default 15. The waterfall keeps its own pace. */
+  fps?: PanelSceneSpectrumNumber
+  /** Waterfall rows a second, 0.1–60; each row keeps the loudest reading since the last. Omitted, one per sweep. */
+  waterfallSpeed?: PanelSceneSpectrumNumber
+  /** The waterfall's own dB window, like `floor` and `range`. Omitted, the panadapter's. */
+  waterfallFloor?: PanelSceneSpectrumNumber
+  waterfallRange?: PanelSceneSpectrumNumber
+  /** Default `classic`. */
+  palette?: "classic" | "gray" | "heat"
+  /** 2 to 8 stops, lowest level first, in place of `palette`. */
+  waterfallColors?: string[]
+  traceColor?: string
+  /** 0.25–8. Default 1. */
+  traceWidth?: PanelSceneSpectrumNumber
+  /** Under the trace. With `fillColorBottom`, a gradient from the top of the panadapter to its bottom. */
+  fillColor?: string
+  fillColorBottom?: string
+  backgroundColor?: string
+  /** The panadapter's dB and frequency lines. */
+  gridColor?: string
+  /** The frequency lines carried down through the waterfall. Omitted, none. */
+  waterfallGridColor?: string
+  /** A click tunes to the nearest multiple of this many Hz. Omitted, wherever it lands. */
+  tuneStep?: PanelSceneSpectrumNumber
+  /** Dashes the panadapter's grid lines. */
+  gridDashed?: boolean
+  /** The gap between the panadapter and the waterfall, with frequency labels and ticks. `true` takes the defaults. */
+  scale?: boolean | PanelSceneSpectrumScale
+  /** The tuned-frequency line, styled per part; a part it leaves out has none. Omitted, the theme's on both. */
+  center?: { pan?: PanelSceneSpectrumStyle; waterfall?: PanelSceneSpectrumStyle }
+  /** Up to 16 lines and areas at Hz offsets — a passband, a CW offset. */
+  overlays?: PanelSceneSpectrumOverlay[]
+  /** Up to 64 pieces of text at frequencies — a spot, a net, a beacon. */
+  annotations?: PanelSceneSpectrumAnnotation[]
+}
+
+/**
+ * The gap sits between the panadapter and the waterfall — above the waterfall with no panadapter,
+ * below the panadapter with no waterfall. Labels and ticks are drawn over the whole control, so an
+ * `offset` can place them anywhere: it is pixels from the base of the panadapter (the top of the
+ * waterfall where there is none), negative rising into the panadapter.
+ */
+export interface PanelSceneSpectrumScale {
+  /** Pixels, 0–200. Default 20. */
+  gap?: PanelSceneSpectrumNumber
+  background?: string
+  borderTop?: { color?: string; width?: PanelSceneSpectrumNumber }
+  borderBottom?: { color?: string; width?: PanelSceneSpectrumNumber }
+  /** On by default; `false` hides them. */
+  labels?:
+    | boolean
+    | {
+        /** Hz between labels. Omitted, the gridlines' step. */
+        interval?: PanelSceneSpectrumNumber
+        fontFamily?: string
+        size?: PanelSceneSpectrumNumber
+        /** 100–900. */
+        weight?: PanelSceneSpectrumNumber
+        italic?: boolean
+        color?: string
+        /** To the top of the text. Omitted, centered in the gap. */
+        offset?: PanelSceneSpectrumNumber
+      }
+  /** Off by default. */
+  ticks?:
+    | boolean
+    | {
+        /** Hz between ticks. Omitted, the labels'. */
+        interval?: PanelSceneSpectrumNumber
+        color?: string
+        width?: PanelSceneSpectrumNumber
+        /** To the top of the tick. Default 0. */
+        offset?: PanelSceneSpectrumNumber
+        /** Default 4. */
+        length?: PanelSceneSpectrumNumber
+      }
+}
+
+/**
+ * Text at a frequency, drawn by the host. With an `event`, a click sends `activate` with the
+ * frequency as `value` and this `id` as `annotation`, and does not tune; without one, a click
+ * on it tunes like anywhere else.
+ */
+export interface PanelSceneSpectrumAnnotation {
+  /** Unique within the control. */
+  id: string
+  /** At most 256 characters. */
+  text: string
+  /** A frequency, or an offset from the tuned frequency or the sweep's middle with `anchor`. */
+  hz: PanelSceneSpectrumNumber
+  /** Default `absolute`. */
+  anchor?: "vfo" | "center" | "absolute"
+  /** Default `pan`. */
+  part?: "pan" | "waterfall"
+  /** Pixels from the panadapter's bottom up to the text's, or from the waterfall's top down to the text's. Default 4. */
+  offset?: PanelSceneSpectrumNumber
+  /** Which end of the text sits at `hz`. Default `center`. */
+  align?: "start" | "center" | "end"
+  /**
+   * The point the box makes at `hz`: a drawn-out corner for `start`/`end`, a notch for `center`.
+   * With the default `corner`, its tip sits at `offset`; turned the other way, the box's edge
+   * does. Shown by default (size 4, pointing toward the panadapter's bottom
+   * or the waterfall's top); `false` or `show: false` hides it.
+   */
+  pointer?: boolean | { show?: boolean; size?: PanelSceneSpectrumNumber; corner?: "top" | "bottom" }
+  fontFamily?: string
+  size?: PanelSceneSpectrumNumber
+  weight?: PanelSceneSpectrumNumber
+  italic?: boolean
+  color?: string
+  background?: string
+  borderColor?: string
+  borderWidth?: PanelSceneSpectrumNumber
+  /** Default 2. */
+  padding?: PanelSceneSpectrumNumber
+  /** Default 2. */
+  radius?: PanelSceneSpectrumNumber
+  event?: string
+}
+
+/** `color` and `width` draw a line, or an area's edges; `fill` fills an area. */
+export interface PanelSceneSpectrumStyle {
+  color?: string
+  width?: PanelSceneSpectrumNumber
+  fill?: string
+}
+
+/**
+ * A line at `at`, or an area between `from` and `to`, in Hz from the tuned frequency — from the
+ * middle of the sweep with `anchor: "center"` (a Flex's panadapter is not centered on its slice),
+ * or as frequencies with `anchor: "absolute"` (a band edge, a segment). On the panadapter an area
+ * draws behind the trace and a line in front of it unless `behind` — which absolute ones default to.
+ * On the waterfall all of it draws over the rows. A part with no style is not drawn on.
+ */
+export interface PanelSceneSpectrumOverlay {
+  at?: PanelSceneSpectrumNumber
+  from?: PanelSceneSpectrumNumber
+  to?: PanelSceneSpectrumNumber
+  anchor?: "vfo" | "center" | "absolute"
+  behind?: boolean
+  pan?: PanelSceneSpectrumStyle
+  waterfall?: PanelSceneSpectrumStyle
+}
+
+export interface PanelSceneControl extends PanelSceneSpectrum {
   id: string
   label: string
   kind: PanelSceneControlKind
@@ -178,6 +358,8 @@ export interface PanelSceneEvent {
   value?: number
   /** The control's string, for a control bound to `strings`. */
   text?: string
+  /** The `id` of the spectrum annotation clicked; `value` is its frequency. */
+  annotation?: string
 }
 
 /** Patch only named scene values and strings. The host ignores stale responses. */

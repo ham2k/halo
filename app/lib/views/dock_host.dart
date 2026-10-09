@@ -24,6 +24,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
+import 'operation/panel_scene/cat_spectrum_source.dart';
 import '../services/extensions/catalog_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
@@ -1895,6 +1896,11 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                   panels: dockServices.panels,
                   onTitle: (title) => onPanelTitle(id, title),
                   renderContext: panelRenderContext,
+                  spectrum:
+                      dockServices.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */ &&
+                          dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
+                      ? CatSpectrumSource(dockServices.cat)
+                      : null,
                 )
               // A module nothing in the catalog explains — an extension
               // disabled or uninstalled since this arrangement was saved. It

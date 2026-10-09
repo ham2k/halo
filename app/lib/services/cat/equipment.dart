@@ -11,6 +11,8 @@
 
 import 'package:flutter/foundation.dart';
 
+import 'spectrum.dart';
+
 /// General characteristics of a piece of equipment, per data-model.md.
 /// A plain string rather than an enum: the vocabulary is open-ended
 /// ("antenna", "amplifier", "relay board"…) and only `transceiver` has any
@@ -566,6 +568,13 @@ class EquipmentState {
   /// for one that said it holds none (a FlexRadio without the DVK licence).
   final List<VoiceMemory>? voiceMemories;
 
+  /// What the radio's scope is set to, while a display has it running —
+  /// see [SpectrumSession]. The sweeps themselves are a stream, never state.
+  final SpectrumSettings? spectrum;
+
+  /// See [SpectrumSink.reportSpectrumProblem].
+  final String? spectrumProblem;
+
   const EquipmentState({
     this.status = EquipmentStatus.disconnected,
     this.error,
@@ -581,6 +590,8 @@ class EquipmentState {
     this.switchAntennas = const [],
     this.switchPorts = const [],
     this.voiceMemories,
+    this.spectrum,
+    this.spectrumProblem,
   });
 
   EquipmentState copyWith({
@@ -600,6 +611,10 @@ class EquipmentState {
     List<SwitchAntenna>? switchAntennas,
     List<SwitchPort>? switchPorts,
     List<VoiceMemory>? voiceMemories,
+    SpectrumSettings? spectrum,
+    bool clearSpectrum = false,
+    String? spectrumProblem,
+    bool clearSpectrumProblem = false,
   }) => EquipmentState(
     status: status ?? this.status,
     // An explicit null clears it: any transition out of `error` should
@@ -622,5 +637,7 @@ class EquipmentState {
     switchAntennas: switchAntennas ?? this.switchAntennas,
     switchPorts: switchPorts ?? this.switchPorts,
     voiceMemories: voiceMemories ?? this.voiceMemories,
+    spectrum: clearSpectrum ? null : (spectrum ?? this.spectrum),
+    spectrumProblem: clearSpectrumProblem ? null : (spectrumProblem ?? this.spectrumProblem),
   );
 }

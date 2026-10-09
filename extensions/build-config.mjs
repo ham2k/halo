@@ -94,7 +94,8 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // fix, APP-34). Omit it (the default) — the host refuses the call for any
 // extension key that doesn't declare it.
 // `requiresRadioRead: true` and `requiresRadioWrite: true` likewise allow
-// host.listRadios()/readRadio() and host.tuneRadio()/setRadioConnection().
+// host.listRadios()/readRadio() (and a scene's spectrum control) and
+// host.tuneRadio()/setRadioConnection()/setRadioSpectrum().
 // Write implies read: a command answers with the radio's state.
 // Each extension's USER-FACING metadata (name, category, icon, keywords,
 // translations, fetch-domain allowlist, …) lives in the package's own

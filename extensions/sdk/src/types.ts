@@ -2062,12 +2062,13 @@ export interface ExtensionManifest {
   /// set this.
   requiresLocation?: boolean
   /// Declares this extension's bundle may read the operator's radios —
-  /// `host.listRadios()` and `host.readRadio()`. Off by default; the host
-  /// refuses the call for any extension that sets neither this nor
-  /// `requiresRadioWrite`.
+  /// `host.listRadios()`, `host.readRadio()`, and a scene's `spectrum`
+  /// control. Off by default; the host refuses the call for any extension
+  /// that sets neither this nor `requiresRadioWrite`.
   requiresRadioRead?: boolean
   /// Declares this extension's bundle may command the operator's radios —
-  /// `host.tuneRadio()` and `host.setRadioConnection()`. Implies
+  /// `host.tuneRadio()`, `host.setRadioConnection()` and
+  /// `host.setRadioSpectrum()`. Implies
   /// `requiresRadioRead`, since a command answers with the radio's state.
   requiresRadioWrite?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
@@ -2786,6 +2787,40 @@ export interface PanelRadioState {
   transmitting: boolean | null
   meters: Partial<Record<"signalDbm" | "powerOut" | "swr" | "alc" | "supplyVolts", number>>
   canTune: boolean
+  /**
+   * The radio's scope, on hosts with the panadapter enabled: absent there otherwise, and null
+   * for a radio without one. The sweeps are never sent — a `spectrum` scene control draws them.
+   */
+  spectrum?: PanelRadioSpectrum | null
+}
+export type PanelRadioSpectrumSpeed = "slow" | "mid" | "fast"
+export interface PanelRadioSpectrum {
+  /** Why nothing can be drawn, in the operator's language, or null. */
+  problem: string | null
+  mode: "center" | "fixed" | null
+  /** Half the width shown while centered — what the radio's menu shows as ±. */
+  spanHz: number | null
+  /** The edges while fixed. */
+  lowHz: number | null
+  highHz: number | null
+  refLevelDb: number | null
+  speed: PanelRadioSpectrumSpeed | null
+  /** What `setRadioSpectrum` accepts. A span between two is snapped to the nearer. */
+  spansHz: number[]
+  refMinDb: number
+  refMaxDb: number
+  refStepDb: number
+  modes: ("center" | "fixed")[]
+  speeds: PanelRadioSpectrumSpeed[]
+}
+export interface PanelRadioSpectrumSet {
+  /** Reject if this identity no longer matches the selected radio. */
+  id: string
+  selection?: string
+  mode?: "center" | "fixed"
+  spanHz?: number
+  refLevelDb?: number
+  speed?: PanelRadioSpectrumSpeed
 }
 export interface PanelRadioTune {
   /** Reject if this identity no longer matches the selected radio. */
@@ -2798,7 +2833,8 @@ export interface PanelRadioTune {
 export interface PanelRadioTuneResult {
   /** Accepted by the host; confirmation still comes from reported state. */
   accepted: boolean
-  reason?: "changed" | "disconnected" | "transmitting" | "invalid"
+  /** `stopped`: a scope change while no display has the scope running — nothing was sent. */
+  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped"
   state: PanelRadioState | null
 }
 

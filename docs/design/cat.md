@@ -2317,6 +2317,94 @@ HaLo's peer link refuses browsers for the same reason.
 
 Web cannot listen, so the section is hidden there and the socket stub throws.
 
+## Spectrum
+
+A radio's panadapter and waterfall, drawn in an extension's scene panel
+([panel-scenes.md § Spectrum](panel-scenes.md#spectrum)). Behind `EXP FALL`.
+
+**The sweeps never cross the extension bridge.** A sweep arrives up to thirty
+times a second with hundreds of points; pushed through `render` as artwork,
+every one would re-validate and re-draw a whole scene. So a driver streams
+`SpectrumFrame`s in Dart (`spectrum.dart`), the host paints them, and the
+extension only places the control and reads or sets the radio's scope settings
+(`readRadio().spectrum`, `setRadioSpectrum`).
+
+**The scope runs only while a display that is seen listens.**
+`CatService.spectrumFrames(uuid)` is a broadcast stream: its first listener
+calls the session's `startSpectrum`, its last one leaving calls
+`stopSpectrum`, and a pane behind another dock tab or a hidden app does not
+listen. On a serial line a sweep nobody draws is most of the bandwidth the VFO
+and the keyer share. The stream outlives a reconnect, so a display keeps
+drawing when the radio drops and comes back. Sweeps are never
+`EquipmentState` — they would wake every listener of the station thirty times
+a second — but the scope's settings and its problem are, and both are cleared
+when it stops: what a stopped scope was set to is not what it is, since the
+radio's own knob moves it while nothing listens. `setSpectrum` on a stopped
+scope answers false, and the host API says `stopped`, rather than queueing a
+change for whenever a display next opens.
+
+Levels are dB on the radio's own scale — not dBm on any radio here — with the
+floor and ceiling the radio itself would draw them between, so a display maps
+that range to its height and an operator's contrast moves from there.
+
+### Icom (CI-V `0x27`)
+
+The IC-705/7300/7610/7760 entries pin `civScope`. Captured from an IC-705 over
+WiFi:
+
+- Over the network a sweep is one `27 00` frame — `00, receiver, division 1 of
+  1, mode, center (5 BCD), span (5 BCD), out-of-range` and 476 amplitude bytes
+  0–160 — four a second at slow speed, thirty at fast. A serial radio splits it
+  into divisions; `CivScopeAssembler` puts them back and drops a sweep with a
+  gap rather than drawing two halves of different ones side by side.
+- **A sweep is never an answer.** It repeats the scope's command byte, and the
+  session's one-command-on-the-wire discipline frees the wire on an answer: a
+  sweep taken as the answer to a pending scope read would release a burst the
+  radio drops.
+- The data output (`27 11`) is switched on with the display and off with it.
+  The scope itself (`27 10`) is the radio's own screen, so it is turned off
+  again only if the display turned it on. The output is sent again after the
+  scope is turned on, because whether turning it on resets the output has not
+  been pinned down.
+- **Requires CAT at 115200 bps.** At fast speed the sweeps alone are ~15 kB a
+  second over the network; on a much slower line they would leave little room
+  for the VFO, the TX watch and the keyer. The network pairing has no line to
+  budget, and the registry hands a driver no baud rate its transport has no
+  field for — a node switched from serial to WiFi keeps the one it had in its
+  config, and with it a 250 ms answer timeout and a meter cadence paced like a
+  19200 cable.
+
+### Flex: mirrored through DAX IQ
+
+This app is a non-GUI client bound to the GUI client that owns the slice.
+Captured on a FLEX-6600 (4.2.20) with AetherSDR as that client:
+
+- A bound client receives every `display pan`/`display waterfall` status and
+  none of their FFT or waterfall packets.
+- Its `display pan create` is answered with ids, but the pan belongs to the
+  GUI client, brings a slice with it, and appears in the GUI client's window.
+  Its data still goes there.
+- DAX IQ does reach it. `flex_spectrum.dart` assigns a free channel (1–4) to
+  the slice's pan — or uses the one it already has, which is then someone
+  else's to keep — opens `stream create type=dax_iq`, and computes the
+  spectrum locally (`spectrum_fft.dart`). On stop it removes the stream and
+  hands back a channel it assigned.
+- The stream's status line arrives **before** the `stream create` reply, and
+  carries its rate; it is held until the reply names the stream. A reply that
+  arrives after the display stopped, or the slice moved pans, is handed
+  straight back. A refused stream gives its channel back, says why, and is not
+  asked for again until the display or the pan changes — pan statuses arrive
+  several times a second.
+- The DAX decimation filter rolls off the outer sixteenth of each side —
+  measured, 30 dB down at the edge and flat a sixteenth in — so that much is
+  cut, and the spans offered are the half-widths actually shown (±10.5, ±21,
+  ±42, ±84 kHz for 24–192 kHz streams).
+
+Mirroring shows the operator's own panadapter, which is what a logger beside
+SmartSDR or AetherSDR wants. A slice no client owns — HaLo alone on the radio
+— would instead need HaLo to be the GUI client: its own multiFLEX station,
+pan and slice, with the radio's FFT. That session mode does not exist yet.
+
 ## Where this is going
 
 Shipped: the type registry, the TCP transport, the FlexRadio driver, UDP discovery, a Station

@@ -2163,6 +2163,17 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get channelNotInUse => 'sin usar';
 	@override String get channelHeldByUnknown => 'en uso por otro programa';
 	@override String get flexNoSlices => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse';
+	@override String get spectrumUnsupported => 'Esta radio no envía su espectro por CAT';
+	@override String get spectrumRequiresBaud => 'Requiere CAT a 115200 bps';
+	@override String get spectrumNoRadio => 'No hay ninguna radio conectada';
+	@override String get spectrumWaiting => 'Esperando el espectro de la radio…';
+	@override String get spectrumUnavailable => 'La visualización del espectro no está disponible';
+	@override String get spectrumNoDaxChannel => 'Todos los canales DAX IQ de esta radio están en uso';
+	@override String get spectrumNoPanadapter => 'Este slice no tiene panadaptador en la radio';
+	@override String spectrumStreamRefused({required Object code}) => 'La radio rechazó un flujo DAX IQ (error ${code})';
+	@override String get spectrumNoUdp => 'Los datos del espectro de la radio no llegan a este dispositivo';
+	@override String get spectrumScopeRefused => 'La radio rechazó los comandos de su espectro';
+	@override String get spectrumOutOfRange => 'El espectro de la radio está fuera del rango que puede mostrar';
 	@override String get n3fjpNoRig => 'N3FJP no tiene configurada una interfaz de radio, así que esto sigue lo que se escribe en N3FJP, no una radio';
 	@override String get winkeyerKeyPort => 'Salida de manipulación';
 	@override String get winkeyerKeyPortDescription => 'En cuál de los dos conectores de salida del manipulador está enchufada tu radio.';
@@ -4811,6 +4822,17 @@ extension on TranslationsEs {
 			'settings.station.channelNotInUse' => 'sin usar',
 			'settings.station.channelHeldByUnknown' => 'en uso por otro programa',
 			'settings.station.flexNoSlices' => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse',
+			'settings.station.spectrumUnsupported' => 'Esta radio no envía su espectro por CAT',
+			'settings.station.spectrumRequiresBaud' => 'Requiere CAT a 115200 bps',
+			'settings.station.spectrumNoRadio' => 'No hay ninguna radio conectada',
+			'settings.station.spectrumWaiting' => 'Esperando el espectro de la radio…',
+			'settings.station.spectrumUnavailable' => 'La visualización del espectro no está disponible',
+			'settings.station.spectrumNoDaxChannel' => 'Todos los canales DAX IQ de esta radio están en uso',
+			'settings.station.spectrumNoPanadapter' => 'Este slice no tiene panadaptador en la radio',
+			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'La radio rechazó un flujo DAX IQ (error ${code})',
+			'settings.station.spectrumNoUdp' => 'Los datos del espectro de la radio no llegan a este dispositivo',
+			'settings.station.spectrumScopeRefused' => 'La radio rechazó los comandos de su espectro',
+			'settings.station.spectrumOutOfRange' => 'El espectro de la radio está fuera del rango que puede mostrar',
 			'settings.station.n3fjpNoRig' => 'N3FJP no tiene configurada una interfaz de radio, así que esto sigue lo que se escribe en N3FJP, no una radio',
 			'settings.station.winkeyerKeyPort' => 'Salida de manipulación',
 			'settings.station.winkeyerKeyPortDescription' => 'En cuál de los dos conectores de salida del manipulador está enchufada tu radio.',
@@ -4996,6 +5018,8 @@ extension on TranslationsEs {
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB y DA)',
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (pulsaciones de teclas)',
 			'settings.station.placeholderDiagnostic' => 'Simulada',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderWholeNumberInvalid' => 'Debe ser un número entero, 0 o más',
 			'settings.station.placeholderFreqInvalid' => 'Debe ser una frecuencia en kHz, mayor que cero',
 			'settings.station.placeholderModeInvalid' => 'Debe ser un nombre de modo, por ejemplo USB, CW, FT8',
@@ -5007,8 +5031,6 @@ extension on TranslationsEs {
 			'settings.station.antennaType' => 'Tipo de antena',
 			'settings.station.antennaTypeRequired' => 'Elige un tipo de antena',
 			'settings.station.keyType' => 'Tipo de manipulador',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.keyTypeRequired' => 'Elige un tipo de manipulador',
 			'settings.station.softwareIntermediaries' => 'Intermediarios de software',
 			'settings.station.otherBrands' => 'Otras marcas',

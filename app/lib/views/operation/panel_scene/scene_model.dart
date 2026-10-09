@@ -76,6 +76,12 @@ class PanelScene {
       if (control.opacityBinding != null && !values.containsKey(control.opacityBinding!.value)) {
         throw FormatException('Unknown opacity value: ${control.id}');
       }
+      if (control.spectrum?.valueNames.any((name) => !values.containsKey(name)) ?? false) {
+        throw FormatException('Unknown spectrum value: ${control.id}');
+      }
+      if (control.spectrum case final spectrum? when spectrum.annotations.map((a) => a.id).toSet().length != spectrum.annotations.length) {
+        throw FormatException('Duplicate spectrum annotation ID: ${control.id}');
+      }
       // Only a rect puts a control over the artwork, so only a rect gives it
       // a place among the layers.
       if (control.after != null && (control.rect == null || !layerIds.contains(control.after))) {
@@ -304,6 +310,9 @@ const _nativeKinds = {
   // With a value, a toggle (FilterChip); without, an action (ActionChip).
   'nativeChip': SceneBinds.optionalNumber,
   'nativeText': SceneBinds.any,
+  // Painted by the host from the radio's sweeps, which never cross the
+  // bridge; its event carries the frequency clicked, as `value`.
+  'spectrum': SceneBinds.none,
 };
 
 class SceneControl {
@@ -326,8 +335,12 @@ class SceneControl {
   /// A fixed opacity, or [opacityBinding] when one is bound.
   final double opacity;
   final SceneBinding? opacityBinding;
+
+  /// Set on a `spectrum` control, and only on one.
+  final SceneSpectrumSpec? spectrum;
   SceneControl(Map<dynamic, dynamic> json)
     : after = json['after'] == null ? null : string(json, 'after'),
+      spectrum = json['kind'] == 'spectrum' ? SceneSpectrumSpec(json) : null,
       opacity = json['opacity'] is Map ? 1 : number(json, 'opacity', fallback: 1, min: 0, max: 1),
       opacityBinding = json['opacity'] is Map ? SceneBinding(json['opacity'] as Map<dynamic, dynamic>) : null,
       menu = json['menu'] == null ? null : items(json['menu'], 32).map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
@@ -376,7 +389,8 @@ class SceneControl {
         !only(placeholder, {'nativeTextField', 'nativeDropdown'}) ||
         !only(style, {'nativeText'}) ||
         !only(align, {'nativeText'}) ||
-        !only(continuous, {'slider', 'knob', 'nativeSlider', 'nativeTextField'})) {
+        !only(continuous, {'slider', 'knob', 'nativeSlider', 'nativeTextField'}) ||
+        SceneSpectrumSpec.keys.any((key) => !only(json[key], {'spectrum'}))) {
       throw FormatException('Invalid scene control: $id');
     }
   }
@@ -394,6 +408,418 @@ class SceneControl {
   double atX(double x) => discrete ? clamp(min + (x / rect!.width * ((max - min) / step + 1)).floor() * step) : clamp(min + x / rect!.width * (max - min));
 
   double clamp(double n) => (min + ((n - min) / step).round() * step).clamp(min, max).toDouble();
+}
+
+/// A number a `spectrum` control reads on every sweep: a literal, or the name
+/// of a scene value — which a slider with no event retunes with no bridge call.
+class SceneNumber {
+  final double? literal;
+  final String? value;
+
+  /// What a literal is checked against when parsed, and a value held to
+  /// when read: a slider that reaches 0 must not become a range of 0, which
+  /// the painters divide by.
+  final double min, max;
+
+  SceneNumber._(this.literal, this.value, this.min, this.max);
+
+  static SceneNumber? parse(Map<dynamic, dynamic> json, String key, {required double min, required double max}) => switch (json[key]) {
+    null => null,
+    final String name => SceneNumber._(null, name, min, max),
+    _ => SceneNumber._(number(json, key, min: min, max: max), null, min, max),
+  };
+
+  double? resolve(Map<String, double> values) => literal ?? values[value]?.clamp(min, max).toDouble();
+}
+
+/// `#RRGGBB`, or `#AARRGGBB` for a color with its own transparency.
+Color? _color(Map<dynamic, dynamic> json, String key) {
+  final raw = json[key];
+  if (raw == null) return null;
+  final match = raw is String ? RegExp(r'^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$').firstMatch(raw) : null;
+  if (match == null) throw FormatException('Invalid scene color: $key');
+  final hex = match[1]!;
+  return Color(int.parse(hex.length == 6 ? 'FF$hex' : hex, radix: 16));
+}
+
+/// How a line or an area is drawn on one part of a `spectrum` control: [color]
+/// and [width] for a line or an area's edges, [fill] for the area itself.
+class SceneSpectrumStyle {
+  final Color? color, fill;
+  final SceneNumber? width;
+
+  SceneSpectrumStyle(Map<dynamic, dynamic> json)
+    : color = _color(json, 'color'),
+      fill = _color(json, 'fill'),
+      width = SceneNumber.parse(json, 'width', min: .25, max: 8);
+
+  static SceneSpectrumStyle? parse(Object? raw) => switch (raw) {
+    null => null,
+    final Map<dynamic, dynamic> json => SceneSpectrumStyle(json),
+    _ => throw const FormatException('Invalid scene spectrum style'),
+  };
+}
+
+/// A line across the control: a border of the gap.
+class SceneSpectrumBorder {
+  final Color? color;
+  final SceneNumber? width;
+
+  SceneSpectrumBorder(Map<dynamic, dynamic> json) : color = _color(json, 'color'), width = SceneNumber.parse(json, 'width', min: 0, max: 20);
+
+  static SceneSpectrumBorder? parse(Object? raw) => switch (raw) {
+    null => null,
+    final Map<dynamic, dynamic> json => SceneSpectrumBorder(json),
+    _ => throw const FormatException('Invalid scene spectrum border'),
+  };
+}
+
+/// The frequency labels.
+///
+/// [offset] is pixels from the base of the panadapter — the top of the
+/// waterfall where there is no panadapter — to the top of the text: negative
+/// rises into the panadapter, positive drops into the gap or the waterfall.
+/// Null centers them in the gap.
+class SceneSpectrumLabels {
+  /// Hz between labels. Null: the gridlines' step.
+  final SceneNumber? interval, size, weight, offset;
+  final String? fontFamily;
+  final bool italic;
+  final Color? color;
+
+  SceneSpectrumLabels(Map<dynamic, dynamic> json)
+    : interval = SceneNumber.parse(json, 'interval', min: 1, max: 1e9),
+      size = SceneNumber.parse(json, 'size', min: 4, max: 72),
+      weight = SceneNumber.parse(json, 'weight', min: 100, max: 900),
+      offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
+      fontFamily = json['fontFamily'] == null ? null : string(json, 'fontFamily'),
+      italic = json['italic'] == true,
+      color = _color(json, 'color');
+
+  Iterable<String> get valueNames => [
+    for (final n in [interval, size, weight, offset]) ?n?.value,
+  ];
+}
+
+/// Tick marks at an [interval] of Hz — the labels' unless given — from
+/// [offset] pixels below the base the labels measure from, [length] long.
+class SceneSpectrumTicks {
+  final SceneNumber? interval, width, offset, length;
+  final Color? color;
+
+  SceneSpectrumTicks(Map<dynamic, dynamic> json)
+    : interval = SceneNumber.parse(json, 'interval', min: 1, max: 1e9),
+      width = SceneNumber.parse(json, 'width', min: .25, max: 20),
+      offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
+      length = SceneNumber.parse(json, 'length', min: 0, max: 2000),
+      color = _color(json, 'color');
+
+  Iterable<String> get valueNames => [
+    for (final n in [interval, width, offset, length]) ?n?.value,
+  ];
+}
+
+/// The gap between the panadapter and the waterfall — above the waterfall
+/// where there is no panadapter, below the panadapter where there is no
+/// waterfall — with what is drawn in and around it.
+class SceneSpectrumScale {
+  final SceneNumber? gap;
+  final Color? background;
+  final SceneSpectrumBorder? borderTop, borderBottom;
+
+  /// Null: no labels — `labels: false`.
+  final SceneSpectrumLabels? labels;
+  final SceneSpectrumTicks? ticks;
+
+  SceneSpectrumScale(Map<dynamic, dynamic> json)
+    : gap = SceneNumber.parse(json, 'gap', min: 0, max: 200),
+      background = _color(json, 'background'),
+      borderTop = SceneSpectrumBorder.parse(json['borderTop']),
+      borderBottom = SceneSpectrumBorder.parse(json['borderBottom']),
+      labels = switch (json['labels']) {
+        null || true => SceneSpectrumLabels(const {}),
+        false => null,
+        final Map<dynamic, dynamic> labels => SceneSpectrumLabels(labels),
+        _ => throw const FormatException('Invalid scene spectrum labels'),
+      },
+      ticks = switch (json['ticks']) {
+        null || false => null,
+        true => SceneSpectrumTicks(const {}),
+        final Map<dynamic, dynamic> ticks => SceneSpectrumTicks(ticks),
+        _ => throw const FormatException('Invalid scene spectrum ticks'),
+      };
+
+  Iterable<String> get valueNames => [?gap?.value, ?borderTop?.width?.value, ?borderBottom?.width?.value, ...?labels?.valueNames, ...?ticks?.valueNames];
+}
+
+/// Text at a frequency on the panadapter or the waterfall, drawn by the host
+/// and clickable: with an [event], a click sends `activate` carrying the
+/// frequency as `value` and [id] as `annotation`, and does not tune.
+class SceneSpectrumAnnotation {
+  final String id, text;
+  final SceneNumber hz;
+  final SceneSpectrumAnchor anchor;
+  final bool onWaterfall;
+
+  /// Pixels from the panadapter's bottom up to the text's, or from the
+  /// waterfall's top down to the text's.
+  final SceneNumber? offset;
+
+  /// Which end of the text sits at [hz].
+  final String align;
+
+  /// The point on the box that marks [hz]: its [SceneSpectrumPointer.size],
+  /// and whether it leaves the box's top or bottom edge. Null: none.
+  final SceneSpectrumPointer? pointer;
+  final SceneNumber? size, weight, padding, borderWidth, radius;
+  final String? fontFamily, event;
+  final bool italic;
+  final Color? color, background, borderColor;
+
+  SceneSpectrumAnnotation(Map<dynamic, dynamic> json)
+    : id = string(json, 'id'),
+      text = _short(json, 'text'),
+      hz = SceneNumber.parse(json, 'hz', min: -1e12, max: 1e12) ?? (throw const FormatException('A spectrum annotation needs hz')),
+      anchor = SceneSpectrumAnchor.values.byName(_oneOf(json, 'anchor', const ['vfo', 'center', 'absolute']) ?? 'absolute'),
+      onWaterfall = (_oneOf(json, 'part', const ['pan', 'waterfall']) ?? 'pan') == 'waterfall',
+      offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
+      align = _oneOf(json, 'align', const ['start', 'center', 'end']) ?? 'center',
+      pointer = switch (json['pointer']) {
+        false => null,
+        null || true => SceneSpectrumPointer(const {}),
+        final Map<dynamic, dynamic> pointer => pointer['show'] == false ? null : SceneSpectrumPointer(pointer),
+        _ => throw const FormatException('Invalid scene spectrum pointer'),
+      },
+      size = SceneNumber.parse(json, 'size', min: 4, max: 72),
+      weight = SceneNumber.parse(json, 'weight', min: 100, max: 900),
+      padding = SceneNumber.parse(json, 'padding', min: 0, max: 40),
+      borderWidth = SceneNumber.parse(json, 'borderWidth', min: 0, max: 10),
+      radius = SceneNumber.parse(json, 'radius', min: 0, max: 40),
+      fontFamily = json['fontFamily'] == null ? null : string(json, 'fontFamily'),
+      event = json['event'] == null ? null : string(json, 'event'),
+      italic = json['italic'] == true,
+      color = _color(json, 'color'),
+      background = _color(json, 'background'),
+      borderColor = _color(json, 'borderColor');
+
+  static String _short(Map<dynamic, dynamic> json, String key) {
+    final text = string(json, key);
+    if (text.length > 256) throw const FormatException('A spectrum annotation is at most 256 characters');
+    return text;
+  }
+
+  Iterable<String> get valueNames => [
+    for (final n in [hz, offset, size, weight, padding, borderWidth, radius, pointer?.size]) ?n?.value,
+  ];
+}
+
+/// The point an annotation's box makes at its frequency.
+class SceneSpectrumPointer {
+  final SceneNumber? size;
+
+  /// `top` or `bottom`; null points toward the part's edge the annotation
+  /// is measured from — down on the panadapter, up on the waterfall.
+  final String? corner;
+
+  SceneSpectrumPointer(Map<dynamic, dynamic> json)
+    : size = SceneNumber.parse(json, 'size', min: 0, max: 40),
+      corner = _oneOf(json, 'corner', const ['top', 'bottom']) {
+    if (json['show'] != null && json['show'] is! bool) throw const FormatException('Invalid scene spectrum pointer');
+  }
+}
+
+/// The direction a spectrum's waterfall moves. Everything is laid out for
+/// `down` and then mirrored or turned, text excepted, which stays upright.
+enum SceneSpectrumFlow { down, up, right, left }
+
+/// What a mark's numbers are measured from.
+enum SceneSpectrumAnchor {
+  /// The tuned frequency.
+  vfo,
+
+  /// The middle of the sweep — on a Flex the panadapter's center, which is
+  /// not its slice.
+  center,
+
+  /// Nothing: the numbers are frequencies.
+  absolute,
+}
+
+/// The tuned-frequency line, or a line or area at [at] / [from]..[to] Hz from
+/// its [anchor], styled separately on the panadapter and the waterfall. A
+/// part with no style is not drawn on.
+///
+/// On the panadapter an area is drawn behind the trace, and a line in front
+/// of it unless [behind]; on the waterfall all of it is drawn over the rows,
+/// since nothing under them would show.
+class SceneSpectrumMark {
+  final SceneNumber? at, from, to;
+  final SceneSpectrumAnchor anchor;
+  final bool behind;
+  final SceneSpectrumStyle? pan, waterfall;
+
+  SceneSpectrumMark(Map<dynamic, dynamic> json, {bool line = false})
+    : at = SceneNumber.parse(json, 'at', min: -1e12, max: 1e12),
+      from = SceneNumber.parse(json, 'from', min: -1e12, max: 1e12),
+      to = SceneNumber.parse(json, 'to', min: -1e12, max: 1e12),
+      anchor = SceneSpectrumAnchor.values.byName(_oneOf(json, 'anchor', const ['vfo', 'center', 'absolute']) ?? 'vfo'),
+      // A band edge or a segment is scenery: the signals go in front of it.
+      behind = switch (json['behind']) {
+        null => json['anchor'] == 'absolute',
+        final bool behind => behind,
+        _ => throw const FormatException('Invalid scene spectrum behind'),
+      },
+      pan = SceneSpectrumStyle.parse(json['pan']),
+      waterfall = SceneSpectrumStyle.parse(json['waterfall']) {
+    if (!line && ((at == null) == (from == null || to == null) || (at != null && (from != null || to != null)))) {
+      throw const FormatException('A spectrum overlay is a line at one offset or an area between two');
+    }
+    // An overlay with no style draws nothing, which is the author's mistake;
+    // a center with none is how to have no tuned-frequency line at all.
+    if (!line && pan == null && waterfall == null) throw const FormatException('A spectrum overlay with no style draws nothing');
+  }
+
+  Iterable<String> get valueNames => [
+    for (final n in [at, from, to, pan?.width, waterfall?.width]) ?n?.value,
+  ];
+}
+
+/// How a `spectrum` control draws the radio's sweeps — all of it on the host,
+/// after the sweep arrives, so it means the same on every radio. The radio's
+/// own scope settings (span, reference level, sweep speed) are
+/// `setRadioSpectrum`'s, not these.
+class SceneSpectrumSpec {
+  static const keys = [
+    'radio', 'display', 'split', 'palette', 'floor', 'range', 'hoverHz', 'hoverDb', //
+    'average', 'fps', 'waterfallSpeed', 'waterfallFloor', 'waterfallRange', 'waterfallColors', //
+    'traceColor', 'traceWidth', 'fillColor', 'fillColorBottom', 'backgroundColor', //
+    'gridColor', 'gridDashed', 'waterfallGridColor', 'center', 'overlays', 'scale', 'tuneStep', 'annotations', 'flow', //
+  ];
+  static const palettes = ['classic', 'gray', 'heat'];
+
+  /// A station node's id. Null is the designated radio.
+  final String? radio;
+  final bool pan, waterfall;
+
+  /// Which way the waterfall moves; the panadapter sits on the side it
+  /// comes from. Frequency rises left to right for `down` and `up`, bottom to
+  /// top for `right` and `left`.
+  final SceneSpectrumFlow flow;
+
+  /// The panadapter's share of the height when both are shown.
+  final double split;
+  final String palette;
+
+  /// dB added to the radio's floor, and the display's height in dB.
+  final SceneNumber? floor, range;
+
+  /// Written as the pointer moves.
+  final String? hoverHz, hoverDb;
+
+  /// How much of the trace each sweep replaces, as the share it does NOT:
+  /// 0 draws every sweep as it is, 99 barely moves. The waterfall stays raw,
+  /// so a short signal still marks it.
+  final SceneNumber? average;
+
+  /// The most times a second the panadapter is redrawn — the waterfall keeps
+  /// its own pace, [waterfallSpeed].
+  final SceneNumber? fps;
+
+  /// Waterfall rows a second. Null: one per sweep.
+  final SceneNumber? waterfallSpeed;
+
+  /// The waterfall's own dB window; null follows the panadapter's.
+  final SceneNumber? waterfallFloor, waterfallRange;
+
+  /// 2 to 8 stops, lowest level first, in place of [palette].
+  final List<Color>? waterfallColors;
+  final SceneNumber? traceWidth;
+  final Color? traceColor, fillColor, fillColorBottom, backgroundColor;
+
+  /// The tuned-frequency line. Null draws it in the theme's color on both
+  /// parts; given, only on the parts it styles.
+  final SceneSpectrumMark? center;
+
+  /// Lines and areas at offsets from the tuned frequency — a passband, a CW
+  /// offset. At most 16.
+  final List<SceneSpectrumMark> overlays;
+
+  /// The panadapter's dB and frequency lines.
+  final Color? gridColor;
+
+  /// The frequency lines carried down through the waterfall. Null: none.
+  final Color? waterfallGridColor;
+  final bool gridDashed;
+
+  /// What a click tunes to the nearest multiple of, in Hz. Null: wherever
+  /// the click lands.
+  final SceneNumber? tuneStep;
+
+  /// The gap between the panadapter and the waterfall, and the frequency
+  /// labels and ticks. Null: no gap, no labels.
+  final SceneSpectrumScale? scale;
+
+  /// Text at frequencies — a spot, a net, a beacon — that can be clicked.
+  /// At most 64, each id once.
+  final List<SceneSpectrumAnnotation> annotations;
+
+  SceneSpectrumSpec(Map<dynamic, dynamic> json)
+    : radio = json['radio'] == null ? null : string(json, 'radio'),
+      flow = SceneSpectrumFlow.values.byName(_oneOf(json, 'flow', const ['down', 'up', 'right', 'left']) ?? 'down'),
+      pan = (_oneOf(json, 'display', const ['both', 'pan', 'waterfall']) ?? 'both') != 'waterfall',
+      waterfall = (_oneOf(json, 'display', const ['both', 'pan', 'waterfall']) ?? 'both') != 'pan',
+      split = number(json, 'split', fallback: .4, min: .1, max: .9),
+      palette = _oneOf(json, 'palette', palettes) ?? 'classic',
+      floor = SceneNumber.parse(json, 'floor', min: -200, max: 200),
+      range = SceneNumber.parse(json, 'range', min: 1, max: 200),
+      hoverHz = json['hoverHz'] == null ? null : string(json, 'hoverHz'),
+      hoverDb = json['hoverDb'] == null ? null : string(json, 'hoverDb'),
+      average = SceneNumber.parse(json, 'average', min: 0, max: 99),
+      fps = SceneNumber.parse(json, 'fps', min: 1, max: 60),
+      waterfallSpeed = SceneNumber.parse(json, 'waterfallSpeed', min: .1, max: 60),
+      waterfallFloor = SceneNumber.parse(json, 'waterfallFloor', min: -200, max: 200),
+      waterfallRange = SceneNumber.parse(json, 'waterfallRange', min: 1, max: 200),
+      waterfallColors = json['waterfallColors'] == null ? null : _stops(json['waterfallColors']),
+      traceWidth = SceneNumber.parse(json, 'traceWidth', min: .25, max: 8),
+      traceColor = _color(json, 'traceColor'),
+      fillColor = _color(json, 'fillColor'),
+      fillColorBottom = _color(json, 'fillColorBottom'),
+      backgroundColor = _color(json, 'backgroundColor'),
+      gridColor = _color(json, 'gridColor'),
+      waterfallGridColor = _color(json, 'waterfallGridColor'),
+      gridDashed = json['gridDashed'] == true,
+      tuneStep = SceneNumber.parse(json, 'tuneStep', min: 1, max: 1e6),
+      annotations = json['annotations'] == null ? const [] : items(json['annotations'], 64).map(SceneSpectrumAnnotation.new).toList(),
+      scale = switch (json['scale']) {
+        null || false => null,
+        true => SceneSpectrumScale(const {}),
+        final Map<dynamic, dynamic> scale => SceneSpectrumScale(scale),
+        _ => throw const FormatException('Invalid scene spectrum scale'),
+      },
+      center = switch (json['center']) {
+        null => null,
+        false => SceneSpectrumMark(const {}, line: true),
+        final Map<dynamic, dynamic> center => SceneSpectrumMark(center, line: true),
+        _ => throw const FormatException('Invalid scene spectrum center'),
+      },
+      overlays = json['overlays'] == null ? const [] : items(json['overlays'], 16).map(SceneSpectrumMark.new).toList();
+
+  static List<Color> _stops(Object? raw) {
+    if (raw is! List || raw.length < 2 || raw.length > 8) throw const FormatException('Invalid scene waterfallColors');
+    return [
+      for (var i = 0; i < raw.length; i++) _color({'c': raw[i]}, 'c')!,
+    ];
+  }
+
+  Iterable<String> get valueNames => [
+    for (final n in [floor, range, average, fps, waterfallSpeed, waterfallFloor, waterfallRange, traceWidth, tuneStep]) ?n?.value,
+    ?hoverHz,
+    ?hoverDb,
+    ...?center?.valueNames,
+    ...?scale?.valueNames,
+    for (final annotation in annotations) ...annotation.valueNames,
+    for (final overlay in overlays) ...overlay.valueNames,
+  ];
 }
 
 /// One node of a scene's layout: Flutter's Row, Column and Wrap, with
