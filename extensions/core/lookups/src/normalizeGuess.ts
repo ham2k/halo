@@ -48,9 +48,62 @@ const ADDRESS_CONTENT = "address" as "text"
 // for, and "FR" must not become "Fr".
 const CODE_REGEX = /^[A-Z]{2,3}$/
 
+// A suffix filed after the name's last comma — QRZ's "OSCAR A CURTIS, JR",
+// the Ham2K lookup's "CURTIS, OSCAR A, JR", Callook's "OSCAR A CURTIS, JR ." —
+// is lifted off before the "Last, First" flip and put back at the end;
+// flipping at that comma instead makes "Jr Oscar A Curtis". Generational
+// suffixes and only the credentials that can't be a given name: "NGUYEN, DO"
+// is a person called Do, not an osteopath. Each carries the separator it
+// goes back on with, and the spelling an all-caps source gets.
+const SUFFIXES: Record<string, string> = {
+  JR: " Jr",
+  SR: " Sr",
+  II: " II",
+  III: " III",
+  IV: " IV",
+  V: " V",
+  VI: " VI",
+  VII: " VII",
+  VIII: " VIII",
+  IX: " IX",
+  "2ND": " 2nd",
+  "3RD": " 3rd",
+  "4TH": " 4th",
+  "5TH": " 5th",
+  MD: ", MD",
+  PHD: ", PhD",
+  DDS: ", DDS",
+  DMD: ", DMD",
+  DVM: ", DVM",
+  ESQ: ", Esq",
+  CPA: ", CPA",
+}
+
+/// "CURTIS, OSCAR A, JR" -> ["CURTIS, OSCAR A", " Jr"], or null when the
+/// name doesn't end in a suffix. Only the dots come out when matching, never
+/// the spaces: "SMITH, J R" is a man with two initials, not Smith Jr. And a
+/// one-word name before the comma makes it "Last, First" with a given name
+/// that looks like a suffix — "NGUYEN, VI", "EWING, JR" — so it isn't one.
+function splitSuffix(name: string): [string, string] | null {
+  const comma = name.lastIndexOf(",")
+  if (comma < 0) return null
+  const body = name.slice(0, comma).trim()
+  if (!body.includes(",") && !/\s/.test(body)) return null
+  const written = name
+    .slice(comma + 1)
+    .trim()
+    .replace(/\s+\./g, ".")
+  const suffix = SUFFIXES[written.replace(/\./g, "").toUpperCase()]
+  if (!suffix) return null
+  // As the source wrote it, unless it's shouting: the rest of an all-caps
+  // name is recapitalized, so its suffix is too.
+  const separator = suffix.startsWith(",") ? ", " : " "
+  return [body, /[a-z]/.test(written) ? separator + written : suffix]
+}
+
 /// "Last, First" — exactly one comma, both halves non-empty. A name with two
-/// or more commas is a form we can't read (suffixes, organizations), and is
-/// left in its original order.
+/// or more commas is a form we can't read (organizations), and is left in
+/// its original order.
 function reorderName(name: string): string {
   const parts = name.split(",")
   if (parts.length !== 2) return name
@@ -77,8 +130,17 @@ function capitalizeNamePart(part: string): string {
 /// "DELMONT, SEBASTIAN" -> "Sebastian Delmont", "JOHN MCMILLAN" -> "John
 /// McMillan", "ARRL HEADQUARTERS" -> "ARRL Headquarters".
 export function normalizeName(name: string): string {
-  const trimmed = `${name}`.trim()
+  // Peeled off one at a time: "SMITH, JOHN, JR, MD" carries two.
+  let body = `${name}`.trim()
+  let suffixes = ""
+  for (let split = splitSuffix(body); split; split = splitSuffix(body)) {
+    body = split[0]
+    suffixes = split[1] + suffixes
+  }
+  return normalizeNameBody(body) + suffixes
+}
 
+function normalizeNameBody(trimmed: string): string {
   const nickname = trimmed.match(NICKNAME_REGEX)
   if (nickname?.index != null) {
     // Each part decides its own casing. Judged as one string, a hand-typed

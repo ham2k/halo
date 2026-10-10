@@ -21,8 +21,36 @@ test("a name that already carries capitalization is reordered but never recapita
 })
 
 test("only a two-part comma split is a Last, First — anything else keeps its order", () => {
-  assert.equal(normalizeName("SMITH, JOHN, JR"), "Smith, John, Jr")
+  assert.equal(normalizeName("SMITH, JOHN, ACME"), "Smith, John, Acme")
   assert.equal(normalizeName("SMITH,"), "Smith,")
+})
+
+test("a suffix after the last comma goes on the end, whichever order the name is in", () => {
+  // Flipped at the suffix's comma instead, the QRZ name reads "Jr Oscar A Curtis".
+  assert.equal(normalizeName("OSCAR A CURTIS, JR"), "Oscar A Curtis Jr") // QRZ
+  assert.equal(normalizeName("CURTIS, OSCAR A, JR"), "Oscar A Curtis Jr") // Ham2K lookup
+  assert.equal(normalizeName("OSCAR A CURTIS, JR ."), "Oscar A Curtis Jr") // Callook
+  assert.equal(normalizeName("Wingenter, Ronald C, III"), "Ronald C Wingenter III")
+  assert.equal(normalizeName("SMITH, JOHN, MD"), "John Smith, MD")
+  assert.equal(normalizeName("SMITH, JOHN, JR, MD"), "John Smith Jr, MD")
+  assert.equal(normalizeName("Hill, Mr. Matthew H"), "Mr. Matthew H Hill")
+})
+
+test("a suffix keeps the source's own spelling unless the source is shouting", () => {
+  assert.equal(normalizeName("Smith, John, Jr."), "John Smith Jr.")
+  assert.equal(normalizeName("Smith, John, Ph.D."), "John Smith, Ph.D.")
+  assert.equal(normalizeName("SMITH, JOHN, 2ND"), "John Smith 2nd")
+})
+
+test("what only looks like a suffix stays part of the name", () => {
+  // Two initials, not Jr or MD.
+  assert.equal(normalizeName("SMITH, J R"), "J R Smith")
+  assert.equal(normalizeName("SMITH, M. D."), "M. D. Smith")
+  // A one-word surname before the comma: Vi, Do and JR are given names here.
+  assert.equal(normalizeName("NGUYEN, VI"), "Vi Nguyen")
+  assert.equal(normalizeName("NGUYEN, DO"), "Do Nguyen")
+  assert.equal(normalizeName("EWING, JR"), "Jr Ewing")
+  assert.equal(normalizeName(", JR"), ", Jr")
 })
 
 test("an apostrophe surname keeps its shape, and a one-letter name is not turned into an initial", () => {
