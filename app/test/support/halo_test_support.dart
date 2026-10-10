@@ -9,6 +9,7 @@
 
 export 'error_reporting_fakes.dart';
 export 'fake_extension_host.dart';
+export 'fake_gps_location.dart';
 export 'fake_panel_extensions.dart';
 export 'fake_secure_storage.dart';
 export 'halo_harness.dart';

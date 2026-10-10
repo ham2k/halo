@@ -19,6 +19,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/geoshape_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/map/map_marker_data.dart';
+import 'package:ham2k_logger/views/map/map_marker_icon.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/map/ref_shapes.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
@@ -296,6 +298,37 @@ void main() {
       }
       expect(map().shapes, isEmpty);
       expect(geoshapes.asked, hasLength(asked), reason: 'zoomed out, an outline is a fetch for a smudge');
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  // A fix reads the way it does in every map app — a blue disc on a white
+  // ring — so the operator tells where the device is from where a park is
+  // without reading a legend.
+  testWidgets('a GPS location is marked with the blue dot every map app uses', (tester) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      await pump(
+        tester,
+        operation: Operation(uuid: 'op-shapes', data: const {'grid': 'FN31pr', 'gridSource': 'gps', 'lat': 41.71, 'lon': -72.73, 'refs': []}),
+        answers: const {},
+        controls: const [_summitControl],
+      );
+      // The glyph is rasterized through the engine, which only completes in
+      // real time; the marker draws as a plain dot until it lands.
+      MapMarkerData qthMarker() => tester.widget<OsmMapView>(find.byType(OsmMapView)).markers.singleWhere((m) => m.id.startsWith('qth-'));
+      for (var i = 0; i < 100 && qthMarker().glyph == null; i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+        await tester.pump();
+      }
+      final qth = qthMarker();
+
+      expect(qth.color, gpsDotColor);
+      expect(qth.strokeColor, Colors.white, reason: 'the thin white ring');
+      expect(qth.glyph?.icon, gpsMapDot.icon);
+      expect(qth.glyph?.glow, isNotNull, reason: 'it stands off the basemap on a dark glow');
+      expect(qth.glyph?.diameter, lessThan(markerIconDiameter), reason: 'a point, smaller than the icon-bearing markers');
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }

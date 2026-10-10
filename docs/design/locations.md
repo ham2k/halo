@@ -93,6 +93,15 @@ the refs did.
 - The first ref with a location places it: the ref's own coordinate where its
   program publishes one, its square's center otherwise, with
   `gridSource: 'refs'` — app-polo's value, which it follows the same way.
+  The grid stored beside it is six characters whatever Grid Precision says
+  (`refGrid`): a park's published point says where the park is, not where in
+  it the station stands, and eight characters would claim the second. See
+  Display for how it is shown.
+- Picking the FIRST placeable ref on the Location screen stores the same
+  location the refs would: a `refs` location that follows them. Picking any
+  other stores it as `manual`, still its six characters — the refs always
+  follow the first, so as `refs` that pick would be moved back at their next
+  edit. A `largeArea` ref is not offered there.
 - A ref marked `largeArea` (SDK `Ref.largeArea`) never places anything. A
   long trail or a park across several states publishes one point for the
   whole of it, and the operator could be hundreds of kilometres from it.
@@ -111,6 +120,29 @@ fix in one tap — but read here, the answer would depend on when the write
 runs: the Activities view's draft and the save that commits it would see
 different fixes, or one and none, and the service keeps its last position
 after it stops, so a fix can be hours old. app-polo makes the same call.
+
+The setup sheet captures a fix in its own right instead, as a separate write
+rather than part of this rule. While it is open — it starts the location
+service, and starting puts a stopped stream back to `determining` until a new
+position arrives, so `available` there is a live fix — it stores the device's
+position as `gridSource: 'gps'` on an operation being set up: one with no
+location and no contacts. It never replaces a location already stated,
+including one the refs placed a moment before the fix arrived, and never
+touches an operation with contacts, which may be a log reopened far from
+where it was made. Once captured it is a `gps` location, which a park added
+afterwards does not move. The coordinate is rounded to five decimals, about
+a metre (`gpsLocationData`), and the grid beside it is the rounded point's at
+Grid Precision. Device GPS on the Location screen stores a fix the same way,
+and offers one only while the service is `available`.
+
+A device's first answer is often its worst — a cached position, a Wi-Fi or
+IP estimate — so while the sheet stays open, the fix that session captured
+is replaced by any more accurate one, and a fix vaguer than 500 m is never
+stored at all: past that it can name the wrong town, and the town would go
+out in every export. Once the operator edits the location in the sheet,
+capturing stops for the session; clearing it is their answer, and a capture
+on the next position update would make it impossible to leave a new
+operation unlocated while GPS is allowed.
 
 The Activities view runs the rule on its draft, on every refs edit, so the
 nearby search recentres on the park just added while the sheet is still open.
@@ -250,11 +282,27 @@ screen is a claim about how well the location is known, so:
   `gridToLocation` does on any length but 4, 6 or 8.
 - A field the operator TYPES into keeps its hint at whatever would be stored if
   they left it alone — the hint and the stored value must not disagree.
+- An operation whose refs placed it (`gridSource: 'refs'`) shows its stored
+  square, cut to six characters, not a locator derived from the pair at the
+  setting's length (`Operation.displayGrid`, `refsGridForDisplay`);
+  `MY_GRIDSQUARE` is written the same way. A stored value that is not a
+  well-formed locator falls back to deriving from the pair. The
+  pair is the park's published point, and deriving from it would name a patch
+  of the park the station was never said to be in.
+- The setup sheet's location pill names a GPS location by its source —
+  "GPS" — rather than by its square; a location from a ref or typed by hand
+  shows its grid, on the pin.
+- A GPS location, stored or live, looks the way it does in every map app:
+  bright blue (`gpsDotColor`), a white ◉ on the blue pill, and on both maps a
+  small blue dot in a thin white ring on a dark glow (`gpsMapDot`,
+  `operation_location_pin.dart`) — one definition, so the pill and the maps
+  cannot drift apart.
 
 The setting governs how finely the app SPEAKS about a location, never how
-finely it holds one. Coordinates are stored and measured from at full
-precision either way, and the resolution order above is untouched by it: a
-coordinate outranks a grid at 6 characters exactly as it does at 8.
+finely it holds one. Coordinates are stored and measured from at the
+precision they arrived with either way — a captured fix at five decimals —
+and the resolution order above is untouched by it: a coordinate outranks a
+grid at 6 characters exactly as it does at 8.
 
 `GridPrecision` is a process-wide singleton for the same reason
 `NumberFormatting` is one — every surface must agree, or one screen shows the

@@ -9,6 +9,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
@@ -51,7 +52,9 @@ class HaLoHarness {
 /// reach a radio through hardware. [db] hands in a database double; one made
 /// here is closed for you, one handed in is yours to manage. [outlineGrid]
 /// replaces the POTA outline bundles, which by default find nothing — the
-/// real ones reach services.ham2k.net.
+/// real ones reach services.ham2k.net. [location] replaces the device's
+/// location service (see `FakeGpsLocation`); the real one finds no OS in a
+/// test and settles on `unavailable`.
 Future<HaLoHarness> makeHaLoServices({
   Map<String, Object>? prefs = const {},
   Map<String, Object?> stubs = const {},
@@ -62,6 +65,7 @@ Future<HaLoHarness> makeHaLoServices({
   CatService Function(SettingsService settings)? cat,
   CatTrafficLog? catTrafficLog,
   OutlineGridService? outlineGrid,
+  LocationService? location,
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage ?? FakeSecureStorage());
@@ -89,6 +93,7 @@ Future<HaLoHarness> makeHaLoServices({
       cat: cat?.call(settings),
       catTrafficLog: catTrafficLog,
       outlineGrid: outlineGrid ?? const NoOutlineGrid(),
+      location: location,
     ),
     db: database,
     settings: settings,

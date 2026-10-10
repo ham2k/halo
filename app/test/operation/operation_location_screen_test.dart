@@ -8,6 +8,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/views/operation/operation_location_screen.dart';
 
 import '../support/halo_test_support.dart';
@@ -227,9 +228,9 @@ void main() {
   group('coordinates', () {
     Map<String, dynamic>? popped;
 
-    Future<void> open(WidgetTester tester, Operation operation, {GridPrecision? gridPrecision}) async {
+    Future<void> open(WidgetTester tester, Operation operation, {GridPrecision? gridPrecision, LocationService? location}) async {
       popped = null;
-      final HaLoHarness(:services) = await makeHaLoServices();
+      final HaLoHarness(:services) = await makeHaLoServices(location: location);
       // The operator's setting, not the global it resolves into: every
       // settings write re-applies the stored one over a global set by hand.
       if (gridPrecision != null) await services.settings.setGridPrecision(gridPrecision);
@@ -283,16 +284,21 @@ void main() {
       // Precision, six by default; the coordinate beside it stays exact
       // either way, which is the whole point of storing both.
       expect(popped!['grid'], locationToGrid6(41.7135, -72.7278));
+      // Picked here or placed by adding the park, it is the same location
+      // (`locationFollowsRefs`): one that moves and clears with the park.
+      expect(popped!['gridSource'], refsGridSource);
     });
 
-    testWidgets('adopting a ref at eight characters when the operator asked for eight', (tester) async {
+    // The park's published point says where the park is, not where in it the
+    // station stands; eight characters derived from it would claim the second.
+    testWidgets('adopting a ref stores six characters even when the operator asked for eight', (tester) async {
       addTearDown(GridPrecision.reset);
       await open(tester, withPark(lat: 41.7135, lon: -72.7278), gridPrecision: GridPrecision.eight);
       await tester.tap(find.text('US-1234'));
       await tester.pumpAndSettle();
       await save(tester);
 
-      expect(popped!['grid'], locationToGrid8(41.7135, -72.7278));
+      expect(popped!['grid'], locationToGrid6(41.7135, -72.7278));
       expect(popped!['lat'], closeTo(41.7135, 1e-9));
     });
 
@@ -368,6 +374,77 @@ void main() {
       expect(popped!['lat'], closeTo(41.7135, 1e-9));
       expect(popped!['lon'], closeTo(-72.7278, 1e-9));
       expect(popped!['gridSource'], 'gps');
+    });
+
+    // The same fix the setup sheet would capture, stored the same way: a
+    // receiver's fifteen digits claim nanometres, and they reach MY_LAT.
+    testWidgets('Device GPS stores the fix rounded to five decimals, as a GPS location', (tester) async {
+      final gps = FakeGpsLocation()..fix = const GridLocation(41.713456789, -72.727812345);
+      await open(tester, withPark(), location: gps);
+      expect(find.textContaining('(41.71346, -72.72781)'), findsOneWidget, reason: 'the row says what it would store');
+      await tester.tap(find.text(AppLocale.en.buildSync().operationLocationScreen.deviceGps));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(popped!['gridSource'], 'gps');
+      expect(popped!['lat'], 41.71346);
+      expect(popped!['lon'], -72.72781);
+    });
+
+    // The service keeps its last position while it says "Locating…"; offered
+    // then, the row would store a position that can be hours old.
+    testWidgets('Device GPS cannot be picked from a remembered position', (tester) async {
+      final gps = FakeGpsLocation()
+        ..fix = const GridLocation(41.71, -72.73)
+        ..statusOverride = LocationStatus.determining;
+      await open(tester, withPark(), location: gps);
+      await tester.tap(find.text(AppLocale.en.buildSync().operationLocationScreen.deviceGps));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(popped!['gridSource'], isNot('gps'));
+    });
+
+    // The refs always follow the FIRST park. A second one picked as `refs`
+    // would be moved back to the first at their next edit, undoing the one
+    // pick that changed anything.
+    testWidgets('picking a park other than the first stores it as the operator\'s own', (tester) async {
+      await open(
+        tester,
+        Operation(
+          uuid: 'op-1',
+          data: {
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'US-1234', 'lat': 41.7135, 'lon': -72.7278},
+              {'type': 'potaActivation', 'ref': 'US-5678', 'lat': 42.1, 'lon': -73.1},
+            ],
+          },
+        ),
+      );
+      await tester.tap(find.text('US-5678'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(popped!['gridSource'], 'manual');
+      expect(popped!['lat'], closeTo(42.1, 1e-9));
+      expect(popped!['grid'], locationToGrid6(42.1, -73.1));
+    });
+
+    // A trail's single point stands for hundreds of kilometres of it.
+    testWidgets('a largeArea ref is not offered as a location', (tester) async {
+      await open(
+        tester,
+        Operation(
+          uuid: 'op-1',
+          data: {
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'US-4567', 'lat': 35.6, 'lon': -83.5, 'largeArea': true},
+            ],
+          },
+        ),
+      );
+
+      expect(find.text('US-4567'), findsNothing);
     });
   });
 }

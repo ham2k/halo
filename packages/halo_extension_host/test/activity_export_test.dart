@@ -599,6 +599,43 @@ void main() {
     expect(released, isNot(contains('-74.45')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  // An operation the refs placed carries the park's published point beside a
+  // six-character square. Derived from that point at the operator's eight
+  // characters, MY_GRIDSQUARE would name a 100 m patch of the park the
+  // station was never said to be in — the screen shows the six
+  // (`Operation.displayGrid`), and the file must say the same.
+  test('a location the refs placed exports its stored square at any Grid Precision', () async {
+    final fineHost = await sharedHost(
+      ['adif', 'ham2k-pota'],
+      cacheKey: 'grid-precision-eight',
+      onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
+    );
+    final result =
+        await fineHost.invokeHook(
+              'export',
+              key: 'adif',
+              method: 'generateExport',
+              args: {
+                'operation': {
+                  ...operation(['US-0001']),
+                  'grid': 'FN21sq',
+                  'gridSource': 'refs',
+                  'lat': 41.6875,
+                  'lon': -74.45,
+                },
+                'qsos': [qsos.first],
+                'exportType': 'adif',
+                'includePrivateData': true,
+              },
+              timeout: const Duration(seconds: 20),
+            )
+            as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect(content, isNot(contains('FN21sq55')), reason: 'derived from the park point at eight characters');
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   // A locator the operator STATED is a square, and the app stores that
   // square's own center beside it so everything that measures has a
   // coordinate (docs/design/locations.md). A file must not restate that

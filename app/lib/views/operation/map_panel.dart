@@ -227,6 +227,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final grid = widget.operation.displayGrid;
     final location = widget.operation.location;
     final pin = operationLocationPin(widget.operation, deviceGrid: widget.deviceGrid);
+    final gps = operationLocationIsGps(widget.operation, deviceGrid: widget.deviceGrid);
     return [
       ...activitySelectedRefMarkers(
         widget.operation.refs,
@@ -244,10 +245,22 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           longitude: location.longitude,
           label: grid,
           kind: MapMarkerKind.qth,
-          color: pin.color,
-          strokeColor: strokeColor,
+          color: gps ? gpsMapDot.fill : pin.color,
+          strokeColor: gps ? gpsMapDot.ring : strokeColor,
+          strokeWidth: gps ? gpsMapDot.ringWidth : null,
           popupTitle: t.map.qthPopupTitle(grid: grid),
-          glyph: glyphFor(pin.icon, pin.color),
+          glyph: gps
+              ? _glyphCache.glyphFor(
+                  icon: gpsMapDot.icon,
+                  background: gpsMapDot.fill,
+                  foreground: gpsMapDot.glyph,
+                  strokeColor: gpsMapDot.ring,
+                  strokeWidth: gpsMapDot.ringWidth,
+                  glow: gpsMapDot.glow,
+                  diameter: gpsMapDot.diameter,
+                  devicePixelRatio: devicePixelRatio,
+                )
+              : glyphFor(pin.icon, pin.color),
         ),
     ];
   }

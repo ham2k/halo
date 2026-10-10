@@ -139,6 +139,65 @@ void main() {
     });
   });
 
+  // A park's published point says where the park is, not where in it the
+  // station stands. At eight characters the stored square — and everything
+  // that reads it — would name a 100 m patch the operator never claimed.
+  group('the square a ref places', () {
+    setUp(() => GridPrecision.configure(GridPrecision.eight));
+    tearDown(GridPrecision.reset);
+
+    test('is six characters whatever Grid Precision says', () {
+      final after = _withRefs({}, [_park]);
+      locationFollowsRefs({}, after);
+      expect(after['grid'], locationToGrid6(_parkLocation.latitude, _parkLocation.longitude));
+      expect(
+        Operation(uuid: 'op', data: after).displayGrid,
+        hasLength(6),
+        reason: 'shown as stored, not re-derived from the park point',
+      );
+    });
+
+    test("is a grid-only ref's own square, cut to six", () {
+      expect(refGrid({'grid': 'FN21ab12'}), 'FN21ab');
+      expect(refGrid({'grid': 'FN21'}), 'FN21', reason: 'a coarser square is not made finer');
+      expect(refGrid({'grid': 'AA00'}), isNull, reason: 'a placeholder names no place');
+    });
+
+    // A data file's typo decodes leniently to a real square, and stored
+    // verbatim it would be shown and exported as MY_GRIDSQUARE.
+    test('is never a malformed locator', () {
+      for (final bad in ['FN31ZZ', 'FN31P', 'FN31 PR']) {
+        expect(refGrid({'grid': bad}), isNull, reason: bad);
+      }
+    });
+
+    // An older `refs` record stored its square at the precision of the day —
+    // eight characters for an operator set to eight.
+    test('shows six characters for a refs location that stored more', () {
+      final older = Operation(uuid: 'op', data: const {'grid': 'FN21ab12', 'gridSource': 'refs', 'lat': 41.0563, 'lon': -73.9625});
+      expect(older.displayGrid, 'FN21ab');
+    });
+  });
+
+  group('a captured GPS fix', () {
+    tearDown(GridPrecision.reset);
+
+    // Five decimals is about a metre. A receiver's fifteen digits claim
+    // nanometres, and they reach every export that writes MY_LAT.
+    test('is stored to five decimals, with the square for the rounded point', () {
+      final data = gpsLocationData(const GridLocation(41.713456789, -74.527812345));
+      expect(data['lat'], 41.71346);
+      expect(data['lon'], -74.52781);
+      expect(data['gridSource'], gpsGridSource);
+      expect(data['grid'], locationToGrid6(41.71346, -74.52781));
+    });
+
+    test("takes its square's length from Grid Precision", () {
+      GridPrecision.configure(GridPrecision.eight);
+      expect(gpsLocationData(const GridLocation(41.71346, -74.52781))['grid'], hasLength(8));
+    });
+  });
+
   test('a write that leaves the refs alone changes nothing', () {
     final before = _withRefs({'title': 'a'}, [_park]);
     final after = {...before, 'title': 'b'};

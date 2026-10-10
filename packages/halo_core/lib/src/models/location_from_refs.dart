@@ -10,11 +10,6 @@ import '../ham/grid.dart';
 import 'models.dart';
 import 'qson_values.dart';
 
-/// The `gridSource` of a location this rule wrote, and the one it may go on
-/// rewriting: a location from any other source was stated by the operator or
-/// a device, and the refs never override it.
-const refsGridSource = 'refs';
-
 /// Fills in, moves or clears [after]'s location to follow its refs, in place.
 /// Returns whether anything changed. [before] is the record as it was (null
 /// for a new one).
@@ -34,8 +29,10 @@ const refsGridSource = 'refs';
 ///
 /// The device's position plays no part, as in app-polo: reading it here would
 /// make the answer depend on when a write happens to run, and a position the
-/// service keeps after it stops can be hours old. Adopting a GPS fix is the
-/// operator's act, on the Location screen.
+/// service keeps after it stops can be hours old. A GPS fix is stored by its
+/// own writers — the setup sheet's capture and the Location screen's Device
+/// GPS — and, once stored, is a location this rule leaves alone
+/// (docs/design/locations.md).
 bool locationFollowsRefs(Map<String, dynamic>? before, Map<String, dynamic> after) {
   if (jsonEncode(before?['refs']) == jsonEncode(after['refs'])) return false;
   final operation = Operation(uuid: '', data: after);
@@ -59,10 +56,23 @@ bool locationFollowsRefs(Map<String, dynamic>? before, Map<String, dynamic> afte
 const _locationKeys = ['grid', 'gridSource', 'lat', 'lon'];
 
 ({GridLocation location, String grid})? _refLocation(Map<String, dynamic> ref) {
-  final grid = asQsonString(ref['grid']);
-  final location = locationFromLatLon(ref['lat'], ref['lon']) ?? locationForStatedGrid(grid);
-  if (location == null) return null;
-  // Non-null whenever `location` is: either the pair is valid or `grid` is a
-  // non-empty locator.
-  return (location: location, grid: gridForDisplay(lat: ref['lat'], lon: ref['lon'], grid: grid)!);
+  final location = refLocation(ref);
+  final grid = refGrid(ref);
+  if (location == null || grid == null) return null;
+  return (location: location, grid: grid);
+}
+
+/// Where [ref] places an operation: its published coordinate, or the center
+/// of its grid. Null for a ref with neither, or with only a placeholder grid.
+GridLocation? refLocation(Map<String, dynamic> ref) => locationFromLatLon(ref['lat'], ref['lon']) ?? locationForStatedGrid(asQsonString(ref['grid']));
+
+/// The locator an operation placed by [ref] stores: six characters, whatever
+/// Grid Precision says — from its coordinate where it publishes one, else its
+/// own grid cut to six. A park's point says where the park is, not where in
+/// it the station stands, and eight characters would claim the second.
+String? refGrid(Map<String, dynamic> ref) {
+  if (locationFromLatLon(ref['lat'], ref['lon']) case final exact?) return locationToGrid6(exact.latitude, exact.longitude);
+  final stated = asQsonString(ref['grid']);
+  if (locationForStatedGrid(stated) == null) return null;
+  return refsGridForDisplay(stated);
 }

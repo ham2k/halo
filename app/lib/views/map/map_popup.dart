@@ -35,7 +35,7 @@ class MapCircleMarker extends StatelessWidget {
     final diameter =
         scale *
         (glyph != null
-            ? markerIconDiameter
+            ? glyph.diameter
             : isQth
             ? 12.0
             : 14.0 * marker.sizeFactor);
@@ -56,11 +56,15 @@ class MapCircleMarker extends StatelessWidget {
                       ? 2
                       : 1.5)),
         ),
+        boxShadow: switch (glyph?.glow) {
+          final glow? => [BoxShadow(color: glow, blurRadius: markerIconGlowExtent * scale)],
+          null => null,
+        },
       ),
       child: glyph == null
           ? null
           : Center(
-              child: Icon(glyph.icon, size: markerIconGlyphSize * scale, color: glyph.color),
+              child: Icon(glyph.icon, size: markerGlyphSizeFor(glyph.diameter) * scale, color: glyph.color),
             ),
     );
   }

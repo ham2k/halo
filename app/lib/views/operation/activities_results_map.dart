@@ -46,6 +46,7 @@ import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
 import 'activities_view.dart' show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
+import 'operation_location_pin.dart';
 
 /// The entry's own coordinate when the activity's lookup table has one
 /// (tighter than decoding a 6-character grid square — see the SDK's `Ref.lat`
@@ -230,6 +231,11 @@ class ActivitiesResultsMap extends StatefulWidget {
   final IconData? currentLocationIcon;
   final Color? currentLocationIconColor;
 
+  /// The dot is a GPS fix, stored or live: drawn as the blue dot every map app
+  /// uses (`gpsMapDot`) rather than as the pill's glyph, which shows it in
+  /// negative on a filled button.
+  final bool currentLocationIsGps;
+
   const ActivitiesResultsMap({
     super.key,
     required this.suggestions,
@@ -251,6 +257,7 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.currentLocationColor,
     this.currentLocationIcon,
     this.currentLocationIconColor,
+    this.currentLocationIsGps = false,
   });
 
   /// The zoom, on the GL scale, from which the suggestions nobody has picked
@@ -809,9 +816,21 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
           longitude: currentLocation.longitude,
           label: 'current-location',
           kind: MapMarkerKind.qth,
-          color: currentLocationColor ?? theme.colorScheme.primary,
-          strokeColor: strokeColor,
-          glyph: currentLocationIcon == null || currentLocationColor == null
+          color: widget.currentLocationIsGps ? gpsMapDot.fill : currentLocationColor ?? theme.colorScheme.primary,
+          strokeColor: widget.currentLocationIsGps ? gpsMapDot.ring : strokeColor,
+          strokeWidth: widget.currentLocationIsGps ? gpsMapDot.ringWidth : null,
+          glyph: widget.currentLocationIsGps
+              ? _glyphCache.glyphFor(
+                  icon: gpsMapDot.icon,
+                  background: gpsMapDot.fill,
+                  foreground: gpsMapDot.glyph,
+                  strokeColor: gpsMapDot.ring,
+                  strokeWidth: gpsMapDot.ringWidth,
+                  glow: gpsMapDot.glow,
+                  diameter: gpsMapDot.diameter,
+                  devicePixelRatio: devicePixelRatio,
+                )
+              : currentLocationIcon == null || currentLocationColor == null
               ? null
               : _glyphCache.glyphFor(
                   icon: currentLocationIcon,

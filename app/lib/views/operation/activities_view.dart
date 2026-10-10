@@ -19,7 +19,6 @@
 // scrollable body.
 
 import 'dart:async';
-import 'dart:io' as io;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -102,6 +101,11 @@ class _HeaderPill {
 /// pills. Wide enough to matter, narrow enough that the pills stay on one
 /// line in every layout they fit.
 const _headerTitleMinWidth = 200.0;
+
+/// The vaguest fix the setup sheet stores on its own: past this a position
+/// is a Wi-Fi or IP estimate that can name the wrong town, and storing it
+/// would put that town in every export.
+const _maxCaptureAccuracyMeters = 500.0;
 
 /// Height of the search section's progress bar — reserved whether or not a
 /// search is running, so the results below never shift. Matches
@@ -460,6 +464,10 @@ class OperationSheetState extends State<OperationSheet> {
     widget.services.location.addListener(_onLocationChanged);
     widget.services.dataRevision.addListener(_onDataFilesChanged);
     _search('');
+    // After the first frame: a fix already streaming for another view is
+    // live now, and capturing it writes through `onOperationChanged` into a
+    // parent that is mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeCaptureFix());
   }
 
   @override
@@ -485,8 +493,55 @@ class OperationSheetState extends State<OperationSheet> {
   // every few seconds while moving (e.g. driving), each one triggering a
   // fresh round of extension-hook lookups.
   void _onLocationChanged() {
-    if (mounted) _onSearchChanged(_searchController.text);
+    if (!mounted) return;
+    _maybeCaptureFix();
+    _onSearchChanged(_searchController.text);
   }
+
+  /// Stores the device's live fix as the operation's location, for an
+  /// operation being set up: no location yet and no contacts logged.
+  ///
+  /// `available` is a LIVE fix here, not a remembered one: this view started
+  /// the service, and starting it puts a stopped stream back to `determining`
+  /// until a new position arrives. A location already stated — by the
+  /// operator, or by a park the refs placed — is never replaced; nor is one on
+  /// an operation with contacts, which may be a log reopened far from where it
+  /// was made.
+  ///
+  /// The first fix a device reports is often its worst — a cached position, a
+  /// Wi-Fi or IP estimate — so while the sheet stays open, the fix THIS
+  /// session captured is replaced by any more accurate one. A fix vaguer than
+  /// [_maxCaptureAccuracyMeters] is never stored. Once the operator edits the
+  /// location here, capturing stops: clearing it, or picking another, is
+  /// their answer.
+  void _maybeCaptureFix() {
+    if (!mounted || _locationEditedHere) return;
+    final location = widget.services.location;
+    final position = location.position;
+    final fix = location.location;
+    if (location.status != LocationStatus.available || position == null || fix == null) return;
+    if (_operation.qsoCount > 0) return;
+    // Zero or less is a platform that does not report one, not a perfect fix.
+    final accuracy = position.accuracy > 0 ? position.accuracy : null;
+    if (accuracy != null && accuracy > _maxCaptureAccuracyMeters) return;
+    final refining = _capturedAccuracy != null && _operation.data['gridSource'] == gpsGridSource;
+    if (refining) {
+      if (accuracy == null || accuracy >= _capturedAccuracy!) return;
+    } else if (_operation.location != null) {
+      return;
+    }
+    _capturedAccuracy = accuracy ?? double.infinity;
+    _saveOperationData(gpsLocationData(fix));
+  }
+
+  /// The accuracy radius of the fix this session captured, or null when it
+  /// has captured none. Infinite for one whose platform reported none, which
+  /// any fix that does report one then refines.
+  double? _capturedAccuracy;
+
+  /// Set once the operator changes the location in this sheet, which ends
+  /// capturing for the session.
+  bool _locationEditedHere = false;
 
   // Re-runs the current search once new data files land. Enabling an
   // extension here restarts the runtime and searches straight away, while
@@ -1414,6 +1469,7 @@ class OperationSheetState extends State<OperationSheet> {
       debugPrint('[activities] location edit discarded: the sheet unmounted while the editor was open');
       return;
     }
+    _locationEditedHere = true;
     final updated = Operation(
       uuid: _operation.uuid,
       data: {..._operation.data, ...patch},
@@ -2287,6 +2343,10 @@ class OperationSheetState extends State<OperationSheet> {
                           // dot — the pill's widget can't be handed to a map backend
                           // that draws pixels rather than widgets.
                           final IconData locationIcon;
+                          // A GPS location, stored or live: the map draws it as the
+                          // blue dot every map app uses rather than as the pill's own
+                          // glyph (see [gpsMapDot]).
+                          final bool locationIsGps;
 
                           // The SAME question the empty state asks, so the two can't
                           // contradict each other over a grid the search can't place:
@@ -2295,29 +2355,37 @@ class OperationSheetState extends State<OperationSheet> {
                           if (_hasOperationGrid) {
                             // The same pin the Map tab puts on the operation's own marker.
                             final pin = operationLocationPin(_operation, deviceGrid: widget.services.location.grid);
+                            locationIsGps = operationLocationIsGps(_operation, deviceGrid: widget.services.location.grid);
                             locationIcon = pin.icon;
                             locationPin = Icon(locationIcon, color: onLocationColor);
-                            label = operationGrid!;
+                            // A fix says where the device is, and its locator is
+                            // the least of what it holds — the source is what the
+                            // operator needs to read off the pill.
+                            label = locationIsGps ? 'GPS' : operationGrid!;
                             locationColor = pin.color;
                           } else {
                             if (locStatus == LocationStatus.unknown || locStatus == LocationStatus.determining) {
                               // The pulse is an animation over the same glyph, and a
                               // map marker takes one frame of it.
-                              locationIcon = MdiIcons.mapMarker;
-                              locationPin = const _PulsingGpsPin(color: onLocationColor);
+                              locationIsGps = true;
+                              locationIcon = gpsPillIcon;
+                              locationPin = const PulsingGpsPin(color: onLocationColor);
                               label = 'GPS…';
-                              locationColor = const Color(0xFF1565C0);
+                              locationColor = gpsDotColor;
                             } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid != null) {
-                              locationIcon = MdiIcons.mapMarker;
+                              locationIsGps = true;
+                              locationIcon = gpsPillIcon;
                               locationPin = Icon(locationIcon, color: onLocationColor);
                               label = widget.services.location.displayGrid!;
-                              locationColor = const Color(0xFF1B5E20);
+                              locationColor = gpsDotColor;
                             } else if (locStatus == LocationStatus.available && widget.services.location.displayGrid == null) {
-                              locationIcon = MdiIcons.mapMarker;
-                              locationPin = const _PulsingGpsPin(color: onLocationColor);
+                              locationIsGps = true;
+                              locationIcon = gpsPillIcon;
+                              locationPin = const PulsingGpsPin(color: onLocationColor);
                               label = 'GPS…';
-                              locationColor = const Color(0xFF1565C0);
+                              locationColor = gpsDotColor;
                             } else {
+                              locationIsGps = false;
                               // The only variant that can end up with no label, so the
                               // only one that would otherwise announce nothing — and it
                               // is on screen exactly while the notice below tells the
@@ -2628,6 +2696,7 @@ class OperationSheetState extends State<OperationSheet> {
                                     currentLocationColor: locationColor,
                                     currentLocationIcon: locationIcon,
                                     currentLocationIconColor: onLocationColor,
+                                    currentLocationIsGps: locationIsGps,
                                   ),
                                 ),
                               ],
@@ -2859,89 +2928,4 @@ bool activityRowIsInvalid(List<Map<String, dynamic>> controls, Map<String, dynam
   // build that runs this for every row.
   final control = controlForRefType(controls, entry['type'] as String?);
   return anyRefFailsPattern([entry], (control?['input'] as Map?)?['pattern'] as String?);
-}
-
-class _PulsingGpsPin extends StatefulWidget {
-  final Color color;
-
-  const _PulsingGpsPin({this.color = Colors.blue});
-
-  @override
-  State<_PulsingGpsPin> createState() => _PulsingGpsPinState();
-}
-
-class _PulsingGpsPinState extends State<_PulsingGpsPin> with SingleTickerProviderStateMixin {
-  // A repeating controller repaints the scene at the display's refresh rate
-  // for as long as the pin is mounted — on the web, where a GPS fix can stay
-  // pending indefinitely (unanswered permission prompt), that pegs a CPU
-  // core. So the pulse winds down in phases: smooth for a few full cycles,
-  // then a brief dim blip every couple of seconds (frames are only drawn
-  // during the blip), then a static icon.
-  static const _pulsePeriod = Duration(milliseconds: 1000);
-  static const _smoothPhase = Duration(seconds: 6); // 3 full out-and-back pulses
-  static const _blipInterval = Duration(seconds: 2);
-  static const _blipFade = Duration(milliseconds: 250);
-  static const _animationCutoff = Duration(seconds: 30);
-
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-  Timer? _phaseTimer;
-  Timer? _blipTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: _pulsePeriod, vsync: this);
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-
-    final isTest = !kIsWeb && io.Platform.environment.containsKey('FLUTTER_TEST');
-    if (!isTest) {
-      _controller.repeat(reverse: true);
-      _phaseTimer = Timer(_smoothPhase, _startBlipPhase);
-    } else {
-      _controller.value = 1.0;
-    }
-  }
-
-  void _startBlipPhase() {
-    _controller.stop();
-    _controller.animateTo(1.0, duration: _blipFade);
-    _blipTimer = Timer.periodic(_blipInterval, (_) => _blip());
-    _phaseTimer = Timer(_animationCutoff - _smoothPhase, _settle);
-  }
-
-  void _blip() {
-    _controller.animateTo(0.35, duration: _blipFade).whenCompleteOrCancel(() {
-      if (!mounted || _blipTimer == null) return;
-      _controller.animateTo(1.0, duration: _blipFade);
-    });
-  }
-
-  void _settle() {
-    _blipTimer?.cancel();
-    _blipTimer = null;
-    _controller.stop();
-    _controller.value = 1.0;
-  }
-
-  @override
-  void dispose() {
-    _phaseTimer?.cancel();
-    // Null (not just cancel) before disposing the controller: disposal
-    // cancels an in-flight blip, which fires its whenCompleteOrCancel
-    // callback synchronously while mounted is still true — the null check
-    // in _blip is what stops it from touching the disposed controller.
-    _blipTimer?.cancel();
-    _blipTimer = null;
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: _animation,
-      child: Icon(MdiIcons.mapMarker, color: widget.color),
-    );
-  }
 }

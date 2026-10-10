@@ -19,6 +19,7 @@ import '../../services/halo_services.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_service.dart';
 import '../../services/location_service.dart';
+import 'operation_location_pin.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 class OperationLocationScreen extends StatefulWidget {
@@ -152,6 +153,13 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     _stateController.text = _normalizeState(_stateController.text.trim());
   }
 
+  /// The device's fix, stored the way the setup sheet captures one
+  /// ([gpsLocationData]): rounded, with the locator for the rounded point.
+  void _adoptFix(GridLocation fix) {
+    final data = gpsLocationData(fix);
+    _adoptGrid(data['grid'] as String, gpsGridSource, location: GridLocation(data['lat'] as double, data['lon'] as double));
+  }
+
   void _adoptGrid(String grid, String source, {GridLocation? location}) {
     setState(() {
       _gridSource = source;
@@ -222,14 +230,15 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     final t = context.t.operationLocationScreen;
     final theme = Theme.of(context);
     final location = widget.services.location;
-    // A ref is offerable when it can name a location at all — its own
-    // published coordinate (a locator at the operator's own precision, and the
-    // coordinate itself is what gets adopted) or, for a program whose table
-    // has none, its grid.
+    // A ref is offerable when it can place the operation the way the refs do
+    // on their own (`locationFollowsRefs`). A `largeArea` ref is not offered:
+    // its point stands for a whole trail, which is no place to put a station.
+    // In the same order the rule reads them, so the first here is the one it
+    // would choose.
     final refsWithGrid = [
       for (final ref in widget.operation.refs)
-        if (gridForDisplay(lat: ref['lat'], lon: ref['lon'], grid: ref['grid'] as String?) case final grid?)
-          (ref: ref, grid: grid, location: locationFromLatLon(ref['lat'], ref['lon'])),
+        if (ref['largeArea'] != true)
+          if ((refGrid(ref), refLocation(ref)) case (final grid?, final location?)) (ref: ref, grid: grid, location: location),
     ];
 
     // The LOCAL problem stays visible under a serving peer fix: with the
@@ -244,8 +253,15 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             _ => null,
           }
         : null;
+    // What tapping the row stores (`gpsLocationData`), so the line reads the
+    // same as the location it would become: the square, and the rounded
+    // coordinate behind it.
+    final fixData = location.location == null ? null : gpsLocationData(location.location!);
+    final fixText = fixData == null
+        ? ''
+        : '${fixData['grid']} (${(fixData['lat'] as double).toStringAsFixed(capturedFixDecimals)}, ${(fixData['lon'] as double).toStringAsFixed(capturedFixDecimals)})';
     final gpsSubtitle = switch (location.status) {
-      LocationStatus.available => localProblem == null ? (location.displayGrid ?? '') : '${location.displayGrid ?? ''} — $localProblem',
+      LocationStatus.available => localProblem == null ? fixText : '$fixText — $localProblem',
       LocationStatus.unknown || LocationStatus.determining => t.locating,
       LocationStatus.permissionDenied => t.permissionDenied,
       LocationStatus.permissionBlocked => t.permissionBlocked,
@@ -287,7 +303,12 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             t.suggestedLocations,
             children: [
               ListTile(
-                leading: Icon(MdiIcons.crosshairsGps),
+                // The size of the ref avatars below it, in the blue every GPS
+                // location wears (`gpsDotColor`).
+                leading: CircleAvatar(
+                  backgroundColor: gpsDotColor,
+                  child: Icon(gpsPillIcon, color: Colors.white),
+                ),
                 // A fix served on a peer's behalf is named as such — calling the
                 // phone's position "Device GPS" would tell the operator this
                 // machine can do something it cannot.
@@ -296,9 +317,12 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                   null => t.deviceGps,
                 }),
                 subtitle: Text(gpsSubtitle),
-                onTap: location.displayGrid == null ? null : () => _adoptGrid(location.displayGrid!, 'gps', location: location.location),
+                // Live fixes only: the service keeps its last position while it
+                // says "Locating…" or that it was denied, and that one can be
+                // hours old.
+                onTap: location.status != LocationStatus.available || location.location == null ? null : () => _adoptFix(location.location!),
               ),
-              for (final suggestion in refsWithGrid)
+              for (final (index, suggestion) in refsWithGrid.indexed)
                 ListTile(
                   tileColor: !_controlsUnreliable && isUnknownRefType(_controls, suggestion.ref['type'] as String?, code: refCodeOf(suggestion.ref))
                       ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
@@ -308,7 +332,12 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                       : activityRefIcon(_controls, suggestion.ref['type'] as String?, code: refCodeOf(suggestion.ref)),
                   title: Text((suggestion.ref['shortLabel'] ?? suggestion.ref['ref'] ?? '?') as String),
                   subtitle: Text(suggestion.grid, style: const TextStyle(fontFamily: 'RobotoMono')),
-                  onTap: () => _adoptGrid(suggestion.grid, 'manual', location: suggestion.location),
+                  // The first is the park the refs place the operation at
+                  // anyway, and picking it keeps following them. Any other is
+                  // a choice the refs would undo at their next edit — they
+                  // always follow the first — so it is stored as the
+                  // operator's own, and stays.
+                  onTap: () => _adoptGrid(suggestion.grid, index == 0 ? refsGridSource : 'manual', location: suggestion.location),
                 ),
               // Only worth saying when a ref is actually standing there without
               // its activity's icon and label — with no refs to explain, the

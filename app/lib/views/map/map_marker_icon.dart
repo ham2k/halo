@@ -22,6 +22,15 @@ const markerIconStrokeWidth = 2.0;
 /// pin's own bounding box has room to breathe rather than touching the ring.
 const markerIconGlyphSize = 18.0;
 
+/// The glyph's box for a marker of [diameter]: [markerIconGlyphSize] at the
+/// standard size, scaled with it, so a smaller marker keeps its proportions.
+double markerGlyphSizeFor(double diameter) => markerIconGlyphSize * diameter / markerIconDiameter;
+
+/// How far a marker's glow reaches past its ring, in logical pixels. The
+/// rasterized image grows by this on every side so the blur is not clipped
+/// by its own edge; the circle itself keeps its diameter.
+const markerIconGlowExtent = 4.0;
+
 /// A filled circle with [icon] centered in it, ringed in [strokeColor] —
 /// [background] and [foreground] come from whatever the marker is mirroring,
 /// so the map's dot and its on-screen counterpart carry the same colors.
@@ -40,19 +49,32 @@ Future<MapMarkerImage> renderMarkerIconImage({
   required Color strokeColor,
   required double devicePixelRatio,
   double strokeWidth = markerIconStrokeWidth,
+  Color? glow,
+  double diameter = markerIconDiameter,
 }) async {
   final scale = devicePixelRatio.clamp(1.0, 4.0);
-  final size = (markerIconDiameter * scale).ceil();
+  final extent = glow == null ? 0.0 : markerIconGlowExtent;
+  final box = diameter + extent * 2;
+  final size = (box * scale).ceil();
 
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   canvas.scale(scale);
 
-  const center = Offset(markerIconDiameter / 2, markerIconDiameter / 2);
+  final center = Offset(box / 2, box / 2);
   // Inset by half the stroke: a stroked circle straddles its radius, so a
   // full-radius one would have half its ring clipped off by the image's own
   // edge.
-  final radius = markerIconDiameter / 2 - strokeWidth / 2;
+  final radius = diameter / 2 - strokeWidth / 2;
+  if (glow != null) {
+    canvas.drawCircle(
+      center,
+      diameter / 2,
+      Paint()
+        ..color = glow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, markerIconGlowExtent / 2),
+    );
+  }
   canvas.drawCircle(center, radius, Paint()..color = background);
   canvas.drawCircle(
     center,
@@ -68,7 +90,7 @@ Future<MapMarkerImage> renderMarkerIconImage({
     text: TextSpan(
       text: String.fromCharCode(icon.codePoint),
       style: TextStyle(
-        fontSize: markerIconGlyphSize,
+        fontSize: markerGlyphSizeFor(diameter),
         fontFamily: icon.fontFamily,
         package: icon.fontPackage,
         color: foreground,
@@ -95,7 +117,7 @@ Future<MapMarkerImage> renderMarkerIconImage({
         id:
             'glyph-${icon.fontPackage}/${icon.fontFamily}/${icon.codePoint}'
             '-${background.toARGB32()}-${foreground.toARGB32()}-${strokeColor.toARGB32()}'
-            '-$strokeWidth-$size',
+            '-$strokeWidth-${glow?.toARGB32()}-$diameter-$size',
         // Offset and length, not the whole buffer: a view into a larger one
         // would hand the GL backends more bytes than width * height * 4, and
         // addImage rejects the size mismatch rather than the byte count.
@@ -140,6 +162,8 @@ class MarkerGlyphCache {
     required Color strokeColor,
     required double devicePixelRatio,
     double strokeWidth = markerIconStrokeWidth,
+    Color? glow,
+    double diameter = markerIconDiameter,
   }) {
     // The font is part of the icon's identity, not decoration: extensions
     // name icons across two of them (halo_widgets' resolveIconName), so two
@@ -147,7 +171,7 @@ class MarkerGlyphCache {
     final key =
         '${icon.fontFamily}/${icon.fontPackage}/${icon.codePoint}'
         '/${background.toARGB32()}/${foreground.toARGB32()}'
-        '/${strokeColor.toARGB32()}/$strokeWidth/$devicePixelRatio';
+        '/${strokeColor.toARGB32()}/$strokeWidth/${glow?.toARGB32()}/$diameter/$devicePixelRatio';
     final ready = _glyphs[key];
     if (ready != null) return ready;
     if (!_inFlight.add(key)) return null;
@@ -160,8 +184,10 @@ class MarkerGlyphCache {
           strokeColor: strokeColor,
           devicePixelRatio: devicePixelRatio,
           strokeWidth: strokeWidth,
+          glow: glow,
+          diameter: diameter,
         );
-        _glyphs[key] = MapMarkerGlyph(icon: icon, color: foreground, image: image);
+        _glyphs[key] = MapMarkerGlyph(icon: icon, color: foreground, image: image, glow: glow, diameter: diameter);
         onLanded();
       } finally {
         // In a finally, not after the await: a rasterization that throws

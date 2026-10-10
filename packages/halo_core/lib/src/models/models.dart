@@ -25,6 +25,40 @@ import 'qson_values.dart';
 /// swept in by accident.
 bool isTestCall(String call) => call.toUpperCase().split('/').any((segment) => segment == 'T' || segment == 'TEST');
 
+/// The `gridSource` of a location an operation's refs placed — app-polo's
+/// value, which it re-derives the same way (see `locationFollowsRefs`). A
+/// location from any other source was stated by the operator or a device,
+/// and the refs never override it.
+const refsGridSource = 'refs';
+
+/// The square a `refs` location shows for its stored [grid]: at most six
+/// characters, however many an older record stored, or null when the stored
+/// value is not a locator — then the reader derives one from the pair as it
+/// would for any other source.
+String? refsGridForDisplay(String? grid) {
+  final stored = grid?.trim();
+  if (stored == null || !isWellFormedGrid(stored)) return null;
+  final normalized = normalizeGrid(stored);
+  return normalized.length > 6 ? normalized.substring(0, 6) : normalized;
+}
+
+/// The `gridSource` of a location taken from the device's own position.
+const gpsGridSource = 'gps';
+
+/// How many decimal places a GPS fix is stored with: about a metre, which is
+/// all a phone's receiver can honestly claim, and all a contact needs.
+const capturedFixDecimals = 5;
+
+/// The operation fields that state [fix] as where the station is: the
+/// coordinate rounded to [capturedFixDecimals], and the locator for it at the
+/// operator's [GridPrecision].
+Map<String, dynamic> gpsLocationData(GridLocation fix) {
+  double round(double value) => double.parse(value.toStringAsFixed(capturedFixDecimals));
+  final lat = round(fix.latitude);
+  final lon = round(fix.longitude);
+  return {'grid': gridForLocation(lat, lon), 'gridSource': gpsGridSource, 'lat': lat, 'lon': lon};
+}
+
 /// A logging session: one station, one setup, one stretch of time.
 class Operation {
   final String uuid;
@@ -107,7 +141,17 @@ class Operation {
   /// The locator to show for this operation, at the operator's
   /// [GridPrecision] when it holds a real coordinate, its stored [grid]
   /// otherwise (see [gridForDisplay]).
-  String? get displayGrid => gridForDisplay(lat: data['lat'], lon: data['lon'], grid: grid);
+  ///
+  /// A location its refs placed ([refsGridSource]) shows the stored grid
+  /// whatever the setting: its pair is the park's published point, which says
+  /// where the park is, not where in it the station stands, so it claims no
+  /// more than the six characters stored beside it.
+  String? get displayGrid {
+    if (data['gridSource'] == refsGridSource) {
+      if (refsGridForDisplay(grid) case final stated?) return stated;
+    }
+    return gridForDisplay(lat: data['lat'], lon: data['lon'], grid: grid);
+  }
 
   List<Map<String, dynamic>> get refs =>
       (asQsonList(data['refs']) ?? const []).whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()).toList();

@@ -94,6 +94,10 @@ function coarseGrid(grid: string | undefined, digits = 6): string | undefined {
 /// ceiling on the answer as well — `MY_GRIDSQUARE` does, because withholding
 /// private data must withhold the precision that rides with it — it applies
 /// one to the result.
+/// The shapes `isWellFormedGrid` accepts in halo_core: field and square, then
+/// optional subsquare, extended square and its subsquare.
+const WELL_FORMED_GRID = /^[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2}(?:[A-X]{2})?)?)?$/i
+
 function gridForExport(grid: unknown, lat: unknown, lon: unknown, digits: number): string | undefined {
   const stored = typeof grid === "string" ? grid : undefined
   if (typeof lat === "number" && typeof lon === "number" && !isGridCenter(lat, lon, stored)) {
@@ -442,7 +446,16 @@ function baseFieldsFor(
   // locator finer than the ceiling (an operation set from a fix before the
   // setting was turned down, or read back out of an ADIF file) would
   // otherwise ship the position the switch is withholding the coordinate for.
-  add("MY_GRIDSQUARE", coarseGrid(gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, ourDigits), ourDigits))
+  //
+  // A location the refs placed (`gridSource: "refs"`) goes out as stored, the
+  // same exception the screen makes (`Operation.displayGrid`): its coordinate
+  // is the park's published point, and a locator derived from it would claim
+  // to know where in the park the station stood.
+  // Six characters at most, however many an older record stored, and only a
+  // well-formed locator — anything else falls back to deriving from the pair.
+  const ourStatedGrid =
+    ourLocation.gridSource === "refs" && typeof ourGrid === "string" && WELL_FORMED_GRID.test(ourGrid.trim()) ? ourGrid.trim().slice(0, 6) : undefined
+  add("MY_GRIDSQUARE", coarseGrid(ourStatedGrid ?? gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, ourDigits), ourDigits))
 
   // Our own side of what the `their` fields say about theirs. [ourEntity] is
   // the FALLBACK: an operation stores no entity data, so these three are

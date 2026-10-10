@@ -16,6 +16,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Color, IconData;
 import 'package:halo_core/halo_core.dart' show GridLocation;
 
+import 'map_marker_icon.dart' show markerIconDiameter;
+
 enum MapMarkerKind { qso, qth }
 
 /// A whole marker — fill, ring and glyph — rasterized once by the facade for
@@ -72,13 +74,25 @@ class MapMarkerGlyph {
   final Color color;
   final MapMarkerImage image;
 
-  const MapMarkerGlyph({required this.icon, required this.color, required this.image});
+  /// A shadow around the ring, for a marker that has to stand off any
+  /// basemap — the GPS dot (see `gpsMapDot`). Already in [image]; the
+  /// pure-Flutter backend draws it from this.
+  final Color? glow;
+
+  /// The marker's outer diameter, in logical pixels — `markerIconDiameter`
+  /// unless the marker asked for another (the GPS dot is smaller). Already in
+  /// [image]; the pure-Flutter backend sizes its circle from this.
+  final double diameter;
+
+  const MapMarkerGlyph({required this.icon, required this.color, required this.image, this.glow, this.diameter = markerIconDiameter});
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is MapMarkerGlyph && icon == other.icon && color == other.color && image == other.image);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is MapMarkerGlyph && icon == other.icon && color == other.color && image == other.image && glow == other.glow && diameter == other.diameter);
 
   @override
-  int get hashCode => Object.hash(icon, color, image);
+  int get hashCode => Object.hash(icon, color, image, glow, diameter);
 }
 
 enum MapProjection { mercator, globe }
