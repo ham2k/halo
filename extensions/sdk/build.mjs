@@ -235,7 +235,7 @@ building — the header comment in each \`src/index.ts\` says what it leaves out
 | \`k2hrc-cqww\` | A contest: an exchange to type, and a score to keep |
 | \`k2hrc-radio\` | An HTML panel, and why you should probably write markdown instead |
 | \`k2hrc-panel-scenes\` | Experimental panel scenes: SVG artwork, controls and animations, with simulated radio and weather panels |
-| \`k2hrc-panafall\` | A radio's panadapter and waterfall in a scene, styled and tuned by click (extension API 6) |
+| \`k2hrc-panafall\` | A radio's panadapter and waterfall in a scene, styled and tuned by click (extension API 7) |
 
 ## Running one
 
