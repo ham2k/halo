@@ -3,7 +3,7 @@
 //
 // The results map's "you are here" dot: it must be the exact color the
 // search band's location pill is showing (green GPS, dark gray manual —
-// see activities_view.dart's `currentLocation`/`locationColor`), and it
+// see activities_view_sections.dart's `currentLocation`/`locationColor`), and it
 // must not appear at all when the caller has no location to give it —
 // showing a dot with a made-up color would tell the operator "you are
 // located" when the pill right above says otherwise.

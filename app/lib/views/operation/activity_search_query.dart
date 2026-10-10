@@ -3,7 +3,7 @@
 //
 // How the operation sheet's search box reads what was typed: a leading scope
 // word, its colon, and the text after them. Pure string work, apart from the
-// sheet's state in activities_view.dart.
+// search's state in activity_search_state.dart.
 
 /// The word the search box scopes a reference type by: the type's base name,
 /// lowercased — `potaActivation` and `pota` are both `pota`.

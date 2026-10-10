@@ -1178,8 +1178,8 @@ class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTicke
       if (mounted) setState(() => _settled = true);
     });
     // An endlessly-repeating controller never lets pumpAndSettle finish
-    // (same trap as _PulsingGpsPin in activities_view.dart) — settle at rest
-    // under test instead of animating.
+    // (same trap as PulsingGpsPin in operation_location_pin.dart) — settle
+    // at rest under test instead of animating.
     final isTest = !kIsWeb && io.Platform.environment.containsKey('FLUTTER_TEST');
     if (isTest) {
       _controller.value = 0;

@@ -644,7 +644,7 @@ class _VfoReadoutState extends State<VfoReadout> {
   }
 }
 
-/// A small rounded label. Same shape as activities_view's `ActivityRowChip` —
+/// A small rounded label. Same shape as activity_rows.dart's `ActivityRowChip` —
 /// nothing pill-like is exported from halo_widgets, and that chip says the
 /// same kind of thing about a row. Plain logical
 /// pixels: the Font Scale setting scales the whole UI from one root wrapper

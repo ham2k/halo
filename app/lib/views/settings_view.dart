@@ -375,14 +375,13 @@ class _SettingsViewState extends State<SettingsView> {
                     windowsCaptionSpacer(context),
                   ],
                 ),
-                // No ambient left Padding here (that would inset the whole
-                // body — row backgrounds/dividers included — same mistake
-                // operation_view.dart's OperationSettingsPanel comment warns
-                // against). Each panel insets its own row CONTENT instead, via
-                // this ListTileTheme default (ListTile-based panels) or its own
-                // explicit padding (panels that aren't ListTile-based) — so
-                // row backgrounds and dividers still reach the pane's true
-                // edge, right up to the grab-strip clearance this cancels.
+                // No ambient left Padding here: it would inset the whole body,
+                // row backgrounds and dividers included. Each panel insets its
+                // own row CONTENT instead, via this ListTileTheme default
+                // (ListTile-based panels) or its own explicit padding (panels
+                // that aren't ListTile-based) — so row backgrounds and
+                // dividers still reach the pane's true edge, right up to the
+                // grab-strip clearance this cancels.
                 body: SettingsList(extraLeft: safeLeft, child: _buildPanelContent(effectivePanel, widget.services, _panels, _openPanel)),
               ),
             );

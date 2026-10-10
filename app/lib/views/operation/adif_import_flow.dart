@@ -292,7 +292,7 @@ void _reportFailure(HaLoServices services, String where, Object error, StackTrac
 /// already carried.
 ///
 /// Refs are DECORATED first, the same as every other path that adds one
-/// (`activities_view.dart`): the hook hands back a bare `{type, ref}`, and
+/// (`activities_view_refs.dart`): the hook hands back a bare `{type, ref}`, and
 /// without the park's name and location the operation's activity row shows a
 /// code where the same park added by hand shows "POTA K-0001: Acadia NP".
 ///

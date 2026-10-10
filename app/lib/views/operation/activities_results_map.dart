@@ -45,7 +45,7 @@ import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
-import 'activities_view.dart' show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
+import 'activity_rows.dart' show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
 import 'operation_location_pin.dart';
 
 /// The entry's own coordinate when the activity's lookup table has one
@@ -178,7 +178,7 @@ class ActivitiesResultsMap extends StatefulWidget {
 
   /// The camera, shared with the Current Activities rows above the map so a
   /// row and its own dot point the map at the same place. Owned by the pane
-  /// that builds both (activities_view.dart) rather than by this widget: the
+  /// that builds both (activities_view_sections.dart) rather than by this widget: the
   /// rows are not this widget's children, and a controller created here would
   /// be out of their reach.
   final MapZoomController? camera;
@@ -214,7 +214,7 @@ class ActivitiesResultsMap extends StatefulWidget {
   /// The search band's own location pill, mirrored onto the map as a dot —
   /// null exactly when the pill has nothing to show either (still
   /// determining, denied, or a grid the search can't place). See
-  /// activities_view.dart's `currentLocation`.
+  /// activities_view_sections.dart's `currentLocation`.
   final GridLocation? currentLocation;
 
   /// The operation's own location and grid, as it stores them — what an
@@ -227,7 +227,7 @@ class ActivitiesResultsMap extends StatefulWidget {
 
   /// The pill's own glyph and its color, mirrored into the map's dot so the
   /// two read as the same object rather than as a button and an unrelated
-  /// smudge. See activities_view.dart's `locationPin`.
+  /// smudge. See activities_view_sections.dart's `locationPin`.
   final IconData? currentLocationIcon;
   final Color? currentLocationIconColor;
 
@@ -629,7 +629,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     // from the search results the operator is comparing would answer a
     // question they did not ask — as would flying to the first of several
     // they are about to step through. Tapping the same reference's row does
-    // the same thing — see activities_view.dart.
+    // the same thing — see activities_view_sections.dart.
     if (_picks.isNotEmpty || !_isOwnRef(id) || _selectedMarkerId != id) return;
     if (location != null) widget.camera?.moveTo(location.latitude, location.longitude);
   }

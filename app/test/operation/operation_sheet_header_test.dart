@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Operation Setup sheet's operation pills (activities_view.dart's
+// The Operation Setup sheet's operation pills (activities_view_header.dart's
 // _operationPills), which give ground as the row narrows and must give it in
 // a fixed order: one line while everything fits, otherwise two — the
 // callsigns and the pencil on top, the title and notes marker below —

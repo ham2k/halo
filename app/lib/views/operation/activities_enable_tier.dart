@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The second tier of the operation sheet's activity search: an extension the
-// app has but is not running, offered in place. activities_view.dart owns the
-// search state; what is here needs none of it.
+// app has but is not running, offered in place. activity_search_state.dart
+// owns the search results and activities_view_extensions.dart the sheet's
+// tier state; what is here needs none of it.
 //
 // "Not running" is two different cases with two different remedies. A
 // switched-off extension is a switch away. One the operator switched on but

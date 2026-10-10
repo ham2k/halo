@@ -36,12 +36,17 @@ class _DataBackedExtensions extends ExtensionServiceWithFakeHost {
   /// runtime — the moment a data-file tick can arrive mid-enable.
   Future<void> Function()? duringEnable;
 
+  /// Fails the enable before anything is written, as a refused restart
+  /// leaves nothing changed — so nothing else has reason to rebuild the sheet.
+  Completer<void>? enableRefusal;
+
   @override
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
   @override
   Future<void> setExtensionEnabled(String key, bool enabled) async {
+    await enableRefusal?.future;
     await settings!.setExtensionOverrides({...settings!.extensionOverrides, key: enabled});
     await duringEnable?.call();
   }
@@ -61,9 +66,9 @@ class _DataBackedExtensions extends ExtensionServiceWithFakeHost {
   }
 }
 
-Future<(HaLoServices, _DataBackedExtensions)> _pump(WidgetTester tester) async {
+Future<(HaLoServices, _DataBackedExtensions)> _pump(WidgetTester tester, {FakeGpsLocation? location}) async {
   final extensions = _DataBackedExtensions();
-  final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
+  final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions, location: location);
   extensions.debugSetAvailableExtensions(const [_parksInfo]);
   await tester.pumpWidget(
     TranslationProvider(
@@ -71,7 +76,8 @@ Future<(HaLoServices, _DataBackedExtensions)> _pump(WidgetTester tester) async {
         home: Scaffold(
           body: OperationSheet(
             services: services,
-            operation: Operation(uuid: 'op-1', data: const {'refs': []}),
+            // The grid keeps a fix from being captured as the location.
+            operation: Operation(uuid: 'op-1', data: const {'refs': [], 'grid': 'FN31ah'}),
           ),
         ),
       ),
@@ -143,5 +149,51 @@ void main() {
     await _pastDebounce(tester);
     expect(extensions.asked.length, greaterThan(asked + 1), reason: "the enable's own search, then the held tick's");
     expect(find.text('Bear Mountain State Park'), findsOneWidget);
+  });
+
+  testWidgets('a location tick during an enable leaves the progress bar up', (tester) async {
+    final gps = FakeGpsLocation();
+    final (_, extensions) = await _pump(tester, location: gps);
+    await tester.enterText(find.byType(TextField).first, 'parks');
+    await _pastDebounce(tester);
+
+    final restart = Completer<void>();
+    extensions.duringEnable = () => restart.future;
+    await tester.tap(find.text('Enable Parks Everywhere').hitTestable());
+    await tester.pump();
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    // Location is not held during a gain the way data files are: the tick's
+    // search runs and answers, and the install is still going.
+    final asked = extensions.asked.length;
+    gps.setFix(const GridLocation(41, -74));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(extensions.asked.length, asked + 1, reason: "the tick's search answered");
+    expect(find.byType(LinearProgressIndicator), findsOneWidget, reason: 'a search answering mid-install does not end the install');
+
+    restart.complete();
+    await _pastDebounce(tester);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+  });
+
+  // Nothing searches after a failed gain, so nothing else rebuilds the band:
+  // the gain's own end is the only thing that can take its bar down.
+  testWidgets('a failed enable takes the progress bar down', (tester) async {
+    final (_, extensions) = await _pump(tester);
+    await tester.enterText(find.byType(TextField).first, 'parks');
+    await _pastDebounce(tester);
+
+    final refusal = extensions.enableRefusal = Completer<void>();
+    final asked = extensions.asked.length;
+    await tester.tap(find.text('Enable Parks Everywhere').hitTestable());
+    await tester.pump();
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+
+    refusal.completeError(StateError('restart refused'));
+    await tester.pump();
+
+    expect(extensions.asked.length, asked, reason: 'a failed gain searches nothing');
+    expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 }

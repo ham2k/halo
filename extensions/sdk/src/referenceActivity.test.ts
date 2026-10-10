@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 //
-// `allowsMultiple` is read by the UI (activities_view.dart's
+// `allowsMultiple` is read by the UI (activity_rows.dart's
 // `allowsMultipleRefsOfType`) straight off the control descriptor this hook
 // returns — a config that sets it and a control that doesn't echo it back
 // would leave the award's n-fers unreachable from the logging panel with no

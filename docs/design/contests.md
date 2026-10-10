@@ -110,8 +110,8 @@ and is the recommended first increment.
 
 ### 3.3 Config persistence
 - Operations persist via `_saveOperationData(patch)` →
-  `operation.data` (incl. `refs`) (`activities_view.dart:304-320`); `_saveRefs`
-  is just `_saveOperationData({'refs': …})` (`:320`). This is the **core-owned
+  `operation.data` (incl. `refs`) (`activities_view_refs.dart`); `_saveRefs`
+  is just `_saveOperationData({'refs': …})`. This is the **core-owned
   path `refList` already uses** to write refs onto an operation. There is **no
   `updateOperation` host call** (the host switch has read-only `getOperation` at
   `extension_service.dart:1013` and `showForm` at `:1081`, no operation write).
@@ -1229,7 +1229,7 @@ operation only claims the entry row during its own segment.
 A contest's setup — contest identifier, sent exchange, and later mode /
 station-type / event — lives as **fields on the contest ref** in
 `operation.refs`, persisted through the existing `_saveOperationData` /
-`_saveRefs` path (`activities_view.dart:304-320`). The contest exposes these as
+`_saveRefs` path (`activities_view_refs.dart`). The contest exposes these as
 `operationControls`; the core renders and persists them exactly as it persists
 `refList` refs today. **No `updateOperation` host call is needed** — not for the
 first increment, and not for serials either (§5.8 keeps its counters entirely
@@ -1311,7 +1311,7 @@ of the *event* ("FD 2027", not "ARRL Field Day 2027"); most contests have no
 such problem and simply set `shortLabel: label`.
 
 The Activities row leads with `label` for a form-configured ref and with
-`shortLabel` otherwise (`activityRowTitle` in `activities_view.dart`): a
+`shortLabel` otherwise (`activityRowTitle` in `activity_rows.dart`): a
 contest's identity is a name, and a plain reference activity's is a code
 ("POTA US-1234") that its own `label` would only pad. Both `label` and
 `shortLabel` must therefore be present and both must name the event.

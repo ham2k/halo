@@ -28,8 +28,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 /// Height of the initial-load progress bar above the spots list — reserved
 /// whether or not a fetch is running, matching LinearProgressIndicator's own
-/// default thickness. Same value/convention as activities_view.dart's
-/// `_searchProgressHeight`.
+/// default thickness. Same value/convention as
+/// activities_view_sections.dart's `_searchProgressHeight`.
 const _spotsProgressHeight = 4.0;
 
 /// A spot map's fields come from a JS extension across the hook bridge,
@@ -1104,7 +1104,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       child: sections.isEmpty
           // While the initial fetch is still in flight (see the progress bar
           // above), "no spots" would be misleading — none have loaded yet,
-          // not necessarily none exist (matches activities_view.dart's
+          // not necessarily none exist (matches activities_view_sections.dart's
           // own loading/empty-message split).
           ? (_loading
                 ? const SizedBox.shrink()

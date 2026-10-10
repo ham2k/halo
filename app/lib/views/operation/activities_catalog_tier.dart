@@ -4,9 +4,10 @@
 // The third tier of the operation sheet's activity search (HALO-559): an
 // extension the app does not have at all, found in the catalog and offered as
 // an install in place. The two tiers above it — enabled, and installed but
-// not running — live in activities_view.dart, which owns the search state, and
-// activities_enable_tier.dart; what is here is everything that needs none of
-// it.
+// not running — live in activity_search_state.dart, which owns the search
+// results, activities_view_extensions.dart, which owns the sheet's tier state,
+// and activities_enable_tier.dart; what is here is everything that needs none
+// of it.
 //
 // The tier exists because a QSO party is becoming one extension per event
 // (HALO-558): typing "texas" then matches nothing installed, and an activity
