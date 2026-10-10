@@ -274,6 +274,18 @@ class SyncEngine {
   /// push-only round that lands says nothing about page size.
   bool _pullInFlight = false;
 
+  /// Which request the pull in flight went out as, for the failure path: a
+  /// failing pull is only stuck if it keeps failing on the SAME request, and
+  /// the watermark and cursors are what say so — see [SyncPullStuck]. The
+  /// page size is not compared, since the failures themselves shrink it; nor
+  /// is the push riding along, which an operator logging through a stuck pull
+  /// grows every round.
+  ({bool backfilling, Map<String, Object?> position, int pushing})? _pullRequest;
+
+  /// Consecutive failures of [_failedRequest]. Cleared by any pull that lands.
+  int _requestFailures = 0;
+  String? _failedRequest;
+
   /// Whether this run has already swept orphaned purged QSOs
   /// (`QsosRepository.hardDeletePurgedOrphans`) — see its call site for why
   /// that sweep is not run on every round.
@@ -408,6 +420,10 @@ class SyncEngine {
     _reportedRejections.clear();
     _quarantinedOperations.clear();
     _quarantinedQsos.clear();
+    // Every watermark and cursor goes back to null below, so the next account's
+    // first page has the same position as the request that was failing — but
+    // it is not that request.
+    _requestFailures = 0;
     if (choice == SyncAccountChoice.replace) {
       await _backupAndClearAll();
     } else {
@@ -470,6 +486,7 @@ class SyncEngine {
     _reportedRejections.clear(); // see resolveAccountChange
     _quarantinedOperations.clear();
     _quarantinedQsos.clear();
+    _requestFailures = 0; // see resolveAccountChange
     await _backupAndClearAll();
 
     final state = settings.state;
@@ -703,8 +720,23 @@ class SyncEngine {
           for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries) entry.key: settings.state[entry.value] as String?,
       };
       _pullInFlight = pull;
+      if (pull) {
+        final watermarks = backfilling
+            ? const {'operations': 'earliestOperationSyncedAtMillis', 'qsos': 'earliestQSOSyncedAtMillis'}
+            : const {'operations': 'latestOperationSyncedAtMillis', 'qsos': 'latestQSOSyncedAtMillis'};
+        _pullRequest = (
+          backfilling: backfilling,
+          position: {
+            for (final side in sentCursors.keys) side: {'from': settings.state[watermarks[side]], 'cursor': sentCursors[side] != null},
+          },
+          pushing: batch.operations.length + batch.qsos.length,
+        );
+      }
       final response = await _callTransport(Hooks.syncTransportSync, await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit));
-      if (_pullInFlight) _pullPageCap = serverMaxPullLimit;
+      if (_pullInFlight) {
+        _pullPageCap = serverMaxPullLimit;
+        _requestFailures = 0;
+      }
       _pullInFlight = false;
       if (generation != _generation) return _abandonRound();
 
@@ -900,9 +932,30 @@ class SyncEngine {
     } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
-      if (_pullInFlight && _pullLimit > mergeChunkSize) {
-        _pullPageCap = _pullLimit ~/ 2;
-        log?.call('[sync] pull failed; shrinking the page to $_pullLimit');
+      final request = _pullRequest;
+      if (_pullInFlight && request != null) {
+        // The generic streak report below is a bare timeout, which says
+        // nothing a slow link would not also say. Counted from the first
+        // failure rather than from the page floor: the cap lives in memory, so
+        // a phone opened for a couple of minutes at a time never reaches the
+        // floor, and would never report. Rounds nothing answered count too: a
+        // page too slow to arrive fails exactly that way, and telling it from
+        // an outage is ErrorPolicy's call.
+        final key = '${request.backfilling} ${request.position}';
+        _requestFailures = key == _failedRequest ? _requestFailures + 1 : 1;
+        _failedRequest = key;
+        if (_requestFailures == errorReportThreshold) {
+          log?.call('[sync] pull stuck on one request: $request');
+          onError?.call(
+            SyncPullStuck(backfilling: request.backfilling, limit: _pullLimit, position: request.position, pushing: request.pushing, cause: e),
+            st,
+            context: 'sync:pull-stuck',
+          );
+        }
+        if (_pullLimit > mergeChunkSize) {
+          _pullPageCap = _pullLimit ~/ 2;
+          log?.call('[sync] pull failed; shrinking the page to $_pullLimit');
+        }
       }
       // Exactly at the threshold, never past it: a device that stays
       // offline for a day would otherwise just swap a flood of first

@@ -694,6 +694,10 @@ void main() {
     // from the first.
     // Counted by the failure line: a failed pull also logs the page it shrinks to.
     Iterable<String> failures() => loggedLines.where((l) => l.contains('round failed'));
+    // A pull failing the same way every round also files a SyncPullStuck (its
+    // own group below). The raw error must still arrive on its own: wrapped,
+    // an unclassified error would lose the notice its own tier gives it.
+    Iterable<(Object, StackTrace?, String?)> streak() => reported.where((r) => r.$1 is! SyncPullStuck);
     await reportingEngine.runOneRound();
     expect(failures(), hasLength(1));
     // ...but the loop retries forever, so crash-reporting the first failure
@@ -704,16 +708,16 @@ void main() {
       await reportingEngine.runOneRound();
     }
     expect(failures(), hasLength(SyncEngine.errorReportThreshold));
-    expect(reported, hasLength(1));
-    expect(reported.single.$1, isA<StateError>());
-    expect(reported.single.$3, contains('sync:round'));
+    expect(streak(), hasLength(1));
+    expect(streak().single.$1, isA<StateError>());
+    expect(streak().single.$3, contains('sync:round'));
 
     // And exactly once: past the threshold a permanently offline device
     // would otherwise just trade a flood of first failures for a flood of
     // streak reports.
     await reportingEngine.runOneRound();
     await reportingEngine.runOneRound();
-    expect(reported, hasLength(1));
+    expect(streak(), hasLength(1));
   });
 
   test('a round that succeeds resets the streak, so the next failure is a blip again', () async {
@@ -2111,6 +2115,123 @@ void main() {
       }
       expect(limits.last, SyncEngine.mergeChunkSize);
       expect(limits.every((l) => l >= SyncEngine.mergeChunkSize), isTrue);
+    });
+
+    group('a pull stuck on one request', () {
+      late List<(Object, String?)> reported;
+      late List<int> limits;
+      late Object? failWith;
+      late SyncEngine reportingEngine;
+
+      setUp(() {
+        settings.state = {'lastSyncAccountUUID': 'acct-1'};
+        reported = [];
+        limits = [];
+        failWith = Exception('timed out');
+        transport.responder = (method, args) {
+          limits.add((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int);
+          if (failWith case final e?) throw e;
+          return const {
+            'meta': {
+              'qsos': {'records_left': 5},
+              'operations': {'records_left': 0},
+            },
+          };
+        };
+        reportingEngine = SyncEngine(
+          operations: operations,
+          qsos: qsos,
+          transport: transport.call,
+          settings: settings,
+          isTransportFailure: (e) => e is _NoAnswer,
+          onError: (error, stackTrace, {context}) => reported.add((error, context)),
+        );
+        addTearDown(reportingEngine.dispose);
+      });
+
+      Iterable<SyncPullStuck> stuck() => reported.map((r) => r.$1).whereType<SyncPullStuck>();
+      Future<void> failUntilPulls(int n) async {
+        while (limits.length < n) {
+          if (limits.length > 40) fail('the pulls never reached $n: $limits');
+          await reportingEngine.runOneRound();
+        }
+      }
+
+      // The generic streak report is a bare timeout, which reads exactly like a slow link. Counted
+      // from the page floor instead of the first failure, it would need every halving to fail
+      // first — and the shrunken page lives in memory, so a phone opened for a couple of minutes
+      // at a time would never get there.
+      test('is reported once the same request has failed a streak running, page floor or not', () async {
+        await failUntilPulls(SyncEngine.errorReportThreshold - 1);
+        expect(stuck(), isEmpty);
+        await failUntilPulls(SyncEngine.errorReportThreshold);
+        expect(stuck(), hasLength(1));
+        final report = stuck().single;
+        expect(reported.firstWhere((r) => r.$1 is SyncPullStuck).$2, 'sync:pull-stuck');
+        expect(report.backfilling, isTrue);
+        expect(report.limit, limits.last, reason: 'the page the last failure asked for');
+        expect(report.limit, greaterThan(SyncEngine.mergeChunkSize));
+        expect(report.pushing, 0);
+        expect(report.position['qsos'], {'from': null, 'cursor': false}, reason: 'which request is the whole diagnosis');
+
+        await failUntilPulls(SyncEngine.errorReportThreshold * 4);
+        expect(limits.last, SyncEngine.mergeChunkSize, reason: 'the page still shrinks after the report');
+        expect(stuck(), hasLength(1), reason: 'once per stuck request, not once per round');
+      });
+
+      // A pull that lands proves the request CAN complete. Carried across it, two failures from
+      // before the landing and one after would report a request that is moving.
+      test('a pull that lands starts the count over', () async {
+        await failUntilPulls(SyncEngine.errorReportThreshold - 1);
+        failWith = null;
+        await reportingEngine.runOneRound();
+        failWith = Exception('timed out');
+        await failUntilPulls(limits.length + 1);
+        expect(stuck(), isEmpty);
+      });
+
+      // A request that moved between failures is not the same request failing again — a
+      // watermark advanced by a reconciliation, say, is a different page.
+      test('a different request starts the count over', () async {
+        await failUntilPulls(SyncEngine.errorReportThreshold - 1);
+        settings.state = {...settings.state, 'earliestQSOSyncedAtMillis': 5000};
+        await failUntilPulls(SyncEngine.errorReportThreshold);
+        expect(stuck(), isEmpty);
+        await failUntilPulls(SyncEngine.errorReportThreshold * 2 - 1);
+        expect(stuck().single.position['qsos'], {'from': 5000, 'cursor': false});
+      });
+
+      // The push rides in the same request, and an operator logging through a stuck pull grows
+      // it every round. Keyed on it, their logging would keep restarting the count.
+      test('a push that grows between rounds is the same request', () async {
+        final op = await operations.create(stationCall: 'KI2D');
+        for (var n = 1; n <= SyncEngine.errorReportThreshold; n++) {
+          await qsos.add(op.uuid, {
+            'their': {'call': 'W${n}AW'},
+          });
+          await failUntilPulls(n);
+        }
+        expect(stuck().single.pushing, greaterThan(1));
+      });
+
+      // A fetch that times out reads as "nothing answered" too, and that is how a page too large
+      // to arrive fails. Skipping those rounds here would quiet an outage and the stuck page
+      // alike; ErrorPolicy is where an offline device's report is told apart and quietened.
+      test('a round nothing answered still counts', () async {
+        failWith = _NoAnswer();
+        await failUntilPulls(SyncEngine.errorReportThreshold);
+        expect(stuck().single.cause, isA<_NoAnswer>());
+      });
+
+      // A new account's first page reads as the same position — every watermark and cursor is
+      // null again — and its first failure would complete the old account's streak.
+      test('an account change starts the count over', () async {
+        await failUntilPulls(SyncEngine.errorReportThreshold - 1);
+        settings.state = {...settings.state, 'pendingAccountUUID': 'acct-2'};
+        expect(await reportingEngine.resolveAccountChange(SyncAccountChoice.combine), isTrue);
+        await failUntilPulls(SyncEngine.errorReportThreshold);
+        expect(stuck(), isEmpty);
+      });
     });
 
     // A wipe between two slices of one page: the rest of that page belongs to the account being

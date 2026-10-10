@@ -25,7 +25,7 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
 import 'package:halo_core/halo_core.dart'
-    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, SyncPayloadUnreadable, SyncRecordsRejected, WriteRefused;
+    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, SyncPayloadUnreadable, SyncPullStuck, SyncRecordsRejected, WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -155,6 +155,28 @@ class ErrorPolicy {
           'clear',
       disposition: ErrorDisposition.report,
       matches: (error, _) => error is SyncRecordsRejected || error is SyncPayloadUnreadable,
+    ),
+    ErrorRule(
+      id: 'sync-pull-stuck-while-offline',
+      reason:
+          'a sync pull stuck on one request because no connection could be made, while the device '
+          'is offline: in the field every request fails unchanged, so this is an activation, not a '
+          'page the server cannot serve. Only '
+          'connection failures: a timeout is how a page too large to arrive fails, offline verdict '
+          'or not, so it keeps the rule below — a captive portal timing out is the price',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isSyncPullStuckWhileOffline,
+    ),
+    ErrorRule(
+      id: 'sync-pull-stuck',
+      reason:
+          'a sync pull has failed on the same request round after round while its page shrank, so '
+          'the device is retrying a page it cannot download and holds less than the account. '
+          'Uploaded under its own type because the timeout underneath reads exactly like a slow '
+          'link; never noticed, because the operator can do nothing about it — what clears it is '
+          'on the server',
+      disposition: ErrorDisposition.report,
+      matches: (error, _) => error is SyncPullStuck,
     ),
     ErrorRule(
       id: 'extensions-not-wired',
@@ -925,6 +947,15 @@ class ErrorPolicy {
   /// once something has actually failed to answer, so the window this
   /// quietens is one the app has already measured rather than assumed.
   static bool _isNetworkErrorWhileOffline(Object error, FlutterErrorDetails? details) => ConnectivityService.isOffline && isTransportFailure(error);
+
+  /// The connection shapes of [isTransportFailure] — a lookup, a refusal, a
+  /// reset — without its `TimeoutException`.
+  static bool _isSyncPullStuckWhileOffline(Object error, FlutterErrorDetails? details) {
+    if (error is! SyncPullStuck || !ConnectivityService.isOffline) return false;
+    final cause = error.cause;
+    return cause is ClientException ||
+        (cause is ExtensionHostException && (cause.message.startsWith('ClientException:') || cause.message.startsWith('ClientException with ')));
+  }
 
   static bool _isMapErrorWhileOffline(Object error, FlutterErrorDetails? details) => error is MapError && error.offline;
 

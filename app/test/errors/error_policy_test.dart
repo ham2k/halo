@@ -30,7 +30,8 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:halo_core/halo_core.dart' show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
+import 'package:halo_core/halo_core.dart'
+    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation, SyncPullStuck;
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
@@ -321,6 +322,33 @@ void main() {
     // message is an extension defect, and stays at the default tier.
     test('a hook throwing its own timeout message is still loud', () {
       expect(dispositionFor(ExtensionHostException('lookupCallInfo: the QRZ request timed out')), ErrorDisposition.notify);
+    });
+  });
+
+  group('a sync pull stuck on one request', () {
+    // It carries the timeout that failed it. Classified by that cause it would
+    // land in hook-timed-out beside every slow link — the very blur the type
+    // exists to undo — and a notice would point the operator at a fault only
+    // the server can clear.
+    test('reported under its own rule, not noticed', () {
+      final decision = ErrorPolicy.decide(
+        SyncPullStuck(
+          backfilling: false,
+          limit: 743,
+          position: const {
+            'qsos': {'from': 0, 'cursor': false},
+          },
+          pushing: 0,
+          cause: HookTimeoutException('hook syncTransport.sync timed out after 30000ms'),
+        ),
+      );
+      expect(decision.disposition, ErrorDisposition.report);
+      expect(decision.rule?.id, 'sync-pull-stuck');
+    });
+
+    // The same timeout unwrapped is one slow round, which is what hook-timed-out is for.
+    test('a bare sync timeout keeps its own rule', () {
+      expect(ErrorPolicy.decide(HookTimeoutException('hook syncTransport.sync timed out after 30000ms')).rule?.id, 'hook-timed-out');
     });
   });
 

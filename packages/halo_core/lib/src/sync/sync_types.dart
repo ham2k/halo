@@ -77,6 +77,34 @@ class SyncPayloadUnreadable implements Exception {
   String toString() => 'SyncPayloadUnreadable: the server could not read $count $side this device sent';
 }
 
+/// A pull that keeps failing on the same request, round after round, while
+/// the engine shrinks its page. [limit] is the page the last failure asked
+/// for: a stuck pull still failing at the floor is one no page size will fix,
+/// while one reported above it may yet clear once the page gets small enough.
+///
+/// Its own type because the failure underneath is usually a timeout, which on
+/// its own is indistinguishable from a slow link: what makes this one worth
+/// reading is that the request has not moved. [position] says which request:
+/// the watermark each side pages from (null when there is none yet) and
+/// whether it carried a row cursor — the server builds a page without one
+/// differently, and that is the first thing to check. [pushing] counts the
+/// records that went out in the same request: the round is one call, so a push
+/// the server fails on every time fails the pull with it.
+class SyncPullStuck implements Exception {
+  SyncPullStuck({required this.backfilling, required this.limit, required this.position, required this.pushing, required this.cause});
+
+  final bool backfilling;
+  final int limit;
+  final Map<String, Object?> position;
+  final int pushing;
+  final Object cause;
+
+  @override
+  String toString() =>
+      'SyncPullStuck: the ${backfilling ? 'backfill' : 'forward'} pull keeps failing on the same request '
+      'at limit $limit — $position, pushing $pushing records; last error: $cause';
+}
+
 /// Sync-related state the engine reads/writes, backed by the app's
 /// SettingsService (SharedPreferences) rather than a drift table — see the
 /// design note in DESIGN.md §6: it's a handful of scalars, not per-row data.

@@ -175,6 +175,22 @@ void main() {
       expect(dispositionFor(ExtensionHostException('lookupCall threw')), ErrorDisposition.notify);
     });
 
+    // Offline, every pull fails unchanged until its page reaches the floor, so a stuck report
+    // there is an activation. But a page too large to arrive fails by timing out, and timeouts
+    // are also what set the offline verdict — quietening those would hide the stuck page itself.
+    test('a stuck sync pull is quietened only for a connection failure while offline', () {
+      SyncPullStuck stuck(Object cause) => SyncPullStuck(backfilling: false, limit: 743, position: const {}, pushing: 0, cause: cause);
+      final lookupFailed = ExtensionHostException("ClientException with SocketException: Failed host lookup: 'lofi.ham2k.net'");
+
+      expect(dispositionFor(stuck(lookupFailed)), ErrorDisposition.report);
+
+      ConnectivityService.reportProbe(reached: false);
+      ConnectivityService.reportProbe(reached: false);
+      expect(dispositionFor(stuck(lookupFailed)), ErrorDisposition.logOnly);
+      expect(dispositionFor(stuck(ClientException('Connection refused'))), ErrorDisposition.logOnly);
+      expect(dispositionFor(stuck(noAnswer)), ErrorDisposition.report);
+    });
+
     test('a LAN or BLE failure is never quietened by an internet outage', () {
       ConnectivityService.reportProbe(reached: false);
       ConnectivityService.reportProbe(reached: false);
