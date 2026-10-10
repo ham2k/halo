@@ -173,6 +173,18 @@ The sink carries twelve kinds of report, and the differences between them are lo
 | `reportSwitchState` | `.switchAntennas`, `.switchPorts` | what an antenna switch routes where — both lists together, since a port names its antenna by key |
 | `reportAlive` | `.stale` (re-armed) | the equipment answered with nothing about its state; only ever for something the radio sent. The CI-V driver calls it for every frame from its radio, since a TX-status or meter answer carries no reading and a radio answering only those is still there |
 
+A capability few drivers have reports through a **sink of its own** instead,
+which `CatService`'s sink implements and a driver reaches with
+`if (sink case final TunerSink t)` — so the many fakes and sinks with no use
+for it need not grow a method:
+
+| Sink | Lands on | Says |
+|---|---|---|
+| `SpectrumSink` | `CatService.spectrumFrames`, `.spectrum`, `.spectrumProblem` | the scope's sweeps and settings (§ Spectrum) |
+| `TunerSink` | `.tuner` | the radio's antenna tuner: in line, bypassed, tuning, or failed; null for a radio that answered it has none |
+| `PassbandSink` | `.passband` | the receive filter's edges in Hz from the tuned frequency; null once it cannot be known (a mode the driver cannot read it in) |
+| `RadioAntennaSink` | `.antennas` | the transceiver's own antenna ports and which it uses — not an antenna switch's, which are `reportSwitchState` |
+
 **A problem is not a connection error.** `EquipmentStatus.error` feeds the retry ladder, and the
 conditions that belong there are ones a retry can clear — a radio switched off, a port held by
 another program. A Flex pointed at a slice the radio is not running is neither: the link is up, the
@@ -721,11 +733,13 @@ of them has to remember.
 
 The two directions have to not chase each other, and three things make that work:
 
-- **An origin tag.** `RadioService.setVfo` takes a `VfoOrigin` (`user` or `radio`) as an extra
-  optional parameter beyond `VfoStore`'s signature — which Dart lets an override add, so every
+- **An origin tag.** `RadioService.setVfo` takes a `VfoOrigin` (`user`, `radio` or `dial`) as an
+  extra optional parameter beyond `VfoStore`'s signature — which Dart lets an override add, so every
   existing caller keeps meaning `user` and only CAT says otherwise. CAT ignores notifications it
   caused: forwarding one would tell the radio to go where it already is, and the radio's
-  confirmation of that would arrive as another notification.
+  confirmation of that would arrive as another notification. `dial` is the operator turning an
+  on-screen dial (an extension's `setRadio` with `dial: true`): forwarded exactly as `user` is, and
+  different only to Smart VFO Snap (§ Smart VFO Snap).
 - **A per-node record of what was last exchanged**, compared per field. Without it, a mode-only
   change re-sends the frequency to a radio that hasn't confirmed the previous one. It is also what
   completes a partial reading: a rig echoing a mode with no frequency in it is answered with the
@@ -1045,7 +1059,10 @@ Power travels with the radio exactly as frequency and mode do, and takes the sam
 optional Power logging control, the More pane's Power field, and the POWER command (`extensions/core/radio-commands`'s
 `PowerCommand`, e.g. "5W" typed into the call field, dispatched through `HaLoServices`'s
 `handleCommandAction` `setPower` case because it has no QSO-scoped widget state to touch, unlike
-BAND/MODE/frequency) — and one value is what keeps them agreeing.
+BAND/MODE/frequency) — and one value is what keeps them agreeing. An extension's `setRadio` with
+`powerWatts` takes the same route on radio1, so the power a panel sets is the power the next QSO
+logs; on any other radio it goes to that node alone (`CatService.setNodePower`, with the same echo
+guard), since there is no app-wide value to keep in step.
 
 Both directions therefore need the same echo discipline the VFO does. `EquipmentState.power` (a
 plain `num?` watts, parallel to `vfo`) is set by `EquipmentSink.reportPower`, which also writes the
@@ -1453,6 +1470,26 @@ and why a driver's first answer is reported even when it is "receiving". Most dr
 nothing at all, and a shack full of them has to go on working exactly as it did before any of this
 existed.
 
+**Each node keeps an SWR average per transmission** (`_NodeRuntime`, `CatService.swrAverageFor` and
+`lastTransmissionFor`): the running one while the radio is keyed, and the last finished one —
+`swrAverage` and `endedAtMillis`, in real time — after. A single reading is the wrong thing to hold
+on screen once the over ends: it is whichever sample the poll happened to land on. Three rules decide
+what counts:
+
+- **Only readings with RF out.** Between words on SSB a radio reads SWR 1.0 at no power, which would
+  flatter every average. A reading counts only while the last power-out reading is above zero.
+- **A reading in the second before keying counts.** A polled driver reads its meters on the
+  transition, and reports the first of them just BEFORE it reports the transmission itself; dropped,
+  a short over would have nothing to average.
+- **A key-down within 500 ms of the last key-up continues that transmission.** CW break-in unkeys
+  between characters, and averaging each element alone would leave a reading or two per average; a
+  break-in over averages as one.
+
+The averages are for what draws the radio live — an extension's `readRadio().lastTransmission` and a scene's
+`radio.swrAverage` ([panel-scenes.md § Radio values](panel-scenes.md#radio-values)). Every meter
+reading and TX change also fires `CatService.meterReadings`, which, unlike the service's own
+notification, includes the receive signal: only those scenes listen to it.
+
 ### What each driver can actually say
 
 Every scale a reading is turned by lives in `drivers/info/`, as JSON, one file per model —
@@ -1474,7 +1511,7 @@ generic Yaesu entry names none.
 | Ham Radio Deluxe | `get button-select TX`, where `get buttons` lists a TX button; slowed after two unanswered | none: HRD's meters are per-radio sliders in unstated units |
 | DXLab Commander | `CmdSendTX`, slowed after two unanswered | none: Commander publishes no meter message |
 | N3FJP | none: the API has no PTT read | none |
-| FlexRadio | `interlock state=`, PUSHED — costs nothing | none: SmartSDR's meters ride a VITA-49 stream, a project of its own |
+| FlexRadio | `interlock state=`, PUSHED — costs nothing | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
 | Kenwood | the flag in `IF`, one place ahead of the mode | none — see below |
@@ -1920,7 +1957,9 @@ What it refuses, and why each one is not an edge case:
   band's limits, because `bandForFrequency` answers with the band at either limit, and a carrier on
   the edge puts its sideband outside.
 - **Anything the operator stated exactly** — a typed frequency, a band pick, a tapped spot. Those
-  arrive as `VfoOrigin.user` and both cancel a pending snap and become the new resting point.
+  arrive as `VfoOrigin.user` and both cancel a pending snap and become the new resting point. An
+  on-screen dial is not exact: its moves arrive as `VfoOrigin.dial` and are fed to the snapper as
+  readings, so a knob turned in an extension's panel settles like the radio's own.
 - **A radio that isn't `radio1`.** One snapper, not one per node: the setting is about the VFO the
   app is driving, which is also why it is a plain app setting rather than per-equipment config.
 
@@ -2182,6 +2221,49 @@ join, and a transceiver's own antenna ports (a Flex has two, most rigs one),
 are the next step and are what § Where this is going means by "ports,
 port-to-port connections".
 
+## Tuner, passband and the radio's own antenna ports
+
+Three more capabilities beside `CwKeyerSession` (driver.dart), each a session interface with a sink
+of its own (§ Drivers never touch app state): `AntennaTunerSession.setTuner(inline:)`,
+`PassbandSession.setPassband` and `RadioAntennaSession.setAntenna(rx:, tx:)`. `CatService`'s
+`setNodeTuner`, `setNodePassband` and `setNodeAntenna` address one node and do nothing for a session
+without the capability. Their caller is an extension's `setRadio`
+([hooks.md](../extensions/hooks.md)), and what it reads back is `EquipmentState.tuner`, `.passband`
+and `.antennas`.
+
+| driver | tuner | passband | antenna ports |
+|---|---|---|---|
+| Icom CI-V | `0x1C 0x01` | `0x1A` filter-width index, SSB/CW/RTTY and AM tables | `0x12`, for an entry that pins its port count |
+| Yaesu (FT-891 driver) | `AC` | `SH` with `IS` and `NA`, tables chosen by the radio's `ID` answer | `AN`, ports by `ID` |
+| Kenwood | `AC` (TS-480/590/890/990) | per a dialect the entry pins: the TS-590SG's `SL`/`SH`, `FW` and `IS`; Elecraft's (the K4 included) `BW` and `IS` | `AN`, per a dialect the entry pins (one port of two, or the TS-590's with its RX ANT jack); never the K4's |
+| FlexRadio | `atu` | the slice's `filter_lo`/`filter_hi` | the slice's `rxant`/`txant`, chosen separately |
+
+- **The app switches a tuner; it does not start a tune.** On Icom, Yaesu and Kenwood "in line" puts
+  the tuner in on the setting it remembers, without transmitting. Each protocol's start-a-tune value
+  (CI-V's `0x02`, Yaesu's `AC002;`, Kenwood's P3 `1`) is read from the radio and never sent — keying
+  a carrier stays the operator's act. A FlexRadio has no in-line switch: its tuner engages only by
+  TUNING, so there "in line" is a carrier on the air, briefly, from its memory for the frequency when
+  it has one. Kenwood's set touches only the transmit-side AT and hands the receive-side one back as
+  the radio last reported it, since that one is the operator's choice.
+- **A passband is edges, not a width.** Hz from the tuned frequency as the radio draws them — `100`
+  to `2800` in USB, negative in LSB — so one shape describes a Flex's free edges and a table radio's
+  width plus shift. A radio that sets only a width from a table takes the nearest one and keeps its
+  own shift; its report says where it landed. Yaesu does not say where `SH`'s width sits, so an SSB
+  passband is placed about 1500 Hz from the carrier (`yaesuSsbPassbandCentreHz`) and moved from
+  there by the IF shift.
+- **A port count is catalogue data.** Nothing in an Icom's `0x12` answer or a Kenwood's `AN` says how
+  many ports the radio has, and a one-port radio may still answer — the KX3 accepts every K3 command.
+  So the entry pins it (Icom's `civAntennaPortsConfigKey`, Kenwood's `antennaDialectKey`, Yaesu's
+  table by `ID`), and an unpinned radio is never asked: a choice offered that the radio does not have
+  is worse than none.
+- **A read the radio may lack is asked slowly, and given up on twice refused.** The tuner, the
+  filter and the ports move when someone presses a button, so the Yaesu and Kenwood drivers read
+  them every fifth state poll (about every fifteen seconds at the default idle rate) and the filter
+  again at once on a mode change; CI-V reads them on its own slow state poll. A radio without one
+  refuses on every poll for the whole connection, so two refusals in a row stop the asking — two,
+  not one, because a CI-V NAK and a Kenwood or Yaesu `?;` name no command, and one arriving late for
+  something else must not cost a radio its readout.
+
 ## Software intermediaries
 
 A program the operator already runs may own the radio's port — flrig, a rigctld daemon, Ham Radio
@@ -2399,6 +2481,14 @@ Captured on a FLEX-6600 (4.2.20) with AetherSDR as that client:
   measured, 30 dB down at the edge and flat a sixteenth in — so that much is
   cut, and the spans offered are the half-widths actually shown (±10.5, ±21,
   ±42, ±84 kHz for 24–192 kHz streams).
+- The window is the app's to place (`SpectrumCapabilities.canRecenter`): a
+  `SpectrumRequest.centerHz` sends `display pan set <pan> center=`, which a
+  scene's `follow` uses. The IQ is centred on the slice's pan, so this moves
+  the operator's SmartSDR panadapter too — one window, not two that disagree.
+  The new centre is applied locally at once: the radio may not echo the change
+  to the client that made it, and every sweep is placed by it. A refusal puts
+  the old centre back, or every sweep after would be labelled where the IQ is
+  not.
 
 Mirroring shows the operator's own panadapter, which is what a logger beside
 SmartSDR or AetherSDR wants. A slice no client owns — HaLo alone on the radio

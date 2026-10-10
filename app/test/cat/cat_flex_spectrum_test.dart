@@ -192,6 +192,34 @@ void main() {
     expect(sink.frames.last.floorDb.isFinite, isTrue);
   });
 
+  test('a recentre places the sweeps at once, and back where they were if the radio refuses it', () {
+    // The radio may never echo the move to the client that made it, so the centre is taken as
+    // asked — but kept after a refusal, every sweep would be labelled where the IQ is not.
+    ready(channel: '1');
+    replies.single(0, '20000000');
+    spectrum.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
+    void sweep() {
+      for (var p = 0; p < 10; p++) {
+        spectrum.packet(_packet(0x20000000, _tone(p * 512, 512, 6000)));
+      }
+    }
+
+    spectrum.set(const SpectrumRequest(centerHz: 14250000));
+    expect(sent.last, 'display pan set 0x40000000 center=14.250000');
+    sweep();
+    expect(sink.frames.last.lowHz, 14250000 - 21000);
+    replies.last(0x50000016, '');
+    sink.frames.clear();
+    sweep();
+    expect(sink.frames.last.lowHz, 14200000 - 21000);
+
+    spectrum.set(const SpectrumRequest(centerHz: 14300000));
+    replies.last(0, '');
+    sink.frames.clear();
+    sweep();
+    expect(sink.frames.last.lowHz, 14300000 - 21000);
+  });
+
   test('a span asks for the stream rate that shows it', () {
     ready(channel: '1');
     replies.single(0, '20000000');

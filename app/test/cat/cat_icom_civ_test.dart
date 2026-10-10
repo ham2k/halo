@@ -11,6 +11,7 @@
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
@@ -23,7 +24,7 @@ import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
-class _FakeSink implements EquipmentSink {
+class _FakeSink implements EquipmentSink, TunerSink, PassbandSink {
   final problems = <String?>[];
   List<EquipmentChannel> channels = const [];
   final sent = <List<int>>[];
@@ -79,6 +80,14 @@ class _FakeSink implements EquipmentSink {
   var alive = 0;
   @override
   void reportAlive() => alive++;
+
+  final tuners = <TunerStatus?>[];
+  @override
+  void reportTuner(TunerStatus? status) => tuners.add(status);
+
+  final passbands = <Passband?>[];
+  @override
+  void reportPassband(Passband? passband) => passbands.add(passband);
 }
 
 void main() {
@@ -610,14 +619,12 @@ void main() {
     // the operator's selection, as polo did; the radio's own is sent back.
     group('on an entry that must send a filter', () {
       late IcomCivSession g90;
-      setUp(
-        () => g90 = IcomCivSession(
-          sink,
-          radioAddress: 0x88,
-          controllerAddress: us,
-          config: const {civModeWithFilterConfigKey: true, civDataModeConfigKey: false},
-        ),
-      );
+      setUp(() {
+        g90 = IcomCivSession(sink, radioAddress: 0x88, controllerAddress: us, config: const {civModeWithFilterConfigKey: true, civDataModeConfigKey: false});
+        // A CW answer asks after the filter width, and a radio that answered
+        // nothing would hold every set behind that read.
+        sink.answer = g90.handleData;
+      });
       void feedG90(List<int> bytes) => g90.handleData(Uint8List.fromList(bytes));
 
       test('a mode not yet seen gets the filter currently in use', () {
@@ -737,7 +744,7 @@ void main() {
     test('polls for frequency and mode, and stops when told', () {
       fakeAsync((async) {
         session.startUpdates();
-        expect(sink.sent, hasLength(6), reason: 'asks once immediately, the keyer speed included');
+        expect(sink.sent, hasLength(7), reason: 'asks once immediately, the keyer speed and the tuner included');
         sink.sent.clear();
 
         // Counted apart from the TX watch, which runs on its own much
@@ -745,7 +752,7 @@ void main() {
         // any count of the state poll.
         async.elapse(const Duration(seconds: 5));
         final state = sink.sent.where((f) => !_isTxWatch(f)).toList();
-        expect(state, hasLength(5), reason: 'the keyer speed is not polled');
+        expect(state, hasLength(6), reason: 'the keyer speed is not polled; the tuner is');
 
         sink.sent.clear();
         session.stopUpdates();
@@ -826,6 +833,327 @@ void main() {
           reason: 'a receiving radio has no meters worth reading',
         );
         session.teardown();
+      });
+    });
+  });
+
+  group('the antenna tuner', () {
+    const readTuner = [0xFE, 0xFE, ic705, us, 0x1C, 0x01, 0xFD];
+
+    test('in line and through are 0x1C 0x01 0x01 and 0x00, each read back', () {
+      // A set is answered with a bare ACK, so what is shown is what the
+      // radio read back, not what was asked for.
+      session.setTuner(inline: true);
+      session.setTuner(inline: false);
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic705, us, 0x1C, 0x01, 0x01, 0xFD],
+        readTuner,
+        [0xFE, 0xFE, ic705, us, 0x1C, 0x01, 0x00, 0xFD],
+        readTuner,
+      ]);
+    });
+
+    test('nothing the app sends starts a tune', () {
+      // 0x1C 0x01 0x02 puts a carrier on the air. Driven through every path
+      // that writes the tuner, polling included, the byte must never appear.
+      fakeAsync((async) {
+        session.startUpdates();
+        session.setTuner(inline: true);
+        session.setTuner(inline: false);
+        feed(_fromRadio([0x1C, 0x01, 0x02]));
+        async.elapse(const Duration(seconds: 11));
+        expect(sink.sent.where((f) => f.length > 6 && f[4] == 0x1C && f[5] == 0x01 && f[6] == 0x02), isEmpty);
+        session.teardown();
+      });
+    });
+
+    test('a reply reports the tuner state, a tune in progress included', () {
+      feed(_fromRadio([0x1C, 0x01, 0x00]));
+      feed(_fromRadio([0x1C, 0x01, 0x01]));
+      feed(_fromRadio([0x1C, 0x01, 0x02]));
+      expect(sink.tuners, [TunerStatus.bypassed, TunerStatus.inline, TunerStatus.tuning]);
+    });
+
+    test('the poll restating the same state is not reported again', () {
+      // Every state poll asks; a sink told each time would wake every
+      // listener on a tuner nobody touched.
+      feed(_fromRadio([0x1C, 0x01, 0x01]));
+      feed(_fromRadio([0x1C, 0x01, 0x01]));
+      expect(sink.tuners, [TunerStatus.inline]);
+    });
+
+    test('the TX watch and the tuner share 0x1C without being read as each other', () {
+      feed(_fromRadio([0x1C, 0x00, 0x01]));
+      expect(sink.tuners, isEmpty, reason: 'a keyed radio says nothing about its tuner');
+      feed(_fromRadio([0x1C, 0x01, 0x01]));
+      expect(sink.txReports, [true], reason: 'a tuner in line is not the radio unkeying');
+    });
+
+    test('our own set, echoed on the bus, is not the radio confirming it', () {
+      session.setTuner(inline: true);
+      feed(sink.sent.first);
+      expect(sink.tuners, isEmpty);
+    });
+
+    group('on a serial radio that answers only when told', () {
+      setUp(() {
+        session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, config: const {'baudRate': 19200});
+        sink.answer = null;
+      });
+
+      /// ACKs whatever is on the wire until the tuner read is.
+      void ackUntilTunerRead() {
+        for (var i = 0; i < 20 && !listEquals(sink.sent.last, readTuner); i++) {
+          feed(_fromRadio([0xFB]));
+        }
+        expect(sink.sent.last, readTuner);
+      }
+
+      test('a radio that refuses the read twice in a row has no tuner, and is not asked again', () {
+        // An IC-705 has no internal tuner and NAKs 0x1C 0x01. Asked anyway,
+        // it costs an exchange and a refusal on every poll for the session.
+        fakeAsync((async) {
+          session.startUpdates();
+          ackUntilTunerRead();
+          feed(_fromRadio([0xFA]));
+          // Once is not enough: a NAK names no command, and one arriving late
+          // for a command that timed out lands on whatever went out next.
+          expect(sink.tuners, isEmpty);
+          async.elapse(const Duration(seconds: 5));
+          ackUntilTunerRead();
+          feed(_fromRadio([0xFA]));
+          expect(sink.tuners, [null]);
+          expect(sink.diagnostics.where((d) => d!.contains('antenna tuner')), hasLength(1));
+
+          sink.answer = session.handleData;
+          sink.sent.clear();
+          session.setTuner(inline: true);
+          async.elapse(const Duration(seconds: 16));
+          expect(sink.sent.where((f) => f.length > 5 && f[4] == 0x1C && f[5] == 0x01), isEmpty);
+          expect(sink.tuners, [null], reason: 'said once');
+          session.teardown();
+        });
+      });
+
+      test('an answer between two refusals keeps the tuner', () {
+        // Two in a ROW: a radio that has a tuner and loses one read to a stray
+        // NAK each hour must not lose the readout at the second.
+        fakeAsync((async) {
+          session.startUpdates();
+          ackUntilTunerRead();
+          feed(_fromRadio([0xFA]));
+          async.elapse(const Duration(seconds: 5));
+          ackUntilTunerRead();
+          feed(_fromRadio([0x1C, 0x01, 0x01]));
+          async.elapse(const Duration(seconds: 5));
+          ackUntilTunerRead();
+          feed(_fromRadio([0xFA]));
+          expect(sink.tuners, [TunerStatus.inline]);
+          async.elapse(const Duration(seconds: 5));
+          ackUntilTunerRead();
+          session.teardown();
+        });
+      });
+
+      test('a NAK to another command says nothing about the tuner', () {
+        // ACK and NAK name no command; only the one on the wire is refused.
+        // Read as a tuner refusal, a rejected frequency read would hide the
+        // tuner of a radio that has one.
+        fakeAsync((async) {
+          session.startUpdates();
+          feed(_fromRadio([0xFA]));
+          ackUntilTunerRead();
+          feed(_fromRadio([0x1C, 0x01, 0x01]));
+          expect(sink.tuners, [TunerStatus.inline]);
+          sink.answer = session.handleData;
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 5));
+          expect(sink.sent.where((f) => listEquals(f, readTuner)), hasLength(1), reason: 'still on the state poll');
+          session.teardown();
+        });
+      });
+
+      test('a PTT set does not take a queued tuner set with it', () {
+        // The PTT clears queued 0x1C frames so a stale key cannot follow an
+        // unkey — but the tuner shares 0x1C, and its set would be lost.
+        fakeAsync((async) {
+          session.startUpdates();
+          session.setTuner(inline: true);
+          session.setPtt(true);
+          for (var i = 0; i < 20; i++) {
+            feed(_fromRadio([0xFB]));
+          }
+          expect(sink.sent, contains(equals([0xFE, 0xFE, ic705, us, 0x1C, 0x01, 0x01, 0xFD])));
+          session.teardown();
+        });
+      });
+    });
+  });
+
+  group('the receive passband', () {
+    const readWidth = [0xFE, 0xFE, ic705, us, 0x1A, 0x03, 0xFD];
+    final cw = _fromRadio([0x04, 0x03, 0x01]);
+    List<List<int>> widthReads() => sink.sent.where((f) => listEquals(f, readWidth)).toList();
+
+    test("the width tables are Icom's, with the step change at index 10", () {
+      // An off-by-one at the step change reads every width above 500 Hz
+      // 100 Hz wrong.
+      expect(civFilterWidthsSsbCw, hasLength(41));
+      expect([civFilterWidthsSsbCw[0], civFilterWidthsSsbCw[9], civFilterWidthsSsbCw[10], civFilterWidthsSsbCw[40]], [50, 500, 600, 3600]);
+      expect(civFilterWidthsAm, hasLength(50));
+      expect([civFilterWidthsAm[0], civFilterWidthsAm[49]], [200, 10000]);
+    });
+
+    test('in CW the width is a passband centred on the dial, read as BCD', () {
+      feed(cw);
+      expect(widthReads(), hasLength(1), reason: 'a mode with a passband asks for it');
+      // 0x15 is index 15 (1100 Hz) in BCD; read as hex it would be 21 (1700 Hz).
+      feed(_fromRadio([0x1A, 0x03, 0x15]));
+      expect(sink.passbands.last, const Passband(-550, 550));
+    });
+
+    test('AM reads its own table', () {
+      feed(_fromRadio([0x04, 0x02, 0x01]));
+      feed(_fromRadio([0x1A, 0x03, 0x49]));
+      expect(sink.passbands.last, const Passband(-5000, 5000));
+    });
+
+    test('SSB, RTTY and FM report none, and are not asked', () {
+      // Where an Icom's SSB filter sits against the carrier is nothing CI-V
+      // says; a passband drawn there would be a guess shown as a reading.
+      for (final mode in [0x01, 0x00, 0x04, 0x05]) {
+        feed(cw);
+        feed(_fromRadio([0x1A, 0x03, 0x10]));
+        sink.sent.clear();
+        feed(_fromRadio([0x04, mode, 0x01]));
+        expect(sink.passbands.last, isNull, reason: 'mode 0x${mode.toRadixString(16)}');
+        expect(widthReads(), isEmpty, reason: 'mode 0x${mode.toRadixString(16)}');
+        // A width answer landing anyway is not read through CW's table.
+        feed(_fromRadio([0x1A, 0x03, 0x10]));
+        expect(sink.passbands.last, isNull);
+      }
+    });
+
+    test('a change of mode or filter forgets the width and asks again', () {
+      // Each mode and each filter keeps its own width: CW's index read through
+      // AM's table would be 2200 Hz for a 600 Hz filter.
+      feed(cw);
+      feed(_fromRadio([0x1A, 0x03, 0x10]));
+      expect(sink.passbands.last, const Passband(-300, 300));
+      sink.sent.clear();
+      feed(_fromRadio([0x04, 0x02, 0x01]));
+      expect(sink.passbands.last, isNull);
+      expect(widthReads(), hasLength(1));
+
+      feed(_fromRadio([0x04, 0x03, 0x01]));
+      feed(_fromRadio([0x1A, 0x03, 0x10]));
+      sink.sent.clear();
+      feed(_fromRadio([0x04, 0x03, 0x02]));
+      expect(widthReads(), hasLength(1), reason: 'FIL2 has a width of its own');
+      sink.sent.clear();
+      feed(_fromRadio([0x04, 0x03, 0x02]));
+      expect(widthReads(), isEmpty, reason: 'the mode poll restating itself is no change');
+    });
+
+    test('the state poll reads the width, and a restated width is not reported again', () {
+      // CI-V announces no width change, so the poll is how a turn of the
+      // radio's own control is heard.
+      fakeAsync((async) {
+        session.startUpdates();
+        feed(cw);
+        feed(_fromRadio([0x1A, 0x03, 0x10]));
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 5));
+        expect(widthReads(), hasLength(1));
+        final reports = sink.passbands.length;
+        feed(_fromRadio([0x1A, 0x03, 0x10]));
+        expect(sink.passbands, hasLength(reports));
+        feed(_fromRadio([0x1A, 0x03, 0x12]));
+        expect(sink.passbands.last, const Passband(-400, 400));
+        session.teardown();
+      });
+    });
+
+    test('a set writes the nearest width and reads it back, touching nothing else', () {
+      expect(session, isA<PassbandSession>(), reason: 'CatService offers the set only to a PassbandSession');
+      feed(cw);
+      sink.sent.clear();
+      // 520 Hz: 500 is nearer than 600.
+      session.setPassband(const Passband(-260, 260));
+      // 2450 Hz sits halfway between 2400 (28) and 2500 (29): the narrower,
+      // and 28 goes out as BCD 0x28, not 0x1C.
+      session.setPassband(const Passband(300, 2750));
+      expect(sink.sent, [
+        [0xFE, 0xFE, ic705, us, 0x1A, 0x03, 0x09, 0xFD],
+        readWidth,
+        [0xFE, 0xFE, ic705, us, 0x1A, 0x03, 0x28, 0xFD],
+        readWidth,
+      ], reason: 'no mode, filter-slot or PBT frame rides along');
+
+      feed(_fromRadio([0x04, 0x02, 0x01]));
+      sink.sent.clear();
+      session.setPassband(const Passband(-2500, 2500));
+      expect(sink.sent.first, [0xFE, 0xFE, ic705, us, 0x1A, 0x03, 0x24, 0xFD], reason: "AM's table: 5000 Hz is index 24");
+    });
+
+    test('a set in a mode with no passband sends nothing', () {
+      // The report would stay null, so a set there lands where nobody sees.
+      feed(_fromRadio([0x04, 0x01, 0x01]));
+      sink.sent.clear();
+      session.setPassband(const Passband(100, 2800));
+      expect(sink.sent, isEmpty);
+    });
+
+    group('on a serial radio that answers only when told', () {
+      setUp(() {
+        session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, config: const {'baudRate': 19200});
+        sink.answer = null;
+      });
+
+      test('a radio that refuses the read twice in a row is not asked again, and says so', () {
+        feed(cw);
+        expect(sink.sent.last, readWidth);
+        feed(_fromRadio([0xFA]));
+        expect(sink.diagnostics, isEmpty, reason: 'one NAK may be a late answer to something else');
+        feed(_fromRadio([0x04, 0x03, 0x02]));
+        expect(sink.sent.last, readWidth);
+        feed(_fromRadio([0xFA]));
+        expect(sink.diagnostics.where((d) => d!.contains('filter width')), hasLength(1));
+        expect(sink.passbands.last, isNull);
+
+        sink.sent.clear();
+        feed(_fromRadio([0x04, 0x03, 0x03]));
+        session.setPassband(const Passband(-250, 250));
+        expect(sink.sent, isEmpty);
+      });
+
+      test('an answer between two refusals keeps asking', () {
+        feed(cw);
+        feed(_fromRadio([0xFA]));
+        feed(_fromRadio([0x04, 0x03, 0x02]));
+        feed(_fromRadio([0x1A, 0x03, 0x10]));
+        feed(_fromRadio([0x04, 0x03, 0x03]));
+        feed(_fromRadio([0xFA]));
+        sink.sent.clear();
+        feed(_fromRadio([0x04, 0x03, 0x01]));
+        expect(sink.sent.last, readWidth);
+        expect(sink.diagnostics, isEmpty);
+      });
+
+      test('a NAK to the DATA read is not a width refusal, though both are 0x1A', () {
+        // A transceive mode announcement asks after the width and then the
+        // DATA submode; a radio without DATA refuses the second.
+        final announceCw = [0xFE, 0xFE, 0x00, ic705, 0x01, 0x03, 0x01, 0xFD];
+        for (final filter in [0x01, 0x02]) {
+          feed([...announceCw.sublist(0, 6), filter, 0xFD]);
+          expect(sink.sent.last, readWidth);
+          feed(_fromRadio([0xFB]));
+          expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0xFD]);
+          feed(_fromRadio([0xFA]));
+        }
+        expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty);
+        feed([...announceCw.sublist(0, 6), 0x03, 0xFD]);
+        expect(sink.sent.last, readWidth, reason: 'still asked');
       });
     });
   });
@@ -941,8 +1269,9 @@ void main() {
   });
 }
 
-/// A frame the session sends to ask whether the radio is transmitting.
-bool _isTxWatch(List<int> frame) => frame.length > 4 && frame[4] == 0x1C;
+/// A frame the session sends to ask whether the radio is transmitting —
+/// 0x1C 0x00, not the tuner's 0x1C 0x01 that shares its command byte.
+bool _isTxWatch(List<int> frame) => frame.length > 5 && frame[4] == 0x1C && frame[5] == 0x00;
 
 /// A complete frame FROM the IC-705 addressed to us, wrapped around
 /// [payload] — the command byte and its data.

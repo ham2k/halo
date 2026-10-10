@@ -127,6 +127,7 @@ class FlexDaxSpectrum {
     refMaxDb: 30,
     refStepDb: 1,
     speeds: {SpectrumSpeed.slow, SpectrumSpeed.mid, SpectrumSpeed.fast},
+    canRecenter: true,
   );
 
   void start() {
@@ -163,6 +164,26 @@ class FlexDaxSpectrum {
     if (request.speed case final speed?) {
       _report(_settings.copyWith(speed: speed));
       _fft?.hop = _rate ~/ _sweepsPerSecond[speed]!;
+    }
+    // The IQ is centred on the slice's PAN, which SmartSDR shows too: moving it
+    // moves the operator's panadapter there as well. Applied here at once, as
+    // the radio may not echo the change to the client that made it, and every
+    // sweep is placed by this centre — and put back if the radio refuses it,
+    // or every sweep after would be labelled where the IQ is not.
+    if ((request.centerHz, _pan) case (final hz?, final pan?)) {
+      final mhz = (hz / 1e6).toStringAsFixed(6), before = _pans[pan]?['center'];
+      send(
+        'display pan set $pan center=$mhz',
+        onReply: (code, _) {
+          if (code == 0 || _pans[pan]?['center'] != mhz) return;
+          if (before == null) {
+            _pans[pan]!.remove('center');
+          } else {
+            _pans[pan]!['center'] = before;
+          }
+        },
+      );
+      (_pans[pan] ??= {})['center'] = mhz;
     }
     if (request.spanHz case final span?) {
       final rate = flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))];

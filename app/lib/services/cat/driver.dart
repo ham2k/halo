@@ -229,6 +229,55 @@ abstract class AntennaSwitchSession implements EquipmentSession {
   void selectAntenna(String portKey, String antennaKey);
 }
 
+/// Where a session with an antenna tuner reports it. A sink of its own, as
+/// [SpectrumSink] is, so the many sinks with no use for it need not grow one:
+/// a driver reports through `if (sink case final TunerSink t)`.
+abstract class TunerSink {
+  /// What the radio says its tuner is doing; null for a radio that answered
+  /// that it has none.
+  void reportTuner(TunerStatus? status);
+}
+
+/// Where a session that reads the radio's own antenna ports reports them — a
+/// sink of its own, as [TunerSink] is.
+abstract class RadioAntennaSink {
+  void reportAntennas(RadioAntennas? antennas);
+}
+
+/// A transceiver whose CAT picks among its own antenna ports. [rx] and [tx]
+/// name ports from [RadioAntennas]; on a radio that is not
+/// [RadioAntennas.separate], one port serves both and either names it.
+abstract class RadioAntennaSession implements EquipmentSession {
+  void setAntenna({String? rx, String? tx});
+}
+
+/// Where a session that reads its receive filter reports it — a sink of its
+/// own, as [TunerSink] is.
+abstract class PassbandSink {
+  /// The radio's passband now; null when it stops being knowable (a mode the
+  /// driver cannot read it in).
+  void reportPassband(Passband? passband);
+}
+
+/// A transceiver whose CAT can set its receive passband.
+///
+/// The radio decides what it can do: one that sets only a width from a table
+/// takes the nearest width to [Passband.widthHz] and keeps its own shift, and
+/// its report says where it landed.
+abstract class PassbandSession implements EquipmentSession {
+  void setPassband(Passband passband);
+}
+
+/// A transceiver whose CAT can put its antenna tuner in line or bypass it.
+///
+/// What "in line" takes is the radio's: an Icom, Kenwood or Yaesu switches
+/// its tuner in on the setting it remembers, without transmitting; a
+/// FlexRadio has no such switch, and engages its tuner only by TUNING — a
+/// carrier on the air, from its memory for the frequency when it has one.
+abstract class AntennaTunerSession implements EquipmentSession {
+  void setTuner({required bool inline});
+}
+
 /// A session that can key CW from text and set a keyer's speed — a
 /// transceiver whose CAT protocol has it (the IC-7300 family's `0x17`, the
 /// Yaesu keyer-memory playback, FlexRadio's CWX) or a keyer of its own, a

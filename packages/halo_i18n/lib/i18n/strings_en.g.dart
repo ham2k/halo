@@ -321,8 +321,8 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your radio, to read its frequency and mode'
 	String get canReadRadio => 'Your radio, to read its frequency and mode';
 
-	/// en: 'Your radio, to tune it and to connect or disconnect it'
-	String get canControlRadio => 'Your radio, to tune it and to connect or disconnect it';
+	/// en: 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT'
+	String get canControlRadio => 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT';
 
 	/// en: 'Identify itself to servers under its own name'
 	String get canSetUserAgent => 'Identify itself to servers under its own name';
@@ -5537,9 +5537,6 @@ class Translations$settings$developer$en {
 		other: '${count} extensions failing to build',
 	);
 
-	/// en: 'Dev extensions never receive build secrets, so features that need one are inactive.'
-	String get extDevServerNoSecrets => 'Dev extensions never receive build secrets, so features that need one are inactive.';
-
 	/// en: 'Extension Catalog'
 	String get catalog => 'Extension Catalog';
 
@@ -7597,7 +7594,7 @@ extension on Translations {
 			'extensionsPanel.canHoldLocalConnection' => 'Devices on your local network, over a live connection',
 			'extensionsPanel.canUseLocation' => 'Your location',
 			'extensionsPanel.canReadRadio' => 'Your radio, to read its frequency and mode',
-			'extensionsPanel.canControlRadio' => 'Your radio, to tune it and to connect or disconnect it',
+			'extensionsPanel.canControlRadio' => 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -9203,7 +9200,6 @@ extension on Translations {
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
-			'settings.developer.extDevServerNoSecrets' => 'Dev extensions never receive build secrets, so features that need one are inactive.',
 			'settings.developer.catalog' => 'Extension Catalog',
 			'settings.developer.catalogDescription' => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Catalog address',

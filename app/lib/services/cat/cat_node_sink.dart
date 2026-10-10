@@ -6,7 +6,7 @@
 
 part of 'cat_service.dart';
 
-class _NodeSink implements EquipmentSink, SpectrumSink {
+class _NodeSink implements EquipmentSink, SpectrumSink, TunerSink, PassbandSink, RadioAntennaSink {
   final EquipmentConnection connection;
   final void Function(VfoReading) onReading;
   final void Function(num) onPower;
@@ -24,6 +24,9 @@ class _NodeSink implements EquipmentSink, SpectrumSink {
   final void Function(SpectrumFrame) onSpectrum;
   final void Function(SpectrumSettings) onSpectrumSettings;
   final void Function(String?) onSpectrumProblem;
+  final void Function(TunerStatus?) onTuner;
+  final void Function(Passband?) onPassband;
+  final void Function(RadioAntennas?) onAntennas;
   final void Function(List<int> bytes) onSend;
 
   _NodeSink({
@@ -45,6 +48,9 @@ class _NodeSink implements EquipmentSink, SpectrumSink {
     required this.onSpectrum,
     required this.onSpectrumSettings,
     required this.onSpectrumProblem,
+    required this.onTuner,
+    required this.onPassband,
+    required this.onAntennas,
   });
 
   @override
@@ -100,4 +106,13 @@ class _NodeSink implements EquipmentSink, SpectrumSink {
 
   @override
   void reportSpectrumProblem(String? message) => onSpectrumProblem(message);
+
+  @override
+  void reportTuner(TunerStatus? status) => onTuner(status);
+
+  @override
+  void reportPassband(Passband? passband) => onPassband(passband);
+
+  @override
+  void reportAntennas(RadioAntennas? antennas) => onAntennas(antennas);
 }

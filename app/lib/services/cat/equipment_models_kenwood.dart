@@ -42,7 +42,14 @@ const ts590sgModel = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 115200},
-      overrides: {KenwoodDriver.cwDialectKey: 'kenwood', KenwoodDriver.voiceDialectKey: '', KenwoodDriver.voiceMemoriesKey: 0, KenwoodDriver.dataModeKey: true},
+      overrides: {
+        KenwoodDriver.cwDialectKey: 'kenwood',
+        KenwoodDriver.voiceDialectKey: '',
+        KenwoodDriver.voiceMemoriesKey: 0,
+        KenwoodDriver.dataModeKey: true,
+        KenwoodDriver.passbandDialectKey: 'ts590sg',
+        KenwoodDriver.antennaDialectKey: 'ts590',
+      },
       notes: _kenwoodSerialNotes,
     ),
   ],
@@ -64,7 +71,12 @@ const ts480Model = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
-      overrides: {KenwoodDriver.cwDialectKey: 'kenwood', KenwoodDriver.voiceDialectKey: '', KenwoodDriver.voiceMemoriesKey: 0},
+      overrides: {
+        KenwoodDriver.cwDialectKey: 'kenwood',
+        KenwoodDriver.voiceDialectKey: '',
+        KenwoodDriver.voiceMemoriesKey: 0,
+        KenwoodDriver.antennaDialectKey: 'twoPort',
+      },
       notes: _kenwoodSerialNotes,
     ),
   ],
@@ -231,6 +243,7 @@ const elecraftGenericModel = EquipmentModel(
       // `PB`/`DA`, a K3 with a KDVR3 through switch taps, and the entry
       // cannot tell them apart.
       defaultConfig: {'baudRate': _elecraftBaudRate, voiceMemoriesConfigKey: 0},
+      overrides: {KenwoodDriver.passbandDialectKey: 'elecraft'},
       notes: _elecraftSerialNotes,
     ),
   ],
@@ -260,6 +273,7 @@ const kx2Model = EquipmentModel(
         KenwoodDriver.cwDialectKey: 'elecraft',
         KenwoodDriver.voiceDialectKey: 'kx',
         KenwoodDriver.voiceMemoriesKey: kxVoiceMemoryCount,
+        KenwoodDriver.passbandDialectKey: 'elecraft',
         // Two fifteen-second messages, per the owner's manual.
         voiceCeilingConfigKey: 15,
       },
@@ -285,6 +299,7 @@ const kx3Model = EquipmentModel(
         KenwoodDriver.cwDialectKey: 'elecraft',
         KenwoodDriver.voiceDialectKey: 'kx',
         KenwoodDriver.voiceMemoriesKey: kxVoiceMemoryCount,
+        KenwoodDriver.passbandDialectKey: 'elecraft',
         // Two fifteen-second messages, per the owner's manual.
         voiceCeilingConfigKey: 15,
       },

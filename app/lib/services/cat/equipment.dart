@@ -478,6 +478,63 @@ class VoiceMemory {
   String toString() => 'VoiceMemory($memory "$name" ${durationMs}ms)';
 }
 
+/// A receive passband: its edges in Hz from the tuned frequency, as the radio
+/// shows them — `100`…`2800` in USB, `-2800`…`-100` in LSB, around zero in CW.
+@immutable
+class Passband {
+  final int lowHz, highHz;
+  const Passband(this.lowHz, this.highHz);
+
+  int get widthHz => highHz - lowHz;
+
+  @override
+  bool operator ==(Object other) => other is Passband && other.lowHz == lowHz && other.highHz == highHz;
+
+  @override
+  int get hashCode => Object.hash(lowHz, highHz);
+
+  @override
+  String toString() => 'Passband($lowHz..$highHz)';
+}
+
+/// A transceiver's own antenna ports, as its radio names them, and which it is
+/// using. [separate]: the radio picks its receive and transmit antennas
+/// independently — a FlexRadio — rather than one port for both.
+@immutable
+class RadioAntennas {
+  final List<String> rxPorts, txPorts;
+  final String? rx, tx;
+  final bool separate;
+  const RadioAntennas({required this.rxPorts, required this.txPorts, this.rx, this.tx, this.separate = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is RadioAntennas &&
+      listEquals(other.rxPorts, rxPorts) &&
+      listEquals(other.txPorts, txPorts) &&
+      other.rx == rx &&
+      other.tx == tx &&
+      other.separate == separate;
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(rxPorts), Object.hashAll(txPorts), rx, tx, separate);
+}
+
+/// A transceiver's antenna tuner, as its radio reports it.
+enum TunerStatus {
+  /// In line, matching.
+  inline,
+
+  /// Out of the path.
+  bypassed,
+
+  /// Finding a match — on the air.
+  tuning,
+
+  /// The last tune found no match.
+  failed,
+}
+
 /// Everything the UI needs to know about one node's connection.
 @immutable
 class EquipmentState {
@@ -514,6 +571,18 @@ class EquipmentState {
   /// The transceiver's keyer speed in WPM, when its driver can report one —
   /// see [EquipmentSink.reportKeyerSpeed]. Null on a driver that never asks.
   final int? keyerSpeed;
+
+  /// The radio's antenna tuner, when its driver reads one — see [TunerSink].
+  /// Null for a radio that has none, or a driver that never asks.
+  final TunerStatus? tuner;
+
+  /// The radio's receive passband, when its driver reads one — see
+  /// [PassbandSink]. Null for a driver that cannot.
+  final Passband? passband;
+
+  /// The radio's own antenna ports, when its driver reads them — see
+  /// [RadioAntennaSink]. Not an antenna switch's: those are [switchAntennas].
+  final RadioAntennas? antennas;
 
   /// Connected, but the radio has stopped saying anything.
   ///
@@ -583,6 +652,9 @@ class EquipmentState {
     this.power,
     this.telemetry = const RadioTelemetry(),
     this.keyerSpeed,
+    this.tuner,
+    this.passband,
+    this.antennas,
     this.stale = false,
     this.diagnostic,
     this.problem,
@@ -602,6 +674,12 @@ class EquipmentState {
     num? power,
     RadioTelemetry? telemetry,
     int? keyerSpeed,
+    TunerStatus? tuner,
+    bool clearTuner = false,
+    Passband? passband,
+    bool clearPassband = false,
+    RadioAntennas? antennas,
+    bool clearAntennas = false,
     bool? stale,
     String? diagnostic,
     bool clearDiagnostic = false,
@@ -625,6 +703,9 @@ class EquipmentState {
     power: power ?? this.power,
     telemetry: telemetry ?? this.telemetry,
     keyerSpeed: keyerSpeed ?? this.keyerSpeed,
+    tuner: clearTuner ? null : (tuner ?? this.tuner),
+    passband: clearPassband ? null : (passband ?? this.passband),
+    antennas: clearAntennas ? null : (antennas ?? this.antennas),
     stale: stale ?? this.stale,
     // Needs its own flag rather than a null argument: a driver saying
     // "nothing to report any more" and a caller not mentioning it at all

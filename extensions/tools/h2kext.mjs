@@ -32,8 +32,11 @@ import yazl from "yazl"
 /// `host.fetch` reach an http-only host the app fronts with its https proxy
 /// (the QSO Party Hub); 5 adds panel scenes' `scene` kind and what came with
 /// it — native controls, `strings`, `layout`, `after` and control `opacity`;
-/// 6 adds the scene's `spectrum` control and `host.setRadioSpectrum`.
-export const H2KEXT_API_VERSION = 6
+/// 6 adds the scene's `spectrum` control and `host.setRadioSpectrum`; 7 adds
+/// `host.setRadio` (`tuneRadio` stays its alias) with power, keyer speed,
+/// tuner, passband and antennas, the keying calls, what `readRadio` reports of
+/// them, and the scene's host-fed `radio` values.
+export const H2KEXT_API_VERSION = 7
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -140,6 +143,7 @@ SHARED_MODULES_BY_API[3] = SHARED_MODULES_BY_API[2]
 SHARED_MODULES_BY_API[4] = SHARED_MODULES_BY_API[3]
 SHARED_MODULES_BY_API[5] = SHARED_MODULES_BY_API[4]
 SHARED_MODULES_BY_API[6] = SHARED_MODULES_BY_API[5]
+SHARED_MODULES_BY_API[7] = SHARED_MODULES_BY_API[6]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

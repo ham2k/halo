@@ -186,7 +186,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get canHoldLocalConnection => 'Dispositivos de tu red local, mediante una conexión en vivo';
 	@override String get canUseLocation => 'Tu ubicación';
 	@override String get canReadRadio => 'Tu radio, para leer su frecuencia y modo';
-	@override String get canControlRadio => 'Tu radio, para sintonizarla y para conectarla o desconectarla';
+	@override String get canControlRadio => 'Tu radio, para controlarla y transmitir con ella — sintonía, potencia, CW, memorias de voz y PTT';
 	@override String get canSetUserAgent => 'Identificarse ante servidores con su propio nombre';
 	@override String get noCapabilities => 'No pide nada fuera de la app.';
 	@override String get sandboxNote => 'Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.';
@@ -2473,7 +2473,6 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 		one: '${count} extensión con errores de compilación',
 		other: '${count} extensiones con errores de compilación',
 	);
-	@override String get extDevServerNoSecrets => 'Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.';
 	@override String get catalog => 'Catálogo de extensiones';
 	@override String get catalogDescription => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.';
 	@override String get catalogAddress => 'Dirección del catálogo';
@@ -3544,7 +3543,7 @@ extension on TranslationsEs {
 			'extensionsPanel.canHoldLocalConnection' => 'Dispositivos de tu red local, mediante una conexión en vivo',
 			'extensionsPanel.canUseLocation' => 'Tu ubicación',
 			'extensionsPanel.canReadRadio' => 'Tu radio, para leer su frecuencia y modo',
-			'extensionsPanel.canControlRadio' => 'Tu radio, para sintonizarla y para conectarla o desconectarla',
+			'extensionsPanel.canControlRadio' => 'Tu radio, para controlarla y transmitir con ella — sintonía, potencia, CW, memorias de voz y PTT',
 			'extensionsPanel.canSetUserAgent' => 'Identificarse ante servidores con su propio nombre',
 			'extensionsPanel.noCapabilities' => 'No pide nada fuera de la app.',
 			'extensionsPanel.sandboxNote' => 'Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.',
@@ -5142,7 +5141,6 @@ extension on TranslationsEs {
 			'settings.developer.extDevServerReconnect' => 'Reconectar al iniciar',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Última recarga: ${key} a las ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} extensión con errores de compilación', other: '${count} extensiones con errores de compilación', ), 
-			'settings.developer.extDevServerNoSecrets' => 'Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.',
 			'settings.developer.catalog' => 'Catálogo de extensiones',
 			'settings.developer.catalogDescription' => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Dirección del catálogo',

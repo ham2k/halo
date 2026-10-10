@@ -93,6 +93,24 @@ class KenwoodDriver extends EquipmentDriver {
   /// would ask a question it refuses.
   static const dataModeKey = 'dataMode';
 
+  /// Which receive-filter commands the radio answers
+  /// ([KenwoodPassbandDialect] by name), pinned per entry like the dialects
+  /// above. Absent means the passband is neither read nor set. The K4 needs
+  /// no pin — [isK4] is one.
+  static const passbandDialectKey = 'passbandDialect';
+
+  /// Which `AN` the radio answers for its own antenna ports
+  /// ([KenwoodAntennaDialect] by name), pinned per entry like the dialects
+  /// above. Absent means none is read or offered — a radio with one port
+  /// shows no choice. Never the K4's: its `AN` is its own.
+  static const antennaDialectKey = 'antennaDialect';
+
+  static KenwoodAntennaDialect? antennaDialectFrom(Map<String, dynamic> config) =>
+      KenwoodAntennaDialect.values.where((d) => d.name == config[antennaDialectKey]).firstOrNull;
+
+  static KenwoodPassbandDialect? passbandDialectFrom(Map<String, dynamic> config) =>
+      KenwoodPassbandDialect.values.where((d) => d.name == config[passbandDialectKey]).firstOrNull;
+
   static KenwoodCwDialect? cwDialectFrom(Map<String, dynamic> config) => KenwoodCwDialect.values.where((d) => d.name == config[cwDialectKey]).firstOrNull;
 
   static KenwoodVoiceDialect? voiceDialectFrom(Map<String, dynamic> config) =>
@@ -130,6 +148,8 @@ class KenwoodDriver extends EquipmentDriver {
     voiceMemoriesKey,
     voiceCeilingConfigKey,
     dataModeKey,
+    passbandDialectKey,
+    antennaDialectKey,
   };
 
   @override
@@ -148,6 +168,14 @@ class KenwoodDriver extends EquipmentDriver {
     voiceMemories: voiceMemoriesFrom(config),
     voiceMemoryCeiling: voiceCeilingFromConfig(config),
     dataMode: !isK4 && config[dataModeKey] == true,
+    passbandDialect: switch (passbandDialectFrom(config)) {
+      _ when isK4 => KenwoodPassbandDialect.elecraft,
+      // Without `DA` the session cannot tell SSB-DATA from SSB, and the
+      // TS-590SG gives each its own menu for what `SL`/`SH` mean.
+      KenwoodPassbandDialect.ts590sg when config[dataModeKey] != true => null,
+      final dialect => dialect,
+    },
+    antennaDialect: isK4 ? null : antennaDialectFrom(config),
     config: config,
   );
 
@@ -206,7 +234,35 @@ class KenwoodDriver extends EquipmentDriver {
 /// narrow question to ask (its `TX;` keys the radio).
 const kenwoodTxWatchBytes = 41;
 
-class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
+/// How many state polls go by between reads of the tuner: at the default
+/// idle poll, one every fifteen seconds. The tuner moves when someone presses
+/// a button, and a read on every poll would spend the link's time on an
+/// answer that is almost always the last one again.
+const kenwoodTunerReadEvery = 5;
+
+/// How many tuner reads in a row must go unanswered beside a refusal before
+/// the session stops asking. More than one because `?;` names no command: a
+/// refusal of something else, landing beside an `AC` answer lost to line
+/// noise, must not cost a radio that has a tuner its readout for the whole
+/// connection.
+const _tunerRefusalsBeforeGivingUp = 2;
+
+/// How many state polls go by between reads of the receive filter — the
+/// tuner's rate, for the tuner's reason. A mode change, the one time the
+/// filter moves on its own, reads it at once.
+const kenwoodPassbandReadEvery = 5;
+
+/// See [_tunerRefusalsBeforeGivingUp]: the same `?;` that names no command.
+const _passbandRefusalsBeforeGivingUp = 2;
+
+/// How many state polls go by between reads of the antenna ports — the
+/// tuner's rate, for the tuner's reason.
+const kenwoodAntennaReadEvery = 5;
+
+/// See [_tunerRefusalsBeforeGivingUp].
+const _antennaRefusalsBeforeGivingUp = 2;
+
+class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
   final EquipmentSink _sink;
   final bool isK4;
   num? _pendingK4Power;
@@ -341,6 +397,8 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this._voiceMemories = 0,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     this.dataMode = false,
+    this.passbandDialect,
+    this.antennaDialect,
     Map<String, dynamic> config = const {},
   }) : _modeOffset = declaredModeOffset,
        // ignore: prefer_initializing_formals
@@ -396,6 +454,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   void _requestState() {
     if (isK4) {
       _send('IF;PCX;');
+      _requestPassband();
       return;
     }
     // DATA first: `MD` and `IF` are reported against the flag as it stands,
@@ -405,6 +464,283 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _send(buildKenwoodReadModeCommand());
     _send(buildKenwoodReadInfoCommand());
     _send(buildKenwoodReadPowerCommand());
+    _requestTuner();
+    _requestPassband();
+    _requestAntennas();
+  }
+
+  /// The last `AC` answer, and with it the receive-side AT [setTuner] hands
+  /// back unchanged. Null until the radio has answered in Kenwood's shape —
+  /// which is also what lets [setTuner] write on a radio whose `AC` means
+  /// something else, or nothing: it never does.
+  ({bool rxInline, bool txInline, bool tuning})? _tunerFlags;
+
+  int _tunerPollsToSkip = 0;
+
+  /// An `AC;` is on the wire with no `AC` answer back yet, and whether a
+  /// `?;` has arrived since it was sent. Only the pair says "refused": a `?;`
+  /// alone may answer any other question in the same poll, and an `AC`
+  /// answer arriving after it proves it did.
+  bool _tunerReadOutstanding = false;
+  bool _refusedSinceTunerRead = false;
+  int _tunerRefusals = 0;
+  bool _tunerRefused = false;
+
+  /// Every [kenwoodTunerReadEvery]th poll, first thing on a connection. The
+  /// previous read is judged when the next falls due — by then its answer
+  /// has long arrived if it was ever coming.
+  void _requestTuner() {
+    if (_tunerRefused) return;
+    if (_tunerPollsToSkip > 0) {
+      _tunerPollsToSkip--;
+      return;
+    }
+    _tunerPollsToSkip = kenwoodTunerReadEvery - 1;
+    if (_tunerReadOutstanding && _refusedSinceTunerRead && ++_tunerRefusals >= _tunerRefusalsBeforeGivingUp) {
+      _tunerRefused = true;
+      _tunerReadOutstanding = false;
+      _tunerFlags = null;
+      _reportTuner(null);
+      _sink.reportDiagnostic('radio refuses AC; no antenna tuner, not asked again');
+      return;
+    }
+    _readTuner();
+  }
+
+  void _readTuner() {
+    _tunerReadOutstanding = true;
+    _refusedSinceTunerRead = false;
+    _send(buildKenwoodReadTunerCommand());
+  }
+
+  void _reportTuner(TunerStatus? status) {
+    if (_sink case final TunerSink sink) sink.reportTuner(status);
+  }
+
+  /// See [KenwoodDriver.passbandDialectKey]. Null reads and sets nothing.
+  final KenwoodPassbandDialect? passbandDialect;
+
+  /// The filter as the radio last answered, in the mode now in use: width
+  /// (`BW`, or `FW` in CW on the TS-590SG), AF centre (`IS`) and the TS-590SG's
+  /// `SL`/`SH` indexes. Cleared on a mode change — the same number means
+  /// another thing in another mode.
+  int? _filterWidthHz;
+  int? _filterCentreHz;
+  int? _lowCutIndex;
+  int? _highCutIndex;
+
+  /// Settings that hold across modes: the CW pitch, and the TS-590SG's
+  /// choice of what `SL`/`SH` mean in SSB and in SSB-DATA (true: width/shift).
+  int? _cwPitchHz;
+  bool? _ssbWidthShift;
+  bool? _ssbDataWidthShift;
+
+  /// What [_reportPassband] last said, and whether it has said anything.
+  Passband? _passband;
+  bool _passbandReported = false;
+
+  int _passbandPollsToSkip = 0;
+
+  /// The same refusal bookkeeping as the tuner's — see [_tunerReadOutstanding].
+  bool _passbandReadOutstanding = false;
+  bool _refusedSincePassbandRead = false;
+  int _passbandRefusals = 0;
+  bool _passbandRefused = false;
+
+  /// Every [kenwoodPassbandReadEvery]th poll, never while transmitting: the
+  /// K3 line answers `?;` to commands it will not handle on the air, and two
+  /// of those would stop the reads for the connection.
+  void _requestPassband() {
+    if (passbandDialect == null || _passbandRefused || _telemetry.transmitting) return;
+    if (_passbandPollsToSkip > 0) {
+      _passbandPollsToSkip--;
+      return;
+    }
+    _passbandPollsToSkip = kenwoodPassbandReadEvery - 1;
+    if (_passbandReadOutstanding && _refusedSincePassbandRead && ++_passbandRefusals >= _passbandRefusalsBeforeGivingUp) {
+      _passbandRefused = true;
+      _passbandReadOutstanding = false;
+      _reportPassband();
+      _sink.reportDiagnostic('radio refuses its filter reads; passband not asked again');
+      return;
+    }
+    _readPassband();
+  }
+
+  /// Only the questions the current mode answers — the TS-590SG refuses `IS`
+  /// and `FW` in SSB, an Elecraft `IS` in FM — so a refusal is never just a
+  /// mode without a passband.
+  void _readPassband() {
+    final reads = _passbandReads(_lastReported?.mode);
+    _passbandReadOutstanding = reads.isNotEmpty;
+    _refusedSincePassbandRead = false;
+    reads.forEach(_send);
+  }
+
+  List<String> _passbandReads(String? mode) => switch ((passbandDialect, mode)) {
+    (KenwoodPassbandDialect.elecraft, 'USB' || 'LSB') => [buildElecraftReadBandwidthCommand(), buildKenwoodReadShiftCommand()],
+    (KenwoodPassbandDialect.elecraft, 'CW' || 'CW-R') => [buildElecraftReadBandwidthCommand(), buildKenwoodReadShiftCommand(), buildElecraftReadPitchCommand()],
+    (KenwoodPassbandDialect.ts590sg, 'USB' || 'LSB' || 'DATA-USB' || 'DATA-LSB') => [
+      buildKenwoodReadMenuCommand(mode!.startsWith('DATA') ? ts590sgSsbDataFilterMenu : ts590sgSsbFilterMenu),
+      buildKenwoodReadLowCutCommand(),
+      buildKenwoodReadHighCutCommand(),
+    ],
+    (KenwoodPassbandDialect.ts590sg, 'CW' || 'CW-R') => [
+      buildKenwoodReadFilterWidthCommand(),
+      buildKenwoodReadShiftCommand(),
+      buildKenwoodReadMenuCommand(ts590sgCwPitchMenu),
+    ],
+    _ => const [],
+  };
+
+  /// Any answer proves the radio takes the filter reads, whatever refusals
+  /// were taken for a lack of them before.
+  void _passbandAnswered() {
+    _passbandReadOutstanding = false;
+    _passbandRefusals = 0;
+    _passbandRefused = false;
+    _reportPassband();
+  }
+
+  void _passbandModeChanged() {
+    if (passbandDialect == null) return;
+    _filterWidthHz = null;
+    _filterCentreHz = null;
+    _lowCutIndex = null;
+    _highCutIndex = null;
+    _reportPassband();
+    if (!_passbandRefused) _readPassband();
+  }
+
+  /// The passband in the current mode, where the readings place it:
+  ///
+  /// - SSB: the AF passband IS the offset from the carrier — above it in USB,
+  ///   mirrored below in LSB. The TS-590SG's SSB-DATA too; the Elecraft DATA
+  ///   modes are not, their centre moving with a pitch and the displayed
+  ///   frequency's meaning moving with the submode.
+  /// - CW: only while the filter's AF centre sits on the pitch, which puts it
+  ///   centred on the tuned frequency whichever side the radio receives on.
+  ///   Shifted, the side decides where it lies, and neither reference says
+  ///   which side `CW` and `CW-R` are.
+  /// - Anything else: null, no reference placing it.
+  Passband? _passbandNow() {
+    final mode = _lastReported?.mode;
+    if (_passbandRefused || mode == null) return null;
+    if (mode == 'CW' || mode == 'CW-R') {
+      final width = _filterWidthHz;
+      if (width == null || _filterCentreHz == null || _filterCentreHz != _cwPitchHz) return null;
+      return _around(0, width);
+    }
+    final base = dataModeBases[mode] ?? mode;
+    if (base != 'USB' && base != 'LSB') return null;
+    final audio = switch (passbandDialect) {
+      KenwoodPassbandDialect.elecraft when base == mode => _around(_filterCentreHz, _filterWidthHz),
+      KenwoodPassbandDialect.ts590sg => _ts590sgSsbAudio(data: base != mode),
+      _ => null,
+    };
+    if (audio == null) return null;
+    return base == 'LSB' ? Passband(-audio.highHz, -audio.lowHz) : audio;
+  }
+
+  static Passband? _around(int? centre, int? width) {
+    if (centre == null || width == null) return null;
+    final low = centre - width ~/ 2;
+    return Passband(low, low + width);
+  }
+
+  Passband? _ts590sgSsbAudio({required bool data}) {
+    final widthShift = data ? _ssbDataWidthShift : _ssbWidthShift;
+    final low = _lowCutIndex, high = _highCutIndex;
+    if (widthShift == null || low == null || high == null) return null;
+    if (widthShift) return _around(ts590sgShiftsHz.elementAtOrNull(high), ts590sgWidthsHz.elementAtOrNull(low));
+    final lowHz = ts590sgLowCutsHz.elementAtOrNull(low), highHz = ts590sgHighCutsHz.elementAtOrNull(high);
+    return lowHz == null || highHz == null ? null : Passband(lowHz, highHz);
+  }
+
+  /// Only on a change, like the tuner: the poll restates the filter every
+  /// few seconds.
+  void _reportPassband() {
+    final passband = _passbandNow();
+    if (_passbandReported && passband == _passband) return;
+    _passbandReported = true;
+    _passband = passband;
+    if (_sink case final PassbandSink sink) sink.reportPassband(passband);
+  }
+
+  /// See [KenwoodDriver.antennaDialectKey]. Null reads and sets nothing.
+  final KenwoodAntennaDialect? antennaDialect;
+
+  /// The ports as the radio last answered `AN` in [antennaDialect]'s shape.
+  /// Null until it has — which is what keeps [setAntenna] from writing to a
+  /// radio whose `AN` is not known to be this one.
+  RadioAntennas? _antennas;
+
+  int _antennaPollsToSkip = 0;
+
+  /// The same refusal bookkeeping as the tuner's — see [_tunerReadOutstanding].
+  bool _antennaReadOutstanding = false;
+  bool _refusedSinceAntennaRead = false;
+  int _antennaRefusals = 0;
+  bool _antennaRefused = false;
+
+  /// Every [kenwoodAntennaReadEvery]th poll, never while transmitting — the
+  /// passband's reason: a K3-line `?;` on the air would count as a refusal.
+  void _requestAntennas() {
+    if (antennaDialect == null || _antennaRefused || _telemetry.transmitting) return;
+    if (_antennaPollsToSkip > 0) {
+      _antennaPollsToSkip--;
+      return;
+    }
+    _antennaPollsToSkip = kenwoodAntennaReadEvery - 1;
+    if (_antennaReadOutstanding && _refusedSinceAntennaRead && ++_antennaRefusals >= _antennaRefusalsBeforeGivingUp) {
+      _antennaRefused = true;
+      _antennaReadOutstanding = false;
+      _antennas = null;
+      _reportAntennas(null);
+      _sink.reportDiagnostic('radio refuses AN; antenna ports not asked again');
+      return;
+    }
+    _readAntennas();
+  }
+
+  void _readAntennas() {
+    _antennaReadOutstanding = true;
+    _refusedSinceAntennaRead = false;
+    _send(buildKenwoodReadAntennaCommand());
+  }
+
+  void _reportAntennas(RadioAntennas? antennas) {
+    if (_sink case final RadioAntennaSink sink) sink.reportAntennas(antennas);
+  }
+
+  /// `AN`'s answer as ports, or null when it is not in [antennaDialect]'s
+  /// shape.
+  ///
+  /// The TS-590 transmits on ANT1 or ANT2 and receives there too unless its
+  /// RX ANT jack is switched in. So it is [RadioAntennas.separate], but its
+  /// receive choice is only ever the transmit port or RX ANT: offering the
+  /// other transmit port for receive would offer a pairing it cannot make.
+  RadioAntennas? _parseAntennas(String params) {
+    switch (antennaDialect) {
+      case KenwoodAntennaDialect.twoPort:
+        final port = parseKenwoodAntennaParams(params);
+        if (port == null) return null;
+        final name = kenwoodAntennaPorts[port - 1];
+        return RadioAntennas(rxPorts: kenwoodAntennaPorts, txPorts: kenwoodAntennaPorts, rx: name, tx: name);
+      case KenwoodAntennaDialect.ts590:
+        final answer = parseTs590AntennaParams(params);
+        if (answer == null) return null;
+        final tx = kenwoodAntennaPorts[answer.port - 1];
+        return RadioAntennas(
+          rxPorts: [tx, ts590RxAntennaPort],
+          txPorts: kenwoodAntennaPorts,
+          rx: answer.rxAntenna ? ts590RxAntennaPort : tx,
+          tx: tx,
+          separate: true,
+        );
+      case null:
+        return null;
+    }
   }
 
   /// Reports upward, and tells the poller whether the radio is moving.
@@ -415,11 +751,13 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // asked, not the radio moving — counting it as movement would drop every
     // connection into fast polling for a radio nobody is touching.
     final first = _lastReported == null;
+    final modeChanged = merged.mode != _lastReported?.mode;
     if (merged != _lastReported) {
       _lastReported = merged;
       if (!first) _poller.noteChange();
     }
     _sink.report(reading);
+    if (modeChanged) _passbandModeChanged();
   }
 
   @override
@@ -430,7 +768,12 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // ASCII, and `allowInvalid` because a line-noise byte on a serial link
     // must not throw out of a stream callback; the framer simply will not
     // match it as a command.
-    for (final command in _framer.add(ascii.decode(chunk, allowInvalid: true))) {
+    final text = ascii.decode(chunk, allowInvalid: true);
+    // Before the framer, which drops `?;` — it has no letters to frame.
+    if (_tunerReadOutstanding && text.contains(kenwoodRefusal)) _refusedSinceTunerRead = true;
+    if (_passbandReadOutstanding && text.contains(kenwoodRefusal)) _refusedSincePassbandRead = true;
+    if (_antennaReadOutstanding && text.contains(kenwoodRefusal)) _refusedSinceAntennaRead = true;
+    for (final command in _framer.add(text)) {
       _handle(command);
     }
   }
@@ -526,6 +869,82 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         final activity = _voice.activity;
         if (state == null || activity == null) return;
         _voicePollSays(going: activity.recording ? state.recording : state.playing);
+      case 'AC':
+        // Never asked of the K4, whose command set is its own.
+        if (isK4) return;
+        final flags = parseKenwoodTunerParams(command.params);
+        if (flags == null) return;
+        _tunerFlags = flags;
+        _tunerReadOutstanding = false;
+        _tunerRefusals = 0;
+        // A radio that answers has a tuner, whatever refusals were taken for
+        // one before.
+        _tunerRefused = false;
+        // Only the transmit side counts as in line: the receive-side AT alone
+        // matches nothing the transmitter sees.
+        _reportTuner(
+          flags.tuning
+              ? TunerStatus.tuning
+              : flags.txInline
+              ? TunerStatus.inline
+              : TunerStatus.bypassed,
+        );
+
+      case 'AN':
+        final antennas = _parseAntennas(command.params);
+        if (antennas == null) return;
+        _antennas = antennas;
+        _antennaReadOutstanding = false;
+        _antennaRefusals = 0;
+        _antennaRefused = false;
+        _reportAntennas(antennas);
+
+      // The receive filter, each answer only in the dialect that asks for it:
+      // the same letters elsewhere carry other units, or other meanings.
+      case 'BW' when passbandDialect == KenwoodPassbandDialect.elecraft:
+        final hz = parseElecraftBandwidthParams(command.params);
+        if (hz == null) return;
+        _filterWidthHz = hz;
+        _passbandAnswered();
+      case 'CW' when passbandDialect == KenwoodPassbandDialect.elecraft:
+        final hz = parseElecraftPitchParams(command.params);
+        if (hz == null) return;
+        _cwPitchHz = hz;
+        _passbandAnswered();
+      case 'IS' when passbandDialect != null:
+        final hz = parseKenwoodShiftParams(command.params, k4: isK4);
+        if (hz == null) return;
+        _filterCentreHz = hz;
+        _passbandAnswered();
+      case 'FW' when passbandDialect == KenwoodPassbandDialect.ts590sg:
+        final hz = parseKenwoodFilterWidthParams(command.params);
+        if (hz == null) return;
+        _filterWidthHz = hz;
+        _passbandAnswered();
+      case 'SL' || 'SH' when passbandDialect == KenwoodPassbandDialect.ts590sg:
+        final index = parseKenwoodCutIndexParams(command.params);
+        if (index == null) return;
+        if (command.command == 'SL') {
+          _lowCutIndex = index;
+        } else {
+          _highCutIndex = index;
+        }
+        _passbandAnswered();
+      case 'EX' when passbandDialect == KenwoodPassbandDialect.ts590sg:
+        final menu = parseKenwoodMenuParams(command.params);
+        if (menu == null) return;
+        // Settings outside the guide's lists are not guessed at.
+        switch (menu.menu) {
+          case ts590sgSsbFilterMenu when menu.value <= 1:
+            _ssbWidthShift = menu.value == 1;
+          case ts590sgSsbDataFilterMenu when menu.value <= 1:
+            _ssbDataWidthShift = menu.value == 1;
+          case ts590sgCwPitchMenu when menu.value <= 14:
+            _cwPitchHz = 300 + 50 * menu.value;
+          default:
+            return;
+        }
+        _passbandAnswered();
       case 'ER':
         if (isK4) _sink.reportDiagnostic('K4 refused a command: ER${command.params}');
       case 'TQ':
@@ -704,6 +1123,95 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _send('PCX;');
   }
 
+  /// Writes nothing until the radio has answered `AC` in Kenwood's shape: the
+  /// write must carry the receive-side AT as the radio has it, and on a
+  /// radio that never answered, `AC` is not known to be a tuner at all.
+  /// Then reads back, so what is shown is what the radio took.
+  @override
+  void setTuner({required bool inline}) {
+    final flags = _tunerFlags;
+    if (flags == null) return;
+    _send(buildKenwoodSetTunerCommand(rxInline: flags.rxInline, inline: inline));
+    _readTuner();
+  }
+
+  /// Writes nothing until the radio has answered `AN` in [antennaDialect]'s
+  /// shape, nothing while it is transmitting — no antenna relay moves under
+  /// RF, and a refused switch is not queued for after the over — and nothing
+  /// for a name the radio did not offer. Then reads back, so what is shown
+  /// is what the radio took.
+  ///
+  /// The TS-590 receives on RX ANT or on the transmit port: [rx] naming the
+  /// transmit port it is left on switches RX ANT out, and naming the other
+  /// transmit port asks for a pairing the radio cannot make, so sets nothing.
+  @override
+  void setAntenna({String? rx, String? tx}) {
+    final antennas = _antennas;
+    if (antennas == null || _telemetry.transmitting) return;
+    final txIndex = tx == null ? -1 : kenwoodAntennaPorts.indexOf(tx);
+    switch (antennaDialect) {
+      case KenwoodAntennaDialect.twoPort:
+        // One port for both: either names it.
+        final port = txIndex >= 0 ? txIndex : (rx == null ? -1 : kenwoodAntennaPorts.indexOf(rx));
+        if (port < 0) return;
+        _send(buildKenwoodSetAntennaCommand(port + 1));
+      case KenwoodAntennaDialect.ts590:
+        final txAfter = txIndex >= 0 ? kenwoodAntennaPorts[txIndex] : antennas.tx;
+        final rxAntenna = switch (rx) {
+          ts590RxAntennaPort => true,
+          final String name when name == txAfter => false,
+          _ => null,
+        };
+        if (txIndex < 0 && rxAntenna == null) return;
+        _send(buildTs590SetAntennaCommand(port: txIndex < 0 ? null : txIndex + 1, rxAntenna: rxAntenna));
+      case null:
+        return;
+    }
+    _readAntennas();
+  }
+
+  /// Writes nothing until the passband has been read in the current mode:
+  /// that read is what says the dialect holds on this radio and, on the
+  /// TS-590SG, whether `SL`/`SH` are cuts or width/shift right now. Then
+  /// reads back, so what is shown is where the radio landed.
+  ///
+  /// SSB sets both edges — the TS-590SG to its nearest table entries, an
+  /// Elecraft to width and centre — except on the K4, whose `IS` set format
+  /// under the `K40` this driver selects is not settled, so it takes the
+  /// width and keeps its centre. CW sets the width and keeps the shift: the
+  /// centre is the pitch, an operator setting.
+  @override
+  void setPassband(Passband passband) {
+    final mode = _lastReported?.mode;
+    if (_passband == null || mode == null) return;
+    final cw = mode == 'CW' || mode == 'CW-R';
+    // The radio's AF edges: LSB mirrors them below the carrier.
+    final lsb = mode == 'LSB' || mode == 'DATA-LSB';
+    final low = lsb ? -passband.highHz : passband.lowHz;
+    final high = lsb ? -passband.lowHz : passband.highHz;
+    final centre = ((low + high) / 2).round();
+    switch (passbandDialect) {
+      case KenwoodPassbandDialect.elecraft:
+        _send(buildElecraftSetBandwidthCommand(passband.widthHz));
+        final setCentre = cw || isK4 ? null : buildElecraftSetCentreCommand(centre);
+        if (setCentre != null) _send(setCentre);
+      case KenwoodPassbandDialect.ts590sg when cw:
+        _send(buildKenwoodSetFilterWidthCommand(ts590sgWidthsHz[nearestIndex(ts590sgWidthsHz, passband.widthHz)]));
+      case KenwoodPassbandDialect.ts590sg:
+        final widthShift = mode.startsWith('DATA') ? _ssbDataWidthShift : _ssbWidthShift;
+        if (widthShift == true) {
+          _send(buildKenwoodSetLowCutCommand(nearestIndex(ts590sgWidthsHz, passband.widthHz)));
+          _send(buildKenwoodSetHighCutCommand(nearestIndex(ts590sgShiftsHz, centre)));
+        } else {
+          _send(buildKenwoodSetLowCutCommand(nearestIndex(ts590sgLowCutsHz, low)));
+          _send(buildKenwoodSetHighCutCommand(nearestIndex(ts590sgHighCutsHz, high)));
+        }
+      case null:
+        return;
+    }
+    _readPassband();
+  }
+
   /// Without this read the app keeps showing, and logging, the power it asked
   /// for until the next poll — which AI traffic can defer indefinitely.
   void _resyncK4Power() {
@@ -827,6 +1335,24 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _k4PowerResync = false;
     _k4InfoRejected = false;
     _k4PowerTimeout?.cancel();
+    _tunerFlags = null;
+    _tunerPollsToSkip = 0;
+    _tunerReadOutstanding = false;
+    _tunerRefusals = 0;
+    _tunerRefused = false;
+    _filterWidthHz = _filterCentreHz = _lowCutIndex = _highCutIndex = _cwPitchHz = null;
+    _ssbWidthShift = _ssbDataWidthShift = null;
+    _passband = null;
+    _passbandReported = false;
+    _passbandPollsToSkip = 0;
+    _passbandReadOutstanding = false;
+    _passbandRefusals = 0;
+    _passbandRefused = false;
+    _antennas = null;
+    _antennaPollsToSkip = 0;
+    _antennaReadOutstanding = false;
+    _antennaRefusals = 0;
+    _antennaRefused = false;
     _started = true;
     // K4n clears K2 meta mode; K31 explicitly includes the DATA submode in
     // IF. Do this before AI or any reads, on each USB or TCP connection.

@@ -1,9 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
+import 'dart:math' as math;
 import 'dart:typed_data';
 
-/// SmartSDR Metering Protocol: metadata identifies transient slice LEVEL
-/// meters; VITA-49 packets carry signed dBm values with seven fraction bits.
+/// SmartSDR Metering Protocol: metadata identifies transient meters — the
+/// slice's LEVEL, the transmitter's FWDPWR and SWR — and VITA-49 packets carry
+/// signed values with seven fraction bits.
 /// https://github.com/flexradio/smartsdr-api-docs/wiki/Metering-Protocol
 class FlexMeterCodec {
   final int slice;
@@ -26,7 +28,28 @@ class FlexMeterCodec {
   }
 
   double? signal(Uint8List packet) {
-    if (packet.length < 16) return null;
+    double? result;
+    for (final (m, value) in _readings(packet)) {
+      if (m['src'] == 'SLC' && m['num'] == '$slice' && m['nam'] == 'LEVEL' && m['unit']?.toLowerCase() == 'dbm') result = value;
+    }
+    return result;
+  }
+
+  /// RF out in watts and SWR, from the transmitter's FWDPWR (dBm) and SWR
+  /// meters — each null where [packet] carries no reading of it.
+  ({double? watts, double? swr}) transmit(Uint8List packet) {
+    double? watts, swr;
+    for (final (m, value) in _readings(packet)) {
+      if (m['src'] != 'TX-') continue;
+      if (m['nam'] == 'FWDPWR' && m['unit']?.toLowerCase() == 'dbm') watts = math.pow(10, (value - 30) / 10).toDouble();
+      if (m['nam'] == 'SWR' && m['unit']?.toUpperCase() == 'SWR') swr = value;
+    }
+    return (watts: watts, swr: swr);
+  }
+
+  /// Every reading in [packet] of a meter whose metadata is known.
+  List<(Map<String, String>, double)> _readings(Uint8List packet) {
+    if (packet.length < 16) return const [];
     final data = ByteData.sublistView(packet), header = ByteData.sublistView(packet).getUint32(0);
     final length = (header & 0xffff) * 4;
     // Extension-data packet, stream ID and class ID, Flex OUI, meter class.
@@ -36,22 +59,17 @@ class FlexMeterCodec {
         length < 16 ||
         data.getUint32(8) & 0xffffff != 0x001c2d ||
         data.getUint16(14) != 0x8002) {
-      return null;
+      return const [];
     }
     var offset = 16;
     if ((header >> 22) & 3 != 0) offset += 4;
     if ((header >> 20) & 3 != 0) offset += 8;
     final end = length - (header & 0x04000000 != 0 ? 4 : 0);
-    if (offset > end || (end - offset) % 4 != 0) return null;
-    double? result;
-    for (; offset + 4 <= end; offset += 4) {
-      final m = _metadata[data.getUint16(offset)];
-      if (m?['src'] != 'SLC' || m?['num'] != '$slice' || m?['nam'] != 'LEVEL' || m?['unit']?.toLowerCase() != 'dbm') {
-        continue;
-      }
-      result = data.getInt16(offset + 2) / 128;
-    }
-    return result;
+    if (offset > end || (end - offset) % 4 != 0) return const [];
+    return [
+      for (; offset + 4 <= end; offset += 4)
+        if (_metadata[data.getUint16(offset)] case final m?) (m, data.getInt16(offset + 2) / 128),
+    ];
   }
 }
 
@@ -65,18 +83,25 @@ class FlexMeterCodec {
 ///
 /// Still reported while unchanged: the reading's timestamp is what keeps it
 /// from expiring.
+///
+/// [decimals] is the resolution reported: whole dB for LEVEL, tenths for the
+/// transmitter's watts and SWR.
 class FlexSignalThrottle {
+  FlexSignalThrottle({this.decimals = 0});
+  final int decimals;
   static const intervalMillis = 250;
   int? _lastMillis;
 
   /// The reading to report for [dbm] arriving at [nowMillis], or null while
   /// the last report is under [intervalMillis] old.
-  int? accept(double dbm, int nowMillis) {
+  num? accept(double dbm, int nowMillis) {
     final last = _lastMillis;
     // `< 0` lets a clock that stepped backwards report at once rather than
     // stay silent until it catches up.
     if (last != null && nowMillis - last >= 0 && nowMillis - last < intervalMillis) return null;
     _lastMillis = nowMillis;
-    return dbm.round();
+    if (decimals == 0) return dbm.round();
+    final scale = math.pow(10, decimals);
+    return (dbm * scale).round() / scale;
   }
 }

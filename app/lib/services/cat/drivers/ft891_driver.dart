@@ -25,7 +25,9 @@
 // Also not exercised: `PC` (RF power). Documented in the CAT manual, but
 // added after the bench session above and never sent to or read from the
 // radio it describes. The same goes for CW keying (`KM`/`KY`) and the keyer
-// speed (`KS`) — from the FTDX10 CAT manual, not from a radio.
+// speed (`KS`) — from the FTDX10 CAT manual, not from a radio — and for the
+// antenna tuner (`AC`), the receive passband (`ID`, `SH`, `IS`, `NA`) and
+// the radio's own antenna ports (`AN`), from the CAT manuals alone.
 
 import 'dart:convert';
 
@@ -307,7 +309,41 @@ const yaesuKeyerMemoryCharsConfigKey = 'yaesuKeyerMemoryChars';
 /// the FT-710's (see [buildPlayKeyerMemoryByChannelCommand]).
 const yaesuKeyerPlayByChannelConfigKey = 'yaesuKeyerPlayByChannel';
 
-class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession {
+/// How many state polls go by between reads of the tuner: at the default
+/// idle poll, one every fifteen seconds. The tuner moves when someone presses
+/// a button, and a read on every poll would spend a 4800-baud link's time on
+/// an answer that is almost always the last one again.
+const yaesuTunerReadEvery = 5;
+
+/// How many tuner reads in a row must be refused before the session stops
+/// asking. More than one because `?;` names no command: a refusal of
+/// something else, landing beside an `AC` answer lost to line noise, must
+/// not cost a radio that has a tuner its readout for the whole connection.
+const _tunerRefusalsBeforeGivingUp = 2;
+
+/// How many state polls go by between reads of the receive filter — the same
+/// reasoning as [yaesuTunerReadEvery]: it moves when someone turns a knob,
+/// and a mode change or a set reads it at once anyway.
+const yaesuPassbandReadEvery = 5;
+
+/// The same two strikes as [_tunerRefusalsBeforeGivingUp], for `SH`.
+const _passbandRefusalsBeforeGivingUp = 2;
+
+/// How many state polls go by between reads of the radio's antenna port —
+/// the same reasoning as [yaesuTunerReadEvery]. Auto-Information pushes `AN`
+/// as well, so the read only covers a radio with it off.
+const yaesuAntennaReadEvery = 5;
+
+/// The same two strikes as [_tunerRefusalsBeforeGivingUp], for `AN`.
+const _antennaRefusalsBeforeGivingUp = 2;
+
+/// Where an SSB passband is centred, in Hz from the carrier on the
+/// sideband's side, with no IF shift. A convention, not a radio fact: no
+/// Yaesu CAT manual says where `SH`'s width sits, only how wide it is. The
+/// IF shift moves it from here.
+const yaesuSsbPassbandCentreHz = 1500;
+
+class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -523,6 +559,158 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
 
   void _send(String command) => _sink.send(ascii.encode(command));
 
+  /// State polls left before the next tuner read — see [yaesuTunerReadEvery].
+  int _pollsUntilTunerRead = 0;
+
+  /// Whether an `AC;` is out with no `AC` answer back yet, and whether a
+  /// [yaesuRefusal] has arrived since it went.
+  bool _tunerAsked = false;
+  bool _refusedSinceTunerAsk = false;
+
+  /// Tuner reads refused in a row — see [_tunerRefusalsBeforeGivingUp].
+  int _tunerRefusals = 0;
+
+  /// The radio has no `AC`: nothing about the tuner is asked or set again
+  /// for this session.
+  bool _noTuner = false;
+
+  /// What the radio last said its tuner is doing.
+  TunerStatus? _tuner;
+
+  /// Asks for the tuner, unless the reads so far say the radio has none —
+  /// decided here, at the next ask, because the answer to the last one has
+  /// had a whole poll to arrive by now.
+  void _readTuner() {
+    // Never while transmitting, but for a tune's own outcome: see [_readPassband].
+    if (_noTuner || (_telemetry.transmitting && _tuner != TunerStatus.tuning)) return;
+    if (_tunerAsked && _refusedSinceTunerAsk && ++_tunerRefusals >= _tunerRefusalsBeforeGivingUp) {
+      _noTuner = true;
+      _tunerAsked = false;
+      _sink.reportDiagnostic('radio refuses AC; no antenna tuner, not asked again');
+      if (_sink case final TunerSink sink) sink.reportTuner(null);
+      return;
+    }
+    _tunerAsked = true;
+    _refusedSinceTunerAsk = false;
+    _send(buildReadTunerCommand());
+  }
+
+  /// The radio's filter tables, chosen by its `ID` answer; null until it
+  /// answers, and for a radio with no profile — which is never asked `SH`.
+  YaesuWidthProfile? _widthProfile;
+
+  /// State polls left before the next passband read — see
+  /// [yaesuPassbandReadEvery].
+  int _pollsUntilPassbandRead = 0;
+
+  /// The same bookkeeping as the tuner's, for `SH0;`.
+  bool _passbandAsked = false;
+  bool _refusedSincePassbandAsk = false;
+  int _passbandRefusals = 0;
+  bool _noPassband = false;
+
+  /// What `IS` and `NA` last answered: read with every `SH0;`, and ahead of
+  /// it, so the width that answer carries is placed with them.
+  int? _shiftHz;
+  bool? _narrowOn;
+
+  /// What was last reported, so a repeat is not reported again.
+  Passband? _passband;
+
+  void _reportPassband(Passband? passband) {
+    if (passband == _passband) return;
+    _passband = passband;
+    if (_sink case final PassbandSink sink) sink.reportPassband(passband);
+  }
+
+  /// Reads the filter, in a mode it can be placed in, on a radio with a
+  /// profile — and not while the DVS is busy, for the same reason as the
+  /// state poll.
+  void _readPassband() {
+    final profile = _widthProfile;
+    // Never while transmitting: a refusal on the air would count against the read.
+    if (profile == null || _noPassband || _voice.active || _telemetry.transmitting) return;
+    if (yaesuWidthGroupFor(_lastReported?.mode) == null) return;
+    if (_passbandAsked && _refusedSincePassbandAsk && ++_passbandRefusals >= _passbandRefusalsBeforeGivingUp) {
+      _noPassband = true;
+      _passbandAsked = false;
+      _sink.reportDiagnostic('radio refuses its filter reads; passband not asked again');
+      _reportPassband(null);
+      return;
+    }
+    _passbandAsked = true;
+    _refusedSincePassbandAsk = false;
+    if (profile.readsNarrow) _send(buildReadNarrowCommand());
+    _send(buildReadShiftCommand());
+    _send(buildReadWidthCommand());
+  }
+
+  /// The radio's filter as a [Passband], from an `SH` index.
+  ///
+  /// Null where it cannot be placed: a mode outside [yaesuWidthGroupFor], an
+  /// index the table has no width for, an IF shift not yet read — and a
+  /// shift at all in LSB or CW-R. Which way a Yaesu's `+` moves the
+  /// passband there, in pitch or in frequency, is in no CAT manual; in USB
+  /// and CW the two are the same way, so the shift is placed there.
+  ///
+  /// CW is centred on the reported frequency, as [Passband] has it.
+  Passband? _passbandFor(int index) {
+    final mode = _lastReported?.mode;
+    final group = yaesuWidthGroupFor(mode);
+    final shift = _shiftHz;
+    if (group == null || shift == null) return null;
+    final width = _widthProfile!.table(group).widthHz(index, narrowOn: _narrowOn);
+    if (width == null) return null;
+    final reversed = mode == 'LSB' || mode == 'CW-R';
+    if (reversed && shift != 0) return null;
+    final low = (group == YaesuWidthGroup.ssb ? yaesuSsbPassbandCentreHz : 0) + shift - width ~/ 2;
+    return reversed ? Passband(-(low + width), -low) : Passband(low, low + width);
+  }
+
+  /// Whether the radio has answered `ID` — once, as the radio on the line
+  /// does not change under a connection.
+  bool _identified = false;
+
+  /// The radio's selectable antenna ports, chosen by its `ID` answer; null
+  /// until it answers, and for a radio with none — which is never asked `AN`.
+  List<String>? _antennaPorts;
+
+  /// State polls left before the next antenna read — see
+  /// [yaesuAntennaReadEvery].
+  int _pollsUntilAntennaRead = 0;
+
+  /// The same bookkeeping as the tuner's, for `AN0;`.
+  bool _antennaAsked = false;
+  bool _refusedSinceAntennaAsk = false;
+  int _antennaRefusals = 0;
+  bool _noAntennas = false;
+
+  /// What was last reported, so a repeat is not reported again.
+  RadioAntennas? _antennas;
+
+  void _reportAntennas(RadioAntennas? antennas) {
+    if (antennas == _antennas) return;
+    _antennas = antennas;
+    if (_sink case final RadioAntennaSink sink) sink.reportAntennas(antennas);
+  }
+
+  /// Asks for the MAIN band's antenna on a radio with ports to choose from,
+  /// unless the reads so far say it has no `AN` after all.
+  void _readAntenna() {
+    // Never while transmitting — [_readPassband]'s reason.
+    if (_antennaPorts == null || _noAntennas || _telemetry.transmitting) return;
+    if (_antennaAsked && _refusedSinceAntennaAsk && ++_antennaRefusals >= _antennaRefusalsBeforeGivingUp) {
+      _noAntennas = true;
+      _antennaAsked = false;
+      _sink.reportDiagnostic('radio refuses AN; antenna ports not asked again');
+      _reportAntennas(null);
+      return;
+    }
+    _antennaAsked = true;
+    _refusedSinceAntennaAsk = false;
+    _send(buildReadAntennaCommand());
+  }
+
   void _requestFrequencyAndMode() {
     // Not while the DVS is busy. A recording on the FT-891 ENDS at the next
     // read — three seconds in, at this poller's own interval — so the reads
@@ -535,6 +723,26 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     // Documented (PC, see yaesu_cat_codec.dart) but NOT part of the bench
     // verification this driver's freq/mode path has — see the file header.
     _send(buildReadPowerCommand());
+    // On every poll while a tune runs, so its outcome shows when it lands
+    // rather than a whole tuner interval later.
+    if (_pollsUntilTunerRead > 0 && _tuner != TunerStatus.tuning) {
+      _pollsUntilTunerRead--;
+    } else {
+      _pollsUntilTunerRead = yaesuTunerReadEvery - 1;
+      _readTuner();
+    }
+    if (_pollsUntilPassbandRead > 0) {
+      _pollsUntilPassbandRead--;
+    } else {
+      _pollsUntilPassbandRead = yaesuPassbandReadEvery - 1;
+      _readPassband();
+    }
+    if (_pollsUntilAntennaRead > 0) {
+      _pollsUntilAntennaRead--;
+    } else {
+      _pollsUntilAntennaRead = yaesuAntennaReadEvery - 1;
+      _readAntenna();
+    }
   }
 
   /// Reports upward, and tells the poller whether the radio is moving.
@@ -545,11 +753,21 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     // every connection into 200ms polling for the second or so it takes to
     // ramp back, for a radio nobody is touching.
     final first = _lastReported == null;
+    final modeChanged = merged.mode != _lastReported?.mode;
     if (merged != _lastReported) {
       _lastReported = merged;
       if (!first) _poller.noteChange();
     }
     _sink.report(reading);
+    // A filter is the mode's: the width and shift the radio had for the
+    // last one say nothing about this one.
+    if (modeChanged && merged.mode != null) {
+      if (yaesuWidthGroupFor(merged.mode) == null) {
+        _reportPassband(null);
+      } else {
+        _readPassband();
+      }
+    }
   }
 
   @override
@@ -561,7 +779,18 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     // Yaesu CAT is ASCII, not binary like CI-V. `allowInvalid` because a
     // line-noise byte on a serial link must not throw out of a stream
     // callback — the framer will simply not match it as a command.
-    for (final command in _framer.add(ascii.decode(chunk, allowInvalid: true))) {
+    final text = ascii.decode(chunk, allowInvalid: true);
+    // Before the commands it arrived with: an `AC` answer in the same chunk
+    // clears it again, which is right whichever came first — the tuner was
+    // answered, so the refusal was of something else.
+    // Not on the air: a radio may refuse commands it will not handle while
+    // transmitting, and a long over would otherwise end these reads for the
+    // connection.
+    final refused = !_telemetry.transmitting && text.contains(yaesuRefusal);
+    if (_tunerAsked && refused) _refusedSinceTunerAsk = true;
+    if (_passbandAsked && refused) _refusedSincePassbandAsk = true;
+    if (_antennaAsked && refused) _refusedSinceAntennaAsk = true;
+    for (final command in _framer.add(text)) {
       _handle(command);
     }
   }
@@ -629,6 +858,58 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
         // memory it was meant to end would play to the ceiling instead.
         _handleVoiceTransmit(command.params);
 
+      case 'AC':
+        // Only while this session still asks: after it has given up, an `AC`
+        // on the line is another program's question being answered.
+        if (_noTuner) return;
+        final status = switch (parseTunerParams(command.params)) {
+          0 => TunerStatus.bypassed,
+          1 => TunerStatus.inline,
+          2 => TunerStatus.tuning,
+          _ => null,
+        };
+        if (status == null) return;
+        _tunerAsked = false;
+        _tunerRefusals = 0;
+        _tuner = status;
+        if (_sink case final TunerSink sink) sink.reportTuner(status);
+
+      case 'ID':
+        if (_identified) return;
+        final id = parseIdParams(command.params);
+        if (id == null) return;
+        _identified = true;
+        _widthProfile = yaesuWidthProfilesById[id];
+        _antennaPorts = yaesuAntennaPortsById[id];
+        _readPassband();
+        _readAntenna();
+
+      // Only on a radio with ports, and only while this session still asks —
+      // the same reasoning as `AC`. A port the radio names but [_antennaPorts]
+      // leaves out (ANT3, see yaesuAntennaPortsById) is reported as unknown
+      // rather than as one of the others.
+      case 'AN' when _antennaPorts != null && !_noAntennas:
+        final port = parseAntennaParams(command.params);
+        if (port == null) return;
+        _antennaAsked = false;
+        _antennaRefusals = 0;
+        final ports = _antennaPorts!;
+        final name = port <= ports.length ? ports[port - 1] : null;
+        _reportAntennas(RadioAntennas(rxPorts: ports, txPorts: ports, rx: name, tx: name));
+
+      // Only on a radio with a profile, and only while this session still
+      // asks — after it has given up, these are another program's answers.
+      case 'NA' when _widthProfile != null && !_noPassband:
+        _narrowOn = parseNarrowParams(command.params) ?? _narrowOn;
+      case 'IS' when _widthProfile != null && !_noPassband:
+        _shiftHz = parseShiftParams(command.params, _widthProfile!) ?? _shiftHz;
+      case 'SH' when _widthProfile != null && !_noPassband:
+        final index = parseWidthParams(command.params, _widthProfile!);
+        if (index == null) return;
+        _passbandAsked = false;
+        _passbandRefusals = 0;
+        _reportPassband(_passbandFor(index));
+
       case 'KS':
         final wpm = parseKeyerSpeedParams(command.params);
         if (wpm != null) {
@@ -691,6 +972,40 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     } else {
       _send(buildSetHeadPowerCommand(head, watts));
     }
+  }
+
+  /// Sets, then reads back, as [setKeyerSpeed] does. Never starts a tune —
+  /// see [buildSetTunerCommand].
+  @override
+  void setTuner({required bool inline}) {
+    if (_noTuner) return;
+    _send(buildSetTunerCommand(inline: inline));
+    _readTuner();
+  }
+
+  /// The nearest width the radio offers in its present mode and NARROW
+  /// state, then a read-back — never a mode, a NARROW switch or a shift.
+  @override
+  void setPassband(Passband passband) {
+    final profile = _widthProfile;
+    final group = yaesuWidthGroupFor(_lastReported?.mode);
+    if (profile == null || _noPassband || group == null) return;
+    final index = profile.table(group).nearestIndex(passband.widthHz, narrowOn: _narrowOn);
+    if (index == null) return;
+    _send(buildSetWidthCommand(profile, index));
+    _readPassband();
+  }
+
+  /// Sets, then reads back. One port serves both directions here, so [rx]
+  /// names it, or [tx] where [rx] is absent; a name the radio has no port
+  /// by sends nothing.
+  @override
+  void setAntenna({String? rx, String? tx}) {
+    final ports = _antennaPorts;
+    final port = rx ?? tx;
+    if (ports == null || _noAntennas || port == null || !ports.contains(port)) return;
+    _send(buildSetAntennaCommand(ports.indexOf(port) + 1));
+    _readAntenna();
   }
 
   @override
@@ -814,7 +1129,13 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   @override
   void startUpdates() {
     _framer.reset();
+    _pollsUntilTunerRead = 0;
+    _pollsUntilPassbandRead = 0;
+    _pollsUntilAntennaRead = 0;
     _send(buildAutoInformationCommand(true));
+    // First, so the answer is in before the mode's, whose arrival is what
+    // reads the filter.
+    _send(buildReadIdCommand());
     _requestFrequencyAndMode();
     // Once, not per poll — the same reasoning as the Icom driver's: the
     // speed changes only when someone turns the knob, and the dialog that

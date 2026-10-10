@@ -2139,9 +2139,11 @@ export interface ExtensionManifest {
   /// that sets neither this nor `requiresRadioWrite`.
   requiresRadioRead?: boolean
   /// Declares this extension's bundle may command the operator's radios —
-  /// `host.tuneRadio()`, `host.setRadioConnection()` and
-  /// `host.setRadioSpectrum()`. Implies
-  /// `requiresRadioRead`, since a command answers with the radio's state.
+  /// `host.setRadio()`, `host.setRadioConnection()`,
+  /// `host.setRadioSpectrum()` — and transmit with them: `host.sendRadioCw()`,
+  /// `host.playRadioVoice()`, `host.setRadioPtt()` and
+  /// `host.stopRadioTransmit()`. Implies `requiresRadioRead`, since a command
+  /// answers with the radio's state.
   requiresRadioWrite?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
@@ -2859,6 +2861,38 @@ export interface PanelRadioState {
   transmitting: boolean | null
   meters: Partial<Record<"signalDbm" | "powerOut" | "swr" | "alc" | "supplyVolts", number>>
   canTune: boolean
+  /** The model's rated output ceiling, where the app knows it (extension API 7). */
+  maxWatts?: number | null
+  /**
+   * The radio's antenna tuner as it reports it, or null for a radio without one, or whose driver
+   * cannot read it (extension API 7).
+   */
+  tuner?: "inline" | "bypassed" | "tuning" | "failed" | null
+  /**
+   * The receive filter's edges in Hz from the tuned frequency, as the radio shows them — `100`…`2800`
+   * in USB, `-2800`…`-100` in LSB, around zero in CW — or null where its driver cannot read it
+   * (extension API 7).
+   */
+  passband?: { lowHz: number; highHz: number } | null
+  /**
+   * The radio's own antenna ports, by the radio's names, and which it uses — or null where its driver
+   * cannot read them. `separate`: it picks receive and transmit antennas independently, as a FlexRadio
+   * does; otherwise one port serves both (extension API 7).
+   */
+  antennas?: { rxPorts: string[]; txPorts: string[]; rx: string | null; tx: string | null; separate: boolean } | null
+  /** The modes `setRadio` accepts for this radio, in the radio's order (extension API 7). */
+  modes?: string[]
+  /**
+   * What the app keys with, while this is the logging radio, connected, and the app's keying
+   * is on; null otherwise (extension API 7).
+   */
+  keying?: PanelRadioKeying | null
+  /**
+   * The last transmission the radio finished since the app started: its average SWR over the readings taken with
+   * RF out (null when there were none), and when it ended in real milliseconds — compare it with
+   * `clock.realNowMillis` (extension API 7).
+   */
+  lastTransmission?: { swrAverage: number | null; endedAtMillis: number } | null
   /**
    * The radio's scope, on hosts with the panadapter enabled: absent there otherwise, and null
    * for a radio without one. The sweeps are never sent — a `spectrum` scene control draws them.
@@ -2894,21 +2928,68 @@ export interface PanelRadioSpectrumSet {
   refLevelDb?: number
   speed?: PanelRadioSpectrumSpeed
 }
-export interface PanelRadioTune {
+/** The logging radio's keying: the designated key, radio1's voice memories and its PTT. */
+export interface PanelRadioKeying {
+  canKeyCw: boolean
+  cwSending: boolean
+  /** The key's own report, clamping included; null before it has said. */
+  keyerSpeedWpm: number | null
+  keyerSpeedRange: { min: number; max: number } | null
+  canPtt: boolean
+  /** Whether the app's PTT latch is holding the transmitter. */
+  ptt: boolean
+  /** Empty when the radio plays none. `number` is what `playRadioVoice` takes. */
+  voiceMemories: { number: number; label: string }[]
+}
+/** A radio identity and selection, as every command carries. */
+export interface PanelRadioTarget {
   /** Reject if this identity no longer matches the selected radio. */
   id: string
   /** Pin a local radio by ID; omitted means follow the designated radio. */
   selection?: string
-  frequencyHz?: number
-  mode?: "LSB" | "USB" | "CW" | "AM" | "FM"
 }
-export interface PanelRadioTuneResult {
+export interface PanelRadioSet extends PanelRadioTarget {
+  frequencyHz?: number
+  /**
+   * The frequency comes from an on-screen dial turning, not a typed or clicked target: on the
+   * logging radio, the app's Smart VFO Snap settles it like the radio's own knob (extension API 7).
+   */
+  dial?: boolean
+  /** One of the radio's `modes`. */
+  mode?: string
+  /** Up to `maxWatts` where the radio states one. On the logging radio this is the power the next QSO logs. */
+  powerWatts?: number
+  /** The logging radio's keyer; refused as `unsupported` where `keying.canKeyCw` is false. */
+  keyerSpeedWpm?: number
+  /**
+   * Puts the antenna tuner in line or bypasses it; refused as `unsupported` where `tuner` is null.
+   * On a FlexRadio, in line is a TUNE — a carrier on the air — since its tuner has no other way in.
+   */
+  tunerInline?: boolean
+  /**
+   * The receive filter, as `passband` reports it; refused as `unsupported` where that is null. A
+   * radio that sets only a width from a table takes the nearest, keeping its own shift — read the
+   * result back from `passband`.
+   */
+  passband?: { lowHz: number; highHz: number }
+  /** Ports from `antennas`; refused as `unsupported` where that is null. Without `separate`, either names the one port. */
+  antenna?: { rx?: string; tx?: string }
+}
+/** @deprecated `setRadio`'s argument through extension API 6. */
+export type PanelRadioTune = PanelRadioSet
+export interface PanelRadioResult {
   /** Accepted by the host; confirmation still comes from reported state. */
   accepted: boolean
-  /** `stopped`: a scope change while no display has the scope running — nothing was sent. */
-  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped"
+  /**
+   * `stopped`: a scope change while no display has the scope running — nothing was sent.
+   * `unsupported`: this radio, or the app's keying, cannot do it — keying calls on a radio that
+   * is not the logging radio, or with the app's keying off.
+   */
+  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped" | "unsupported"
   state: PanelRadioState | null
 }
+/** @deprecated `PanelRadioResult`'s name through extension API 6. */
+export type PanelRadioTuneResult = PanelRadioResult
 
 /// The context a panel renders against. Deliberately NOT the whole log: an
 /// operation's QSOs are fetched on demand through `ctx.getQsos`, which the

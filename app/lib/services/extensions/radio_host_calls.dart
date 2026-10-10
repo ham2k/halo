@@ -8,16 +8,29 @@ import '../panel_radio_service.dart';
 
 /// The radio host calls and the manifest capabilities that gate them:
 /// `requiresRadioRead` for `listRadios`/`readRadio`, `requiresRadioWrite` for
-/// `tuneRadio`/`setRadioConnection`/`setRadioSpectrum`. Without the gate any installed bundle
-/// could retune the rig or drop the CAT link from any hook, with nothing in
-/// its manifest saying so.
+/// everything that commands one — settings, connection, scope, and keying
+/// (CW, voice memories, PTT). Without the gate any installed bundle could
+/// retune the rig, drop the CAT link or key the transmitter from any hook,
+/// with nothing in its manifest saying so.
+///
+/// `tuneRadio` is `setRadio`'s name through extension API 6, still answered
+/// for bundles built against it.
 ///
 /// `params['extensionKey']` is the caller's identity only because the kernel
 /// stamps it (kernel.ts `IDENTITY_HOST_METHODS`); a method missing from that
 /// list arrives carrying whatever the extension chose to write there.
 class RadioHostCalls {
   static const _reads = {'listRadios', 'readRadio'};
-  static const _writes = {'tuneRadio', 'setRadioConnection', 'setRadioSpectrum'};
+  static const _writes = {
+    'setRadio',
+    'tuneRadio',
+    'setRadioConnection',
+    'setRadioSpectrum',
+    'sendRadioCw',
+    'playRadioVoice',
+    'setRadioPtt',
+    'stopRadioTransmit',
+  };
 
   static bool handles(String method) => _reads.contains(method) || _writes.contains(method);
 
@@ -39,6 +52,10 @@ class RadioHostCalls {
   /// spectrum, which the host draws for it without the data crossing.
   bool canRead(String? extensionKey) => _read.allows(extensionKey);
 
+  /// Whether [extensionKey] may command the radio — and so have a scene's
+  /// spectrum move the radio's scope to follow the VFO.
+  bool canWrite(String? extensionKey) => _write.allows(extensionKey);
+
   Future<dynamic> handle(String method, Map<String, dynamic> params) async {
     final write = _writes.contains(method);
     final extensionKey = params['extensionKey'] as String?;
@@ -54,7 +71,11 @@ class RadioHostCalls {
       'readRadio' => radio?.read(params['id'] as String?),
       'setRadioConnection' => radio?.setConnection(params) ?? unavailable,
       'setRadioSpectrum' => radio?.setSpectrum(params) ?? unavailable,
-      _ => await radio?.tune(params) ?? unavailable,
+      'sendRadioCw' => radio?.sendCw(params) ?? unavailable,
+      'playRadioVoice' => radio?.playVoice(params) ?? unavailable,
+      'setRadioPtt' => radio?.setPtt(params) ?? unavailable,
+      'stopRadioTransmit' => radio?.stopTransmit(params) ?? unavailable,
+      _ => await radio?.set(params) ?? unavailable,
     };
   }
 }

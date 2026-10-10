@@ -363,6 +363,31 @@ void main() {
       expect(session.commands, ['freq:14285.0']);
     });
 
+    test('an on-screen dial is a knob turning: snapped like the radio\'s own', () async {
+      // A dial step is not a target — the operator is still moving — so its
+      // last value is rounded once the dial stops, as the radio's knob is.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      fakeAsync((async) {
+        radio.setVfo('vfoA', freq: 14285.43, origin: VfoOrigin.dial);
+        async.elapse(quiet - const Duration(milliseconds: 50));
+        expect(session.commands, ['freq:14285.43'], reason: 'the dial tunes at once; only the settle waits');
+        async.elapse(const Duration(milliseconds: 100));
+      });
+      expect(session.commands, ['freq:14285.43', 'freq:14285.4']);
+      expect(radio.vfoA.freq, 14285.4);
+    });
+
+    test('a typed frequency is exact, and is never snapped', () async {
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      fakeAsync((async) {
+        radio.setVfo('vfoA', freq: 14285.43);
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands, ['freq:14285.43']);
+    });
+
     test('CW is never snapped', () async {
       await settings.setSmartVfoSnap(true);
       final session = await restingRadio(restingKHz: 14031.0, mode: 'CW');
@@ -509,14 +534,12 @@ void main() {
       // setting doing nothing.
       await settings.setSmartVfoSnap(true);
       final session = await restingRadio();
-      await settings.setSettingValue(SettingsService.radioGroup, 'smartVfoSnapDebounceMs', '1000');
+      await settings.setSettingValue(SettingsService.radioGroup, 'smartVfoSnapDebounceMs', '50');
       fakeAsync((async) {
         session.radioReports(freqKHz: 14285.43);
-        async.elapse(quiet * 2);
-        expect(session.commands, isEmpty, reason: 'the default period has passed, the new one has not');
-        async.elapse(const Duration(milliseconds: 500));
+        async.elapse(const Duration(milliseconds: 100));
+        expect(session.commands, ['freq:14285.4'], reason: 'the new period has passed, the default one has not');
       });
-      expect(session.commands, ['freq:14285.4']);
     });
 
     test('a polling session buys itself one poll period before the delay counts', () async {

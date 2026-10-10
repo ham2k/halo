@@ -7,7 +7,7 @@
   "category": "dashboard",
   "icon": "waveform",
   "accentColor": "#4C6EF5",
-  "api": 6,
+  "api": 7,
   "keywords": ["radio", "panadapter", "waterfall", "spectrum", "panel", "sample"],
   "hooks": ["panel"],
   "requiresRadioWrite": true,

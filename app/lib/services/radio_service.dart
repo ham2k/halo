@@ -34,10 +34,12 @@ const _persistDebounce = Duration(seconds: 2);
 /// through [RadioService]'s notification, and must not then re-tune the
 /// radio to the value the radio just gave it. See docs/design/cat.md.
 ///
-/// Deliberately two values, not three: a command action and a keystroke
-/// both mean "the operator wants the radio here", and nothing treats them
-/// differently.
-enum VfoOrigin { user, radio }
+/// A command action and a keystroke are both [user]: they mean "the operator
+/// wants the radio here", and nothing treats them differently. [dial] is the
+/// operator too, turning an on-screen dial — the radio is tuned the same, but
+/// it is a knob MOVING, which Smart VFO Snap settles like the radio's own
+/// knob, where a typed frequency is an exact target it must not round.
+enum VfoOrigin { user, radio, dial }
 
 class RadioService extends ChangeNotifier implements VfoStore {
   final SharedPreferences _prefs;

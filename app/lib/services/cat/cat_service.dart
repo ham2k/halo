@@ -52,6 +52,8 @@ export 'main_vfo.dart';
 
 part 'cat_node_sink.dart';
 part 'cat_spectrum.dart';
+part 'cat_node_runtime.dart';
+part 'cat_radio_controls.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -162,7 +164,7 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
   return '$base $n';
 }
 
-class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStation {
+class CatService extends ChangeNotifier with _RadioControls implements PeerStationRadios, KeyingStation {
   final SettingsService _settings;
   final EquipmentRegistry registry;
 
@@ -175,6 +177,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   final Map<String, EquipmentNode> _nodes = {};
 
   /// Live per-node connection state. Never persisted.
+  @override
   final Map<String, _NodeRuntime> _runtimes = {};
 
   /// Set by [dispose]. The reconnect loop parks on an uncancellable delay,
@@ -795,26 +798,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   /// and one app-wide value is what keeps them agreeing.
   void setPower(num watts) {
     final uuid = _localRadio1;
-    if (uuid == null) return;
-    final runtime = _runtimes[uuid];
-    final session = runtime?.session;
-    // Only a transceiver has RF output to set. radio1 is always one today,
-    // so this is a type narrowing rather than a reachable branch — but the
-    // designation is a stored uuid, and nothing stops a record naming a
-    // switch from being read back into it.
-    if (session is! TransceiverSession) return;
-    // The same echo guard [tuneNode] applies, and needed for the same
-    // reason: every VFO notification — a typed frequency, a band pick —
-    // arrives here too, and without this each one re-sends a power command
-    // the radio already obeyed. Recorded only after the command lands, so a
-    // throw doesn't leave a value remembered as delivered.
-    if (runtime!.lastSentPower == watts) return;
-    try {
-      session.setPower(watts);
-      runtime.lastSentPower = watts;
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:set-power');
-    }
+    if (uuid != null) setNodePower(uuid, watts);
   }
 
   /// The repeat chain (keyer_repeat.dart) — one engine for both keyers,
@@ -902,6 +886,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     _ => null,
   };
   bool get canPtt => _pttSession(_localRadio1) != null;
+
+  /// Whether the app's PTT key is on the logging radio — [pttKeys]' `held` is true for a key on any radio.
+  bool get pttHeldOnRadio1 => _ptt.heldOn(_pttSession(_localRadio1));
   void togglePtt(String radio) {
     final session = _pttSession(radio);
     if (session == null) return;
@@ -1777,8 +1764,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // reports it as a reading or calls reportAlive itself.
         final state = stateFor(uuid);
         if (state.telemetry.transmitting == transmitting) return;
+        if (transmitting) {
+          runtime.startTransmission();
+        } else if (state.telemetry.transmitting == true) {
+          runtime.endTransmission();
+        }
         _setState(uuid, state.copyWith(telemetry: state.telemetry.withTransmitting(transmitting)));
         _ptt.onTransmitting(runtime.session, transmitting);
+        _meterReadings.notify();
       },
       onMeter: (meter, value) {
         if (runtime.connection != connection) return;
@@ -1788,6 +1781,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // (docs/design/time.md) — developer time travel moves the whole app,
         // expiry included.
         final telemetry = state.telemetry.withMeter(meter, value, nowMillis());
+        if (meter == RadioMeter.swr) {
+          runtime.noteSwr(value, powerOut: state.telemetry.meters[RadioMeter.powerOut]?.value, transmitting: state.telemetry.transmitting);
+        }
         // A meter answering with the number it answered with last time is
         // not news. The timestamp still has to move — that is what keeps
         // the reading from expiring under a steady transmission — but at
@@ -1799,6 +1795,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // the radio is connected — and what reads it, an extension's
         // `readRadio`, polls the state rather than listening for it.
         _setState(uuid, state.copyWith(telemetry: telemetry), notify: meter != RadioMeter.signalDbm && previous?.value != value);
+        // An SWR reading moves the running average even when it repeats the last one.
+        if (previous?.value != value || meter == RadioMeter.swr) _meterReadings.notify();
       },
       onCwProgress: (progress) {
         if (runtime.connection != connection) return;
@@ -1895,6 +1893,18 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
       onSpectrumProblem: (message) {
         if (runtime.connection != connection || stateFor(uuid).spectrumProblem == message) return;
         _setState(uuid, stateFor(uuid).copyWith(spectrumProblem: message, clearSpectrumProblem: message == null));
+      },
+      onTuner: (status) {
+        if (runtime.connection != connection || stateFor(uuid).tuner == status) return;
+        _setState(uuid, stateFor(uuid).copyWith(tuner: status, clearTuner: status == null));
+      },
+      onPassband: (passband) {
+        if (runtime.connection != connection || stateFor(uuid).passband == passband) return;
+        _setState(uuid, stateFor(uuid).copyWith(passband: passband, clearPassband: passband == null));
+      },
+      onAntennas: (antennas) {
+        if (runtime.connection != connection || stateFor(uuid).antennas == antennas) return;
+        _setState(uuid, stateFor(uuid).copyWith(antennas: antennas, clearAntennas: antennas == null));
       },
     );
     // driverConfig, not config: a type may know something about its
@@ -2394,8 +2404,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     // spot — is exact intent and is where the next knob turn is measured
     // from. Any snap still pending was decided against a frequency nobody is
     // on any more. (Our OWN snap arrives here too, harmlessly: it rebases to
-    // the value the snapper already settled on.)
-    _cancelSnap(radio.vfoA.freq);
+    // the value the snapper already settled on.) An on-screen dial is the
+    // exception: it is a knob turning, measured like the radio's own.
+    if (radio.lastVfoOrigin == VfoOrigin.dial) {
+      _noteSnapReading(VfoReading(freqKHz: radio.vfoA.freq, mode: radio.vfoA.mode));
+    } else {
+      _cancelSnap(radio.vfoA.freq);
+    }
 
     // The baseline moves here, ahead of the returns below, so it tracks the
     // app's power whether or not there is a radio to tell. A power stated
@@ -2600,6 +2615,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     }
   }
 
+  /// Fires on every meter reading that changed and every TX change, the
+  /// receive signal included — unlike the service itself, which stays quiet
+  /// for the signal because band noise would rebuild every listener for as
+  /// long as a radio is connected — and whenever the service notifies: a
+  /// radio that disconnects or goes stale sends no reading to say so. For
+  /// what draws meters live (a scene's `radio.` values), and nothing else.
+  late final Listenable meterReadings = Listenable.merge([_meterReadings, this]);
+  final _meterReadings = _MeterReadings();
+
   @override
   void dispose() {
     _disposed = true;
@@ -2624,6 +2648,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
     pttKeys.dispose();
     _ptt.dispose();
     _repeat.dispose();
+    _meterReadings.dispose();
     _runtimes.clear();
     super.dispose();
   }
@@ -2639,54 +2664,4 @@ class EquipmentSecretNotStored implements Exception {
   String toString() =>
       "Could not save the radio's password to the system keychain. It may be "
       'locked, or unavailable on this machine.';
-}
-
-class _NodeRuntime {
-  EquipmentState state = const EquipmentState();
-  EquipmentConnection? connection;
-  EquipmentSession? session;
-  StreamSubscription<Uint8List>? subscription;
-  CatCancelToken? cancel;
-
-  /// The last value moved between this node and the app's VFO, in either
-  /// direction — the echo guard. Without it an app→radio tune and the
-  /// radio's confirmation of it keep re-triggering each other.
-  VfoReading? lastSent;
-
-  /// What this connection has heard the radio itself say ([RadioProofWatch]).
-  final proof = RadioProofWatch();
-
-  /// [lastSent]'s counterpart for transmit power, which travels on its own
-  /// commands rather than inside a [VfoReading].
-  num? lastSentPower;
-
-  /// Per-node, deliberately: two overlapping connects to the SAME node race
-  /// to own it, and the loser must not install its connection.
-  int attemptSeq = 0;
-
-  /// Watches for a connection that is up but saying nothing — see
-  /// [EquipmentState.stale].
-  Timer? staleTimer;
-
-  /// The operator pressed Disconnect. Distinct from every other route to
-  /// `disconnected`, and the distinction is the whole safety of the idle
-  /// retry: without it, "off because I said so" and "off because the radio
-  /// vanished" are the same state, and a retry loop would keep switching the
-  /// radio back on under the operator. app-polo's auto-reconnect did exactly
-  /// that. Cleared by [connect], so asking for it again resumes retrying.
-  bool userDisconnected = false;
-
-  /// The last attempt opened the port and refused it over its control lines
-  /// ([SerialFailure.lines]) — hardware flow control another program left
-  /// on, which lasts until the cable is replugged. Retrying on its own would
-  /// only open the port again, and opening raises RTS: on a Digirig, a key-up
-  /// per retry for the rest of the session. Cleared by [connect], the
-  /// operator's own try after replugging.
-  bool linesRefused = false;
-
-  /// See [CatService.spectrumFrames]. Created by the first display to ask.
-  StreamController<SpectrumFrame>? spectrum;
-
-  /// Whether this connection's scope was started — what a demand changes.
-  bool spectrumStarted = false;
 }

@@ -172,6 +172,8 @@ void main() {
       final sink = _Sink();
       final session = _session(sink, key);
       _receive(session, _info());
+      // The first mode reading asks for the passband (cat_kenwood_passband_test.dart).
+      sink.sent.clear();
       session.setFrequency(14250);
       expect(sink.sent, ['FA00014250000;'], reason: 'same-band tuning must not recall band settings');
       sink.sent.clear();

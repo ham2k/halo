@@ -103,6 +103,10 @@ class SpectrumCapabilities {
   final Set<SpectrumMode> modes;
   final Set<SpectrumSpeed> speeds;
 
+  /// Whether [SpectrumRequest.centerHz] moves what the scope shows — a scope
+  /// whose window the radio places independently of the VFO.
+  final bool canRecenter;
+
   const SpectrumCapabilities({
     required this.spansHz,
     required this.refMinDb,
@@ -110,6 +114,7 @@ class SpectrumCapabilities {
     required this.refStepDb,
     this.modes = const {SpectrumMode.center},
     this.speeds = const {},
+    this.canRecenter = false,
   });
 
   int snapSpan(int hz) => spansHz.reduce((a, b) => (a - hz).abs() <= (b - hz).abs() ? a : b);
@@ -125,7 +130,10 @@ class SpectrumRequest {
   final double? refLevelDb;
   final SpectrumSpeed? speed;
 
-  const SpectrumRequest({this.mode, this.spanHz, this.refLevelDb, this.speed});
+  /// Where to centre the window, for a scope that [SpectrumCapabilities.canRecenter].
+  final int? centerHz;
+
+  const SpectrumRequest({this.mode, this.spanHz, this.refLevelDb, this.speed, this.centerHz});
 }
 
 /// A session whose radio can stream its panadapter.

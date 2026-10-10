@@ -114,6 +114,258 @@ String buildSetHeadPowerCommand(int head, num watts) {
   return tenths % 10 == 0 ? 'PC1${(tenths ~/ 10).toString().padLeft(3, '0')};' : 'PC1${(tenths / 10).toStringAsFixed(1)};';
 }
 
+/// `AC;` reads the antenna tuner. The answer is `ACP1P2P3;`: P1P2 a fixed
+/// `00`, P3 `0` tuner off (bypassed), `1` tuner on (in line), `2` tuning.
+/// On the FT-891, which has no tuner of its own, it is the external FC-50 or
+/// ATAS the radio drives. From the CAT manuals, not a capture.
+String buildReadTunerCommand() => 'AC;';
+
+/// `AC001;` puts the tuner in line, `AC000;` bypasses it. P3 `2` STARTS A
+/// TUNE — a carrier on the air — and is never sent: this app reads a tune,
+/// it does not start one, which is why this takes a bool and not a P3.
+String buildSetTunerCommand({required bool inline}) => 'AC00${inline ? 1 : 0};';
+
+/// `001` → 1, the P3 of [buildReadTunerCommand]'s answer. Null for anything
+/// but `00` followed by `0`, `1` or `2`.
+int? parseTunerParams(String params) => RegExp(r'^00[012]$').hasMatch(params) ? int.parse(params[2]) : null;
+
+/// `ID;` asks which radio is on the line; the answer is `IDnnnn;`, a number
+/// each CAT manual gives its own radio. Read-only on every one of them.
+String buildReadIdCommand() => 'ID;';
+
+/// `0650` → `0650`. Null unless it's exactly four digits.
+String? parseIdParams(String params) => RegExp(r'^\d{4}$').hasMatch(params) ? params : null;
+
+/// The modes whose receive filter `SH` reads as a width this app can place.
+/// RTTY and DATA are left out: where their passband sits depends on a mark
+/// frequency or a DATA menu the session does not read.
+enum YaesuWidthGroup { ssb, cw }
+
+YaesuWidthGroup? yaesuWidthGroupFor(String? mode) => switch (mode) {
+  'USB' || 'LSB' => YaesuWidthGroup.ssb,
+  'CW' || 'CW-R' => YaesuWidthGroup.cw,
+  _ => null,
+};
+
+/// One group's `SH` table: index → Hz.
+///
+/// Where the radio's NARROW switch (`NA`) splits the table, [narrow] and
+/// [wide] are the run of indices offered in each state, and `00` means that
+/// state's default width. Where it does not, `00` follows the roofing
+/// filter, which nothing here reads, and is not a width at all.
+class YaesuWidthTable {
+  final Map<int, int> widths;
+  final ({int first, int last, int defaultHz})? narrow, wide;
+  const YaesuWidthTable(this.widths, {this.narrow, this.wide});
+
+  /// Hz for [index]; null where it cannot be known — `00` without a split,
+  /// or with one while the NARROW state is unknown.
+  int? widthHz(int index, {bool? narrowOn}) {
+    if (index != 0) return widths[index];
+    if (narrowOn == null) return null;
+    return (narrowOn ? narrow : wide)?.defaultHz;
+  }
+
+  /// The index whose width is nearest [hz], the narrower on a tie. Only
+  /// indices the radio offers in its present NARROW state, so a set never
+  /// has to move the switch; null where that state is unknown. Never `00`:
+  /// a set names a width.
+  int? nearestIndex(int hz, {bool? narrowOn}) {
+    final split = narrowOn == null ? null : (narrowOn ? narrow : wide);
+    if (narrow != null && split == null) return null;
+    int? best;
+    for (final MapEntry(key: index, value: width) in widths.entries) {
+      if (split != null && (index < split.first || index > split.last)) continue;
+      if (best == null || (width - hz).abs() < (widths[best]! - hz).abs()) best = index;
+    }
+    return best;
+  }
+}
+
+/// How `IS` (IF shift) is laid out: after P1, the FT-891 has an on/off digit,
+/// the FTDX10 and FT-710 a fixed `0`, the FT-991 and FT-991A nothing.
+enum YaesuShiftForm { onOff, fixedZero, bare }
+
+/// Everything about one radio's receive filter over CAT: its `SH` tables and
+/// the shape of its `SH` and `IS` commands.
+class YaesuWidthProfile {
+  final YaesuWidthTable ssb, cw;
+
+  /// What a set puts before the two index digits.
+  final String setPrefix;
+
+  /// `SH` answer params: P1 and the index, with an on/off or fixed digit
+  /// between them where [setPrefix] has one.
+  final int widthParamsLength;
+
+  final YaesuShiftForm shiftForm;
+
+  const YaesuWidthProfile({required this.ssb, required this.cw, required this.setPrefix, required this.widthParamsLength, required this.shiftForm});
+
+  /// Whether `NA` decides what `SH` means, and so has to be read with it.
+  bool get readsNarrow => ssb.narrow != null || cw.narrow != null;
+
+  YaesuWidthTable table(YaesuWidthGroup group) => switch (group) {
+    YaesuWidthGroup.ssb => ssb,
+    YaesuWidthGroup.cw => cw,
+  };
+}
+
+/// The FT-891's and FT-991's (and FT-991A's) shared table, from their CAT
+/// Operation Reference Books: one list of widths, NARROW offering the low
+/// end and WIDE the high, overlapping by one index.
+const _ft891SsbWidths = {
+  1: 200, 2: 400, 3: 600, 4: 850, 5: 1100, 6: 1350, 7: 1500, 8: 1650, 9: 1800, 10: 1950, 11: 2100, //
+  12: 2200, 13: 2300, 14: 2400, 15: 2500, 16: 2600, 17: 2700, 18: 2800, 19: 2900, 20: 3000, 21: 3200,
+};
+const _ft891CwWidths = {
+  1: 50, 2: 100, 3: 150, 4: 200, 5: 250, 6: 300, 7: 350, 8: 400, 9: 450, 10: 500, //
+  11: 800, 12: 1200, 13: 1400, 14: 1700, 15: 2000, 16: 2400, 17: 3000,
+};
+const _ft891SsbTable = YaesuWidthTable(_ft891SsbWidths, narrow: (first: 1, last: 9, defaultHz: 1500), wide: (first: 9, last: 21, defaultHz: 2400));
+const _ft891CwTable = YaesuWidthTable(_ft891CwWidths, narrow: (first: 1, last: 10, defaultHz: 500), wide: (first: 10, last: 17, defaultHz: 2400));
+
+/// The FTDX10's and FT-710's SSB table — the FTDX10's English and the
+/// FT-710's Japanese CAT manual agree on it. hamlib's `newcat` gives both
+/// radios the FTDX101's instead, which reads 2200/2300/2400 at 12-14 where
+/// both manuals say 2250/2400/2450; the manuals are taken.
+const _ftdx10SsbWidths = {
+  1: 300, 2: 400, 3: 600, 4: 850, 5: 1100, 6: 1200, 7: 1500, 8: 1650, 9: 1800, 10: 1950, 11: 2100, 12: 2250, //
+  13: 2400, 14: 2450, 15: 2500, 16: 2600, 17: 2700, 18: 2800, 19: 2900, 20: 3000, 21: 3200, 22: 3500, 23: 4000,
+};
+
+/// The FTDX10's CW table, which runs to 21; the FT-710's has no 3200 Hz and
+/// stops at 20 — same indices to 18, different from there.
+const _ftdx10CwWidths = {
+  1: 50, 2: 100, 3: 150, 4: 200, 5: 250, 6: 300, 7: 350, 8: 400, 9: 450, 10: 500, 11: 600, //
+  12: 800, 13: 1200, 14: 1400, 15: 1700, 16: 2000, 17: 2400, 18: 3000, 19: 3200, 20: 3500, 21: 4000,
+};
+const _ft710CwWidths = {
+  1: 50, 2: 100, 3: 150, 4: 200, 5: 250, 6: 300, 7: 350, 8: 400, 9: 450, 10: 500, 11: 600, //
+  12: 800, 13: 1200, 14: 1400, 15: 1700, 16: 2000, 17: 2400, 18: 3000, 19: 3500, 20: 4000,
+};
+
+/// FT-891: `SH0` + on/off + index. The manual does not say what index an
+/// OFF answer means; hamlib writes the digit as `1` and reads the index
+/// whatever it says, and so does this.
+const _ft891Profile = YaesuWidthProfile(ssb: _ft891SsbTable, cw: _ft891CwTable, setPrefix: 'SH01', widthParamsLength: 4, shiftForm: YaesuShiftForm.onOff);
+
+/// FT-991 and FT-991A: `SH0` + index, nothing between.
+const _ft991Profile = YaesuWidthProfile(ssb: _ft891SsbTable, cw: _ft891CwTable, setPrefix: 'SH0', widthParamsLength: 3, shiftForm: YaesuShiftForm.bare);
+
+const _ftdx10Profile = YaesuWidthProfile(
+  ssb: YaesuWidthTable(_ftdx10SsbWidths),
+  cw: YaesuWidthTable(_ftdx10CwWidths),
+  setPrefix: 'SH00',
+  widthParamsLength: 4,
+  shiftForm: YaesuShiftForm.fixedZero,
+);
+
+const _ft710Profile = YaesuWidthProfile(
+  ssb: YaesuWidthTable(_ftdx10SsbWidths),
+  cw: YaesuWidthTable(_ft710CwWidths),
+  setPrefix: 'SH00',
+  widthParamsLength: 4,
+  shiftForm: YaesuShiftForm.fixedZero,
+);
+
+/// By the radio's own `ID` answer rather than by catalogue entry: the line
+/// shares one driver, an FT-710 has been run on the FT-891's entry, and the
+/// two radios' tables disagree at most indices — a table picked by entry
+/// would show and set the wrong filter there.
+///
+/// Absent, and so read as having no passband: the FT-450 and FT-450D, the
+/// FTX-1 (whose `SH` hamlib's own backend calls "WIDTH/IF SHIFT", with no
+/// manual here to say what that means), and anything else.
+const yaesuWidthProfilesById = <String, YaesuWidthProfile>{
+  '0650': _ft891Profile,
+  '0570': _ft991Profile,
+  '0670': _ft991Profile,
+  '0761': _ftdx10Profile,
+  '0800': _ft710Profile,
+};
+
+/// The radio's own antenna ports that `AN` selects, by the radio's `ID`
+/// answer, named as its CAT manual names them; port n is `AN0n`. One port
+/// serves receive and transmit alike.
+///
+/// Only the FTDX101D and FTDX101MP, whose CAT manual has `AN`. The FT-891,
+/// FT-991, FT-991A, FTDX10 and FT-710 manuals have no `AN` at all (hamlib's
+/// `newcat` agrees, and adds the FT-450): one HF port, or the FT-991's HF/50
+/// and 144/430 connectors, which follow the band and are not a choice. The
+/// FTX-1, which hamlib gives `AN`, is absent: no manual here says what its
+/// ports are.
+///
+/// ANT3 is left out though `AN03` selects it: menu ANT3 SELECT decides
+/// whether it transmits, receives only, or pairs with ANT1 or ANT2 for
+/// transmit, and the CAT manual and the operating manual disagree on that
+/// menu's values — a port reported as both would be a transmit antenna the
+/// radio may not be using.
+const yaesuAntennaPortsById = <String, List<String>>{
+  '0681': ['ANT1', 'ANT2'],
+  '0682': ['ANT1', 'ANT2'],
+};
+
+/// `AN0;` reads the MAIN band's antenna; P1 `1` would be the SUB band's,
+/// which no VFO here follows.
+String buildReadAntennaCommand() => 'AN0;';
+
+/// `AN0n;` selects port n for the MAIN band.
+String buildSetAntennaCommand(int port) => 'AN0$port;';
+
+/// `010` → 1: P1 the MAIN band, P2 the port 1-3, P4 a fixed `0`, as the
+/// FTDX101's CAT manual lays the answer out. Null for anything else,
+/// including the SUB band's answer.
+int? parseAntennaParams(String params) => RegExp(r'^0[123]0$').hasMatch(params) ? int.parse(params[1]) : null;
+
+/// `SH0;` reads the receive filter width.
+String buildReadWidthCommand() => 'SH0;';
+
+/// [index] in [profile]'s table, two digits after its prefix.
+String buildSetWidthCommand(YaesuWidthProfile profile, int index) => '${profile.setPrefix}${index.toString().padLeft(2, '0')};';
+
+/// The table index from an `SH` answer. Null unless it is exactly the
+/// length [profile] answers in — a frame that lost a digit would otherwise
+/// read as a different, valid index.
+int? parseWidthParams(String params, YaesuWidthProfile profile) {
+  if (params.length != profile.widthParamsLength || !RegExp(r'^0[01]?\d\d$').hasMatch(params)) return null;
+  return int.parse(params.substring(params.length - 2));
+}
+
+/// `IS0;` reads the IF shift: ±Hz, 20 Hz steps.
+String buildReadShiftCommand() => 'IS0;';
+
+/// Hz from an `IS` answer, in [profile]'s layout. The FT-891's on/off digit
+/// at `0` is the shift switched off, read as no shift — which is also the
+/// digit hamlib writes for a zero shift. Null for anything else.
+int? parseShiftParams(String params, YaesuWidthProfile profile) {
+  final pattern = switch (profile.shiftForm) {
+    YaesuShiftForm.onOff => RegExp(r'^0([01])([+-]\d{4})$'),
+    YaesuShiftForm.fixedZero => RegExp(r'^0(0)([+-]\d{4})$'),
+    YaesuShiftForm.bare => RegExp(r'^0()([+-]\d{4})$'),
+  };
+  final match = pattern.firstMatch(params);
+  if (match == null) return null;
+  if (profile.shiftForm == YaesuShiftForm.onOff && match[1] == '0') return 0;
+  return int.parse(match[2]!);
+}
+
+/// `NA0;` reads the NARROW switch.
+String buildReadNarrowCommand() => 'NA0;';
+
+/// `01` → true, `00` → false. Null for anything else.
+bool? parseNarrowParams(String params) => switch (params) {
+  '01' => true,
+  '00' => false,
+  _ => null,
+};
+
+/// What a Yaesu answers a command it does not have: `?;`, naming neither the
+/// command nor the reason. It never frames as an [AsciiCatCommand] — there
+/// are no letters in it — and no answer [Ft891Session] asks for carries a
+/// `?` of its own, so a `?` arriving at all is a refusal.
+const yaesuRefusal = '?';
+
 /// Asks whether the radio is transmitting.
 ///
 /// READ ONLY — `TX1;`/`TX2;` would KEY the radio, so the bare `TX;` is the

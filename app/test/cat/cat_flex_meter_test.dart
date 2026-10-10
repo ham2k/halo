@@ -28,6 +28,27 @@ void main() {
     codec.metadata('21.src=SLC#21.num=0#21.nam=LEVEL#21.unit=dBFS#');
     expect(codec.signal(packet()), isNull);
   });
+  // Metadata as RadioRoom (FLEX-6600, 4.2.20) lists it: the transmitter's meters
+  // are src=TX-, FWDPWR in dBm — 53 dBm is its 200 W ceiling — and SWR in SWR.
+  test('decodes RF out as watts and SWR only from the transmitter\'s meters', () {
+    final codec = FlexMeterCodec(0)
+      ..metadata('7.src=TX-#7.num=1#7.nam=FWDPWR#7.unit=dBm#9.src=TX-#9.num=3#9.nam=SWR#9.unit=SWR#8.src=TX-#8.num=2#8.nam=REFPWR#8.unit=dBm#');
+    final power = codec.transmit(packet(id: 7, dbm: 50));
+    expect(power.watts, closeTo(100, 1e-9));
+    expect(power.swr, isNull);
+    expect(codec.transmit(packet(id: 9, dbm: 1.5)).swr, 1.5);
+    // Reflected power is not forward power, and LEVEL is not either.
+    expect(codec.transmit(packet(id: 8, dbm: 50)).watts, isNull);
+    codec.metadata('21.src=SLC#21.num=0#21.nam=LEVEL#21.unit=dBm#');
+    expect(codec.transmit(packet()).watts, isNull);
+    expect(codec.signal(packet(id: 7, dbm: 50)), isNull);
+  });
+
+  test('watts and SWR are reported in tenths', () {
+    final throttle = FlexSignalThrottle(decimals: 1);
+    expect(throttle.accept(1.3449, 1000), 1.3);
+  });
+
   // Every report that differs from the last notifies every CatService
   // listener. At the radio's packet rate and 1/128 dB that is a rebuild storm
   // for the whole session, whether or not anything shows the meter.

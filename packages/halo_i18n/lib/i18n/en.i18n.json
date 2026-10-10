@@ -74,7 +74,7 @@
     "canHoldLocalConnection": "Devices on your local network, over a live connection",
     "canUseLocation": "Your location",
     "canReadRadio": "Your radio, to read its frequency and mode",
-    "canControlRadio": "Your radio, to tune it and to connect or disconnect it",
+    "canControlRadio": "Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT",
     "canSetUserAgent": "Identify itself to servers under its own name",
     "noCapabilities": "It asks for nothing outside the app.",
     "sandboxNote": "Extensions run sandboxed: no access to your files, and no network beyond what is listed here.",
@@ -1977,7 +1977,6 @@
         "one": "${count} extension failing to build",
         "other": "${count} extensions failing to build"
       },
-      "extDevServerNoSecrets": "Dev extensions never receive build secrets, so features that need one are inactive.",
       "catalog": "Extension Catalog",
       "catalogDescription": "Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.",
       "catalogAddress": "Catalog address",

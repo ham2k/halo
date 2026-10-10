@@ -19,9 +19,10 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../../services/cat/spectrum.dart';
 import 'scene_model.dart';
 
-/// Where a scene's spectrum controls get their sweeps. Null on the scene view
-/// for a panel that may not read the radio, which then shows the control as
-/// unavailable rather than drawing nothing.
+/// Where a scene's spectrum controls get their sweeps, and its `radio.` values
+/// their readings. Null on the scene view for a panel that may not read the
+/// radio, which then shows the control as unavailable rather than drawing
+/// nothing, and the values as no reading.
 abstract class SceneSpectrumSource {
   /// The node a control's `radio` names; null names the designated radio.
   /// Null when there is no such radio.
@@ -43,6 +44,24 @@ abstract class SceneSpectrumSource {
   /// The words for a control with no radio, or one waiting for a first sweep.
   String get noRadio;
   String get waiting;
+
+  /// [uuid]'s live readings, by `RadioMeter` name, and `transmitting` as 1 or
+  /// 0 — empty while it is not connected, and without any meter it has not
+  /// fresh.
+  Map<String, num> readings(String uuid);
+
+  /// Fires when [readings] may have changed — at meter rate, so only what
+  /// draws them listens.
+  Listenable get readingChanges;
+
+  /// Whether `spectrum` controls may run — `EXP FALL`. The readings do not
+  /// depend on it.
+  bool get spectrumEnabled;
+
+  /// Moves [uuid]'s scope to centre on [centerHz], for a control that
+  /// `follow`s the VFO. False where the radio's window is not the app's to
+  /// move, or the panel may not command the radio.
+  bool recenter(String uuid, int centerHz);
 }
 
 /// How long a display goes without a sweep before it says it is waiting,
@@ -109,14 +128,42 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   /// schedule: the trace at [SceneSpectrumSpec.fps], the waterfall per row.
   final _panRepaint = ValueNotifier<int>(0);
   final _waterfallRepaint = ValueNotifier<int>(0);
-  final _rows = <ui.Image>[];
-  int _rowWidth = 0;
+  final _rows = <_Row>[];
 
   /// The loudest reading of each bin since the last row, so a waterfall
-  /// slower than the sweeps still marks a signal that came and went between.
+  /// slower than the sweeps still marks a signal that came and went between —
+  /// over [_peakFrame]'s frequencies only: a bin of another range is another
+  /// frequency, and its peak would be drawn where it never was.
   Float32List? _rowPeak;
+  SpectrumFrame? _peakFrame;
   int _lastRowMillis = 0;
   int _lastPaintMillis = 0;
+  int _lastRecenterMillis = 0;
+
+  /// [SceneSpectrumSpec.follow]: with the tuned frequency inside the margin
+  /// at either edge — or off the window altogether — the window moves just
+  /// far enough to put it ON that margin, so the picture scrolls with the
+  /// dial rather than jumping to centre it. At most four moves a second: the
+  /// radio's window catches up over a few sweeps, and a move sent on each
+  /// of them would overshoot.
+  void _keepInView(SpectrumFrame frame, int now) {
+    final margin = _spec.follow;
+    final (uuid, source) = (_uuid, widget.source);
+    if (margin == null || uuid == null || source == null || now - _lastRecenterMillis < 250) return;
+    final vfo = source.vfoHz(uuid);
+    final width = (frame.highHz - frame.lowHz).toDouble();
+    if (vfo == null || width <= 0) return;
+    final double center;
+    if (vfo < frame.lowHz + margin * width) {
+      center = vfo + (.5 - margin) * width;
+    } else if (vfo > frame.highHz - margin * width) {
+      center = vfo - (.5 - margin) * width;
+    } else {
+      return;
+    }
+    if (source.recenter(uuid, center.round())) _lastRecenterMillis = now;
+  }
+
   late List<int> _palette = _paletteFor(_spec);
 
   /// Where the annotations were last drawn, topmost last — what a click and
@@ -183,8 +230,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
     });
   }
 
-  void _onFrame(SpectrumFrame frame) {
+  void _onFrame(SpectrumFrame sweep) {
     if (!mounted) return;
+    // Everything below — trace, waterfall, follow, labels — works on the window shown.
+    final frame = cropSpectrumFrame(sweep, _number(_spec.span));
     final wasStale = _stale;
     _frame = _averaged(frame);
     _stale = false;
@@ -192,6 +241,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
     // operator, and must not travel with the app clock.
     final now = realNowMillis();
     _lastFrameMillis = now;
+    _keepInView(frame, now);
     if (_spec.waterfall) _feedWaterfall(frame, now);
     if (wasStale) {
       setState(() {});
@@ -225,11 +275,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
 
   void _feedWaterfall(SpectrumFrame frame, int now) {
     final levels = frame.levels;
-    if (levels.length != _rowWidth) {
-      _clearRows();
-      _rowWidth = levels.length;
-      _rowPeak = null;
-    }
+    final last = _peakFrame;
+    if (last == null || last.levels.length != levels.length || last.lowHz != frame.lowHz || last.highHz != frame.highHz) _rowPeak = null;
+    _peakFrame = frame;
     final peak = _rowPeak ??= Float32List.fromList(levels);
     for (var i = 0; i < levels.length; i++) {
       if (levels[i] > peak[i]) peak[i] = levels[i];
@@ -265,14 +313,15 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
       // NaN passes clamp; its round() throws.
       pixels[i] = _palette[t.isFinite ? (t.clamp(0.0, 1.0) * 255).round() : 0];
     }
+    final (lowHz, highHz) = (frame.lowHz, frame.highHz);
     ui.decodeImageFromPixels(pixels.buffer.asUint8List(), levels.length, 1, ui.PixelFormat.rgba8888, (image) {
-      if (!mounted || image.width != _rowWidth) {
+      if (!mounted) {
         image.dispose();
         return;
       }
-      _rows.insert(0, image);
+      _rows.insert(0, (image: image, lowHz: lowHz, highHz: highHz));
       while (_rows.length > _waterfallRows) {
-        _rows.removeLast().dispose();
+        _rows.removeLast().image.dispose();
       }
       _waterfallRepaint.value++;
     });
@@ -280,7 +329,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
 
   void _clearRows() {
     for (final row in _rows) {
-      row.dispose();
+      row.image.dispose();
     }
     _rows.clear();
   }
@@ -675,9 +724,41 @@ class _PanPainter extends CustomPainter {
   bool shouldRepaint(_PanPainter old) => true;
 }
 
+/// [frame] cut down to [widthHz] about its middle, whole bins only; as it
+/// is when it is no wider, or no width is asked for.
+@visibleForTesting
+SpectrumFrame cropSpectrumFrame(SpectrumFrame frame, double? widthHz) {
+  final span = frame.highHz - frame.lowHz, bins = frame.levels.length;
+  if (widthHz == null || widthHz >= span || bins < 2) return frame;
+  final keep = math.max(2, (bins * widthHz / span).round());
+  final first = (bins - keep) ~/ 2;
+  final binHz = span / bins;
+  return SpectrumFrame(
+    lowHz: (frame.lowHz + first * binHz).round(),
+    highHz: (frame.lowHz + (first + keep) * binHz).round(),
+    levels: Float32List.sublistView(frame.levels, first, first + keep),
+    floorDb: frame.floorDb,
+    ceilingDb: frame.ceilingDb,
+    atMillis: frame.atMillis,
+  );
+}
+
+/// Where a row taken over [rowLowHz]–[rowHighHz] lies across a display
+/// [width] wide that now shows [lowHz]–[highHz]: its left and right edges,
+/// either of which may fall off the display.
+@visibleForTesting
+(double, double) waterfallRowExtent(int rowLowHz, int rowHighHz, int lowHz, int highHz, double width) {
+  if (highHz <= lowHz) return (0, width);
+  final span = (highHz - lowHz).toDouble();
+  return ((rowLowHz - lowHz) / span * width, (rowHighHz - lowHz) / span * width);
+}
+
+/// One waterfall row, and the frequencies it was taken over.
+typedef _Row = ({ui.Image image, int lowHz, int highHz});
+
 class _WaterfallPainter extends CustomPainter {
   final SceneSpectrumFlow flow;
-  final List<ui.Image> rows;
+  final List<_Row> rows;
 
   /// For the frequency lines and the marks, which follow the latest sweep.
   final SpectrumFrame? Function() frame;
@@ -694,13 +775,21 @@ class _WaterfallPainter extends CustomPainter {
     if (size.height <= 0) return;
     final rowHeight = math.max(1.0, size.height / _waterfallRows);
     final paint = Paint()..filterQuality = FilterQuality.low;
+    final current = frame();
+    // Each row where its frequencies are NOW: a retune slides the history
+    // sideways and a width change stretches it, rather than redrawing old
+    // signals at frequencies they were never on. Off the window, clipped.
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
     for (var i = 0; i < rows.length; i++) {
       final top = i * rowHeight;
       if (top >= size.height) break;
       final row = rows[i];
-      canvas.drawImageRect(row, Rect.fromLTWH(0, 0, row.width.toDouble(), 1), Rect.fromLTWH(0, top, size.width, rowHeight + .5), paint);
+      final (left, right) = current == null ? (0.0, size.width) : waterfallRowExtent(row.lowHz, row.highHz, current.lowHz, current.highHz, size.width);
+      if (right <= 0 || left >= size.width) continue;
+      canvas.drawImageRect(row.image, Rect.fromLTWH(0, 0, row.image.width.toDouble(), 1), Rect.fromLTRB(left, top, right, top + rowHeight + .5), paint);
     }
-    final current = frame();
+    canvas.restore();
     if (style.waterfallGrid case final grid? when current != null) _paintFrequencyLines(canvas, size, current, grid, dashed: style.gridDashed);
     // Both passes over the rows: under them, nothing would show.
     _paintMarks(canvas, size, current, marks, style, pan: false, front: false);
@@ -782,8 +871,8 @@ class _ScalePainter extends CustomPainter {
       fontStyle: shown.italic ? FontStyle.italic : null,
       color: shown.color,
     );
-    // Enough decimals of MHz to tell one label from the next.
-    final decimals = (6 - (math.log(labelStep) / math.ln10).floor()).clamp(0, 6);
+    // Enough decimals of MHz to tell one label from the next, unless the scene fixed them.
+    final decimals = shown.decimals ?? (6 - (math.log(labelStep) / math.ln10).floor()).clamp(0, 6);
     // A label that would touch the last one drawn is skipped: in a narrow
     // pane that leaves every other one, rather than a run of digits.
     var lastRight = double.negativeInfinity;

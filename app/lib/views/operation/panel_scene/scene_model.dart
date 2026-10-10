@@ -5,10 +5,34 @@ import 'package:flutter/material.dart';
 
 import '../panel_environment.dart';
 
+/// The values a scene that names a [PanelScene.radio] is given, live, by the
+/// host: its meters and whether it is transmitting (1 or 0). A missing reading
+/// is negative infinity, which a binding takes as the bottom of its range and
+/// a text shows as a dash. Reserved: a scene may not declare them itself.
+///
+/// `radio.swrAverage` is the SWR averaged over the transmission under way, or else the last one;
+/// `radio.secondsSinceTransmit` is 0 while transmitting, then counts up — a long time when there
+/// has been none, so a hold bound to it is over rather than pending.
+const sceneRadioValues = {
+  'radio.signalDbm',
+  'radio.powerOut',
+  'radio.swr',
+  'radio.alc',
+  'radio.supplyVolts',
+  'radio.transmitting',
+  'radio.swrAverage',
+  'radio.secondsSinceTransmit',
+};
+
 /// Validate once at the document boundary, never in the frame callback.
 class PanelScene {
   final double width, height;
   final Map<String, double> values;
+
+  /// Whether the host feeds [sceneRadioValues], and from which radio: a
+  /// station node's id, or null for the designated one.
+  final bool hasRadio;
+  final String? radio;
 
   /// A key names one value: it is in [values] or here, never both, so a patch
   /// or an event can name it without saying which.
@@ -24,6 +48,8 @@ class PanelScene {
     : width = number(json, 'width', min: 1, max: 8192),
       height = number(json, 'height', min: 1, max: 8192),
       values = parseValues(json['values']),
+      hasRadio = json['radio'] is Map,
+      radio = json['radio'] is Map && (json['radio'] as Map)['node'] != null ? string(json['radio'] as Map, 'node') : null,
       strings = parseStrings(json['strings'] ?? const {}),
       layers = items(json['layers'], 128).map(SceneLayer.new).toList(),
       controls = items(json['controls'] ?? [], 64).map(SceneControl.new).toList(),
@@ -35,6 +61,11 @@ class PanelScene {
     if (strings.keys.any(values.containsKey)) {
       throw const FormatException('A scene value is both a number and a string');
     }
+    if (json['radio'] != null && json['radio'] is! Map) throw const FormatException('Invalid scene radio');
+    if (values.keys.any(sceneRadioValues.contains) || strings.keys.any(sceneRadioValues.contains)) {
+      throw const FormatException('A scene value uses a name the host reserves');
+    }
+    bool known(String name) => values.containsKey(name) || (hasRadio && sceneRadioValues.contains(name));
     if (layers.fold<int>(0, (n, l) => n + (l.svg?.length ?? 0) + (l.text?.toString().length ?? 0)) > 1048576) {
       throw const FormatException('Scene artwork and text exceed 1 MiB');
     }
@@ -42,11 +73,11 @@ class PanelScene {
     for (final layer in layers) {
       if (!layerIds.add(layer.id)) throw const FormatException('Duplicate layer ID');
       for (final binding in layer.bindings.values) {
-        if (!values.containsKey(binding.value)) {
+        if (!known(binding.value)) {
           throw const FormatException('Unknown bound value');
         }
       }
-      if (layer.text?['value'] != null && !values.containsKey(layer.text!['value']) && !strings.containsKey(layer.text!['value'])) {
+      if (layer.text?['value'] != null && !known(layer.text!['value'] as String) && !strings.containsKey(layer.text!['value'])) {
         throw const FormatException('Unknown text value');
       }
     }
@@ -73,7 +104,10 @@ class PanelScene {
           throw FormatException('Control value is not one of its options: ${control.id}');
         }
       }
-      if (control.opacityBinding != null && !values.containsKey(control.opacityBinding!.value)) {
+      if (control.yAxis case final y? when !values.containsKey(y.value)) {
+        throw FormatException('Unknown control valueY: ${control.id}');
+      }
+      if (control.opacityBinding != null && !known(control.opacityBinding!.value)) {
         throw FormatException('Unknown opacity value: ${control.id}');
       }
       if (control.spectrum?.valueNames.any((name) => !values.containsKey(name)) ?? false) {
@@ -193,10 +227,14 @@ class SceneBinding {
     }
   }
   double evaluate(Map<String, double> values) {
-    var source = values[value]! * scale;
+    final raw = values[value]!;
+    var source = raw * scale;
     if (truncate) source = (source + 1e-7).floorToDouble();
     if (modulo != null) source %= modulo!;
-    final t = ((source - input[0]) / (input[1] - input[0])).clamp(0.0, 1.0);
+    // A radio value with no reading is negative infinity: the bottom of the
+    // range, decided before any arithmetic — a negative scale would turn it
+    // into the top — and never a NaN that would put a layer nowhere.
+    final t = raw == double.negativeInfinity || source.isNaN ? 0.0 : ((source - input[0]) / (input[1] - input[0])).clamp(0.0, 1.0);
     if (samples != null) {
       final position = t * (samples!.length - 1);
       final index = position.floor();
@@ -242,7 +280,7 @@ class SceneLayer {
       svg = json['svg'] == null ? null : string(json, 'svg'),
       text = json['text'] as Map<dynamic, dynamic>?,
       bindings = {
-        for (final key in ['rotation', 'translateX', 'translateY', 'opacity'])
+        for (final key in ['rotation', 'translateX', 'translateY', 'scaleX', 'scaleY', 'opacity'])
           if (json[key] != null) key: SceneBinding(json[key] as Map<dynamic, dynamic>),
       },
       pivot = json['pivot'] == null ? Alignment.center : Alignment(pair(json['pivot'])[0] * 2 - 1, pair(json['pivot'])[1] * 2 - 1),
@@ -280,6 +318,9 @@ class SceneLayer {
       number(text!, 'size', fallback: 20, min: 1, max: 512);
       if (text!['color'] != null && !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(string(text!, 'color'))) {
         throw const FormatException('Invalid text color');
+      }
+      if (text!['glow'] != null && !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(string(text!, 'glow'))) {
+        throw const FormatException('Invalid text glow');
       }
     }
     if (pulse != null) {
@@ -338,8 +379,31 @@ class SceneControl {
 
   /// Set on a `spectrum` control, and only on one.
   final SceneSpectrumSpec? spectrum;
-  SceneControl(Map<dynamic, dynamic> json)
-    : after = json['after'] == null ? null : string(json, 'after'),
+
+  /// A knob's second axis, from `valueY`: vertical motion sets it while
+  /// horizontal motion sets [value] — a passband's width and its shift on
+  /// one patch of artwork. The same control, with its own value, range, step,
+  /// sensitivity and event.
+  final SceneControl? yAxis;
+
+  /// Whether this is another control's [yAxis].
+  final bool isYAxis;
+
+  SceneControl(Map<dynamic, dynamic> json) : this._parse(json, isYAxis: false);
+
+  SceneControl._parse(Map<dynamic, dynamic> json, {required this.isYAxis})
+    : yAxis = isYAxis || json['valueY'] == null
+          ? null
+          : SceneControl._parse({
+              ...json,
+              'value': json['valueY'],
+              'min': json['minY'],
+              'max': json['maxY'],
+              'step': json['stepY'],
+              'sensitivity': json['sensitivityY'],
+              'event': json['eventY'],
+            }, isYAxis: true),
+      after = json['after'] == null ? null : string(json, 'after'),
       spectrum = json['kind'] == 'spectrum' ? SceneSpectrumSpec(json) : null,
       opacity = json['opacity'] is Map ? 1 : number(json, 'opacity', fallback: 1, min: 0, max: 1),
       opacityBinding = json['opacity'] is Map ? SceneBinding(json['opacity'] as Map<dynamic, dynamic>) : null,
@@ -370,7 +434,7 @@ class SceneControl {
       sensitivity = number(json, 'sensitivity', fallback: 1, min: 1e-9) {
     final choices = options?.map((o) => o.value).toList();
     bool only(Object? field, Set<String> kinds) => field == null || field == false || kinds.contains(kind);
-    if ((menu != null && (!const {'button', 'nativeButton'}.contains(kind) || menu!.isEmpty)) ||
+    if ((menu != null && (!const {'button', 'nativeButton', 'knob'}.contains(kind) || menu!.isEmpty)) ||
         (_drawnKinds[kind] ?? _nativeKinds[kind]) == null ||
         min >= max ||
         (hover && (kind != 'slider' || event != null)) ||
@@ -390,6 +454,9 @@ class SceneControl {
         !only(style, {'nativeText'}) ||
         !only(align, {'nativeText'}) ||
         !only(continuous, {'slider', 'knob', 'nativeSlider', 'nativeTextField'}) ||
+        (json['valueY'] != null && kind != 'knob') ||
+        // An event carries no other mark of which axis moved: the second needs its own.
+        (!isYAxis && json['valueY'] != null && json['event'] != null && (json['eventY'] == null || json['eventY'] == json['event'])) ||
         SceneSpectrumSpec.keys.any((key) => !only(json[key], {'spectrum'}))) {
       throw FormatException('Invalid scene control: $id');
     }
@@ -483,6 +550,10 @@ class SceneSpectrumBorder {
 class SceneSpectrumLabels {
   /// Hz between labels. Null: the gridlines' step.
   final SceneNumber? interval, size, weight, offset;
+
+  /// Decimals of MHz every label shows. Null: as many as tell one label
+  /// from the next.
+  final int? decimals;
   final String? fontFamily;
   final bool italic;
   final Color? color;
@@ -492,6 +563,7 @@ class SceneSpectrumLabels {
       size = SceneNumber.parse(json, 'size', min: 4, max: 72),
       weight = SceneNumber.parse(json, 'weight', min: 100, max: 900),
       offset = SceneNumber.parse(json, 'offset', min: -2000, max: 2000),
+      decimals = json['decimals'] == null ? null : number(json, 'decimals', min: 0, max: 6).round(),
       fontFamily = json['fontFamily'] == null ? null : string(json, 'fontFamily'),
       italic = json['italic'] == true,
       color = _color(json, 'color');
@@ -693,7 +765,7 @@ class SceneSpectrumSpec {
     'radio', 'display', 'split', 'palette', 'floor', 'range', 'hoverHz', 'hoverDb', //
     'average', 'fps', 'waterfallSpeed', 'waterfallFloor', 'waterfallRange', 'waterfallColors', //
     'traceColor', 'traceWidth', 'fillColor', 'fillColorBottom', 'backgroundColor', //
-    'gridColor', 'gridDashed', 'waterfallGridColor', 'center', 'overlays', 'scale', 'tuneStep', 'annotations', 'flow', //
+    'gridColor', 'gridDashed', 'waterfallGridColor', 'center', 'overlays', 'scale', 'tuneStep', 'annotations', 'flow', 'follow', 'span', //
   ];
   static const palettes = ['classic', 'gray', 'heat'];
 
@@ -763,6 +835,17 @@ class SceneSpectrumSpec {
   /// At most 64, each id once.
   final List<SceneSpectrumAnnotation> annotations;
 
+  /// Keeps the tuned frequency at least this share of the width from either
+  /// edge by moving the radio's scope — where the radio lets the app move it
+  /// and the panel may command the radio. Null: the window is the radio's.
+  final double? follow;
+
+  /// Hz shown across the control, from the middle of each sweep: a sweep
+  /// wider than this is cropped to it, so a radio whose scope comes in a few
+  /// fixed widths can still be shown at any. Null, or wider than the sweep:
+  /// the whole sweep.
+  final SceneNumber? span;
+
   SceneSpectrumSpec(Map<dynamic, dynamic> json)
     : radio = json['radio'] == null ? null : string(json, 'radio'),
       flow = SceneSpectrumFlow.values.byName(_oneOf(json, 'flow', const ['down', 'up', 'right', 'left']) ?? 'down'),
@@ -789,6 +872,8 @@ class SceneSpectrumSpec {
       waterfallGridColor = _color(json, 'waterfallGridColor'),
       gridDashed = json['gridDashed'] == true,
       tuneStep = SceneNumber.parse(json, 'tuneStep', min: 1, max: 1e6),
+      follow = json['follow'] == null ? null : number(json, 'follow', min: 0, max: .45),
+      span = SceneNumber.parse(json, 'span', min: 100, max: 1e7),
       annotations = json['annotations'] == null ? const [] : items(json['annotations'], 64).map(SceneSpectrumAnnotation.new).toList(),
       scale = switch (json['scale']) {
         null || false => null,
@@ -812,7 +897,7 @@ class SceneSpectrumSpec {
   }
 
   Iterable<String> get valueNames => [
-    for (final n in [floor, range, average, fps, waterfallSpeed, waterfallFloor, waterfallRange, traceWidth, tuneStep]) ?n?.value,
+    for (final n in [floor, range, average, fps, waterfallSpeed, waterfallFloor, waterfallRange, traceWidth, tuneStep, span]) ?n?.value,
     ?hoverHz,
     ?hoverDb,
     ...?center?.valueNames,

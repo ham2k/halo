@@ -61,11 +61,17 @@ assets, which ship wholesale, and only the host's bridge tests load it. To try i
 
 - A versioned, typed JSON scene with bounded artwork, layers, controls, and values.
 - Native SVG layers, dynamic numeric text, clamped linear bindings, and transitions
-  of rotation, translation, and opacity. Rotation is in degrees; pivots are fractions
-  of each layer's rectangle. Layers draw in list order, within a clipped viewBox.
+  of rotation, translation, scale, and opacity. Rotation is in degrees; rotation and
+  scale turn about a pivot given as fractions of each layer's rectangle. Layers draw
+  in list order, within a clipped viewBox.
 - Rectangular buttons, absolute horizontal sliders, and relative tuning knobs.
   Dragging is in scene coordinates, independent of resizing/letterboxing. Knobs
   combine horizontal and upward travel; their sensitivity is value per scene unit.
+  A knob with a second value (`valueY`) splits the axes instead — across sets one,
+  up the other — so a passband's shift and width share one patch of artwork. Each
+  axis queues on its own, so a diagonal drag sends both rather than the later
+  replacing the earlier. A knob's `menu` opens on a click, since a scroll or drag
+  is already how it turns.
 - Keyboard arrows and mouse wheel adjust by one step; Shift+arrow adjusts ten.
   Focus outlines and adjustable semantics are provided. Focus traversal follows
   control order. Controls are fixed in scene coordinates, not attached to moving layers.
@@ -85,7 +91,7 @@ assets, which ship wholesale, and only the host's bridge tests load it. To try i
 ## Bridge and state contract
 
 `render` returns `{kind: 'scene', scene: {version: 1, width, height, values,
-strings?, layers, controls, layout?}, title?, triggers?}`. Ordinary content kinds are
+strings?, layers, controls, layout?, radio?}, title?, triggers?}`. Ordinary content kinds are
 unchanged. `svgScene` is the kind's name through SDK 0.9; hosts read it as `scene`, so
 packages built against that SDK — KI2D's three panels among them — keep working.
 The reverse does not hold: apps before extension API 5 know only `svgScene`, so
@@ -166,7 +172,13 @@ The public contract is in [the panel hook](../extensions/hooks.md) and
   keyed by id, so fading a control or adding a layer never remounts one mid-edit.
 - **Focus follows the Operation view's contract**
   ([logging-fields.md](logging-fields.md)): a text field or dropdown keeps what
-  it is given, and a clicked button hands focus back to the callsign field.
+  it is given, and a clicked button hands focus back to the callsign field. A
+  drawn button takes no focus from a click at all — it has nothing to do with
+  keys afterwards. A drawn slider or knob does, because the arrow keys adjust
+  it, but only for three seconds after its last click, drag or key; then focus
+  goes back where it came from, so a knob nudged with the mouse mid-QSO does not
+  catch the operator's next keystrokes. Focus that arrived by Tab is the
+  operator's choice and stays.
 
 ## Spectrum
 
@@ -174,18 +186,21 @@ A `spectrum` control shows a radio's panadapter and waterfall, painted by the
 host from sweeps that never reach the extension
 ([cat.md § Spectrum](cat.md#spectrum)). Behind `EXP FALL`, and extension API 6:
 an older app does not know the kind and would refuse the whole scene, so a
-bundle using it declares `"api": 6` and is refused at install there instead. The public contract
+bundle using it declares `"api": 6` and is refused at install there instead;
+`follow`, `span` and label `decimals` are API 7. The public contract
 is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
-`k2hrc-panafall` sample uses all of it.
+`k2hrc-panafall` sample uses all of it but those three.
 
 - **A control, not a layer.** It takes clicks, sends events and fills space in
   the layout — all things only controls do here. Layers are click-through
   artwork.
 - **The panel must be allowed to read the radio.** The dock hands the scene a
-  source only when the experiment is on and the extension declares
-  `requiresRadioRead`; without one the control says the display is not
-  available. Subscribing to the sweeps is what starts the radio's scope, so
-  the control subscribes only while its pane and the app are visible.
+  source only when the extension declares `requiresRadioRead`, and the source
+  runs a spectrum control only while the experiment is on; otherwise the
+  control says the display is not available. (The same source feeds the
+  scene's radio values, which do not depend on the experiment.) Subscribing to
+  the sweeps is what starts the radio's scope, so the control subscribes only
+  while its pane and the app are visible.
 - **Display settings are the host's; scope settings are the radio's.**
   Averaging, frame rate, waterfall pace, colors, the gap, labels, overlays and
   annotations are applied after a sweep arrives and mean the same on every
@@ -200,6 +215,31 @@ is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
   since the last, so a short signal still marks a slow waterfall; labels,
   ticks and annotations with the panadapter. Waterfall rows are colored as
   they arrive, so a contrast change affects rows from then on.
+- **A waterfall row keeps its frequencies.** Each row remembers the range it
+  was taken over and is drawn where that range sits in the window shown now:
+  a retune slides the history sideways and a span change stretches it, with
+  what falls off the window clipped. Redrawing old rows edge to edge would put
+  a signal heard a minute ago at a frequency it was never on. For the same
+  reason a row's peak-hold restarts when the range changes — a bin of another
+  range is another frequency.
+- **`span` crops, it does not ask.** A radio's scope comes in a few widths
+  (a Flex's DAX IQ in four); `span` cuts each sweep to the middle that many Hz,
+  whole bins only, before anything else sees it, so trace, waterfall, labels,
+  clicks and `follow` all work on the window shown. Setting the radio's scope
+  to the narrowest width that covers it stays the extension's job.
+- **`follow` moves the shared window, minimally.** With `follow` set, a tuned
+  frequency that comes within that share of the width of either edge — or
+  leaves the window — moves the radio's scope just far enough to put it back
+  on that margin, at most four moves a second: the window catches up over a
+  few sweeps, and a move sent on each of them would overshoot. Within the
+  margins (between 15% and 85% of the width at `follow: 0.15`) nothing moves,
+  so the picture scrolls with the dial rather than jumping to recentre on
+  every step. It applies only where the radio lets the app place its scope
+  (`SpectrumCapabilities.canRecenter`, a FlexRadio) and the panel may command
+  the radio (`requiresRadioWrite`). On a Flex the scope is the slice's pan,
+  which SmartSDR shows too, so following moves the operator's own panadapter
+  there as well — the same window everywhere, rather than HaLo's view
+  disagreeing with the radio's.
 - **Overlays sit relative to the tuned frequency, the sweep's middle, or
   nothing.** On a Flex the panadapter is not centered on its slice, which is
   why `center` exists. On the panadapter an area is drawn behind the trace and
@@ -224,6 +264,39 @@ is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
   `activate` with its frequency and its `annotation` id instead. Each
   annotation's clicks queue on their own, so a spot clicked while a tune is in
   flight is not replaced by the next click on the control.
+
+## Radio values
+
+A scene with a `radio` block (extension API 7) is fed one radio's readings —
+its meters, `radio.transmitting`, `radio.swrAverage` and
+`radio.secondsSinceTransmit` (`sceneRadioValues` in `scene_model.dart`) — by
+the host, into values its bindings and text read like any other.
+
+- **Why the host feeds them.** An extension renders at most once a second, and
+  a meter that moves once a second is not a meter. The radio reports several
+  times a second; the host writes those readings straight from CAT into the
+  scene's values, so a needle or a bar moves at the radio's rate with no
+  render and nothing crossing the bridge. It listens to
+  `CatService.meterReadings`, which fires on every reading — the receive
+  signal included, which the service's own notification deliberately skips —
+  so only a scene that asks for the values pays for them.
+- **Reserved names, no writes.** The names are the host's: a scene declaring
+  one is refused, no control may bind one, and they exist only in a scene
+  with the block. That keeps a patch or an event from fighting the feed over
+  a value.
+- **A missing reading is negative infinity**, never NaN or a stale number: a
+  binding clamps it to the bottom of its range — a needle at rest, a bar
+  empty — and text shows `—`. Readings expire as the CAT layer's do
+  ([cat.md § Telemetry](cat.md#telemetry-what-the-radio-is-doing)).
+- **Time since a transmission is a value too**, so a scene can hold the last
+  over's SWR on screen and fade it, with no timer of its own. Nothing reports
+  while the radio is idle, so for fifteen seconds after a transmission the
+  scene re-reads it four times a second; with no transmission yet it reads as
+  a very long time, so a hold is over rather than pending. It counts in real
+  time: developer time travel does not age an over that just ended.
+- **The same gate as the spectrum.** The values come through the source the
+  dock hands a panel that declares `requiresRadioRead`; without one every
+  reading is missing.
 
 ## Comparable systems and reuse decision
 
@@ -258,7 +331,7 @@ experimental:
    the radio knob `valueLabels`: a screen reader announces its raw number.
 3. **Own the command lifecycle, or say the extension does.** The host has no
    command expiry or cancellation. An event is bounded only by the hook budget, and
-   `tuneRadio` calls queue behind a 250 ms pace with no expiry, so a queued tune
+   `setRadio` calls queue behind a 250 ms pace with no expiry, so a queued tune
    can reach the rig after the panel has shown the action failing. Reconciliation
    of requested against reported state exists only inside the radio panel
    (unconfirmed after five seconds), not as a host facility.

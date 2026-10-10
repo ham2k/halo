@@ -27,8 +27,9 @@ import type {
   VersionInfo,
   PanelRadioState,
   PanelRadioSpectrumSet,
-  PanelRadioTune,
-  PanelRadioTuneResult,
+  PanelRadioSet,
+  PanelRadioTarget,
+  PanelRadioResult,
   ExtensionWebSocket,
   WebSocketOptions,
 } from "./types.ts"
@@ -283,15 +284,36 @@ export const host = {
   async readRadio(id?: string): Promise<PanelRadioState | null> {
     return (await hostCallFn()("readRadio", { ...(id ? { id } : {}) })) as PanelRadioState | null
   },
-  async setRadioConnection(args: { id: string; selection?: string; connected: boolean }): Promise<PanelRadioTuneResult> {
-    return (await hostCallFn()("setRadioConnection", { ...args })) as PanelRadioTuneResult
+  async setRadioConnection(args: PanelRadioTarget & { connected: boolean }): Promise<PanelRadioResult> {
+    return (await hostCallFn()("setRadioConnection", { ...args })) as PanelRadioResult
   },
-  async tuneRadio(args: PanelRadioTune): Promise<PanelRadioTuneResult> {
-    return (await hostCallFn()("tuneRadio", { ...args })) as PanelRadioTuneResult
+  /** Sets frequency, mode, power, keyer speed, tuner, passband and antennas. Needs `requiresRadioWrite` and extension API 7. */
+  async setRadio(args: PanelRadioSet): Promise<PanelRadioResult> {
+    return (await hostCallFn()("setRadio", { ...args })) as PanelRadioResult
+  },
+  /** @deprecated `setRadio`'s name through extension API 6, still answered by newer hosts. */
+  async tuneRadio(args: PanelRadioSet): Promise<PanelRadioResult> {
+    return (await hostCallFn()("tuneRadio", { ...args })) as PanelRadioResult
   },
   /** Changes the radio's scope. Needs `requiresRadioWrite` and extension API 6; the result's state reports what the radio took. */
-  async setRadioSpectrum(args: PanelRadioSpectrumSet): Promise<PanelRadioTuneResult> {
-    return (await hostCallFn()("setRadioSpectrum", { ...args })) as PanelRadioTuneResult
+  async setRadioSpectrum(args: PanelRadioSpectrumSet): Promise<PanelRadioResult> {
+    return (await hostCallFn()("setRadioSpectrum", { ...args })) as PanelRadioResult
+  },
+  /** Keys `text` on the logging radio's key, as the keyer area does. Needs `requiresRadioWrite` and extension API 7. */
+  async sendRadioCw(args: PanelRadioTarget & { text: string }): Promise<PanelRadioResult> {
+    return (await hostCallFn()("sendRadioCw", { ...args })) as PanelRadioResult
+  },
+  /** Plays one of `keying.voiceMemories` once — never repeating. Needs `requiresRadioWrite` and extension API 7. */
+  async playRadioVoice(args: PanelRadioTarget & { memory: number }): Promise<PanelRadioResult> {
+    return (await hostCallFn()("playRadioVoice", { ...args })) as PanelRadioResult
+  },
+  /** Keys or unkeys the logging radio's PTT through the app's own latch. Needs `requiresRadioWrite` and extension API 7. */
+  async setRadioPtt(args: PanelRadioTarget & { on: boolean }): Promise<PanelRadioResult> {
+    return (await hostCallFn()("setRadioPtt", { ...args })) as PanelRadioResult
+  },
+  /** Stops all CW, voice and PTT the app is keying, as Escape does. Needs `requiresRadioWrite` and extension API 7. */
+  async stopRadioTransmit(args: PanelRadioTarget): Promise<PanelRadioResult> {
+    return (await hostCallFn()("stopRadioTransmit", { ...args })) as PanelRadioResult
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse

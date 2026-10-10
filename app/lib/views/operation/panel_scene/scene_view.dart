@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
@@ -71,8 +72,46 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     super.initState();
     _values = {...widget.scene.values};
     _strings = {...widget.scene.strings};
+    _readRadio();
+    _listenToRadio(null, widget);
     WidgetsBinding.instance.addObserver(this);
     _appVisible = _visible(WidgetsBinding.instance.lifecycleState);
+  }
+
+  /// Writes the radio's live readings into the `radio.` values, straight from
+  /// CAT: nothing crosses the bridge, and the extension renders no faster for
+  /// a meter that moves four times a second.
+  void _readRadio() {
+    if (!widget.scene.hasRadio) return;
+    final source = widget.spectrum;
+    final uuid = source?.resolve(widget.scene.radio);
+    final readings = uuid == null ? const <String, num>{} : source!.readings(uuid);
+    for (final name in sceneRadioValues) {
+      _values[name] = readings[name.substring('radio.'.length)]?.toDouble() ?? double.negativeInfinity;
+    }
+    // Nothing notifies as time passes, so a scene shortly after a transmission reads again on its
+    // own: a hold bound to the seconds since, ends on time.
+    final since = _values['radio.secondsSinceTransmit'] ?? double.infinity;
+    if (since >= 0 && since < 15) {
+      _sinceTransmitTick ??= Timer(const Duration(milliseconds: 250), () {
+        _sinceTransmitTick = null;
+        _onRadioReading();
+      });
+    }
+  }
+
+  Timer? _sinceTransmitTick;
+
+  void _onRadioReading() {
+    if (mounted) setState(_readRadio);
+  }
+
+  void _listenToRadio(PanelSceneView? old, PanelSceneView next) {
+    final before = old != null && old.scene.hasRadio ? old.spectrum?.readingChanges : null;
+    final after = next.scene.hasRadio ? next.spectrum?.readingChanges : null;
+    if (identical(before, after)) return;
+    before?.removeListener(_onRadioReading);
+    after?.addListener(_onRadioReading);
   }
 
   bool _visible(AppLifecycleState? state) => state == null || state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
@@ -96,6 +135,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     bool keep(String key) => _dirty.contains(key) || _active.contains(key) || local.contains(key);
     _values = {for (final entry in widget.scene.values.entries) entry.key: keep(entry.key) ? _values[entry.key] ?? entry.value : entry.value};
     _strings = {for (final entry in widget.scene.strings.entries) entry.key: keep(entry.key) ? _strings[entry.key] ?? entry.value : entry.value};
+    _readRadio();
+    _listenToRadio(oldWidget, widget);
   }
 
   /// [value] is a String for a string-bound control, a double otherwise.
@@ -164,7 +205,12 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     // that share a value (for example a tuning knob and its band slider).
     // An annotation's click is its own entry: a spot clicked, then the
     // waterfall clicked to tune, are two things the extension must hear.
-    final key = annotation == null ? control.id : '${control.id}\u0000$annotation';
+    final key = annotation != null
+        ? '${control.id}\u0000$annotation'
+        // A knob's two axes are two values the extension must both hear.
+        : control.isYAxis
+        ? '${control.id}\u0000y'
+        : control.id;
     _queue.remove(key);
     _queue[key] = event;
     setState(() => _failed = false);
@@ -224,6 +270,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
 
   @override
   void dispose() {
+    _sinceTransmitTick?.cancel();
+    if (widget.scene.hasRadio) widget.spectrum?.readingChanges.removeListener(_onRadioReading);
     WidgetsBinding.instance.removeObserver(this);
     _queue.clear();
     super.dispose();
@@ -252,7 +300,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     return SceneSpectrumView(
       key: ValueKey('${control.id}:${control.kind}'),
       control: control,
-      source: widget.spectrum,
+      source: widget.spectrum?.spectrumEnabled ?? false ? widget.spectrum : null,
       awake: _appVisible && DockPaneVisibility.of(context),
       values: _values,
       onHover: spec.hoverHz == null && spec.hoverDb == null
@@ -314,19 +362,34 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
           key: ValueKey(control.id),
           control: control,
           value: _values[control.value] ?? 0,
+          valueY: control.yAxis == null ? null : _values[control.yAxis!.value] ?? 0,
           disabled: control.disabled || (control.isAction && _actionPending),
-          onStart: () => _active.add(control.value ?? ''),
+          // A two-axis knob holds each value only once that axis moves: a drag commits only the
+          // axes it moved, and one held without a commit would stop following the document.
+          onStart: () {
+            if (control.yAxis == null) _active.add(control.value ?? '');
+          },
           onCancel: () {
             setState(() {
-              _active.remove(control.value);
-              _dirty.remove(control.value);
-              if (control.value != null) {
-                _values[control.value!] = scene.values[control.value]!;
+              for (final key in [control.value, control.yAxis?.value]) {
+                _active.remove(key);
+                _dirty.remove(key);
+                if (key != null) _values[key] = scene.values[key]!;
               }
             });
           },
-          onChange: (v) => _change(control, v),
+          onChange: (v) {
+            if (control.yAxis != null) _active.add(control.value!);
+            _change(control, v);
+          },
           onCommit: () => _commit(control),
+          onChangeY: control.yAxis == null
+              ? null
+              : (v) {
+                  _active.add(control.yAxis!.value!);
+                  _change(control.yAxis!, v);
+                },
+          onCommitY: control.yAxis == null ? null : () => _commit(control.yAxis!),
           onSelect: (action) => _sendControl(control, 'activate', action: action),
         ),
       ),
@@ -455,14 +518,18 @@ class _SceneLayerView extends StatelessWidget {
     final samples = text?['samples'] as List<dynamic>?;
     final bound = strings[text?['value']];
     final rawValue = text?['value'] == null || bound != null ? 0.0 : values[text!['value']]!;
-    final sampledValue = bound ?? (samples == null ? rawValue : samples[rawValue.round().clamp(0, samples.length - 1)]);
+    final sampledValue = bound ?? (samples == null || !rawValue.isFinite ? rawValue : samples[rawValue.round().clamp(0, samples.length - 1)]);
     var textValue = sampledValue is num ? sampledValue * (text?['scale'] as num? ?? 1) : sampledValue;
-    if (textValue is num) {
+    // A radio value with no reading is negative infinity, which floor() and round() throw on.
+    if (textValue is num && textValue.isFinite) {
       if (text?['truncate'] == true) textValue = (textValue + 1e-7).floor();
       if (text?['modulo'] case final num modulus) textValue = textValue % modulus;
     }
     final decimals = (text?['decimals'] as num? ?? 0).toInt();
-    final formatted = textValue is num
+    // A radio value with no reading.
+    final formatted = textValue is num && !textValue.isFinite
+        ? '—'
+        : textValue is num
         ? textValue.toStringAsFixed(decimals).padLeft((text?['minIntegerDigits'] as num? ?? 1).toInt() + (decimals > 0 ? decimals + 1 : 0), '0')
         : textValue.toString();
     Widget artwork = layer.svg != null
@@ -486,6 +553,14 @@ class _SceneLayerView extends StatelessWidget {
                 height: (text['lineHeight'] as num? ?? 1.2).toDouble(),
                 letterSpacing: (text['letterSpacing'] as num? ?? 0).toDouble(),
                 color: text['color'] == null ? null : Color(0xff000000 | int.parse((text['color'] as String).substring(1), radix: 16)),
+                // A halo that keeps light text legible over whatever it is drawn on: a tight
+                // shadow for the edge, a wider one for the glow.
+                shadows: switch (text['glow']) {
+                  final String glow => [
+                    for (final blur in const [1.5, 4.0]) Shadow(color: Color(0xff000000 | int.parse(glow.substring(1), radix: 16)), blurRadius: blur),
+                  ],
+                  _ => null,
+                },
               ),
             ),
           );
@@ -500,6 +575,8 @@ class _SceneLayerView extends StatelessWidget {
       layer.bindings['translateX']?.evaluate(values) ?? 0,
       layer.bindings['translateY']?.evaluate(values) ?? 0,
       (layer.bindings['opacity']?.evaluate(values) ?? 1).clamp(0, 1).toDouble(),
+      layer.bindings['scaleX']?.evaluate(values) ?? 1,
+      layer.bindings['scaleY']?.evaluate(values) ?? 1,
     );
     // Inside the transforms, so a blocking layer blocks where it is drawn;
     // and only while it can be seen, as with controls, or a layer faded out
@@ -515,7 +592,11 @@ class _SceneLayerView extends StatelessWidget {
         child: Transform.rotate(
           angle: pose.angle * math.pi / 180,
           alignment: layer.pivot,
-          child: Opacity(opacity: pose.opacity, child: child),
+          child: Transform(
+            transform: Matrix4.diagonal3Values(pose.sx, pose.sy, 1),
+            alignment: layer.pivot,
+            child: Opacity(opacity: pose.opacity, child: child),
+          ),
         ),
       ),
     );
@@ -523,12 +604,13 @@ class _SceneLayerView extends StatelessWidget {
 }
 
 class _Pose {
-  final double angle, x, y, opacity;
-  const _Pose(this.angle, this.x, this.y, this.opacity);
+  final double angle, x, y, opacity, sx, sy;
+  const _Pose(this.angle, this.x, this.y, this.opacity, this.sx, this.sy);
   @override
-  bool operator ==(Object other) => other is _Pose && other.angle == angle && other.x == x && other.y == y && other.opacity == opacity;
+  bool operator ==(Object other) =>
+      other is _Pose && other.angle == angle && other.x == x && other.y == y && other.opacity == opacity && other.sx == sx && other.sy == sy;
   @override
-  int get hashCode => Object.hash(angle, x, y, opacity);
+  int get hashCode => Object.hash(angle, x, y, opacity, sx, sy);
 }
 
 class _PoseTween extends Tween<_Pose> {
@@ -538,7 +620,7 @@ class _PoseTween extends Tween<_Pose> {
     final a = begin ?? end!;
     final b = end!;
     double mix(double x, double y) => x + (y - x) * t;
-    return _Pose(mix(a.angle, b.angle), mix(a.x, b.x), mix(a.y, b.y), mix(a.opacity, b.opacity));
+    return _Pose(mix(a.angle, b.angle), mix(a.x, b.x), mix(a.y, b.y), mix(a.opacity, b.opacity), mix(a.sx, b.sx), mix(a.sy, b.sy));
   }
 }
 
@@ -596,6 +678,11 @@ class _ControlView extends StatefulWidget {
   final VoidCallback onStart, onCancel, onCommit;
   final ValueChanged<double> onChange;
   final ValueChanged<String> onSelect;
+
+  /// A knob's second axis — see [SceneControl.yAxis]. Null without one.
+  final double? valueY;
+  final ValueChanged<double>? onChangeY;
+  final VoidCallback? onCommitY;
   const _ControlView({
     super.key,
     required this.control,
@@ -606,6 +693,9 @@ class _ControlView extends StatefulWidget {
     required this.onChange,
     required this.onCommit,
     required this.onSelect,
+    this.valueY,
+    this.onChangeY,
+    this.onCommitY,
   });
   @override
   State<_ControlView> createState() => _ControlViewState();
@@ -613,7 +703,8 @@ class _ControlView extends StatefulWidget {
 
 class _ControlViewState extends State<_ControlView> {
   bool _focused = false;
-  double _dragValue = 0;
+  double _dragValue = 0, _dragValueY = 0;
+  bool _movedX = false, _movedY = false;
   Offset _tapPosition = Offset.zero;
 
   /// A drag that began while enabled, and only such a drag: one refused at
@@ -622,17 +713,86 @@ class _ControlViewState extends State<_ControlView> {
   /// would never be released.
   bool _dragging = false;
 
+  /// A slider or knob clicked into holds focus only briefly — long enough for
+  /// the arrow keys to adjust what was just clicked — then hands it back to
+  /// where the operator was typing. Focus that arrived by Tab stays.
+  static const _pointerFocusHold = Duration(seconds: 3);
+  Timer? _releaseFocus;
+  FocusNode? _returnFocusTo;
+
+  /// Whether the focus this control holds came from a pointer, and so is
+  /// handed back once [_pointerFocusHold] passes without use.
+  bool _pointerFocus = false;
+
+  /// [hold] is false at the start of a drag: the hold runs from the release,
+  /// or a long drag would lose focus under the operator's hand.
+  void _focusFromPointer(FocusNode node, {bool hold = true}) {
+    if (!node.hasFocus) {
+      _returnFocusTo = FocusManager.instance.primaryFocus;
+      _pointerFocus = true;
+    }
+    node.requestFocus();
+    _releaseFocus?.cancel();
+    if (hold) _holdPointerFocus(node);
+  }
+
+  void _holdPointerFocus(FocusNode node) {
+    if (!_pointerFocus) return;
+    _releaseFocus?.cancel();
+    _releaseFocus = Timer(_pointerFocusHold, () {
+      final back = _returnFocusTo;
+      _returnFocusTo = null;
+      _pointerFocus = false;
+      if (!mounted || !node.hasFocus) return;
+      if (back != null && back.context != null && back.canRequestFocus) {
+        back.requestFocus();
+      } else {
+        node.unfocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _releaseFocus?.cancel();
+    super.dispose();
+  }
+
   void _adjust(double delta) {
     if (widget.disabled) return;
     widget.onChange(widget.value + delta);
     widget.onCommit();
   }
 
+  /// A knob's menu, under it: what a click on it offers while a scroll or a
+  /// drag turns it.
+  Future<void> _openMenu(BuildContext context) async {
+    final box = context.findRenderObject()! as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final rect = Rect.fromPoints(
+      box.localToGlobal(box.size.bottomLeft(Offset.zero), ancestor: overlay),
+      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+    );
+    final picked = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromRect(rect, Offset.zero & overlay.size),
+      items: [for (final item in widget.control.menu!) PopupMenuItem(value: item.event, child: Text(item.label))],
+    );
+    if (picked != null && mounted) widget.onSelect(picked);
+  }
+
+  void _adjustY(double delta) {
+    if (widget.disabled || widget.onChangeY == null) return;
+    widget.onChangeY!(widget.valueY! + delta);
+    widget.onCommitY!();
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = widget.control;
     final button = c.kind == 'button';
-    if (c.menu != null) {
+    // A knob keeps its own gestures, and opens its menu on a click — see [_openMenu].
+    if (c.menu != null && c.kind != 'knob') {
       return PopupMenuButton<String>(
         enabled: !widget.disabled,
         position: PopupMenuPosition.under,
@@ -653,8 +813,16 @@ class _ControlViewState extends State<_ControlView> {
       onIncrease: button || widget.disabled ? null : () => _adjust(c.step),
       onDecrease: button || widget.disabled ? null : () => _adjust(-c.step),
       child: Focus(
-        onFocusChange: (v) => setState(() => _focused = v),
-        onKeyEvent: (_, event) {
+        onFocusChange: (v) {
+          // Gone elsewhere — by Tab or a click — before the hold ran out.
+          if (!v) {
+            _releaseFocus?.cancel();
+            _returnFocusTo = null;
+            _pointerFocus = false;
+          }
+          setState(() => _focused = v);
+        },
+        onKeyEvent: (node, event) {
           if (widget.disabled || (event is! KeyDownEvent && event is! KeyRepeatEvent)) {
             return KeyEventResult.ignored;
           }
@@ -664,13 +832,23 @@ class _ControlViewState extends State<_ControlView> {
             return KeyEventResult.handled;
           }
           if (!button) {
+            final y = c.yAxis;
+            final times = HardwareKeyboard.instance.isShiftPressed ? 10 : 1;
+            // With a second axis, up and down are its own.
+            if (y != null && (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown)) {
+              _adjustY(y.step * (key == LogicalKeyboardKey.arrowUp ? 1 : -1) * times);
+              _holdPointerFocus(node);
+              return KeyEventResult.handled;
+            }
             final direction = [LogicalKeyboardKey.arrowRight, LogicalKeyboardKey.arrowUp].contains(key)
                 ? 1
                 : [LogicalKeyboardKey.arrowLeft, LogicalKeyboardKey.arrowDown].contains(key)
                 ? -1
                 : 0;
             if (direction != 0) {
-              _adjust(c.step * direction * (HardwareKeyboard.instance.isShiftPressed ? 10 : 1));
+              _adjust(c.step * direction * times);
+              // Still being adjusted: the hold runs from the last key.
+              _holdPointerFocus(node);
               return KeyEventResult.handled;
             }
           }
@@ -694,7 +872,18 @@ class _ControlViewState extends State<_ControlView> {
                   ? null
                   : (event) {
                       if (event is PointerScrollEvent) {
-                        GestureBinding.instance.pointerSignalResolver.register(event, (_) => _adjust(event.scrollDelta.dy > 0 ? -c.step : c.step));
+                        final d = event.scrollDelta;
+                        GestureBinding.instance.pointerSignalResolver.register(event, (_) {
+                          // With a second axis a sideways scroll is the first axis's and an
+                          // up-and-down one the second's; without, any scroll is the one value.
+                          if (c.yAxis case final y? when d.dy.abs() >= d.dx.abs()) {
+                            _adjustY(d.dy > 0 ? -y.step : y.step);
+                          } else if (c.yAxis != null) {
+                            _adjust(d.dx > 0 ? c.step : -c.step);
+                          } else {
+                            _adjust(d.dy > 0 ? -c.step : c.step);
+                          }
+                        });
                       }
                     },
               child: GestureDetector(
@@ -704,7 +893,15 @@ class _ControlViewState extends State<_ControlView> {
                 onTap: widget.disabled
                     ? null
                     : () {
-                        Focus.of(context).requestFocus();
+                        // A button takes no focus from a click: it has nothing to
+                        // do with keys afterwards, and the operator's typing stays
+                        // where it was. Tab still reaches it. A slider or knob
+                        // takes it for [_pointerFocusHold].
+                        if (c.kind == 'knob' && c.menu != null) {
+                          unawaited(_openMenu(context));
+                          return;
+                        }
+                        if (!button) _focusFromPointer(Focus.of(context));
                         if (c.kind == 'slider') {
                           widget.onChange(c.atX(_tapPosition.dx));
                         }
@@ -715,9 +912,11 @@ class _ControlViewState extends State<_ControlView> {
                     : (d) {
                         if (widget.disabled) return;
                         _dragging = true;
-                        Focus.of(context).requestFocus();
+                        _focusFromPointer(Focus.of(context), hold: false);
                         widget.onStart();
                         _dragValue = widget.value;
+                        _dragValueY = widget.valueY ?? 0;
+                        _movedX = _movedY = false;
                         if (c.kind == 'slider') {
                           widget.onChange(c.atX(d.localPosition.dx));
                         }
@@ -733,8 +932,22 @@ class _ControlViewState extends State<_ControlView> {
                           // a slow drag whose deltas are under half a step would never
                           // move. Unclamped, a drag past an end stop owes the same
                           // distance back before the value moves again.
-                          _dragValue = (_dragValue + (d.delta.dx - d.delta.dy) * c.sensitivity).clamp(c.min, c.max).toDouble();
-                          widget.onChange(_dragValue);
+                          if (c.yAxis case final y?) {
+                            // Each axis its own: across for the first value, up for the second.
+                            if (d.delta.dx != 0) {
+                              _movedX = true;
+                              _dragValue = (_dragValue + d.delta.dx * c.sensitivity).clamp(c.min, c.max).toDouble();
+                              widget.onChange(_dragValue);
+                            }
+                            if (d.delta.dy != 0) {
+                              _movedY = true;
+                              _dragValueY = (_dragValueY - d.delta.dy * y.sensitivity).clamp(y.min, y.max).toDouble();
+                              widget.onChangeY!(_dragValueY);
+                            }
+                          } else {
+                            _dragValue = (_dragValue + (d.delta.dx - d.delta.dy) * c.sensitivity).clamp(c.min, c.max).toDouble();
+                            widget.onChange(_dragValue);
+                          }
                         }
                       },
                 onPanEnd: button
@@ -742,13 +955,16 @@ class _ControlViewState extends State<_ControlView> {
                     : (_) {
                         if (!_dragging) return;
                         _dragging = false;
-                        widget.onCommit();
+                        _holdPointerFocus(Focus.of(context));
+                        if (c.yAxis == null || _movedX) widget.onCommit();
+                        if (_movedY) widget.onCommitY?.call();
                       },
                 onPanCancel: button
                     ? null
                     : () {
                         if (!_dragging) return;
                         _dragging = false;
+                        _holdPointerFocus(Focus.of(context));
                         widget.onCancel();
                       },
                 child: DecoratedBox(

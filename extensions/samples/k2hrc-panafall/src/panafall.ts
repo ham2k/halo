@@ -224,7 +224,7 @@ export function createPanafall(): PanelHook {
       if (!radio?.id) return { values: {} }
       if ((action === "tune" || action === "goto") && typeof value === "number") {
         // Already on the step: the host snapped it.
-        await host.tuneRadio({ id: radio.id, frequencyHz: Math.round(value) })
+        await host.setRadio({ id: radio.id, frequencyHz: Math.round(value) })
       } else if (action === "span" && text) {
         await host.setRadioSpectrum({ id: radio.id, spanHz: Number(text) })
       } else if (action === "ref" && typeof value === "number") {

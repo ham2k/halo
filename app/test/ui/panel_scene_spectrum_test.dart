@@ -35,10 +35,23 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   String get noRadio => 'no radio';
   @override
   String get waiting => 'waiting';
+  @override
+  Map<String, num> readings(String uuid) => const {};
+  @override
+  Listenable get readingChanges => this;
+  final recentered = <int>[];
+  @override
+  bool recenter(String uuid, int centerHz) {
+    recentered.add(centerHz);
+    return true;
+  }
+
+  @override
+  bool get spectrumEnabled => true;
 }
 
-SpectrumFrame _frame([double level = 20]) =>
-    SpectrumFrame(lowHz: 14000000, highHz: 14100000, levels: Float32List.fromList(List.filled(100, level)), floorDb: 0, ceilingDb: 80, atMillis: 0);
+SpectrumFrame _frame([double level = 20, int lowHz = 14000000]) =>
+    SpectrumFrame(lowHz: lowHz, highHz: lowHz + 100000, levels: Float32List.fromList(List.filled(100, level)), floorDb: 0, ceilingDb: 80, atMillis: 0);
 
 Map<String, dynamic> _doc({Map<String, dynamic> spectrum = const {}}) => {
   'version': 1,
@@ -373,6 +386,58 @@ void main() {
     expect(find.text('14050250'), findsOneWidget);
     expect(calls, 0);
     await mouse.removePointer();
+  });
+
+  test('a display width crops each sweep about its middle, and never widens one', () {
+    // A radio's scope comes in a few widths; the display shows any narrower.
+    final sweep = _frame(20, 14000000);
+    final cropped = cropSpectrumFrame(sweep, 50000);
+    expect((cropped.lowHz, cropped.highHz, cropped.levels.length), (14025000, 14075000, 50));
+    expect(identical(cropSpectrumFrame(sweep, 200000), sweep), isTrue);
+    expect(identical(cropSpectrumFrame(sweep, null), sweep), isTrue);
+  });
+
+  test('waterfall history stays on its frequencies as the window moves or widens', () {
+    // Drawn where it was taken, a signal's trail lines up under the signal;
+    // stretched across the new window it would sit at a frequency it was never on.
+    expect(waterfallRowExtent(14000000, 14100000, 14000000, 14100000, 400), (0, 400));
+    // Tuned up by half a window: the old row slides half off the left.
+    expect(waterfallRowExtent(14000000, 14100000, 14050000, 14150000, 400), (-200, 200));
+    // Twice as wide around the same centre: the old row shrinks into the middle.
+    expect(waterfallRowExtent(14000000, 14100000, 13950000, 14150000, 400), (100, 300));
+  });
+
+  testWidgets('follow scrolls the window just far enough to put the dial on its margin', (tester) async {
+    // Centring instead would jump the picture on every step of the dial; not
+    // moving at all leaves the tuned frequency off the display.
+    final source = _Source();
+    await _show(tester, source: source, spectrum: {'follow': .15});
+    // The VFO (14.074) sits at 74% of 14.000–14.100: inside the margins.
+    source.controller.add(_frame());
+    await tester.pump();
+    expect(source.recentered, isEmpty);
+    // Below the window: centred 35% of the width above it, so it sits at 15%.
+    source.controller.add(_frame(20, 14080000));
+    await tester.pump();
+    expect(source.recentered, [14109000]);
+    // At most four moves a second while the radio's window catches up.
+    source.controller.add(_frame(20, 14080000));
+    await tester.pump();
+    expect(source.recentered, hasLength(1));
+    // Past the right margin (14.074 at 89% of 13.985–14.085): it sits at 85%.
+    // The limit is on the real clock, which a pump does not move.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    source.controller.add(_frame(20, 13985000));
+    await tester.pump();
+    expect(source.recentered.last, 14039000);
+  });
+
+  testWidgets('without follow the window is the radio\'s', (tester) async {
+    final source = _Source();
+    await _show(tester, source: source);
+    source.controller.add(_frame(20, 14080000));
+    await tester.pump();
+    expect(source.recentered, isEmpty);
   });
 
   testWidgets('says why there is nothing to draw', (tester) async {

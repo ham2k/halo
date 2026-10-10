@@ -44,7 +44,19 @@ const _dvkStatusLines = [
   'S7C1A8533|dvk added id=12 name="Recording 12" duration=1952',
 ];
 
-class _FakeSink implements EquipmentSink {
+class _FakeSink implements EquipmentSink, TunerSink, PassbandSink, RadioAntennaSink {
+  final antennas = <RadioAntennas?>[];
+  @override
+  void reportAntennas(RadioAntennas? report) => antennas.add(report);
+
+  final tuners = <TunerStatus?>[];
+  @override
+  void reportTuner(TunerStatus? status) => tuners.add(status);
+
+  final passbands = <Passband?>[];
+  @override
+  void reportPassband(Passband? passband) => passbands.add(passband);
+
   final sent = <String>[];
   final readings = <VfoReading>[];
   final powers = <num>[];
@@ -910,6 +922,104 @@ void main() {
         expect(sink.channel('3').freqKHz, 21030);
 
         sliceD.teardown();
+        async.flushTimers();
+      });
+    });
+  });
+
+  group('the antennas', () {
+    test('are the tracked slice\'s, receive and transmit each its own, from the lists the radio offers', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        // As RadioRoom (FLEX-6600, 4.2.20) states slice A.
+        session.feed('S0|slice 0 in_use=1 rxant=ANT1 txant=ANT1 ant_list=ANT1,ANT2,RX_A,RX_B,XVTA,XVTB tx_ant_list=ANT1,ANT2,XVTA,XVTB\n');
+        session.feed('S0|slice 0 rxant=RX_A\n');
+        expect(
+          sink.antennas.last,
+          const RadioAntennas(
+            rxPorts: ['ANT1', 'ANT2', 'RX_A', 'RX_B', 'XVTA', 'XVTB'],
+            txPorts: ['ANT1', 'ANT2', 'XVTA', 'XVTB'],
+            rx: 'RX_A',
+            tx: 'ANT1',
+            separate: true,
+          ),
+        );
+        sink.sent.clear();
+        session.setAntenna(tx: 'ANT2');
+        expect(sink.sent.single.split('|').last.trim(), 'slice set 0 txant=ANT2');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+  });
+
+  group('the passband', () {
+    test('is the tracked slice\'s filter, in Hz from its frequency as the radio states it', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        // As RadioRoom (FLEX-6600, 4.2.20) states slice A in USB.
+        session.feed('S0|slice 0 in_use=1 RF_frequency=14.243000 mode=USB filter_lo=100 filter_hi=2800\n');
+        // Another slice's filter is not this one's.
+        session.feed('S0|slice 1 in_use=1 RF_frequency=7.200000 mode=LSB filter_lo=-2400 filter_hi=-300\n');
+        // A push carries only what changed: the other edge stands.
+        session.feed('S0|slice 0 filter_hi=2400\n');
+        expect(sink.passbands, [const Passband(100, 2800), const Passband(100, 2400)]);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('is set with `filt`, and read back since the radio clamps it', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        sink.sent.clear();
+        session.setPassband(const Passband(200, 2900));
+        expect(sink.sent.single.split('|').last.trim(), 'filt 0 200 2900');
+        async.elapse(const Duration(milliseconds: 200));
+        expect(sink.sent.last, endsWith('|sub slice all\n'));
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+  });
+
+  group('the tuner', () {
+    test('reads the radio\'s ATU status, which arrives on its own subscription', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        expect(sink.sent.any((c) => c.endsWith('|sub atu all\n')), isTrue);
+        // As RadioRoom (FLEX-6600, 4.2.20) answers the subscription.
+        session.feed('S0|atu status=TUNE_SUCCESSFUL atu_enabled=1 memories_enabled=1 using_mem=1\n');
+        // A push carries only what changed: the status alone still means a tuner that is fitted.
+        session.feed('S0|atu status=TUNE_MANUAL_BYPASS\n');
+        session.feed('S0|atu status=TUNE_FAIL\n');
+        session.feed('S0|atu status=TUNE_IN_PROGRESS\n');
+        expect(sink.tuners, [TunerStatus.inline, TunerStatus.bypassed, TunerStatus.failed, TunerStatus.tuning]);
+        // A radio without the tuner fitted, or with it off in its setup, has nothing to put in line.
+        session.feed('S0|atu atu_enabled=0\n');
+        expect(sink.tuners.last, isNull);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('bypass transmits nothing; in line is a tune, the only way a Flex tuner engages', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        sink.sent.clear();
+        session.setTuner(inline: false);
+        session.setTuner(inline: true);
+        expect(sink.sent.map((c) => c.split('|').last.trim()), ['atu bypass', 'atu start']);
+        // The radio may not echo a status to the client that asked, so the
+        // outcome is read back rather than waited for.
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent.last, endsWith('|sub atu all\n'));
+        session.teardown();
         async.flushTimers();
       });
     });

@@ -14,7 +14,27 @@ export interface PanelScene {
   controls?: PanelSceneControl[]
   /** Where rect-less native controls and the artwork go. Omitted, the artwork fills the panel. */
   layout?: PanelSceneLayoutNode
+  /**
+   * Have the host feed a radio's live readings into `values` — the `PanelSceneRadioValue` names,
+   * updated as the radio reports them, with no render. `node` is a radio's id; omitted, the
+   * logging radio. Needs `requiresRadioRead` and extension API 7; without either, every reading
+   * is missing. A missing reading binds as the bottom of a binding's range and shows as `—`.
+   */
+  radio?: { node?: string }
 }
+
+/** Host-fed values of a scene with `radio`: its meters, and `radio.transmitting` as 1 or 0. Reserved: a scene may not declare them. */
+export type PanelSceneRadioValue =
+  | "radio.signalDbm"
+  | "radio.powerOut"
+  | "radio.swr"
+  | "radio.alc"
+  | "radio.supplyVolts"
+  | "radio.transmitting"
+  /** The SWR averaged over the transmission under way, or else the last one. Extension API 7. */
+  | "radio.swrAverage"
+  /** 0 while transmitting, then counting up; a long time when there has been none. Extension API 7. */
+  | "radio.secondsSinceTransmit"
 
 /** A clamped, linear mapping. No expressions or extension code run per frame. */
 export interface SceneBinding {
@@ -52,6 +72,8 @@ export interface PanelSceneLayer {
     decimals?: number
     size?: number
     color?: string
+    /** `#RRGGBB`: a soft halo of this colour around the letters, to keep them legible over artwork. Extension API 7. */
+    glow?: string
     samples?: (number | string)[]
     /** Multiply numeric text values before formatting. Defaults to 1. */
     scale?: number
@@ -69,8 +91,11 @@ export interface PanelSceneLayer {
   rotation?: SceneBinding
   translateX?: SceneBinding
   translateY?: SceneBinding
+  /** Scale about `pivot` — a bar's fill with `pivot: [0, 0.5]`. Extension API 7. */
+  scaleX?: SceneBinding
+  scaleY?: SceneBinding
   opacity?: SceneBinding
-  /** Rotation origin as fractions of this layer's dimensions; default [0.5, 0.5]. */
+  /** Rotation and scale origin as fractions of this layer's dimensions; default [0.5, 0.5]. */
   pivot?: [number, number]
   transitionMs?: number
   /** Local deterministic flicker/pulse; pauses when hidden, disabled for reduced motion. */
@@ -165,6 +190,19 @@ export interface PanelSceneSpectrum {
   gridColor?: string
   /** The frequency lines carried down through the waterfall. Omitted, none. */
   waterfallGridColor?: string
+  /**
+   * Keeps the tuned frequency at least this share of the width (0–0.45) from either edge, by
+   * moving the radio's scope just far enough to put it at that margin. Only where the radio lets
+   * the app place its scope — a FlexRadio, whose panadapter in SmartSDR moves with it — and the
+   * panel declares `requiresRadioWrite`; elsewhere it changes nothing. Extension API 7.
+   */
+  follow?: number
+  /**
+   * Hz shown across the control, from the middle of each sweep. A sweep wider than this is cropped
+   * to it, so a radio whose scope comes in a few widths can be shown at any narrower one — set the
+   * scope (`setRadioSpectrum`) to the narrowest that covers it. Extension API 7.
+   */
+  span?: PanelSceneSpectrumNumber
   /** A click tunes to the nearest multiple of this many Hz. Omitted, wherever it lands. */
   tuneStep?: PanelSceneSpectrumNumber
   /** Dashes the panadapter's grid lines. */
@@ -197,6 +235,8 @@ export interface PanelSceneSpectrumScale {
     | {
         /** Hz between labels. Omitted, the gridlines' step. */
         interval?: PanelSceneSpectrumNumber
+        /** Decimals of MHz every label shows, 0–6. Omitted, as many as tell one label from the next. Extension API 7. */
+        decimals?: number
         fontFamily?: string
         size?: PanelSceneSpectrumNumber
         /** 100–900. */
@@ -291,7 +331,10 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   id: string
   label: string
   kind: PanelSceneControlKind
-  /** A button can open a native dropdown. Picking an item sends its event as the action. */
+  /**
+   * A button can open a native dropdown. Picking an item sends its event as the action. On a knob
+   * (extension API 7) a click opens it, while a scroll or a drag still turns the knob.
+   */
   menu?: { label: string; event: string }[]
   /**
    * The control's rect over the artwork, in scene units. Required for the drawn kinds.
@@ -347,6 +390,18 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   valueLabels?: string[]
   /** Knobs use relative horizontal/upward dragging. Value per scene unit; default 1. */
   sensitivity?: number
+  /**
+   * A knob's second axis: with `valueY`, horizontal scrolling, dragging and the left/right keys set
+   * `value`, and vertical ones (and up/down) set `valueY` — sent as its own event, `eventY`, which a
+   * knob with an `event` must give, different from it. Its range and feel are `minY`, `maxY`, `stepY`
+   * and `sensitivityY`. Extension API 7.
+   */
+  valueY?: string
+  eventY?: string
+  minY?: number
+  maxY?: number
+  stepY?: number
+  sensitivityY?: number
 }
 
 export interface PanelSceneEvent {

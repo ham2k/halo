@@ -245,8 +245,8 @@ void main() {
 
       // The select fields emit strings; a commit path that only handled bools
       // would drop every one of them silently.
-      await group.commit('smartVfoSnapDebounceMs', '750');
-      expect(settings.smartVfoSnapDebounce, const Duration(milliseconds: 750));
+      await group.commit('smartVfoSnapDebounceMs', '75');
+      expect(settings.smartVfoSnapDebounce, const Duration(milliseconds: 75));
       await group.commit('smartVfoSnapMinMoveKHz', '0.5');
       expect(settings.smartVfoSnapMinMoveKHz, 0.5);
     });
@@ -347,7 +347,7 @@ void main() {
       // Any option list can lose an entry between builds, and a
       // DropdownButtonFormField whose value matches no item throws — so the
       // dialog has to show something offered. The trap is falling back only
-      // there: the row would read "0.25 kHz/s" while the snapper went on
+      // there: the row would read "0.1 kHz/s" while the snapper went on
       // applying the withdrawn 0, and re-picking the value already displayed
       // would be the only way to reconcile them.
       SharedPreferences.setMockInitialValues({
@@ -360,8 +360,8 @@ void main() {
 
       expect(offered, isNot(contains('0')));
       expect(offered, contains(speed['value']), reason: 'the dropdown would throw on a value it has no item for');
-      expect(speed['value'], '0.25');
-      expect(settings.smartVfoSnapMinSpeed, 0.25, reason: 'the snapper must run on what the row shows');
+      expect(speed['value'], '0.1');
+      expect(settings.smartVfoSnapMinSpeed, 0.1, reason: 'the snapper must run on what the row shows');
     });
 
     test('every offered option round-trips through the getter that renders it', () async {

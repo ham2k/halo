@@ -74,7 +74,7 @@
     "canHoldLocalConnection": "Dispositivos de tu red local, mediante una conexión en vivo",
     "canUseLocation": "Tu ubicación",
     "canReadRadio": "Tu radio, para leer su frecuencia y modo",
-    "canControlRadio": "Tu radio, para sintonizarla y para conectarla o desconectarla",
+    "canControlRadio": "Tu radio, para controlarla y transmitir con ella — sintonía, potencia, CW, memorias de voz y PTT",
     "canSetUserAgent": "Identificarse ante servidores con su propio nombre",
     "noCapabilities": "No pide nada fuera de la app.",
     "sandboxNote": "Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.",
@@ -1969,7 +1969,6 @@
         "one": "${count} extensión con errores de compilación",
         "other": "${count} extensiones con errores de compilación"
       },
-      "extDevServerNoSecrets": "Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.",
       "catalog": "Catálogo de extensiones",
       "catalogDescription": "Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.",
       "catalogAddress": "Dirección del catálogo",

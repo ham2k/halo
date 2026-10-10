@@ -279,7 +279,16 @@ const _dvkPlayMargin = Duration(seconds: 3);
 /// radio's unnamed memory.
 String _dvkDefaultName(int id) => 'Recording $id';
 
-class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession, RadioNamedVoiceMemories, SpectrumSession {
+class FlexRadioSession
+    implements
+        TransceiverSession,
+        CwKeyerSession,
+        PttSession,
+        RadioNamedVoiceMemories,
+        SpectrumSession,
+        AntennaTunerSession,
+        PassbandSession,
+        RadioAntennaSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -297,6 +306,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   openMeterSocket;
   late final _meters = FlexMeterCodec(slice);
   final _signalThrottle = FlexSignalThrottle();
+  final _powerThrottle = FlexSignalThrottle(decimals: 1);
+  final _swrThrottle = FlexSignalThrottle(decimals: 1);
   FlexMeterSocket? _meterSocket;
   bool _openingMeters = false;
   int _meterGeneration = 0;
@@ -326,11 +337,18 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
       openMeterSocket(meterHost!, (data) {
         if (generation != _meterGeneration || !_wantUpdates) return;
         if (_spectrum.packet(data)) return;
-        final dbm = _meters.signal(data);
-        if (dbm == null) return;
         // The real clock: a rate limit on wire data must not travel.
-        final value = _signalThrottle.accept(dbm, realNowMillis());
-        if (value != null) _sink.reportMeter(RadioMeter.signalDbm, value);
+        final now = realNowMillis();
+        if (_meters.signal(data) case final dbm?) {
+          if (_signalThrottle.accept(dbm, now) case final value?) _sink.reportMeter(RadioMeter.signalDbm, value);
+        }
+        final tx = _meters.transmit(data);
+        if (tx.watts case final watts?) {
+          if (_powerThrottle.accept(watts, now) case final value?) _sink.reportMeter(RadioMeter.powerOut, value);
+        }
+        if (tx.swr case final swr?) {
+          if (_swrThrottle.accept(swr, now) case final value?) _sink.reportMeter(RadioMeter.swr, value);
+        }
       }, failed).then(
         (socket) {
           if (generation != _meterGeneration || !_wantUpdates) {
@@ -405,6 +423,10 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   Timer? _pingTimer;
   Timer? _tuneRefreshTimer;
   Timer? _powerRefreshTimer;
+
+  /// Re-reads the tuner while it tunes: the radio may not echo a status to
+  /// the client that asked, and a tune's outcome is the line that matters.
+  Timer? _atuRefreshTimer;
 
   final _framer = LineFramer();
 
@@ -482,6 +504,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     // Whether the radio's licence lets it play them: the DVK is a
     // SmartSDR+ feature.
     _sendCommand('sub license all');
+    // The tuner: `atu status=… atu_enabled=…`.
+    _sendCommand('sub atu all');
     _spectrum.subscribe();
     _bindTrackedClient();
     _startMeters();
@@ -494,6 +518,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     _sendCommand('unsub cwx all');
     _sendCommand('unsub dvk all');
     _sendCommand('unsub license all');
+    _sendCommand('unsub atu all');
   }
 
   void _armSettleTimer() {
@@ -516,6 +541,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     _tuneRefreshTimer = null;
     _powerRefreshTimer?.cancel();
     _powerRefreshTimer = null;
+    _atuRefreshTimer?.cancel();
+    _atuRefreshTimer = null;
     _resyncTimer?.cancel();
     _resyncTimer = null;
     _pingTimer?.cancel();
@@ -566,6 +593,10 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
   static final _meterMetadataLine = RegExp(r'^[SR][^|]+\|(?:0\|)?meter (.+)$');
   static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
   static final _interlockPattern = RegExp(r'^S[0-9a-fA-F]+\|interlock (.+)$');
+
+  /// Captured from a FLEX-6600 on 4.2.20, on `sub atu all`:
+  /// `atu status=TUNE_SUCCESSFUL atu_enabled=1 memories_enabled=1 using_mem=1`.
+  static final _atuPattern = RegExp(r'^S[0-9a-fA-F]+\|atu (.+)$');
   static final _clientPattern = RegExp(r'^S[0-9a-fA-F]+\|client (0x[0-9a-fA-F]+) (.+)$');
 
   /// Captured from a FLEX-6600 on 4.2.20, on `sub dvk all`:
@@ -616,6 +647,50 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
     if (dvkMatch != null) _handleDvkLine(dvkMatch.group(1)!);
     final licenseMatch = _licenseFeaturePattern.firstMatch(line);
     if (licenseMatch != null) _handleLicenseFeatureLine(licenseMatch.group(1)!);
+    final atuMatch = _atuPattern.firstMatch(line);
+    if (atuMatch != null) _handleAtuLine(atuMatch.group(1)!);
+  }
+
+  /// A push carries only what changed, so both fields are kept between lines.
+  String? _atuStatus;
+  bool? _atuEnabled;
+
+  void _handleAtuLine(String rest) {
+    final fields = _parseFields(rest);
+    _atuStatus = fields['status']?.toUpperCase() ?? _atuStatus;
+    if (fields['atu_enabled'] case final enabled?) _atuEnabled = enabled == '1';
+    // `atu_enabled=0` is a radio without the tuner fitted, or with it
+    // switched off in its setup: either way, nothing to put in line.
+    final status = _atuEnabled == false
+        ? null
+        : switch (_atuStatus) {
+            'TUNE_IN_PROGRESS' => TunerStatus.tuning,
+            'TUNE_SUCCESSFUL' || 'TUNE_OK' => TunerStatus.inline,
+            'TUNE_FAIL' || 'TUNE_ABORTED' => TunerStatus.failed,
+            null => null,
+            // TUNE_BYPASS, TUNE_MANUAL_BYPASS, TUNE_FAIL_BYPASS, TUNE_NOT_STARTED, NONE.
+            _ => TunerStatus.bypassed,
+          };
+    if (_atuEnabled == null && status == null) return;
+    if (_sink case final TunerSink sink) sink.reportTuner(status);
+    if (status == TunerStatus.tuning) _refreshAtu(const Duration(seconds: 1));
+  }
+
+  void _refreshAtu(Duration after) {
+    if (!_wantUpdates || !_handshakeDone || _atuRefreshTimer != null) return;
+    _atuRefreshTimer = Timer(after, () {
+      _atuRefreshTimer = null;
+      if (_wantUpdates && _handshakeDone) _sendCommand('sub atu all');
+    });
+  }
+
+  /// A Flex has no "in line" switch: its tuner engages by tuning, which keys
+  /// a carrier — briefly, from its memory for the frequency when it has one
+  /// and memories are on. Bypass transmits nothing.
+  @override
+  void setTuner({required bool inline}) {
+    _sendCommand(inline ? 'atu start' : 'atu bypass');
+    _refreshAtu(const Duration(milliseconds: 300));
   }
 
   /// `interlock state=TRANSMITTING …`, on the `tx` subscription this driver
@@ -690,6 +765,12 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
         mode: mode ?? previous?.mode,
         clientHandle: fields['client_handle'] ?? previous?.clientHandle,
         pan: fields['pan'] ?? previous?.pan,
+        filterLo: int.tryParse(fields['filter_lo'] ?? '') ?? previous?.filterLo,
+        filterHi: int.tryParse(fields['filter_hi'] ?? '') ?? previous?.filterHi,
+        rxant: fields['rxant'] ?? previous?.rxant,
+        txant: fields['txant'] ?? previous?.txant,
+        rxPorts: fields['ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.rxPorts,
+        txPorts: fields['tx_ant_list']?.split(',').where((p) => p.isNotEmpty).toList() ?? previous?.txPorts,
       );
     }
     _publishChannels();
@@ -701,6 +782,32 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession, PttSession
 
     final reading = VfoReading(freqKHz: freqKHz, mode: mode);
     if (!reading.isEmpty) _sink.report(reading);
+    // `filter_lo=100 filter_hi=2800`, as RadioRoom (FLEX-6600, 4.2.20) states
+    // them: already Hz from the slice frequency, the convention [Passband] uses.
+    if (_slices[index] case _SliceStatus(:final filterLo?, :final filterHi?) when filterLo < filterHi) {
+      if (_sink case final PassbandSink sink) sink.reportPassband(Passband(filterLo, filterHi));
+    }
+    // `rxant=ANT1 txant=ANT1 ant_list=ANT1,ANT2,RX_A,RX_B,XVTA,XVTB tx_ant_list=ANT1,ANT2,XVTA,XVTB`,
+    // as RadioRoom (FLEX-6600, 4.2.20) states slice A: a slice picks each independently.
+    if (_slices[index] case _SliceStatus(:final rxPorts?, :final txPorts?, :final rxant, :final txant)) {
+      if (_sink case final RadioAntennaSink sink) sink.reportAntennas(RadioAntennas(rxPorts: rxPorts, txPorts: txPorts, rx: rxant, tx: txant, separate: true));
+    }
+  }
+
+  /// The slice's receive and transmit antennas, each its own setting.
+  @override
+  void setAntenna({String? rx, String? tx}) {
+    if (rx != null) _sendCommand('slice set $slice rxant=$rx');
+    if (tx != null) _sendCommand('slice set $slice txant=$tx');
+    _refreshAfterTune();
+  }
+
+  /// SmartSDR's `filt`: the slice's edges, in Hz from its frequency. The
+  /// radio clamps them to the mode's limits; the read-back says where.
+  @override
+  void setPassband(Passband passband) {
+    _sendCommand('filt $slice ${passband.lowHz} ${passband.highHz}');
+    _refreshAfterTune();
   }
 
   /// e.g. "S5AC2F980|client 0x1C61D553 connected program=SmartSDR-Win
@@ -1188,5 +1295,25 @@ class _SliceStatus {
   /// The panadapter showing this slice, as `0x40000000`.
   final String? pan;
 
-  const _SliceStatus({required this.label, required this.inUse, this.freqKHz, this.mode, this.clientHandle, this.pan});
+  /// The receive filter's edges, in Hz from the slice frequency.
+  final int? filterLo, filterHi;
+
+  /// The antennas in use, and the ports each can choose.
+  final String? rxant, txant;
+  final List<String>? rxPorts, txPorts;
+
+  const _SliceStatus({
+    required this.label,
+    required this.inUse,
+    this.freqKHz,
+    this.mode,
+    this.clientHandle,
+    this.pan,
+    this.filterLo,
+    this.filterHi,
+    this.rxant,
+    this.txant,
+    this.rxPorts,
+    this.txPorts,
+  });
 }

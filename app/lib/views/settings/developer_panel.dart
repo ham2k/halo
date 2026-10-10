@@ -347,11 +347,6 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
                   ],
                 ),
               ),
-              if (connected)
-                Padding(
-                  padding: const EdgeInsets.only(top: Space.sm),
-                  child: Text(t.extDevServerNoSecrets, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-                ),
             ]),
           ]),
         );

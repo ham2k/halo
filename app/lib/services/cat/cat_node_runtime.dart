@@ -1,0 +1,110 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// What CatService keeps for each node while it is connected.
+
+part of 'cat_service.dart';
+
+class _NodeRuntime {
+  EquipmentState state = const EquipmentState();
+  EquipmentConnection? connection;
+  EquipmentSession? session;
+  StreamSubscription<Uint8List>? subscription;
+  CatCancelToken? cancel;
+
+  /// The last value moved between this node and the app's VFO, in either
+  /// direction — the echo guard. Without it an app→radio tune and the
+  /// radio's confirmation of it keep re-triggering each other.
+  VfoReading? lastSent;
+
+  /// What this connection has heard the radio itself say ([RadioProofWatch]).
+  final proof = RadioProofWatch();
+
+  /// [lastSent]'s counterpart for transmit power, which travels on its own
+  /// commands rather than inside a [VfoReading].
+  num? lastSentPower;
+
+  /// Per-node, deliberately: two overlapping connects to the SAME node race
+  /// to own it, and the loser must not install its connection.
+  int attemptSeq = 0;
+
+  /// Watches for a connection that is up but saying nothing — see
+  /// [EquipmentState.stale].
+  Timer? staleTimer;
+
+  /// The operator pressed Disconnect. Distinct from every other route to
+  /// `disconnected`, and the distinction is the whole safety of the idle
+  /// retry: without it, "off because I said so" and "off because the radio
+  /// vanished" are the same state, and a retry loop would keep switching the
+  /// radio back on under the operator. app-polo's auto-reconnect did exactly
+  /// that. Cleared by [connect], so asking for it again resumes retrying.
+  bool userDisconnected = false;
+
+  /// The last attempt opened the port and refused it over its control lines
+  /// ([SerialFailure.lines]) — hardware flow control another program left
+  /// on, which lasts until the cable is replugged. Retrying on its own would
+  /// only open the port again, and opening raises RTS: on a Digirig, a key-up
+  /// per retry for the rest of the session. Cleared by [connect], the
+  /// operator's own try after replugging.
+  bool linesRefused = false;
+
+  /// See [CatService.spectrumFrames]. Created by the first display to ask.
+  StreamController<SpectrumFrame>? spectrum;
+
+  /// Whether this connection's scope was started — what a demand changes.
+  bool spectrumStarted = false;
+
+  /// The transmission under way: SWR readings taken with RF out.
+  double _swrSum = 0;
+  int _swrCount = 0;
+
+  /// The last SWR read with RF out while the radio did not yet say it was
+  /// transmitting.
+  ({num value, int atMillis})? _swrBeforeKeying;
+  ({double? swrAverage, int endedAtMillis})? lastTransmission;
+
+  /// An SWR reading. Counted only while RF is out: between words on SSB a
+  /// radio reads SWR 1.0 at no power, which would flatter every average.
+  void noteSwr(num value, {required num? powerOut, required bool? transmitting}) {
+    if ((powerOut ?? 0) <= 0) return;
+    if (transmitting == true) {
+      _swrSum += value;
+      _swrCount++;
+    } else {
+      _swrBeforeKeying = (value: value, atMillis: realNowMillis());
+    }
+  }
+
+  /// A key-down this soon after the last key-up continues that transmission
+  /// rather than starting one: CW break-in unkeys between characters, and
+  /// averaging each element alone leaves a reading or two per average.
+  static const _breakInMillis = 500;
+
+  /// A polled driver reports the first meters of a transmission just BEFORE
+  /// the transmission itself — its poller reads on the transition — so a
+  /// reading from the second before keying belongs to this one.
+  void startTransmission() {
+    final now = realNowMillis(), last = lastTransmission;
+    if (last == null || now - last.endedAtMillis > _breakInMillis) {
+      _swrSum = 0;
+      _swrCount = 0;
+    }
+    final early = _swrBeforeKeying;
+    if (early != null && now - early.atMillis <= 1000) {
+      _swrSum += early.value;
+      _swrCount++;
+    }
+    _swrBeforeKeying = null;
+  }
+
+  /// The transmission under way's average so far; null before a reading with RF out.
+  double? get swrRunning => _swrCount == 0 ? null : _swrSum / _swrCount;
+
+  void endTransmission() {
+    lastTransmission = (swrAverage: _swrCount == 0 ? null : _swrSum / _swrCount, endedAtMillis: realNowMillis());
+  }
+}
+
+class _MeterReadings extends ChangeNotifier {
+  void notify() => notifyListeners();
+}

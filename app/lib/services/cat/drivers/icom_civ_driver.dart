@@ -127,6 +127,17 @@ const civRadioModesConfigKey = 'radioModes';
 /// answers every scope command with a NAK.
 const civScopeConfigKey = 'civScope';
 
+/// Pinned by an entry whose radio picks among its own antenna ports over
+/// CI-V (0x12): how many ANT ports it has — 2 on an IC-7610, 4 on an
+/// IC-7760, 1 on an IC-7300MK2, whose choice is its receive antenna
+/// connectors. Never a field: it is a fact about the model, and nothing in
+/// the reply says how many there are. Unpinned, the session never asks.
+const civAntennaPortsConfigKey = 'civAntennaPorts';
+
+/// What [RadioAntennas] calls the receive antenna connectors — the name the
+/// radios' own "RX-ANT" control gives them.
+const civRxAntennaPort = 'RX-ANT';
+
 /// The slowest line a sweep fits on. At fast speed a sweep is ~500 bytes
 /// thirty times a second, and a slower line would carry little else — the
 /// VFO, the TX watch and the keyer share it.
@@ -135,6 +146,13 @@ const civScopeMinBaud = 115200;
 /// The TX watch is one exchange; the meter cycle is one per meter read.
 const civTxWatchBytes = _civExchangeBytes;
 const civMeterCycleBytes = _civExchangeBytes * 4;
+
+/// How many refusals in a row of a read the radio may lack — the tuner, the
+/// filter width — before the session stops asking. More than one because a
+/// NAK names no command: one arriving late for a command that timed out
+/// lands on whatever went out next, and must not cost a radio the readout
+/// for the whole connection.
+const _refusalsBeforeGivingUp = 2;
 
 /// Which CI-V meter carries which reading, and which calibration table turns
 /// its 0-255 into something an operator can read. One map, so the poll, the
@@ -244,6 +262,7 @@ class IcomCivDriver extends EquipmentDriver {
     voiceMemoriesConfigKey,
     voiceCeilingConfigKey,
     civScopeConfigKey,
+    civAntennaPortsConfigKey,
   };
 
   @override
@@ -310,7 +329,8 @@ class IcomCivDriver extends EquipmentDriver {
   static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
-class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, SpectrumSession {
+class IcomCivSession
+    implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, SpectrumSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).
@@ -410,6 +430,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
        _modeWithFilter = config[civModeWithFilterConfigKey] == true,
        _dataModeSupported = config[civDataModeConfigKey] != false,
        _scopeSupported = config[civScopeConfigKey] == true,
+       _antennaPorts = (config[civAntennaPortsConfigKey] as num?)?.toInt().clamp(0, 4) ?? 0,
        _baudRate = serialBaudRateOrNull(config);
 
   /// See [civModeWithFilterConfigKey].
@@ -472,6 +493,12 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// The command byte on the wire unanswered, or null when the wire is free.
   int? _awaiting;
 
+  /// The frame on the wire, for the reads a NAK answers as "not on this
+  /// radio" — the tuner's shares its command byte with the TX watch, and the
+  /// filter width's with the DATA read, so [_awaiting] alone cannot tell
+  /// them apart.
+  List<int>? _onWire;
+
   /// Commands the operator asked for, in order and never merged: a band
   /// change restates its frequency after its mode, and a keyer speed is set
   /// and then read back.
@@ -493,8 +520,11 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// frames of [command] it stops — a CW chunk or a voice play still in the
   /// queue would otherwise key the radio after the operator stopped it. It
   /// still waits for the one exchange on the wire.
-  void _sendFirst(List<int> frame, {required int dropping}) {
-    _outbox.removeWhere((queued) => queued[4] == dropping);
+  ///
+  /// [droppingSub] narrows that to one sub-command, for a command byte
+  /// shared by things a stop must not take with it.
+  void _sendFirst(List<int> frame, {required int dropping, int? droppingSub}) {
+    _outbox.removeWhere((queued) => queued[4] == dropping && (droppingSub == null || queued[5] == droppingSub));
     _outbox.addFirst(frame);
     _sendNext();
   }
@@ -503,6 +533,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     if (_awaiting != null || _outbox.isEmpty) return;
     final frame = _outbox.removeFirst();
     _awaiting = frame[4];
+    _onWire = frame;
     _answerTimer = Timer(_baudRate == null ? _networkAnswerTimeout : _answerTimeout, _unanswered);
     _sink.send(frame);
   }
@@ -523,6 +554,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _answerTimer?.cancel();
     _answerTimer = null;
     _awaiting = null;
+    _onWire = null;
     _sendNext();
   }
 
@@ -544,6 +576,16 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _poll(buildReadModeFrame(to: radioAddress, from: controllerAddress));
     _poll(buildReadPowerLevelFrame(to: radioAddress, from: controllerAddress));
     _poll(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: civMeterDcInputVoltage));
+    // On the state poll, not the TX watch: the tuner moves when someone
+    // presses its button, and a tune in progress is already heard as a
+    // transmission there.
+    if (_tunerSupported) _poll(_tunerRead);
+    // CI-V announces no width change, so a turn of the radio's own control
+    // is heard here.
+    _readFilterWidth();
+    // The operator's ANT key is heard here too: no guide says 0x12 is
+    // announced on transceive.
+    if (_antennaSupported) _poll(_antennaRead);
   }
 
   /// One turn of the telemetry cadence: ask whether the radio is keyed, or
@@ -640,6 +682,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // What this answers — a NAK names no command, so it is the one on the
     // wire, read before the answer frees it.
     final answering = _awaiting;
+    final answeringFrame = _onWire;
     // An answer to us, not a transceive broadcast, is what frees the wire.
     if (frame.to == controllerAddress && _answers(frame)) _answered();
 
@@ -650,6 +693,26 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       debugPrint('[cat] CI-V: radio rejected the last command');
       // A scope that refuses is a display that would otherwise wait forever.
       if (answering == civScopeCommand && _scopeWanted) _reportScopeProblem(t.settings.station.spectrumScopeRefused);
+      // A radio without an internal tuner refuses the read on every poll,
+      // and will for as long as it is connected.
+      if (listEquals(answeringFrame, _tunerRead) && _tunerSupported && ++_tunerRefusals >= _refusalsBeforeGivingUp) {
+        _tunerSupported = false;
+        _reportTuner(null);
+        _sink.reportDiagnostic('radio has no antenna tuner (0x1C 0x01 refused); not asked again');
+      }
+      // Likewise a radio without the width command. Only ever asked in a mode
+      // with a width table, so a refusal is not the mode's.
+      if (listEquals(answeringFrame, _filterWidthRead) && _filterWidthSupported && ++_filterWidthRefusals >= _refusalsBeforeGivingUp) {
+        _filterWidthSupported = false;
+        _reportPassband();
+        _sink.reportDiagnostic('radio does not read its filter width (0x1A 0x03 refused); not asked again');
+      }
+      // An entry pinned with ports its radio cannot select.
+      if (listEquals(answeringFrame, _antennaRead) && _antennaSupported && ++_antennaRefusals >= _refusalsBeforeGivingUp) {
+        _antennaSupported = false;
+        _reportAntennas(null);
+        _sink.reportDiagnostic('radio does not read its antenna selection (0x12 refused); not asked again');
+      }
       return;
     }
     if (frame.isAck) return;
@@ -678,6 +741,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         // data[0] is the mode; data[1], when present, is the filter — sent
         // back by an entry that must send one with a mode, and by every
         // DATA submode set.
+        final filterMoved = frame.data.length > 1 && frame.data[1] != _lastFilter;
         if (frame.data.length > 1) {
           _lastFilter = frame.data[1];
           _filterByMode[frame.data[0]] = frame.data[1];
@@ -706,13 +770,28 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         }
         final mode = civModeNameForCode(frame.data[0]);
         if (mode == null) return;
+        final modeMoved = mode != _baseMode;
         _baseMode = mode;
         _reportMode();
+        // Each mode, and each of its filters, keeps a width of its own: the
+        // one read before says nothing about this one.
+        if (modeMoved || filterMoved) {
+          _filterWidthIndex = null;
+          _reportPassband();
+          _readFilterWidth();
+        }
         // A mode announced on its own may have brought its DATA submode with
         // it — a band recall does — and the announcement does not say.
         if (frame.command == CivCommand.transceiveMode && _dataModeSupported) _readDataMode();
 
       case CivCommand.settings:
+        if (parseFilterWidthData(frame.data) case final index?) {
+          _filterWidthRefusals = 0;
+          _filterWidthSupported = true;
+          _filterWidthIndex = index;
+          _reportPassband();
+          return;
+        }
         final data = parseDataModeData(frame.data);
         if (data == null) return;
         _dataReadPending = false;
@@ -769,6 +848,19 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
       case civScopeCommand:
         _handleScope(frame.data);
 
+      case CivCommand.antenna:
+        // A port past the pinned count is a reply the entry does not
+        // describe, and not a port to offer.
+        final reply = parseAntennaData(frame.data);
+        if (reply == null || reply.port >= _antennaPorts) return;
+        // A radio that answers selects its ports, whatever a NAK taken for
+        // this read said before.
+        _antennaSupported = true;
+        _antennaRefusals = 0;
+        _antennaPort = reply.port;
+        _rxAntenna = reply.rxAntenna;
+        _reportAntennas(_antennasFor(reply.port, reply.rxAntenna));
+
       case CivCommand.transmitStatus:
         // Asked by two things now — the voice tracker, to learn when a
         // memory has finished, and the telemetry watch — and answered the
@@ -783,6 +875,17 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
             _voice.endFromPoll();
           case null:
             break;
+        }
+        if (parseTunerData(frame.data) case final state?) {
+          // A radio that answers has a tuner, whatever a NAK taken for this
+          // read said before.
+          _tunerSupported = true;
+          _tunerRefusals = 0;
+          _reportTuner(switch (state) {
+            civTunerInline => TunerStatus.inline,
+            civTunerTuning => TunerStatus.tuning,
+            _ => TunerStatus.bypassed,
+          });
         }
     }
   }
@@ -898,8 +1001,187 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _sendFirst(
       buildSetTransmitFrame(to: radioAddress, from: controllerAddress, on: on),
       dropping: CivCommand.transmitStatus,
+      // The PTT's own frames only: a tuner set shares the command byte, and
+      // one dropped here would leave the tuner where the operator moved it
+      // from.
+      droppingSub: 0x00,
     );
     _keyedByUs = on;
+  }
+
+  /// Cleared for the rest of the session by a radio that refuses the tuner
+  /// read — see [civTunerStatus] and [_refusalsBeforeGivingUp].
+  bool _tunerSupported = true;
+  int _tunerRefusals = 0;
+
+  late final List<int> _tunerRead = buildReadTunerFrame(to: radioAddress, from: controllerAddress);
+
+  /// What [_reportTuner] last said, and whether it has said anything —
+  /// null is itself an answer ("no tuner"), so it cannot mark "not yet".
+  TunerStatus? _tuner;
+  bool _tunerReported = false;
+
+  /// Only on a change, like [_noteTransmitting]: the state poll restates the
+  /// tuner every few seconds.
+  void _reportTuner(TunerStatus? status) {
+    if (_tunerReported && status == _tuner) return;
+    _tunerReported = true;
+    _tuner = status;
+    if (_sink case final TunerSink sink) sink.reportTuner(status);
+  }
+
+  /// In line or through, then read back: a set is answered with a bare ACK.
+  /// Never a tune ([civTunerTuning]) — that transmits, and the app leaves
+  /// putting a carrier on the air to the operator.
+  @override
+  void setTuner({required bool inline}) {
+    if (!_tunerSupported) return;
+    _send(buildSetTunerFrame(to: radioAddress, from: controllerAddress, inline: inline));
+    _send(_tunerRead);
+  }
+
+  /// Cleared for the rest of the session by a radio that refuses the width
+  /// read — see [_refusalsBeforeGivingUp].
+  bool _filterWidthSupported = true;
+  int _filterWidthRefusals = 0;
+
+  late final List<int> _filterWidthRead = buildReadFilterWidthFrame(to: radioAddress, from: controllerAddress);
+
+  /// What the radio last said its width is, for the mode and filter now in
+  /// use; null until it says, again after either moves.
+  int? _filterWidthIndex;
+
+  /// What [_reportPassband] last said, and whether it has said anything —
+  /// as for the tuner, null is itself an answer.
+  Passband? _passband;
+  bool _passbandReported = false;
+
+  /// Only where the width means a passband — see [_widthsFor] — so a
+  /// refusal is never a mode without one (the radio may NAK the read in FM).
+  void _readFilterWidth() {
+    if (_filterWidthSupported && _widthsFor(_baseMode) != null) _poll(_filterWidthRead);
+  }
+
+  /// The width table for [mode], in the modes where the filter's place is
+  /// known: CENTRED on the tuned frequency. In CW because an Icom shows a
+  /// signal's own frequency on the dial and centres its filter on the CW
+  /// pitch that signal is heard at; in AM because the filter takes both
+  /// sidebands around the carrier.
+  ///
+  /// Null in SSB, its DATA submode included: an Icom's SSB filter sits some
+  /// offset from the carrier that no CI-V command reports and no guide this
+  /// driver is written from states, so a passband drawn there would be a
+  /// guess. Null in RTTY, where the filter sits around the mark/space pair
+  /// at a placement the guide does not give either, and in FM, WFM and DV,
+  /// which have no width table.
+  ///
+  /// Read with the twin PBT centred: the guide gives its 0x14 0x07/0x08 level
+  /// no scale in Hz, so a shifted PBT narrows the real passband unseen.
+  static List<int>? _widthsFor(String? mode) => switch (mode) {
+    'CW' || 'CW-R' => civFilterWidthsSsbCw,
+    'AM' => civFilterWidthsAm,
+    _ => null,
+  };
+
+  static Passband? _passbandFor(String? mode, int? index) {
+    final widths = _widthsFor(mode);
+    if (widths == null || index == null || index >= widths.length) return null;
+    final half = widths[index] ~/ 2;
+    return Passband(-half, half);
+  }
+
+  /// Only on a change, like [_reportTuner]: the state poll restates the width
+  /// every few seconds.
+  void _reportPassband() {
+    final passband = _filterWidthSupported ? _passbandFor(_baseMode, _filterWidthIndex) : null;
+    if (_passbandReported && passband == _passband) return;
+    _passbandReported = true;
+    _passband = passband;
+    if (_sink case final PassbandSink sink) sink.reportPassband(passband);
+  }
+
+  /// The nearest width the current mode's table has, then read back: a set
+  /// is answered with a bare ACK. The width alone — never the mode, the
+  /// filter slot or the PBT — and only in a mode [_passbandFor] can report,
+  /// since a set nothing reads back is one nobody sees land.
+  @override
+  void setPassband(Passband passband) {
+    final widths = _widthsFor(_baseMode);
+    if (!_filterWidthSupported || widths == null) return;
+    _send(buildSetFilterWidthFrame(to: radioAddress, from: controllerAddress, index: civFilterWidthIndex(widths, passband.widthHz)));
+    _send(_filterWidthRead);
+  }
+
+  /// See [civAntennaPortsConfigKey]; 0 when unpinned.
+  final int _antennaPorts;
+
+  /// Cleared for the rest of the session by a radio that refuses the read —
+  /// see [_refusalsBeforeGivingUp].
+  late bool _antennaSupported = _antennaPorts > 0;
+  int _antennaRefusals = 0;
+
+  late final List<int> _antennaRead = buildReadAntennaFrame(to: radioAddress, from: controllerAddress);
+
+  /// What the radio last said: the port in use, and whether receive goes
+  /// through [civRxAntennaPort] — null on a radio whose reply has no such
+  /// byte. [_antennaPort] stays null until the radio says.
+  int? _antennaPort;
+  bool? _rxAntenna;
+
+  /// What [_reportAntennas] last said, and whether it has said anything —
+  /// as for the tuner, null is itself an answer.
+  RadioAntennas? _antennas;
+  bool _antennasReported = false;
+
+  /// 'ANT1' to 'ANT4' as the radios label them; a one-port radio's is "ANT".
+  late final List<String> _antennaPortNames = _antennaPorts == 1 ? const ['ANT'] : [for (var i = 1; i <= _antennaPorts; i++) 'ANT$i'];
+
+  /// [RadioAntennas.separate] where the radio has receive antenna
+  /// connectors: it transmits on the selected port and receives on that port
+  /// or on [civRxAntennaPort] — never on another ANT port, so those are the
+  /// only two receive choices. Null for a one-port radio without them, which
+  /// has nothing to choose.
+  RadioAntennas? _antennasFor(int port, bool? rxAntenna) {
+    final names = _antennaPortNames;
+    final tx = names[port];
+    if (rxAntenna == null) return names.length < 2 ? null : RadioAntennas(rxPorts: names, txPorts: names, rx: tx, tx: tx);
+    return RadioAntennas(rxPorts: [tx, civRxAntennaPort], txPorts: names, rx: rxAntenna ? civRxAntennaPort : tx, tx: tx, separate: true);
+  }
+
+  /// Only on a change, like [_reportTuner]: the state poll restates the
+  /// selection every few seconds.
+  void _reportAntennas(RadioAntennas? antennas) {
+    if (_antennasReported && antennas == _antennas) return;
+    _antennasReported = true;
+    _antennas = antennas;
+    if (_sink case final RadioAntennaSink sink) sink.reportAntennas(antennas);
+  }
+
+  /// The port, and where receive goes, then read back: a set is answered
+  /// with a bare ACK. Only once the radio has said what it has, and only a
+  /// combination it offers — receiving on one ANT port while transmitting on
+  /// another is none. On a radio without receive antenna connectors one port
+  /// serves both, and either names it.
+  @override
+  void setAntenna({String? rx, String? tx}) {
+    final current = _antennaPort;
+    if (!_antennaSupported || current == null) return;
+    final names = _antennaPortNames;
+    final separate = _rxAntenna != null;
+    final port = names.indexOf(tx ?? (separate ? null : rx) ?? names[current]);
+    if (port < 0) return;
+    var rxAntenna = _rxAntenna;
+    if (rx != null) {
+      if (separate && rx == civRxAntennaPort) {
+        rxAntenna = true;
+      } else if (rx == names[port]) {
+        if (separate) rxAntenna = false;
+      } else {
+        return;
+      }
+    }
+    _send(buildSetAntennaFrame(to: radioAddress, from: controllerAddress, port: port, rxAntenna: rxAntenna));
+    _send(_antennaRead);
   }
 
   @override

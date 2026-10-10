@@ -1896,10 +1896,12 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                   panels: dockServices.panels,
                   onTitle: (title) => onPanelTitle(id, title),
                   renderContext: panelRenderContext,
-                  spectrum:
-                      dockServices.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */ &&
-                          dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
-                      ? CatSpectrumSource(dockServices.cat)
+                  spectrum: dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
+                      ? CatSpectrumSource(
+                          dockServices.cat,
+                          spectrumEnabled: dockServices.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
+                          canCommand: dockServices.extensions.radioCalls.canWrite(dockServices.panels[id]!.hookKey),
+                        )
                       : null,
                 )
               // A module nothing in the catalog explains — an extension

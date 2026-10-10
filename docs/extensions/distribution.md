@@ -53,7 +53,12 @@ and `onShow`/`onHide`, and from 3 the build rewrites a bare `setTimeout` into
 the SDK's (README's "Timers"); 4 lets `host.fetch` reach a plain-`http://` host
 the app fronts with its https proxy (README's `host.fetch`); 5 adds panel
 scenes' `scene` kind, native controls, `strings`, `layout`, `after` and control
-`opacity` (hooks.md's `panel`).
+`opacity` (hooks.md's `panel`); 6 adds the scene's `spectrum` control and
+`host.setRadioSpectrum`; 7 adds `host.setRadio`, the keying calls
+(`sendRadioCw`, `playRadioVoice`, `setRadioPtt`, `stopRadioTransmit`), what
+`readRadio` adds with them, and the scene's host-fed `radio` values, scale
+bindings, text glow, two-axis and menu knobs and the spectrum's `follow`,
+`span` and label `decimals`.
 
 Three fields are **refused** in a distributed bundle, and it is worth
 understanding why:
@@ -262,7 +267,7 @@ It reports every problem at once rather than one per run:
 h2kext-pack: ./build is not ready to package:
 manifest.json: missing required field 'name'
 manifest.json: key 'my-clock' must start with your callsign — 'my' is not one (e.g. ki2d-my-clock)
-manifest.json: missing 'api' — declare the extension API this was built against (currently 6)
+manifest.json: missing 'api' — declare the extension API this was built against (currently 7)
 ```
 
 `--force-name` waives the naming convention below. It exists for Ham2K's own

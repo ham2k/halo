@@ -65,9 +65,14 @@ class CivCommand {
   /// which is why a session paces them (cw_send_queue.dart).
   static const sendCw = 0x17;
 
+  /// Selects or reads which of the radio's own antenna ports is in use —
+  /// see [buildReadAntennaFrame].
+  static const antenna = 0x12;
+
   /// Sub-command 0x00 with one data byte: reads or sets whether the radio
   /// is transmitting. Read here only, to learn when a voice memory has
-  /// finished — 0x28 says nothing about its own progress.
+  /// finished — 0x28 says nothing about its own progress. Sub-command 0x01
+  /// is the antenna tuner — see [civTunerStatus].
   static const transmitStatus = 0x1C;
 
   /// "Various settings" — a sub-command byte selects which. Only
@@ -321,6 +326,103 @@ bool? parseTransmitStatusData(List<int> data) {
   return switch (data[1]) {
     0x00 => false,
     0x01 => true,
+    _ => null,
+  };
+}
+
+/// [CivCommand.transmitStatus] sub-command: the antenna tuner. One data
+/// byte, read and set alike — [civTunerThrough], [civTunerInline], or
+/// [civTunerTuning] while a tune is on the air. A radio with no internal
+/// tuner (the IC-705, the IC-9700) answers the read with an NG.
+const civTunerStatus = 0x01;
+const civTunerThrough = 0x00;
+const civTunerInline = 0x01;
+
+/// Starts a tune — transmits. Read back from the radio, never sent: the app
+/// switches a tuner in or out, and leaves keying a carrier to the operator.
+const civTunerTuning = 0x02;
+
+List<int> buildReadTunerFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: const [civTunerStatus]);
+
+/// In line ([inline]) or through. There is deliberately no way to ask this
+/// for [civTunerTuning].
+List<int> buildSetTunerFrame({required int to, int from = civDefaultControllerAddress, required bool inline}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: [civTunerStatus, inline ? civTunerInline : civTunerThrough]);
+
+/// `frame.data` of a 0x1C reply: the tuner's state byte, or null for any
+/// other sub-command, a short reply, or a state this codec does not know.
+int? parseTunerData(List<int> data) {
+  if (data.length < 2 || data[0] != civTunerStatus) return null;
+  final state = data[1];
+  return state == civTunerThrough || state == civTunerInline || state == civTunerTuning ? state : null;
+}
+
+/// [CivCommand.settings] sub-command: the IF filter width — of the filter in
+/// use (FIL1-FIL3), which it never changes. One BCD byte, read and set
+/// alike, indexing a table that depends on the mode: [civFilterWidthsSsbCw],
+/// [civFilterWidthsAm]. The IC-7200 puts this on sub-command 0x02 instead,
+/// and hamlib never asks it of the Xiegu G90, X108G or X5105.
+const civSettingFilterWidth = 0x03;
+
+/// Hz for each [civSettingFilterWidth] index in SSB and CW, from Icom's
+/// IC-7300MK2 CI-V reference guide: 50 Hz steps from 50 Hz to 500 Hz (00-09),
+/// then 100 Hz steps from 600 Hz to 3.6 kHz (10-40). RTTY shares the table
+/// but stops at 2.7 kHz (31).
+final List<int> civFilterWidthsSsbCw = List.unmodifiable([for (var i = 0; i <= 40; i++) i < 10 ? (i + 1) * 50 : (i - 4) * 100]);
+
+/// The same for AM: 200 Hz steps from 200 Hz to 10 kHz (00-49).
+final List<int> civFilterWidthsAm = List.unmodifiable([for (var i = 0; i <= 49; i++) (i + 1) * 200]);
+
+/// The index in [widths] nearest [widthHz] — the narrower of two equally
+/// near.
+int civFilterWidthIndex(List<int> widths, int widthHz) {
+  var best = 0;
+  for (var i = 1; i < widths.length; i++) {
+    if ((widths[i] - widthHz).abs() < (widths[best] - widthHz).abs()) best = i;
+  }
+  return best;
+}
+
+List<int> buildReadFilterWidthFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: const [civSettingFilterWidth]);
+
+List<int> buildSetFilterWidthFrame({required int to, int from = civDefaultControllerAddress, required int index}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.settings, data: [civSettingFilterWidth, ((index ~/ 10) << 4) | (index % 10)]);
+
+/// `frame.data` of a 0x1A reply: the filter width index, or null for another
+/// sub-command, a short reply, or a byte that is not BCD.
+int? parseFilterWidthData(List<int> data) {
+  if (data.length < 2 || data[0] != civSettingFilterWidth) return null;
+  final tens = data[1] >> 4, ones = data[1] & 0x0F;
+  return tens > 9 || ones > 9 ? null : tens * 10 + ones;
+}
+
+/// [CivCommand.antenna], from Icom's IC-7610, IC-7760 and IC-7300MK2 CI-V
+/// reference guides: the reply, and a set, carry the port as the
+/// sub-command byte — 00=ANT1 to 03=ANT4 — and, on a radio with receive
+/// antenna connectors, one data byte: whether receive goes through them (01)
+/// or the selected port (00). The read is the bare command, as hamlib asks
+/// it. An IC-7300MK2 lists only 00, its one "ANT". On a radio whose antenna
+/// type is set to "RX-I/O" the guides call 01 invalid, and 00 is always
+/// answered.
+List<int> buildReadAntennaFrame({required int to, int from = civDefaultControllerAddress}) => buildCivFrame(to: to, from: from, command: CivCommand.antenna);
+
+/// [rxAntenna] null sends the port alone, for a radio whose reply carries no
+/// receive antenna byte.
+List<int> buildSetAntennaFrame({required int to, int from = civDefaultControllerAddress, required int port, bool? rxAntenna}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.antenna, data: [port, if (rxAntenna != null) rxAntenna ? 0x01 : 0x00]);
+
+/// `frame.data` of a 0x12 reply: the port index, and whether the receive
+/// antenna connectors are in use — null where the reply carries no such
+/// byte. Null altogether for an empty or over-long reply, a port past ANT4,
+/// or a receive byte other than 00/01.
+({int port, bool? rxAntenna})? parseAntennaData(List<int> data) {
+  if (data.isEmpty || data.length > 2 || data[0] > 0x03) return null;
+  if (data.length == 1) return (port: data[0], rxAntenna: null);
+  return switch (data[1]) {
+    0x00 => (port: data[0], rxAntenna: false),
+    0x01 => (port: data[0], rxAntenna: true),
     _ => null,
   };
 }

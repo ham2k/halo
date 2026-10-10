@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -86,6 +87,211 @@ Future<void> show(
 }
 
 void main() {
+  Future<FocusNode> showBesideCallsign(WidgetTester tester) async {
+    final call = FocusNode(debugLabel: 'call');
+    addTearDown(call.dispose);
+    final doc = document();
+    (doc['controls'] as List).add({'id': 'go', 'label': 'Go', 'kind': 'button', 'x': 300, 'y': 0, 'width': 100, 'height': 50, 'event': 'go'});
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                TextField(focusNode: call),
+                SizedBox(
+                  width: 400,
+                  height: 200,
+                  child: DockPaneVisibility(
+                    visible: true,
+                    child: PanelSceneView(scene: PanelScene(doc), onEvent: (_) async => {'values': <String, num>{}}),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    call.requestFocus();
+    await tester.pump();
+    return call;
+  }
+
+  testWidgets('clicking a drawn button leaves focus where the operator had it', (tester) async {
+    // A focus taken by the click would move the operator's next keystrokes
+    // out of the callsign and into a panel control that does nothing with them.
+    final call = await showBesideCallsign(tester);
+    await tester.tap(find.bySemanticsLabel('Go'));
+    await tester.pump();
+    expect(call.hasFocus, isTrue);
+  });
+
+  testWidgets('a clicked slider keeps focus while it is being adjusted, then hands it back', (tester) async {
+    // Kept for good, the operator's next callsign would be typed into a slider.
+    // Dropped at once, the arrow keys could not fine-tune what was just clicked.
+    final call = await showBesideCallsign(tester);
+    await tester.tapAt(tester.getRect(find.bySemanticsLabel('Test slider')).center);
+    await tester.pump();
+    expect(call.hasFocus, isFalse);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    // The hold runs from the last adjustment, not the click.
+    await tester.pump(const Duration(seconds: 2));
+    expect(call.hasFocus, isFalse);
+    await tester.pump(const Duration(milliseconds: 1100));
+    expect(call.hasFocus, isTrue);
+
+    // A drag holds from its release: a long one must not lose focus mid-drag.
+    final slider = tester.getRect(find.bySemanticsLabel('Test slider')).center;
+    final gesture = await tester.startGesture(slider);
+    await gesture.moveBy(const Offset(40, 0));
+    await tester.pump(const Duration(seconds: 4));
+    expect(call.hasFocus, isFalse);
+    await gesture.up();
+    await tester.pump(const Duration(seconds: 3));
+    expect(call.hasFocus, isTrue);
+  });
+
+  testWidgets('a knob with a second axis takes sideways and up-and-down motion as two values', (tester) async {
+    // One patch of artwork, two settings: a passband's shift across, its
+    // width up and down. Merged into one value, either would drag the other.
+    final doc = document();
+    (doc['values'] as Map)['w'] = 100.0;
+    doc['controls'] = [
+      {
+        'id': 'pb',
+        'label': 'Filter',
+        'kind': 'knob',
+        'x': 0,
+        'y': 100,
+        'width': 400,
+        'height': 50,
+        'value': 'v',
+        'min': 0,
+        'max': 1000,
+        'step': 10,
+        'event': 'shift',
+        'valueY': 'w',
+        'eventY': 'width',
+        'minY': 0,
+        'maxY': 1000,
+        'stepY': 50,
+      },
+    ];
+    final events = <Map<String, dynamic>>[];
+    await show(
+      tester,
+      doc,
+      onEvent: (event) async {
+        events.add(event);
+        return {};
+      },
+    );
+    final centre = tester.getCenter(find.bySemanticsLabel('Filter'));
+    Future<void> scroll(Offset delta) async {
+      await tester.sendEventToBinding(PointerScrollEvent(position: centre, scrollDelta: delta));
+      await tester.pumpAndSettle();
+    }
+
+    await scroll(const Offset(0, -20));
+    await scroll(const Offset(20, 0));
+    expect(events.map((e) => (e['action'], e['value'])), [('width', 150.0), ('shift', 10.0)]);
+
+    // A drag: across is the first value, up the second, each sent once at the end.
+    events.clear();
+    await tester.dragFrom(centre, const Offset(0, -40));
+    await tester.pumpAndSettle();
+    expect(events.map((e) => e['action']), ['width']);
+
+    // The axis that drag never moved was never committed: held as being edited, it would ignore
+    // every document after — a shift the radio moved would never show.
+    final next = document(value: 500);
+    (next['values'] as Map)['w'] = 100.0;
+    next['controls'] = doc['controls'];
+    await show(tester, next, onEvent: (_) async => {});
+    expect(find.text('Value: 500'), findsOneWidget);
+  });
+
+  testWidgets('a knob with a menu opens it on a click and still turns on a scroll', (tester) async {
+    // Presets and fine adjustment on the same artwork: a click is a choice,
+    // a scroll a nudge, and neither may swallow the other.
+    final doc = document();
+    doc['controls'] = [
+      {
+        'id': 'pb',
+        'label': 'Filter',
+        'kind': 'knob',
+        'x': 0,
+        'y': 100,
+        'width': 400,
+        'height': 50,
+        'value': 'v',
+        'min': 0,
+        'max': 100,
+        'step': 1,
+        'event': 'turn',
+        'menu': [
+          {'label': '2.4K', 'event': 'width-2400'},
+          {'label': '2.7K', 'event': 'width-2700'},
+        ],
+      },
+    ];
+    final events = <Map<String, dynamic>>[];
+    await show(
+      tester,
+      doc,
+      onEvent: (event) async {
+        events.add(event);
+        return {};
+      },
+    );
+    final centre = tester.getCenter(find.bySemanticsLabel('Filter'));
+    await tester.tapAt(centre);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2.7K'));
+    await tester.pumpAndSettle();
+    await tester.sendEventToBinding(PointerScrollEvent(position: centre, scrollDelta: const Offset(0, -20)));
+    await tester.pumpAndSettle();
+    expect(events.map((e) => (e['action'], e['phase'])), [('width-2700', 'activate'), ('turn', 'commit')]);
+  });
+
+  testWidgets('a text glow draws a halo of its colour around the letters', (tester) async {
+    // Light text over a bar that may be any colour stays legible only with an edge of its own.
+    final doc = document();
+    ((doc['layers'] as List).first as Map)['text'] = {'literal': 'SWR 1.3', 'color': '#ffffff', 'glow': '#000000'};
+    await show(tester, doc);
+    final shadows = tester.widget<Text>(find.text('SWR 1.3')).style!.shadows!;
+    expect(shadows.map((s) => s.color), everyElement(const Color(0xff000000)));
+    expect(
+      () => PanelScene(
+        document()
+          ..['layers'] = [
+            {
+              'id': 'x',
+              'x': 0,
+              'y': 0,
+              'width': 10,
+              'height': 10,
+              'text': {'literal': 'a', 'glow': 'black'},
+            },
+          ],
+      ),
+      throwsFormatException,
+    );
+  });
+
+  test('valueY is a knob\'s, must name a value, and sends an event of its own', () {
+    Map<String, dynamic> withControl(Map<String, dynamic> control) => document()..['controls'] = [control];
+    final base = {'id': 'k', 'label': 'K', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'value': 'v', 'event': 'e', 'eventY': 'f'};
+    expect(PanelScene(withControl({...base, 'kind': 'knob', 'valueY': 'v'})).controls.single.yAxis?.event, 'f');
+    expect(() => PanelScene(withControl({...base, 'kind': 'slider', 'valueY': 'v'})), throwsFormatException);
+    expect(() => PanelScene(withControl({...base, 'kind': 'knob', 'valueY': 'missing'})), throwsFormatException);
+    // Both axes under one action: a width of 150 and a shift of 150 would arrive as the same event.
+    expect(() => PanelScene(withControl({...base, 'kind': 'knob', 'valueY': 'v', 'eventY': null})), throwsFormatException);
+    expect(() => PanelScene(withControl({...base, 'kind': 'knob', 'valueY': 'v', 'eventY': 'e'})), throwsFormatException);
+  });
+
   testWidgets('menu buttons send only the chosen action and can be dismissed', (tester) async {
     final doc = document();
     doc['controls'] = [

@@ -190,6 +190,7 @@ const ic7300mk2Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B6', 'baudRate': 19200},
       overrides: {
+        civAntennaPortsConfigKey: 1,
         civRadioModesConfigKey: _civHfDataModes,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
@@ -290,6 +291,7 @@ const ic7610Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '98', 'baudRate': 9600},
       overrides: {
+        civAntennaPortsConfigKey: 2,
         civRadioModesConfigKey: _civHfDataModes,
         cwKeyerConfigKey: true,
         voiceMemoriesConfigKey: civVoiceMemoryCount,
@@ -324,6 +326,7 @@ const ic7760Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
       overrides: {
+        civAntennaPortsConfigKey: 4,
         civRadioModesConfigKey: _civHfDataModes,
         'maxWatts': 200,
         cwKeyerConfigKey: true,

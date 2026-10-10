@@ -24,8 +24,17 @@ import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 
-class _FakeSink implements EquipmentSink {
+class _FakeSink implements EquipmentSink, TunerSink, PassbandSink {
   final problems = <String?>[];
+  final tunerReports = <TunerStatus?>[];
+  final passbandReports = <Passband?>[];
+
+  @override
+  void reportTuner(TunerStatus? status) => tunerReports.add(status);
+
+  @override
+  void reportPassband(Passband? passband) => passbandReports.add(passband);
+
   List<EquipmentChannel> channels = const [];
   final sent = <String>[];
   final readings = <VfoReading>[];
@@ -450,7 +459,8 @@ void main() {
         session.startUpdates();
         // `KS;` once here and never in the poll below: the keyer speed
         // only moves when someone turns the knob.
-        expect(sink.sent, ['AI1;', 'FA;', 'MD0;', 'PC;', 'KS;']);
+        // `ID;` once too: which radio answers decides its filter tables.
+        expect(sink.sent, ['AI1;', 'ID;', 'FA;', 'MD0;', 'PC;', 'AC;', 'KS;']);
         session.teardown();
         async.flushTimers();
       });
@@ -485,6 +495,140 @@ void main() {
         sink.sent.clear();
         async.elapse(const Duration(minutes: 5));
         expect(sink.sent, isEmpty);
+      });
+    });
+
+    group('the antenna tuner', () {
+      /// Lets the state poll run until it asks for the tuner, and says when.
+      void untilTunerRead(FakeAsync async) {
+        sink.sent.clear();
+        for (var i = 0; i < 120 && !sink.sent.contains('AC;'); i++) {
+          async.elapse(const Duration(milliseconds: 500));
+        }
+      }
+
+      test('AC writes are in line or bypass, and the builder cannot start a tune', () {
+        // P3 2 is "tune start" — a carrier on the air. Taking a bool rather
+        // than a P3 is what keeps it out of reach.
+        expect(buildSetTunerCommand(inline: true), 'AC001;');
+        expect(buildSetTunerCommand(inline: false), 'AC000;');
+        expect(parseTunerParams('000'), 0);
+        expect(parseTunerParams('001'), 1);
+        expect(parseTunerParams('002'), 2);
+        expect(parseTunerParams('01'), isNull, reason: 'a frame that lost a byte');
+        expect(parseTunerParams('101'), isNull, reason: 'P1P2 is a fixed 00');
+        expect(parseTunerParams('003'), isNull);
+      });
+
+      test('in line and bypass each write once and read back, and neither starts a tune', () {
+        session.setTuner(inline: true);
+        session.setTuner(inline: false);
+        // The read-back is what shows what the radio took, not what was asked.
+        expect(sink.sent, ['AC001;', 'AC;', 'AC000;', 'AC;']);
+        expect(sink.sent.where((c) => c.startsWith('AC') && c.endsWith('2;')), isEmpty);
+      });
+
+      test('each answer is reported as the tuner it describes', () {
+        session.feed('AC000;');
+        session.feed('AC001;');
+        session.feed('AC002;');
+        expect(sink.tunerReports, [TunerStatus.bypassed, TunerStatus.inline, TunerStatus.tuning]);
+        // A malformed answer is no answer: reporting it as "bypassed" would
+        // tell an operator their tuner is out of line when it is not.
+        session.feed('AC01;');
+        expect(sink.tunerReports, hasLength(3));
+      });
+
+      test('is read far less often than the frequency, but still read', () {
+        // A 4800-baud link spends ~27 ms on each `AC;` exchange, and the
+        // tuner moves only when someone presses a button.
+        fakeAsync((async) {
+          session.startUpdates();
+          async.elapse(const Duration(minutes: 2));
+          final fa = sink.sent.where((c) => c == 'FA;').length;
+          final ac = sink.sent.where((c) => c == 'AC;').length;
+          expect(ac, greaterThan(1), reason: 'a tuner switched from the front panel must still be seen');
+          expect(ac, lessThanOrEqualTo(fa ~/ 4), reason: 'not riding on every state poll');
+          session.teardown();
+        });
+      });
+
+      test('a tune in progress is read on every poll until it ends', () {
+        // At the slow cadence a tune's outcome would otherwise show up to a
+        // whole tuner interval after the radio had it.
+        fakeAsync((async) {
+          session.startUpdates();
+          session.feed('AC002;');
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 4));
+          expect(sink.sent, containsAllInOrder(['FA;', 'AC;']));
+          session.feed('AC001;');
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 4));
+          expect(sink.sent, contains('FA;'));
+          expect(sink.sent, isNot(contains('AC;')), reason: 'settled, it goes back to the slow rate');
+          session.teardown();
+        });
+      });
+
+      test('a radio that refuses AC is reported as having no tuner, once, and is not asked again', () {
+        fakeAsync((async) {
+          session.startUpdates();
+          session.feed('?;');
+          untilTunerRead(async);
+          expect(sink.sent, contains('AC;'), reason: 'one refusal is not yet proof: `?;` names no command');
+          session.feed('?;');
+          untilTunerRead(async);
+          expect(sink.sent, isNot(contains('AC;')));
+          expect(sink.tunerReports, [null]);
+
+          sink.sent.clear();
+          async.elapse(const Duration(minutes: 2));
+          session.setTuner(inline: true);
+          // A refused command every fifteen seconds for the life of the
+          // connection, and a switch that writes to a tuner nobody has.
+          expect(sink.sent.where((c) => c.startsWith('AC')), isEmpty);
+          expect(sink.tunerReports, [null]);
+          session.teardown();
+        });
+      });
+
+      test('a long over neither asks for the tuner nor counts the refusals heard on the air', () {
+        // A radio may refuse what it will not handle while transmitting: counted, two refusals
+        // during one long CQ would end the tuner's readout for the rest of the connection.
+        fakeAsync((async) {
+          session.startUpdates();
+          session.feed('TX2;');
+          sink.sent.clear();
+          for (var i = 0; i < 12; i++) {
+            session.feed('?;');
+            async.elapse(const Duration(seconds: 5));
+          }
+          expect(sink.sent, isNot(contains('AC;')));
+          session.feed('TX0;');
+          untilTunerRead(async);
+          expect(sink.sent, contains('AC;'));
+          expect(sink.tunerReports, isEmpty, reason: 'never reported as a radio without a tuner');
+          session.teardown();
+        });
+      });
+
+      test('a refusal beside an AC answer is not the tuner refused, and only refusals in a row count', () {
+        // `?;` names no command: a generic Yaesu that refuses `PC;` on every
+        // poll answers it in the same batch as the `AC;` it does have. Were
+        // that counted, or a strike outlived the answer that followed it, a
+        // radio with a tuner would lose its readout to two stray refusals
+        // minutes apart.
+        fakeAsync((async) {
+          session.startUpdates();
+          for (final answer in ['?;', '?;AC001;', '?;AC001;', '?;']) {
+            session.feed(answer);
+            untilTunerRead(async);
+            expect(sink.sent, contains('AC;'), reason: 'after $answer');
+          }
+          expect(sink.tunerReports, [TunerStatus.inline, TunerStatus.inline]);
+          session.teardown();
+        });
       });
     });
 

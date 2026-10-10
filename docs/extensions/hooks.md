@@ -1551,7 +1551,11 @@ which the SDK keeps as a deprecated alias along with the `SvgScene*` type names.
 `strings`, `layout`, `after` and control `opacity`. A bundle using any of them
 declares `"api": 5` ([distribution.md](distribution.md)), and an app speaking
 less refuses it at install rather than showing the panel as an unknown kind.
-A plain scene that must reach those apps keeps `svgScene` and its lower API. Scene-capable hosts pass
+A plain scene that must reach those apps keeps `svgScene` and its lower API.
+**Extension API 7** adds the scene's host-fed `radio` values (*Radio values*
+below), `scaleX`/`scaleY` bindings, text `glow`, a knob's `menu` and second
+axis, and the spectrum control's `follow`, `span` and label `decimals`; a
+bundle using any of them declares `"api": 7`. Scene-capable hosts pass
 `instanceId` on render/event calls. `onEvent` handles control events and returns
 value patches (`values`, and `strings` for string controls); local-only controls and animation frames make no bridge
 calls. Controls with `continuous: true` send `change` events during dragging and a
@@ -1561,7 +1565,10 @@ for local numeric formatting; bindings accept `scale`, `truncate` and `modulo`
 too, applied to the value before the ramp. KI2D’s Radio Panel uses these for its Modern
 frequency groups; its settings offer Modern/LCD styles and radio selection. Local sliders may use `hover` and `discrete` hourly buckets. Text `samples`
 may hold numbers or preformatted strings; control `valueLabels` supplies accessible
-value descriptions. Transform/opacity bindings may also supply numeric `samples`,
+value descriptions. A layer binds `rotation`, `translateX`/`translateY`,
+`scaleX`/`scaleY` and `opacity`; rotation and scale turn about its `pivot`, so
+`scaleX` with `pivot: [0, 0.5]` grows a bar's fill from its left end.
+Transform/opacity bindings may also supply numeric `samples`,
 equally spaced over their `input` range, instead of the `output` ramp. The host
 interpolates and clamps these locally; chart markers and callouts can follow
 individual readings without bridge calls. See [the design notes and open milestones](../design/panel-scenes.md)
@@ -1599,10 +1606,13 @@ Both `environment` and `clock` are optional in the SDK for older-host detection.
 Use scene **text layers** for typography; SVG `<text>` is not a portable text path
 through the renderer. Text supports either `literal` or bound `value`, plus
 `fontFamily`, `fontWeight`, `lineHeight`, and `letterSpacing`. Text participates
-in native directionality, accessibility scaling and semantics.
+in native directionality, accessibility scaling and semantics. A text `glow`
+(`#RRGGBB`) draws a soft halo of that colour around the letters, to keep them
+legible over busy artwork.
 Button controls can supply `menu: [{label, event}]` to open a native dropdown.
 Selecting an item emits its `event` as the action with the original control ID;
-dismissing the menu emits nothing.
+dismissing the menu emits nothing. A knob takes a `menu` too: a click opens it,
+while a scroll or a drag still turns the knob.
 
 **Native controls.** Besides the drawn `button`, `slider` and `knob` — invisible
 hit areas over the extension's own artwork — a scene can use Material widgets
@@ -1619,7 +1629,11 @@ on leaving it after typing; a render that lands while the operator is typing
 does not overwrite the typing. Every control's `label` is its accessible name;
 the app has no tooltips. A text field or dropdown in a panel keeps keyboard
 focus; clicking any other native control hands focus back to the callsign
-field, as clicking a button anywhere else in the Operation view does.
+field, as clicking a button anywhere else in the Operation view does. A drawn
+`button` never takes focus from a click, so the operator's typing stays where
+it was. A drawn `slider` or `knob` clicked or dragged holds focus for three
+seconds after its last use — long enough for the arrow keys to adjust it — then
+hands it back to wherever it came from. Focus that arrives by Tab stays.
 
 **Layout.** A native control either has an `x`/`y`/`width`/`height` rect over the
 artwork, like the drawn kinds — it takes the rect's width and its own height, up
@@ -1664,6 +1678,7 @@ drawing part of it.
 | `layers` | Painted in order, each over the ones before: `svg` artwork or `text`. At most 128, and 1 MiB of artwork and text in all. |
 | `controls` | At most 64. Drawn or native; see below. |
 | `layout` | Optional. Where rect-less native controls and the artwork go; omitted, the artwork fills the pane. |
+| `radio` | Optional, `{node?}`: the host feeds that radio's live readings into the reserved `radio.*` values. `node` is an id from `listRadios`; omitted, the logging radio. See *Radio values*. |
 
 **Controls.** Every control has an `id` and a `label`, which is its accessible
 name. An `event` names the action sent when it is used; without one the control
@@ -1674,7 +1689,7 @@ the extension. `value` names what it shows and sets.
 |---|---|---|---|
 | `button` | — | `activate` | `menu` |
 | `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover`, `valueLabels`, `continuous` |
-| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `valueLabels`, `continuous` |
+| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `valueLabels`, `continuous`, `menu`, a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
 | `nativeButton` | — | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |
 | `nativeSlider` | number | `commit` | `min`, `max`, `step`, `valueLabels`, `continuous` |
 | `nativeTextField` | string | `commit` on Enter, or on leaving it after typing | `placeholder`, `continuous` |
@@ -1701,6 +1716,15 @@ may also take:
 string is `""` or one of them; a `multi` choice holds its values joined with
 commas in option order, so no option may contain one. `menu` is
 `[{label, event}]`, up to 32: picking an item sends its `event` as the action.
+
+A knob with `valueY` sets two numbers from one patch of artwork — a passband's
+shift across and its width up, say. Horizontal dragging, horizontal scrolling
+and the left/right keys set `value`; vertical ones and the up/down keys set
+`valueY`, which must be in `values`, with its own range, step and feel from the
+`…Y` fields. The second axis sends its events with the action `eventY`, which a
+knob with an `event` must give, different from `event` — an event carries no
+other mark of which axis moved, and a scene without one is refused. The host queues the two axes separately, so neither
+replaces the other's pending value, and a drag commits only the axes it moved.
 
 **Layout nodes.** Each is an object with exactly one of these keys:
 
@@ -1796,6 +1820,11 @@ export const spotter: PanelHook = {
 }
 ```
 
+The callsign comes back upper-cased, and the field shows the extension's
+version once the typing is committed. A bundle carrying this declares
+`"api": 5`. The `k2hrc-panel-scenes` sample in the SDK has every kind, a
+control faded in over the artwork, and a click-through layer painted over it.
+
 #### Spectrum
 
 A `spectrum` control is a radio's panadapter and waterfall, drawn by the host
@@ -1820,7 +1849,20 @@ control and takes the fields of `PanelSceneSpectrum` in the SDK:
 - `overlays`: up to 16 lines (`at`) and areas (`from`, `to`) in Hz from the
   tuned frequency, the sweep's middle, or absolute, each styled per part.
 - `scale`: the gap between the panadapter and the waterfall, its fill and
-  borders, and frequency `labels` and `ticks`.
+  borders, and frequency `labels` and `ticks`. `labels.decimals` (0–6) fixes
+  the decimals of MHz every label shows; omitted, as many as tell one label
+  from the next.
+- `span`: Hz shown across the control, from the middle of each sweep — a
+  number or a scene value. A wider sweep is cropped to it, so a radio whose
+  scope comes in a few fixed widths can be shown at any narrower one; set the
+  scope to the narrowest that covers it. Everything is drawn, labelled and
+  clicked on the window shown.
+- `follow` (0–0.45): keeps the tuned frequency at least this share of the
+  width from either edge, by moving the radio's scope just far enough to put
+  it on that margin — the picture scrolls with the dial rather than jumping
+  to centre it. Only where the radio lets the app place its scope (a
+  FlexRadio, whose panadapter in SmartSDR moves with it) and the panel
+  declares `requiresRadioWrite`; elsewhere it changes nothing.
 - `annotations`: up to 64 pieces of text at frequencies, with a pointer to
   where they sit. One with an `event` sends `activate` when clicked, its
   frequency as `value` and its `id` as `annotation`, and does not tune.
@@ -1828,10 +1870,35 @@ control and takes the fields of `PanelSceneSpectrum` in the SDK:
 - `tuneStep`: a click elsewhere sends `commit` with the frequency under it,
   rounded to this many Hz. The extension decides whether to tune.
 
-The callsign comes back upper-cased, and the field shows the extension's
-version once the typing is committed. A bundle carrying this declares
-`"api": 5`. The `k2hrc-panel-scenes` sample in the SDK has every kind, a
-control faded in over the artwork, and a click-through layer painted over it.
+Each waterfall row stays at the frequencies it was taken on: when the radio
+retunes its scope the history slides sideways, and when the span changes it
+stretches, rather than old signals being redrawn where they never were.
+
+#### Radio values
+
+A scene with a document-level `radio` block (extension API 7) is fed that
+radio's live readings by the host, into reserved values a binding, a text
+layer or a control's `opacity` can read like any other:
+
+| Value | |
+|---|---|
+| `radio.signalDbm` | Receive signal, dBm. |
+| `radio.powerOut` | RF out, watts. |
+| `radio.swr`, `radio.alc`, `radio.supplyVolts` | The transmit meters. |
+| `radio.transmitting` | 1 or 0. |
+| `radio.swrAverage` | The SWR averaged over the transmission under way, or else over the last one — only readings taken with RF out count. |
+| `radio.secondsSinceTransmit` | 0 while transmitting, then counting up; a very large number when there has been no transmission. |
+
+They change as the radio reports them — several times a second — with no
+render and no bridge call, so a meter needle moves at the radio's rate while
+the extension renders once a second or not at all. A reading the radio has
+not given, or no longer fresh, is missing: a binding takes it as the bottom
+of its range and a text layer shows `—`. `radio.secondsSinceTransmit` is
+re-read on its own for fifteen seconds after a transmission, so a hold or a
+fade bound to it ends on time. The names are reserved — a scene may not
+declare them in `values` or `strings` — and readable only with the block;
+nothing may set them. The feed needs `requiresRadioRead`: without it every
+reading is missing.
 
 The `ki2d-weather-panel`, `ki2d-solar-panel` and `ki2d-radio-panel` reference
 panels live in
@@ -1843,8 +1910,10 @@ repository's dashboard README for building them.
 The radio host calls are manifest capabilities, refused unless declared — the
 same shape as `requiresLocation`, and shown to the operator at install:
 `"requiresRadioRead": true` allows `host.listRadios()` and `host.readRadio()`;
-`"requiresRadioWrite": true` allows `host.tuneRadio()`,
-`host.setRadioConnection()` and `host.setRadioSpectrum()`, and implies read, since a command answers with the
+`"requiresRadioWrite": true` allows `host.setRadio()`,
+`host.setRadioConnection()` and `host.setRadioSpectrum()` — and transmitting
+with them: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`
+and `host.stopRadioTransmit()` — and implies read, since a command answers with the
 radio's state. An undeclared call rejects rather than answering null.
 A capability belongs to the bundle that declared it, and to the sub-extensions
 that bundle defines under its own key. A separately installed bundle never
@@ -1859,19 +1928,93 @@ the hook); the control shows its pending value until the outcome is known.
 local transceivers. `host.readRadio(id?)` returns
 a **local** radio's reported frequency (Hz), mode, connection state,
 power, TX state and fresh telemetry, or null on hosts without this API.
-`meters.signalDbm` is receive power in whole dBm when supported, refreshed a few
+`meters` holds `signalDbm`, `powerOut`, `swr`, `alc` and `supplyVolts`, each
+only while its driver has a fresh reading. `meters.signalDbm` is receive power in whole dBm when supported, refreshed a few
 times a second; it expires after two seconds without a reading. The Flex driver receives the selected slice’s LEVEL
-meter through its native UDP channel. The reference panel draws a segmented
+meter, and the transmitter's forward power and SWR, through its native UDP channel. The reference panel draws a segmented
 receive meter and leaves it unlit when unavailable, stale, or transmitting. It does
-not substitute the app's manually entered VFO for a radio reading.
-`host.tuneRadio({id, frequencyHz?, mode?})` targets that same radio through the
-existing VFO/CAT service. Supported mode requests are LSB, USB, CW, AM and FM.
-The host rejects a changed designation, disconnected/stale radio, transmission
-in progress or malformed command, and spaces accepted tuning requests by at
-least 250 ms. Omitting a selection follows the designated logging radio; an explicit `selection`
-pins tuning to that local radio without changing the logging designation.
+not substitute the app's manually entered VFO for a radio reading. A scene
+that only draws meters reads them as *Radio values* instead, at the radio's
+rate. Extension API 7 adds to the answer:
+
+- `maxWatts`: the model's rated output, where the app knows it; `modes`: the
+  modes `setRadio` accepts for this radio, in the radio's order.
+- `tuner`: `inline`, `bypassed`, `tuning` or `failed`; null for a radio
+  without one, or whose driver cannot read it.
+- `passband`: `{lowHz, highHz}`, the receive filter's edges in Hz from the
+  tuned frequency as the radio shows them — `100`…`2800` in USB,
+  `-2800`…`-100` in LSB, around zero in CW — or null where its driver cannot
+  read it.
+- `antennas`: `{rxPorts, txPorts, rx, tx, separate}`, the radio's own antenna
+  ports by the radio's names and which it uses, or null where its driver
+  cannot read them. `separate`: it picks receive and transmit independently,
+  as a FlexRadio does; otherwise one port serves both.
+- `keying`: what the app keys with — `canKeyCw`, `cwSending`,
+  `keyerSpeedWpm` (the key's own report, null before it has given one),
+  `keyerSpeedRange`, `canPtt`, `ptt` (whether the app's PTT latch holds the
+  transmitter) and `voiceMemories` (`[{number, label}]`, empty for a radio
+  that plays none) — while this is the logging radio, connected, on a host
+  with keying enabled; null otherwise.
+- `lastTransmission`: `{swrAverage, endedAtMillis}` for the last
+  transmission the radio finished since the app started — its SWR averaged over the readings
+  taken with RF out (null when there were none), and when it ended, in real
+  milliseconds to compare with `clock.realNowMillis` — or null.
+
+`host.setRadio({id, selection?, ...settings})` sets any of these on that same
+radio, through the existing VFO/CAT service. It and the keying calls below are
+extension API 7: a bundle using them declares `"api": 7`.
+
+- `frequencyHz`; `dial: true` says it comes from an on-screen dial turning,
+  not a typed or clicked target, and on the logging radio Smart VFO Snap
+  settles it like the radio's own knob.
+- `mode`: one of `modes`.
+- `powerWatts`: up to `maxWatts` where that is stated. On the logging radio
+  it goes through the app's VFO, so it is the power the next QSO logs.
+- `keyerSpeedWpm`: the logging radio's keyer, which clamps to its own range —
+  `keying.keyerSpeedWpm` says what it took.
+- `tunerInline`: puts the antenna tuner in line or bypasses it. On a
+  FlexRadio, whose tuner has no other way in, in line is a TUNE — a carrier
+  on the air; other radios switch it without transmitting.
+- `passband`: `{lowHz, highHz}`, as `passband` reports it. A radio that sets
+  only a width from a table takes the nearest, keeping its own shift — read
+  the result back from `passband`. It applies to the mode the radio is in: a
+  call that also changes `mode` is `invalid`.
+- `antenna`: `{rx?, tx?}`, ports from `antennas`; without `separate`, either
+  names the one port, and two different ones are `invalid`. An `rx` naming
+  the `tx` asked for in the same call is taken even where `rxPorts` does not
+  list it yet.
+
+The host rejects a changed designation (`changed`), a disconnected or stale
+radio (`disconnected`), a transmission in progress (`transmitting`) and a
+malformed command or a value out of range (`invalid`); a setting this radio
+cannot take — a tuner, passband or antenna its readout has as null, a keyer
+speed without `keying.canKeyCw` — answers `unsupported`. Accepted requests are
+spaced by at least 250 ms, since a dragged control would otherwise flood the
+CAT link. Omitting a selection follows the designated logging radio; an explicit `selection`
+pins the command to that local radio without changing the logging designation.
 An accepted result means requested, not confirmed; only subsequent
 reported state confirms it. Drivers retain their own protocol/echo handling.
+
+The keying calls transmit, and act only on the logging radio, on a host with
+keying enabled — a panel pinned to another radio is answered `unsupported`
+rather than keying the logging radio behind the operator's back:
+
+- `host.sendRadioCw({id, selection?, text})` keys `text` (up to 1000
+  characters) on the key in use, as the keyer area's messages do.
+- `host.playRadioVoice({id, selection?, memory})` plays one of
+  `keying.voiceMemories` once. It never arms a repeat: a CQ repeating on a
+  panel's say-so is one the operator did not start where they would stop it.
+- `host.setRadioPtt({id, selection?, on})` keys or unkeys PTT through the
+  app's own latch, so Escape releases it as it does the operator's own.
+  `on: false` releases whatever key the app holds and is never refused; a
+  radio that does not take the key answers `on: true` with `disconnected`.
+- `host.stopRadioTransmit({id, selection?})` stops every CW message, voice
+  memory and PTT the app is keying, as Escape does, whatever radio the
+  identity names: a stop is never the call that is refused.
+
+A radio that cannot do what is asked (no CW key, no voice memories, no PTT)
+answers `unsupported`; one that is not connected, `disconnected`. These are
+not paced, and not refused for a transmission in progress.
 `host.setRadioConnection({id, selection?, connected})` starts or ends a local CAT
 connection using the same selection and identity checks. Acceptance starts the
 operation; follow reported connection state for completion. It does not switch

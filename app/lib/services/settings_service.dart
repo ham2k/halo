@@ -1295,10 +1295,10 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// Values are the option strings the `select` fields emit — the convention
   /// every other select-backed setting here follows (`fontScale`,
   /// `distanceUnits`).
-  static const smartVfoSnapDebounceOptions = ['150', '200', '250', '300', '400', '500', '750', '1000'];
-  static const smartVfoSnapLongMoveOptions = ['1', '1.5', '2', '3', '5', '10'];
-  static const smartVfoSnapMinMoveOptions = ['0.1', '0.15', '0.2', '0.3', '0.5'];
-  static const smartVfoSnapMinSpeedOptions = ['0.25', '0.5', '1', '2', '4'];
+  static const smartVfoSnapDebounceOptions = ['50', '75', '100', '150', '200', '250', '300', '400', '500'];
+  static const smartVfoSnapLongMoveOptions = ['0.5', '1', '1.5', '2', '3', '5', '10'];
+  static const smartVfoSnapMinMoveOptions = ['0.05', '0.1', '0.15', '0.2', '0.3', '0.5'];
+  static const smartVfoSnapMinSpeedOptions = ['0.1', '0.25', '0.5', '1', '2', '4'];
 
   /// The stored value for [key], resolved to the nearest value [options]
   /// actually offers. An unparseable or missing value takes [fallback], which
