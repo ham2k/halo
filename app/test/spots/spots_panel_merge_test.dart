@@ -689,7 +689,7 @@ void main() {
       // key in spotsBySource at all, so listing only those keys erases it
       // from the filter — the operator cannot see it was even consulted, and
       // reads a board missing every SOTA spot as a quiet afternoon.
-      expect(spotsFilterSourceList(withSpots: ['pota'], unavailable: ['sota'], failed: ['wwbota']), ['pota', 'sota', 'wwbota']);
+      expect(spotsFilterSourceList(installed: const [], withSpots: ['pota'], unavailable: ['sota'], failed: ['wwbota']), ['pota', 'sota', 'wwbota']);
     });
 
     test('a source named in two of the inputs appears once', () {
@@ -697,14 +697,21 @@ void main() {
       // view — nothing in the signature stops them overlapping — so the
       // dedupe is the function's own guarantee, not a property inherited
       // from how SpotsService happens to populate them today.
-      expect(spotsFilterSourceList(withSpots: ['pota', 'sota'], unavailable: ['sota'], failed: const []), ['pota', 'sota']);
+      expect(spotsFilterSourceList(installed: const [], withSpots: ['pota', 'sota'], unavailable: ['sota'], failed: const []), ['pota', 'sota']);
     });
 
-    test('healthy sources alone are unchanged', () {
-      // The everyday case must not gain rows: an absent source means
-      // "answered, nothing to offer", and that is the signal the marker
-      // stands against.
-      expect(spotsFilterSourceList(withSpots: ['sota', 'pota'], unavailable: const [], failed: const []), ['pota', 'sota']);
+    test('lists an installed source that offered nothing', () {
+      // An idle source (QSO Party Spots between party weekends) answers with
+      // an empty list and so has no key in spotsBySource; without the
+      // installed list it has no row, and the operator cannot tell it is
+      // installed or turn it off before it starts spotting.
+      expect(spotsFilterSourceList(installed: ['qp', 'pota'], withSpots: ['pota'], unavailable: const [], failed: const []), ['pota', 'qp']);
+    });
+
+    test('lists a source with spots that the name lookup missed', () {
+      // The source names come from one lookup at panel open; a source that
+      // starts offering spots afterwards must still get a row to toggle.
+      expect(spotsFilterSourceList(installed: ['pota'], withSpots: ['sota', 'pota'], unavailable: const [], failed: const []), ['pota', 'sota']);
     });
   });
 }

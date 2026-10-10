@@ -141,19 +141,23 @@ List<String> spotsFilterBandOptions({required Set<String> enabledBands, required
     if (enabledBands.isEmpty || enabledBands.contains(band) || (bandSpotCounts[band] ?? 0) > 0 || band == selected) band,
 ];
 
-/// Every source worth a row in the filter dialog, sorted: the ones that
-/// offered spots, plus the ones that went quiet or answered with an error.
+/// Every source that gets a row in the filter dialog, sorted: every installed
+/// source, plus any source that offered spots, went quiet or answered with
+/// an error.
 ///
-/// The union is the point. A source in trouble contributes no spots, so it
-/// has no key in `spotsBySource` — listing only those keys drops it from the
-/// filter entirely, and the operator cannot see that it was ever consulted.
-///
-/// A source still absent from this list answered without offering anything,
-/// which is not always the same as having nothing to offer: a hook that opts
-/// out by returning an empty list (WWFF with no API key) is indistinguishable
-/// here from a quiet band. Public for `spots_panel_merge_test.dart`.
-List<String> spotsFilterSourceList({required Iterable<String> withSpots, required Iterable<String> unavailable, required Iterable<String> failed}) =>
-    {...withSpots, ...unavailable, ...failed}.toList()..sort();
+/// The union is the point. A source that offers no spots has no key in
+/// `spotsBySource`, whether it is in trouble, idle (QSO Party Spots outside a
+/// party weekend) or opted out (WWFF with no API key). Listing only those
+/// keys would drop it from the filter, and the operator could not see that
+/// it is installed, let alone turn it off ahead of time. `installed` alone is
+/// not enough either: a source reporting spots or trouble is listed even if
+/// the name lookup missed it. Public for `spots_panel_merge_test.dart`.
+List<String> spotsFilterSourceList({
+  required Iterable<String> installed,
+  required Iterable<String> withSpots,
+  required Iterable<String> unavailable,
+  required Iterable<String> failed,
+}) => {...installed, ...withSpots, ...unavailable, ...failed}.toList()..sort();
 
 String _timeAgo(int millis) {
   final seconds = (nowMillis() - millis) ~/ 1000;
@@ -433,6 +437,7 @@ class SpotsPanel extends StatefulWidget {
 
 class _SpotsPanelState extends State<SpotsPanel> {
   Map<String, String> _sourceNames = {};
+  int _sourceNamesRequest = 0;
   List<Map<String, dynamic>> _activityControls = [];
   late final SpotBoardSubscription _boardView;
   bool _refreshing = false;
@@ -623,11 +628,11 @@ class _SpotsPanelState extends State<SpotsPanel> {
     _boardView = _board.subscribe(follower: true);
     _board.addListener(_onBoardChanged);
     _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision);
-    // Fetched once, not on the 2-min spots refresh timer — a hook's
-    // `sourceName` is a static field, not something that changes at runtime.
-    widget.services.extensions.getSpotSourceNames().then((names) {
-      if (mounted) setState(() => _sourceNames = names);
-    });
+    // Not on the 2-min spots refresh timer — a hook's `sourceName` is static —
+    // but on every runtime start: these keys decide which sources the filter
+    // lists, and an install, removal or late activation changes the set.
+    unawaited(_loadSourceNames());
+    widget.services.extensions.runtimeGeneration.addListener(_loadSourceNames);
     // Same activity ref-type -> icon source QsoList uses (via
     // iconForRefType) — unconditional per extension (POTA/SOTA's own
     // loggingControls always register their hunting ref type, regardless
@@ -635,6 +640,16 @@ class _SpotsPanelState extends State<SpotsPanel> {
     // operation's own configured activities, since a spot can be for any
     // hunted activity type.
     unawaited(_loadActivityControls());
+  }
+
+  /// Through `whenSettled`: a booting or replaced runtime answers with no
+  /// sources at all, which would leave every idle source out of the filter.
+  /// Only the latest request lands, since generations can follow each other
+  /// faster than a load settles.
+  Future<void> _loadSourceNames() async {
+    final request = ++_sourceNamesRequest;
+    final names = await widget.services.extensions.whenSettled(widget.services.extensions.getSpotSourceNames);
+    if (mounted && request == _sourceNamesRequest) setState(() => _sourceNames = names);
   }
 
   /// Fetched once, and nothing re-runs it: these decide every spot row's
@@ -656,6 +671,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   @override
   void dispose() {
+    widget.services.extensions.runtimeGeneration.removeListener(_loadSourceNames);
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onVfoChanged);
     _board.removeListener(_onBoardChanged);
@@ -935,7 +951,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
         sortBy: _sortBy,
         groupByBand: _groupByBand,
         groupCallsWithNotes: _groupCallsWithNotes,
-        sources: spotsFilterSourceList(withSpots: _spotsBySource.keys, unavailable: _spots.unavailableSources, failed: _spots.failedSources),
+        sources: spotsFilterSourceList(
+          installed: _sourceNames.keys,
+          withSpots: _spotsBySource.keys,
+          unavailable: _spots.unavailableSources,
+          failed: _spots.failedSources,
+        ),
         sourceNames: _sourceNames,
         sourceSpotCounts: _spotsBySource.map((key, spots) => MapEntry(key, spots.length)),
         unavailableSources: _spots.unavailableSources.toSet(),
