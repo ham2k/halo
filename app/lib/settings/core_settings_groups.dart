@@ -993,7 +993,7 @@ String _numText(double value) => value == value.roundToDouble() ? value.toInt().
 /// `mapLibreStyleUrl`) — the OSM backend has no equivalent choice to offer,
 /// but that only matters on Linux, where this group still shows the field
 /// (it just goes unused there). `target: 'map'` is what the tab's own
-/// settings button (operation_view.dart) opens; the field is also reachable
+/// settings button (operation/operation_view_dock.dart) opens; the field is also reachable
 /// from Settings, same as every other target-scoped field.
 class MapSettingsGroup extends SettingsGroup {
   final SettingsService settings;

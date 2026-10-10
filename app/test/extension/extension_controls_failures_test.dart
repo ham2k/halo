@@ -189,7 +189,7 @@ void main() {
       // escape route past the ExtensionHostException catch that the
       // per-element check closes, and one an extension reading its own config
       // reaches easily. It escapes into the unawaited futures the screens
-      // start, and via operation_view's awaited call it also kills the
+      // start, and via OperationRuntimeState's awaited boot it also kills the
       // retitle, the entity-prefix resolve and the rescore beside it.
       // Restore the cast and this test throws instead of failing.
       final service = _serviceAnswering([

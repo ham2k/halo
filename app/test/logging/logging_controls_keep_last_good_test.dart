@@ -78,7 +78,7 @@ const _exchangeControl2 = {
 
 /// Every `loggingControls` call hangs on its own `Completer`, so a test can
 /// resolve them in whatever order it likes — the only way to actually
-/// construct the race `_loggingControlsRequestId` guards against, rather
+/// construct the race `OperationRuntimeState`'s request id guards against, rather
 /// than two calls that just happen to resolve in the order they were made.
 class _OutOfOrder extends ExtensionServiceWithFakeHost {
   _OutOfOrder() : super(FakeExtensionHost({}));
@@ -112,10 +112,10 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(extensions.completers, hasLength(1), reason: 'the initial fetch, from _initExtensionState');
+    expect(extensions.completers, hasLength(1), reason: 'the initial fetch, from the first operation emission');
 
     // Two ref edits, back to back, neither given a chance to see the other's
-    // fetch resolve — each provokes its own `_refreshLoggingControls` call,
+    // fetch resolve — each provokes its own `refreshControls` call,
     // request IDs 2 and 3.
     await services.operations.saveData(
       Operation(

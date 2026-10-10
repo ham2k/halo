@@ -43,7 +43,6 @@ const _slack = 100;
 const _ceilings = <String, int>{
   '../packages/halo_widgets/lib/src/logging_controls.dart': 3841,
   'lib/views/operation/spots_panel.dart': 3077,
-  'lib/views/operation_view.dart': 3117,
   'lib/views/operation/activities_view.dart': 2911,
   '../packages/halo_widgets/lib/src/form_renderer.dart': 2737,
   'lib/services/cat/cat_service.dart': 2628,

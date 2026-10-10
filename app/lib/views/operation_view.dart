@@ -6,7 +6,6 @@
 // header, whose sheet holds settings, activities and data.
 
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -21,8 +20,6 @@ import '../services/error_reporting_service.dart';
 import '../services/cat/drivers/cw_send_queue.dart' show sanitizeCwText;
 import '../services/cat/zero_beat.dart';
 import '../services/extensions/extension_service.dart' show TemplateError;
-import '../services/hook_payloads.dart';
-import '../services/scoring_service.dart' show checkpointDigestOf;
 import '../services/spot_board_service.dart' show SpotBoardSubscription;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
@@ -41,6 +38,7 @@ import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/operation_import_panel.dart';
+import 'operation/operation_runtime_state.dart';
 import 'operation/spots_panel.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation/positions_panel.dart';
@@ -49,14 +47,10 @@ import 'peers_panel.dart';
 import '../tools/operation_title.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
-/// How far into the sheet's open/close slide (0 closed, 1 open) the header's
-/// falling-dots handoff to the accept button completes — shared by the
-/// title's leading-gap animation ([_OperationViewState._leadingGapWidth]),
-/// the accept button's own grow-in (headerLeading in _openOperationSheet),
-/// and the dots' fade-out ([_FallingDotsPainter]), which all have to reach
-/// their end state at the same instant for the handoff to read as one
-/// motion rather than three drifting apart.
-const _sheetHandoffThreshold = 0.6;
+part 'operation/operation_view_dock.dart';
+part 'operation/operation_view_header.dart';
+part 'operation/operation_view_keying.dart';
+part 'operation/operation_view_sheet.dart';
 
 class OperationView extends StatefulWidget {
   /// The Operation view's panes are user-arrangeable
@@ -72,7 +66,7 @@ class OperationView extends StatefulWidget {
   /// picking activities is the first step of setting up an operation.
   /// Fallback until an onboarding flow exists: when the active profile has
   /// no callsign yet, the callsign editor opens instead (see
-  /// [_OperationViewState._promptForCallsign]).
+  /// [_OperationSheetHost._promptForCallsign]).
   final bool openActivities;
 
   /// A QSON-shaped suggestion to put into the logging fields as this view
@@ -90,63 +84,7 @@ class OperationView extends StatefulWidget {
   State<OperationView> createState() => _OperationViewState();
 }
 
-class _OperationViewState extends State<OperationView> with DockHost<OperationView> {
-  @override
-  HaLoServices get dockServices => widget.services;
-
-  @override
-  String get dockView => PanelViews.operation;
-
-  @override
-  DockLayoutKeys dockKeysFor(DockLayoutClass layoutClass) => switch (layoutClass) {
-    DockLayoutClass.wide => const DockLayoutKeys(
-      spec: LayoutKeys.operationDock,
-      state: LayoutKeys.operationDockState,
-      paneOptions: LayoutKeys.operationPaneOptions,
-      viewOptions: LayoutKeys.operationViewOptions,
-    ),
-    DockLayoutClass.narrow => const DockLayoutKeys(
-      spec: LayoutKeys.operationNarrowDock,
-      state: LayoutKeys.operationNarrowDockState,
-      paneOptions: LayoutKeys.operationNarrowPaneOptions,
-      viewOptions: LayoutKeys.operationNarrowViewOptions,
-    ),
-  };
-
-  /// The logging pane is pinned NARROW and only narrow. A phone with no
-  /// logging pane cannot enter a QSO at all, and the arrangement that took it
-  /// away looks like any other — whereas wide always draws logging alongside
-  /// whatever else is arranged, so there is nothing there to protect.
-  @override
-  Set<String> get pinnedModuleIds => dockLayoutClass == DockLayoutClass.narrow ? const {'logging'} : const {};
-
-  @override
-  Set<String> get nativeModuleIds => {
-    ..._dockModuleIds,
-    // Only while the experiment is on — and it must match `children` below
-    // exactly. Named here but absent there renders no pane at all; absent
-    // from both is what routes a saved placement to MissingPanelPane.
-    if (_peerPositionsPanel) 'positions',
-  };
-
-  /// Whether the Positions panel exists in this build at all.
-  bool get _peerPositionsPanel => widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */;
-
-  @override
-  Map<String, String> get nativeTitles => {
-    // The logging tab carries a live count; the catalog's own title for it is
-    // the plain name the Add a Panel sheet lists.
-    'logging': context.t.operation.tabs.qsos(count: _realQsoCountForTabs),
-    'info': context.t.operation.tabs.info,
-    'spots': context.t.operation.tabs.spots,
-    'map': context.t.operation.tabs.map,
-    if (_peerPositionsPanel) 'positions': context.t.operation.positions.panelTitle,
-  };
-
-  /// The count the logging tab's label carries, kept as a field because
-  /// [nativeTitles] is read by the mixin without it.
-  int _realQsoCountForTabs = 0;
-
+class _OperationViewState extends State<OperationView> with DockHost<OperationView>, _OperationDock, _OperationHeader, _OperationSheetHost, _OperationKeying {
   @override
   PanelRenderContext get panelRenderContext => PanelRenderContext(
     operation: _draftOperation ?? _operationForPanels,
@@ -156,23 +94,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     lookupRevision: _lookupRevision,
   );
 
+  @override
   Operation? _operation;
-  List<Map<String, dynamic>> _loggingControls = const [];
-
-  /// The operation's own controls (`operationControls`), for the Map tab's
-  /// markers and outlines: a program declares its ACTIVATION type there and
-  /// only its hunting type among [_loggingControls], so the operation's own
-  /// references find their icon and colour here and nowhere else.
-  List<Map<String, dynamic>> _operationControls = const [];
-
-  /// Both lists, the operation's first — built when either changes, so the
-  /// map is handed the same list between them.
-  List<Map<String, dynamic>> _mapControls = const [];
-  // `_refreshLoggingControls` now has three independent callers (a ref
-  // change, a draft edit, a runtime-generation retry) that can overlap —
-  // bumped before each fetch and checked on return, so a slower call
-  // started earlier can't clobber a faster one that started later.
-  int _loggingControlsRequestId = 0;
   late bool _showRSTFields = widget.services.settings.showRSTFields;
   late bool _showStateField = widget.services.settings.showStateField;
   late bool _showGridField = widget.services.settings.showGridField;
@@ -185,65 +108,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   late bool _jumpAfterRST = widget.services.settings.jumpAfterRST;
   late DxFlags _dxFlags = widget.services.settings.dxFlags;
 
-  /// The station's own DXCC entity, resolved once per operation load (not
-  /// per QSO — the station call essentially never changes DXCC entity
-  /// mid-operation) so the QSO row can tell a DX contact from a domestic
-  /// one. `online: false` skips network lookup hooks (QRZ/HamDB), running
-  /// only the local, no-network callsign-annotation step that's all this
-  /// needs — see extensions/core/lookups/src/annotate.ts.
-  String? _ourEntityPrefix;
-
-  /// The station's own ITU region (1/2/3) and lowercase ISO country code
-  /// — resolved alongside [_ourEntityPrefix], from the same guess,
-  /// and fed to LoggingControls' band-plan mode guess so it can prefer/
-  /// exclude region- or country-scoped segments for where the operator
-  /// actually is instead of guessing blind.
-  int? _ourItuRegion;
-  String? _ourCountryCode;
-
   /// Cached QSO stream. Recreating `watchForOperation` inside `build` would
   /// make a fresh drift query on every rebuild — a menu toggle, a
-  /// `_loggingControls` arrival, an entity-prefix resolve, a rescore refresh
+  /// controls arrival, an entity-prefix resolve, a rescore refresh
   /// — each tearing
   /// down and re-running the whole query. Keyed on `_showDeletedQSOs`, the
   /// only input that changes during the view's life (the uuid is fixed).
   Stream<List<Qso>>? _qsoStream;
   bool? _qsoStreamIncludesDeleted;
-  Operation? _draftOperation;
-
-  /// The draft's ref-derived title fragments, suggested but deliberately not
-  /// cached (the draft has no saved row to cache into) — null until the first
-  /// suggestion for the current draft lands, at which point the header stops
-  /// using the saved row's now-stale cache. Same generation-counter guard as
-  /// OperationTitleService: an older, slower fan-out must not overwrite a
-  /// newer one's result.
-  OperationTitleFragments? _draftTitleFragments;
-  int _draftTitleGeneration = 0;
-
-  /// Carries the draft's last-known-good title fragments PAST the moment the
-  /// sheet closes and _draftTitleFragments is dropped — saveAndClose()
-  /// persists the sheet's own (still stale-titleSuggestion) operation, so
-  /// watchOperation's very next emission reads that stale cache straight
-  /// back over whatever _withTitleSuggestion patched into _operation at
-  /// close. Kept alive and re-applied to every incoming stream emission
-  /// (see [_onOperationChanged]) until the row's OWN persisted cache
-  /// actually catches up — the separate, async
-  /// OperationTitleService.retitleOperation() call that same emission
-  /// triggers — at which point it's cleared as redundant.
-  OperationTitleFragments? _pendingTitleFragments;
-
-  bool _sameTitleFragments(OperationTitleFragments a, OperationTitleFragments b) =>
-      a.title == b.title && a.forText == b.forText && a.atText == b.atText && a.subtitle == b.subtitle;
-
-  /// Re-suggests the header title for the sheet's buffered draft. Fire-and-
-  /// forget, like the saved-row retitle — the title is a display enhancement,
-  /// so a failed or superseded run just leaves the previous one showing.
-  Future<void> _retitleDraft(Operation draft) async {
-    final generation = ++_draftTitleGeneration;
-    final fragments = await widget.services.operationTitles.suggestFragments(draft);
-    if (!mounted || fragments == null || generation != _draftTitleGeneration) return;
-    setState(() => _draftTitleFragments = fragments);
-  }
 
   Stream<List<Qso>> _qsosStream() {
     if (_qsoStream == null || _qsoStreamIncludesDeleted != _showDeletedQSOs) {
@@ -260,18 +132,19 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// Drives live rescoring: any scoring-relevant QSO change reschedules a
   /// debounced rescore. See [_onQsosChanged].
   StreamSubscription<List<Qso>>? _rescoreSub;
-  Timer? _rescoreDebounce;
-  List<Qso> _latestQsos = const [];
 
-  /// The QSO-set fingerprint the last completed rescore was computed from —
-  /// deliberately built from `updatedAtMillis` (stamped on every real edit,
-  /// Milestone A) and NOT `scoreCache`, so a rescore's own `score_cache`
-  /// write re-emits the QSO stream with an unchanged fingerprint and can't
-  /// trigger itself. Null until a rescore has actually run with the
-  /// extension runtime available.
-  String? _lastScoredFingerprint;
+  /// What the extension runtime says about this operation — see
+  /// [OperationRuntimeState].
+  @override
+  late final _runtime = OperationRuntimeState(
+    services: widget.services,
+    currentOperation: () => _operation,
+    controlsOperation: () => _draftOperation ?? _operation,
+  )..addListener(_onRuntimeChanged);
 
-  bool _sideInitStarted = false;
+  void _onRuntimeChanged() {
+    if (mounted) setState(() {});
+  }
 
   /// Whether [OperationView.openActivities] has fired — the operation stream
   /// re-emits on every change, and the pane must only auto-open once.
@@ -302,6 +175,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// as the Call Info detail on the Info tab (wide) or a modal (narrow) — the
   /// producer (LoggingPanel) and the display (InformationPanel) are sibling
   /// panes.
+  @override
   CallInfoData? _callInfo;
 
   /// Keep the pane subtrees' State alive when the layout flips between the
@@ -316,149 +190,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   final _loggingKey = GlobalKey();
   final _spotsKey = GlobalKey();
   final _mapKey = GlobalKey();
-
-  /// The AppBar's own `leadingWidth` — factored out so the sheet's
-  /// headerTrailing can size its own (X) copy identically (see
-  /// _openOperationSheet): a copy centered in a differently-sized box would
-  /// land at a different x than the real one it's standing in for, and the
-  /// two would visibly double up rather than the live one simply replacing
-  /// the inert one underneath. Explicit 56.0 rather than null for wide's
-  /// non-macOS case — AppBar's own default — so both callers agree on an
-  /// actual number instead of one of them silently trusting a framework
-  /// default the other can't see.
-  double _leadingWidthFor(bool isTwoPane, BuildContext context) =>
-      isTwoPane ? (macOSAwareLeadingWidth(context) ?? 56.0) : (isMacOSChromelessWindow ? 40 + macOSTrafficLightClearance(context) : 40);
-
-  /// The header's dots-and-title control — measured (not computed from
-  /// theme constants) to left-align the operation sheet with it, since
-  /// AppBar's actual leading width when `leadingWidth` is null varies by
-  /// platform in ways not worth re-deriving here.
-  final _headerTitleKey = GlobalKey();
-
-  /// The control's left edge WITHIN this view, or null before its first layout
-  /// (falls back to [showTopModalPane]'s default centering).
-  ///
-  /// Measured against the view rather than the window: this route slides in
-  /// from the left, and the sheet opens while it is still travelling — a
-  /// window-relative reading taken then is off-screen and puts the sheet
-  /// wherever the animation happened to be. At rest the view's origin IS the
-  /// window's, so the two agree once it lands.
-  double? get _headerTitleLeftInset {
-    final box = _headerTitleKey.currentContext?.findRenderObject() as RenderBox?;
-    final view = context.findRenderObject() as RenderBox?;
-    if (box == null || !box.attached || view == null || !view.attached) return null;
-    return box.localToGlobal(Offset.zero, ancestor: view).dx;
-  }
-
-  /// The sheet's accept button (headerLeading — see _openOperationSheet)
-  /// draws OVER this same corner of the header, not inside its layout, so
-  /// nothing here naturally makes room for it — measured so the title Row
-  /// can animate its own leading gap open to match, in step with the sheet's
-  /// own slide. Null before the button has ever laid out (before the first
-  /// open, or between opens): [_leadingGapWidth] falls back to the dots
-  /// control's own fixed width then, which is exactly correct at progress 0.
-  final _sheetOkButtonKey = GlobalKey();
-
-  double? get _sheetOkButtonWidth {
-    // The `.mounted` check alone isn't reliable insurance here — this key's
-    // element lives inside the pane's own route, not this state's build, and
-    // a resize crossing the narrow/wide boundary can reparent that whole
-    // subtree (the route re-presenting itself in place) between the check
-    // and the call in ways a `mounted` read a moment earlier can't see
-    // coming. `findRenderObject()` throws FlutterError on an inactive
-    // element — but only in debug: the check lives inside an `assert`, which
-    // release/profile builds strip, so there it just returns the (possibly
-    // detached) renderObject instead of throwing. `!box.attached` below is
-    // what actually catches that case; the catch only helps in debug.
-    final element = _sheetOkButtonKey.currentContext;
-    if (element == null || !element.mounted) return null;
-    try {
-      final box = element.findRenderObject() as RenderBox?;
-      if (box == null || !box.attached) return null;
-      return box.size.width;
-    } on FlutterError {
-      debugPrint('[operation] sheet-ok-button-race: cross-route RenderBox read hit an inactive element');
-      return null;
-    }
-  }
-
-  /// The title Row's leading gap, animating from the dots control's own
-  /// width to the accept button's — see [_sheetOkButtonWidth]'s doc on why
-  /// something has to. Reuses [_sheetAnimation]'s value, not a separate
-  /// AnimationController: the two need to move together exactly, and a
-  /// second controller can drift out of sync with the route's own reverse
-  /// transition (variable duration/curve) for no benefit.
-  ///
-  /// Reaches the target width on the same `progress / _sheetHandoffThreshold`
-  /// curve the accept button's own grow-in uses (see headerLeading in
-  /// _openOperationSheet), not raw progress — the button finishes growing at
-  /// that threshold and holds there while the sheet keeps sliding to 1.0, so
-  /// a gap that kept widening past that point would still be making room for
-  /// a button that had already stopped growing, and one still catching up on
-  /// the way in (or shrinking early on the way out) reads as the button
-  /// overlapping the title.
-  /// Where the sheet's accept button sits on a narrow layout — the header's
-  /// own leading corner, less whatever the native window controls need (see
-  /// `narrowLeftInset` in [_openOperationSheet]). Shared with
-  /// [_leadingGapWidth], which has to know how far LEFT of this control that
-  /// button starts.
-  double _narrowSheetLeftInset(BuildContext context) => isMacOSChromelessWindow ? macOSTrafficLightClearance(context) : 0;
-
-  double _leadingGapWidth(BuildContext context, {required bool isTwoPane}) {
-    const dotsWidth = _headerDotsWidth;
-    final progress = _sheetAnimation?.value ?? 0.0;
-    if (progress == 0.0) return dotsWidth;
-    final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
-    var targetWidth = _sheetOkButtonWidth ?? dotsWidth;
-    if (!isTwoPane) {
-      // Narrow starts that button at the header's leading corner, which is
-      // the width of the (faded) chevron's own slot to the LEFT of where
-      // this control begins — so only the part of it that overhangs into
-      // this control needs room made here. Reserving its full width instead
-      // would leave exactly that slot's width of dead space between the
-      // button and the title. Wide has no overhang: the button starts at
-      // this control's own left edge.
-      final overhang = targetWidth - (_leadingWidthFor(false, context) - _narrowSheetLeftInset(context));
-      targetWidth = math.max(dotsWidth, overhang);
-    }
-    return dotsWidth + (targetWidth - dotsWidth) * growth;
-  }
-
-  /// Shared fade for the AppBar's own leading/Options/Export/layout icons
-  /// while the sheet is up — same curve and threshold the falling dots use
-  /// ([_FallingDotsPainter]), so the whole header's hand-off to the sheet's
-  /// live copies reads as one motion instead of several independently-timed
-  /// ones.
-  double get _headerIconsFadeOpacity {
-    final progress = _sheetAnimation?.value ?? 0.0;
-    return (1.0 - progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
-  }
-
-  /// Whether the AppBar's own leading/Options/Export/layout icons should
-  /// ignore taps — true for the whole time the sheet is up or animating, not
-  /// just once fully faded. The Exports/Tools copy sits exactly over the
-  /// group it stands in for and is opaque from the first frame, so the real
-  /// one is reachable underneath for as long as anything but this stops it —
-  /// and a tap it took would act on the operation behind a sheet that is
-  /// buffering edits to it.
-  bool get _headerIconsInert => (_sheetAnimation?.value ?? 0.0) > 0.0;
-
-  /// The VIEW's layout controls dim to Material's disabled opacity while the
-  /// operation's setup sheet is up, on the same curve everything else in the
-  /// header uses.
-  ///
-  /// Only those. The operation's own Exports/Imports/Tools stay at full
-  /// strength and stay pressable (see [_headerTrailingControls]) — what the
-  /// sheet edits is the operation, and reaching for its exports mid-edit is
-  /// a reasonable thing to do. Rearranging the view is not, so those go
-  /// disabled rather than away: they do NOT fade out like the chevron,
-  /// because nothing replaces them. [_headerIconsInert] is what actually
-  /// stops the taps; this is only how that reads.
-  double get _layoutControlsDisabledOpacity {
-    final progress = _sheetAnimation?.value ?? 0.0;
-    final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
-    return 1.0 - (1.0 - 0.38) * growth;
-  }
 
   /// [reveal] false fills the fields and leaves the operator where they are —
   /// what sliding a spot row open does. The spots list is the thing being
@@ -573,9 +304,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// link's callsign filled in behind it and nothing on screen to say so.
   late bool _revealLoggingOnMount = widget.initialSuggestedQso != null;
 
-  /// Surface the logging panel wherever this layout keeps it.
-  void _revealLoggingPanel() => dockKey.currentState?.revealModule('logging');
-
   /// This view's zero-beat draw cache — per view, because it is keyed by spot
   /// and only meaningful for the spots this operation is working. The rule it
   /// feeds is [zeroBeatSuggestionFor].
@@ -631,7 +359,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.settings.addListener(_onSettingsChanged);
     // A ref-add's own refresh (`_onOperationChanged` below) can race a
     // runtime restart triggered by enabling the extension in the same
-    // gesture — `_refreshLoggingControls` sees `loadFailed` and, correctly,
+    // gesture — `refreshControls` sees `loadFailed` and, correctly,
     // keeps the stale controls rather than blanking the panel. Nothing then
     // retries, so the just-added contest's exchange field stays missing
     // until something unrelated (a callsign lookup) happens to refresh
@@ -698,43 +426,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// panels that care read the board themselves.
   int _spotsRevision = 0;
 
-  /// Whether a key could transmit in a Phone mode — a function key playing a
-  /// voice memory, or ['] keying PTT — so the draft is tracked for
-  /// [_keyingPhone]. Read at build; the view rebuilds on the CAT service's
-  /// notifications, so a radio connecting takes effect on the next one.
-  bool get _phoneKeyingPossible {
-    final settings = widget.services.settings;
-    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
-    return widget.services.cat.canPlayVoice || (settings.pttKey && widget.services.cat.canPtt);
-  }
-
-  /// Whether a function key would key anything — the draft is worth
-  /// tracking for the messages only once one exists. Read at build, so a
-  /// message typed mid-operation takes effect on the next rebuild.
-  bool get _cwMessagesConfigured {
-    final settings = widget.services.settings;
-    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
-    for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
-      if (settings.cwMessage(n).trim().isNotEmpty) return true;
-    }
-    return false;
-  }
-
-  /// Whether a panel in the CURRENT arrangement declared [trigger]. Every
-  /// signal an extension panel can be woken by costs this view something to
-  /// produce — a rebuild on a timer, or a QSO draft rebuilt per keystroke —
-  /// so each one is gated on somebody actually having asked for it.
-  /// Reads the EFFECTIVE triggers, so a signal only one placement asked for
-  /// in its last render — an operator's template naming the callsign being
-  /// typed — starts being produced. `PanelService` notifies when that set
-  /// changes, and the dock host's catalog listener rebuilds, which is what
-  /// makes the new answer take effect. The first render of such a template
-  /// necessarily happens before it: the panel is answered with no draft,
-  /// then woken by the next change to one.
-  bool _anyPanelWants(String trigger) {
-    return dockSpec?.collectModules().any((id) => widget.services.panels.triggersFor(id).contains(trigger)) ?? false;
-  }
-
   void _onSpotsChanged() {
     // Every other operation view would be rebuilding itself on every board
     // change for nothing.
@@ -765,6 +456,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// Re-sends the block this device already published, under a header the
   /// operator has just changed. Cheap and rare: only a `POSITION`/`OPER`
   /// write reaches it, and it does nothing until one does.
+  @override
   void _republishPeerHeaderIfChanged(Operation operation) {
     if (!_peerSharingDrafts) return;
     final drafts = widget.services.peerDrafts;
@@ -805,19 +497,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// typed.
   Map<String, dynamic>? _draftQso;
   Timer? _draftQsoDebounce;
-
-  /// The draft as of the last keystroke — [_draftQso] before the debounce
-  /// has let it through. Read by [_sendCwMessage] and [_keyingPhone] only.
-  Map<String, dynamic>? _latestDraftQso;
-
-  /// Whether the function keys play voice memories rather than key CW:
-  /// the draft's mode is Phone. From the LATEST draft, and handed to the
-  /// keyer area as a value, so the keys and the strip answer from one
-  /// snapshot — the strip's rebuild still waits for the debounce, but a
-  /// build never disagrees with the keys about which keyer it is. Before the
-  /// view has heard a draft, the radio's mode, which is what a fresh draft
-  /// takes: turning PTT on mid-operation publishes nothing new to hear.
-  bool get _keyingPhone => superModeForMode((_latestDraftQso?['mode'] as String?) ?? widget.services.radio.vfoA.mode) == 'Phone';
 
   /// Coalesces the keystroke burst of typing a callsign into one rebuild.
   ///
@@ -876,290 +555,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     return false;
   }
 
-  /// Which radio ['] keys from this view (cat_ptt.dart): radio1, while this
-  /// view is in front, the draft is in a Phone mode, and the field with the
-  /// keyboard does not take ['] as a character.
-  String? _pttTarget() {
-    final services = widget.services;
-    if (!mounted || testerOverlayCovering.value || !(ModalRoute.of(context)?.isCurrent ?? false)) return null;
-    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ || !services.settings.pttKey) return null;
-    if (!_keyingPhone || !services.cat.canPtt || !quoteKeysPtt(FocusManager.instance.primaryFocus?.context)) return null;
-    return services.cat.localRadio1;
-  }
-
-  /// F1-F8 key the matching CW message through the key in use — or, while
-  /// the draft contact is in a Phone mode, play the matching voice memory
-  /// of radio1; Escape stops every message, chain and repeat. Only while
-  /// this view is the front-most route — a dialog over it (the message
-  /// editors included) owns the keyboard — and only with a radio that can
-  /// key (or play), so on a station without one the keys stay free for
-  /// whatever else wants them.
-  bool _onCwKeyEvent(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
-    if (testerOverlayCovering.value) return false;
-    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
-    final services = widget.services;
-    // A keypress by itself stops nothing: what a call typed over a CQ stops
-    // is decided by the callsign field (LoggingSession.onCallTyped), which
-    // hears every way a call is entered and not only a hardware key.
-    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
-    final cat = services.cat;
-    final keyboard = HardwareKeyboard.instance;
-    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
-    final alt = keyboard.isAltPressed;
-    final shift = keyboard.isShiftPressed;
-
-    // ⌥K / Alt+K turns the keyer area's keyboard mode on or off. By the
-    // PHYSICAL key: on a Mac, Option turns K into '˚', and the logical key
-    // a browser reports is that character. Not ⌘K, which is the command
-    // dialog's (halo_app.dart).
-    if (alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyK) {
-      if (_keyingPhone || !cat.canKeyCw) return false;
-      cat.toggleKeyboardMode();
-      return true;
-    }
-
-    final int? n;
-    if (command || alt) {
-      // ⌥1-⌥8 (Alt+1-8) stand in for F1-F8 on a keyboard without them; any
-      // other chord is not the keyer's. Not in free text: on a Spanish,
-      // Nordic or German Mac layout ⌥2 is how '@' is typed, and ⌥5-⌥8 are
-      // '[' ']' '|' '{' — a note would key a message in their place.
-      n = alt && !command && !shift && !_focusInFreeText() ? cwMessageIndexForDigit(event.physicalKey) : null;
-      if (n == null) return false;
-    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
-      // Stops a message from wherever focus is. NOT what keeps the logging
-      // fields from also acting on the same keystroke — a handler's answer
-      // here never stops the focus tree's dispatch — that is
-      // LoggingSession.escapeClaimed, wired in logging_panel.dart. With
-      // nothing to stop, Escape keeps its usual meaning. Ahead of the
-      // capability gate below, and for either keyer whatever the mode: a CW
-      // message keyed just before the draft went to SSB is still the one
-      // to stop, on a station whose radio plays no voice at all.
-      return cat.stopKeying();
-    } else {
-      n = cwMessageIndexForKey(event.logicalKey);
-    }
-
-    // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
-    // area is built with: the message is for the contact being logged,
-    // whatever the rig sits in.
-    final phone = _keyingPhone;
-    if (phone ? !cat.canPlayVoice : !cat.canKeyCw) return false;
-
-    if (n == null) return false;
-    if (phone) {
-      // A key past the radio's last memory keys nothing, and stays free.
-      if (n > cat.voiceMemoryCount) return false;
-      // A recording is not interrupted by a play: the dialog disables its
-      // buttons while one runs, and a key must not do what a button cannot
-      // — on a K4 the recording would be lost unsaved.
-      if (cat.voiceActivity.value?.recording ?? false) return true;
-      _endChainsForKey();
-      cat.playVoiceMemory(n);
-      return true;
-    }
-    final template = services.settings.cwMessage(n);
-    if (template.trim().isEmpty) return false;
-    _endChainsForKey();
-    unawaited(_sendCwMessage(n, template));
-    return true;
-  }
-
-  /// Whether the keyboard is in a text field other than the main logging
-  /// fields — notes, comments, keyboard mode's own field — where an ⌥-digit
-  /// is a character the operator is typing. The call, RST and exchange
-  /// fields (the entry row) never take one, so a chord there is the keyer's.
-  bool _focusInFreeText() {
-    final context = FocusManager.instance.primaryFocus?.context;
-    if (context == null || context.findAncestorWidgetOfExactType<EditableText>() == null) return false;
-    return context.findAncestorWidgetOfExactType<LoggingEntryRow>() == null;
-  }
-
-  /// A message key ends whatever repeat or sequence is running: another
-  /// message is the operator moving on, and F1 starts a FRESH chain with its
-  /// own five minutes rather than extending the one it lands in.
-  void _endChainsForKey() {
-    widget.services.cat.cancelKeyerRepeat();
-    widget.services.cat.cancelVoiceSequence();
-  }
-
-  /// Keys what an Enter picked (logging-fields.md § Enter Sends Messages),
-  /// through the keyer the draft's mode picks, as the function keys would.
-  /// A slot with nothing in it is skipped rather than refused: a set with no
-  /// TU still completes the contact.
-  ///
-  /// In CW the thanks waits for [logged] and renders against the entry the
-  /// log left behind (see [EnterSends.send]), queued behind the rest so it is
-  /// still keyed last. Voice keeps one sequence at the keypress: a memory
-  /// renders nothing, and a second sequence would cut the first off.
-  void _sendEsmMessages(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) {
-    final services = widget.services;
-    final keys = [for (final message in messages) CwMessageSet.esmKeys[message]!];
-    // What a key does before it sends, for an Enter that never passed
-    // through [_onCwKeyEvent] — an on-screen keyboard's.
-    services.cat.cancelKeyerRepeat();
-    services.cat.cancelVoiceSequence();
-    if (superModeForMode(qso['mode'] as String?) == 'Phone') {
-      // The operator says the other station's call: no memory can hold it.
-      final memories = [
-        for (final n in keys)
-          if (n != CwMessageSet.esmKeys[EsmMessage.hisCall] && n <= services.cat.voiceMemoryCount) n,
-      ];
-      if (memories.isEmpty || (services.cat.voiceActivity.value?.recording ?? false)) return;
-      services.cat.playVoiceSequence(memories);
-      return;
-    }
-    List<({int n, String template})> templatesFor(Iterable<int> keys) => [
-      for (final n in keys)
-        if (services.settings.cwMessage(n).trim().isNotEmpty) (n: n, template: services.settings.cwMessage(n)),
-    ];
-    final thanks = CwMessageSet.esmKeys[EsmMessage.thanks]!;
-    final deferred = logged != null ? templatesFor(keys.where((n) => n == thanks)) : const <({int n, String template})>[];
-    final now = templatesFor(keys.where((n) => logged == null || n != thanks));
-    final sent = now.isEmpty ? Future.value(true) : _sendCwMessages(now, qso: qso, once: true);
-    if (deferred.isEmpty) {
-      unawaited(sent);
-      return;
-    }
-    // Not [once]: every thanks is the same `TU`, and the one still waiting
-    // behind the last exchange belongs to the last contact, not this one. And
-    // none at all after a first part that failed — a TU to a station that
-    // never heard its call or report is not an exchange.
-    unawaited(() async {
-      final keyed = await sent;
-      final after = await logged!;
-      if (!keyed || after == null || !mounted) return;
-      await _sendCwMessages(deferred, qso: after);
-    }());
-  }
-
-  /// The keyer area's message buttons: the same send the function keys make.
-  void _sendCwMessageNumber(int n) {
-    final template = widget.services.settings.cwMessage(n);
-    if (template.trim().isEmpty) return;
-    unawaited(_sendCwMessage(n, template));
-  }
-
-  /// A message other than 1 ends a repeat: the operator has moved on to the
-  /// exchange, and message 1 is a CQ nobody wants keyed over it. Called
-  /// where the keyer area's buttons arrive, since a tap reaches no key
-  /// handler.
-  void _sendCwMessageFromArea(int n) {
-    if (n != 1) widget.services.cat.cancelKeyerRepeat();
-    _sendCwMessageNumber(n);
-  }
-
-  /// Renders message [n]'s template against the operation and the draft
-  /// contact (the same context a panel gets — docs/extensions/templates.md),
-  /// then hands the text to the radio. A template that does not parse is
-  /// the operator's own typo, shown where they will see it rather than sent
-  /// as-is with the braces keyed out in Morse.
-  Future<void> _sendCwMessage(int n, String template) => _sendCwMessages([(n: n, template: template)]);
-
-  /// [_sendCwMessage] for several messages keyed as ONE — Enter Sends
-  /// Messages' "his call, then the exchange" — so they go out back to back
-  /// as a single entry in the queue and the keyer area, not as a message and
-  /// a second one waiting behind it. [qso] is the draft to render against
-  /// when the caller holds a newer one than [_latestDraftQso] (ESM's, taken
-  /// at the Enter that may log and wipe it). Any template failing keys
-  /// nothing at all: half an exchange is not an exchange.
-  ///
-  /// [once] is ESM's: a message already keying or waiting — whoever queued
-  /// it — is not queued again, so a second Enter before the first CQ or AGN?
-  /// has finished doesn't send it twice. A DIFFERENT message still queues.
-  ///
-  /// Answers false when they failed — a notice already says so — or the key
-  /// did not take them, so a caller keying more after them can hold back.
-  /// Rendering to nothing is not a failure: there was nothing to send.
-  Future<bool> _sendCwMessages(List<({int n, String template})> messages, {Map<String, dynamic>? qso, bool once = false}) async {
-    final services = widget.services;
-    final ctx = panelRenderContext;
-    final parts = <String>[];
-    for (final (:n, :template) in messages) {
-      String? text;
-      String? failure;
-      try {
-        text = await services.extensions.renderTemplate(
-          template,
-          operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
-          qso: qso ?? _latestDraftQso ?? ctx.qso,
-          qsoCount: ctx.qsoCount,
-          keyer: {'messages': services.settings.activeCwMessageSet.messages, 'current': n},
-        );
-      } on TemplateError catch (e) {
-        failure = e.message;
-      } catch (e, st) {
-        // A hook timeout or a dead runtime — reported, and ALSO said here:
-        // the operator pressed a key and nothing keyed, which the console
-        // alone would leave them to discover on the air.
-        ErrorReportingService.report(e, st, context: 'cw:render-message');
-        failure = '$e';
-      }
-      // Leaving the operation while the render was in flight is leaving the
-      // message behind too — nothing goes on the air from a view that is gone.
-      if (!mounted) {
-        services.cat.cancelKeyerRepeat();
-        return false;
-      }
-      if (failure != null) {
-        services.statusBar.showNotice(
-          key: 'cw-message-$n',
-          icon: 'alert-circle-outline',
-          text: context.t.commands.cwMessageError(n: n, error: failure),
-          persist: false,
-        );
-        services.cat.cancelKeyerRepeat();
-        return false;
-      }
-      if (text == null) {
-        // No runtime to render with (restarting, or failed to load): a key
-        // that keys nothing must not look like a key that worked.
-        services.statusBar.showNotice(
-          key: 'cw-message-$n',
-          icon: 'alert-circle-outline',
-          text: context.t.commands.cwMessageNotRendered(n: n),
-          persist: false,
-        );
-        services.cat.cancelKeyerRepeat();
-        return false;
-      }
-      if (text.trim().isNotEmpty) parts.add(text.trim());
-    }
-    final text = parts.join(' ');
-    // A chain waits for the message to STOP keying before its next send, so
-    // a send that keys nothing — a failed render, a dead runtime, a message
-    // that sanitizes away, a radio gone between repeats — would leave it
-    // armed with nothing to end it, and the keyer area showing neither
-    // buttons nor a countdown.
-    if (text.trim().isEmpty) {
-      services.cat.cancelKeyerRepeat();
-      return true;
-    }
-    final progress = once && services.cat.cwSending ? services.cat.cwProgress.value : null;
-    final sanitized = sanitizeCwText(text);
-    final queued = progress != null && (progress.text == sanitized || progress.pending.contains(sanitized));
-    if (!queued) {
-      final taken = services.cat.sendCw(text, hasMessageOne: messages.any((m) => m.n == 1));
-      // Nothing keying after the send is a message the queue dropped (empty
-      // once sanitized), a radio that went away, or a peer yet to report —
-      // either way there is no end coming to start the next wait on.
-      if (!services.cat.cwSending) {
-        services.cat.cancelKeyerRepeat();
-        return taken;
-      }
-    }
-    // Message 1 only — see SettingsService.cwRepeatDelay. Armed after the
-    // send, so the wait starts from the message ENDING rather than from the
-    // keypress — and armed for one already queued too: the Enter that found
-    // it there cancelled the chain it belonged to.
-    final delay = services.settings.cwRepeatDelay;
-    if (messages.length == 1 && messages.single.n == 1 && delay > Duration.zero) {
-      services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1));
-    }
-    return true;
-  }
-
   /// Set when a lookup resolves, so the draft carrying its guess skips the
   /// debounce. Cleared by the next draft either way — a lookup that changes
   /// nothing about the draft must not leave the next keystroke unbuffered.
@@ -1212,7 +607,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     widget.services.peerDrafts.clearLocalFor(widget.operationUuid);
     _operationSub?.cancel();
     _rescoreSub?.cancel();
-    _rescoreDebounce?.cancel();
+    _runtime.dispose();
     _draftQsoDebounce?.cancel();
     _spotsVisible.dispose();
     _sheetHeaderLines.dispose();
@@ -1257,15 +652,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     }
     setState(() => _operation = patched);
     _setCommandContext(patched);
-    if (patched != null) _spotBoardView.show(patched, _latestQsos, logRevision: _fingerprintFor(_latestQsos));
+    if (patched != null) _spotBoardView.show(patched, _runtime.latestQsos, logRevision: logFingerprintFor(_runtime.latestQsos));
     if (operation == null) return;
     widget.services.outlineGrid.prefetchFor(operation.refs); // kept on the device for the field
-    // A saved change to the operation itself — a reference corrected, an
-    // exchange edited — changes what every contact scores as, so it is a
-    // rescore like a logged contact is. Only once one is held: on open the
-    // log's first emission schedules the pass, and a second from here would
-    // fold the whole log twice.
-    if (previous != null && previous.updatedAtMillis != operation.updatedAtMillis) _maybeScheduleRescore();
 
     // With no profile callsign yet (fresh install — no onboarding flow
     // exists), the callsign editor takes the Activities pane's place:
@@ -1290,204 +679,14 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       _afterPushTransition(() => _openActivitiesOrPromptForCallsign(operation, markOnboardingSeen: true));
     }
 
-    if (!_sideInitStarted) {
-      _sideInitStarted = true;
-      unawaited(_initExtensionState(operation));
-    } else {
-      // Re-derive the extension-fed side state only when its input actually
-      // changed — not on every counter/localData emission (a QSO add, a
-      // rescore) — so this stays cheap.
-      if (previous?.stationCall != operation.stationCall) {
-        unawaited(_resolveOurEntityPrefix(operation));
-      }
-      if (previous == null || !_sameRefs(previous.data['refs'], operation.data['refs'])) {
-        unawaited(_refreshLoggingControls(operation));
-        // Refs are what suggestOperationTitle reads
-        // — no debounce needed, refs only change on a deliberate edit, unlike
-        // the QSO list's rescore trigger below.
-        unawaited(widget.services.operationTitles.retitleOperation(operation));
-      }
-    }
+    _runtime.operationChanged(previous, operation);
   }
 
-  /// Runs [action] once this view's push transition has settled. The pane
-  /// showModalPane opens sizes itself against this view, so it must not go up
-  /// before the view is laid out — and pushing it mid-transition races the
-  /// teardown of the screen we were pushed over.
-  void _afterPushTransition(VoidCallback action) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final animation = ModalRoute.of(context)?.animation;
-      if (animation == null || animation.status == AnimationStatus.completed) {
-        action();
-        return;
-      }
-      void onStatus(AnimationStatus status) {
-        if (status != AnimationStatus.completed) return;
-        animation.removeStatusListener(onStatus);
-        if (mounted) action();
-      }
-
-      animation.addStatusListener(onStatus);
-    });
-  }
-
-  bool _sameRefs(Object? a, Object? b) => jsonEncode(a) == jsonEncode(b);
-
-  /// One-time, extension-runtime-dependent setup: the runtime may still be
-  /// booting when the operation first arrives, so this awaits it, then does
-  /// the initial controls/entity-prefix resolve and kicks the first rescore.
-  Future<void> _initExtensionState(Operation operation) async {
-    await widget.services.extensions.start();
-    if (!mounted) return;
-    await _refreshLoggingControls(operation);
-    await _resolveOurEntityPrefix(operation);
-    // `_operation`, not the `operation` parameter: extension-runtime boot
-    // (the await above) can take long enough for the user to edit refs
-    // before it resolves, and the ref-changed branch below would then have
-    // already cached the correct, fresher suggestion — retitling from this
-    // stale closed-over snapshot would silently overwrite it with the old
-    // one (there's no ordering guard on the cache
-    // write to catch this, unlike the fingerprinted rescore below).
-    unawaited(widget.services.operationTitles.retitleOperation(_operation ?? operation));
-    // The extension runtime is ready now; a rescore scheduled before it was
-    // (which no-op'd) never recorded a fingerprint, so this re-attempts it.
-    _maybeScheduleRescore();
-  }
-
-  /// Whether the last [_refreshLoggingControls] fetch failed — read by
-  /// [_onRuntimeGenerationChanged] so a generation tick unrelated to any
-  /// pending mismatch (any extension anywhere getting toggled restarts the
-  /// whole runtime) doesn't cost every open operation a round trip for
-  /// nothing.
-  bool _loggingControlsStale = false;
-
-  /// The same for [_operationControls]: the map's icons and colours, with no
-  /// status of their own, retried with the logging controls.
-  bool _operationControlsStale = false;
-
-  Future<void> _refreshLoggingControls(Operation operation) async {
-    final requestId = ++_loggingControlsRequestId;
-    final payload = operationPayloadFor(operation);
-    // Both asked at once, awaited apart: a record `.wait` would wrap an
-    // unexpected throw in a ParallelWaitError that ErrorPolicy cannot see
-    // through.
-    final loggingFuture = widget.services.extensions.loggingControls(payload);
-    final operationFuture = widget.services.extensions.operationControls(payload);
-    final result = await loggingFuture;
-    final operationWide = await operationFuture;
-    if (!mounted || requestId != _loggingControlsRequestId) return;
-    // A failed fetch keeps what the map already shows — unless it shows
-    // nothing, when whatever extensions did answer beats no colours at all.
-    // Retried with the logging controls below when the runtime comes back.
-    _operationControlsStale = operationWide.loadFailed;
-    if (!operationWide.loadFailed || _operationControls.isEmpty) _operationControls = operationWide.controls;
-    // A fetch that failed says nothing about what the activities want, so the
-    // panel keeps what it is already showing rather than blanking a live
-    // logging panel because the runtime happened to be restarting.
-    //
-    // A REF CHANGE is what usually re-runs this, so a failure here is
-    // typically a set that no longer matches the operation — the contest
-    // just added has no exchange field, the POTA ref just removed still has
-    // one. `_onRuntimeGenerationChanged` below is what corrects it once the
-    // runtime that was restarting comes back up; without that retry, nothing
-    // would until the operation is reopened. Keeping the mismatch quiet in
-    // the meantime would leave the operator staring at the wrong fields with
-    // no account of why, which is the whole defect this change exists to end.
-    _loggingControlsStale = result.loadFailed;
-    final keepLogging = result.loadFailed && _loggingControls.isNotEmpty;
-    if (result.loadFailed) {
-      widget.services.statusBar.setMessage(key: 'operation:logging-controls-stale', text: context.t.operation.loggingControlsStale);
-    } else {
-      widget.services.statusBar.clear('operation:logging-controls-stale');
-    }
-    setState(() {
-      if (!keepLogging) _loggingControls = result.controls;
-      _mapControls = [..._operationControls, ..._loggingControls];
-    });
-  }
-
-  /// Rescores under the new runtime, and retries [_refreshLoggingControls]
-  /// once it is live again, but only when the last fetch actually failed —
-  /// every runtime restart (any extension anywhere being toggled) ticks the
-  /// generation, and most of those have nothing to do with this operation's
-  /// controls.
-  ///
-  /// The rescore is unconditional: a tick invalidates every cached
-  /// checkpoint ([ScoringService.liveResumeFor]), and until a pass under the
-  /// new runtime folds the log, every call-info keystroke and spots refresh
-  /// folds the whole log cold and the summaries show the old scorers'.
-  void _onRuntimeGenerationChanged() {
-    _lastScoredFingerprint = null;
-    _maybeScheduleRescore();
-    if (!_loggingControlsStale && !_operationControlsStale) return;
-    // `_draftOperation`, not just `_operation` — the Activities/Setup sheet
-    // can still be open with a ref the operator just added, and refreshing
-    // against the committed, ref-less operation instead would overwrite the
-    // draft's own controls with the wrong set.
-    final operation = _draftOperation ?? _operation;
-    if (operation == null) return;
-    unawaited(_refreshLoggingControls(operation));
-  }
+  void _onRuntimeGenerationChanged() => _runtime.runtimeRestarted();
 
   void _onQsosChanged(List<Qso> qsos) {
-    _latestQsos = qsos;
-    _maybeScheduleRescore();
-    if (_operation case final operation?) _spotBoardView.show(operation, qsos, logRevision: _fingerprintFor(qsos));
-  }
-
-  /// Debounced live rescore. Fires only when the fingerprint moves, and
-  /// records it only once a rescore actually runs with a host — so an edit that arrives while the runtime is still booting
-  /// isn't silently marked scored. The score-cache/localData writes a rescore
-  /// makes flow back to the UI through the QSO and operation streams; neither
-  /// perturbs the fingerprint (`local_data` carries no stamp), so there's no
-  /// feedback loop.
-  void _maybeScheduleRescore() {
-    final fingerprint = '${_operation?.updatedAtMillis}|${_fingerprintFor(_latestQsos)}';
-    if (fingerprint == _lastScoredFingerprint) return;
-    _rescoreDebounce?.cancel();
-    _rescoreDebounce = Timer(const Duration(milliseconds: 750), () async {
-      final operation = _operation;
-      if (operation == null || widget.services.extensions.host == null) {
-        return; // not ready — retried on the next change, or when the runtime comes up
-      }
-      _lastScoredFingerprint = fingerprint;
-      await widget.services.scoring.rescoreOperation(operation);
-    });
-  }
-
-  /// The count and the checkpoint digest — every uuid with its stamp,
-  /// order-free — which is what a pass stamps its checkpoint with, so the two
-  /// agree about whether anything moved. An O(N) walk with no allocation, on a
-  /// path that runs on the UI isolate for every emission of a long log; the
-  /// Spots Panel takes the same value as its "has the log changed?" signal.
-  String _fingerprintFor(List<Qso> qsos) => '${qsos.length}:${checkpointDigestOf(qsos)}';
-
-  /// The same Callsign field as Settings → Callsign, offered when a new
-  /// operation was started with no profile callsign: the save lands in the
-  /// profile (like the settings panel) AND on this operation, which was
-  /// created before the callsign existed. Cancelling leaves both unset —
-  /// the operation's own settings can fix it later.
-  Future<void> _promptForCallsign(Operation operation) async {
-    final result = await editOneFieldDialog(context, title: context.t.common.callsign, fieldLabel: context.t.common.callsign, fieldInitial: '', callsign: true);
-    if (result == null || result.trim().isEmpty) return;
-    // Profile first, because the operation write is the one that can fail:
-    // `WritePolicy` refuses it on a travelled clock, and an operation created
-    // while travelling is born `/TEST`, so the very callsign this prompt
-    // exists to collect is one the gate declines to store. Sequencing the
-    // operation first would take the profile write down with it and leave the
-    // operator with neither.
-    await widget.services.setOperatorCall(result);
-    await widget.services.operations.saveData(
-      Operation(
-        uuid: operation.uuid,
-        data: {...operation.data, 'stationCall': result.trim().toUpperCase()},
-        qsoCount: operation.qsoCount,
-        startAtMillisMin: operation.startAtMillisMin,
-        startAtMillisMax: operation.startAtMillisMax,
-        localData: operation.localData,
-      ),
-    );
+    _runtime.qsosChanged(qsos);
+    if (_operation case final operation?) _spotBoardView.show(operation, qsos, logRevision: logFingerprintFor(qsos));
   }
 
   /// Tap on the info area while it shows the call info: on wide layouts the detail
@@ -1513,26 +712,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
         lookups: info.lookups,
         alertKeys: info.alertKeys,
         noticeKeys: info.noticeKeys,
-        ourEntityPrefix: _ourEntityPrefix,
+        ourEntityPrefix: _runtime.ourEntityPrefix,
       ),
     );
-  }
-
-  /// Where the Info pane is in the layout, surface it and let it show
-  /// whatever it shows. Answers whether it actually did: a custom
-  /// layout the operator has dropped the Info pane out of has nothing to
-  /// reveal (`revealModule` no-ops on a module that isn't there), and a tap
-  /// that stops here would spend its splash on nothing. Saying so lets the
-  /// caller fall back to the modal, which always works.
-  bool _revealInfoPane() {
-    // Asked of the dock, never of the width: the narrow arrangement ships
-    // without an Info pane but the operator may have added one, and `modules`
-    // is what actually answers that — a width test would refuse a pane that
-    // is on screen.
-    final dock = dockKey.currentState;
-    if (dock == null || !dock.modules.contains('info')) return false;
-    dock.revealModule('info');
-    return true;
   }
 
   /// Tap on a day header in the QSO list, or on the info area while it shows
@@ -1553,1076 +735,17 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       closeLabel: context.t.common.close,
       // See the Call Info modal above — InformationPanel is a ListView too.
       scrollable: false,
-      builder: (_) =>
-          InformationPanel(operation: operation, qsos: qsos, services: widget.services, ourEntityPrefix: _ourEntityPrefix, activityControls: _loggingControls),
-    );
-  }
-
-  Future<void> _editActivities(Operation operation) async {
-    if (operation.deleted) return;
-    await _openOperationSheet(operation);
-  }
-
-  /// Opens the operation sheet, or — if the profile still has no operator
-  /// callsign (fresh install, no onboarding flow existed for it before) —
-  /// the callsign prompt in its place. [markOnboardingSeen] records the
-  /// 'operation-sheet' onboarding flow as shown, but only once the sheet
-  /// ITSELF actually opens: the callsign prompt isn't the sheet, so hitting
-  /// that branch must not count as having seen it.
-  void _openActivitiesOrPromptForCallsign(Operation operation, {required bool markOnboardingSeen}) {
-    // Both branches write to the operation, and a deleted one is read-only.
-    if (operation.deleted) return;
-    // The screen we were pushed over can still hold focus while its
-    // subtree goes away; leaving it focused lets the engine move DOM
-    // focus through a Focus node that is already inactive (web).
-    FocusManager.instance.primaryFocus?.unfocus();
-    if (widget.services.settings.activeProfile.operatorCall.isEmpty) {
-      _promptForCallsign(operation);
-    } else {
-      if (markOnboardingSeen) {
-        unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.operationSheet));
-      }
-      _editActivities(operation);
-    }
-  }
-
-  Animation<double>? _sheetAnimation;
-  VoidCallback? _sheetAnimationListener;
-  GlobalKey<OperationSheetState>? _activeSheetKey;
-
-  Future<void> _openOperationSheet(Operation operation) async {
-    // No manual re-fetch on pop: watchOperation streams the change back.
-    // Non-scrollable: the pane's accordion sections divide its height
-    // themselves (see activities_view.dart). Not barrier/Escape-dismissible:
-    // as a pushed screen this had explicit-back dismissal only, and Escape
-    // while typing in the suggestions search would close the whole pane.
-    final sheetKey = GlobalKey<OperationSheetState>();
-    if (!mounted) return;
-    setState(() {
-      _draftOperation = operation;
-      _activeSheetKey = sheetKey;
-    });
-
-    // Captured so the `finally` block below can arm a defensive fallback
-    // against this specific animation object — see its own comment.
-    Animation<double>? sheetAnim;
-    try {
-      await showTopModalPane<void>(
-        context,
-        onAnimation: (anim) {
-          sheetAnim = anim;
-          _sheetAnimationListener?.call();
-          _sheetAnimation = anim;
-          void animListener() {
-            if (mounted) setState(() {});
-          }
-
-          // Navigator.push()'s Future (what `await showTopModalPane` below
-          // is waiting on) completes the instant saveAndClose()/revert-
-          // AndClose() calls pop() — well before the route's reverse
-          // transition actually finishes playing. If this listener were
-          // torn down in that `finally` block instead, _sheetAnimation
-          // would go null immediately, snapping the header's dots
-          // control straight to "closed" while the sheet itself keeps
-          // sliding away for the rest of its 600ms. So this detaches
-          // itself only once the animation genuinely reaches
-          // AnimationStatus.dismissed, keeping the header in sync with
-          // the pane for the whole reverse transition; the `identical`
-          // check guards against a late-firing dismissal from a PREVIOUS
-          // sheet clobbering a new one that's already open.
-          void statusListener(AnimationStatus status) {
-            if (status != AnimationStatus.dismissed) return;
-            anim.removeListener(animListener);
-            anim.removeStatusListener(statusListener);
-            if (mounted && identical(_sheetAnimation, anim)) {
-              setState(() => _sheetAnimation = null);
-            }
-          }
-
-          anim.addListener(animListener);
-          anim.addStatusListener(statusListener);
-          _sheetAnimationListener = () {
-            anim.removeListener(animListener);
-            anim.removeStatusListener(statusListener);
-          };
-        },
-        // Left-aligned with the dots-and-title control that opens it,
-        // rather than centered in the pane.
-        leftInset: _headerTitleLeftInset,
-        // Narrow has no card edge to line the accept button up with (the
-        // pane is full-bleed there), and the control it stands in for — the
-        // header's own chevron — has faded out of that corner, so it takes
-        // the corner itself rather than sitting indented behind nothing.
-        // Only the native window controls still get their room.
-        narrowLeftInset: _narrowSheetLeftInset(context),
-        scrollable: false,
-        barrierDismissible: true,
-        onDismiss: () => sheetKey.currentState?.saveAndClose(),
-        // The view's AppBar (X, title, Options/Export, the accept button
-        // below) stays visible on narrow too instead of the sheet covering
-        // the whole screen — the same header serves both layouts, so there
-        // is no separate narrow-only header to keep in sync with it. Actual
-        // reachability for X/Options/Export is headerTrailing's job, below —
-        // this alone only stops the sheet from painting over them.
-        keepHeaderVisible: true,
-        // No header band of its own: the accept control lives in the strip
-        // of VIEW header this pane leaves uncovered instead (headerLeading,
-        // reachable above the pane's own dismiss layer — see its doc in
-        // modal_pane.dart), left-aligned with the title it covers. Dismissal
-        // still works via the barrier tap, Escape, and onDismiss above.
-        showHeader: false,
-        headerLeading: Builder(
-          builder: (context) => AnimatedBuilder(
-            animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
-            // Grows out of the falling dots' top circle instead of popping
-            // in at full size — same _sheetHandoffThreshold cutoff the dots
-            // fade out by (see _FallingDotsPainter), so the two read as one
-            // handoff rather than two unrelated motions layered on each
-            // other.
-            builder: (context, child) {
-              final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
-              return Opacity(
-                opacity: growth,
-                child: Transform.scale(scale: 0.2 + 0.8 * growth, alignment: Alignment.centerLeft, child: child),
-              );
-            },
-            child: KeyedSubtree(key: _sheetOkButtonKey, child: _sheetOkButton(context, sheetKey)),
-          ),
-        ),
-        // Live copies of the AppBar's own X and Options/Export, reachable
-        // above the barrier the same way the accept button is — the real
-        // ones fade out and stop taking taps in step with this (see the
-        // AppBar's own `leading`/`actions`). Each closes the sheet before
-        // applying its own action, rather than just dismissing it the way an
-        // ordinary barrier tap does: the operator tapped a specific control,
-        // not empty space, so it should do what it says.
-        //
-        // Both copies stay put, exactly over the real ones they stand in
-        // for — nothing in this header moves because a sheet opened.
-        // `SizedBox` sizes this to the full header width so each can
-        // `Positioned` itself within it independently.
-        // Only the chevron has a copy up here. The operation's own
-        // Exports/Imports/Tools group — and the layout controls beside it —
-        // stay exactly where they are in the AppBar below, untouched and
-        // merely disabled while the sheet is up (see the AppBar's own
-        // `actions`), so nothing about that end of the header moves,
-        // recolours or duplicates itself around a sheet. The chevron is the
-        // exception because something really does replace it: the accept
-        // button takes its corner.
-        headerTrailing: Builder(
-          builder: (context) {
-            final isTwoPane = ShirtSize.of(context).isTwoPane;
-            final toolbarHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
-            return SizedBox(
-              width: double.infinity,
-              height: toolbarHeight,
-              child: ValueListenableBuilder<({String title, String subtitle})?>(
-                valueListenable: _sheetHeaderLines,
-                builder: (context, pushedLines, _) => AnimatedBuilder(
-                  animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
-                  builder: (context, _) {
-                    final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
-                    final lines = pushedLines ?? _headerTitleLines(context, _draftOperation ?? operation);
-                    return Stack(
-                      children: [
-                        // Fades out on the same curve as the real one it stood
-                        // in for — the accept button (headerLeading) is the
-                        // sheet's dismiss control once it's up, so this doesn't
-                        // need to keep offering a second one once that button
-                        // has taken over.
-                        Positioned(
-                          left: 0,
-                          top: 0,
-                          bottom: 0,
-                          width: _leadingWidthFor(isTwoPane, context),
-                          child: IgnorePointer(
-                            ignoring: _headerIconsInert,
-                            child: Opacity(
-                              opacity: _headerIconsFadeOpacity,
-                              // macOSAwareBackButton, not a bare IconButton:
-                              // it's the one place that already knows to clear
-                              // the traffic lights on a chromeless macOS window.
-                              child: Center(
-                                child: macOSAwareBackButton(
-                                  context,
-                                  close: true,
-                                  boxSize: 40,
-                                  onPressed: () async {
-                                    await sheetKey.currentState?.saveAndClose();
-                                    if (context.mounted) unawaited(Navigator.of(context).maybePop());
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        // The trailing row, live, standing exactly over the
-                        // inert one in the AppBar — same builder, same children,
-                        // so it lines up without measuring anything. This is the
-                        // copy that makes Exports/Imports/Tools pressable at
-                        // all while the sheet is up; the layout controls come
-                        // along disabled, both to match what is underneath and
-                        // because they occupy width the actions must clear.
-                        //
-                        // Opaque is not the same as live: at progress 0 the REAL
-                        // row underneath is the one taking taps (see
-                        // [_headerIconsInert]), so without the IgnorePointer
-                        // this copy would swallow the tap meant for it.
-                        Positioned(
-                          right: windowsCaptionClearance(context),
-                          top: 0,
-                          bottom: 0,
-                          child: IgnorePointer(
-                            ignoring: growth <= 0,
-                            child: Center(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: _headerTrailingControls(
-                                  context,
-                                  isTwoPane: isTwoPane,
-                                  // The sheet cannot coexist with layout
-                                  // editing: the title control that opens it is
-                                  // inert while editing, and the layout button
-                                  // that would start editing is inert while the
-                                  // sheet is up. False is the only value this
-                                  // call site can see.
-                                  editingHeader: false,
-                                  lines: lines,
-                                  // Width only — the AppBar's row underneath is
-                                  // the one that paints them.
-                                  layoutControlsOpacity: 0.0,
-                                  onOptions: () async {
-                                    final op = _draftOperation ?? operation;
-                                    await sheetKey.currentState?.saveAndClose();
-                                    if (mounted) {
-                                      unawaited(
-                                        _showOperationOptions(
-                                          op,
-                                          includeExport: !isTwoPane,
-                                          includeImport: !isTwoPane,
-                                          includeEditLayout: !isTwoPane && !layoutEditing,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  onExport: () async {
-                                    final op = _draftOperation ?? operation;
-                                    await sheetKey.currentState?.saveAndClose();
-                                    if (mounted) unawaited(_export(op));
-                                  },
-                                  onImport: () async {
-                                    final op = _draftOperation ?? operation;
-                                    await sheetKey.currentState?.saveAndClose();
-                                    if (mounted) unawaited(_import(op));
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Positioned(right: 0, top: 0, bottom: 0, child: Center(child: windowsCaptionSpacer(context))),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            );
-          },
-        ),
-        builder: (_) => OperationSheet(
-          key: sheetKey,
-          services: widget.services,
-          operation: operation,
-          onOperationChanged: (updated) {
-            if (!mounted) return;
-            final previous = _draftOperation;
-            setState(() => _draftOperation = updated);
-            // Refs are the only input the title (and the logging row's
-            // activity fields) are built from, so nothing else in the draft
-            // is worth a hook fan-out.
-            //
-            // The build method reads `_draftOperation ?? _operation`, so the
-            // LoggingPanel below sees a ref the operator just added
-            // immediately — but its `activityControls` (the descriptor that
-            // actually makes the field render) only ever refreshes off the
-            // COMMITTED operation, via `_onOperationChanged`'s own ref-diff.
-            // A draft edit never reaches the database until the sheet
-            // closes, so without this call that hook never fires for it: the
-            // ref shows on the operation but the field it should turn on
-            // stays missing until something else (any unrelated cause of
-            // `_onOperationChanged` firing, or a per-QSO refresh landing
-            // once a callsign is typed) happens to catch it up.
-            if (previous == null || !_sameRefs(previous.data['refs'], updated.data['refs'])) {
-              unawaited(_retitleDraft(updated));
-              unawaited(_refreshLoggingControls(updated));
-            }
-          },
-          onEditDetails: () async {
-            final updated = await editOperationDetails(context, widget.services, _draftOperation ?? operation, save: false);
-            if (updated != null && mounted) {
-              setState(() {
-                _draftOperation = Operation(
-                  uuid: _draftOperation!.uuid,
-                  data: {..._draftOperation!.data, ...updated.data},
-                  qsoCount: _draftOperation!.qsoCount,
-                  startAtMillisMin: _draftOperation!.startAtMillisMin,
-                  startAtMillisMax: _draftOperation!.startAtMillisMax,
-                  // The dialog persists local data itself, so the draft takes
-                  // what came back rather than keeping its own stale copy.
-                  localData: updated.localData,
-                );
-              });
-              sheetKey.currentState?.updateOperation(_draftOperation!);
-            }
-          },
-        ),
-      );
-    } finally {
-      // _sheetAnimation/_sheetAnimationListener are NOT reset here — this
-      // `finally` runs as soon as Navigator.push() resolves, which is at
-      // pop() time, well before the route's reverse transition actually
-      // finishes. The status listener attached in onAnimation above cleans
-      // both up itself once the animation truly reaches
-      // AnimationStatus.dismissed (with a defensive re-detach at the top of
-      // the next onAnimation call, in case a sheet reopens before that
-      // fires).
-      if (mounted) {
-        setState(() {
-          _activeSheetKey = null;
-          // Back to the live fallback, so the next open's first frame reads
-          // the title that is on screen rather than the one this session
-          // left behind (see [_sheetHeaderLines]).
-          _sheetHeaderLines.value = null;
-          // Carry the draft's final (just-saved — see saveAndClose(), the
-          // only path that reaches here today) values into _operation
-          // BEFORE dropping the draft, rather than leaving the header to
-          // fall back on _operation as it stood before this edit session
-          // and wait for watchOperation's stream to catch up. That gap
-          // would show a flicker of stale values in the header for a
-          // frame or two while the sheet was still closing. If a live
-          // title-preview was showing (refs edited during this session),
-          // bake ITS suggestion into the carried-forward operation too —
-          // otherwise the draft's own titleSuggestion cache is still the
-          // PRE-edit one (only the ephemeral preview knew about the new
-          // refs), so dropping _draftTitleFragments in the same breath
-          // would swap the correct preview for that stale cached title.
-          // The fragments also live on as _pendingTitleFragments (NOT
-          // cleared here) — saveAndClose() persisted the sheet's own,
-          // still stale-titleSuggestion operation, so watchOperation's very
-          // next emission would read that stale cache straight back over
-          // this fix; _onOperationChanged keeps re-patching it in until the
-          // row's real cache (retitleOperation's separate async write)
-          // actually catches up.
-          final draft = _draftOperation;
-          final fragments = _draftTitleFragments;
-          _operation = draft == null
-              ? _operation
-              : fragments == null
-              ? draft
-              : _withTitleSuggestion(draft, fragments);
-          _pendingTitleFragments = fragments ?? _pendingTitleFragments;
-          _draftOperation = null;
-          _draftTitleFragments = null;
-          _draftTitleGeneration++;
-        });
-      }
-      // Defensive fallback: the header's own leading/Tools/Export/layout
-      // icons stay faded and non-interactive for as long as _sheetAnimation
-      // is non-null (see _headerIconsFadeOpacity/_headerIconsInert), and the
-      // ONLY path that clears it is onAnimation's statusListener reaching
-      // AnimationStatus.dismissed above. If the route is torn down some
-      // other way that skips that status (a forcibly reset Navigator, a
-      // disposed AnimationController mid-transition), nothing else would
-      // ever un-stick those controls. TopModalPaneRoute's own
-      // transitionDuration is 600ms; comfortably past that, if this is
-      // still the SAME animation onAnimation captured (a newer sheet
-      // reopening would have replaced it already), force it null rather
-      // than trust a status change that evidently isn't coming.
-      final anim = sheetAnim;
-      if (anim != null) {
-        unawaited(
-          Future.delayed(const Duration(milliseconds: 1500), () {
-            if (mounted && identical(_sheetAnimation, anim)) {
-              debugPrint('[operation] sheet-animation-stuck: dismissed status never fired within the fallback window');
-              setState(() => _sheetAnimation = null);
-            }
-          }),
-        );
-      }
-    }
-  }
-
-  Future<void> _resolveOurEntityPrefix(Operation operation) async {
-    final ourInfo = await widget.services.extensions.lookupCall(
-      // One callsign: the raw field can hold several, and a lookup of
-      // "KI2D, W1AW" resolves nothing — leaving the operation with no entity,
-      // no ITU region and no country, which the logging controls and the
-      // scorers both read.
-      operation.stationCalls.first,
-      qso: const {},
-      operation: operation.data,
-      online: false,
-    );
-    final ourGuess = ourInfo?['guess'] as Map<String, dynamic>?;
-    if (mounted) {
-      setState(() {
-        _ourEntityPrefix = ourGuess?['entityPrefix'] as String?;
-        _ourItuRegion = (ourGuess?['ituRegion'] as num?)?.toInt();
-        _ourCountryCode = ourGuess?['countryCode'] as String?;
-      });
-    }
-  }
-
-  Future<void> _export(Operation operation) => showOperationExportPanel(context, services: widget.services, operation: operation);
-
-  Future<void> _import(Operation operation) async {
-    if (operation.deleted) return;
-    await showOperationImportPanel(context, services: widget.services, operation: operation);
-  }
-
-  /// Counted only once it has happened: a refusal throws past the `then`,
-  /// and an operation something else already restored reports false.
-  void _undelete(Operation operation) {
-    unawaited(
-      widget.services.undeleteOperation(operation.uuid).then((restored) {
-        if (restored) widget.services.track('operation_undeleted');
-      }),
-    );
-  }
-
-  /// The header's trailing controls: the operation's own Exports/Imports/
-  /// Tools, and the view's layout controls beside them where the dock layout
-  /// is live.
-  ///
-  /// ONE builder for both the AppBar's own row and the copy the setup sheet
-  /// draws above its barrier, so the copy stands exactly over what it
-  /// replaces by construction — same children, same order, same widths — with
-  /// nothing measured and so nothing to go stale. Copying only the actions
-  /// and pinning them to the trailing edge would land them over the layout
-  /// controls wherever those are present.
-  ///
-  /// The copy exists because the real row cannot be pressed while a modal
-  /// route is up (see [TopModalPaneRoute.headerTrailing]), and the
-  /// operation's actions should still work. The layout controls should not,
-  /// so they carry their own inert treatment here, in the shared builder,
-  /// rather than at either call site.
-  ///
-  /// [layoutControlsOpacity] is which of the two rows actually PAINTS those
-  /// controls. Both must hold them — they are width the actions have to
-  /// clear, and dropping them from one row would misalign it — but the rows
-  /// sit exactly on top of each other over an undimmed header, so painting
-  /// both at Material's disabled 0.38 composites to about 0.62 and reads as
-  /// merely faint. The copy passes 0 and keeps only the space.
-  List<Widget> _headerTrailingControls(
-    BuildContext context, {
-    required bool isTwoPane,
-    required bool editingHeader,
-    required ({String title, String subtitle}) lines,
-    required double layoutControlsOpacity,
-    required VoidCallback onOptions,
-    required VoidCallback onExport,
-    required VoidCallback onImport,
-  }) => [
-    // Operation-level actions, not scoped to the setup sheet: an operator
-    // reaches for Options/Export without necessarily opening it. Gone
-    // during layout editing along with the rest of the operation's own
-    // identity in this header — nothing about the operation is what's
-    // being arranged then. Narrow keeps only the gear — there isn't room
-    // for a second icon beside the title — with Export Logs folded into
-    // its menu instead of dropped.
-    if (!editingHeader)
-      _operationHeaderActions(
-        context,
-        isTwoPane: isTwoPane,
-        headerTitle: lines.title,
-        headerSubtitle: lines.subtitle,
-        onOptions: onOptions,
-        onExport: onExport,
-        onImport: onImport,
-      ),
-    // Narrow gives the way IN to the Tools menu (see
-    // [_showOperationOptions]) — the header there has room for the title
-    // and one button, and the operation's own title has the better claim.
-    // Once editing, the controls come back here at every width: a menu is
-    // not somewhere to hide the only way out of a mode.
-    if (isTwoPane || layoutEditing) ...[
-      // The LAYOUT sheet draws its own copy of these while IT is up; two
-      // would be one too many, and the one down here would be the
-      // unreachable one.
-      if (!layoutSheetOpen) ...[
-        // Separates it from Exports/Tools rather than the two groups
-        // sitting flush — they act on different things (the operation vs.
-        // the view's own arrangement), and nothing about a labeled
-        // TextButton.icon's own padding guarantees a gap here the way a
-        // plain IconButton's did.
-        if (!editingHeader) const SizedBox(width: Space.md),
-        IgnorePointer(
-          ignoring: _headerIconsInert,
-          child: Opacity(
-            opacity: layoutControlsOpacity,
-            child: Row(mainAxisSize: MainAxisSize.min, children: layoutHeaderControls(context)),
-          ),
-        ),
-      ],
-    ],
-  ];
-
-  /// The header's two title lines as the sheet's copy of the trailing
-  /// controls last saw them (headerTrailing in [_openOperationSheet]).
-  ///
-  /// That copy lives in the sheet's route rather than in this build, and its
-  /// own AnimatedBuilder stops ticking once the sheet is open and still — so
-  /// adding or removing an activity, which retitles the operation under it,
-  /// reaches it through nothing else. Without this it keeps the label fit it
-  /// was built with (see [_headerActionsFitLabels]) while the title it was
-  /// measured against changes width, and the copy and the row underneath it
-  /// disagree about their own size.
-  ///
-  /// Pushed from a post-frame callback rather than mid-build, where
-  /// notifying a listener would rebuild the route's subtree during this
-  /// one's build.
-  final _sheetHeaderLines = ValueNotifier<({String title, String subtitle})?>(null);
-
-  /// The two lines the header's title control shows for [operation]. One
-  /// derivation, read both by the control itself and by
-  /// [_headerActionsFitLabels] — a second copy of this would let the labels
-  /// be weighed against a title other than the one on screen.
-  ///
-  /// The ref-derived subtitle only exists once OperationTitleService has run
-  /// at least once; until then it falls back to the raw ref labels so the
-  /// header isn't blank.
-  ({String title, String subtitle}) _headerTitleLines(BuildContext context, Operation operation) {
-    final suggested = displaySubtitleFor(operation);
-    return (
-      title: '${headerCallsignFor(operation)} ${displayTitleFor(context, operation)}',
-      subtitle: suggested.isNotEmpty ? suggested : operation.refs.map((r) => r['shortLabel'] ?? r['ref']).whereType<String>().join(' • '),
-    );
-  }
-
-  /// The falling-dots control's own footprint in the title row — the width
-  /// the leading gap rests at while the sheet is closed.
-  static const double _headerDotsWidth = 10.0;
-
-  /// A labeled header button's own chrome beyond the 48 logical pixels an
-  /// icon-only IconButton spends on the same icon — TextButton.icon's
-  /// start/end padding and the gap it sets between icon and label.
-  /// Approximate on purpose: it decides only WHERE the labels drop out, and
-  /// being a few pixels off moves that point rather than breaking anything.
-  static const double _headerLabelChrome = 12.0;
-
-  /// The same measure for the sheet's accept button, which is a
-  /// FilledButton.icon rather than a TextButton.icon and carries the heavier
-  /// M3 padding of one. Separate from [_headerLabelChrome] because reusing
-  /// that one under-counts this button by enough to keep labels at widths
-  /// that cannot hold them — the exact failure the fit exists to prevent.
-  static const double _acceptButtonChrome = 28.0;
-
-  /// The title control's own insets: the padding either side of the text
-  /// plus the dots slot and the gap after it (see the AppBar's `title`
-  /// below). Derived rather than typed, so a change to [Space] or to the
-  /// dots cannot silently drift the point at which labels drop out. Narrow
-  /// drops the left inset, as the title control itself does.
-  double _headerTitleChrome(bool isTwoPane) => (isTwoPane ? Space.xs : 0) + _headerDotsWidth + Space.xs + Space.lg;
-
-  /// Whether the header's Exports/Imports/Tools group can afford to carry
-  /// its labels.
-  ///
-  /// The group and the operation's own title share one header, so what the
-  /// labels add over the icon-only group comes out of whatever the title
-  /// does not need. Measured rather than pinned to a shirt size: the title
-  /// runs as long as the operator's callsign, title and refs happen to make
-  /// it, and the labels as long as the locale's words, so no fixed width is
-  /// the right answer for both — an S window with a short title has room a
-  /// wide one with a long title does not.
-  ///
-  /// The title's NATURAL width is what it is weighed at. It can survive on
-  /// less (shrinkToFitText takes it to 75% before ellipsizing), but that
-  /// headroom is there for a title too long for the header at any label
-  /// setting — spending it to buy labels would shrink the operation's own
-  /// name to pay for a word that repeats an icon.
-  bool _headerActionsFitLabels(BuildContext context, {required bool isTwoPane, required String title, required String subtitle}) {
-    final theme = Theme.of(context);
-    final t = context.t.activitiesView;
-    final titleStyle = theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge ?? const TextStyle();
-    final subtitleStyle = theme.textTheme.labelMedium ?? const TextStyle();
-    final labelStyle = theme.textTheme.labelLarge ?? const TextStyle();
-
-    // What the header gives up to the setup sheet's accept button while the
-    // sheet is up ([_leadingGapWidth] widens the title's leading gap to it),
-    // costed the same way a labeled button above is. Reserved even while the
-    // sheet is closed, and derived rather than read off the live button, so
-    // this answers the same either way: a decision that swung on the sheet
-    // would drop the labels partway through the opening animation and put
-    // them back partway through the close, and [_sheetOkButtonWidth] reads
-    // null between opens besides.
-    final acceptButtonReserve = kMinInteractiveDimension + _acceptButtonChrome + textWidth(context, context.t.common.ok, labelStyle);
-
-    final labels = isTwoPane ? [t.exports, t.imports, t.tools] : [t.tools];
-    final labelsCost = labels.fold<double>(0.0, (sum, label) => sum + _headerLabelChrome + textWidth(context, label, labelStyle));
-
-    final titleWanted = math.max(textWidth(context, title, titleStyle), subtitle.isEmpty ? 0.0 : textWidth(context, subtitle, subtitleStyle));
-
-    // The view's layout controls sit in this same row (see
-    // [_headerTrailingControls]) and take width the labels cannot also
-    // spend. One button: the three-button editing form only appears while
-    // layoutEditing, and that is exactly when these actions are not built at
-    // all (`editingHeader`), so it can never coincide with this measurement.
-    //
-    // Untested, deliberately. [acceptButtonReserve] is charged even with the
-    // sheet closed and over-reserves by more than this term is worth, so
-    // omitting it only misjudges a band of title widths roughly this button
-    // wide, and only while the sheet is open. A test tuned to that band
-    // would be measuring the placeholder font's glyph advance more than the
-    // arithmetic, and would break on any padding change. It is here because
-    // the budget must describe the row it is measuring.
-    final layoutControlsWidth = !layoutSheetOpen && (isTwoPane || layoutEditing) ? Space.md + kMinInteractiveDimension : 0.0;
-
-    final slack =
-        MediaQuery.sizeOf(context).width -
-        _leadingWidthFor(isTwoPane, context) -
-        acceptButtonReserve -
-        windowsCaptionClearance(context) -
-        labels.length * kMinInteractiveDimension -
-        layoutControlsWidth -
-        _headerTitleChrome(isTwoPane) -
-        titleWanted;
-    return slack >= labelsCost;
-  }
-
-  /// (wide only) Export + Tools — shared between the AppBar's own actions and
-  /// their live copy in headerTrailing (see _openOperationSheet): same icons,
-  /// only the press handlers differ (immediate here, close-the-sheet-first
-  /// there). Export leads and Tools trails: Export is
-  /// the more frequent reach of the two, and Tools — being the one that's
-  /// always there, narrow included — anchors the group's trailing edge
-  /// instead of shifting position as Export appears and disappears across
-  /// the width breakpoint.
-  ///
-  /// Which of the three show at all is L's breakpoint: Exports and Imports
-  /// are dropped on S, where their only way in is Tools' own menu (see
-  /// [_showOperationOptions]'s `includeExport`/`includeImport`).
-  ///
-  /// Whether they carry LABELS is not a breakpoint at all — see
-  /// [_headerActionsFitLabels], which weighs them against the title they
-  /// take the room from.
-  Widget _operationHeaderActions(
-    BuildContext context, {
-    required bool isTwoPane,
-    required String headerTitle,
-    required String headerSubtitle,
-    required VoidCallback onOptions,
-    required VoidCallback onExport,
-    required VoidCallback onImport,
-  }) {
-    final t = context.t.activitiesView;
-    final labeled = _headerActionsFitLabels(context, isTwoPane: isTwoPane, title: headerTitle, subtitle: headerSubtitle);
-    final onHeader = Theme.of(context).appBarTheme.foregroundColor ?? Theme.of(context).colorScheme.onPrimary;
-    Widget headerButton({required IconData icon, required String label, required VoidCallback onPressed}) => labeled
-        ? TextButton.icon(
-            icon: Icon(icon),
-            label: Text(label),
-            style: TextButton.styleFrom(foregroundColor: onHeader),
-            onPressed: onPressed,
-          )
-        : IconButton(
-            icon: Icon(icon, semanticLabel: label),
-            onPressed: onPressed,
-          );
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (isTwoPane) headerButton(icon: MdiIcons.export, label: t.exports, onPressed: onExport),
-        if (isTwoPane) headerButton(icon: MdiIcons.import, label: t.imports, onPressed: onImport),
-        headerButton(icon: MdiIcons.tools, label: t.tools, onPressed: onOptions),
-      ],
-    );
-  }
-
-  /// The operation-level actions that don't belong in the activities list
-  /// itself. Share and Archive are declared but inert — the rows are here so
-  /// the menu's shape is settled, and they stay disabled until each has an
-  /// implementation behind it. Standalone rather than routed through the
-  /// setup sheet: reached both from the AppBar's own Options button (sheet
-  /// closed) and from its live copy in headerTrailing (sheet open — see
-  /// _openOperationSheet), which closes the sheet first and calls this with
-  /// its already-saved draft, so [operation] is always current by the time
-  /// this actually shows. Editing details here saves directly either way
-  /// (editOperationDetails' own `save: true` default), not through a draft.
-  ///
-  /// [includeExport] and [includeImport] add Export Logs and Imports as the
-  /// top two rows, in that order — the header's own group reads
-  /// Exports/Imports left to right, and a menu standing in for it keeps that
-  /// order rather than inventing a second one. Narrow layouts drop those
-  /// icons from the header for lack of room beside the title, so this menu
-  /// is their only way in there; wide layouts keep the icons and leave them
-  /// out here rather than offer the same action twice.
-  ///
-  /// [includeEditLayout] adds Edit Layout after them, on the same terms and
-  /// for the same reason: a narrow header has room for the title and one
-  /// button, and the operation's own title has the better claim on it. The
-  /// controls the edit ITSELF needs — the plus, Discard, Save — stay in the
-  /// header at every width, because a menu is not somewhere an operator can
-  /// be expected to find the way out of a mode.
-  Future<void> _showOperationOptions(Operation operation, {bool includeExport = false, bool includeImport = false, bool includeEditLayout = false}) async {
-    final t = context.t.activitiesView;
-    final theme = Theme.of(context);
-    await showHaloDialog<void>(
-      context: context,
-      builder: (dialogContext) => HaloDialog(
-        title: Text(t.toolsTitle),
-        // The rows ARE the dialog's content, so they take the shell's list
-        // padding: to the card's edges, with their contents inset off the
-        // same SettingsList every other list in the app reads.
-        list: true,
-        // The body scrolls itself, because the Paired Devices band at the
-        // end of it pins — which needs a sliver viewport, and the shell's
-        // plain scroll view is not one.
-        scrollable: false,
-        content: SectionedListView(
-          shrinkWrap: true,
-          children: [
-            if (includeExport)
-              ListTile(
-                leading: const Icon(MdiIcons.export),
-                title: Text(t.exportLogs),
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  unawaited(_export(operation));
-                },
-              ),
-            if (includeImport && !operation.deleted)
-              ListTile(
-                leading: const Icon(MdiIcons.import),
-                title: Text(t.imports),
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  unawaited(_import(operation));
-                },
-              ),
-            if (includeEditLayout)
-              ListTile(
-                leading: const Icon(MdiIcons.viewDashboard),
-                title: Text(context.t.operation.layout.editLayout),
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  startLayoutEditing();
-                },
-              ),
-            if (!operation.deleted)
-              ListTile(
-                leading: const Icon(MdiIcons.noteEditOutline),
-                title: Text(t.operationDetails),
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  unawaited(editOperationDetails(context, widget.services, operation));
-                },
-              ),
-            ListTile(enabled: false, leading: const Icon(MdiIcons.shareVariant), title: Text(t.share)),
-            ListTile(enabled: false, leading: Icon(MdiIcons.archiveOutline), title: Text(t.archive)),
-            if (operation.deleted)
-              ListTile(
-                leading: Icon(MdiIcons.deleteRestore, color: theme.colorScheme.error),
-                title: Text(t.undeleteOperation, style: TextStyle(color: theme.colorScheme.error)),
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  _undelete(operation);
-                },
-              )
-            else
-              ListTile(
-                leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
-                title: Text(t.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
-                // The menu closes with the confirmation: deleting is about the
-                // operation as a whole, and its confirmation belongs to the
-                // screen underneath, not to a menu that is going away.
-                onTap: () {
-                  Navigator.of(dialogContext).pop();
-                  unawaited(
-                    confirmDeleteOperation(context, widget.services, operation).then((deleted) {
-                      if (!deleted || !mounted) return;
-                      Navigator.of(context).pop();
-                    }),
-                  );
-                },
-              ),
-            // Past the destructive row on purpose: it is a readout, not an
-            // action, so it must not sit between two things the operator
-            // taps.
-            //
-            // Both gate terms, not just the experiment: with peer sync off
-            // every row would read "Not connected", and unlike the Settings
-            // panel this dialog carries no switch to say that is the reason.
-            if (widget.services.settings.peerSyncEnabled && widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) ...[
-              SectionHeader(dialogContext.t.settings.peers.pairedDevices),
-              LinkedDevicesList(services: widget.services),
-            ],
-          ],
-        ),
-        // Every row here closes the menu itself, so this is a way out rather
-        // than a confirm — and a dialog without a footer band ends on nothing,
-        // which is what sets one apart from the rest.
-        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.done)),
+      builder: (_) => InformationPanel(
+        operation: operation,
+        qsos: qsos,
+        services: widget.services,
+        ourEntityPrefix: _runtime.ourEntityPrefix,
+        activityControls: _runtime.loggingControls,
       ),
     );
   }
 
   Future<void> _handleCommandAction(String action, [Map<String, dynamic>? params]) => runCommandAction(widget.services, action, params, context);
-
-  /// The logging panel's own settings — field visibility, dupe/number
-  /// display, a bulk lookup refresh — behind the tune icon, built from
-  /// every declared setting targeting `'logging'`
-  /// (settings/settings_target_dialog.dart), rather than the operation
-  /// view's AppBar, since none of this applies to the Info/Spots/Map tabs.
-  /// Rendered on the logging module's own tab or pane header, in both dock
-  /// classes.
-  Widget _buildLoggingSettingsButton(List<Qso> qsos, {BuildContext? context}) {
-    // Defaults to this State's own context, but the dock layout's
-    // `tabActions` is a `WidgetBuilder` specifically so its call site can
-    // pass a context at the module's real tree position instead (see
-    // `_buildGroup`'s own Builder) — using the
-    // wrong one is currently harmless (no nested Theme/Localizations
-    // override exists anywhere in the dock tree today) but would silently
-    // read the wrong ambient values the day one is added.
-    final effectiveContext = context ?? this.context;
-    return buildTargetSettingsButton(
-      effectiveContext,
-      target: 'logging',
-      // The logging view's own title for its own dialog — distinct from
-      // LoggingSettingsGroup.title ("Logging"), which names the group as it
-      // appears in Settings, a different surface
-      // with a different audience.
-      title: effectiveContext.t.operation.menu.loggingSettingsTitle,
-      // The pane's layout options embeds this same target's fields too, but
-      // without this Actions section — see [_paneEditControls]'s
-      // `panelSettingsBuilder`, which passes none.
-      actions: [
-        (
-          icon: 'refresh',
-          label: effectiveContext.t.operation.menu.lookupAllQsos,
-          // Refreshes lookup data (QRZ, HamDB…) for the whole log via the
-          // background queue — rows repaint as results land, and anything
-          // but a handful of QSOs also shows progress in the status bar.
-          // The queue itself filters out event markers etc. Not itself a
-          // persisted setting, so it's an Actions-section item rather than
-          // a target element.
-          onTap: () {
-            Navigator.of(effectiveContext).pop();
-            widget.services.lookupQueue.enqueueAll(qsos);
-          },
-        ),
-      ],
-    );
-  }
-
-  /// The Map tab's basemap picker (see MapSettingsGroup). Same shape as
-  /// [_buildLoggingSettingsButton]: the Map panel is native and reaches its
-  /// settings through a target, not `formFields`, so
-  /// [DockHost.buildPanelSettingsButton] wouldn't find it either.
-  Widget _buildMapSettingsButton({BuildContext? context}) =>
-      buildTargetSettingsButton(context ?? this.context, target: 'map', title: (context ?? this.context).t.operation.menu.mapSettingsTitle);
-
-  /// The panes this view builds itself, arranged by a persisted,
-  /// user-editable dock tree (drag a tab to move a pane; see
-  /// dock_layout.dart). No 'operation' pane: its settings live in the
-  /// operation sheet.
-  static const _dockModuleIds = ['logging', 'info', 'spots', 'map'];
-
-  /// What an operator who never edits sees, and what Restore Defaults puts
-  /// back.
-  ///
-  /// Wide: logging on the left, the rest tabbed on the right. Narrow: one tab
-  /// strip of QSOs, Spots and Map. Info is not in the narrow one — it is a tap
-  /// away on the callsign area — but it is offered by the sheet like any
-  /// other panel.
-  @override
-  DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) => switch (layoutClass) {
-    DockLayoutClass.narrow => DockGroup(['logging', 'spots', 'map']),
-    DockLayoutClass.wide => DockSplit(
-      Axis.horizontal,
-      [
-        DockGroup(['logging']),
-        // Selected: Info.
-        DockGroup(['info', 'spots', 'map']),
-      ],
-      [2, 1],
-    ),
-  };
-
-  /// Registers this view's own panels with the service. Called from
-  /// [didChangeDependencies] rather than [initState] because the titles are
-  /// localized — a locale change has to reach the catalog too.
-  void _registerNativePanels() {
-    final t = context.t.operation;
-    final service = widget.services.panels;
-    service.registerNative(
-      PanelDefinition(
-        id: 'logging',
-        title: t.tabs.qsosPlain,
-        description: t.layout.panels.loggingDescription,
-        icon: 'notebook',
-        source: PanelSource.native,
-        views: const {PanelViews.operation},
-        // The same field-visibility and dupe/number toggles the logging
-        // panel's own tune button opens.
-        settingsTarget: 'logging',
-      ),
-    );
-    service.registerNative(
-      PanelDefinition(
-        id: 'info',
-        title: t.tabs.info,
-        description: t.layout.panels.infoDescription,
-        icon: 'informationOutline',
-        source: PanelSource.native,
-        views: const {PanelViews.operation},
-      ),
-    );
-    // Registered only with the experiment on, exactly as Remote Screen is: a
-    // saved arrangement holding one then falls to the missing-panel
-    // placeholder rather than vanishing, and the operator keeps their layout.
-    if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) {
-      service.registerNative(
-        PanelDefinition(
-          id: 'positions',
-          title: t.positions.panelTitle,
-          description: t.positions.panelDescription,
-          icon: 'accountGroup',
-          source: PanelSource.native,
-          views: const {PanelViews.operation},
-        ),
-      );
-    }
-    service.registerNative(
-      PanelDefinition(
-        id: 'spots',
-        title: t.tabs.spots,
-        description: t.layout.panels.spotsDescription,
-        icon: 'radioTower',
-        source: PanelSource.native,
-        views: const {PanelViews.operation},
-      ),
-    );
-    service.registerNative(
-      PanelDefinition(
-        id: 'map',
-        title: t.tabs.map,
-        description: t.layout.panels.mapDescription,
-        icon: 'map',
-        source: PanelSource.native,
-        views: const {PanelViews.operation},
-      ),
-    );
-    registerSharedDashboardPanels();
-  }
-
-  /// This view's panes, handed to the shared dock host. The clock is built
-  /// per PLACEMENT rather than once — the instance id is its config key, and a
-  /// single widget handed to two groups is one element in two places — which
-  /// only this view can do, so it comes through [extraChildren].
-  Widget _dockLayout({
-    required Widget loggingPanel,
-    required Widget infoPanel,
-    required Widget spotsPanel,
-    required Widget mapPanel,
-    required int realQsoCount,
-    required List<Qso> qsos,
-    required Operation operation,
-  }) {
-    _realQsoCountForTabs = realQsoCount;
-    _operationForPanels = operation;
-    // A local_data write rebuilds this view, which is the only signal a
-    // POSITION or OPER change gives — see [_republishPeerHeaderIfChanged].
-    _republishPeerHeaderIfChanged(operation);
-    return buildDock(
-      children: {
-        // The mobile numbers row is drawn by the app's status-bar overlay,
-        // OUTSIDE this tree, so it has to be told when the logging pane is no
-        // longer the one showing — otherwise it hangs over whatever tab
-        // replaced it and types into the hidden call field. The dock keeps
-        // every pane in a group mounted, so the pane itself cannot tell.
-        //
-        // At both widths, not just narrow: a wide arrangement is free to put
-        // logging in a tab group too, and the row is no less wrong there.
-        'logging': Builder(
-          builder: (context) => KeyboardAccessoryVisibility(visible: DockPaneVisibility.of(context), child: loggingPanel),
-        ),
-        'info': infoPanel,
-        'spots': spotsPanel,
-        'map': mapPanel,
-        if (_peerPositionsPanel)
-          'positions': PositionsPanel(
-            drafts: widget.services.peerDrafts,
-            operation: operation,
-            miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
-            showBearing: widget.services.settings.showBearing,
-            showReverseBearing: widget.services.settings.showReverseBearing,
-            ourEntityPrefix: _ourEntityPrefix,
-          ),
-      },
-      // What a pane offers while it is being USED. The dock hides all of it
-      // while editing, where a tab is a grab handle — a panel's own settings
-      // are reachable from the panel, and its LAYOUT options from its header
-      // (see `DockHost.paneEditControls`); the two are different questions and
-      // this is the one that belongs to the panel.
-      tabActions: {
-        'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
-        'map': (context) => _buildMapSettingsButton(context: context),
-      },
-      extraChildren: (inLayout) => sharedDashboardPanes(
-        inLayout,
-        // The saved operation's grid, not the draft's: the pane refetches
-        // when this changes, and a half-typed grid square would send a
-        // request per keystroke. The DISPLAY grid, so a pane reading it gets
-        // the operation's real position where one is stored.
-        operationGrid: _operationForPanels?.displayGrid,
-        // From `_callInfo`, which this view keeps current unconditionally —
-        // NOT from the QSO draft, which is only produced when a panel
-        // declares `qso` and costs a rebuild plus a deep compare on every
-        // keystroke. A pull-only question asked once a minute must not put
-        // the whole view on the typing path to answer it.
-        isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
-      ),
-    );
-  }
-
-  /// The operation an extension panel renders against, kept as a field because
-  /// [panelRenderContext] is read by the mixin without it. The draft wins while
-  /// the operation sheet is open, so a panel follows an edit in progress.
-  Operation? _operationForPanels;
-
-  /// Logging and the map are reached through a target rather than through
-  /// `formFields`, so their settings embed as the same target-scoped widget a
-  /// standalone dialog would show — the host builds the extension-panel case
-  /// itself.
-  @override
-  WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
-    'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging'),
-    'map' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
-    _ => null,
-  };
-
-  /// Bakes [fragments] into [operation]'s own `localData['titleSuggestion']`
-  /// — the same shape `OperationTitleService` persists, and the one
-  /// `displayTitleFor`/`operation.titleFragments` actually reads. Used both
-  /// by the live preview in [build] and, on close, to carry that preview's
-  /// result into `_operation` in the same breath the draft is dropped — see
-  /// the `finally` block in [_openOperationSheet] for why the LATTER matters:
-  /// without it, the header falls back to whatever stale titleSuggestion is
-  /// still cached on the saved row until retitleOperation's own async
-  /// refresh catches up, flickering back to the pre-edit title in between.
-  Operation _withTitleSuggestion(Operation operation, OperationTitleFragments fragments) => Operation(
-    uuid: operation.uuid,
-    data: operation.data,
-    qsoCount: operation.qsoCount,
-    startAtMillisMin: operation.startAtMillisMin,
-    startAtMillisMax: operation.startAtMillisMax,
-    localData: {
-      ...operation.localData,
-      'titleSuggestion': fragments.isEmpty
-          ? null
-          : {'title': fragments.title, 'for': fragments.forText, 'at': fragments.atText, 'subtitle': fragments.subtitle},
-    },
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -2647,7 +770,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
         // the user excludes them, matching scoring/export.
         final realQsoCount = qsos.where((q) => q.isRealContact).length;
         final headerLines = _headerTitleLines(context, operation);
-        final refsLine = headerLines.subtitle;
         // The only thing that tells the sheet's copy of the trailing
         // controls that the title moved under it — see [_sheetHeaderLines].
         if (_activeSheetKey != null && _sheetHeaderLines.value != headerLines) {
@@ -2695,7 +817,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 cwTemplateContext: panelRenderContext,
                 keyingPhone: _keyingPhone,
                 qsos: qsos,
-                loggingControls: _loggingControls,
+                loggingControls: _runtime.loggingControls,
                 onCommandAction: _handleCommandAction,
                 showRSTFields: _showRSTFields,
                 showStateField: _showStateField,
@@ -2707,9 +829,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 switchSentRcvd: _switchSentRcvd,
                 jumpAfterRST: _jumpAfterRST,
                 dxFlags: _dxFlags,
-                ourEntityPrefix: _ourEntityPrefix,
-                ourItuRegion: _ourItuRegion,
-                ourCountryCode: _ourCountryCode,
+                ourEntityPrefix: _runtime.ourEntityPrefix,
+                ourItuRegion: _runtime.ourItuRegion,
+                ourCountryCode: _runtime.ourCountryCode,
                 suggestedQso: _suggestedQso,
                 suggestedQsoIsTentative: _suggestedQsoIsTentative,
                 suggestionSettledSerial: _suggestionSettledSerial,
@@ -2802,7 +924,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 onSuggestionSettled: _suggestionSettled,
                 closeSlidesSerial: _closeSlidesSerial,
                 onLogQso: _logQsoFromSpot,
-                logRevision: _fingerprintFor(qsos),
+                logRevision: logFingerprintFor(qsos),
                 qsos: qsos,
                 // Same payload the map panel highlights from, so the two panes
                 // agree on which station is being worked and on the
@@ -2827,7 +949,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 settings: widget.services.settings,
                 callInfo: _callInfo,
                 geoshapes: widget.services.geoshapes,
-                activityControls: _mapControls,
+                activityControls: _runtime.mapControls,
                 offersPostcard: true,
                 deviceGrid: widget.services.location.grid,
               ),
@@ -2841,8 +963,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             qsos: qsos,
             services: widget.services,
             callInfo: _callInfo,
-            ourEntityPrefix: _ourEntityPrefix,
-            activityControls: _loggingControls,
+            ourEntityPrefix: _runtime.ourEntityPrefix,
+            activityControls: _runtime.loggingControls,
           ),
         );
         // Observes only: a pointer press or a scroll anywhere on the view is
@@ -2858,198 +980,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             // keyboard with its own bottom spacer (see LoggingControls); the
             // Quick Lookup / branding panes do the same on Home.
             resizeToAvoidBottomInset: false,
-            appBar: AppBar(
-              flexibleSpace: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                // Inert while editing, for the same reason the title above it
-                // is: the operation's own setup is not what is being
-                // arranged. Gating one and not the other leaves the empty
-                // header between them opening the very sheet the other
-                // refuses.
-                onTap: editingHeader ? null : () => _editActivities(operation),
-                child: Stack(children: [if (windowHeaderGestureArea() != null) windowHeaderGestureArea()!]),
-              ),
-              leadingWidth: _leadingWidthFor(isTwoPane, context),
-              // A chevron even though this view arrives over the whole window
-              // (rail and mark included) with no trail to actually step back
-              // along — the control closes it and nothing else. Boxed to
-              // match the Options/Export/layout icons across the same header
-              // (see macOSAwareBackButton's boxSize doc) rather than filling
-              // the leading slot's own larger default.
-              //
-              // Fades out with the rest of the header's own icons while the
-              // sheet is up — the falling dots and the accept button they
-              // hand off to (headerLeading in _openOperationSheet) already
-              // cover dismissal from that corner, so this one steps aside
-              // rather than sitting duplicated beside them.
-              leading: IgnorePointer(
-                ignoring: _headerIconsInert,
-                child: Opacity(opacity: _headerIconsFadeOpacity, child: macOSAwareBackButton(context, close: true, boxSize: 40)),
-              ),
-              // Tight against it — the dots-and-title control
-              // supplies its own (small) inset instead of relying on the
-              // theme's default gap here.
-              titleSpacing: 0,
-              // The logging-only settings menu travels with the logging
-              // panel itself, not this AppBar (its dock tab or pane header —
-              // see _buildLoggingSettingsButton), since none of its toggles
-              // apply to the Info/Spots/Map tabs.
-              //
-              // The layout button, by contrast, is about the arrangement of
-              // the whole view, so it belongs here — and only where there IS
-              // an arrangement to edit: the dock layout, which is two-pane
-              // and experiment-gated.
-              actions: [
-                // Inert as a whole while the sheet is up: its copy above the
-                // barrier (headerTrailing in _openOperationSheet) is the one
-                // taking taps then, drawn in this same spot from the same
-                // builder. Nothing here moves, fades or duplicates visibly —
-                // only the layout controls change, going dim and disabled
-                // inside the shared builder.
-                IgnorePointer(
-                  ignoring: _headerIconsInert,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: _headerTrailingControls(
-                      context,
-                      isTwoPane: isTwoPane,
-                      editingHeader: editingHeader,
-                      lines: headerLines,
-                      layoutControlsOpacity: _layoutControlsDisabledOpacity,
-                      onOptions: () => unawaited(
-                        _showOperationOptions(
-                          _draftOperation ?? operation,
-                          includeExport: !isTwoPane,
-                          includeImport: !isTwoPane,
-                          includeEditLayout: !isTwoPane && !layoutEditing,
-                        ),
-                      ),
-                      onExport: () => unawaited(_export(_draftOperation ?? operation)),
-                      onImport: () => unawaited(_import(_draftOperation ?? operation)),
-                    ),
-                  ),
-                ),
-                windowsCaptionSpacer(context),
-              ],
-              title: InkWell(
-                key: _headerTitleKey,
-                // Inert while editing: the operation's own setup is not what
-                // is being arranged, and the dots that hand off to its sheet
-                // would be offering a second thing to do with a header that
-                // has just become part of the layout editor.
-                onTap: editingHeader
-                    ? null
-                    : () {
-                        final progress = _sheetAnimation?.value ?? 0.0;
-                        if (progress > 0.5) {
-                          _activeSheetKey?.currentState?.saveAndClose();
-                        } else {
-                          _editActivities(operation);
-                        }
-                      },
-                mouseCursor: SystemMouseCursors.click,
-                borderRadius: BorderRadius.circular(8),
-                // Default M3 hover/pressed overlays are tuned for a surface-
-                // colored widget and barely show up on this teal AppBar —
-                // same bump as TabBar's own overlayColor (theme.dart).
-                overlayColor: WidgetStateProperty.resolveWith((states) {
-                  final onPrimary = Theme.of(context).colorScheme.onPrimary;
-                  if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) {
-                    return onPrimary.withValues(alpha: 0.20);
-                  }
-                  if (states.contains(WidgetState.hovered)) {
-                    return onPrimary.withValues(alpha: 0.16);
-                  }
-                  return null;
-                }),
-                child: Padding(
-                  // Wide keeps a small left inset so the dots control
-                  // doesn't sit flush against the back button. Narrow sits
-                  // the title right against it instead — the leading slot is
-                  // already sized to the button alone there (see
-                  // leadingWidth above), so there's no residual gap left to
-                  // close on that side. Both keep a small right inset — the
-                  // title doesn't stretch to fill the AppBar — so the
-                  // control's own edge doesn't sit flush against whatever's
-                  // to its right (actions, or the window's own edge).
-                  padding: EdgeInsets.only(left: isTwoPane ? Space.xs : 0, right: Space.lg, top: Space.xxs, bottom: Space.xxs),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (!editingHeader) ...[
-                        // Widens from the dots control's own footprint to
-                        // the accept button's as the sheet opens — that
-                        // button draws OVER this corner via headerLeading,
-                        // wider than the dots it covers, so without this the
-                        // title behind it would sit UNDER the button's tail
-                        // end instead of clear of it (see _leadingGapWidth).
-                        // The dots stay mounted and animating underneath
-                        // purely so they're not visibly stuck mid-fall for
-                        // the instant between the route unmounting at the
-                        // end of a close and their own progress catching up
-                        // to 0.
-                        SizedBox(
-                          width: _leadingGapWidth(context, isTwoPane: isTwoPane),
-                          height: 32,
-                          child: Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: _HeaderDotsControl(progress: _sheetAnimation?.value ?? 0.0),
-                          ),
-                        ),
-                        // Separates the title from whichever control
-                        // precedes it — the dots, or the accept button that
-                        // grows out of them. Constant, not animated with the
-                        // gap above: what that gap corrects for is the
-                        // button's own left overhang, not the breathing room
-                        // after it, which both states want the same.
-                        const SizedBox(width: Space.xs),
-                      ],
-                      // Flexible (loose), not Expanded (tight): Expanded
-                      // forces this Column — and so the InkWell's whole
-                      // tap/hover area above — to stretch to the AppBar's
-                      // full available width regardless of how little text
-                      // there is. Flexible still hands shrinkToFitText below
-                      // a bounded max width to shrink/ellipsize against (a
-                      // bare, non-flexible Row child gets an UNBOUNDED main-
-                      // axis constraint instead — Flutter only bounds a
-                      // Row's main axis for Expanded/Flexible children —
-                      // which would overflow), without forcing
-                      // the Column to consume space it doesn't need.
-                      Flexible(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title and description each shrink to fit their own
-                            // width independently rather than
-                            // truncating — down to 75% of their natural font size,
-                            // past which the line ellipsizes instead. The
-                            // description tries Roboto's condensed glyph width
-                            // first, before shrinking its font size at all.
-                            // While editing, the header names the VIEW rather
-                            // than the operation in it: what is being
-                            // rearranged belongs to the view, and it outlives
-                            // this operation and every other one.
-                            shrinkToFitText(Text(editingHeader ? (viewOptions.title ?? context.t.operation.layout.viewName) : headerLines.title)),
-                            if (!editingHeader && refsLine.isNotEmpty)
-                              shrinkToFitText(
-                                Text(
-                                  refsLine,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.labelMedium?.copyWith(color: Theme.of(context).colorScheme.onPrimary.withValues(alpha: 0.85)),
-                                ),
-                                condensed: true,
-                              ),
-                          ],
-                        ),
-                      ),
-                      ?viewOptionsButton(context, editing: editingHeader),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            appBar: _headerAppBar(context, operation: operation, isTwoPane: isTwoPane, editingHeader: editingHeader, headerLines: headerLines),
             body: AdifDropTarget(
               // Wraps the whole body so a log file can be dropped anywhere on
               // the operation, not onto some particular panel — the operator is
@@ -3084,92 +1015,6 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   }
 }
 
-/// Defers [child]'s first build by [kTabScrollDuration] behind a placeholder
-/// — for panels (Spots, Map) whose first inflation is expensive enough to
-/// stutter if it lands on the same frames as the view's own arrival. Only
-/// defers once: the dock keeps a mounted pane mounted, so switching away and
-/// back doesn't show the placeholder again.
-class _LazyTab extends StatefulWidget {
-  final Widget child;
-
-  const _LazyTab({required this.child});
-
-  @override
-  State<_LazyTab> createState() => _LazyTabState();
-}
-
-class _LazyTabState extends State<_LazyTab> {
-  bool _ready = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(kTabScrollDuration, () {
-      if (mounted) setState(() => _ready = true);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return _ready ? widget.child : const Center(child: CircularProgressIndicator());
-  }
-}
-
-class _HeaderDotsControl extends StatelessWidget {
-  final double progress;
-
-  const _HeaderDotsControl({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final onPrimary = Theme.of(context).colorScheme.onPrimary;
-
-    // Fixed width: the space stays reserved while the sheet is open, so the
-    // header title never shifts — the accept button draws over this corner
-    // via headerLeading instead (see _sheetOkButton's doc).
-    return SizedBox(
-      width: 10,
-      height: 32,
-      child: CustomPaint(
-        size: const Size(10, 32),
-        painter: _FallingDotsPainter(progress: progress, dotColor: onPrimary),
-      ),
-    );
-  }
-}
-
-class _FallingDotsPainter extends CustomPainter {
-  final double progress;
-  final Color dotColor;
-
-  _FallingDotsPainter({required this.progress, required this.dotColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // The dots fall toward the sheet sliding in below and fade out on the
-    // way; the top dot grows slightly as it goes, reading as a hand-off to
-    // the accept button growing in over it (see headerLeading in
-    // _openOperationSheet).
-    final opacity = (1.0 - progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
-    if (opacity <= 0) return;
-
-    final paint = Paint()
-      ..color = dotColor.withValues(alpha: dotColor.a * opacity)
-      ..style = PaintingStyle.fill;
-
-    const x = 4.0;
-    const dotRadius = 1.8;
-    final dy = 26.0 * progress;
-
-    canvas.drawCircle(Offset(x, 10.0 + dy), dotRadius + 4.0 * progress, paint);
-    canvas.drawCircle(Offset(x, 16.0 + dy), dotRadius, paint);
-    canvas.drawCircle(Offset(x, 22.0 + dy), dotRadius, paint);
-  }
-
-  @override
-  bool shouldRepaint(_FallingDotsPainter oldDelegate) => oldDelegate.progress != progress || oldDelegate.dotColor != dotColor;
-}
-
 /// [qso] with a CW frequency moved a few Hz off the spotted one, so that
 /// everyone answering the same spot isn't transmitting on the same note
 /// (services/cat/zero_beat.dart).
@@ -3201,17 +1046,3 @@ Map<String, dynamic> zeroBeatSuggestionFor(Map<String, dynamic> qso, {required H
   // would tune it exactly zero beat, which is what this prevents.
   return offsetter.apply(qso, enabled: true, radioConnected: services.radio1IsLive, rangeHz: settings.zeroBeatRangeHz);
 }
-
-/// The operation sheet's accept button, shown in the VIEW's own header (left
-/// of the title) via `headerLeading` while the sheet is open — it has no
-/// header band of its own to carry this (see `_openOperationSheet`'s
-/// `showHeader: false`). `headerLeading` draws above the pane's own dismiss
-/// layer, which is what makes this reachable at all: the same button placed
-/// directly in the view's AppBar sits BELOW that layer and never receives a
-/// tap (see `headerLeading`'s own doc in modal_pane.dart).
-Widget _sheetOkButton(BuildContext context, GlobalKey<OperationSheetState> sheetKey) => FilledButton.icon(
-  icon: const Icon(MdiIcons.check),
-  label: Text(context.t.common.ok),
-  style: FilledButton.styleFrom(backgroundColor: fabAccentColor, foregroundColor: Theme.of(context).colorScheme.onPrimary),
-  onPressed: () => sheetKey.currentState?.saveAndClose(),
-);

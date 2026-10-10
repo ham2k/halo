@@ -61,7 +61,7 @@ class LoggingPanel extends StatefulWidget {
   final String? ourEntityPrefix;
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
-  /// — resolved by `operation_view.dart` alongside
+  /// — resolved by `OperationRuntimeState.resolveOurEntity` alongside
   /// [ourEntityPrefix], and passed straight through to LoggingControls so a
   /// typed/commanded frequency gets a band-plan mode guess scoped to where
   /// the operator actually is.

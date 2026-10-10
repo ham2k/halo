@@ -350,7 +350,8 @@ mechanisms make derived scoring actively harmful there:
    QSO in the operation, so logging one QSO into a 500-QSO contest would restamp
    and re-push 500 records.
 2. **Self-triggering rescore loop.** The live-rescore fingerprint is
-   `uuid:updatedAtMillis` (`operation_view.dart:378`, rationale at `:120-126`),
+   `uuid:updatedAtMillis` (`OperationRuntimeState.scheduleRescore`, rationale on
+   its `_lastScoredFingerprint`, in `app/lib/views/operation/operation_runtime_state.dart`),
    deliberately built to be immune to a rescore's own writes. Scoring inside
    `data` would move the fingerprint on every rescore — forever. A named
    regression test pins this: *"caching scores never bumps updatedAtMillis — the

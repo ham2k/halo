@@ -473,7 +473,7 @@ class RadioHookup {
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code,
   /// from the callsign-annotation guess — see
-  /// `operation_view.dart`'s `_resolveOurEntityPrefix`, which resolves both
+  /// `OperationRuntimeState.resolveOurEntity` (in the app), which resolves both
   /// the same way it already resolves `ourEntityPrefix`. Passed straight
   /// through to [modeForFrequency] so a typed/commanded frequency gets a
   /// mode guess scoped to where the operator actually is, not just whatever
