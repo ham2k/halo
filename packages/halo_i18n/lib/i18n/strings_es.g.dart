@@ -2456,6 +2456,7 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	@override String get loading => '(cargando…)';
 	@override String get panelLoadFailed => 'No se pudo cargar este panel de configuración.';
 	@override String get extDevServer => 'Servidor de desarrollo de extensiones';
+	@override String get extensionSettings => 'Configuración de extensiones';
 	@override String get extDevServerDescription => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.';
 	@override String get extDevServerAddress => 'Dirección del servidor';
 	@override String get extDevServerHint => '192.168.1.20:8787';
@@ -5130,6 +5131,7 @@ extension on TranslationsEs {
 			'settings.developer.loading' => '(cargando…)',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
 			'settings.developer.extDevServer' => 'Servidor de desarrollo de extensiones',
+			'settings.developer.extensionSettings' => 'Configuración de extensiones',
 			'settings.developer.extDevServerDescription' => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.',
 			'settings.developer.extDevServerAddress' => 'Dirección del servidor',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',

@@ -1960,6 +1960,7 @@
       "loading": "(loading…)",
       "panelLoadFailed": "Could not load this settings panel.",
       "extDevServer": "Extension Dev Server",
+      "extensionSettings": "Extension Settings",
       "extDevServerDescription": "Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.",
       "extDevServerAddress": "Server address",
       "extDevServerHint": "192.168.1.20:8787",

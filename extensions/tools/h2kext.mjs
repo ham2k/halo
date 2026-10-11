@@ -35,8 +35,10 @@ import yazl from "yazl"
 /// 6 adds the scene's `spectrum` control and `host.setRadioSpectrum`; 7 adds
 /// `host.setRadio` (`tuneRadio` stays its alias) with power, keyer speed,
 /// tuner, passband and antennas, the keying calls, what `readRadio` reports of
-/// them, and the scene's host-fed `radio` values.
-export const H2KEXT_API_VERSION = 7
+/// them, and the scene's host-fed `radio` values; 8 adds the Developer
+/// panel's `target: 'developer'` settings and leaves a settings panel with
+/// nothing to show out of the Settings list.
+export const H2KEXT_API_VERSION = 8
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -144,6 +146,7 @@ SHARED_MODULES_BY_API[4] = SHARED_MODULES_BY_API[3]
 SHARED_MODULES_BY_API[5] = SHARED_MODULES_BY_API[4]
 SHARED_MODULES_BY_API[6] = SHARED_MODULES_BY_API[5]
 SHARED_MODULES_BY_API[7] = SHARED_MODULES_BY_API[6]
+SHARED_MODULES_BY_API[8] = SHARED_MODULES_BY_API[7]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

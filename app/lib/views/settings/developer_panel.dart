@@ -21,6 +21,7 @@ import '../../services/windows_url_schemes.dart';
 import '../experiments_pane.dart';
 import '../../services/extensions/extension_dev_client.dart';
 import '../../services/extensions/installed_extensions.dart' show CatalogChannel;
+import '../../settings/settings_target_dialog.dart' show settingsSliverForTarget;
 import '../version_label.dart';
 
 class DeveloperPanel extends StatelessWidget {
@@ -88,6 +89,13 @@ class DeveloperPanel extends StatelessWidget {
             // Developer mode gates it: pointing the app at a local catalog
             // is how the catalog itself is worked on.
             if (settings.developerMode) SectionedSlivers(slivers: [_CatalogOverrideSection(services: services)]),
+            // What extensions contribute here — their `target: 'developer'`
+            // fields (docs/extensions/settings.md's "Settings targets"), such
+            // as POTA's switch to its test servers. No band while none do.
+            if (settings.developerMode)
+              SectionedSlivers(
+                slivers: [settingsSliverForTarget(services: services, target: 'developer', title: context.t.settings.developer.extensionSettings)],
+              ),
             // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
             // shown when the Shorebird engine is actually present — i.e. a
             // `shorebird release` build, not a local/debug/web one — so it's

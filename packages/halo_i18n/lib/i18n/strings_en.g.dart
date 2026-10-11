@@ -5498,6 +5498,9 @@ class Translations$settings$developer$en {
 	/// en: 'Extension Dev Server'
 	String get extDevServer => 'Extension Dev Server';
 
+	/// en: 'Extension Settings'
+	String get extensionSettings => 'Extension Settings';
+
 	/// en: 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.'
 	String get extDevServerDescription => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.';
 
@@ -9189,6 +9192,7 @@ extension on Translations {
 			'settings.developer.loading' => '(loading…)',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
 			'settings.developer.extDevServer' => 'Extension Dev Server',
+			'settings.developer.extensionSettings' => 'Extension Settings',
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',

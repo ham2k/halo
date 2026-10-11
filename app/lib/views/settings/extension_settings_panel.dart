@@ -322,6 +322,12 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
       if (common.isEmpty) return _box(const SizedBox.shrink());
       definition = {...definition, 'elements': common};
     }
+    // Nothing to show at this developer-mode setting — a panel whose every
+    // row is `devMode`, such as one declared only to reach the Developer
+    // panel's `target: 'developer'` section — leaves no empty heading behind.
+    final developerMode = widget.services.settings.developerMode;
+    final elements = (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>();
+    if (elements.every((el) => el['devMode'] == true && !developerMode)) return _box(const SizedBox.shrink());
     // Hidden, not unmounted — same rule as the core groups above, and for
     // the same reason ([settingsCategory]). There is one of these per
     // extension, so a query that stops matching would otherwise take dozens

@@ -346,6 +346,12 @@ override) without it cluttering the panel for regular users:
 { type: "field", fieldType: "text", key: "apiEndpointOverride", label: "API Endpoint Override", devMode: true }
 ```
 
+A panel with nothing to show at the current developer-mode setting is left
+out of the Settings screen's list of categories rather than shown as an empty
+heading, so a panel whose every field is `devMode` appears there only while
+developer mode is on. Its sidebar entry is not: give such a panel
+`sidebar: false`, or the entry opens on an empty page.
+
 ## `aliases`: short names for the SET command
 
 The `SET`, `SHOW` and `HIDE` commands search every declared setting by key,
@@ -434,6 +440,16 @@ one dialog.
 { type: "field", fieldType: "checkbox", key: "showBearing", label: "Show Bearing",
   value: false, target: "logging" }
 ```
+
+The Developer settings panel is another: its "Extension Settings" section
+collects every field tagged `target: 'developer'` — the place for a switch
+only someone working on the extension or its service needs, such as POTA's
+"use the test servers". The section shows only once some field targets it.
+Pair the target with `devMode: true` so the field's home panel hides it too
+(see "`devMode` fields" above), and with `sidebar: false` when that is the
+panel's only field. The section is extension API 8: a bundle relying on it
+declares `"api": 8`, so an older app — which would list the panel as an empty
+heading — is never offered it.
 
 `target` is a single target key, or an array when the same field should
 surface under more than one. A `'<target>-extended'` target (e.g.

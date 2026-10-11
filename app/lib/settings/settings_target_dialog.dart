@@ -83,6 +83,21 @@ Widget settingsFormForTarget({required HaLoServices services, required String ta
   actions: actions,
 );
 
+/// The settings targeting [target] as one section of a sectioned list, under
+/// its own [title] band — pass it in a [SectionedSlivers]. Band and all, it
+/// renders nothing while no setting targets [target], so a host never shows
+/// an empty heading for contributions nobody made (the Developer panel's,
+/// for one, until an extension declares a `target: 'developer'` field).
+Widget settingsSliverForTarget({required HaLoServices services, required String target, required String title}) => _TargetSettingsForm(
+  services: services,
+  inBase: (scanned) => elementMatchesTarget(scanned.element, target),
+  inExtended: (_) => false,
+  order: null,
+  stripVisibleWhen: false,
+  actions: const [],
+  sliverTitle: title,
+);
+
 /// Opens the same dialog around a specific set of settings, named by the
 /// `key`s [scanSettings] reports — how SET/SHOW/HIDE show every setting a
 /// query matched (settings_command.dart).
@@ -211,6 +226,10 @@ class _TargetSettingsForm extends StatefulWidget {
 
   final List<TargetDialogAction> actions;
 
+  /// Set, the form builds as a sliver section under this band instead of a
+  /// box — see [settingsSliverForTarget].
+  final String? sliverTitle;
+
   const _TargetSettingsForm({
     required this.services,
     required this.inBase,
@@ -218,6 +237,7 @@ class _TargetSettingsForm extends StatefulWidget {
     required this.order,
     required this.stripVisibleWhen,
     required this.actions,
+    this.sliverTitle,
   });
 
   @override
@@ -256,6 +276,10 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     for (final g in _groups)
       if (g.listenable != null) g.listenable!,
     widget.services.extensions.runtimeGeneration,
+    // A Tier 1 field committed elsewhere (its home panel, a SET command)
+    // notifies only this — without it, a section left open, as the
+    // Developer panel's is, keeps showing the old value.
+    widget.services.extensions.settingsGeneration,
   }.toList();
 
   @override
@@ -455,6 +479,11 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
   Widget build(BuildContext context) {
     final base = _baseElements;
     final extended = _extendedElements;
+    final sliverTitle = widget.sliverTitle;
+    if (sliverTitle != null) {
+      if (base == null || base.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+      return SliverMainAxisGroup(slivers: [SectionHeader(sliverTitle).asPinnedSliver(context), _buildFormRenderer(base)]);
+    }
     if (base == null || extended == null) {
       return const Padding(
         padding: EdgeInsets.all(Space.xxl),
