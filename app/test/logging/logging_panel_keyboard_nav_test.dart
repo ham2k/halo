@@ -71,9 +71,18 @@ void main() {
     child: MaterialApp(home: Scaffold(body: child)),
   );
 
-  Future<void> pumpPanel(WidgetTester tester, List<Qso> qsos) async {
+  Future<void> pumpPanel(WidgetTester tester, List<Qso> qsos, {ValueChanged<String?>? onSelectionChanged}) async {
     await tester.pumpWidget(
-      wrap(LoggingPanel(operation: operation, services: services, qsos: qsos, loggingControls: const [], onCommandAction: (action, [params]) async {})),
+      wrap(
+        LoggingPanel(
+          operation: operation,
+          services: services,
+          qsos: qsos,
+          loggingControls: const [],
+          onCommandAction: (action, [params]) async {},
+          onSelectionChanged: onSelectionChanged,
+        ),
+      ),
     );
     await tester.pump(const Duration(milliseconds: 100));
   }
@@ -119,6 +128,23 @@ void main() {
     // walking to the previous QSO.
     expect(callField(tester).focusNode?.hasFocus, isFalse);
     expect(focusedPill(tester), isNull);
+    await drainLookupQueueTimer(tester);
+  });
+
+  // The Map pane frames the QSO picked, and hears about it only through this:
+  // a pick the host misses leaves the map on the last one.
+  testWidgets('every change of pick reaches the host, putting it down included', (tester) async {
+    final picks = <String?>[];
+    await pumpPanel(tester, [older, newer], onSelectionChanged: picks.add);
+    await enterList(tester);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(picks, [newer.uuid, older.uuid, newer.uuid, null]);
     await drainLookupQueueTimer(tester);
   });
 

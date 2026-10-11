@@ -33,6 +33,7 @@ import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
+import '../map/map_highlight_camera.dart';
 import '../map/map_info_box.dart';
 import '../map/outline_issue_dialog.dart';
 import '../map/map_marker_icon.dart';
@@ -56,6 +57,10 @@ class MapPanel extends StatefulWidget {
   /// entered. Its `guess` carries the resolved location, `isEditing` the
   /// colour choice.
   final CallInfoData? callInfo;
+
+  /// The QSO picked for editing in the logging panel, if any: the map frames
+  /// it at once, from where it was logged.
+  final String? selectedQsoUuid;
 
   /// Where the operation's own references get their outlines — a summit's
   /// SOTA activation zone and the like. Null leaves the map exactly as it
@@ -85,6 +90,7 @@ class MapPanel extends StatefulWidget {
     required this.qsos,
     required this.settings,
     this.callInfo,
+    this.selectedQsoUuid,
     this.geoshapes,
     this.activityControls = const [],
     this.offersPostcard = false,
@@ -104,6 +110,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
 
   @override
   void dispose() {
+    _highlightCamera.dispose();
     _cameraReport.dispose();
     super.dispose();
   }
@@ -153,6 +160,8 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   /// zoom) — the live backend wires its own zoomIn/zoomOut into it each time it's
   /// built, so the buttons stay agnostic to which one is currently mounted.
   final _zoomController = MapZoomController();
+
+  late final _highlightCamera = MapHighlightCamera(_zoomController);
 
   @override
   void initState() {
@@ -325,6 +334,16 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final highlight = visible ? _buildHighlight(theme, isDark: isDark) : null;
     final markers = highlight == null || highlight.markers.isEmpty ? _withPlaces : [..._withPlaces, ...highlight.markers];
     final lines = highlight == null || highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
+    if (highlight != null) {
+      final picked = widget.selectedQsoUuid == null ? null : _contacts[widget.selectedQsoUuid];
+      _highlightCamera.follow(
+        picked: widget.selectedQsoUuid,
+        pickedPoints: picked?.marker == null ? null : highlightFitPoints((markers: [picked!.marker!], lines: picked.lines)),
+        typed: highlightFitPoints(highlight),
+      );
+    } else {
+      _highlightCamera.hidden();
+    }
 
     if (markers.isEmpty) {
       return Center(

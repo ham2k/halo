@@ -70,12 +70,19 @@ void main() {
     }
   }
 
-  Widget host(List<Qso> qsos, {Operation? operation, bool visible = true}) => TranslationProvider(
+  Widget host(List<Qso> qsos, {Operation? operation, bool visible = true, String? selected}) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
         body: DockPaneVisibility(
           visible: visible,
-          child: MapPanel(operation: operation ?? _operation(), qsos: qsos, settings: settings, geoshapes: geoshapes, activityControls: const []),
+          child: MapPanel(
+            operation: operation ?? _operation(),
+            qsos: qsos,
+            settings: settings,
+            geoshapes: geoshapes,
+            activityControls: const [],
+            selectedQsoUuid: selected,
+          ),
         ),
       ),
     ),
@@ -224,6 +231,36 @@ void main() {
       await tester.pumpWidget(host([_contact('a', stamp: 1), _contact('b', stamp: 2, grid: 'IO91wm')], visible: true));
       await tester.pumpAndSettle();
       expect(linesOf(tester).map((l) => l.id), ['a/0', 'b/0'], reason: 'shown: caught up in one pass');
+    }),
+  );
+
+  // Picking a logged QSO frames it from where it was logged — its own marker
+  // is already on the map — without waiting on the call-info, which reaches
+  // the pane later and in pieces.
+  testWidgets(
+    'picking a logged QSO frames it at once, and putting it down frames the log',
+    (tester) => onLinux(() async {
+      final qsos = [_contact('a', stamp: 1), _contact('b', stamp: 2, grid: 'IO91wm', call: 'G4AAA')];
+      await tester.pumpWidget(host(qsos));
+      await tester.pumpAndSettle();
+      final camera = backend(tester).zoomController!;
+      expect(camera.lastFit, isNull);
+
+      await tester.pumpWidget(host(qsos, selected: 'b'));
+      // The move runs on a zero-length timer, out of the build.
+      await tester.pump(const Duration(milliseconds: 1));
+      final b = qsoMarkersOf(tester).singleWhere((m) => m.id == 'b');
+      expect(camera.lastFit, isNotNull, reason: 'no call-info at all, and still framed');
+      expect(
+        camera.lastFit!.any((p) => (p.latitude - b.latitude).abs() < 1e-6 && (p.longitude - b.longitude).abs() < 1e-6),
+        isTrue,
+        reason: "framed on b's own marker",
+      );
+
+      await tester.pumpWidget(host(qsos));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(camera.lastFit, isNull, reason: 'putting the pick down hands the camera back to the log');
+      await tester.pumpAndSettle();
     }),
   );
 }

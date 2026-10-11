@@ -11,6 +11,7 @@
 // opens a callout with the QSO's details, tapping anywhere else closes it.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -97,6 +98,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   StreamSubscription<bool>? _offlineChanges;
   Timer? _resetTimer;
   bool _tileFailed = false;
+  Timer? _replayFit;
   String? _selectedMarkerId;
 
   @override
@@ -115,6 +117,8 @@ class _OsmMapViewState extends State<OsmMapView> {
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo
+      ..onFitTo = _fitTo
+      ..onRefit = _fitCamera
       ..onCamera = _camera;
     if (widget.frame != null) widget.zoomController?.onSettled = _settled;
   }
@@ -157,6 +161,21 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   void _moveTo(double latitude, double longitude, double zoom) => _mapController.move(LatLng(latitude, longitude), zoom);
 
+  /// Fitted around longitude 0 and moved back: flutter_map takes no longitude
+  /// past ±180, and a fit is the same at any longitude on a Mercator map.
+  void _fitTo(List<GridLocation> points) {
+    if (points.isEmpty) return;
+    final longitudes = points.map((p) => p.longitude);
+    final offset = (longitudes.reduce(math.min) + longitudes.reduce(math.max)) / 2;
+    final fitted = CameraFit.coordinates(
+      coordinates: [for (final p in points) LatLng(p.latitude, p.longitude - offset)],
+      padding: const EdgeInsets.all(48),
+      maxZoom: _fitMaxZoom,
+    ).fit(_mapController.camera);
+    final longitude = (fitted.center.longitude + offset + 540) % 360 - 180;
+    _mapController.move(LatLng(fitted.center.latitude, longitude), fitted.zoom);
+  }
+
   void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
   void _zoomOut() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
 
@@ -173,7 +192,9 @@ class _OsmMapViewState extends State<OsmMapView> {
       final oldFitted = _fitted(oldWidget.markers), newFitted = _fitted(widget.markers);
       final newKey = newFitted.map((m) => m.fitKey).nonNulls.firstOrNull;
       final baseChanged = newKey != null ? newKey != oldFitted.map((m) => m.fitKey).nonNulls.firstOrNull : !listEquals(oldFitted, newFitted);
-      if (baseChanged && widget.frame == null) _fitCamera();
+      // While the camera follows a QSO (MapZoomController.lastFit), the
+      // markers' own fit stands aside, as in the GL script.
+      if (baseChanged && widget.frame == null && widget.zoomController?.lastFit == null) _fitCamera();
     }
   }
 
@@ -200,18 +221,24 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   @override
   void dispose() {
-    // Identity-guarded, never a blind null: when the facade swaps backends
+    // Guarded, never a blind null: when the facade swaps backends
     // (a webview probe answering, so OsmMapView gives way to the GL view),
     // Flutter runs the incoming State's initState during the build and this
     // dispose afterwards — so clearing unconditionally would wipe the
     // handlers the live backend has just installed and leave the camera
-    // inert for the rest of the session.
+    // inert for the rest of the session. By `==`, not `identical`: each
+    // tear-off of a method is a new object, equal to the one installed but
+    // never identical to it, and a handler left behind is called on a dead
+    // map by the camera's timers.
     final controller = widget.zoomController;
-    if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
-    if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
-    if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
-    if (identical(controller?.onCamera, _camera)) controller?.onCamera = null;
-    if (identical(controller?.onSettled, _settled)) controller?.onSettled = null;
+    if (controller?.onZoomIn == _zoomIn) controller?.onZoomIn = null;
+    if (controller?.onZoomOut == _zoomOut) controller?.onZoomOut = null;
+    if (controller?.onMoveTo == _moveTo) controller?.onMoveTo = null;
+    if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
+    if (controller?.onRefit == _fitCamera) controller?.onRefit = null;
+    if (controller?.onCamera == _camera) controller?.onCamera = null;
+    if (controller?.onSettled == _settled) controller?.onSettled = null;
+    _replayFit?.cancel();
     _offlineChanges?.cancel();
     _resetTimer?.cancel();
     _reset.close();
@@ -228,6 +255,9 @@ class _OsmMapViewState extends State<OsmMapView> {
     final selected = _selectedMarkerId == null || widget.onMarkerTap != null ? null : widget.markers.where((m) => m.id == _selectedMarkerId).firstOrNull;
     final frame = widget.frame?.camera;
     final footprints = _footprintLayers();
+    // Wrapped at full strength too, so the highlight coming and going does
+    // not remount every base marker under it.
+    final baseOpacity = widget.markers.any((m) => m.highlight) ? mapDimmedOpacity : 1.0;
 
     return FlutterMap(
       mapController: _mapController,
@@ -242,6 +272,15 @@ class _OsmMapViewState extends State<OsmMapView> {
             )
           : MapOptions(
               initialCameraFit: CameraFit.coordinates(coordinates: points, padding: const EdgeInsets.all(48), maxZoom: _fitMaxZoom),
+              // A QSO framed before this backend came up: the fit above is
+              // to the markers. Once the frame is over — flutter_map applies
+              // that fit after this callback, in the same frame.
+              onMapReady: () {
+                if (widget.zoomController?.lastFit == null) return;
+                _replayFit = Timer(Duration.zero, () {
+                  if (widget.zoomController?.lastFit case final points?) _fitTo(points);
+                });
+              },
               onTap: (_, point) {
                 setState(() => _selectedMarkerId = null);
                 if (widget.onMarkerTap != null) widget.onMapTap?.call(GridLocation(point.latitude, point.longitude));
@@ -290,13 +329,23 @@ class _OsmMapViewState extends State<OsmMapView> {
         if (widget.shapes.any((shape) => shape.dashed)) _fadedWithZoom(footprints.dashed, widget.zoomFades?.dashedShapes),
         _fadedWithZoom(footprints.solid, widget.zoomFades?.solidShapes),
         if (widget.shapes.any((shape) => shape.isLine && !shape.dashed)) _fadedWithZoom(footprints.lines, widget.zoomFades?.solidShapes),
-        _lineLayer([
-          for (final l in widget.lines)
-            if (!l.highlight) l,
-        ]),
+        Opacity(
+          opacity: baseOpacity,
+          child: _lineLayer([
+            for (final l in widget.lines)
+              if (!l.highlight) l,
+          ]),
+        ),
+        Opacity(
+          opacity: baseOpacity,
+          child: _markerLayer([
+            for (final m in widget.markers)
+              if (!m.highlight && m.dimsBehindHighlight) m,
+          ]),
+        ),
         _markerLayer([
           for (final m in widget.markers)
-            if (!m.highlight) m,
+            if (!m.highlight && !m.dimsBehindHighlight) m,
         ]),
         _lineLayer([
           for (final l in widget.lines)

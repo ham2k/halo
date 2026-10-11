@@ -205,6 +205,8 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo
+      ..onFitTo = _fitTo
+      ..onRefit = _refit
       ..onCamera = _camera
       ..onSnapshot = _snapshot;
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
@@ -266,6 +268,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       _applyLines();
       _applyShapes();
       _dataApplied = true;
+      if (widget.zoomController?.lastFit case final points?) _fitTo(points);
     });
   }
 
@@ -339,6 +342,15 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);
+  // Not before the first data apply, which frames the controller's lastFit
+  // itself: until then there is no map, or no container to size a fit by.
+  void _fitTo(List<GridLocation> points) {
+    if (_dataApplied) _handle?.callMethod('fitToJson'.toJS, jsonEncode(mapFitPayload(points)).toJS);
+  }
+
+  void _refit() {
+    if (_dataApplied) _handle?.callMethod('refit'.toJS);
+  }
 
   /// A tap on a map still being made waits for it first rather than doing
   /// nothing.
@@ -367,18 +379,23 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   @override
   void dispose() {
-    // Identity-guarded, never a blind null: when the facade swaps backends
+    // Guarded, never a blind null: when the facade swaps backends
     // (a webview probe answering, so OsmMapView gives way to the GL view),
     // Flutter runs the incoming State's initState during the build and this
     // dispose afterwards — so clearing unconditionally would wipe the
     // handlers the live backend has just installed and leave the camera
-    // inert for the rest of the session.
+    // inert for the rest of the session. By `==`, not `identical`: each
+    // tear-off of a method is a new object, equal to the one installed but
+    // never identical to it, and a handler left behind is called on a dead
+    // map by the camera's timers.
     final controller = widget.zoomController;
-    if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
-    if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
-    if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
-    if (identical(controller?.onCamera, _camera)) controller?.onCamera = null;
-    if (identical(controller?.onSnapshot, _snapshot)) controller?.onSnapshot = null;
+    if (controller?.onZoomIn == _zoomIn) controller?.onZoomIn = null;
+    if (controller?.onZoomOut == _zoomOut) controller?.onZoomOut = null;
+    if (controller?.onMoveTo == _moveTo) controller?.onMoveTo = null;
+    if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
+    if (controller?.onRefit == _refit) controller?.onRefit = null;
+    if (controller?.onCamera == _camera) controller?.onCamera = null;
+    if (controller?.onSnapshot == _snapshot) controller?.onSnapshot = null;
     _offlineChanges?.cancel();
     _handle?.callMethod('remove'.toJS);
     _handle = null;

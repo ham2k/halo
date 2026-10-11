@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "Improved operation location: new operations take your GPS fix, or the park's"
+    - "Map tab follows the QSO you are logging or editing, dimming the rest"
 
 "178":
   changes:

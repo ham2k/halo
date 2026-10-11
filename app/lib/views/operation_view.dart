@@ -178,6 +178,9 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   @override
   CallInfoData? _callInfo;
 
+  /// The QSO picked for editing in the logging panel, for the Map pane.
+  String? _selectedQsoUuid;
+
   /// Keep the pane subtrees' State alive when the layout flips between the
   /// narrow and the wide dock (docs/design/layouts.md): Flutter reparents a
   /// GlobalKey'd subtree instead of rebuilding it, so a half-typed callsign
@@ -843,6 +846,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 serialNumbers: _peerSharingDrafts ? widget.services.serialClaims : null,
                 logRequest: _logRequest,
                 confirmLogOverwrite: _confirmLogOverwrite,
+                onSelectionChanged: (uuid) => setState(() => _selectedQsoUuid = uuid),
                 onCallInfoChanged: (info) {
                   // Entering a call is logging-panel use, and it is the one
                   // interaction the pointer listener below cannot see: the call
@@ -948,6 +952,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 qsos: qsos,
                 settings: widget.services.settings,
                 callInfo: _callInfo,
+                selectedQsoUuid: _selectedQsoUuid,
                 geoshapes: widget.services.geoshapes,
                 activityControls: _runtime.mapControls,
                 offersPostcard: true,

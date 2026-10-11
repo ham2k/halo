@@ -44,8 +44,8 @@ var document = {
   createElement: function () { return { style: {}, children: [], appendChild: function (c) { this.children.push(c); } }; },
   createTextNode: function (text) { return { text: text }; },
 };
-function LngLatBounds() { this.n = 0; }
-LngLatBounds.prototype.extend = function () { this.n++; };
+function LngLatBounds() { this.n = 0; this.points = []; }
+LngLatBounds.prototype.extend = function (p) { this.n++; this.points.push(p); };
 LngLatBounds.prototype.isEmpty = function () { return this.n === 0; };
 var sourcesLoaded = true;
 function FakeMap(options) {
@@ -66,7 +66,7 @@ function FakeMap(options) {
   this.getLayer = function (id) { return layers[id]; };
   this.addLayer = function (layer) { layers[layer.id] = layer; };
   this.setPaintProperty = function (id, name, value) { layers[id].paint = Object.assign({}, layers[id].paint, { [name]: value }); };
-  this.fitBounds = function (bounds, options) { calls.push('fitBounds'); window.lastFitOptions = options; };
+  this.fitBounds = function (bounds, options) { calls.push('fitBounds'); window.lastFitOptions = options; window.lastFitPoints = bounds.points; };
   this.loaded = function () { return sourcesLoaded; };
   this.isStyleLoaded = function () { return true; };
   this.setPixelRatio = function (r) { pixelRatio = r; calls.push('setPixelRatio ' + r); };

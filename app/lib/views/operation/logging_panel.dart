@@ -92,6 +92,11 @@ class LoggingPanel extends StatefulWidget {
   /// view's job — see docs/design/layouts.md).
   final ValueChanged<String?>? onCommandMessageChanged;
 
+  /// The uuid of the QSO picked for editing, or null while composing — for
+  /// the Map pane, which frames a picked QSO. Reported after the frame that
+  /// changed it, whichever way the pick changed.
+  final ValueChanged<String?>? onSelectionChanged;
+
   /// Forwards the current call-info up to the operation view for the Call Info
   /// detail panel (Info tab / modal). See [LookupHooks.onCallInfoChanged].
   final CallInfoChanged? onCallInfoChanged;
@@ -168,6 +173,7 @@ class LoggingPanel extends StatefulWidget {
     this.serialNumbers,
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
+    this.onSelectionChanged,
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.onCallInfoTap,
@@ -184,6 +190,10 @@ class LoggingPanel extends StatefulWidget {
 
 class _LoggingPanelState extends State<LoggingPanel> {
   Qso? _selectedQso;
+
+  /// What [LoggingPanel.onSelectionChanged] last heard: the pick changes in
+  /// half a dozen places, and checking at build catches every one.
+  String? _reportedSelection;
 
   /// The QSO list as a rung of the keyboard's focus ladder: Arrow Up
   /// off the logging controls' pill strip lands here, Up/Down then walk the
@@ -688,6 +698,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   @override
   Widget build(BuildContext context) {
+    if (_selectedQso?.uuid != _reportedSelection) {
+      _reportedSelection = _selectedQso?.uuid;
+      final selection = _reportedSelection;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onSelectionChanged?.call(selection);
+      });
+    }
     // Cached by `ScoringService.rescoreOperation` into `Operation.localData`
     // (never synced — DESIGN.md §4); absent until the first rescore lands.
     final scoring = widget.operation.localData['scoring'] as Map<String, dynamic>?;

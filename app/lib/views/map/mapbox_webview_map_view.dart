@@ -194,6 +194,8 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloSetZoomFades = handle.setZoomFades;
     window.poloSetProjection = handle.setProjection;
     window.poloMoveTo = handle.moveTo;
+    window.poloFitTo = handle.fitTo;
+    window.poloRefit = handle.refit;
     window.poloZoomIn = handle.zoomIn;
     window.poloZoomOut = handle.zoomOut;
     window.poloCamera = handle.camera;
@@ -316,6 +318,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo
+      ..onFitTo = _fitTo
+      ..onRefit = _refit
       ..onCamera = _camera
       ..onSnapshot = _snapshot;
   }
@@ -351,18 +355,23 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
 
   @override
   void dispose() {
-    // Identity-guarded, never a blind null: when the facade swaps backends
+    // Guarded, never a blind null: when the facade swaps backends
     // (a webview probe answering, so OsmMapView gives way to the GL view),
     // Flutter runs the incoming State's initState during the build and this
     // dispose afterwards — so clearing unconditionally would wipe the
     // handlers the live backend has just installed and leave the camera
-    // inert for the rest of the session.
+    // inert for the rest of the session. By `==`, not `identical`: each
+    // tear-off of a method is a new object, equal to the one installed but
+    // never identical to it, and a handler left behind is called on a dead
+    // map by the camera's timers.
     final controller = widget.zoomController;
-    if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
-    if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
-    if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
-    if (identical(controller?.onCamera, _camera)) controller?.onCamera = null;
-    if (identical(controller?.onSnapshot, _snapshot)) controller?.onSnapshot = null;
+    if (controller?.onZoomIn == _zoomIn) controller?.onZoomIn = null;
+    if (controller?.onZoomOut == _zoomOut) controller?.onZoomOut = null;
+    if (controller?.onMoveTo == _moveTo) controller?.onMoveTo = null;
+    if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
+    if (controller?.onRefit == _refit) controller?.onRefit = null;
+    if (controller?.onCamera == _camera) controller?.onCamera = null;
+    if (controller?.onSnapshot == _snapshot) controller?.onSnapshot = null;
     WidgetsBinding.instance.removeObserver(this);
     _offlineChanges?.cancel();
     _readyWatchdog.dispose();
@@ -374,6 +383,15 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _controller?.evaluateJavascript(source: 'window.poloMoveTo($latitude, $longitude, $zoom);');
+  // Not before the page reports in: until then `poloFitTo` may not exist yet,
+  // and the ready handler frames the controller's lastFit itself.
+  void _fitTo(List<GridLocation> points) {
+    if (_mapReady) _controller?.evaluateJavascript(source: 'window.poloFitTo(${jsonEncode(mapFitPayload(points))});');
+  }
+
+  void _refit() {
+    if (_mapReady) _controller?.evaluateJavascript(source: 'window.poloRefit();');
+  }
 
   /// Null until the page has made its map — and then only if it answers.
   /// Null when the page never made its map, or never answered — a tap on a
@@ -535,6 +553,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
             _applyMarkers();
             _applyLines();
             _applyShapes();
+            if (widget.zoomController?.lastFit case final points?) _fitTo(points);
             return null;
           },
         );

@@ -17,12 +17,20 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Size;
 
+import 'package:halo_core/halo_core.dart' show GridLocation;
+
 class MapZoomController {
   void Function()? onZoomIn;
   void Function()? onZoomOut;
 
   /// Set by every backend that can be pointed somewhere — see [moveTo].
   void Function(double latitude, double longitude, double zoom)? onMoveTo;
+
+  /// Set by every backend — see [fitTo].
+  void Function(List<GridLocation> points)? onFitTo;
+
+  /// Set by every backend — see [refit].
+  void Function()? onRefit;
 
   /// Set by every backend — see [camera].
   Future<MapCameraView?> Function()? onCamera;
@@ -59,6 +67,30 @@ class MapZoomController {
   /// the platform picks, so the rows above the map can call this during the
   /// frame before that backend's State has wired itself up.
   void moveTo(double latitude, double longitude, {double zoom = closeUpZoom}) => onMoveTo?.call(latitude, longitude, zoom);
+
+  /// Frames [points] the way the map frames its markers, capped at
+  /// [fitMaxZoom]. Longitudes may run past ±180: an arc across the
+  /// antimeridian is one continuous span only unwrapped. A camera move, like
+  /// [moveTo]; the backend's own fit to its markers stands aside until
+  /// [refit], however the markers change meanwhile.
+  void fitTo(List<GridLocation> points) {
+    _lastFit = points;
+    onFitTo?.call(points);
+  }
+
+  /// Frames the markers the backend fits by itself, as it did when they
+  /// last changed.
+  void refit() {
+    _lastFit = null;
+    onRefit?.call();
+  }
+
+  /// What [fitTo] last framed, until [refit]. A backend that comes up after
+  /// the request — a page still loading, one backend giving way to another —
+  /// frames this once its map is ready, or the request is lost to the map's
+  /// own first fit.
+  List<GridLocation>? get lastFit => _lastFit;
+  List<GridLocation>? _lastFit;
 
   /// Close enough to read one reference's surroundings — a summit's
   /// activation zone frames at roughly half the pane at this level, where

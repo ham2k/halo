@@ -167,6 +167,12 @@ class MapMarkerData {
   /// a smear of them.
   final bool fadesWithZoom;
 
+  /// Drawn at [mapDimmedOpacity] while the map shows a highlighted marker.
+  /// Not for a QTH ([MapMarkerKind.qth]), where the lines run from, the
+  /// current QSO's included, nor for a glyph marker — the operation's own
+  /// references and location — which are what the log is about.
+  bool get dimsBehindHighlight => kind != MapMarkerKind.qth && glyph == null;
+
   const MapMarkerData({
     required this.id,
     required this.latitude,
@@ -371,6 +377,7 @@ List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
       'fit': m.fitsCamera,
       'fitKey': ?m.fitKey,
       if (m.fadesWithZoom) 'fades': true,
+      if (!m.dimsBehindHighlight) 'steady': true,
       // Base64 rather than a byte list: both bridges (the webview's
       // string-only channel and the web view's JS interop) carry a
       // string unchanged, while a 9KB list would be walked element by
@@ -400,6 +407,12 @@ Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
   ],
 };
 
+/// [MapZoomController.fitTo]'s points as the GL script's `fitTo` takes them:
+/// `[lon, lat]` pairs, longitudes left unwrapped.
+List<List<double>> mapFitPayload(List<GridLocation> points) => [
+  for (final p in points) [p.longitude, p.latitude],
+];
+
 /// How markers shrink as a map zooms out, on the GL scale:
 /// [mapMarkerSmallScale] of their size at or below [mapMarkerSmallAtZoom],
 /// growing linearly to their full size at [mapMarkerFullAtZoom]. Every marker
@@ -409,6 +422,14 @@ Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
 const mapMarkerSmallAtZoom = 3.0;
 const mapMarkerFullAtZoom = 8.0;
 const mapMarkerSmallScale = 0.5;
+
+/// The strength every other marker and line is drawn at while a map shows a
+/// highlighted marker ([MapMarkerData.highlight] — a highlighted line never
+/// comes without one), so
+/// the current QSO stands out from the log around it. Markers that are not
+/// the log's keep full strength ([MapMarkerData.dimsBehindHighlight]). A
+/// plain constant for the same reason as the zoom scale above.
+const mapDimmedOpacity = 0.2;
 
 /// A marker's size at [glZoom] against its full size — see
 /// [mapMarkerSmallAtZoom].
