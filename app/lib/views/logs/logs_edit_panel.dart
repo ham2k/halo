@@ -351,7 +351,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                 Padding(
                   padding: const EdgeInsets.only(bottom: Space.md),
                   child: Text(
-                    t.loggingControls.pendingDeleteWarning,
+                    isMobilePlatform ? t.loggingControls.pendingDeleteTapWarning : t.loggingControls.pendingDeleteClickWarning,
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.error, fontWeight: FontWeight.w700),
                   ),
                 ),

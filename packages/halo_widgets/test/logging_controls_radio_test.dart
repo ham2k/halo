@@ -442,7 +442,7 @@ void main() {
       // connection with it, and this test is about the guard's placement.
       await tester.tap(find.byIcon(MdiIcons.trashCanOutline));
       await tester.pump();
-      expect(find.textContaining('will be deleted'), findsOneWidget, reason: 'the delete is staged');
+      expect(find.textContaining('one more time to delete'), findsOneWidget, reason: 'the delete is staged');
       await tester.tap(find.byIcon(MdiIcons.trashCan));
       await tester.pump(const Duration(milliseconds: 400));
 

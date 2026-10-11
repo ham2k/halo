@@ -501,9 +501,11 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get restore => 'Restaurar';
 	@override String get wipe => 'Borrar';
 	@override String get undo => 'Deshacer';
-	@override String get pendingDeleteWarning => 'El QSO se eliminará al guardar';
+	@override String get pendingDeleteTapWarning => 'Toca la papelera una vez más para eliminar este QSO';
+	@override String get pendingDeleteClickWarning => 'Haz clic en la papelera una vez más para eliminar este QSO';
 	@override String get deletedQsoWarning => 'QSO eliminado';
-	@override String pendingDeleteEventWarning({required Object kind}) => '${kind} se eliminará al guardar';
+	@override String pendingDeleteEventTapWarning({required Object kind}) => 'Toca la papelera una vez más para eliminar este ${kind}';
+	@override String pendingDeleteEventClickWarning({required Object kind}) => 'Haz clic en la papelera una vez más para eliminar este ${kind}';
 	@override String deletedEventWarning({required Object kind}) => '${kind} eliminado';
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
@@ -4222,9 +4224,11 @@ extension on TranslationsEs {
 			'loggingControls.restore' => 'Restaurar',
 			'loggingControls.wipe' => 'Borrar',
 			'loggingControls.undo' => 'Deshacer',
-			'loggingControls.pendingDeleteWarning' => 'El QSO se eliminará al guardar',
+			'loggingControls.pendingDeleteTapWarning' => 'Toca la papelera una vez más para eliminar este QSO',
+			'loggingControls.pendingDeleteClickWarning' => 'Haz clic en la papelera una vez más para eliminar este QSO',
 			'loggingControls.deletedQsoWarning' => 'QSO eliminado',
-			'loggingControls.pendingDeleteEventWarning' => ({required Object kind}) => '${kind} se eliminará al guardar',
+			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'Toca la papelera una vez más para eliminar este ${kind}',
+			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'Haz clic en la papelera una vez más para eliminar este ${kind}',
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => '${kind} eliminado',
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
@@ -4502,10 +4506,10 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.newSet' => 'Nuevo juego',
 			'settings.radio.cwMessages.renameSet' => 'Renombrar juego',
 			'settings.radio.cwMessages.deleteSet' => 'Eliminar juego',
-			'settings.radio.cwMessages.newSetName' => 'Nombre',
-			'settings.radio.cwMessages.setDefault' => 'Predeterminado',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.cwMessages.newSetName' => 'Nombre',
+			'settings.radio.cwMessages.setDefault' => 'Predeterminado',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'Mensajes ESM',
 			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
@@ -5016,10 +5020,10 @@ extension on TranslationsEs {
 			'settings.station.voiceDialectDescription' => 'Cómo reproduce esta radio sus memorias de voz por CAT. Ninguno significa sin memorias de voz por CAT. Con dialecto y sin cantidad, se aplica la cantidad predeterminada del dialecto.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, estilo TS-590)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB y DA)',
-			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (pulsaciones de teclas)',
-			'settings.station.placeholderDiagnostic' => 'Simulada',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (pulsaciones de teclas)',
+			'settings.station.placeholderDiagnostic' => 'Simulada',
 			'settings.station.placeholderWholeNumberInvalid' => 'Debe ser un número entero, 0 o más',
 			'settings.station.placeholderFreqInvalid' => 'Debe ser una frecuencia en kHz, mayor que cero',
 			'settings.station.placeholderModeInvalid' => 'Debe ser un nombre de modo, por ejemplo USB, CW, FT8',

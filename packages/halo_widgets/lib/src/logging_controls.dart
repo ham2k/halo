@@ -3719,8 +3719,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return (refusal != null)
         ? refusal.reason
         : (kind != null)
-        ? (deletedQso ? t.loggingControls.deletedEventWarning(kind: kind) : t.loggingControls.pendingDeleteEventWarning(kind: kind))
-        : (deletedQso ? t.loggingControls.deletedQsoWarning : t.loggingControls.pendingDeleteWarning);
+        ? (deletedQso
+              ? t.loggingControls.deletedEventWarning(kind: kind)
+              : isMobilePlatform
+              ? t.loggingControls.pendingDeleteEventTapWarning(kind: kind)
+              : t.loggingControls.pendingDeleteEventClickWarning(kind: kind))
+        : (deletedQso
+              ? t.loggingControls.deletedQsoWarning
+              : isMobilePlatform
+              ? t.loggingControls.pendingDeleteTapWarning
+              : t.loggingControls.pendingDeleteClickWarning);
   }
 
   /// What the contact in hand is missing from the radio state that every QSO

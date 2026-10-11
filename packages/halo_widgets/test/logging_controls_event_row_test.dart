@@ -4,6 +4,7 @@
 // Editing an event/annotation row (NOTE, TODO, BREAK, …) in the panel: the
 // row it shows, the text and done state it reads and writes, and saving.
 
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -159,6 +160,8 @@ void main() {
       expect(solarButtonHeight, noteButtonHeight);
     });
 
+    // Exact text per platform: the Tap/Click choice is made separately for
+    // event rows, so the QSO-path test cannot catch it being swapped here.
     testWidgets('the pending-delete warning names the event kind, not "QSO"', (tester) async {
       final marker = (await tester.runAsync(
         () => qsos.add(operation.uuid, {
@@ -173,9 +176,10 @@ void main() {
       await tester.tap(find.byIcon(MdiIcons.trashCanOutline));
       await tester.pump();
 
-      expect(find.textContaining('BREAK will be deleted'), findsOneWidget);
-      expect(find.textContaining('QSO will be deleted'), findsNothing);
-    });
+      final verb = defaultTargetPlatform == TargetPlatform.android ? 'Tap' : 'Click';
+      expect(find.text('$verb the trashcan one more time to delete this BREAK'), findsOneWidget);
+      expect(find.textContaining('to delete this QSO'), findsNothing);
+    }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.macOS}));
 
     testWidgets('editing a NOTE and saving writes the new text back through the repository', (tester) async {
       final note = (await tester.runAsync(

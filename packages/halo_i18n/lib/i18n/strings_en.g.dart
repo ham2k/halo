@@ -1108,14 +1108,20 @@ class Translations$loggingControls$en {
 	/// en: 'Undo'
 	String get undo => 'Undo';
 
-	/// en: 'QSO will be deleted when you save'
-	String get pendingDeleteWarning => 'QSO will be deleted when you save';
+	/// en: 'Tap the trashcan one more time to delete this QSO'
+	String get pendingDeleteTapWarning => 'Tap the trashcan one more time to delete this QSO';
+
+	/// en: 'Click the trashcan one more time to delete this QSO'
+	String get pendingDeleteClickWarning => 'Click the trashcan one more time to delete this QSO';
 
 	/// en: 'Deleted QSO'
 	String get deletedQsoWarning => 'Deleted QSO';
 
-	/// en: '${kind} will be deleted when you save'
-	String pendingDeleteEventWarning({required Object kind}) => '${kind} will be deleted when you save';
+	/// en: 'Tap the trashcan one more time to delete this ${kind}'
+	String pendingDeleteEventTapWarning({required Object kind}) => 'Tap the trashcan one more time to delete this ${kind}';
+
+	/// en: 'Click the trashcan one more time to delete this ${kind}'
+	String pendingDeleteEventClickWarning({required Object kind}) => 'Click the trashcan one more time to delete this ${kind}';
 
 	/// en: 'Deleted ${kind}'
 	String deletedEventWarning({required Object kind}) => 'Deleted ${kind}';
@@ -8275,9 +8281,11 @@ extension on Translations {
 			'loggingControls.restore' => 'Restore',
 			'loggingControls.wipe' => 'Wipe',
 			'loggingControls.undo' => 'Undo',
-			'loggingControls.pendingDeleteWarning' => 'QSO will be deleted when you save',
+			'loggingControls.pendingDeleteTapWarning' => 'Tap the trashcan one more time to delete this QSO',
+			'loggingControls.pendingDeleteClickWarning' => 'Click the trashcan one more time to delete this QSO',
 			'loggingControls.deletedQsoWarning' => 'Deleted QSO',
-			'loggingControls.pendingDeleteEventWarning' => ({required Object kind}) => '${kind} will be deleted when you save',
+			'loggingControls.pendingDeleteEventTapWarning' => ({required Object kind}) => 'Tap the trashcan one more time to delete this ${kind}',
+			'loggingControls.pendingDeleteEventClickWarning' => ({required Object kind}) => 'Click the trashcan one more time to delete this ${kind}',
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => 'Deleted ${kind}',
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
@@ -8555,10 +8563,10 @@ extension on Translations {
 			'settings.radio.cwMessages.newSet' => 'New Set',
 			'settings.radio.cwMessages.renameSet' => 'Rename Set',
 			'settings.radio.cwMessages.deleteSet' => 'Delete Set',
-			'settings.radio.cwMessages.newSetName' => 'Name',
-			'settings.radio.cwMessages.setDefault' => 'Default',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.cwMessages.newSetName' => 'Name',
+			'settings.radio.cwMessages.setDefault' => 'Default',
 			'settings.radio.cwMessages.setPota' => 'POTA',
 			'settings.radio.cwMessages.setEsm' => 'ESM Messages',
 			'settings.radio.cwMessages.setSaved' => 'My Messages',
@@ -9069,10 +9077,10 @@ extension on Translations {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
-			'settings.station.placeholderConnectDelay' => 'Connect delay (ms)',
-			'settings.station.placeholderConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderConnectDelay' => 'Connect delay (ms)',
+			'settings.station.placeholderConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			'settings.station.placeholderDropAfter' => 'Drop after (seconds)',
 			'settings.station.placeholderDropAfterDescription' => 'Close the connection on its own, to exercise the reconnect path. Blank or 0 never drops.',
 			'settings.station.placeholderFailConnect' => 'Always fail to connect',

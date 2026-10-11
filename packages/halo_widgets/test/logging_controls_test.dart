@@ -7,7 +7,7 @@
 // radio, lookup, commands, exchange fields, focus, spotting, the control
 // strip and the event row each have their own.
 
-import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
+import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -940,16 +940,48 @@ void main() {
       await tester.tap(find.byIcon(deleteIcon));
       await tester.pump();
 
-      expect(find.textContaining('will be deleted'), findsOneWidget);
+      expect(find.textContaining('one more time to delete'), findsOneWidget);
       expect(find.byIcon(deleteIcon), findsNothing);
       expect(find.byIcon(undoIcon), findsOneWidget);
 
       await tester.tap(find.byIcon(undoIcon));
       await tester.pump();
 
-      expect(find.textContaining('will be deleted'), findsNothing);
+      expect(find.textContaining('one more time to delete'), findsNothing);
       expect(find.byIcon(deleteIcon), findsOneWidget);
     });
+
+    // The staged-delete warning tells the operator what to do next, so it
+    // has to name the gesture they actually use: "Tap" on a phone reads
+    // wrong to a desktop operator with a mouse, and the reverse.
+    testWidgets('the staged-delete warning says Tap on mobile and Click elsewhere', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW', 'sent': ''},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              session: LoggingSession(editingQso: existingQso),
+              radio: baseRadio(),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byIcon(deleteIcon));
+      await tester.pump();
+
+      final verb = defaultTargetPlatform == TargetPlatform.android ? 'Tap' : 'Click';
+      expect(find.text('$verb the trashcan one more time to delete this QSO'), findsOneWidget);
+    }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.macOS}));
 
     // Revert-changes is NOT on the chord: while editing, Cmd+Z means the last
     // keystroke, and claiming it would throw the whole edit away instead.
