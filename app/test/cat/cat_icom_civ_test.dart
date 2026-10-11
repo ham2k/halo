@@ -583,19 +583,63 @@ void main() {
     // The generic entry cannot pin the submode off for a radio that lacks it.
     // Left on, a flag taken as set reports DATA-USB for a rig in plain USB
     // for as long as the session lasts.
-    test('a radio that never answers the DATA read stops being asked, and says so', () {
-      session.setMode('DATA-USB');
-      session.startUpdates();
-      for (var i = 0; i < 2; i++) {
-        feed([0xFE, 0xFE, us, ic705, 0xFA, 0xFD]);
-        feed([0xFE, 0xFE, us, ic705, 0x04, 0x01, 0x01, 0xFD]);
+    group('on a serial radio without the submode', () {
+      const readData = [0xFE, 0xFE, ic705, us, 0x1A, 0x06, 0xFD];
+
+      setUp(() {
+        session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, config: const {'baudRate': 19200});
+        sink.answer = null;
+      });
+
+      /// ACKs whatever is on the wire until the DATA read is, then answers
+      /// the read with [reply] — a NAK, or nothing at all.
+      void pollAndAnswerDataWith(FakeAsync async, List<int>? reply) {
+        for (var i = 0; i < 20 && !listEquals(sink.sent.last, readData); i++) {
+          feed(_fromRadio([0xFB]));
+        }
+        expect(sink.sent.last, readData);
+        if (reply != null) {
+          feed(_fromRadio(reply));
+        } else {
+          async.elapse(const Duration(milliseconds: 260));
+        }
+        // The mode answer behind it: the radio answering, so a silence was the read's own.
+        feed(_fromRadio([0x04, 0x01, 0x01]));
+        async.elapse(const Duration(seconds: 5));
       }
-      expect(sink.readings.last, const VfoReading(mode: 'USB'));
-      expect(sink.diagnostics.whereType<String>(), contains(contains('0x1A 0x06')));
-      sink.sent.clear();
-      session.setMode('DATA-USB');
-      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x06, 0x01, 0xFD], reason: 'the base mode alone');
-      session.teardown();
+
+      test('a radio that refuses the DATA read twice stops being asked, and says so', () {
+        fakeAsync((async) {
+          session.startUpdates();
+          session.setMode('DATA-USB');
+          pollAndAnswerDataWith(async, [0xFA]);
+          expect(sink.diagnostics.whereType<String>(), isNot(contains(contains('0x1A 0x06'))));
+          pollAndAnswerDataWith(async, [0xFA]);
+          expect(sink.readings.last, const VfoReading(mode: 'USB'));
+          expect(sink.diagnostics.whereType<String>(), contains(contains('0x1A 0x06')));
+          sink.sent.clear();
+          session.setMode('DATA-USB');
+          for (var i = 0; i < 20; i++) {
+            feed(_fromRadio([0xFB]));
+          }
+          expect(sink.sent, contains(equals([0xFE, 0xFE, ic705, us, 0x06, 0x01, 0xFD])));
+          expect(sink.sent.where((f) => f[4] == 0x1A && f[5] == 0x06), isEmpty, reason: 'the base mode alone, and no more DATA reads');
+          session.teardown();
+        });
+      });
+
+      test('one that ignores it takes a third silence, and stops being asked too', () {
+        fakeAsync((async) {
+          session.startUpdates();
+          for (var i = 0; i < 2; i++) {
+            pollAndAnswerDataWith(async, null);
+          }
+          expect(sink.diagnostics.whereType<String>(), isNot(contains(contains('0x1A 0x06'))), reason: 'two lost answers are a busy link');
+          pollAndAnswerDataWith(async, null);
+          expect(sink.diagnostics.whereType<String>(), contains(contains('0x1A 0x06')));
+          session.teardown();
+        });
+      });
     });
 
     test('CW leaves the DATA submode alone, since it has none', () {
@@ -935,6 +979,68 @@ void main() {
         });
       });
 
+      test('a radio that ignores the read three times in a row has no tuner, and is not asked again', () {
+        // A Xiegu answers a read it lacks with neither data nor a NAK. Counted
+        // as nothing, each one would hold the wire for a whole answer timeout
+        // on every poll, for the whole connection.
+        fakeAsync((async) {
+          session.startUpdates();
+          for (var i = 0; i < 3; i++) {
+            if (i > 0) async.elapse(const Duration(seconds: 5));
+            ackUntilTunerRead();
+            async.elapse(const Duration(milliseconds: 260));
+            if (i == 2) expect(sink.tuners, isEmpty, reason: 'two lost answers are a busy link');
+            // It answers the next command, so the silence was the read's own.
+            feed(_fromRadio([0xFB]));
+          }
+          expect(sink.tuners, [null]);
+          expect(sink.diagnostics.where((d) => d!.contains('antenna tuner')), hasLength(1));
+
+          sink.answer = session.handleData;
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 16));
+          expect(sink.sent.where((f) => f.length > 5 && f[4] == 0x1C && f[5] == 0x01), isEmpty);
+          session.teardown();
+        });
+      });
+
+      test('refusals and silences on the air are no strikes', () {
+        // A radio may set aside on the air a read it answers on receive.
+        // Counted, a long over would cost the readout for the connection.
+        fakeAsync((async) {
+          session.startUpdates();
+          feed(_fromRadio([0x1C, 0x00, 0x01]));
+          for (var i = 0; i < 4; i++) {
+            if (i > 0) async.elapse(const Duration(seconds: 5));
+            ackUntilTunerRead();
+            if (i.isEven) {
+              feed(_fromRadio([0xFA]));
+            } else {
+              async.elapse(const Duration(milliseconds: 260));
+            }
+          }
+          feed(_fromRadio([0xFB]));
+          expect(sink.tuners, isEmpty);
+          expect(sink.diagnostics.where((d) => d!.contains('antenna tuner')), isEmpty);
+          session.teardown();
+        });
+      });
+
+      test('a radio switched off for a while keeps its tuner', () {
+        // Silent to everything, it is off, not lacking the read: losing the
+        // tuner for the session over it would leave the readout blank when
+        // the radio comes back on the same connection.
+        fakeAsync((async) {
+          session.startUpdates();
+          async.elapse(const Duration(seconds: 60));
+          ackUntilTunerRead();
+          feed(_fromRadio([0x1C, 0x01, 0x01]));
+          expect(sink.tuners, [TunerStatus.inline]);
+          expect(sink.diagnostics.where((d) => d!.contains('antenna tuner')), isEmpty);
+          session.teardown();
+        });
+      });
+
       test('an answer between two refusals keeps the tuner', () {
         // Two in a ROW: a radio that has a tuner and loses one read to a stray
         // NAK each hour must not lose the readout at the second.
@@ -1125,6 +1231,79 @@ void main() {
         feed(_fromRadio([0x04, 0x03, 0x03]));
         session.setPassband(const Passband(-250, 250));
         expect(sink.sent, isEmpty);
+      });
+
+      test('a radio that ignores the read three times in a row is not asked again, and says so', () {
+        // The Xiegu way with a read it lacks — see the tuner's test. Each mode
+        // answer is the radio answering after the last silence.
+        fakeAsync((async) {
+          feed(cw);
+          for (final filter in [0x02, 0x03, 0x01]) {
+            expect(sink.sent.last, readWidth);
+            async.elapse(const Duration(milliseconds: 260));
+            if (filter == 0x01) {
+              expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty, reason: 'two lost answers are a busy link');
+            }
+            feed(_fromRadio([0x04, 0x03, filter]));
+          }
+          expect(sink.diagnostics.where((d) => d!.contains('filter width')), hasLength(1));
+          expect(sink.passbands.last, isNull);
+
+          sink.sent.clear();
+          feed(_fromRadio([0x04, 0x03, 0x02]));
+          expect(sink.sent.where((f) => listEquals(f, readWidth)), isEmpty);
+        });
+      });
+
+      test('a late answer to a read that timed out keeps asking', () {
+        // Silence followed by the answer is a slow radio, not a missing read.
+        fakeAsync((async) {
+          feed(cw);
+          async.elapse(const Duration(milliseconds: 260));
+          feed(_fromRadio([0x1A, 0x03, 0x10]));
+          for (final filter in [0x02, 0x03]) {
+            feed(_fromRadio([0x04, 0x03, filter]));
+            async.elapse(const Duration(milliseconds: 260));
+          }
+          sink.sent.clear();
+          feed(_fromRadio([0x04, 0x03, 0x01]));
+          expect(sink.sent.last, readWidth, reason: 'two silences since the answer, not three');
+          expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty);
+        });
+      });
+
+      test('a radio switched off with the read out keeps it, however often', () {
+        // Back on in a mode without a width, nothing answers the read to clear
+        // its silence: were the first frame back to count it, three power
+        // cycles on one connection would lose the passband for good.
+        fakeAsync((async) {
+          for (var cycle = 0; cycle < 3; cycle++) {
+            feed(cw);
+            expect(sink.sent.last, readWidth);
+            session.setFrequency(14074);
+            async.elapse(const Duration(milliseconds: 600));
+            feed(_fromRadio([0x04, 0x01, 0x01]));
+          }
+          expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty);
+          feed(cw);
+          expect(sink.sent.last, readWidth);
+        });
+      });
+
+      test('the Xiegus never ask it: neither has the command', () {
+        // hamlib's x1ax03_supported. Asked anyway, the read costs each of them
+        // three answer timeouts before the session learns what the entry knows.
+        for (final model in [g90Model, x6100Model]) {
+          sink.sent.clear();
+          session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, config: {...model.variants.first.overrides, 'baudRate': 19200});
+          feed(cw);
+          // Not even after an answer: the pin is a fact about the model, and a
+          // stray frame must not turn the read on.
+          feed(_fromRadio([0x1A, 0x03, 0x10]));
+          feed(_fromRadio([0x04, 0x03, 0x02]));
+          session.setPassband(const Passband(-250, 250));
+          expect(sink.sent.where((f) => f.length > 5 && f[4] == 0x1A && f[5] == 0x03), isEmpty, reason: model.key);
+        }
       });
 
       test('an answer between two refusals keeps asking', () {

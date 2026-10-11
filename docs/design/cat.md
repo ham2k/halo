@@ -281,9 +281,9 @@ what the user configured; everything about a connection is rebuilt at runtime.
   It takes the flag as set at once: the poll's mode answer arrives before the radio confirms the
   flag, and reported against the old one it would put USB in the log. The poll also asks for the
   submode before the mode, and the driver reads it back, so a rig in USB-D reports DATA-USB rather
-  than USB. An Icom that never answers the read (a rig without the submode on the generic entry)
-  stops being asked after two polls, and a diagnostic says so. An
-  entry whose radio has no submode (`civDataMode: false` on the IC-706MKIIG and G90; any Kenwood
+  than USB. An Icom without the submode on the generic entry, which cannot pin it, stops being
+  asked as any read the radio may lack does (§ Tuner, passband and the radio's own antenna ports),
+  and a diagnostic says so. An entry whose radio has no submode (`civDataMode: false` on the IC-706MKIIG and G90; any Kenwood
   without `dataMode`) is put in the base mode. It then reports USB, so the log says USB.
 - **A CI-V mode set carries no filter byte**, so the operator's filter survives a mode change (polo
   sent `01` and forced FIL1 every time). The exception is an entry pinning `civModeWithFilter` —
@@ -2256,13 +2256,24 @@ and `.antennas`.
   So the entry pins it (Icom's `civAntennaPortsConfigKey`, Kenwood's `antennaDialectKey`, Yaesu's
   table by `ID`), and an unpinned radio is never asked: a choice offered that the radio does not have
   is worse than none.
-- **A read the radio may lack is asked slowly, and given up on twice refused.** The tuner, the
-  filter and the ports move when someone presses a button, so the Yaesu and Kenwood drivers read
-  them every fifth state poll (about every fifteen seconds at the default idle rate) and the filter
-  again at once on a mode change; CI-V reads them on its own slow state poll. A radio without one
-  refuses on every poll for the whole connection, so two refusals in a row stop the asking — two,
-  not one, because a CI-V NAK and a Kenwood or Yaesu `?;` name no command, and one arriving late for
-  something else must not cost a radio its readout.
+- **A read the radio may lack is asked slowly, and given up on.** The tuner, the filter and the
+  ports move when someone presses a button, so the Yaesu and Kenwood drivers read them every fifth
+  state poll (about every fifteen seconds at the default idle rate) and the filter again at once on a
+  mode change; CI-V reads them on its own slow state poll. A radio without one refuses on every poll
+  for the whole connection, so two refusals with no answer between stop the asking — two, not one,
+  because a CI-V NAK and a Kenwood or Yaesu `?;` name no command, and one arriving late for
+  something else must not cost a radio its readout. A CI-V radio may instead ignore the read — the
+  Xiegus' way — and since CI-V sends one command at a time, each silence holds the bus for a whole
+  answer timeout; three of them stop the asking too, three because a lost answer says less than a
+  refusal. A silence counts only once the radio is heard sending something after it, and not if
+  another command went unanswered first, so a radio switched off for a while keeps its reads however
+  often it is; a late answer clears it. Neither counts on the air,
+  where a radio may set aside a read it answers on receive — the K3 line answers `?;` to whatever it
+  will not take while transmitting. The bookkeeping is one
+  class, `OptionalRead` (drivers/optional_read.dart), used for every such read — the Icom DATA
+  submode's included. What a known model lacks is pinned instead of learned, and no answer reopens
+  a pinned read: the G90 and X6100 have no filter-width command (`civFilterWidth: false`, hamlib's
+  `x1ax03_supported`).
 
 ## Software intermediaries
 

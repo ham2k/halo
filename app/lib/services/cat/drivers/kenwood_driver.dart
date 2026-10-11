@@ -37,6 +37,7 @@ import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
 import 'keyer_config.dart';
+import 'optional_read.dart';
 import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
@@ -240,27 +241,14 @@ const kenwoodTxWatchBytes = 41;
 /// answer that is almost always the last one again.
 const kenwoodTunerReadEvery = 5;
 
-/// How many tuner reads in a row must go unanswered beside a refusal before
-/// the session stops asking. More than one because `?;` names no command: a
-/// refusal of something else, landing beside an `AC` answer lost to line
-/// noise, must not cost a radio that has a tuner its readout for the whole
-/// connection.
-const _tunerRefusalsBeforeGivingUp = 2;
-
 /// How many state polls go by between reads of the receive filter — the
 /// tuner's rate, for the tuner's reason. A mode change, the one time the
 /// filter moves on its own, reads it at once.
 const kenwoodPassbandReadEvery = 5;
 
-/// See [_tunerRefusalsBeforeGivingUp]: the same `?;` that names no command.
-const _passbandRefusalsBeforeGivingUp = 2;
-
 /// How many state polls go by between reads of the antenna ports — the
 /// tuner's rate, for the tuner's reason.
 const kenwoodAntennaReadEvery = 5;
-
-/// See [_tunerRefusalsBeforeGivingUp].
-const _antennaRefusalsBeforeGivingUp = 2;
 
 class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
   final EquipmentSink _sink;
@@ -477,39 +465,34 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   int _tunerPollsToSkip = 0;
 
-  /// An `AC;` is on the wire with no `AC` answer back yet, and whether a
-  /// `?;` has arrived since it was sent. Only the pair says "refused": a `?;`
-  /// alone may answer any other question in the same poll, and an `AC`
-  /// answer arriving after it proves it did.
-  bool _tunerReadOutstanding = false;
-  bool _refusedSinceTunerRead = false;
-  int _tunerRefusals = 0;
-  bool _tunerRefused = false;
+  /// `AC;`, judged by the `?;`s heard while it is out with no `AC` answer
+  /// back. Only the pair says "refused": a `?;` alone may answer any other
+  /// question in the same poll, and an `AC` answer arriving after it proves
+  /// it did.
+  late final _tunerRead = OptionalRead(
+    _sink,
+    'radio refuses AC; no antenna tuner, not asked again',
+    onGiveUp: () {
+      _tunerFlags = null;
+      _reportTuner(null);
+    },
+  );
 
   /// Every [kenwoodTunerReadEvery]th poll, first thing on a connection. The
   /// previous read is judged when the next falls due — by then its answer
   /// has long arrived if it was ever coming.
   void _requestTuner() {
-    if (_tunerRefused) return;
+    if (!_tunerRead.available) return;
     if (_tunerPollsToSkip > 0) {
       _tunerPollsToSkip--;
       return;
     }
     _tunerPollsToSkip = kenwoodTunerReadEvery - 1;
-    if (_tunerReadOutstanding && _refusedSinceTunerRead && ++_tunerRefusals >= _tunerRefusalsBeforeGivingUp) {
-      _tunerRefused = true;
-      _tunerReadOutstanding = false;
-      _tunerFlags = null;
-      _reportTuner(null);
-      _sink.reportDiagnostic('radio refuses AC; no antenna tuner, not asked again');
-      return;
-    }
-    _readTuner();
+    if (_tunerRead.judge()) _readTuner();
   }
 
   void _readTuner() {
-    _tunerReadOutstanding = true;
-    _refusedSinceTunerRead = false;
+    _tunerRead.sent();
     _send(buildKenwoodReadTunerCommand());
   }
 
@@ -541,30 +524,20 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   int _passbandPollsToSkip = 0;
 
-  /// The same refusal bookkeeping as the tuner's — see [_tunerReadOutstanding].
-  bool _passbandReadOutstanding = false;
-  bool _refusedSincePassbandRead = false;
-  int _passbandRefusals = 0;
-  bool _passbandRefused = false;
+  /// The same refusal bookkeeping as the tuner's — see [_tunerRead].
+  late final _passbandRead = OptionalRead(_sink, 'radio refuses its filter reads; passband not asked again', onGiveUp: _reportPassband);
 
   /// Every [kenwoodPassbandReadEvery]th poll, never while transmitting: the
   /// K3 line answers `?;` to commands it will not handle on the air, and two
   /// of those would stop the reads for the connection.
   void _requestPassband() {
-    if (passbandDialect == null || _passbandRefused || _telemetry.transmitting) return;
+    if (passbandDialect == null || !_passbandRead.available || _telemetry.transmitting) return;
     if (_passbandPollsToSkip > 0) {
       _passbandPollsToSkip--;
       return;
     }
     _passbandPollsToSkip = kenwoodPassbandReadEvery - 1;
-    if (_passbandReadOutstanding && _refusedSincePassbandRead && ++_passbandRefusals >= _passbandRefusalsBeforeGivingUp) {
-      _passbandRefused = true;
-      _passbandReadOutstanding = false;
-      _reportPassband();
-      _sink.reportDiagnostic('radio refuses its filter reads; passband not asked again');
-      return;
-    }
-    _readPassband();
+    if (_passbandRead.judge()) _readPassband();
   }
 
   /// Only the questions the current mode answers — the TS-590SG refuses `IS`
@@ -572,8 +545,11 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// mode without a passband.
   void _readPassband() {
     final reads = _passbandReads(_lastReported?.mode);
-    _passbandReadOutstanding = reads.isNotEmpty;
-    _refusedSincePassbandRead = false;
+    if (reads.isEmpty) {
+      _passbandRead.cancel();
+    } else {
+      _passbandRead.sent();
+    }
     reads.forEach(_send);
   }
 
@@ -596,9 +572,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// Any answer proves the radio takes the filter reads, whatever refusals
   /// were taken for a lack of them before.
   void _passbandAnswered() {
-    _passbandReadOutstanding = false;
-    _passbandRefusals = 0;
-    _passbandRefused = false;
+    _passbandRead.reset();
     _reportPassband();
   }
 
@@ -609,7 +583,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _lowCutIndex = null;
     _highCutIndex = null;
     _reportPassband();
-    if (!_passbandRefused) _readPassband();
+    if (_passbandRead.available) _readPassband();
   }
 
   /// The passband in the current mode, where the readings place it:
@@ -625,7 +599,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// - Anything else: null, no reference placing it.
   Passband? _passbandNow() {
     final mode = _lastReported?.mode;
-    if (_passbandRefused || mode == null) return null;
+    if (!_passbandRead.available || mode == null) return null;
     if (mode == 'CW' || mode == 'CW-R') {
       final width = _filterWidthHz;
       if (width == null || _filterCentreHz == null || _filterCentreHz != _cwPitchHz) return null;
@@ -677,35 +651,30 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   int _antennaPollsToSkip = 0;
 
-  /// The same refusal bookkeeping as the tuner's — see [_tunerReadOutstanding].
-  bool _antennaReadOutstanding = false;
-  bool _refusedSinceAntennaRead = false;
-  int _antennaRefusals = 0;
-  bool _antennaRefused = false;
+  /// The same refusal bookkeeping as the tuner's — see [_tunerRead].
+  late final _antennaRead = OptionalRead(
+    _sink,
+    'radio refuses AN; antenna ports not asked again',
+    onGiveUp: () {
+      _antennas = null;
+      _reportAntennas(null);
+    },
+  );
 
   /// Every [kenwoodAntennaReadEvery]th poll, never while transmitting — the
   /// passband's reason: a K3-line `?;` on the air would count as a refusal.
   void _requestAntennas() {
-    if (antennaDialect == null || _antennaRefused || _telemetry.transmitting) return;
+    if (antennaDialect == null || !_antennaRead.available || _telemetry.transmitting) return;
     if (_antennaPollsToSkip > 0) {
       _antennaPollsToSkip--;
       return;
     }
     _antennaPollsToSkip = kenwoodAntennaReadEvery - 1;
-    if (_antennaReadOutstanding && _refusedSinceAntennaRead && ++_antennaRefusals >= _antennaRefusalsBeforeGivingUp) {
-      _antennaRefused = true;
-      _antennaReadOutstanding = false;
-      _antennas = null;
-      _reportAntennas(null);
-      _sink.reportDiagnostic('radio refuses AN; antenna ports not asked again');
-      return;
-    }
-    _readAntennas();
+    if (_antennaRead.judge()) _readAntennas();
   }
 
   void _readAntennas() {
-    _antennaReadOutstanding = true;
-    _refusedSinceAntennaRead = false;
+    _antennaRead.sent();
     _send(buildKenwoodReadAntennaCommand());
   }
 
@@ -770,9 +739,13 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // match it as a command.
     final text = ascii.decode(chunk, allowInvalid: true);
     // Before the framer, which drops `?;` — it has no letters to frame.
-    if (_tunerReadOutstanding && text.contains(kenwoodRefusal)) _refusedSinceTunerRead = true;
-    if (_passbandReadOutstanding && text.contains(kenwoodRefusal)) _refusedSincePassbandRead = true;
-    if (_antennaReadOutstanding && text.contains(kenwoodRefusal)) _refusedSinceAntennaRead = true;
+    // Not on the air: the K3 line answers `?;` to commands it will not handle
+    // while transmitting, which says nothing about whether it has them.
+    if (!_telemetry.transmitting && text.contains(kenwoodRefusal)) {
+      _tunerRead.heardRefusal();
+      _passbandRead.heardRefusal();
+      _antennaRead.heardRefusal();
+    }
     for (final command in _framer.add(text)) {
       _handle(command);
     }
@@ -875,11 +848,9 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         final flags = parseKenwoodTunerParams(command.params);
         if (flags == null) return;
         _tunerFlags = flags;
-        _tunerReadOutstanding = false;
-        _tunerRefusals = 0;
         // A radio that answers has a tuner, whatever refusals were taken for
         // one before.
-        _tunerRefused = false;
+        _tunerRead.reset();
         // Only the transmit side counts as in line: the receive-side AT alone
         // matches nothing the transmitter sees.
         _reportTuner(
@@ -894,9 +865,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         final antennas = _parseAntennas(command.params);
         if (antennas == null) return;
         _antennas = antennas;
-        _antennaReadOutstanding = false;
-        _antennaRefusals = 0;
-        _antennaRefused = false;
+        _antennaRead.reset();
         _reportAntennas(antennas);
 
       // The receive filter, each answer only in the dialect that asks for it:
@@ -1337,22 +1306,16 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _k4PowerTimeout?.cancel();
     _tunerFlags = null;
     _tunerPollsToSkip = 0;
-    _tunerReadOutstanding = false;
-    _tunerRefusals = 0;
-    _tunerRefused = false;
+    _tunerRead.reset();
     _filterWidthHz = _filterCentreHz = _lowCutIndex = _highCutIndex = _cwPitchHz = null;
     _ssbWidthShift = _ssbDataWidthShift = null;
     _passband = null;
     _passbandReported = false;
     _passbandPollsToSkip = 0;
-    _passbandReadOutstanding = false;
-    _passbandRefusals = 0;
-    _passbandRefused = false;
+    _passbandRead.reset();
     _antennas = null;
     _antennaPollsToSkip = 0;
-    _antennaReadOutstanding = false;
-    _antennaRefusals = 0;
-    _antennaRefused = false;
+    _antennaRead.reset();
     _started = true;
     // K4n clears K2 meta mode; K31 explicitly includes the DATA submode in
     // IF. Do this before AI or any reads, on each USB or TCP connection.

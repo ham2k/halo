@@ -149,6 +149,26 @@ void main() {
       });
     });
 
+    test('a refusal heard on the air is no strike', () {
+      // The K3 line answers `?;` to commands it will not take while
+      // transmitting, which says nothing about whether it has them. Counted,
+      // a long over would cost the tuner readout for the connection.
+      fakeAsync((async) {
+        session.startUpdates();
+        const rx = '0000+00000', tx = '0000+00001';
+        // Two packets settle where the transmit flag sits; the third keys.
+        receive('MD2;IF00014250000${rx}2;');
+        receive('MD2;IF00014255000${rx}2;');
+        receive('IF00014255000${tx}2;');
+        for (var i = 0; i < 3; i++) {
+          receive('?;');
+          async.elapse(_oneTunerRead);
+        }
+        expect(sink.tuner, isEmpty);
+        session.stopUpdates();
+      });
+    });
+
     test('a refusal of some other question does not cost the tuner', () {
       // `?;` names no command. The PC asked in the same poll can draw one on
       // a radio that does have a tuner; the AC answer after it is what proves

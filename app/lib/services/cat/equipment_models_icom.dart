@@ -369,7 +369,10 @@ const x6100Model = EquipmentModel(
       // the IC-705's 7.4 V pack, and a 12 V pack would not be expected to
       // read below it. So on its own pack it reports up to 10 W while
       // putting out 5.
-      overrides: {civRadioModesConfigKey: _x6100Modes, 'maxWatts': 10, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
+      //
+      // No filter-width command (hamlib's `x1ax03_supported`), so the width
+      // is never asked.
+      overrides: {civRadioModesConfigKey: _x6100Modes, 'maxWatts': 10, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0, civFilterWidthConfigKey: false},
       // CI-V is on the second of the radio's two serial ports; the picker
       // points at that one where it can, and never hides the other.
       restrictions: {
@@ -389,7 +392,10 @@ String _x6100Name() => t.settings.station.models.x6100;
 /// pins [civModeWithFilterConfigKey]: an operator on the generic Icom entry
 /// reported frequency control working and mode changes doing nothing. Its
 /// 20 W ceiling is a device fact, like the IC-705's 10. hamlib sends it no
-/// CW text and no voice memories, so neither keyer is offered.
+/// CW text and no voice memories, so neither keyer is offered. Like the
+/// X6100 it has no filter-width command (hamlib's `x1ax03_supported`); its
+/// tuner read is the Icom one (`0x1C 0x01`, per the Radioddity CAT manual
+/// hamlib cites).
 const g90Model = EquipmentModel(
   key: 'g90',
   manufacturer: xieguBrand,
@@ -405,6 +411,7 @@ const g90Model = EquipmentModel(
         civRadioModesConfigKey: _g90Modes,
         civModeWithFilterConfigKey: true,
         civDataModeConfigKey: false,
+        civFilterWidthConfigKey: false,
         'maxWatts': 20,
         cwKeyerConfigKey: false,
         voiceMemoriesConfigKey: 0,
