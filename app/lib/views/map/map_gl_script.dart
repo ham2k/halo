@@ -217,10 +217,12 @@ String mapGlAttribution(String styleUrl) {
 }
 
 /// JS that defines `window.poloMapGl`. Requires maplibre-gl.js (v5.x) to be
-/// loaded first. Idempotent — safe to inject more than once.
+/// loaded first. Injecting it again replaces the definition: a Flutter web
+/// hot restart re-injects it into the same page, and keeping the first copy
+/// pairs the new Dart with a script missing every call added since.
 const mapGlScript =
     '''
-window.poloMapGl = window.poloMapGl || {
+window.poloMapGl = {
   create: function (container, style, styleDark, initialDark, onEvent, notifyClicks, frame) {
     // A framed map lives in a fixed-size element of its own, scaled to the
     // container by fitFrame below. MapLibre sizes its canvas from

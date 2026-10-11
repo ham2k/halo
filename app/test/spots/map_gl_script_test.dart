@@ -11,6 +11,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
+import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapGlScript;
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
@@ -265,5 +266,16 @@ void main() {
         [-74, 40],
       ]);
     });
+  });
+
+  // Flutter web injects the script once per Dart lifetime, and a hot restart
+  // starts a new one on the same page: kept, the first copy would pair the
+  // new Dart with a script missing every call added since it loaded.
+  test('injecting the script again replaces the copy already on the page', () {
+    page = GlPage(framed: false);
+    page.run('window.poloMapGl = { create: function () { return {}; } };');
+    page.run(mapGlScript);
+    page.run("var again = window.poloMapGl.create(container, 'light-style', 'dark-style', false, function () {}, false, null);");
+    expect(page.run('typeof again.fitToJson'), 'function');
   });
 }
