@@ -177,7 +177,10 @@ DateTime? newestExtensionSource(Directory root) {
   return newest;
 }
 
-/// Answers every host call with a successful `null`.
+/// Answers every host call with a successful `null` — except `getSettings`,
+/// which the SDK types as never null (the app always answers a map), so an
+/// extension reading a setting on its spot or lookup path would throw here
+/// and nowhere real.
 ///
 /// Not the same as leaving `onHostCall` unset: an UNSET handler makes the
 /// kernel answer `'no host call handler configured'`, i.e. the JS promise
@@ -187,7 +190,7 @@ DateTime? newestExtensionSource(Directory root) {
 /// A top-level function rather than a closure per call site, because
 /// [sharedHost] keys on handler identity — an inline `(m, p) async => null`
 /// would be a fresh object every call and boot a host every time.
-Future<dynamic> nullHostCall(String method, Map<String, dynamic> params) async => null;
+Future<dynamic> nullHostCall(String method, Map<String, dynamic> params) async => method == 'getSettings' ? const <String, dynamic>{} : null;
 
 final Map<String, Future<ExtensionHost>> _sharedHosts = {};
 
