@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart' show hardwareKeyboardAttached;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -71,7 +72,13 @@ void main() {
     child: MaterialApp(home: Scaffold(body: child)),
   );
 
-  Future<void> pumpPanel(WidgetTester tester, List<Qso> qsos, {ValueChanged<String?>? onSelectionChanged}) async {
+  Future<void> pumpPanel(
+    WidgetTester tester,
+    List<Qso> qsos, {
+    ValueChanged<String?>? onSelectionChanged,
+    bool controlsAboveLog = false,
+    int focusRequest = 0,
+  }) async {
     await tester.pumpWidget(
       wrap(
         LoggingPanel(
@@ -81,6 +88,8 @@ void main() {
           loggingControls: const [],
           onCommandAction: (action, [params]) async {},
           onSelectionChanged: onSelectionChanged,
+          controlsAboveLog: controlsAboveLog,
+          focusRequest: focusRequest,
         ),
       ),
     );
@@ -182,6 +191,86 @@ void main() {
     expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus, isTrue);
     expect(loadedCall(tester), isEmpty);
+    await drainLookupQueueTimer(tester);
+  });
+
+  // Above its list the panel is the other way up, and the list runs newest
+  // first under it: every key that walks the log has to follow the screen,
+  // or Down from the pills would load the OLDEST contact and Up would walk
+  // the wrong way through rows the operator can see.
+  testWidgets('with the controls above the log, the keys follow the screen: Down walks into the list and toward older contacts', (tester) async {
+    await pumpPanel(tester, [older, newer], controlsAboveLog: true);
+    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(loadedCall(tester), 'K1ABC', reason: 'into the list at its top: the newest contact');
+    expect(callField(tester).focusNode?.hasFocus, isFalse, reason: 'the keyboard stays in the list');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(loadedCall(tester), 'W1AW', reason: 'down the screen is back in time');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.home);
+    await tester.pump();
+    expect(loadedCall(tester), 'K1ABC', reason: 'Home is the top of the list, the newest');
+    await tester.sendKeyEvent(LogicalKeyboardKey.end);
+    await tester.pump();
+    expect(loadedCall(tester), 'W1AW');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(loadedCall(tester), 'K1ABC');
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(loadedCall(tester), isEmpty, reason: 'Up past the newest leaves the list for the pills above, back to composing');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus, isTrue);
+    await drainLookupQueueTimer(tester);
+  });
+
+  // A host that hides the panel and shows it again — the Chasing view,
+  // kept mounted behind another destination — gets nothing back from the
+  // call field's autofocus, which only ever fires once.
+  testWidgets('a new focus request puts the keyboard back in the main field it was last in', (tester) async {
+    // A keyboard attached: the test platform is a phone, where without one
+    // the request is refused (below).
+    hardwareKeyboardAttached.value = true;
+    addTearDown(() => hardwareKeyboardAttached.value = false);
+    await pumpPanel(tester, [older, newer]);
+    await tester.tap(find.widgetWithText(TextField, 'Sent'));
+    await tester.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isFalse);
+
+    await pumpPanel(tester, [older, newer], focusRequest: 1);
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus,
+      isTrue,
+      reason: 'the field the operator left, not always Call',
+    );
+    await drainLookupQueueTimer(tester);
+  });
+
+  // logging-fields.md: on a phone with no physical keyboard the view starts
+  // with nothing focused. A return to the view that focused a field anyway
+  // would raise the on-screen keyboard over it on every visit.
+  testWidgets('on a phone with no physical keyboard a focus request leaves the keyboard down', (tester) async {
+    await pumpPanel(tester, [older, newer]);
+    await tester.tap(find.widgetWithText(TextField, 'Sent'));
+    await tester.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+
+    await pumpPanel(tester, [older, newer], focusRequest: 1);
+    await tester.pump();
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isFalse);
+    expect(callField(tester).focusNode?.hasFocus, isFalse);
     await drainLookupQueueTimer(tester);
   });
 

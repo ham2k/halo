@@ -116,8 +116,9 @@ bool _isHuntingControl(Map<String, dynamic> control) {
 
 /// The goals [controls] offer, in the operator's [stored] order — `{key, on}`
 /// maps as `LayoutKeys.chaseOptions` keeps them. An activity [stored] does
-/// not mention yet joins at the end, on: enabling an extension is already the
-/// operator saying they want it.
+/// not mention yet joins at the end, OFF: enabling an extension says the
+/// operator wants it available, not that every contact from now on chases it
+/// — they add it from the sheet's extensions band.
 List<ChaseGoal> resolveChaseGoals(List<Map<String, dynamic>> controls, List<Object?> stored) {
   final offered = <String, Map<String, dynamic>>{};
   for (final control in controls) {
@@ -136,7 +137,7 @@ List<ChaseGoal> resolveChaseGoals(List<Map<String, dynamic>> controls, List<Obje
     goals.add(goal(key, entry['on'] != false));
   }
   for (final key in offered.keys) {
-    if (!goals.any((g) => g.key == key)) goals.add(goal(key, true));
+    if (!goals.any((g) => g.key == key)) goals.add(goal(key, false));
   }
   return goals;
 }
@@ -482,7 +483,13 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     widget.visible ? _shown() : _hidden();
   }
 
+  /// Bumped each time the view comes back on screen — see
+  /// [LoggingPanel.focusRequest]. The first showing needs none: the call
+  /// field's own autofocus has it.
+  int _focusRequest = 0;
+
   void _shown() {
+    _focusRequest++;
     widget.services.track('screen_viewed', {'screen': 'chase'});
     _spotBoardView = widget.services.spotBoard.subscribe();
     WallClock.seconds.addListener(_onTick);
@@ -623,6 +630,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       onCommandAction: _handleCommandAction,
       controlsAboveLog: true,
       scope: LoggingScope.chase,
+      focusRequest: _focusRequest,
       showRSTFields: _loggingDisplay('showRSTFields'),
       showStateField: _loggingDisplay('showStateField'),
       showGridField: _loggingDisplay('showGridField'),
@@ -925,7 +933,13 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
               onPeriod: (period) => unawaited(_setOptions({'period': period.name})),
             ),
             Expanded(
-              child: _ChaseGoalsEditor(goals: _goals, onChanged: _setGoals, onManageExtensions: () => _manageExtensions(context)),
+              child: _ChaseGoalsEditor(
+                goals: _goals,
+                onChanged: _setGoals,
+                onManageExtensions: () => _manageExtensions(context),
+                extensionsExpanded: _options['extensionsHidden'] != true,
+                onToggleExtensions: () => unawaited(_setOptions({'extensionsHidden': _options['extensionsHidden'] != true})),
+              ),
             ),
           ],
         ),
@@ -1073,15 +1087,25 @@ class _ChaseGoalsEditor extends StatefulWidget {
   final ValueChanged<List<ChaseGoal>> onChanged;
   final VoidCallback onManageExtensions;
 
-  const _ChaseGoalsEditor({required this.goals, required this.onChanged, required this.onManageExtensions});
+  /// Whether the extensions band is open — the operator's to decide, and
+  /// remembered with the view's other options, like the operation sheet's
+  /// own Activity Types band.
+  final bool extensionsExpanded;
+  final VoidCallback onToggleExtensions;
+
+  const _ChaseGoalsEditor({
+    required this.goals,
+    required this.onChanged,
+    required this.onManageExtensions,
+    required this.extensionsExpanded,
+    required this.onToggleExtensions,
+  });
 
   @override
   State<_ChaseGoalsEditor> createState() => _ChaseGoalsEditorState();
 }
 
 class _ChaseGoalsEditorState extends State<_ChaseGoalsEditor> {
-  bool _typesExpanded = true;
-
   /// The activity's icon on its accent, the operation sheet's own treatment
   /// of an activity type.
   static Widget _goalIcon(ChaseGoal goal) {
@@ -1158,8 +1182,8 @@ class _ChaseGoalsEditorState extends State<_ChaseGoalsEditor> {
                   style: theme.textTheme.titleMedium?.copyWith(color: onBandColor, fontWeight: FontWeight.w600),
                 ),
               ),
-              expanded: _typesExpanded,
-              onToggle: () => setState(() => _typesExpanded = !_typesExpanded),
+              expanded: widget.extensionsExpanded,
+              onToggle: widget.onToggleExtensions,
               headerColor: bandColor,
               onHeaderColor: onBandColor,
               trailing: TextButton.icon(

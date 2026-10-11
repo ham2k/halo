@@ -16,6 +16,7 @@ class _Harness {
   List<Map<String, dynamic>> activityControls = const [];
   List<String> controlOrder = const [];
   Set<String> hidden = const {};
+  bool spottingAfterReferences = false;
 
   late final catalog = SecondaryControlCatalog(
     config: () => (
@@ -25,7 +26,7 @@ class _Harness {
       activityControls: activityControls,
       controlOrder: controlOrder,
       hiddenControlKeys: hidden,
-      spottingAfterReferences: false,
+      spottingAfterReferences: spottingAfterReferences,
     ),
   );
 }
@@ -52,6 +53,26 @@ void main() {
       'more',
     ], reason: 'Power and Notes wait to be asked for; a text control is a primary field, not a chip');
     expect(h.catalog.powerVisible, isFalse);
+  });
+
+  // Chasing logs the reference first and spots back after it: a default
+  // that put Spotting ahead of the references would have every hunter
+  // reaching past it, and Notes ahead of Spotting would hide it behind a
+  // pill most never use.
+  test('spotting after references puts Spotting after every reference and before Notes, by default only', () {
+    const sota = {
+      'key': 'sota',
+      'label': 'SOTA',
+      'input': {'kind': 'refList'},
+    };
+    final h = _Harness()
+      ..spottingAfterReferences = true
+      ..activityControls = const [_pota, sota];
+    expect(h.catalog.effectiveOrder(), ['time', 'radio', 'power', 'pota', 'sota', 'spotting', 'notes', 'more']);
+    expect(h.catalog.visibleKeys(), ['time', 'radio', 'pota', 'sota', 'spotting', 'more']);
+
+    h.controlOrder = const ['spotting', 'time', 'radio', 'pota', 'sota', 'more'];
+    expect(h.catalog.visibleKeys().first, 'spotting', reason: 'an order the operator saved still wins');
   });
 
   test('a new control slots in beside its descriptor neighbour, not at the end of a stored order', () {

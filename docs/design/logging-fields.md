@@ -266,6 +266,16 @@ Not on mobile without a physical keyboard, per the carve-out above: there
 the suggestion fills the fields without popping a keyboard over the call
 info the tap just surfaced.
 
+**Showing a hidden panel again returns the keyboard to it.** A host that
+keeps its panel mounted while another view is up — the Chasing view, behind
+the other home destinations — bumps `LoggingPanel.focusRequest` when it comes
+back, and the keyboard returns to the main field the operator was last in
+(Call, if none): the call field's autofocus fired once, and the field the
+operator left went out of the focus tree with the view. Not on mobile without
+a physical keyboard either, for the same reason as the autofocus — a phone
+returning to the view would otherwise meet the operator with the on-screen
+keyboard on every visit.
+
 ## Moving between the main fields
 
 **Space** moves focus to the next main field in order, wrapping back to the

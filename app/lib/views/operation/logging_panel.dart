@@ -158,6 +158,15 @@ class LoggingPanel extends StatefulWidget {
   /// view's also puts Spotting after the references by default.
   final LoggingScope scope;
 
+  /// Bumped to put the keyboard back in the main field the operator was last
+  /// in (Call, if none) — for a host that hid this panel and is showing it
+  /// again, where nothing else would: the field it was in left the focus tree
+  /// while hidden, and an autofocus only ever fires once. Not on a phone with
+  /// no physical keyboard, by the same rule as that autofocus
+  /// (docs/design/logging-fields.md): there it would pop the on-screen
+  /// keyboard over the view on every visit.
+  final int focusRequest;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -200,6 +209,7 @@ class LoggingPanel extends StatefulWidget {
     this.controlsAboveLog = false,
     this.stampQso,
     this.scope = LoggingScope.operation,
+    this.focusRequest = 0,
   });
 
   @override
@@ -395,6 +405,18 @@ class _LoggingPanelState extends State<LoggingPanel> {
         _loggingController.submit();
       case 'wipe':
         _loggingController.wipe();
+    }
+  }
+
+  @override
+  void didUpdateWidget(LoggingPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.focusRequest != oldWidget.focusRequest && (!isMobilePlatform || hardwareKeyboardAttached.value)) {
+      // After the frame: the host lifts whatever kept the panel out of the
+      // focus tree in the same rebuild that bumped this.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loggingController.focusLastPrimaryField();
+      });
     }
   }
 

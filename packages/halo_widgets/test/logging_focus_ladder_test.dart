@@ -31,6 +31,7 @@ class _Harness {
   bool editingEvent = false;
   bool withGrid = true;
   bool skipSent = false;
+  bool aboveLog = false;
   bool Function()? navigateToQsoList;
   final selects = <String?>[];
   final shows = <String?>[];
@@ -58,7 +59,7 @@ class _Harness {
       eventTextFocus: eventTextFocus,
       callFocus: callFocus,
       navigateToQsoList: navigateToQsoList,
-      aboveLog: false,
+      aboveLog: aboveLog,
     ),
     // The panel's tap: `more` and event rows are its business; the rest
     // comes straight back to the ladder.
@@ -324,6 +325,54 @@ void main() {
     await _press(tester, LogicalKeyboardKey.arrowUp);
     expect(handedUp, 1);
     expect(h.sentFocus.hasFocus, isTrue, reason: 'the host had nowhere to put it, so the field takes it back');
+    h.dispose();
+  });
+
+  // The trap: a panel drawn above its list with the ladder left as it was
+  // sends Up from Call into the list BELOW it, and Down off the pills back
+  // up past them — every move the opposite of what the screen shows.
+  testWidgets('above the log the ladder runs the other way up: Down walks out to the pills and the list, Up walks back in', (tester) async {
+    final h = _Harness()
+      ..aboveLog = true
+      ..wireCaretRule();
+    var handedToList = 0;
+    h.navigateToQsoList = () {
+      handedToList++;
+      return true;
+    };
+    await tester.pumpWidget(h.build());
+    h.sentFocus.requestFocus();
+    await tester.pump();
+
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    expect(h.selects, isEmpty, reason: 'Up from a main field leads nowhere: the pills are below it');
+    expect(h.sentFocus.hasFocus, isTrue);
+
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    expect(h.selects, ['time'], reason: 'Down from a main field opens the pills under it');
+    await tester.pump();
+    expect(h.timeField.$1.hasFocus, isTrue);
+
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    expect(h.shows.last, isNull, reason: 'Up out of an open control closes it');
+    expect(h.sentFocus.hasFocus, isTrue, reason: 'and returns to the field above, the one the operator left');
+
+    h.ladder.crossToPill('radio', fromStart: true);
+    await tester.pump();
+    await tester.pump();
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    expect(handedToList, 1, reason: 'Down out of an open control carries on into the list below');
+
+    // On a pill that opens nothing, the same two directions.
+    h.ladder.focusPillAndOpen('more');
+    await tester.pump();
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    expect(handedToList, 2, reason: 'Down off a bare pill is the list');
+    h.ladder.focusPillAndOpen('more');
+    await tester.pump();
+    final closesBefore = h.shows.length;
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    expect(h.shows.length, greaterThan(closesBefore), reason: 'Up off a bare pill closes the strip, back to the fields');
     h.dispose();
   });
 

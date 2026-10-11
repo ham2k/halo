@@ -346,12 +346,6 @@ class _QsoListState extends State<QsoList> {
   bool _wasNearLiveEdge = true;
   double? _lastMaxScrollExtent;
 
-  /// Set when contacts arrived at the TOP of a newest-first list while the
-  /// operator was reading further down it: everything below them moves down
-  /// by what they added, so the next metrics change scrolls by the same
-  /// amount and the rows under the pointer stay where they were.
-  bool _holdForTopInsert = false;
-
   /// Attached to whichever row is currently selected, so a selection made
   /// from the keyboard (APP-19 walks the list with the arrow keys) can be
   /// scrolled into view. Only one row is ever selected, so one key is enough.
@@ -475,8 +469,9 @@ class _QsoListState extends State<QsoList> {
     if (grew && atLiveEdge) {
       _wasNearLiveEdge = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLiveEdge());
+    } else if (grew && widget.newestFirst) {
+      _holdPlaceOverTopInsert(oldWidget.qsos);
     }
-    _holdForTopInsert = grew && !atLiveEdge && widget.newestFirst;
     if (widget.selectedUuid != oldWidget.selectedUuid && widget.selectedUuid != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
     }
@@ -524,15 +519,19 @@ class _QsoListState extends State<QsoList> {
   /// Exact for a log of plain contacts, which is the overwhelming majority of
   /// one; annotation and event rows can be taller, and cost accuracy rather
   /// than correctness — see [_correctRevealFor].
-  double _estimatedTopOf(int index) {
+  ///
+  /// [qsos] measures in a log other than the one on screen — the one it
+  /// replaced, for [_holdPlaceOverTopInsert].
+  double _estimatedTopOf(int index, {List<Qso>? qsos}) {
+    final log = qsos ?? widget.qsos;
     var offset = 0.0;
     int? lastDay;
     // In display order: oldest down to [index], or newest up to it.
-    final last = widget.qsos.length - 1;
+    final last = log.length - 1;
     final steps = widget.newestFirst ? last - index : index;
     for (var step = 0; step <= steps; step++) {
       final i = widget.newestFirst ? last - step : step;
-      final millis = widget.qsos[i].startAtMillis ?? 0;
+      final millis = log[i].startAtMillis ?? 0;
       final day = millis - (millis % _dayInMillis);
       if (day != lastDay) {
         offset += _metrics.sectionHeaderHeight * _rowHeightScale;
@@ -597,6 +596,51 @@ class _QsoListState extends State<QsoList> {
     return position.maxScrollExtent - position.pixels < 120;
   }
 
+  /// Contacts arrived at the TOP of a newest-first list while the operator
+  /// was reading further down it: everything below them moves down by what
+  /// they added, so the list scrolls by the same amount, once this frame has
+  /// laid them out, and the rows under the pointer stay where they were.
+  ///
+  /// Worked out from where the row at the top of the viewport sat in the log
+  /// [before] and sits now, the same arithmetic [_revealSelected] trusts —
+  /// not from the scroll extent, which a group growing above the viewport
+  /// does not report. Anchored on that row rather than on the previous
+  /// newest: a contact synced or imported from earlier in the day lands
+  /// BETWEEN the two, above the rows being read but below the newest.
+  void _holdPlaceOverTopInsert(List<Qso> before) {
+    if (!_scrollController.hasClients || before.isEmpty) return;
+    final pixels = _scrollController.position.pixels;
+    final anchor = _rowAtOrBelow(before, pixels);
+    if (anchor == null) return;
+    final index = widget.qsos.indexWhere((qso) => qso.uuid == anchor.uuid);
+    if (index < 0) return;
+    final added = _estimatedTopOf(index) - anchor.top;
+    if (added <= 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _scrollController.hasClients) _scrollController.jumpTo(_scrollController.position.pixels + added);
+    });
+  }
+
+  /// The first row of [log] whose top is at or below the scroll offset
+  /// [pixels], with that top — [_estimatedTopOf]'s arithmetic in one pass.
+  ({String uuid, double top})? _rowAtOrBelow(List<Qso> log, double pixels) {
+    var offset = 0.0;
+    int? lastDay;
+    final last = log.length - 1;
+    for (var step = 0; step <= last; step++) {
+      final i = widget.newestFirst ? last - step : step;
+      final millis = log[i].startAtMillis ?? 0;
+      final day = millis - (millis % _dayInMillis);
+      if (day != lastDay) {
+        offset += _metrics.sectionHeaderHeight * _rowHeightScale;
+        lastDay = day;
+      }
+      if (offset >= pixels) return (uuid: log[i].uuid, top: offset);
+      offset += _metrics.qsoRowHeight * _rowHeightScale;
+    }
+    return null;
+  }
+
   void _jumpToLiveEdge() {
     if (!_scrollController.hasClients) return;
     final position = _scrollController.position;
@@ -615,13 +659,7 @@ class _QsoListState extends State<QsoList> {
     if (notification.depth == 0) {
       final metrics = notification.metrics;
       final previous = _lastMaxScrollExtent;
-      if (_holdForTopInsert && previous != null && metrics.maxScrollExtent > previous) {
-        _holdForTopInsert = false;
-        final added = metrics.maxScrollExtent - previous;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && _scrollController.hasClients) _scrollController.jumpTo(_scrollController.position.pixels + added);
-        });
-      } else if (previous != null && metrics.maxScrollExtent > previous) {
+      if (previous != null && metrics.maxScrollExtent > previous) {
         // If maxScrollExtent increased (e.g. secondary controls expanded,
         // layout resized) and user was near the live edge, keep the newest
         // QSO in view.
