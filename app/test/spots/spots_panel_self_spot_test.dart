@@ -276,4 +276,22 @@ void main() {
     final icon = tester.widget<Icon>(find.byIcon(resolveIconName('pine-tree')));
     expect(icon.color, const Color(0xFF068541));
   });
+
+  // The SDK's Spot declares `icon` at the top level only. A nested one is a
+  // misplaced field; rendered anyway, it hides the misplacement from the
+  // extension that made it.
+  testWidgets("a spot's icon is read from the top level, never from inside `spot`", (tester) async {
+    // The icon leads a row's label line, so both carry a label.
+    final placed = {..._spot('K1ABC', freq: 14050.0), 'icon': 'pine-tree'};
+    (placed['spot'] as Map<String, dynamic>)['label'] = 'Placed';
+    final misplaced = _spot('W2XYZ', freq: 14060.0);
+    (misplaced['spot'] as Map<String, dynamic>)
+      ..['label'] = 'Misplaced'
+      ..['icon'] = 'image-filter-hdr';
+    await pumpPanel(tester, services: await servicesWith([placed, misplaced]));
+
+    expect(find.byIcon(resolveIconName('pine-tree')), findsOneWidget);
+    expect(find.byIcon(resolveIconName('image-filter-hdr')), findsNothing);
+    expect(find.byIcon(resolveIconName('radio-tower')), findsOneWidget, reason: 'the misplaced one gets the generic marker');
+  });
 }

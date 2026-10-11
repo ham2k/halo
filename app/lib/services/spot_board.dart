@@ -14,7 +14,6 @@ import 'spots_service.dart';
 
 // Probes, not casts — see the note over spots_panel.dart's own readers.
 String? _callOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['their'])?['call']);
-Iterable<String> _callsIn(String? call) => (call ?? '').split(',').where((c) => c.isNotEmpty);
 double? _freqOf(Map<String, dynamic> spot) => asSpotNum(spot['freq'])?.toDouble();
 String? _bandOf(Map<String, dynamic> spot) => asSpotString(spot['band']);
 String? _modeOf(Map<String, dynamic> spot) => asSpotString(spot['mode']);
@@ -29,10 +28,17 @@ List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) {
 
 int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt() ?? 0;
 
-/// The operators on [spot] as its `their.call` spells them: one, or several
-/// for a spot [mergeSpotsByFreqAndRefs] combined. What every per-call reading
-/// of a spot — scoring candidates, continents — iterates.
-Iterable<String> spotOperatorCalls(Map<String, dynamic> spot) => _callsIn(_callOf(spot));
+/// The individual operator callsigns within a `their.call`: a comma-joined
+/// compound for a spot [mergeSpotsByFreqAndRefs] combined, a single call
+/// otherwise — trimmed and uppercased, with empty segments dropped. The ONE
+/// reading of that field: everything keyed per call (call info, scoring
+/// candidates, continents, the panel's worked overrides) iterates these, and
+/// a second splitter normalising differently would key the same operator two
+/// ways.
+Iterable<String> spotCallsIn(String? call) => (call ?? '').split(',').map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty);
+
+/// [spotCallsIn] for [spot]'s `their.call`.
+Iterable<String> spotOperatorCalls(Map<String, dynamic> spot) => spotCallsIn(_callOf(spot));
 
 /// Modes excluded from the callsign-merge pass (SpotsPanel.jsx: too many
 /// simultaneous operators on one frequency to safely merge callsigns). A
@@ -217,7 +223,7 @@ List<Map<String, dynamic>> sortSpots(List<Map<String, dynamic>> spots, String so
 /// `spots_panel_merge_test.dart`.
 bool spotPassesContinentFilter(String? call, Set<String> disabledContinents, String? Function(String call) continentOf) {
   if (disabledContinents.isEmpty) return true;
-  final calls = _callsIn(call);
+  final calls = spotCallsIn(call);
   if (calls.isEmpty) return true;
   return calls.any((c) {
     final continent = continentOf(c);
@@ -302,7 +308,7 @@ bool _isOurCall(String call, Set<String> ourBaseCalls) => ourBaseCalls.contains(
 /// from the board. Public for `spots_panel_merge_test.dart`.
 bool spotIsSelfOnly(Map<String, dynamic> spot, {Set<String> ourBaseCalls = const {}}) {
   if (ourBaseCalls.isEmpty) return false;
-  final calls = _callsIn(_callOf(spot)).toList();
+  final calls = spotOperatorCalls(spot).toList();
   return calls.isNotEmpty && calls.every((c) => _isOurCall(c, ourBaseCalls));
 }
 
@@ -331,7 +337,7 @@ bool spotIsSelfOnly(Map<String, dynamic> spot, {Set<String> ourBaseCalls = const
   required Map<String, ({List<String> notices, List<String> alerts})> scores,
   Set<String> ourBaseCalls = const {},
 }) {
-  final calls = _callsIn(_callOf(spot)).toList();
+  final calls = spotOperatorCalls(spot).toList();
   if (calls.isEmpty) return (worked: false, isSelf: false, notices: const {});
   var worked = true;
   final notices = <String>{};
