@@ -1,7 +1,8 @@
 # Claims: what a contact counts toward
 
-*Status: design. Nothing here is built yet; the Chasing view's goals
-(`app/lib/views/chase_view.dart`) are its predecessor.*
+*Status: partial. The hook (§2) is built, with DXCC as its first program;
+nothing keeps or syncs claims yet (§5–§7), and the Chasing view's goals
+(`app/lib/views/chase_view.dart`) are still activities' hunter controls.*
 
 Chasing is about programs that ask for contacts with references: a POTA
 park, a DXCC entity, a US state for WAS, a US county, a Spanish municipio.
@@ -35,8 +36,8 @@ A claim is at one of three **levels**:
 | `confirmed` | that contact has a QSL the program accepts | `qso.qsl` |
 | `verified` | the sponsor credited **that contact** to the award | `qso.credits.<program>` |
 
-Which QSL sources a program accepts is its own rule: LoTW only for DXCC,
-any of them for another.
+Which QSL sources a program accepts is its own rule: LoTW and paper cards
+for DXCC, any of them for another.
 
 A slot holds **one** claim. The rule that picks it:
 
@@ -50,26 +51,27 @@ after the first contact either came.
 
 ## 2. The hook
 
-A new hook category, `chasing`, registered once per program:
+A hook category, `chasing`, registered once per program and keyed by the
+program's key ([hooks.md](../extensions/hooks.md) has the full contract):
 
 ```ts
 interface ChasingHook {
-  program(): {
-    key: string; label: string; icon?: string; color?: string
+  program: {                              // plain data, read without invoking anything
+    label: string; icon?: string; color?: string
     version: number                       // bump when claims would change; triggers a rebuild (§6)
     editions: 'lifetime' | 'annual' | 'event'
   }
   claimsForQsos({ qsos }, ctx): Record<string, QsoClaim[]>    // keyed by qso uuid
   holdersFor({ station }, ctx): string[]
-  summarizeClaims({ holder, edition, slots }, ctx): Record<string, ScoreTally>
-  importClaims?({ file, holders }, ctx): Promise<ImportedClaim[]>
+  summarizeClaims({ holder, edition, slots }, ctx): Record<string, ClaimsTally>
+  importClaims?({ file, holders }, ctx): Promise<ImportedClaim[]>      // §9, not built yet
 }
 
 interface QsoClaim {
   holder: string
   ref: string
-  band?: string | null      // omitted: the contact's band. null: any band
-  mode?: string | null      // the program's own grouping. null: any mode
+  band: string | null       // null: any band
+  mode: string | null       // the program's own grouping. null: any mode
   edition?: string          // omitted: '' (lifetime)
   level: 'worked' | 'confirmed' | 'verified'
   by?: string               // what lifted it above worked: 'lotw', 'qsl', 'pota'…
@@ -253,5 +255,3 @@ derived one can both stand; the slot is the better of the two.
 - **Moving the Chasing goals onto programs**: today a goal is an
   activity's hunter control; with this, a goal is a program, and its
   controls follow from the extension that registers it.
-- **API level.** A new hook category means a new API level, the SDK's
-  `HOOK_CATEGORIES`, `halo_core`'s hook names, and catalog acceptance.

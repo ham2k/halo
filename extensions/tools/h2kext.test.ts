@@ -199,6 +199,14 @@ test("a bundle declaring webSockets must declare the api that has them", () => {
   assert.match(validateManifest({ ...validManifest, webSockets: "stream.example.com" }).join(), /must be a list of hosts/)
 })
 
+test("a bundle registering a chasing program must declare the api that calls it", () => {
+  // An older app ignores the category. For an extension that does nothing
+  // but chase, that is an install that does nothing at all.
+  const chasing = { ...validManifest, hooks: ["chasing"] }
+  assert.match(validateManifest({ ...chasing, api: 8 }).join(), /'chasing' needs 'api' 9/)
+  assert.equal(validateManifest({ ...chasing, api: 9 }).length, 0)
+})
+
 test("every problem is reported at once", async () => {
   // An author who fixes one problem per run is an author running this five
   // times to find out what is wrong with one file.

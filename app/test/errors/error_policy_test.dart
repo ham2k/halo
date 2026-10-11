@@ -32,6 +32,7 @@ import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:halo_core/halo_core.dart'
     show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation, SyncPullStuck;
+import 'package:ham2k_logger/services/extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
@@ -316,6 +317,27 @@ void main() {
     test('a timeout wrapped in another exception keeps that rule', () {
       final decision = ErrorPolicy.decide(ScoringHookFailure('core', 'scoreCandidates', HookTimeoutException('hook scoring.scoreCandidates timed out')));
       expect(decision.rule?.id, 'scoring-hook-failed');
+    });
+
+    // A program that times out has failed its batch, not the operator: it is
+    // reported, never noticed, like a scorer.
+    test('a chasing timeout keeps the chasing rule', () {
+      final decision = ErrorPolicy.decide(ChasingHookFailure('dxcc', 'claimsForQsos', HookTimeoutException('hook chasing.claimsForQsos timed out')));
+      expect(decision.rule?.id, 'chasing-hook-failed');
+      expect(decision.disposition, ErrorDisposition.report);
+    });
+
+    // A crashed or replaced runtime fails every scorer and program in the
+    // pass at once. Reported per extension, one crash would upload as a
+    // defect in each of them.
+    test('a hook failure caused by a dead or replaced runtime keeps the runtime rule, for scoring and chasing alike', () {
+      final dead = ExtensionHostException('extension runtime is dead (hook chasing.claimsForQsos not attempted)');
+      expect(ErrorPolicy.decide(ChasingHookFailure('dxcc', 'claimsForQsos', dead)).rule?.id, 'extension-runtime-dead');
+      expect(ErrorPolicy.decide(ScoringHookFailure('core', 'scoreQsos', dead)).rule?.id, 'extension-runtime-dead');
+      expect(
+        ErrorPolicy.decide(ChasingHookFailure('dxcc', 'claimsForQsos', ExtensionHostException('extension host disposed'))).rule?.id,
+        'extension-host-disposed',
+      );
     });
 
     // Matched on the type alone. A hook that throws its OWN "timed out"

@@ -38,13 +38,20 @@ import yazl from "yazl"
 /// them, and the scene's host-fed `radio` values; 8 adds the Developer
 /// panel's `target: 'developer'` settings and leaves a settings panel with
 /// nothing to show out of the Settings list; 9 hands `ctx.getQsos`'s QSOs
-/// frozen, from the one copy of the log every extension shares.
+/// frozen, from the one copy of the log every extension shares, and adds the
+/// `chasing` hook category.
 export const H2KEXT_API_VERSION = 9
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
 /// when it tried to connect.
 export const WEB_SOCKETS_API_VERSION = 2
+
+/// The first API that calls `chasing` hooks. A manifest promising one under an
+/// older api is refused: an older app would install it and ignore the
+/// program, and for an extension that does nothing else, install a bundle
+/// that silently does nothing.
+export const CHASING_API_VERSION = 9
 
 /// The first API with timers. The build points a bundle's bare `setTimeout`
 /// and friends at the SDK's only from here on: an older app's kernel hands an
@@ -336,6 +343,10 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
     } else if (manifest.webSockets.length && Number.isInteger(manifest.api) && manifest.api < WEB_SOCKETS_API_VERSION) {
       say(`'webSockets' needs 'api' ${WEB_SOCKETS_API_VERSION} or later — an app older than that would install this and fail only when it connects`)
     }
+  }
+
+  if (Array.isArray(manifest.hooks) && manifest.hooks.includes("chasing") && Number.isInteger(manifest.api) && manifest.api < CHASING_API_VERSION) {
+    say(`'chasing' needs 'api' ${CHASING_API_VERSION} or later — an app older than that would install this and never ask it what a contact claims`)
   }
 
   // An extension with no category is CORE to the host: always enabled, and

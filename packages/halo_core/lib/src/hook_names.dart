@@ -19,6 +19,7 @@ abstract final class HookCategories {
   static const adifFields = 'adifFields';
   static const adifImport = 'adifImport';
   static const callNotes = 'callNotes';
+  static const chasing = 'chasing';
   static const command = 'command';
   static const dataFile = 'dataFile';
   static const export = 'export';
@@ -72,6 +73,11 @@ abstract final class Hooks {
   static const adifFieldsFieldCombinationsForOneQso = HookRef(HookCategories.adifFields, 'fieldCombinationsForOneQSO');
 
   static const adifImportRefsForRecords = HookRef(HookCategories.adifImport, 'refsForRecords');
+
+  static const chasingProgram = HookRef(HookCategories.chasing, 'program');
+  static const chasingClaimsForQsos = HookRef(HookCategories.chasing, 'claimsForQsos');
+  static const chasingHoldersFor = HookRef(HookCategories.chasing, 'holdersFor');
+  static const chasingSummarizeClaims = HookRef(HookCategories.chasing, 'summarizeClaims');
 
   static const commandCatalog = HookRef(HookCategories.command, 'catalog');
   static const commandInterpret = HookRef(HookCategories.command, 'interpret');

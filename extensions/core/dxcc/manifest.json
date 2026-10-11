@@ -1,0 +1,7 @@
+{
+  "key": "dxcc",
+  "name": "DXCC",
+  "version": "0.0.1",
+  "description": "Tracks the DXCC entities each station has worked, confirmed and had credited",
+  "hooks": ["chasing"]
+}

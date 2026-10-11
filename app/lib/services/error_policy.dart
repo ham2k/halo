@@ -35,6 +35,7 @@ import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'extensions/catalog_service.dart' show CatalogRefused, CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable;
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
+import 'extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
@@ -498,6 +499,16 @@ class ErrorPolicy {
       matches: (error, details) => error is ScoringHookFailure,
     ),
     ErrorRule(
+      id: 'chasing-hook-failed',
+      reason:
+          'one chasing program threw, timed out or answered malformed claims '
+          '(extension_chasing.dart\'s ChasingHookFailure) — a defect in that extension, and '
+          'nothing the operator can act on; that program\'s claims for the batch are missing, so '
+          'its checklist reads as less worked than it is',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is ChasingHookFailure,
+    ),
+    ErrorRule(
       id: 'website-panel-offline',
       reason:
           'a Web Site pane failed to load while the device was offline; a pane on a refresh '
@@ -718,8 +729,20 @@ class ErrorPolicy {
   ///
   /// Matched on the exact message, and only on the host's own exception
   /// type: a wrapper of ours quoting the text stays loud.
-  static bool _isExtensionHostDisposed(Object error, FlutterErrorDetails? details) =>
-      error is ExtensionHostException && error.message == 'extension host disposed';
+  static bool _isExtensionHostDisposed(Object error, FlutterErrorDetails? details) {
+    final cause = _hookCallCause(error);
+    return cause is ExtensionHostException && cause.message == 'extension host disposed';
+  }
+
+  /// What a per-extension hook failure wraps, or [error] itself. Only the
+  /// runtime-state rules look through the wrapper: a runtime replaced or
+  /// crashed mid-pass fails EVERY scorer and program at once, and blaming each
+  /// extension for it would upload one defect per extension for a state that
+  /// is already reported. A timeout keeps the wrapper's own rule.
+  static Object _hookCallCause(Object error) => switch (error) {
+    ScoringHookFailure(:final cause) || ChasingHookFailure(:final cause) => cause,
+    _ => error,
+  };
 
   /// `ExtensionHost._send` refusing a call because the runtime already
   /// crashed ('extension runtime is dead (hook X not attempted)') — the
@@ -728,8 +751,10 @@ class ErrorPolicy {
   /// ExtensionService's restart scheduling; every one of these is a
   /// duplicate of that already-known state, one per call attempted before
   /// the backoff restart lands.
-  static bool _isExtensionRuntimeDead(Object error, FlutterErrorDetails? details) =>
-      error is ExtensionHostException && error.message.startsWith('extension runtime is dead');
+  static bool _isExtensionRuntimeDead(Object error, FlutterErrorDetails? details) {
+    final cause = _hookCallCause(error);
+    return cause is ExtensionHostException && cause.message.startsWith('extension runtime is dead');
+  }
 
   /// connectivity_plus's Linux backend connects to NetworkManager over D-Bus
   /// inside its stream's own async `onListen`, so on a system without it

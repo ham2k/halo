@@ -1478,6 +1478,63 @@ detection, DXCC entities worked (via `@ham2k/lib-country-files`'
 `useBuiltinCountryFile`, no network needed), and bands/modes worked. US
 States and Canadian Provinces rules are deferred (see [backlog.md](../backlog.md)).
 
+## ✅ `chasing` — what a contact counts toward
+
+A chasing program — DXCC, POTA hunting, WAS — says which lines of its
+checklist each contact fills. The app keeps the best claim per line and ranks
+spots against the result; [claims.md](../design/claims.md) is the design.
+
+One registration per program, keyed by the program's key — the extension's own
+key, or one prefixed `<extension key>_`, so one extension may register
+several:
+
+```ts
+registerHook("chasing", { key: "dxcc", hook: {
+  program: { label: "DXCC", icon: "earth", version: 1, editions: "lifetime" },
+  claimsForQsos({ qsos }, ctx) { /* { [uuid]: QsoClaim[] } */ },
+  holdersFor({ station }, ctx) { /* string[] */ },
+  summarizeClaims({ holder, edition, slots }, ctx) { /* { [key]: ClaimsTally } */ },
+}})
+```
+
+- **`program`** is plain data, read across every extension in one call
+  without invoking anything. Raise `version` whenever the same contacts would
+  claim something different: the app keeps no claim from an older version.
+- **`claimsForQsos`** answers every contact in the batch, by `uuid` — a
+  caller asking about something that is not a stored contact (a spot, the
+  call being typed) gives it a `uuid` of its own, and a contact without one
+  is left out — with the
+  slots it fills: `{holder, ref, band, mode, level, edition?, by?, label?,
+  guess?}`. `band` and `mode` are explicit — `null` means "any", and a
+  program usually claims several granularities per contact (DXCC: Mixed, the
+  band, the mode). `mode` is the program's own grouping; the app never maps
+  modes for it. `level` is `worked`, `confirmed` (a QSL the program accepts,
+  from `qso.qsl`) or `verified` (sponsor credit, `qso.credits.<program>`).
+  **It must be a pure function of each contact** and the extension's own
+  data — never the log — because the app asks it about spots, and about
+  contacts on a device that holds only part of the log. An empty list is an
+  answer: that contact claims nothing. So is the list for an event marker
+  (`band: 'event'`), whose placeholder calls are not stations.
+- **`holdersFor`** lists the holders a station claims as — the opaque
+  strings the program puts on its claims — so the app knows whose checklist
+  to show.
+- **`summarizeClaims`** reads one holder's filled slots (`{ref, band, mode,
+  level, label?}` each) into tallies, a `ScoreTally` without its `for`.
+
+The host isolates programs from each other
+(`app/lib/services/extensions/extension_chasing.dart`): a program that throws
+or times out answers nothing for that call, and a contact with any
+malformed claim is left out of the answer, keeping the claims it already
+holds, since dropping one claim would read as the contact no longer making
+it. Both are reported once per program and method. The category is
+extension API 9: a bundle that registers a program declares `"api": 9`, which
+the packer enforces, so an older app — which would install it and never ask
+it anything — is never offered it.
+
+Implemented by: `dxcc` (core) — Mixed, per-band and per-mode slots for the
+station call worked from each entity; LoTW and paper QSLs confirm, LoTW credit
+verifies.
+
 ## ✅ `bench` — kernel diagnostics
 
 Registered by the kernel itself (`bench/kernel`): `echo` (bridge round-trip
@@ -2278,7 +2335,6 @@ Consequences worth knowing:
 
 | Category | Role | Notes |
 |---|---|---|
-| `chasing` | what each contact counts toward a program's checklist (claims) | [claims.md](../design/claims.md) |
 | `confirmation` | QSL/confirmation sources (spot-history cross-checking) | |
 | `opSetting` | per-operation settings contributions | |
 

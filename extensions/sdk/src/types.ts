@@ -1455,6 +1455,85 @@ export interface ContestScorer<S extends Scoresheet = Scoresheet> {
   ): Record<string, ScoreTally>
 }
 
+/// What a program says of itself — plain data on its `chasing` hook, read
+/// across every extension in one call without invoking anything
+/// (docs/design/claims.md §2).
+export interface ChasingProgram {
+  label: string
+  icon?: string
+  color?: string
+  /// Raise it whenever the same contacts would claim something different —
+  /// a rule changed, a reference list was corrected. The app keeps no claim
+  /// from an older version.
+  version: number
+  /// `annual` and `event` programs put an `edition` on every claim; a
+  /// `lifetime` program leaves it out.
+  editions: "lifetime" | "annual" | "event"
+}
+
+/// worked: a contact counts toward the slot. confirmed: that contact has a QSL
+/// the program accepts. verified: the sponsor credited that contact to the
+/// award (`qso.credits.<program>`).
+export type ClaimLevel = "worked" | "confirmed" | "verified"
+
+/// One line of a program's checklist that a contact fills. The slot it fills
+/// is `(program, holder, edition, ref, band, mode)`; the app keeps the best
+/// claim per slot — a higher level, then the earlier contact.
+export interface QsoClaim {
+  /// Who can claim it, in the program's own terms: a call, a call per entity
+  /// (`KI2D@291`), a call at a place (`KI2D@FN21rq`). Opaque to the app.
+  holder: string
+  ref: string
+  /// The band this claim is for, or null for any band.
+  band: string | null
+  /// The program's own mode grouping (`CW`, `PHONE`, `FT8`…), or null for any
+  /// mode. The app never maps modes for a program.
+  mode: string | null
+  /// For `annual` and `event` programs, which one (`'2026'`).
+  edition?: string
+  level: ClaimLevel
+  /// What lifted it above worked: `lotw`, `qsl`, the sponsor's key…
+  by?: string
+  label?: string
+  /// The ref is inferred — from the callsign, a lookup — not reported by the
+  /// other station. Shown as "probably".
+  guess?: boolean
+}
+
+/// One filled slot, as the app hands a holder's checklist back to the program.
+export interface ClaimSlot {
+  ref: string
+  band: string | null
+  mode: string | null
+  level: ClaimLevel
+  label?: string
+}
+
+/// What a program's checklist reads as, for one holder and edition. A
+/// `ScoreTally` without the scoring period it does not have.
+export type ClaimsTally = Omit<ScoreTally, "for">
+
+/// The `chasing` hook: one registration per program, keyed by the program's
+/// key (docs/design/claims.md).
+export interface ChasingHook {
+  program: ChasingProgram
+
+  /// What each contact claims, keyed by its `uuid`. A pure function of each
+  /// contact and the extension's own reference data: it never reads the log,
+  /// which is what lets the app ask it about a spot, or about a contact on a
+  /// device that holds only part of the log. One contact usually claims
+  /// several slots — one per granularity the program tracks.
+  claimsForQsos(args: { qsos: Record<string, JSONValue>[] }, ctx: HookContext): Promise<Record<string, QsoClaim[]>> | Record<string, QsoClaim[]>
+
+  /// The holders a station claims as, so the app knows whose checklist to show.
+  holdersFor(args: { station: { call: string } & Record<string, JSONValue> }, ctx: HookContext): Promise<string[]> | string[]
+
+  summarizeClaims(
+    args: { holder: string; edition?: string; slots: ClaimSlot[] },
+    ctx: HookContext,
+  ): Promise<Record<string, ClaimsTally>> | Record<string, ClaimsTally>
+}
+
 export interface CommandAction {
   setVfo?: {
     freq?: number
@@ -2002,6 +2081,7 @@ export type Hook =
   | SpotsHook
   | ExportHook
   | ScoringHook
+  | ChasingHook
   | RefHandlerHook
   | ActivityHook
   | AdifFieldsHook

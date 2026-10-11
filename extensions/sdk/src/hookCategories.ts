@@ -24,6 +24,7 @@ export const HOOK_CATEGORIES = [
   "adifImport",
   "bench",
   "callNotes",
+  "chasing",
   "command",
   "dataFile",
   "export",

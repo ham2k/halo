@@ -31,6 +31,7 @@ import 'extension_ref_results.dart';
 import 'extension_catalog_migration.dart';
 import 'extension_disabled_since.dart';
 import 'extension_secrets.dart';
+import 'extension_chasing.dart';
 import 'extension_scoring.dart';
 import 'installed_extensions.dart';
 import 'preloaded_extensions.dart';
@@ -88,7 +89,15 @@ class ExtensionTimersSuspended implements Exception {
 }
 
 class ExtensionService
-    with ExtensionScoring, _ExtensionHookApi, _ExtensionSyncCalls, _ExtensionPanels, _ExtensionAccounts, _ExtensionInstalls, WidgetsBindingObserver {
+    with
+        ExtensionScoring,
+        ExtensionChasing,
+        _ExtensionHookApi,
+        _ExtensionSyncCalls,
+        _ExtensionPanels,
+        _ExtensionAccounts,
+        _ExtensionInstalls,
+        WidgetsBindingObserver {
   @override
   ExtensionHost? _host;
   @override
