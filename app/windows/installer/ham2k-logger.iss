@@ -1,8 +1,8 @@
 ; Ham2K Logger — Windows per-user installer (Inno Setup 6)
 ; ---------------------------------------------------------------------------
-; Compiled in CI after `flutter build windows`, then Authenticode-signed
-; (Azure Artifact Signing) as a post-step by the Windows build script that
-; invokes this file. Per-EDITION via
+; Compiled in CI after `flutter build windows`, and Authenticode-signed
+; (Azure Artifact Signing) BY the compile, through the Sign Tool the Windows
+; build script that invokes this file defines (see SignTool below). Per-EDITION via
 ; /DHaloEdition=dev|next|prod, mirroring the macOS/iOS HALO_EDITION seam and the
 ; Windows runner's own halo_edition.h (docs/releases.md §2.6).
 ;
@@ -17,6 +17,7 @@
 ;   ISCC /DHaloEdition=next /DHaloMarketing=26.8.1 /DHaloBuild=73 `
 ;        "/DSourceDir=<abs>\app\build\windows\x64\runner\Release" `
 ;        "/DIconDir=<abs>\app\windows\runner\resources" `
+;        /DHaloSign "/Shalosign=<sign command> $f" `
 ;        /O"<abs>" `
 ;        app\windows\installer\ham2k-logger.iss
 
@@ -123,6 +124,16 @@ OutputBaseFilename={#HaloFullName} Installer
 ; crash handler, orphaned from the app it was watching.
 CloseApplications=force
 RestartApplications=no
+; Signing belongs to the compile, not to a step after it: Setup runs from a
+; temporary copy of itself extracted to %TEMP%, and the uninstaller is another
+; copy, and only the compiler can sign those. Signing the finished exe instead
+; leaves both unsigned, and Smart App Control then blocks the temporary copy -
+; Setup aborts with "Unable to execute file in the temporary directory" (Error
+; 4551) before it shows anything. SignedUninstaller follows SignTool to yes.
+; A local ISCC run defines no tool and compiles unsigned.
+#ifdef HaloSign
+SignTool=halosign
+#endif
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
