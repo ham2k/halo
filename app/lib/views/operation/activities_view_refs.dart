@@ -338,23 +338,67 @@ mixin _ActivitiesRefs on State<OperationSheet> {
   /// not just the title. Uses the module-level `t`, not `context.t`, so the
   /// title can still be assembled after unmount; only the navigation pop is
   /// gated on `mounted`.
-  Future<void> saveAndClose() async {
-    final fragments = await widget.services.operationTitles.suggestFragments(_operation);
-    final data = fragments == null ? _operation.data : {..._operation.data, 'title': buildGeneratedTitle(t, fragments)};
+  ///
+  /// Runs once per sheet: every later call returns the first call's future.
+  /// The presenting view calls this from OK, a barrier tap, the title, and
+  /// the close/Options/Export/Import copies, and without the memo a second of
+  /// those while the extension host is slow asks it for the title again,
+  /// writes again, and holds its caller for that whole second wait. A failed
+  /// save clears the memo, so the operator can retry.
+  Future<void> saveAndClose() => _closing ??= _saveAndCloseOnce();
+
+  Future<void>? _closing;
+  bool _isClosing = false;
+
+  Future<void> _saveAndCloseOnce() async {
+    _setClosing(true);
+    try {
+      await _saveAndClose();
+    } catch (_) {
+      _closing = null;
+      _setClosing(false);
+      rethrow;
+    }
+  }
+
+  void _setClosing(bool closing) {
+    widget.onClosingChanged?.call(closing);
+    if (mounted) setState(() => _isClosing = closing);
+  }
+
+  Future<void> _saveAndClose() async {
+    // One snapshot for the title and the row: the sheet still takes keyboard
+    // input during the wait, and an edit landing between the two reads would
+    // store a title that does not describe the refs beside it.
+    final operation = _operation;
+    final fragments = await widget.services.operationTitles.suggestFragments(operation);
+    final data = fragments == null ? operation.data : {...operation.data, 'title': buildGeneratedTitle(t, fragments)};
     await widget.services.operations.saveData(
       Operation(
-        uuid: _operation.uuid,
+        uuid: operation.uuid,
         data: data,
-        qsoCount: _operation.qsoCount,
-        startAtMillisMin: _operation.startAtMillisMin,
-        startAtMillisMax: _operation.startAtMillisMax,
-        localData: _operation.localData,
+        qsoCount: operation.qsoCount,
+        startAtMillisMin: operation.startAtMillisMin,
+        startAtMillisMax: operation.startAtMillisMax,
+        localData: operation.localData,
       ),
       // Every refs edit already ran the rule on the draft. Run again against
       // the stored row, it would put back a location the operator cleared on
       // the Location screen after adding the park.
       followRefs: false,
     );
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    // Closes this sheet's own route, whatever is around it. Escape or a
+    // system back that got in first has already removed it, so nothing is
+    // left to do; a route pushed over it during the wait (the command dialog,
+    // a pairing prompt) means a plain pop would close that instead and leave
+    // this sheet frozen underneath.
+    final route = ModalRoute.of(context);
+    if (route == null || !route.isActive) return;
+    if (route.isCurrent) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).removeRoute(route);
+    }
   }
 }

@@ -140,6 +140,9 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
     // as a pushed screen this had explicit-back dismissal only, and Escape
     // while typing in the suggestions search would close the whole pane.
     final sheetKey = GlobalKey<OperationSheetState>();
+    // Not disposed with the sheet: the accept button listens through the
+    // reverse transition, which outlives this method's `finally`.
+    final sheetClosing = ValueNotifier(false);
     if (!mounted) return;
     setState(() {
       _draftOperation = operation;
@@ -229,7 +232,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
                 child: Transform.scale(scale: 0.2 + 0.8 * growth, alignment: Alignment.centerLeft, child: child),
               );
             },
-            child: KeyedSubtree(key: _sheetOkButtonKey, child: _sheetOkButton(context, sheetKey)),
+            child: KeyedSubtree(key: _sheetOkButtonKey, child: _sheetOkButton(context, sheetKey, sheetClosing)),
           ),
         ),
         // Live copies of the AppBar's own X and Options/Export, reachable
@@ -376,6 +379,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
           key: sheetKey,
           services: widget.services,
           operation: operation,
+          onClosingChanged: (closing) => sheetClosing.value = closing,
           onOperationChanged: (updated) {
             if (!mounted) return;
             final previous = _draftOperation;
@@ -526,9 +530,25 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
 /// layer, which is what makes this reachable at all: the same button placed
 /// directly in the view's AppBar sits BELOW that layer and never receives a
 /// tap (see `headerLeading`'s own doc in modal_pane.dart).
-Widget _sheetOkButton(BuildContext context, GlobalKey<OperationSheetState> sheetKey) => FilledButton.icon(
-  icon: const Icon(MdiIcons.check),
-  label: Text(context.t.common.ok),
-  style: FilledButton.styleFrom(backgroundColor: fabAccentColor, foregroundColor: Theme.of(context).colorScheme.onPrimary),
-  onPressed: () => sheetKey.currentState?.saveAndClose(),
-);
+///
+/// Once the sheet starts closing ([closing]), it shows a spinner and takes no
+/// more presses while the save waits on the extension host, rather than
+/// looking dead. The disabled colours are the enabled ones: a greyed-out OK
+/// reads as "can't", not "working on it".
+Widget _sheetOkButton(BuildContext context, GlobalKey<OperationSheetState> sheetKey, ValueListenable<bool> closing) {
+  final onPrimary = Theme.of(context).colorScheme.onPrimary;
+  return ValueListenableBuilder<bool>(
+    valueListenable: closing,
+    builder: (context, isClosing, _) => FilledButton.icon(
+      icon: isClosing ? SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2, color: onPrimary)) : const Icon(MdiIcons.check),
+      label: Text(context.t.common.ok),
+      style: FilledButton.styleFrom(
+        backgroundColor: fabAccentColor,
+        foregroundColor: onPrimary,
+        disabledBackgroundColor: fabAccentColor,
+        disabledForegroundColor: onPrimary,
+      ),
+      onPressed: isClosing ? null : () => sheetKey.currentState?.saveAndClose(),
+    ),
+  );
+}

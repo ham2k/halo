@@ -8,8 +8,11 @@
 // and the logging pane's GlobalKey carries its State — a half-typed
 // callsign — across the flip instead of rebuilding it.
 
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -520,6 +523,134 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
+  // Without the saveAndClose memo, the second press asks the slow host for
+  // the title again and writes again; without the busy state, a third press
+  // can land at all.
+  testWidgets('a second press while the sheet is saving closes only the sheet', (tester) async {
+    final held = await _pumpSheetWithHeldTitle(tester);
+
+    // No pump between the taps: the button has not rebuilt as busy yet, so
+    // both presses reach onPressed — only saveAndClose itself can refuse the
+    // second.
+    final acceptButton = find.widgetWithText(FilledButton, 'OK');
+    final sheetFields = find.descendant(of: find.byType(OperationSheet), matching: find.byType(TextField));
+    expect(sheetFields.hitTestable(), findsWidgets);
+    held.hold = true;
+    await tester.tap(acceptButton);
+    await tester.tap(acceptButton);
+    await tester.pump();
+
+    expect(ModalRoute.of(tester.element(find.byType(OperationSheet)))!.isCurrent, isTrue, reason: 'held on the title hook');
+    expect(held.heldCalls, 1, reason: 'one save, however many presses');
+    expect(tester.widget<ButtonStyleButton>(acceptButton).onPressed, isNull, reason: 'busy from the first press, so a third cannot land');
+    expect(find.descendant(of: acceptButton, matching: find.byType(CircularProgressIndicator)), findsOneWidget);
+    expect(sheetFields.hitTestable(), findsNothing, reason: 'an edit made now would look applied and never be stored');
+
+    held.release();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(OperationSheet), findsNothing);
+    expect(find.byType(OperationView), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // Escape never calls saveAndClose — Flutter's dismiss action pops the route
+  // itself — so the memo cannot stop it. Without the save's isCurrent check,
+  // Escape closes the sheet and the save's own pop then closes the Operation
+  // view.
+  testWidgets('Escape while the sheet is saving does not close the view under it', (tester) async {
+    final held = await _pumpSheetWithHeldTitle(tester);
+
+    held.hold = true;
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(ModalRoute.of(tester.element(find.byType(OperationSheet)))!.isCurrent, isFalse, reason: 'Escape got in before the save');
+
+    held.release();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(OperationSheet), findsNothing);
+    expect(find.byType(OperationView), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // A route pushed over the sheet during the wait — the command dialog, a
+  // pairing prompt — leaves it not current. A plain pop would close that route
+  // instead; skipping the pop leaves the sheet frozen, OK spinning, under it.
+  testWidgets('a dialog opened over the sheet while it saves stays, and the sheet still closes', (tester) async {
+    final held = await _pumpSheetWithHeldTitle(tester);
+
+    held.hold = true;
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+    await tester.pump();
+    unawaited(showDialog<void>(context: tester.element(find.byType(OperationSheet)), builder: (_) => const Text('covering')));
+    // Not pumpAndSettle: OK's spinner runs for as long as the save is held.
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(ModalRoute.of(tester.element(find.byType(OperationSheet)))!.isCurrent, isFalse, reason: 'covered before the save lands');
+
+    held.release();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('covering'), findsOneWidget);
+    expect(find.byType(OperationSheet), findsNothing);
+    expect(find.byType(OperationView), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // Without the reset on failure, OK and the sheet stay frozen after a refused
+  // save, with Escape — which drops the edits — the only way out.
+  testWidgets('a refused save leaves the sheet open and OK pressable again', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    addTearDown(AppClock.instance.reset);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: OperationView(services: services, operationUuid: operation.uuid),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('N0CALL Test Op'));
+    await tester.pumpAndSettle();
+
+    // A time-travelled session refuses writes to a real operation.
+    AppClock.instance.travel(delta: const Duration(days: 1));
+    final sheet = tester.state<OperationSheetState>(find.byType(OperationSheet));
+    final refused = expectLater(sheet.saveAndClose(), throwsA(isA<WriteRefused>()));
+    await tester.pump();
+    await tester.pump();
+    await refused;
+    await tester.pump();
+
+    final acceptButton = find.widgetWithText(FilledButton, 'OK');
+    expect(find.byType(OperationSheet), findsOneWidget);
+    expect(tester.widget<ButtonStyleButton>(acceptButton).onPressed, isNotNull);
+    expect(find.descendant(of: find.byType(OperationSheet), matching: find.byType(TextField)).hitTestable(), findsWidgets);
+
+    AppClock.instance.reset();
+    await tester.tap(acceptButton);
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing, reason: 'the retry saves and closes');
+    expect(find.byType(OperationView), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
   testWidgets('the view header stays visible and reachable on narrow too, not just wide', (tester) async {
     // Below ShirtSize.sMax (720): narrow, single-pane. showTopModalPane used
     // to cover the whole screen at this width, chevron/Tools and all — this
@@ -905,4 +1036,55 @@ class _SuggestingExtensions extends ExtensionServiceWithFakeHost {
   @override
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
+}
+
+/// Holds the ref title hook [saveAndClose] waits on — a slow extension host —
+/// once [hold] is set; until then it answers at once, so the view's own
+/// retitles on open go through.
+class _HeldTitleHook {
+  bool hold = false;
+  int heldCalls = 0;
+  final _answer = Completer<Object?>();
+
+  Future<Object?> call(Object? args) async {
+    if (!hold) return {'at': 'K-1234'};
+    heldCalls++;
+    return _answer.future;
+  }
+
+  void release() => _answer.complete({'at': 'K-1234'});
+}
+
+Future<_HeldTitleHook> _pumpSheetWithHeldTitle(WidgetTester tester) async {
+  tester.view.physicalSize = const Size(1000, 800);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  final held = _HeldTitleHook();
+  final HaLoHarness(:services, :settings) = await makeHaLoServices(stubs: {'ref:pota/activation:null:suggestOperationTitle': held.call});
+  await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+  final created = await services.operations.create(stationCall: 'N0CALL');
+  await services.operations.saveData(
+    Operation(
+      uuid: created.uuid,
+      data: {
+        ...created.data,
+        'refs': [
+          {'type': 'pota/activation', 'ref': 'K-1234'},
+        ],
+      },
+    ),
+  );
+
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: created.uuid),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('N0CALL at K-1234'));
+  await tester.pumpAndSettle();
+  expect(find.byType(OperationSheet), findsOneWidget);
+  return held;
 }
