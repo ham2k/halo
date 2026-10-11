@@ -113,13 +113,12 @@ namespace flutter_inappwebview_plugin
     return kDefaultCursorName;
   }
 
-  CustomPlatformView::CustomPlatformView(const FlutterInappwebviewWindowsPlugin* plugin,
-    flutter::BinaryMessenger* messenger,
+  CustomPlatformView::CustomPlatformView(flutter::BinaryMessenger* messenger,
     flutter::TextureRegistrar* texture_registrar,
     GraphicsContext* graphics_context,
     HWND hwnd,
     std::shared_ptr<flutter_inappwebview_plugin::InAppWebView> webView)
-    : plugin_(plugin), hwnd_(hwnd), view(std::move(webView)), texture_registrar_(texture_registrar)
+    : hwnd_(hwnd), view(std::move(webView)), texture_registrar_(texture_registrar)
   {
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
     texture_bridge_ =
@@ -209,8 +208,8 @@ namespace flutter_inappwebview_plugin
     // callback-map mutation (e.g. another platform view registering) can
     // then walk into freed memory. Only while the engine is still there to
     // unregister from: at engine teardown the messenger's engine is already
-    // null, and this call would then read through it (HALO-394).
-    if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {
+    // null, and this call would then read through it.
+    if (event_channel_ && FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {
       event_channel_->SetStreamHandler(nullptr);
     }
     event_sink_ = nullptr;

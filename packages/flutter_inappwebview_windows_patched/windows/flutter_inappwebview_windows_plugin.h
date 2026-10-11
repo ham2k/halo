@@ -35,8 +35,9 @@ namespace flutter_inappwebview_plugin
     // moment the engine's destructor starts: it clears the messenger's engine
     // pointer BEFORE destroying the plugins, and FlutterDesktopMessengerSetCallback
     // dereferences that pointer with no null check in Release. Every
-    // unregister that can run from a destructor checks this first.
-    bool isMessengerAvailable() const;
+    // unregister that can run from a destructor checks this first --
+    // ChannelDelegate::UnregisterMethodCallHandler() for every delegate type.
+    static bool isMessengerAvailable();
 
     // Disallow copy and assign.
     FlutterInappwebviewWindowsPlugin(const FlutterInappwebviewWindowsPlugin&) = delete;
@@ -44,8 +45,14 @@ namespace flutter_inappwebview_plugin
   private:
     // The engine-owned messenger, not ref-counted here: the engine holds its
     // own reference until after Stop() has destroyed this plugin, so the ref
-    // outlives every use of it in this class.
-    FlutterDesktopMessengerRef messenger_ref_ = nullptr;
+    // outlives every use of it in this class. Static so ChannelDelegate, which
+    // holds only the C++ BinaryMessenger, can ask too; that assumes one engine
+    // per process, and so one instance of this plugin, which is HaLo's shape;
+    // a second engine breaks it in either teardown order (see PATCH.md).
+    // Cleared at the end of the destructor, when nothing is left to ask, and
+    // only while it is still this instance's.
+    static FlutterDesktopMessengerRef messenger_ref_;
+    FlutterDesktopMessengerRef own_messenger_ref_ = nullptr;
     // The ID of the WindowProc delegate registration.
     int window_proc_id = -1;
     std::optional<LRESULT> FlutterInappwebviewWindowsPlugin::HandleWindowProc(

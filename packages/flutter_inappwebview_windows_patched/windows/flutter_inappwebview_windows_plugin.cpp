@@ -31,8 +31,9 @@ namespace flutter_inappwebview_plugin
   FlutterInappwebviewWindowsPlugin::FlutterInappwebviewWindowsPlugin(
     flutter::PluginRegistrarWindows* registrar,
     FlutterDesktopMessengerRef messenger)
-    : registrar(registrar), messenger_ref_(messenger)
+    : registrar(registrar), own_messenger_ref_(messenger)
   {
+    messenger_ref_ = messenger;
     webViewEnvironmentManager = std::make_unique<WebViewEnvironmentManager>(this);
     inAppWebViewManager = std::make_unique<InAppWebViewManager>(this);
     inAppBrowserManager = std::make_unique<InAppBrowserManager>(this);
@@ -47,7 +48,10 @@ namespace flutter_inappwebview_plugin
       });
   }
 
-  bool FlutterInappwebviewWindowsPlugin::isMessengerAvailable() const
+  FlutterDesktopMessengerRef FlutterInappwebviewWindowsPlugin::messenger_ref_ = nullptr;
+
+  // static
+  bool FlutterInappwebviewWindowsPlugin::isMessengerAvailable()
   {
     return messenger_ref_ != nullptr && FlutterDesktopMessengerIsAvailable(messenger_ref_);
   }
@@ -63,6 +67,9 @@ namespace flutter_inappwebview_plugin
     headlessInAppWebViewManager = nullptr;
     cookieManager = nullptr;
     platformUtil = nullptr;
+    if (messenger_ref_ == own_messenger_ref_) {
+      messenger_ref_ = nullptr;
+    }
   }
 
 

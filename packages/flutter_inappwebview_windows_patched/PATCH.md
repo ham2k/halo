@@ -1,23 +1,26 @@
-# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, eight files changed
+# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, nine files changed
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except
 `windows/custom_platform_view/custom_platform_view.cc`'s
-`CustomPlatformView` destructor and constructor (and the constructor's
-declaration in `custom_platform_view.h`), the two `CustomPlatformView`
-constructions in `windows/in_app_webview/in_app_webview_manager.cpp`'s
-`createInAppWebView` plus one hunk in its keep-alive branch,
-`windows/webview_environment/webview_environment.cpp`'s
-`WebViewEnvironment` destructor, one method and one constructor argument
-added to `windows/flutter_inappwebview_windows_plugin.h`/`.cpp` with the
-argument supplied from `windows/flutter_inappwebview_windows_plugin_c_api.cpp`,
-and two build-settings lines added to `windows/CMakeLists.txt`.
+`CustomPlatformView` destructor (plus the include it needs), one hunk in the
+keep-alive branch of `windows/in_app_webview/in_app_webview_manager.cpp`'s
+`createInAppWebView`, `windows/webview_environment/webview_environment.cpp`'s
+`WebViewEnvironment` destructor, one static method, two members and one
+constructor argument added to
+`windows/flutter_inappwebview_windows_plugin.h`/`.cpp` with the argument
+supplied from `windows/flutter_inappwebview_windows_plugin_c_api.cpp`, the
+guards in `windows/types/channel_delegate.cpp`'s
+`UnregisterMethodCallHandler` and
+`windows/print_job/print_job_channel_delegate.cpp`'s `onComplete` (plus the
+include each needs), and two build-settings lines added to
+`windows/CMakeLists.txt`.
 
 ```diff
    CustomPlatformView::~CustomPlatformView()
    {
      debugLog("dealloc CustomPlatformView");
-+    if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {
++    if (event_channel_ && FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {
 +      event_channel_->SetStreamHandler(nullptr);
 +    }
      event_sink_ = nullptr;
@@ -46,17 +49,39 @@ and two build-settings lines added to `windows/CMakeLists.txt`.
    WebViewEnvironment::~WebViewEnvironment()
    {
      debugLog("dealloc WebViewEnvironment");
-+    if (channelDelegate && plugin && plugin->isMessengerAvailable()) {
++    if (channelDelegate) {
 +      channelDelegate->UnregisterMethodCallHandler();
 +    }
      if (environment_) {
 ```
 
 ```diff
-+  bool FlutterInappwebviewWindowsPlugin::isMessengerAvailable() const
++  FlutterDesktopMessengerRef FlutterInappwebviewWindowsPlugin::messenger_ref_ = nullptr;
++
++  // static
++  bool FlutterInappwebviewWindowsPlugin::isMessengerAvailable()
 +  {
 +    return messenger_ref_ != nullptr && FlutterDesktopMessengerIsAvailable(messenger_ref_);
 +  }
+```
+
+```diff
+   void ChannelDelegate::UnregisterMethodCallHandler() const
+   {
+-    if (channel) {
++    if (channel && FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {
+       channel->SetMethodCallHandler(nullptr);
+     }
+   }
+```
+
+```diff
+   void PrintJobChannelDelegate::onComplete(const bool completed, const std::optional<std::string>& error) const
+   {
+-    if (disposed_ || !channel) {
++    if (disposed_ || !channel || !FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {
+       return;
+     }
 ```
 
 ```diff
@@ -68,10 +93,9 @@ and two build-settings lines added to `windows/CMakeLists.txt`.
 ```
 
 with the `FlutterDesktopMessengerRef` threaded through `RegisterWithRegistrar`
-and the constructor into a `messenger_ref_` member, and `CustomPlatformView`
-taking the plugin as a new first constructor argument (kept as `plugin_`) at
-both of `createInAppWebView`'s `std::make_unique<CustomPlatformView>(...)`
-sites, so its destructor has something to ask.
+and the constructor into a static `messenger_ref_` (set in the constructor
+body) and an `own_messenger_ref_` member; the destructor's last step clears
+the static only while it still equals this instance's ref.
 
 ```diff
  flutter_inappwebview_windows_apply_standard_settings(${PLUGIN_NAME})
@@ -261,7 +285,10 @@ reaches an engine, and `FlutterDesktopMessengerSetCallback` reads through
 that null pointer: it only `FML_DCHECK`s `FlutterDesktopMessengerIsAvailable`,
 which is compiled out of Release (`flutter_windows.cc`). The read lands at
 offset `0x1e8` — `message_dispatcher_`'s slot in `FlutterWindowsEngine` — on
-every quit of a session that ever hosted a webview.
+every quit of a session that ever hosted a webview. No other plugin in this
+app unregisters a channel from a destructor (`universal_ble`,
+`connectivity_plus`, `desktop_drop`, `file_selector`, `url_launcher` and the
+rest were checked); the callers are all in this one.
 
 Sentry evidence (`HALO-394` / `HALO-NEXT-71`, `72`, `76`, earlier grouped as
 `HALO-NEXT-5S`/`5W`/`59` before engine symbols resolved):
@@ -269,9 +296,36 @@ Sentry evidence (`HALO-394` / `HALO-NEXT-71`, `72`, `76`, earlier grouped as
 `FlutterWindowsEngine::message_dispatcher` → `std::unique_ptr<T>::get`,
 `EXCEPTION_ACCESS_VIOLATION_READ / 0x1e8`, under
 `FlutterDesktopViewControllerDestroy` → `~FlutterWindowsEngine` → `Stop`,
-first seen on the build that shipped the `~WebViewEnvironment` hunk. No
-published plugin in this app unregisters a channel from a destructor; these
-two hunks were the only callers.
+present on every build from 131 on.
+
+Those two hunks were not the only callers, and guarding them alone left the
+crash at its old rate. Upstream's own `~InAppWebView` disposes every delegate
+it owns — `findInteractionController`, `printJobManager`,
+`webMessageChannels_`, `webMessageListeners_`, the web-notification
+controllers — and each `dispose()` ends in
+`ChannelDelegate::UnregisterMethodCallHandler()` →
+`SetMethodCallHandler(nullptr)`. `InAppWebView::initChannel`, which
+`createInAppWebView` runs for every webview it builds, creates a
+`FindInteractionController`, so any webview still alive at quit (the
+plugin's managers destroy theirs inside `Stop()`) takes that path. The guard
+therefore sits in `ChannelDelegate` itself, where every delegate type's
+unregister passes; `~WebViewEnvironment` relies on it rather than checking
+again, and only `~CustomPlatformView`'s event channel, which is not a
+`ChannelDelegate`, asks on its own. A send is the same read as an
+unregister: `PrintJobController::dispose()` completes an unfinished job with
+`onComplete`, an `InvokeMethod` that would reach
+`FlutterDesktopMessengerSendWithReply` with no engine, so that one send is
+guarded too — the only send on `~InAppWebView`'s path. `ChannelDelegate`
+holds only the C++ `BinaryMessenger`, which cannot be turned back into the
+raw ref, so `isMessengerAvailable()` and `messenger_ref_` are static: one
+engine per process, so one plugin instance, is HaLo's shape, and a second
+engine would need this turned into a lookup by messenger. With a second
+engine the static is wrong in both teardown orders: whichever instance was
+constructed last owns it, so the other engine's teardown asks the wrong
+engine and crashes; and if the last-constructed instance dies first, its
+destructor clears the static and the other stops unregistering while it
+runs. The destructor's own-ref check only keeps the first instance's
+teardown from clearing the second's ref.
 
 The guard asks the engine rather than keeping a flag of its own:
 `FlutterDesktopMessengerIsAvailable` is the engine's own record of whether
@@ -327,7 +381,9 @@ hunks if upstream hasn't fixed the underlying races itself (check
 might land under a different shape, and check whether `ChannelDelegate`
 itself finally unregisters in its own destructor, which would obsolete all
 three at once). Whatever shape they take, any unregister that can run from a
-destructor keeps the `isMessengerAvailable()` guard, or the quit crash comes
+destructor — and any send, like `PrintJobChannelDelegate::onComplete` —
+keeps the `isMessengerAvailable()` guard, `ChannelDelegate`'s included,
+since upstream's own `~InAppWebView` reaches it, or the quit crash comes
 back with the engine teardown order unchanged. Update the version above and
 in the archive URL, and re-run the diff. Do not hand-merge — this directory
 is a copy, not a maintained fork.

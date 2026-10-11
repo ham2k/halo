@@ -141,8 +141,7 @@ namespace flutter_inappwebview_plugin
       auto webView = std::move(oldPlatformView->view);
       oldPlatformView->UnregisterMethodCallHandler();
       keepAliveWebViews.erase(keepAliveId.value());
-      auto customPlatformView = std::make_unique<CustomPlatformView>(plugin,
-        plugin->registrar->messenger(),
+      auto customPlatformView = std::make_unique<CustomPlatformView>(plugin->registrar->messenger(),
         plugin->registrar->texture_registrar(),
         graphics_context(),
         hwnd,
@@ -195,8 +194,7 @@ namespace flutter_inappwebview_plugin
             windowWebViews.erase(windowId.value());
           }
 
-          auto customPlatformView = std::make_unique<CustomPlatformView>(plugin,
-            plugin->registrar->messenger(),
+          auto customPlatformView = std::make_unique<CustomPlatformView>(plugin->registrar->messenger(),
             plugin->registrar->texture_registrar(),
             graphics_context(),
             hwnd,

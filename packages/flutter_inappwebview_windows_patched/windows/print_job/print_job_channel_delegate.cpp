@@ -1,5 +1,6 @@
 #include "print_job_channel_delegate.h"
 
+#include "../flutter_inappwebview_windows_plugin.h"
 #include "print_job_controller.h"
 #include "print_job_info.h"
 #include "../utils/flutter.h"
@@ -41,7 +42,10 @@ namespace flutter_inappwebview_plugin
 
   void PrintJobChannelDelegate::onComplete(const bool completed, const std::optional<std::string>& error) const
   {
-    if (disposed_ || !channel) {
+    // ~InAppWebView completes any unfinished print job on its way out, inside
+    // engine teardown; a send then reads through the messenger's null engine,
+    // the same as an unregister would. See PATCH.md.
+    if (disposed_ || !channel || !FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {
       return;
     }
 

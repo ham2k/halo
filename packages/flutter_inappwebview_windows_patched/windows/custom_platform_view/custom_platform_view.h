@@ -13,16 +13,13 @@
 
 namespace flutter_inappwebview_plugin
 {
-  class FlutterInappwebviewWindowsPlugin;
-
   class CustomPlatformView {
   public:
     static inline const wchar_t* CLASS_NAME = L"CustomPlatformView";
 
     std::shared_ptr<flutter_inappwebview_plugin::InAppWebView> view;
 
-    CustomPlatformView(const FlutterInappwebviewWindowsPlugin* plugin,
-      flutter::BinaryMessenger* messenger,
+    CustomPlatformView(flutter::BinaryMessenger* messenger,
       flutter::TextureRegistrar* texture_registrar,
       GraphicsContext* graphics_context,
       HWND hwnd,
@@ -35,8 +32,6 @@ namespace flutter_inappwebview_plugin
 
     void UnregisterMethodCallHandler() const;
   private:
-    // The destructor asks it whether the messenger still has an engine.
-    const FlutterInappwebviewWindowsPlugin* plugin_;
     HWND hwnd_;
     std::unique_ptr<flutter::TextureVariant> flutter_texture_;
     std::unique_ptr<TextureBridge> texture_bridge_;

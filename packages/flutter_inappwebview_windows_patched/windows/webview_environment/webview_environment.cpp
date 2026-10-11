@@ -316,10 +316,9 @@ namespace flutter_inappwebview_plugin
     // messenger keeps a dangling channelDelegate-capturing callback registered
     // after this destructor returns, the same use-after-free shape
     // custom_platform_view.cc's destructor guards against for its event
-    // channel. Only while the engine is still there to unregister from: at
-    // engine teardown the messenger's engine is already null, and this call
-    // would then read through it (HALO-394). See PATCH.md.
-    if (channelDelegate && plugin && plugin->isMessengerAvailable()) {
+    // channel. At engine teardown UnregisterMethodCallHandler() itself skips
+    // the call, as the messenger's engine is already null. See PATCH.md.
+    if (channelDelegate) {
       channelDelegate->UnregisterMethodCallHandler();
     }
     if (environment_) {

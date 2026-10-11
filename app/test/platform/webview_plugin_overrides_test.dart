@@ -403,14 +403,17 @@ void main() {
     );
   });
 
-  test('the vendored Windows copy skips both teardown unregisters once the engine is gone', () {
+  test('the vendored Windows copy skips every teardown unregister once the engine is gone', () {
     // The two unregister-in-destructor hunks above are correct while the
     // engine is alive and a null dereference once it is not: the engine's
     // destructor clears the messenger's engine pointer BEFORE destroying the
     // plugins, and FlutterDesktopMessengerSetCallback reads through that
     // pointer unchecked in Release. Without these guards every quit that has
-    // ever hosted a webview dies in engine teardown (HALO-394 /
-    // HALO-NEXT-71/72/76). Same re-vendor caveat as the other tests here.
+    // ever hosted a webview dies in engine teardown. Guarding only those two
+    // hunks leaves upstream's own ~InAppWebView, which disposes its
+    // find-interaction delegate (and others) through ChannelDelegate,
+    // unregistering into the dead engine. Same re-vendor caveat as the other
+    // tests here.
     const pluginPath =
         '../packages/flutter_inappwebview_windows_patched/'
         'windows/flutter_inappwebview_windows_plugin.cpp';
@@ -420,7 +423,13 @@ void main() {
     const environmentPath =
         '../packages/flutter_inappwebview_windows_patched/'
         'windows/webview_environment/webview_environment.cpp';
-    for (final path in [pluginPath, viewPath, environmentPath]) {
+    const delegatePath =
+        '../packages/flutter_inappwebview_windows_patched/'
+        'windows/types/channel_delegate.cpp';
+    const printJobPath =
+        '../packages/flutter_inappwebview_windows_patched/'
+        'windows/print_job/print_job_channel_delegate.cpp';
+    for (final path in [pluginPath, viewPath, environmentPath, delegatePath, printJobPath]) {
       if (!File(path).existsSync()) fail('No $path — this test cannot answer the question it exists to answer.');
     }
     expect(
@@ -433,20 +442,37 @@ void main() {
           'already tracks',
     );
     expect(
+      File(pluginPath).readAsStringSync(),
+      contains('    messenger_ref_ = messenger;\n'),
+      reason:
+          'the guard decides runtime unregisters too: with the ref never set, '
+          'isMessengerAvailable() is always false, every delegate unregister '
+          'is skipped while the app runs, and the dangling-callback '
+          'use-after-free the destructor hunks exist to close comes back',
+    );
+    expect(
       File(viewPath).readAsStringSync(),
-      contains('if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {'),
+      contains('if (event_channel_ && FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {'),
       reason:
           'the event-channel unregister in ~CustomPlatformView must be '
           'skipped once the engine is gone, or it reads through a null '
           'engine at every quit',
     );
     expect(
-      File(environmentPath).readAsStringSync(),
-      contains('if (channelDelegate && plugin && plugin->isMessengerAvailable()) {'),
+      File(delegatePath).readAsStringSync(),
+      contains('if (channel && FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {'),
       reason:
-          'the delegate unregister in ~WebViewEnvironment must be skipped '
-          'once the engine is gone, or it reads through a null engine at '
-          'every quit',
+          'every delegate ~InAppWebView disposes unregisters through '
+          'ChannelDelegate, and every webview builds at least one, so '
+          'without this guard any webview alive at quit reads through a '
+          'null engine',
+    );
+    expect(
+      File(printJobPath).readAsStringSync(),
+      contains('if (disposed_ || !channel || !FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {'),
+      reason:
+          '~InAppWebView completes an unfinished print job, and that send '
+          'reads through a null engine at quit just as an unregister does',
     );
   });
 

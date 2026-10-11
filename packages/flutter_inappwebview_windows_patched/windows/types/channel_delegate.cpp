@@ -1,6 +1,7 @@
 #include <flutter/method_channel.h>
 #include <flutter/standard_method_codec.h>
 
+#include "../flutter_inappwebview_windows_plugin.h"
 #include "../utils/util.h"
 #include "channel_delegate.h"
 
@@ -26,7 +27,13 @@ namespace flutter_inappwebview_plugin
 
   void ChannelDelegate::UnregisterMethodCallHandler() const
   {
-    if (channel) {
+    // InAppWebView's destructor disposes its find-interaction, print-job,
+    // web-message and notification delegates through here, and every webview
+    // still alive at quit is destroyed inside engine teardown, after the
+    // messenger has lost its engine. Unregistering then reads through that
+    // null engine; skipping it is safe, as the callback map dies
+    // with the engine. See PATCH.md.
+    if (channel && FlutterInappwebviewWindowsPlugin::isMessengerAvailable()) {
       channel->SetMethodCallHandler(nullptr);
     }
   }
