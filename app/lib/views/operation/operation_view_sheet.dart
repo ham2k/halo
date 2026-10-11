@@ -136,9 +136,8 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
   Future<void> _openOperationSheet(Operation operation) async {
     // No manual re-fetch on pop: watchOperation streams the change back.
     // Non-scrollable: the pane's accordion sections divide its height
-    // themselves (see activities_view.dart). Not barrier/Escape-dismissible:
-    // as a pushed screen this had explicit-back dismissal only, and Escape
-    // while typing in the suggestions search would close the whole pane.
+    // themselves (see activities_view.dart). A barrier tap, Escape and a
+    // system back all reach the sheet's own PopScope, which saves it.
     final sheetKey = GlobalKey<OperationSheetState>();
     // Not disposed with the sheet: the accept button listens through the
     // reverse transition, which outlives this method's `finally`.
@@ -203,7 +202,6 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
         narrowLeftInset: _narrowSheetLeftInset(context),
         scrollable: false,
         barrierDismissible: true,
-        onDismiss: () => sheetKey.currentState?.saveAndClose(),
         // The view's AppBar (X, title, Options/Export, the accept button
         // below) stays visible on narrow too instead of the sheet covering
         // the whole screen — the same header serves both layouts, so there
@@ -433,6 +431,12 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
       // AnimationStatus.dismissed (with a defensive re-detach at the top of
       // the next onAnimation call, in case a sheet reopens before that
       // fires).
+      // True from the moment a save starts, back to false only if it fails. A
+      // close without one — a failed save left by Escape, a navigation past
+      // the sheet — keeps nothing of the draft.
+      final saved = sheetClosing.value;
+      final draft = _draftOperation;
+      final fragments = _draftTitleFragments;
       if (mounted) {
         setState(() {
           _activeSheetKey = null;
@@ -440,11 +444,11 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
           // the title that is on screen rather than the one this session
           // left behind (see [_sheetHeaderLines]).
           _sheetHeaderLines.value = null;
-          // Carry the draft's final (just-saved — see saveAndClose(), the
-          // only path that reaches here today) values into _operation
-          // BEFORE dropping the draft, rather than leaving the header to
-          // fall back on _operation as it stood before this edit session
-          // and wait for watchOperation's stream to catch up. That gap
+          // A close that saved — or is still saving — carries the draft's
+          // final values into _operation BEFORE dropping the draft, rather
+          // than leaving the header to fall back on _operation as it stood
+          // before this edit session and wait for watchOperation's stream to
+          // catch up. That gap
           // would show a flicker of stale values in the header for a
           // frame or two while the sheet was still closing. If a live
           // title-preview was showing (refs edited during this session),
@@ -460,18 +464,23 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
           // this fix; _onOperationChanged keeps re-patching it in until the
           // row's real cache (retitleOperation's separate async write)
           // actually catches up.
-          final draft = _draftOperation;
-          final fragments = _draftTitleFragments;
-          _operation = draft == null
-              ? _operation
-              : fragments == null
-              ? draft
-              : _withTitleSuggestion(draft, fragments);
-          _pendingTitleFragments = fragments ?? _pendingTitleFragments;
+          if (saved && draft != null) {
+            _operation = fragments == null ? draft : _withTitleSuggestion(draft, fragments);
+            _pendingTitleFragments = fragments ?? _pendingTitleFragments;
+          }
           _draftOperation = null;
           _draftTitleFragments = null;
           _draftTitleGeneration++;
         });
+        // Every refs edit in the draft re-derived the logging row's and the
+        // map's controls from it (see onOperationChanged above). A close that
+        // kept nothing wrote nothing, so no stream emission will put them
+        // back: without this, the row keeps the fields of refs the operation
+        // does not have.
+        final stored = _operation;
+        if (!saved && draft != null && stored != null && !sameRefs(draft.data['refs'], stored.data['refs'])) {
+          unawaited(_runtime.refreshControls(stored));
+        }
       }
       // Defensive fallback: the header's own leading/Tools/Export/layout
       // icons stay faded and non-interactive for as long as _sheetAnimation

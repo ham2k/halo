@@ -507,47 +507,57 @@ class OperationSheetState extends State<OperationSheet>
     final listBgColor = haloSheetListBackground(context);
     final rowColor = haloSheetRowColor(context);
 
-    // No taps while [saveAndClose] runs: the save has already taken its
-    // snapshot, so an edit made during the wait would look applied and never
-    // be stored.
-    return AbsorbPointer(
-      absorbing: _isClosing,
-      child: Material(
-        color: listBgColor,
-        child: Column(
-          children: [
-            _headerBand(theme, refs, accordionColor, onAccordionColor),
-            // The results list and Activity Types share what the header leaves,
-            // and this LayoutBuilder is what measures it: the peek height below
-            // is carved out of exactly this box, so the two cannot both claim
-            // the same pixels. Measuring the results list itself instead would
-            // be circular — its height is what the peek decides.
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, sheetBody) {
-                  final optionsPeekHeight = _optionsPeekHeightFor(context, sheetBody.maxHeight);
-                  final optionsMaxHeight = _optionsMaxHeightFor(context, sheetBody.maxHeight);
-                  return Column(
-                    children: [
-                      // Selected activities, the search field and its results live in
-                      // ONE clipped scroll area — only Activity Types below keeps the
-                      // accordion behavior.
-                      Expanded(child: Builder(builder: (context) => _resultsArea(context, theme, refs, accordionColor, onAccordionColor, rowColor))),
-                      if (!_showResultsMap)
-                        _allOptionsSection(
-                          theme,
-                          accordionColor,
-                          onAccordionColor,
-                          rowColor,
-                          optionsPeekHeight: optionsPeekHeight,
-                          optionsMaxHeight: optionsMaxHeight,
-                        ),
-                    ],
-                  );
-                },
+    // Escape, a system back and a tap outside the sheet (the pane's own
+    // maybePop) save it before it closes, which is what the details editor's
+    // own writes — contacts restamped, the position — count on. The save's
+    // own pop is a Navigator.pop, which this does not hold back.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(saveOrLeave());
+      },
+      // No taps while [saveAndClose] runs: the save has already taken its
+      // snapshot, so an edit made during the wait would look applied and
+      // never be stored.
+      child: AbsorbPointer(
+        absorbing: _isClosing,
+        child: Material(
+          color: listBgColor,
+          child: Column(
+            children: [
+              _headerBand(theme, refs, accordionColor, onAccordionColor),
+              // The results list and Activity Types share what the header leaves,
+              // and this LayoutBuilder is what measures it: the peek height below
+              // is carved out of exactly this box, so the two cannot both claim
+              // the same pixels. Measuring the results list itself instead would
+              // be circular — its height is what the peek decides.
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, sheetBody) {
+                    final optionsPeekHeight = _optionsPeekHeightFor(context, sheetBody.maxHeight);
+                    final optionsMaxHeight = _optionsMaxHeightFor(context, sheetBody.maxHeight);
+                    return Column(
+                      children: [
+                        // Selected activities, the search field and its results live in
+                        // ONE clipped scroll area — only Activity Types below keeps the
+                        // accordion behavior.
+                        Expanded(child: Builder(builder: (context) => _resultsArea(context, theme, refs, accordionColor, onAccordionColor, rowColor))),
+                        if (!_showResultsMap)
+                          _allOptionsSection(
+                            theme,
+                            accordionColor,
+                            onAccordionColor,
+                            rowColor,
+                            optionsPeekHeight: optionsPeekHeight,
+                            optionsMaxHeight: optionsMaxHeight,
+                          ),
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -556,11 +556,28 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  // Escape never calls saveAndClose — Flutter's dismiss action pops the route
-  // itself — so the memo cannot stop it. Without the save's isCurrent check,
-  // Escape closes the sheet and the save's own pop then closes the Operation
-  // view.
-  testWidgets('Escape while the sheet is saving does not close the view under it', (tester) async {
+  // Escape saves, as a tap outside the sheet does. Popping the route instead
+  // would drop the draft while the details editor's own writes — contacts
+  // restamped to a new operator, the position — had already landed.
+  testWidgets('Escape saves the sheet\'s edits and closes it', (tester) async {
+    final (services, operation) = await _pumpOpenSheet(tester);
+
+    _editInSheet(tester, Operation(uuid: operation.uuid, data: {...operation.data, 'userTitle': 'Edited Op'}));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OperationSheet), findsNothing);
+    expect((await services.operations.get(operation.uuid))!.userTitle, 'Edited Op');
+    expect(find.text('N0CALL Edited Op'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // Escape during a save joins it rather than closing the sheet early: the
+  // sheet leaves once, when that save lands.
+  testWidgets('Escape while the sheet is saving waits for that save', (tester) async {
     final held = await _pumpSheetWithHeldTitle(tester);
 
     held.hold = true;
@@ -568,7 +585,30 @@ void main() {
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
-    expect(ModalRoute.of(tester.element(find.byType(OperationSheet)))!.isCurrent, isFalse, reason: 'Escape got in before the save');
+    expect(ModalRoute.of(tester.element(find.byType(OperationSheet)))!.isCurrent, isTrue, reason: 'still waiting on the save');
+    expect(held.heldCalls, 1, reason: 'Escape joined the save under way');
+
+    held.release();
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(OperationSheet), findsNothing);
+    expect(find.byType(OperationView), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // A navigation past the sheet during its save (the command dialog's Go
+  // home) removes it before that save lands. Closing with a plain pop then
+  // would take the Operation view instead.
+  testWidgets('a navigation past the sheet while it saves closes nothing more', (tester) async {
+    final held = await _pumpSheetWithHeldTitle(tester);
+
+    held.hold = true;
+    await tester.tap(find.widgetWithText(FilledButton, 'OK'));
+    await tester.pump();
+    Navigator.of(tester.element(find.byType(OperationSheet))).popUntil((route) => route.isFirst);
+    await tester.pump();
 
     held.release();
     await tester.pumpAndSettle();
@@ -646,6 +686,111 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(OperationSheet), findsNothing, reason: 'the retry saves and closes');
     expect(find.byType(OperationView), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // Escape means "done here": a save that fails — and a refusal that holds
+  // for every save always will — must not keep the sheet open, and what the
+  // view shows afterwards must be what is stored, not the draft that failed.
+  testWidgets('Escape closes the sheet even when its save is refused, keeping nothing', (tester) async {
+    addTearDown(AppClock.instance.reset);
+    final (services, operation) = await _pumpOpenSheet(tester);
+    _editInSheet(tester, Operation(uuid: operation.uuid, data: {...operation.data, 'userTitle': 'Edited Op'}));
+    await tester.pump();
+
+    // A time-travelled session refuses writes to a real operation.
+    AppClock.instance.travel(delta: const Duration(days: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OperationSheet), findsNothing);
+    expect((await services.operations.get(operation.uuid))!.userTitle, 'Test Op');
+    expect(find.text('N0CALL Test Op'), findsOneWidget);
+    expect(find.text('N0CALL Edited Op'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // Each refs edit re-derives the logging row's controls from the draft, and
+  // a close that keeps nothing writes nothing for the stream to correct them
+  // with: without the re-derive, the row keeps the fields of a ref the
+  // operation does not have.
+  testWidgets('a close that keeps nothing asks again for the controls of the refs the operation kept', (tester) async {
+    addTearDown(AppClock.instance.reset);
+    final asked = <String>[];
+    final (_, operation) = await _pumpOpenSheet(
+      tester,
+      stubs: {
+        'activity:*:loggingControls': (Object? args) {
+          asked.add('$args');
+          return <Map<String, dynamic>>[];
+        },
+      },
+    );
+    _editInSheet(
+      tester,
+      Operation(
+        uuid: operation.uuid,
+        data: {
+          ...operation.data,
+          'refs': [
+            {'type': 'pota/activation', 'ref': 'K-1234'},
+          ],
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(asked.last, contains('K-1234'), reason: 'the draft asked for its own controls');
+
+    AppClock.instance.travel(delta: const Duration(days: 1));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing);
+    expect(asked.last, isNot(contains('K-1234')));
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // A tap outside the sheet takes the same way out as Escape. Saving through a
+  // path of its own, it would retry a failing save forever where Escape
+  // leaves.
+  testWidgets('a tap outside the sheet saves its edits, and leaves when the save is refused', (tester) async {
+    addTearDown(AppClock.instance.reset);
+    final (services, operation) = await _pumpOpenSheet(tester);
+    _editInSheet(tester, Operation(uuid: operation.uuid, data: {...operation.data, 'userTitle': 'Edited Op'}));
+    await tester.pump();
+
+    await tester.tapAt(const Offset(990, 790));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing);
+    expect((await services.operations.get(operation.uuid))!.userTitle, 'Edited Op');
+
+    await tester.tap(find.text('N0CALL Edited Op'));
+    await tester.pumpAndSettle();
+    AppClock.instance.travel(delta: const Duration(days: 1));
+    await tester.tapAt(const Offset(990, 790));
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  // A system back reaches the sheet the way Escape does, through the route's
+  // maybePop; without the PopScope it closes the sheet and drops the edit.
+  testWidgets('a system back saves the sheet\'s edits and closes it', (tester) async {
+    final (services, operation) = await _pumpOpenSheet(tester);
+    _editInSheet(tester, Operation(uuid: operation.uuid, data: {...operation.data, 'userTitle': 'Edited Op'}));
+    await tester.pump();
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.byType(OperationSheet), findsNothing);
+    expect((await services.operations.get(operation.uuid))!.userTitle, 'Edited Op');
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
@@ -1087,4 +1232,35 @@ Future<_HeldTitleHook> _pumpSheetWithHeldTitle(WidgetTester tester) async {
   await tester.pumpAndSettle();
   expect(find.byType(OperationSheet), findsOneWidget);
   return held;
+}
+
+/// An edit made inside the open operation sheet, as the sheet's own edits land:
+/// on the sheet's operation (what its save writes) and reported to the view
+/// (what the header shows meanwhile).
+void _editInSheet(WidgetTester tester, Operation edited) {
+  tester.state<OperationSheetState>(find.byType(OperationSheet)).updateOperation(edited);
+  tester.widget<OperationSheet>(find.byType(OperationSheet)).onOperationChanged!(edited);
+}
+
+/// The Operation view on a fresh operation (N0CALL, "Test Op"), with its setup
+/// sheet open.
+Future<(HaLoServices, Operation)> _pumpOpenSheet(WidgetTester tester, {Map<String, Object?> stubs = const {}}) async {
+  tester.view.physicalSize = const Size(1000, 800);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+  final HaLoHarness(:services, :settings) = await makeHaLoServices(stubs: stubs);
+  await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+  final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+  await tester.pumpWidget(
+    TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(services: services, operationUuid: operation.uuid),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('N0CALL Test Op'));
+  await tester.pumpAndSettle();
+  return (services, operation);
 }

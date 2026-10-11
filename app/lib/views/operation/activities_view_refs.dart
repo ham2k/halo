@@ -366,6 +366,21 @@ mixin _ActivitiesRefs on State<OperationSheet> {
     if (mounted) setState(() => _isClosing = closing);
   }
 
+  /// Escape, a system back and a tap outside the sheet: save, and close
+  /// whether or not that worked. They mean "done here", and a save that keeps
+  /// failing — a refusal that holds for every save, such as a time-travelled
+  /// session on a real operation — must not leave them nowhere to go; the
+  /// failure's own notice says nothing was kept. OK asks for the save itself,
+  /// so it stays open on a failure, to be tried again.
+  Future<void> saveOrLeave() async {
+    try {
+      await saveAndClose();
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'operationSheet:save');
+      if (mounted && ModalRoute.of(context)?.isCurrent == true) Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _saveAndClose() async {
     // One snapshot for the title and the row: the sheet still takes keyboard
     // input during the wait, and an edit landing between the two reads would
@@ -388,11 +403,11 @@ mixin _ActivitiesRefs on State<OperationSheet> {
       followRefs: false,
     );
     if (!mounted) return;
-    // Closes this sheet's own route, whatever is around it. Escape or a
-    // system back that got in first has already removed it, so nothing is
-    // left to do; a route pushed over it during the wait (the command dialog,
-    // a pairing prompt) means a plain pop would close that instead and leave
-    // this sheet frozen underneath.
+    // Closes this sheet's own route, whatever is around it. A navigation past
+    // it during the wait (the command dialog's Go home) has already removed
+    // it, so nothing is left to do; a route pushed over it (the command
+    // dialog, a pairing prompt) means a plain pop would close that instead
+    // and leave this sheet frozen underneath.
     final route = ModalRoute.of(context);
     if (route == null || !route.isActive) return;
     if (route.isCurrent) {
