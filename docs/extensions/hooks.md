@@ -2239,6 +2239,7 @@ Consequences worth knowing:
 
 | Category | Role | Notes |
 |---|---|---|
+| `chasing` | what each contact counts toward a program's checklist (claims) | [claims.md](../design/claims.md) |
 | `confirmation` | QSL/confirmation sources (spot-history cross-checking) | |
 | `opSetting` | per-operation settings contributions | |
 
