@@ -141,6 +141,24 @@ void main() {
     expect(text, isNot(contains(isoDate(DateTime.now().toUtc())))); // clock:allow — the contrast
   });
 
+  test('a speed factor does not trip the template render limit', () async {
+    // The SDK bounds a template render at 250 ms, and in this engine
+    // liquidjs's timer falls back to `Date` — the travelled one — unless the
+    // build points it at the real clock. At 1000x a loop taking a few real
+    // milliseconds then reads as seconds and fails with `template render limit
+    // exceeded`, on every template a time-travelled session renders.
+    AppClock.instance.travel(speed: AppClock.maxSpeed);
+    final host = await travelledHost();
+    final result = await host.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'render',
+      args: const {'template': '{% for i in (1..3000) %}x{% endfor %}'},
+      timeout: const Duration(seconds: 30),
+    );
+    expect(result, {'text': 'x' * 3000});
+  });
+
   test('a speed factor does not distort the hook timings the kernel reports', () async {
     // The kernel times hooks with the REAL clock it captured before replacing
     // the global. At 1000x a render taking a few real milliseconds would report

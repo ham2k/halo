@@ -22,8 +22,9 @@ import 'package:test/test.dart';
 
 /// Two edits of one record inside a single millisecond share a revision
 /// stamp, and the outbox reads the second as already recorded (see
-/// `PeerOutbox.scanNow`) — a loop that edits as fast as the reads return
-/// then tests the clock's resolution, not the pruning.
+/// `PeerOutbox.scanNow`). Every test that edits a record the outbox has
+/// already scanned waits here first, or on a fast or loaded machine it tests
+/// the clock's resolution instead of what it names.
 Future<void> nextMillisecond() async {
   final from = realNowMillis();
   while (realNowMillis() == from) {
@@ -152,6 +153,7 @@ void main() {
       });
       await outbox.scanNow();
 
+      await nextMillisecond();
       await qsos.writeBatch(
         operationUuid: op.uuid,
         inserts: [
@@ -182,6 +184,7 @@ void main() {
       outbox.activeOperationUuid = op.uuid;
       await outbox.scanNow();
 
+      await nextMillisecond();
       await operations.saveData(Operation(uuid: op.uuid, data: {...op.data, 'userTitle': 'Renamed'}));
       await outbox.scanNow();
 
@@ -427,6 +430,7 @@ void main() {
       final seqBefore = (await outbox.eventsSince(op.uuid, 0)).map((e) => e.seq).reduce((a, b) => a > b ? a : b);
 
       final current = (await qsos.watchForOperation(op.uuid).first).single;
+      await nextMillisecond();
       await qsos.update(Qso(uuid: current.uuid, operationUuid: op.uuid, data: {...current.data, 'notes': 'later'}));
       await outbox.scanNow();
 

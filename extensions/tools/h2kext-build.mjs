@@ -202,6 +202,49 @@ function liquidBrowserBuild(fromDir) {
   }
 }
 
+/// What liquidjs times its `renderLimit` with, and what it is rewritten to.
+///
+/// liquidjs looks for `global.performance`, then `window.performance`, and
+/// falls back to `Date.now()`. The sandbox has neither global, and its `Date`
+/// is the APP clock (sdk/src/appClock.ts), which time travel speeds up — so a
+/// render limit of 250 ms is measured in travelled time, and at 1000x a
+/// template taking a quarter of a real millisecond fails with `template render
+/// limit exceeded`. The sandbox's own `performance` stays on real time.
+const LIQUID_TIMER = "(typeof global === 'object' && global.performance)"
+const LIQUID_REAL_TIMER = "(typeof performance === 'object' && performance)"
+
+/// Points liquidjs's render timer at the real clock — see [LIQUID_TIMER].
+///
+/// A rewrite of that one expression in that one file, rather than a `define`
+/// for `global` across the whole bundle: a define would quietly retarget
+/// every other library's `typeof global` check too, which is how bundles
+/// tell Node from a browser. Throws when the expression is not found exactly
+/// once, so a liquidjs upgrade that changes it fails the build instead of
+/// bringing the travelled timer back unnoticed.
+///
+/// Matched on the file's name, not on the path this preset aliases: an exact
+/// path misses the same file spelled another way (a Windows drive letter's
+/// case) or a caller's own `alias.liquidjs`, and a filter that never fires
+/// never reaches the check either. Every unminified build carries the
+/// expression once; a minified one fails the check, loudly.
+function liquidRealClockPlugin() {
+  return {
+    name: "ham2k-liquid-real-clock",
+    setup(build) {
+      build.onLoad({ filter: /[\\/]liquidjs[\\/]dist[\\/]liquid\.[^\\/]+\.m?js$/ }, async (args) => {
+        const source = await readFile(args.path, "utf8")
+        const found = source.split(LIQUID_TIMER).length - 1
+        if (found !== 1) {
+          throw new BuildError(
+            `liquidjs at ${args.path}: expected its render timer \`${LIQUID_TIMER}\` once, found it ${found} times — the real-clock rewrite needs updating`,
+          )
+        }
+        return { contents: source.replace(LIQUID_TIMER, LIQUID_REAL_TIMER), loader: "js" }
+      })
+    },
+  }
+}
+
 /// Where the author's SDK keeps the file that stands in for the timer globals
 /// (sdk/src/timers.ts), or null if it has none. Resolved from the CALLER's
 /// directory for the same reason as [liquidBrowserBuild]: it must be the very
@@ -261,7 +304,11 @@ export function buildOptionsFor({ entry, outfile, manifest = {}, dir = process.c
       ...(liquid ? { liquidjs: liquid } : {}),
       ...alias,
     },
-    plugins: [sharedModulesPlugin({ sharedDependencies: manifest.sharedDependencies, api: manifest.api, inline }), ...(rest.plugins ?? [])],
+    plugins: [
+      sharedModulesPlugin({ sharedDependencies: manifest.sharedDependencies, api: manifest.api, inline }),
+      liquidRealClockPlugin(),
+      ...(rest.plugins ?? []),
+    ],
     inject: [...(timersFile ? [timersFile] : []), ...(rest.inject ?? [])],
   }
 }

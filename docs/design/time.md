@@ -365,6 +365,15 @@ than `realNow`: a wall clock set back an hour would hold every timer an hour. So
 further; an extension that wants "every virtual minute" computes the next
 delay from `Date` itself.
 
+**Nor does a template's render limit.** The SDK's template engine bounds a
+render at 250 ms, and liquidjs times it with `global.performance`, falling back
+to `Date.now()` — and the sandbox has no `global`, so left alone it would read
+the travelled `Date`, and at 1000x a template taking a quarter of a real
+millisecond would fail with `template render limit exceeded`. The extension build
+(`extensions/tools/h2kext-build.mjs`, `liquidRealClockPlugin`) rewrites that
+one expression to the sandbox's own `performance`, and fails the build if a
+liquidjs upgrade moves it.
+
 ---
 
 ## 7. Time in tests

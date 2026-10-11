@@ -145,6 +145,53 @@ test("liquidjs resolves to its browser build, so an extension that inlines it ca
   assert.doesNotMatch(out, /require\(["']fs["']\)|from ?["']node:fs["']/)
 })
 
+test("liquidjs times its render limit on the real clock, not the sandbox's travelled Date", async () => {
+  // The sandbox has no `global` and no `window`, so liquidjs's own timer falls
+  // back to `Date.now()` — and the sandbox's `Date` is the app clock, which
+  // time travel runs up to 1000x fast. Every render then reads as hundreds of
+  // times its real length, and the 250 ms limit fails ordinary templates.
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-build-liquid-clock-"))
+  await mkdir(join(dir, "src"), { recursive: true })
+  await writeFile(
+    join(dir, "src/index.ts"),
+    'import { Liquid } from "liquidjs"; const engine = new Liquid({ renderLimit: 250 }); globalThis.render = () => engine.parseAndRenderSync("{% for i in (1..20) %}x{% endfor %}")',
+  )
+  await writeFile(join(dir, "manifest.json"), JSON.stringify({ key: "w7abc-t", api: H2KEXT_API_VERSION }))
+  await mkdir(join(dir, "node_modules"), { recursive: true })
+  await symlink(join(import.meta.dirname, "../node_modules/liquidjs"), join(dir, "node_modules/liquidjs"))
+
+  const { outDir } = await buildExtension(build, { dir, inline: ["liquidjs"] })
+
+  // A second of travelled time per read: any render that consults `Date` for
+  // its timing blows through 250 ms on its second check.
+  let travelled = 0
+  class TravellingDate extends Date {
+    static now() {
+      return (travelled += 1000)
+    }
+  }
+  const sandbox: Record<string, unknown> = { Date: TravellingDate, performance }
+  vm.runInNewContext(await readFile(join(outDir, "index.js"), "utf8"), sandbox)
+  assert.equal((sandbox.render as () => string)(), "x".repeat(20))
+})
+
+test("a liquidjs whose render timer the rewrite cannot find fails the build, even behind the caller's own alias", async () => {
+  // Without the check a liquidjs upgrade that reshapes the timer builds green
+  // and brings the travelled clock back. Reached through a caller's alias, so
+  // a filter keyed to the preset's own path would never look at this file.
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-build-liquid-guard-"))
+  await mkdir(join(dir, "src"), { recursive: true })
+  await mkdir(join(dir, "vendor/liquidjs/dist"), { recursive: true })
+  await writeFile(join(dir, "vendor/liquidjs/dist/liquid.browser.mjs"), "export class Liquid { now() { return Date.now() } }")
+  await writeFile(join(dir, "src/index.ts"), 'import { Liquid } from "liquidjs"; globalThis.engine = new Liquid()')
+  await writeFile(join(dir, "manifest.json"), JSON.stringify({ key: "w7abc-t", api: H2KEXT_API_VERSION }))
+
+  await assert.rejects(
+    buildExtension(build, { dir, inline: ["liquidjs"], alias: { liquidjs: join(dir, "vendor/liquidjs/dist/liquid.browser.mjs") } }),
+    /expected its render timer .* once, found it 0 times/s,
+  )
+})
+
 test("declaring a library the host does not carry is refused, not externalised", async () => {
   // Externalising it would emit `sharedModules["lodash"]` — `undefined` at the
   // first call. The build succeeds and the bundle cannot work, which is the
