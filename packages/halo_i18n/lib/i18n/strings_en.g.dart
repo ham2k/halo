@@ -1757,6 +1757,9 @@ class Translations$commandDialog$en {
 
 	/// en: 'Looking up callsign…'
 	String get lookingUp => 'Looking up callsign…';
+
+	/// en: 'Cannot use commands while a panel or dialog is open'
+	String get blockedByPane => 'Cannot use commands while a panel or dialog is open';
 }
 
 // Path: expiredBuild
@@ -9514,6 +9517,7 @@ extension on Translations {
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
+			'commandDialog.blockedByPane' => 'Cannot use commands while a panel or dialog is open',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',

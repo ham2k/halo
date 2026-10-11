@@ -34,6 +34,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/command_dialog.dart';
 import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
@@ -661,6 +662,49 @@ void main() {
     // Toggles rather than stacking a second copy over the first.
     await _pressCommandK(tester);
     expect(find.byType(CommandDialog), findsNothing);
+
+    await _unmount(tester);
+  });
+
+  // The dialog's Go home pops straight past a top modal pane, and the
+  // operation setup sheet — the first such pane — commits its edit only when
+  // it closes itself. Opening over one is what drops that edit.
+  testWidgets('⌘K does not open over a top modal pane, and says why', (tester) async {
+    final services = await _services(tester);
+    final sounds = <Object?>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'SystemSound.play') sounds.add(call.arguments);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    unawaited(showTopModalPane<void>(navigatorKey.currentContext!, builder: (_) => const Text('a pane')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    Iterable<Object> blocked() => services.statusBar.activeNotices.where((n) => n.key == 'commandDialog:blocked');
+    await _pressCommandK(tester);
+    expect(find.byType(CommandDialog), findsNothing);
+    expect(blocked(), hasLength(1));
+    expect(sounds, ['SystemSoundType.alert']);
+
+    // A notice stays until dismissed, and this one is only true while the
+    // pane is up: it clears itself, and goes the moment ⌘K works again.
+    await tester.pump(StatusBarService.completedDismissDelay);
+    expect(blocked(), isEmpty);
+    await _pressCommandK(tester);
+    expect(blocked(), hasLength(1));
+
+    // Popped, it no longer stands in the way — even while it is still
+    // sliding off the screen.
+    navigatorKey.currentState!.pop();
+    await tester.pump();
+    await _pressCommandK(tester);
+    expect(find.byType(CommandDialog), findsOneWidget);
+    expect(blocked(), isEmpty);
 
     await _unmount(tester);
   });

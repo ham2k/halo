@@ -2148,7 +2148,8 @@
     "goNewOperation": "Nueva operación",
     "runTyped": "Ejecutar «${text}»",
     "sectionSuggestions": "Prueba",
-    "lookingUp": "Buscando indicativo…"
+    "lookingUp": "Buscando indicativo…",
+    "blockedByPane": "No se pueden usar los comandos mientras haya un panel o un diálogo abierto"
   },
   "expiredBuild": {
     "title": "Esta versión ha expirado",

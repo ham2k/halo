@@ -2156,7 +2156,8 @@
     "goNewOperation": "New operation",
     "runTyped": "Run “${text}”",
     "sectionSuggestions": "Try",
-    "lookingUp": "Looking up callsign…"
+    "lookingUp": "Looking up callsign…",
+    "blockedByPane": "Cannot use commands while a panel or dialog is open"
   },
   "expiredBuild": {
     "title": "This build has expired",

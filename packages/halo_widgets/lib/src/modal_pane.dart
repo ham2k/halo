@@ -582,6 +582,27 @@ class TopModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute 
     this.keepHeaderVisible = false,
   }) : _tapOutsideDismissible = barrierDismissible;
 
+  /// Every one installed on a navigator and not yet disposed.
+  static final Set<TopModalPaneRoute<dynamic>> _installed = {};
+
+  /// Whether a top modal pane is open: on a navigator and not popped. One
+  /// still sliding away after its pop does not count. For app chrome that
+  /// must not act over one — the command dialog, whose navigation pops
+  /// straight past a pane that commits its work only when it closes itself.
+  static bool get anyOpen => _installed.any((route) => route.isActive);
+
+  @override
+  void install() {
+    super.install();
+    _installed.add(this);
+  }
+
+  @override
+  void dispose() {
+    _installed.remove(this);
+    super.dispose();
+  }
+
   @override
   Color? get barrierColor => Colors.transparent;
 

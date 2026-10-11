@@ -799,6 +799,7 @@ class _Translations$commandDialog$es extends Translations$commandDialog$en {
 	@override String runTyped({required Object text}) => 'Ejecutar «${text}»';
 	@override String get sectionSuggestions => 'Prueba';
 	@override String get lookingUp => 'Buscando indicativo…';
+	@override String get blockedByPane => 'No se pueden usar los comandos mientras haya un panel o un diálogo abierto';
 }
 
 // Path: expiredBuild
@@ -5384,6 +5385,7 @@ extension on TranslationsEs {
 			'commandDialog.runTyped' => ({required Object text}) => 'Ejecutar «${text}»',
 			'commandDialog.sectionSuggestions' => 'Prueba',
 			'commandDialog.lookingUp' => 'Buscando indicativo…',
+			'commandDialog.blockedByPane' => 'No se pueden usar los comandos mientras haya un panel o un diálogo abierto',
 			'expiredBuild.title' => 'Esta versión ha expirado',
 			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',

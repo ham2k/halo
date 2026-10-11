@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:halo_core/halo_core.dart' show DevLog;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../command_dialog.dart';
@@ -18,6 +19,7 @@ import '../tester_overlay.dart';
 import '../../config/dev_bridge.dart';
 
 import '../../services/settings_service.dart';
+import '../../services/status_bar_service.dart';
 import '../../services/window_chrome_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -76,6 +78,7 @@ class _HaLoAppState extends State<HaLoApp> {
   @override
   void dispose() {
     _densityMessageTimer?.cancel();
+    _commandBlockedTimer?.cancel();
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
     if (identical(_keyCommandHandlerOwner, this)) {
       _keyCommandChannel.setMethodCallHandler(null);
@@ -131,6 +134,8 @@ class _HaLoAppState extends State<HaLoApp> {
   }
 
   Timer? _densityMessageTimer;
+  Timer? _commandBlockedTimer;
+  static const _commandBlockedKey = 'commandDialog:blocked';
   static const _densityMessageKey = 'layoutDensity';
 
   /// Names the density the operator just landed on, in the status bar.
@@ -169,6 +174,24 @@ class _HaLoAppState extends State<HaLoApp> {
   /// reach the Flutter canvas — see DevBridge).
   void _openCommandDialog() {
     if (_commandDialogOpen) return;
+    // Not over a top modal pane, such as the operation setup sheet: the
+    // dialog's Go home pops straight past one, and such a pane commits its
+    // edit only when it closes itself.
+    final statusBar = widget.services.statusBar;
+    if (TopModalPaneRoute.anyOpen) {
+      // Gone again after a moment, and as soon as the dialog opens: notices
+      // otherwise stay until dismissed, and this one is only true while the
+      // pane is up.
+      statusBar.showNotice(key: _commandBlockedKey, icon: 'keyboard-off', text: t.commandDialog.blockedByPane, persist: false);
+      _commandBlockedTimer?.cancel();
+      _commandBlockedTimer = Timer(StatusBarService.completedDismissDelay, () => statusBar.dismissNotice(_commandBlockedKey));
+      unawaited(SystemSound.play(SystemSoundType.alert));
+      // The dev bridge's caller otherwise sees only a dialog that never opened.
+      DevLog.instance.log('commandDialog', {'blocked': 'topModalPane'});
+      return;
+    }
+    _commandBlockedTimer?.cancel();
+    statusBar.dismissNotice(_commandBlockedKey);
     final context = navigatorKey.currentContext;
     if (context == null) return;
     _commandDialogOpen = true;

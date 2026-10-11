@@ -606,6 +606,12 @@ up with the bar's search icon, so the two read as one object. The bar's
 height is fixed, so it doesn't resize when the placeholder gives way to typed
 text. Escape, a click outside, or a second ⌘K dismisses it.
 
+It does not open while a top modal pane is up — the operation setup sheet,
+the dock's Add a Panel sheet. Its navigation (Go home) pops straight past
+one, and the setup sheet commits its edit only when it closes itself. ⌘K
+there plays the platform alert sound and shows a notice that clears itself
+after a few seconds, or as soon as ⌘K opens the dialog.
+
 On iOS, plain ⌘K is reserved by the OS itself (it shows/hides the software
 keyboard) and never reaches the app on a hardware keyboard, and ⌘⇧K is
 reserved too (at least on the Simulator) — ⌘⌥K is the chord that actually
@@ -719,7 +725,9 @@ builds only) exposes `openCommandBar()`, `closeCommandBar()`,
 `commandBarState()`. Without them the dialog can't be opened, driven, or even
 looked at by a script or agent. `openCommandBar()` returns a **promise**:
 the route mounts a frame after the call, and typing before that silently does
-nothing — which looks exactly like the dialog having closed itself.
+nothing — which looks exactly like the dialog having closed itself. Over a top
+modal pane it does not open at all; the promise waits out its timeout, and
+`recentLog()` carries a `commandDialog` entry saying it was blocked.
 
 The typing behavior — debounced interpretation, execution, and the input
 rules in `commandFieldFormatters` — is **not** the dialog's own: it lives in
