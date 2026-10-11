@@ -24,6 +24,7 @@ class _IoEngineRuntime implements EngineRuntime {
   HaloQuickJs? _js;
   void Function(Map<String, dynamic>)? _onMessage;
   bool _disposed = false;
+  bool _kernelLoaded = false;
 
   /// Wall-clock ceiling for one pump() call. Well under the host's 10s hook
   /// timeout so the isolate stays able to answer while jobs are still running.
@@ -113,6 +114,7 @@ class _IoEngineRuntime implements EngineRuntime {
     });
 
     _evaluate(kernelSource, name: 'kernel');
+    _kernelLoaded = true;
     // Between the kernel and the bundles: the kernel installs the sandbox's
     // Date, and every bundle (and the activateAll below) must already see the
     // app's clock through it.
@@ -209,6 +211,7 @@ class _IoEngineRuntime implements EngineRuntime {
   void _evaluate(String code, {required String name}) {
     final js = _js;
     if (js == null) throw ExtensionHostException('evaluating $name: engine not loaded');
+    _stampTimerClock(js);
     final result = js.eval(code, filename: name);
     if (!result.ok) {
       throw ExtensionHostException('evaluating $name: ${result.text}');
@@ -248,6 +251,16 @@ class _IoEngineRuntime implements EngineRuntime {
     }
   }
 
+  /// Hands the kernel's timer queue [extensionTimerClock]'s time ahead of every
+  /// evaluation, which is what sets and fires timers. The jobs an evaluation
+  /// queues run in its own drain, on the time it was stamped with.
+  void _stampTimerClock(HaloQuickJs js) {
+    final now = extensionTimerClock;
+    if (now == null || !_kernelLoaded) return;
+    final result = js.eval('__polo.setMonotonicNow(${now()})', filename: 'setMonotonicNow');
+    if (!result.ok) throw ExtensionHostException('stamping the timer clock: ${result.text}');
+  }
+
   /// Frees the engine's native heap (10-12MB for the kernel bundle alone) and
   /// closes the NativeCallable behind onSend, which would otherwise keep its
   /// isolate alive forever (docs/design/js-engine.md §3).
@@ -264,5 +277,14 @@ class _IoEngineRuntime implements EngineRuntime {
 /// real one, and only for an in-process host: an isolate starts with its own.
 @visibleForTesting
 Duration extensionEvalBudget = const Duration(seconds: 15);
+
+/// The clock extension timers run on, in milliseconds, when not the engine's
+/// own. Set only by a test that drives them on a fake clock — under
+/// `fakeAsync`, `() => async.elapsed.inMicroseconds / 1000` — and only for an
+/// in-process host: an isolate cannot share a Dart function. Within one
+/// evaluation the time stands still, so a callback measures as free and only
+/// the per-fire charge reaches its budget.
+@visibleForTesting
+double Function()? extensionTimerClock;
 
 EngineRuntime createEngineRuntime() => _IoEngineRuntime();

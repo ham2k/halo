@@ -144,14 +144,19 @@ void main() {
 
       final datagrams = udpBroadcastDatagrams(port: port);
       final firstFrame = datagrams.first;
-      // Give the bind a moment before anything is sent at it.
-      await Future<void>.delayed(const Duration(milliseconds: 100));
 
+      // Sent until one lands, the way a radio repeats its announcement: the
+      // receiving socket binds once the stream is listened to, and a datagram
+      // that arrives before then is lost, as any datagram may be.
       final sender = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
-      sender.send(_vita49Frame(_payload), InternetAddress.loopbackIPv4, port);
       addTearDown(sender.close);
+      void announce() => sender.send(_vita49Frame(_payload), InternetAddress.loopbackIPv4, port);
+      announce();
+      final repeating = Timer.periodic(const Duration(milliseconds: 50), (_) => announce());
+      addTearDown(repeating.cancel);
 
       final received = await firstFrame.timeout(const Duration(seconds: 5));
+      repeating.cancel();
       expect(parseFlexDiscovery(received)?.nickname, 'RadioRoom');
     });
   });

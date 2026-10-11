@@ -27,6 +27,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
 import '../support/halo_test_support.dart';
+import '../support/fake_clock.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -107,29 +108,32 @@ void main() {
       expect(title, startsWith('Time travel'), reason: 'one readable line, not a bare offset');
     });
 
-    test('the item follows the clock instead of freezing at the command', () async {
-      // The offset GROWS under a factor, and a speed-only hop starts with none
-      // at all — so a snapshot would read "at 1000x" for the whole session while
-      // the clock ran days ahead, which is the opposite of the visibility this
-      // item exists for. Driven by the shared WallClock, so it costs one post
-      // per second only while it is actually changing.
-      final services = await buildServices();
-      await travel(services, {'deltaMillis': 0, 'speed': AppClock.maxSpeed});
-      final first = services.statusBar.itemForKey(HaLoServices.timeTravelStatusKey)!.title;
+    test(
+      'the item follows the clock instead of freezing at the command',
+      () => runOnFakeClock((_) async {
+        // The offset GROWS under a factor, and a speed-only hop starts with none
+        // at all — so a snapshot would read "at 1000x" for the whole session while
+        // the clock ran days ahead, which is the opposite of the visibility this
+        // item exists for. Driven by the shared WallClock, so it costs one post
+        // per second only while it is actually changing.
+        final services = await buildServices();
+        await travel(services, {'deltaMillis': 0, 'speed': AppClock.maxSpeed});
+        final first = services.statusBar.itemForKey(HaLoServices.timeTravelStatusKey)!.title;
 
-      // Real time, not pumped: this rides WallClock's real timer, which at the
-      // top factor re-arms at its 100ms floor.
-      await Future<void>.delayed(const Duration(milliseconds: 400));
+        // WallClock re-arms at its 100ms floor at the top factor; on the fake
+        // clock, so is the time it reads.
+        await Future<void>.delayed(const Duration(milliseconds: 400));
 
-      final later = services.statusBar.itemForKey(HaLoServices.timeTravelStatusKey)!.title;
-      expect(later, isNot(first), reason: 'the offset it reports must keep up with the clock');
-      expect(later, contains('1000x'));
+        final later = services.statusBar.itemForKey(HaLoServices.timeTravelStatusKey)!.title;
+        expect(later, isNot(first), reason: 'the offset it reports must keep up with the clock');
+        expect(later, contains('1000x'));
 
-      // And the ticker lets go, so nothing keeps posting after a reset.
-      await travel(services, {'reset': true});
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-      expect(services.statusBar.itemForKey(HaLoServices.timeTravelStatusKey), isNull);
-    });
+        // And the ticker lets go, so nothing keeps posting after a reset.
+        await travel(services, {'reset': true});
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+        expect(services.statusBar.itemForKey(HaLoServices.timeTravelStatusKey), isNull);
+      }),
+    );
   });
 
   group('developer mode', () {

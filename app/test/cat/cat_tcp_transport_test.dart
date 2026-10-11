@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/tcp_transport.dart';
+import '../support/wait_for.dart';
 
 void main() {
   late ServerSocket server;
@@ -61,10 +62,9 @@ void main() {
 
     connection.send(utf8.encode('C1|sub slice all\n'));
     peer.add(utf8.encode('S5AC2F980|slice 0 RF_frequency=14.074000 mode=USB\n'));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
 
-    expect(fromClient.join(), contains('sub slice all'));
-    expect(received.join(), contains('RF_frequency=14.074000'));
+    await waitFor('the command to reach the radio', () => fromClient.join().contains('sub slice all'));
+    await waitFor('the status to reach the app', () => received.join().contains('RF_frequency=14.074000'));
   });
 
   test('the peer going away completes `closed`', () async {

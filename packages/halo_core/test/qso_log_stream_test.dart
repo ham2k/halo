@@ -432,9 +432,7 @@ void main() {
     reads.failNextLogRead = true;
     final subscription = qsos.watchForOperation(op.uuid).listen(emissions.add, onError: errors.add);
     addTearDown(subscription.cancel);
-    await quiet();
-
-    expect(errors, hasLength(1));
+    await erroredExactly(errors, 1);
     expect(emissions, isEmpty);
     expect(reads.log, 0, reason: 'the failed read is not retried until the table changes');
 
@@ -459,8 +457,7 @@ void main() {
 
     reads.failNextRowRead = true;
     await qsos.add(op.uuid, contact('K1ABC', 2000));
-    await quiet();
-    expect(errors, hasLength(1));
+    await erroredExactly(errors, 1);
     expect(emissions, hasLength(1));
 
     await qsos.add(op.uuid, contact('N1XYZ', 3000));
@@ -647,8 +644,7 @@ void main() {
     reads.failNextLogRead = true;
     final subA = qsos.watchForOperation(op.uuid).listen((_) {}, onError: errors.add);
     addTearDown(subA.cancel);
-    await quiet();
-    expect(errors, hasLength(1));
+    await erroredExactly(errors, 1);
 
     final late = await follow(op.uuid);
     expect(late.single.single.theirCall, 'W1AW');
@@ -765,3 +761,14 @@ Future<void> settled(List<List<Qso>> emissions, int count) async {
 
 /// Long enough for an emission that was coming to have come.
 Future<void> quiet() => Future<void>.delayed(const Duration(milliseconds: 100));
+
+/// Polls until [errors] holds [count], then waits out [quiet] so a further one
+/// that was coming has come: the read is real database work, so a fixed wait
+/// would be a bet on the machine, and "exactly" needs the quiet after.
+Future<void> erroredExactly(List<Object> errors, int count) async {
+  for (var i = 0; i < 400 && errors.length < count; i++) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+  await quiet();
+  expect(errors, hasLength(count), reason: 'the stream did not report its failure in time, or reported more than one');
+}

@@ -7,6 +7,8 @@ import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
+import 'support/fake_clock.dart';
+
 // `extends`, not `implements`, so the fake inherits the interface's default
 // developerMode stubs instead of restating them.
 class _FakeSyncSettings extends SyncSettings {
@@ -133,17 +135,20 @@ void main() {
       expect(transport.calls, isNotEmpty, reason: 'the clock no longer bars a round — the write gate bounds what can be in it');
     });
 
-    test('the loop keeps running too, not just a hand-driven round', () async {
-      // `start`/`notifyChanged` is a second entry point into the same engine,
-      // and the bar this replaced lived where both of them passed through.
-      AppClock.instance.travel(delta: const Duration(days: 3));
-      await dirtyRow();
-      engine.start();
-      engine.notifyChanged();
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+    test(
+      'the loop keeps running too, not just a hand-driven round',
+      () => runOnFakeClock((_) async {
+        // `start`/`notifyChanged` is a second entry point into the same engine,
+        // and the bar this replaced lived where both of them passed through.
+        AppClock.instance.travel(delta: const Duration(days: 3));
+        await dirtyRow();
+        engine.start();
+        engine.notifyChanged();
+        await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(transport.calls, isNotEmpty);
-    });
+        expect(transport.calls, isNotEmpty);
+      }),
+    );
 
     // The destructive pair still refuse while travelled, and have to do it
     // BEFORE they act: each wipes local data into the backup tables and relies
@@ -951,214 +956,272 @@ void main() {
     expect((sync['operations'] as Map)['limit'], SyncEngine.backfillPullLimit);
   });
 
-  test('a full page of inbound records reschedules after the loop delay, not sooner', () async {
-    // A server with a page and a half of pending QSOs to hand back: a full
-    // page the first call, the rest on the next — the same "keep looping
-    // until caught up" shape as app-polo's `receivedAllUpdates`.
-    transport.responder = (method, args) =>
-        pagedResponse(inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList());
+  test(
+    'a full page of inbound records reschedules after the loop delay, not sooner',
+    () => runOnFakeClock((_) async {
+      // A server with a page and a half of pending QSOs to hand back: a full
+      // page the first call, the rest on the next — the same "keep looping
+      // until caught up" shape as app-polo's `receivedAllUpdates`.
+      transport.responder = (method, args) =>
+          pagedResponse(inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList());
 
-    await engine.runOneRound();
-    expect(transport.calls, hasLength(1)); // first page: a full page
+      await engine.runOneRound();
+      expect(transport.calls, hasLength(1)); // first page: a full page
 
-    final wait = engine.nextAttemptAt!.difference(realNowUtc());
-    expect(wait, greaterThan(const Duration(seconds: 4)));
-    expect(wait, lessThanOrEqualTo(const Duration(milliseconds: 5500)));
-    // Not the immediate follow-up: that request always landed inside the
-    // server's cooldown and came back with no page.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(transport.calls, hasLength(1));
-  });
+      final wait = engine.nextAttemptAt!.difference(realNowUtc());
+      expect(wait, greaterThan(const Duration(seconds: 4)));
+      expect(wait, lessThanOrEqualTo(const Duration(milliseconds: 5500)));
+      // Not the immediate follow-up: that request always landed inside the
+      // server's cooldown and came back with no page.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(transport.calls, hasLength(1));
+    }),
+  );
 
   // A plan with no cooldown suggests a delay of 0. Read as "unset", that falls back to the 20 s
   // default and a backfill pages twenty times slower than the server asked for.
-  test('a suggested loop delay of zero pages straight through, not at the default', () async {
-    transport.responder = (method, args) => {
-      'qsos': inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList(),
-      'meta': {
-        'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 60000},
-      },
-    };
+  test(
+    'a suggested loop delay of zero pages straight through, not at the default',
+    () => runOnFakeClock((_) async {
+      transport.responder = (method, args) => {
+        'qsos': inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList(),
+        'meta': {
+          'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 60000},
+        },
+      };
 
-    await engine.runOneRound();
-    expect(transport.calls, hasLength(1));
+      await engine.runOneRound();
+      expect(transport.calls, hasLength(1));
 
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect(transport.calls, hasLength(2), reason: 'the second page follows without a wait');
-    // Caught up after the short second page: idle at the check period, never the zero delay.
-    expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 59)));
-  });
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(transport.calls, hasLength(2), reason: 'the second page follows without a wait');
+      // Caught up after the short second page: idle at the check period, never the zero delay.
+      expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 59)));
+    }),
+  );
 
-  test('a partial page means caught up, and the loop idles at the check period', () async {
-    transport.responder = (method, args) => pagedResponse(inboundFrom(args, totalAvailable: 50));
+  test(
+    'a partial page means caught up, and the loop idles at the check period',
+    () => runOnFakeClock((_) async {
+      transport.responder = (method, args) => pagedResponse(inboundFrom(args, totalAvailable: 50));
 
-    await engine.runOneRound();
-    expect(transport.calls, hasLength(1));
+      await engine.runOneRound();
+      expect(transport.calls, hasLength(1));
 
-    final wait = engine.nextAttemptAt!.difference(realNowUtc());
-    expect(wait, greaterThan(const Duration(seconds: 59)));
-    expect(wait, lessThanOrEqualTo(const Duration(seconds: 60)));
-  });
+      final wait = engine.nextAttemptAt!.difference(realNowUtc());
+      expect(wait, greaterThan(const Duration(seconds: 59)));
+      expect(wait, lessThanOrEqualTo(const Duration(seconds: 60)));
+    }),
+  );
 
   // A small-batch round holds the engine for as long as its network call takes, and the periodic
   // timer does not wait for it. Skipped outright, that periodic round is the last one: every
   // reschedule is on the periodic path, and a small-batch round never asks to pull. The device
   // keeps pushing its own contacts and receives nothing from the other devices, with no error to
   // report — the loop just never fires again.
-  test('a periodic round that finds a small-batch round in flight still runs afterwards', () async {
-    await operations.create(stationCall: 'KI2D');
-    final gate = Completer<void>();
-    transport.gate = gate.future;
+  test(
+    'a periodic round that finds a small-batch round in flight still runs afterwards',
+    () => runOnFakeClock((_) async {
+      await operations.create(stationCall: 'KI2D');
+      final gate = Completer<void>();
+      transport.gate = gate.future;
 
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(1), reason: 'the small-batch round is on the network');
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(1), reason: 'the small-batch round is on the network');
 
-    // The periodic timer firing mid-flight.
-    await engine.runOneRound();
-    expect(transport.calls, hasLength(1));
+      // The periodic timer firing mid-flight.
+      await engine.runOneRound();
+      expect(transport.calls, hasLength(1));
 
-    gate.complete();
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(engine.nextAttemptAt, isNotNull, reason: 'the loop must have a next round');
-    expect(transport.calls, hasLength(2), reason: 'the deferred periodic round runs once the engine is free');
-    expect(transport.calls.last.$2['meta']['inboundSync'], isTrue, reason: 'and it pulls');
-  });
+      expect(engine.nextAttemptAt, isNotNull, reason: 'the loop must have a next round');
+      expect(transport.calls, hasLength(2), reason: 'the deferred periodic round runs once the engine is free');
+      expect(transport.calls.last.$2['meta']['inboundSync'], isTrue, reason: 'and it pulls');
+    }),
+  );
 
   // The failed round's catch already re-armed the timer, with a backoff. Running the deferred
   // round at once instead would hit the same dead network a second time and count it twice.
-  test('a periodic round deferred behind a small-batch round that fails keeps that round\'s backoff', () async {
-    await operations.create(stationCall: 'KI2D');
-    final gate = Completer<void>();
-    transport.gate = gate.future;
-    transport.responder = (method, args) => throw StateError('server unreachable');
+  test(
+    'a periodic round deferred behind a small-batch round that fails keeps that round\'s backoff',
+    () => runOnFakeClock((_) async {
+      await operations.create(stationCall: 'KI2D');
+      final gate = Completer<void>();
+      transport.gate = gate.future;
+      transport.responder = (method, args) => throw StateError('server unreachable');
 
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    await engine.runOneRound();
-    gate.complete();
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      await engine.runOneRound();
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(transport.calls, hasLength(1), reason: 'no second attempt against a network that just failed');
-    expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 1)));
-  });
+      expect(transport.calls, hasLength(1), reason: 'no second attempt against a network that just failed');
+      expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 1)));
+    }),
+  );
 
   // A rejected registration has the same shape as a failure: the deferred round must wait out
   // the rejection's backoff, not land streak #2 seconds after #1 and reach the user an interval
   // early.
-  test('a periodic round deferred behind a rejected small-batch round waits out the rejection', () async {
-    await operations.create(stationCall: 'KI2D');
-    final gate = Completer<void>();
-    transport.gate = gate.future;
-    transport.responder = (method, args) => const {'error': 'stale registration', 'error_status': 422};
+  test(
+    'a periodic round deferred behind a rejected small-batch round waits out the rejection',
+    () => runOnFakeClock((_) async {
+      await operations.create(stationCall: 'KI2D');
+      final gate = Completer<void>();
+      transport.gate = gate.future;
+      transport.responder = (method, args) => const {'error': 'stale registration', 'error_status': 422};
 
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    await engine.runOneRound();
-    gate.complete();
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      await engine.runOneRound();
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(transport.calls, hasLength(1));
-    expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 1)));
-  });
+      expect(transport.calls, hasLength(1));
+      expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 1)));
+    }),
+  );
 
   // The mirror collision. The periodic round's batch was selected before the write, and with
   // nothing of its own to push it idles at the check period — so a dropped small-batch round
   // leaves the record dirty for minutes instead of seconds.
-  test('a small-batch round that finds a periodic round in flight still runs afterwards', () async {
-    final gate = Completer<void>();
-    transport.gate = gate.future;
+  test(
+    'a small-batch round that finds a periodic round in flight still runs afterwards',
+    () => runOnFakeClock((_) async {
+      final gate = Completer<void>();
+      transport.gate = gate.future;
 
-    final periodic = engine.runOneRound();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(transport.calls, hasLength(1), reason: 'the periodic round is on the network');
+      final periodic = engine.runOneRound();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(transport.calls, hasLength(1), reason: 'the periodic round is on the network');
 
-    await operations.create(stationCall: 'KI2D');
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(1), reason: 'the small-batch round found the engine busy');
+      await operations.create(stationCall: 'KI2D');
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(1), reason: 'the small-batch round found the engine busy');
 
-    gate.complete();
-    await periodic;
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+      gate.complete();
+      await periodic;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(transport.calls, hasLength(2), reason: 'the deferred small-batch round runs once the engine is free');
-    expect(transport.calls.last.$2['operations'], hasLength(1), reason: 'and pushes the write');
-  });
+      expect(transport.calls, hasLength(2), reason: 'the deferred small-batch round runs once the engine is free');
+      expect(transport.calls.last.$2['operations'], hasLength(1), reason: 'and pushes the write');
+    }),
+  );
 
   // The common collision in a run: the next contact is logged while the previous one's push is
   // still on a slow link. Its debounce fires into the busy engine, and without the deferral it
   // waits a whole check period.
-  test('a small-batch round that finds another small-batch round in flight still runs afterwards', () async {
-    await operations.create(stationCall: 'KI2D');
-    final gate = Completer<void>();
-    transport.gate = gate.future;
+  test(
+    'a small-batch round that finds another small-batch round in flight still runs afterwards',
+    () => runOnFakeClock((_) async {
+      await operations.create(stationCall: 'KI2D');
+      final gate = Completer<void>();
+      transport.gate = gate.future;
 
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(1), reason: 'the first push is on the network');
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(1), reason: 'the first push is on the network');
 
-    await operations.create(stationCall: 'KI2D');
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(1), reason: 'the second push found the engine busy');
+      await operations.create(stationCall: 'KI2D');
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(1), reason: 'the second push found the engine busy');
 
-    gate.complete();
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(2), reason: 'the second push runs once the first lands');
-    expect(transport.calls.last.$2['operations'], hasLength(1));
-  });
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(2), reason: 'the second push runs once the first lands');
+      expect(transport.calls.last.$2['operations'], hasLength(1));
+    }),
+  );
 
   // `retryNow` reads the round's reachability the moment its await returns. A deferred round
   // started synchronously from the finishing round's `finally` clears that answer first, so the
   // tap reports "not attempted" — and skips restoring the schedule, feeding the backoff the way
   // retryNow promises never to.
-  test('a small-batch round deferred behind a manual retry does not clobber its answer', () async {
-    final gate = Completer<void>();
-    transport.gate = gate.future;
+  test(
+    'a small-batch round deferred behind a manual retry does not clobber its answer',
+    () => runOnFakeClock((_) async {
+      final gate = Completer<void>();
+      transport.gate = gate.future;
 
-    final retry = engine.retryNow();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    await operations.create(stationCall: 'KI2D');
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(1));
+      final retry = engine.retryNow();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await operations.create(stationCall: 'KI2D');
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(1));
 
-    gate.complete();
-    expect(await retry, SyncRetryOutcome.reached);
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(2), reason: 'the deferred push still runs');
-  });
+      gate.complete();
+      expect(await retry, SyncRetryOutcome.reached);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(2), reason: 'the deferred push still runs');
+    }),
+  );
 
-  test('a small-batch round deferred behind a round that outlives dispose never starts', () async {
-    final gate = Completer<void>();
-    transport.gate = gate.future;
+  test(
+    'a small-batch round deferred behind a round that outlives dispose never starts',
+    () => runOnFakeClock((_) async {
+      final gate = Completer<void>();
+      transport.gate = gate.future;
 
-    final periodic = engine.runOneRound();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    await operations.create(stationCall: 'KI2D');
-    engine.notifyChanged();
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
-    expect(transport.calls, hasLength(1));
+      final periodic = engine.runOneRound();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await operations.create(stationCall: 'KI2D');
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+      expect(transport.calls, hasLength(1));
 
-    engine.dispose();
-    gate.complete();
-    await periodic;
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+      engine.dispose();
+      gate.complete();
+      await periodic;
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
-    expect(transport.calls, hasLength(1), reason: 'nothing starts against a disposed engine');
-  });
+      expect(transport.calls, hasLength(1), reason: 'nothing starts against a disposed engine');
+    }),
+  );
 
-  test('notifyChanged debounces into a small-batch round', () async {
-    await operations.create(stationCall: 'KI2D');
+  test(
+    'notifyChanged debounces into a small-batch round',
+    () => runOnFakeClock((_) async {
+      await operations.create(stationCall: 'KI2D');
 
-    engine.notifyChanged();
-    expect(transport.calls, isEmpty); // not yet — still debouncing
+      engine.notifyChanged();
+      await Future<void>.delayed(SyncEngine.debounceDelay - const Duration(milliseconds: 100));
+      expect(transport.calls, isEmpty, reason: 'still debouncing');
 
-    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 200));
-    expect(transport.calls, hasLength(1));
-  });
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(transport.calls, hasLength(1));
+    }),
+  );
+
+  // Edits arriving faster than the debounce would otherwise hold the round
+  // off for as long as the operator keeps typing. The cap is measured on
+  // realNowUtc, so this needs the app clock on the fake one too.
+  test(
+    'edits that keep arriving still sync once the debounce cap is reached',
+    () => runOnFakeClock((_) async {
+      await operations.create(stationCall: 'KI2D');
+      // One edit every 400 ms, each inside the 500 ms debounce, from 0 to
+      // 2.8 s: nothing may sync yet.
+      final every = SyncEngine.debounceDelay - const Duration(milliseconds: 100);
+      for (var at = Duration.zero; at < SyncEngine.debounceMaxWait; at += every) {
+        engine.notifyChanged();
+        await Future<void>.delayed(every);
+      }
+      expect(transport.calls, isEmpty, reason: 'every edit so far landed inside the debounce, and the cap is not yet reached');
+
+      // The edit at 3.2 s is past the 3 s cap: it syncs at once rather than
+      // starting another 500 ms wait.
+      engine.notifyChanged();
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      expect(transport.calls, hasLength(1), reason: 'the cap forces a round however often edits keep coming');
+    }),
+  );
 
   group('account identity and backfill', () {
     setUp(() {
@@ -1247,46 +1310,49 @@ void main() {
       expect(await operations.byUuids([op.uuid]), isNotEmpty);
     });
 
-    test('the user answering the banner mid-check wins over the silent adoption', () async {
-      // The banner goes live the instant pendingAccountUUID is written, so
-      // it can be answered while the emptiness check is still awaiting. If
-      // that check then adopts anyway it overwrites a real decision with a
-      // guess — and since Replace empties the local log, the check would
-      // find nothing and adopt every time.
-      final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'},
-      });
-      transport.responder = (method, args) => {
-        'current_account': {'uuid': 'acct-new'},
-        'operations': {'total': 0},
-        'qsos': {'total': 0},
-      };
-      // Every account this device is told it belongs to, in order. The end
-      // state alone proves nothing here: a de-link leaves `lastSyncAccountUUID`
-      // null, the next round re-enters the never-linked branch, and — over
-      // the log Replace just emptied — silently adopts the same account
-      // again. The damage is real and the final value looks correct, so the
-      // assertion has to be on the history.
-      final linkedTo = <Object?>[];
-      settings.onStateSet = (state) {
-        if (state.containsKey('lastSyncAccountUUID')) linkedTo.add(state['lastSyncAccountUUID']);
-        // Answer the banner the instant it goes live, the way a tap would —
-        // which is the instant pendingAccountUUID is written, mid-round.
-        if (state['pendingAccountUUID'] == null) return;
-        unawaited(engine.resolveAccountChange(SyncAccountChoice.replace));
-      };
+    test(
+      'the user answering the banner mid-check wins over the silent adoption',
+      () => runOnFakeClock((_) async {
+        // The banner goes live the instant pendingAccountUUID is written, so
+        // it can be answered while the emptiness check is still awaiting. If
+        // that check then adopts anyway it overwrites a real decision with a
+        // guess — and since Replace empties the local log, the check would
+        // find nothing and adopt every time.
+        final op = await operations.create(stationCall: 'KI2D');
+        await qsos.add(op.uuid, {
+          'their': {'call': 'W1AW'},
+        });
+        transport.responder = (method, args) => {
+          'current_account': {'uuid': 'acct-new'},
+          'operations': {'total': 0},
+          'qsos': {'total': 0},
+        };
+        // Every account this device is told it belongs to, in order. The end
+        // state alone proves nothing here: a de-link leaves `lastSyncAccountUUID`
+        // null, the next round re-enters the never-linked branch, and — over
+        // the log Replace just emptied — silently adopts the same account
+        // again. The damage is real and the final value looks correct, so the
+        // assertion has to be on the history.
+        final linkedTo = <Object?>[];
+        settings.onStateSet = (state) {
+          if (state.containsKey('lastSyncAccountUUID')) linkedTo.add(state['lastSyncAccountUUID']);
+          // Answer the banner the instant it goes live, the way a tap would —
+          // which is the instant pendingAccountUUID is written, mid-round.
+          if (state['pendingAccountUUID'] == null) return;
+          unawaited(engine.resolveAccountChange(SyncAccountChoice.replace));
+        };
 
-      await engine.runOneRound();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+        await engine.runOneRound();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      expect(linkedTo, isNot(contains(null)), reason: 'a null lastSyncAccountUUID is a device that forgot its account');
-      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
-      expect(settings.state['pendingAccountUUID'], isNull);
-      // Replace's answer stands — the local log really was backed up and
-      // cleared, not merged.
-      expect(await operations.byUuids([op.uuid]), isEmpty);
-    });
+        expect(linkedTo, isNot(contains(null)), reason: 'a null lastSyncAccountUUID is a device that forgot its account');
+        expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+        expect(settings.state['pendingAccountUUID'], isNull);
+        // Replace's answer stands — the local log really was backed up and
+        // cleared, not merged.
+        expect(await operations.byUuids([op.uuid]), isEmpty);
+      }),
+    );
 
     test('a pending account choice pauses sync entirely', () async {
       settings.state = {'pendingAccountUUID': 'acct-new'};
@@ -1298,34 +1364,37 @@ void main() {
       expect(transport.calls, isEmpty);
     });
 
-    test('resolveAccountChange(combine) resets sync flags and starts a fresh backfill', () async {
-      final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'},
-      });
-      await operations.markSynced([op]);
-      await qsos.markSynced(await qsos.watchForOperation(op.uuid).first);
-      settings.state = {'pendingAccountUUID': 'acct-new'};
+    test(
+      'resolveAccountChange(combine) resets sync flags and starts a fresh backfill',
+      () => runOnFakeClock((_) async {
+        final op = await operations.create(stationCall: 'KI2D');
+        await qsos.add(op.uuid, {
+          'their': {'call': 'W1AW'},
+        });
+        await operations.markSynced([op]);
+        await qsos.markSynced(await qsos.forOperation(op.uuid));
+        settings.state = {'pendingAccountUUID': 'acct-new'};
 
-      transport.responder = (method, args) => const {};
-      await engine.resolveAccountChange(SyncAccountChoice.combine);
+        transport.responder = (method, args) => const {};
+        await engine.resolveAccountChange(SyncAccountChoice.combine);
 
-      // resetSyncedStatus runs synchronously inside resolveAccountChange,
-      // before the round it schedules even starts.
-      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
-      expect(settings.state['pendingAccountUUID'], isNull);
-      expect(await operations.hasUnsynced(), isTrue); // reset, not deleted
-      expect(await qsos.hasUnsynced(), isTrue);
+        // resetSyncedStatus runs synchronously inside resolveAccountChange,
+        // before the round it schedules even starts.
+        expect(settings.state['lastSyncAccountUUID'], 'acct-new');
+        expect(settings.state['pendingAccountUUID'], isNull);
+        expect(await operations.hasUnsynced(), isTrue); // reset, not deleted
+        expect(await qsos.hasUnsynced(), isTrue);
 
-      // Give the immediately-scheduled round a moment to run and confirm it
-      // backfills (anyClient: true), not forward mode — and that local data
-      // survived (combine keeps it, unlike replace).
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(transport.calls, isNotEmpty);
-      final sync = (transport.calls.last.$2['meta'] as Map)['sync'] as Map;
-      expect((sync['qsos'] as Map)['anyClient'], isTrue);
-      expect(await operations.byUuids([op.uuid]), isNotEmpty);
-    });
+        // Give the immediately-scheduled round a moment to run and confirm it
+        // backfills (anyClient: true), not forward mode — and that local data
+        // survived (combine keeps it, unlike replace).
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(transport.calls, isNotEmpty);
+        final sync = (transport.calls.last.$2['meta'] as Map)['sync'] as Map;
+        expect((sync['qsos'] as Map)['anyClient'], isTrue);
+        expect(await operations.byUuids([op.uuid]), isNotEmpty);
+      }),
+    );
 
     test('resolveAccountChange(replace) backs up local data and clears it', () async {
       final op = await operations.create(stationCall: 'KI2D');
@@ -1839,81 +1908,87 @@ void main() {
     // the loop delay — which is the right rate for it (the fastest the server's cooldown allows,
     // and the log says so), as long as nothing reads the stall as a timestamp tie and grows the
     // limit, or drops it to the idle rate.
-    test('a server echoing back the cursor it was sent retries at the loop delay', () async {
-      final logs = <String>[];
-      engine.dispose();
-      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, log: logs.add);
-      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
-      transport.responder = (method, args) => {
-        'qsos': [
-          for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
-            {
-              'uuid': 'q$i',
-              'operation': 'op1',
-              'their': {'call': 'W1AW$i'},
-              'startAtMillis': i,
-              'syncedAtMillis': 4000 - i,
-            },
-        ],
-        'meta': {
-          // The same cursor back, on a full page: the next round would re-request this page.
-          'qsos': {'next_cursor': 'row:7', 'records_left': 99},
-          'operations': {'records_left': 0},
-          'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
-        },
-      };
+    test(
+      'a server echoing back the cursor it was sent retries at the loop delay',
+      () => runOnFakeClock((_) async {
+        final logs = <String>[];
+        engine.dispose();
+        engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, log: logs.add);
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
+        transport.responder = (method, args) => {
+          'qsos': [
+            for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+              {
+                'uuid': 'q$i',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$i'},
+                'startAtMillis': i,
+                'syncedAtMillis': 4000 - i,
+              },
+          ],
+          'meta': {
+            // The same cursor back, on a full page: the next round would re-request this page.
+            'qsos': {'next_cursor': 'row:7', 'records_left': 99},
+            'operations': {'records_left': 0},
+            'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
+          },
+        };
 
-      await engine.runOneRound();
+        await engine.runOneRound();
 
-      expect(
-        logs.where((l) => l.contains('came back unchanged')),
-        isNotEmpty,
-        reason: 'an unmoving cursor is named, or the boost logic reads it as a timestamp tie',
-      );
-      final wait = engine.nextAttemptAt!.difference(realNowUtc());
-      expect(
-        wait,
-        lessThanOrEqualTo(const Duration(milliseconds: 5500)),
-        reason:
-            'the log promises the loop delay; idling at the check period would make a stuck '
-            'backfill recover at the idle rate',
-      );
-      expect(wait, greaterThan(const Duration(seconds: 4)));
-    });
+        expect(
+          logs.where((l) => l.contains('came back unchanged')),
+          isNotEmpty,
+          reason: 'an unmoving cursor is named, or the boost logic reads it as a timestamp tie',
+        );
+        final wait = engine.nextAttemptAt!.difference(realNowUtc());
+        expect(
+          wait,
+          lessThanOrEqualTo(const Duration(milliseconds: 5500)),
+          reason:
+              'the log promises the loop delay; idling at the check period would make a stuck '
+              'backfill recover at the idle rate',
+        );
+        expect(wait, greaterThan(const Duration(seconds: 4)));
+      }),
+    );
 
-    test('a server flag that is not a number is ignored and named, and the round still lands', () async {
-      final logs = <String>[];
-      engine.dispose();
-      engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, log: logs.add);
-      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
-      transport.responder = (method, args) => {
-        'qsos': [
-          for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
-            {
-              'uuid': 'q$i',
-              'operation': 'op1',
-              'their': {'call': 'W1AW$i'},
-              'startAtMillis': i,
-              'syncedAtMillis': 4000 - i,
-            },
-        ],
-        'meta': {
-          'qsos': {'next_cursor': 'row:8', 'records_left': 5},
-          'operations': {'records_left': 0},
-          // A hand-edited plans.flags row: a throw on it would land after the merge and before
-          // the state write, so the cursor never advances and this page is re-pulled forever.
-          'flags': {'suggested_sync_check_period': 'a minute', 'suggested_sync_loop_delay': '5500'},
-        },
-      };
+    test(
+      'a server flag that is not a number is ignored and named, and the round still lands',
+      () => runOnFakeClock((_) async {
+        final logs = <String>[];
+        engine.dispose();
+        engine = SyncEngine(operations: operations, qsos: qsos, settings: settings, transport: transport.call, log: logs.add);
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
+        transport.responder = (method, args) => {
+          'qsos': [
+            for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+              {
+                'uuid': 'q$i',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$i'},
+                'startAtMillis': i,
+                'syncedAtMillis': 4000 - i,
+              },
+          ],
+          'meta': {
+            'qsos': {'next_cursor': 'row:8', 'records_left': 5},
+            'operations': {'records_left': 0},
+            // A hand-edited plans.flags row: a throw on it would land after the merge and before
+            // the state write, so the cursor never advances and this page is re-pulled forever.
+            'flags': {'suggested_sync_check_period': 'a minute', 'suggested_sync_loop_delay': '5500'},
+          },
+        };
 
-      await engine.runOneRound();
+        await engine.runOneRound();
 
-      expect(settings.state['backfillQSOCursor'], 'row:8');
-      expect(logs.where((l) => l.contains('suggested_sync_check_period=a minute')), isNotEmpty);
-      // A numeric string is a number: a full page waits the 5.5 s loop delay it carried, not the
-      // 20 s default.
-      expect(engine.nextAttemptAt!.difference(realNowUtc()), lessThanOrEqualTo(const Duration(milliseconds: 5500)));
-    });
+        expect(settings.state['backfillQSOCursor'], 'row:8');
+        expect(logs.where((l) => l.contains('suggested_sync_check_period=a minute')), isNotEmpty);
+        // A numeric string is a number: a full page waits the 5.5 s loop delay it carried, not the
+        // 20 s default.
+        expect(engine.nextAttemptAt!.difference(realNowUtc()), lessThanOrEqualTo(const Duration(milliseconds: 5500)));
+      }),
+    );
 
     // The ascending mirror of the backfill fallback: a forward cursor page also stops at the
     // limit wherever that lands, and the fallback window is `> watermark`, so banking the last
@@ -2288,32 +2363,35 @@ void main() {
 
     // With no cooldown the loop delay is zero, and a page the server keeps re-serving on an
     // unmoving cursor would be re-requested and re-merged with no wait at all.
-    test('a stuck cursor on a zero loop delay retries at the check period, not instantly', () async {
-      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
-      transport.responder = (method, args) => {
-        'qsos': [
-          for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
-            {
-              'uuid': 'q$i',
-              'operation': 'op1',
-              'their': {'call': 'W1AW$i'},
-              'startAtMillis': i,
-              'syncedAtMillis': 9000 - i,
-            },
-        ],
-        'meta': {
-          'qsos': {'next_cursor': 'row:7', 'records_left': 99},
-          'operations': {'records_left': 0},
-          'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 7000},
-        },
-      };
+    test(
+      'a stuck cursor on a zero loop delay retries at the check period, not instantly',
+      () => runOnFakeClock((_) async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
+        transport.responder = (method, args) => {
+          'qsos': [
+            for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+              {
+                'uuid': 'q$i',
+                'operation': 'op1',
+                'their': {'call': 'W1AW$i'},
+                'startAtMillis': i,
+                'syncedAtMillis': 9000 - i,
+              },
+          ],
+          'meta': {
+            'qsos': {'next_cursor': 'row:7', 'records_left': 99},
+            'operations': {'records_left': 0},
+            'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 7000},
+          },
+        };
 
-      await engine.runOneRound();
+        await engine.runOneRound();
 
-      final wait = engine.nextAttemptAt!.difference(realNowUtc());
-      expect(wait, greaterThan(const Duration(seconds: 6)));
-      expect(wait, lessThanOrEqualTo(const Duration(seconds: 7)));
-    });
+        final wait = engine.nextAttemptAt!.difference(realNowUtc());
+        expect(wait, greaterThan(const Duration(seconds: 6)));
+        expect(wait, lessThanOrEqualTo(const Duration(seconds: 7)));
+      }),
+    );
 
     test('backfill rounds report server counts as progress, ending with a terminal update', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
@@ -2380,61 +2458,64 @@ void main() {
       expect(settings.state['completedFullSync'], isTrue);
     });
 
-    test('a reconciliation during an in-flight round abandons that round\'s response', () async {
-      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
-      final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'},
-      });
+    test(
+      'a reconciliation during an in-flight round abandons that round\'s response',
+      () => runOnFakeClock((_) async {
+        settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
+        final op = await operations.create(stationCall: 'KI2D');
+        await qsos.add(op.uuid, {
+          'their': {'call': 'W1AW'},
+        });
 
-      final gate = Completer<Map<String, dynamic>>();
-      final syncArgs = <Map<String, dynamic>>[];
-      engine.dispose();
-      engine = SyncEngine(
-        operations: operations,
-        qsos: qsos,
-        settings: settings,
-        transport: (method, args) {
-          syncArgs.add(args);
-          if (syncArgs.length == 1) return gate.future; // first round hangs on the network
-          return Future.value(const {});
-        },
-      );
-
-      final staleRound = engine.runOneRound();
-      await Future<void>.delayed(const Duration(milliseconds: 10)); // let it reach the transport await
-
-      // SYNCALL lands mid-flight: wipes the tables, resets backfill state.
-      await engine.forceFullResync();
-
-      // The hung response finally arrives — same account, server records,
-      // and (captured pre-wipe) short-page flags that would otherwise set
-      // completedFullSync on the freshly reset state.
-      gate.complete({
-        'account': {'uuid': 'acct-1'},
-        'qsos': [
-          {
-            'uuid': 'stale-inbound',
-            'operation': op.uuid,
-            'their': {'call': 'SHOULDNOTMERGE'},
-            'syncedAtMillis': 5,
+        final gate = Completer<Map<String, dynamic>>();
+        final syncArgs = <Map<String, dynamic>>[];
+        engine.dispose();
+        engine = SyncEngine(
+          operations: operations,
+          qsos: qsos,
+          settings: settings,
+          transport: (method, args) {
+            syncArgs.add(args);
+            if (syncArgs.length == 1) return gate.future; // first round hangs on the network
+            return Future.value(const {});
           },
-        ],
-      });
-      await staleRound;
+        );
 
-      // Nothing from the abandoned response reached the wiped tables.
-      expect(await qsos.watchForOperation(op.uuid).first, isEmpty);
+        final staleRound = engine.runOneRound();
+        await Future<void>.delayed(const Duration(milliseconds: 10)); // let it reach the transport await
 
-      // The fresh generation's round does run afterward — and as a real
-      // backfill (anyClient: true), proving the stale round didn't clobber
-      // the reset flags with its pre-wipe snapshot.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(syncArgs.length, greaterThan(1));
-      final followUpSync = (syncArgs.last['meta'] as Map)['sync'] as Map;
-      expect((followUpSync['qsos'] as Map)['anyClient'], isTrue);
-      expect(await qsos.watchForOperation(op.uuid).first, isEmpty);
-    });
+        // SYNCALL lands mid-flight: wipes the tables, resets backfill state.
+        await engine.forceFullResync();
+
+        // The hung response finally arrives — same account, server records,
+        // and (captured pre-wipe) short-page flags that would otherwise set
+        // completedFullSync on the freshly reset state.
+        gate.complete({
+          'account': {'uuid': 'acct-1'},
+          'qsos': [
+            {
+              'uuid': 'stale-inbound',
+              'operation': op.uuid,
+              'their': {'call': 'SHOULDNOTMERGE'},
+              'syncedAtMillis': 5,
+            },
+          ],
+        });
+        await staleRound;
+
+        // Nothing from the abandoned response reached the wiped tables.
+        expect(await qsos.forOperation(op.uuid), isEmpty);
+
+        // The fresh generation's round does run afterward — and as a real
+        // backfill (anyClient: true), proving the stale round didn't clobber
+        // the reset flags with its pre-wipe snapshot.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(syncArgs.length, greaterThan(1));
+        final followUpSync = (syncArgs.last['meta'] as Map)['sync'] as Map;
+        expect((followUpSync['qsos'] as Map)['anyClient'], isTrue);
+        expect(await qsos.forOperation(op.uuid), isEmpty);
+      }),
+    );
 
     test('transport failures are logged, never silent', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
@@ -2980,48 +3061,57 @@ void _reachabilityTests() {
     expect(reported, isEmpty);
   });
 
-  test('an unreachable round is rescheduled inside the probe ceiling', () async {
-    transport.responder = (method, args) => throw _NoAnswer();
-    final engine = build();
-    // Eight, not fewer: the general backoff is loopDelay + 2^errorCount, so
-    // it only passes the two-minute ceiling at the seventh failure. A shorter
-    // loop would leave this test unable to fail with the cap deleted — the
-    // uncapped value would already be inside the bound it asserts.
-    for (var i = 0; i < 8; i++) {
-      await engine.runOneRound();
-    }
-    final wait = engine.nextAttemptAt!.difference(realNowUtc());
-    engine.dispose();
-    expect(wait, lessThanOrEqualTo(SyncEngine.unreachableBackoffCeiling));
-  });
+  test(
+    'an unreachable round is rescheduled inside the probe ceiling',
+    () => runOnFakeClock((_) async {
+      transport.responder = (method, args) => throw _NoAnswer();
+      final engine = build();
+      // Eight, not fewer: the general backoff is loopDelay + 2^errorCount, so
+      // it only passes the two-minute ceiling at the seventh failure. A shorter
+      // loop would leave this test unable to fail with the cap deleted — the
+      // uncapped value would already be inside the bound it asserts.
+      for (var i = 0; i < 8; i++) {
+        await engine.runOneRound();
+      }
+      final wait = engine.nextAttemptAt!.difference(realNowUtc());
+      engine.dispose();
+      expect(wait, lessThanOrEqualTo(SyncEngine.unreachableBackoffCeiling));
+    }),
+  );
 
-  test('a failure that is not the network keeps the general backoff', () async {
-    transport.responder = (method, args) => throw StateError('runtime is gone');
-    final engine = build();
-    for (var i = 0; i < 8; i++) {
-      await engine.runOneRound();
-    }
-    final wait = engine.nextAttemptAt!.difference(realNowUtc());
-    engine.dispose();
-    expect(wait, greaterThan(SyncEngine.unreachableBackoffCeiling));
-  });
+  test(
+    'a failure that is not the network keeps the general backoff',
+    () => runOnFakeClock((_) async {
+      transport.responder = (method, args) => throw StateError('runtime is gone');
+      final engine = build();
+      for (var i = 0; i < 8; i++) {
+        await engine.runOneRound();
+      }
+      final wait = engine.nextAttemptAt!.difference(realNowUtc());
+      engine.dispose();
+      expect(wait, greaterThan(SyncEngine.unreachableBackoffCeiling));
+    }),
+  );
 
-  test('a failed retryNow does not push the schedule further out', () async {
-    transport.responder = (method, args) => throw _NoAnswer();
-    final engine = build();
-    for (var i = 0; i < 4; i++) {
-      await engine.runOneRound();
-    }
-    final before = engine.nextAttemptAt!;
-    expect(await engine.retryNow(), SyncRetryOutcome.unreachable);
-    final after = engine.nextAttemptAt!;
-    engine.dispose();
-    // Tapping retry is a question, not a failed attempt. If the round's own
-    // catch were allowed to reschedule, an operator tapping three times would
-    // push their own next automatic attempt out each time — the opposite of
-    // what they asked for.
-    expect(after.isAfter(before.add(const Duration(seconds: 1))), isFalse);
-  });
+  test(
+    'a failed retryNow does not push the schedule further out',
+    () => runOnFakeClock((_) async {
+      transport.responder = (method, args) => throw _NoAnswer();
+      final engine = build();
+      for (var i = 0; i < 4; i++) {
+        await engine.runOneRound();
+      }
+      final before = engine.nextAttemptAt!;
+      expect(await engine.retryNow(), SyncRetryOutcome.unreachable);
+      final after = engine.nextAttemptAt!;
+      engine.dispose();
+      // Tapping retry is a question, not a failed attempt. If the round's own
+      // catch were allowed to reschedule, an operator tapping three times would
+      // push their own next automatic attempt out each time — the opposite of
+      // what they asked for.
+      expect(after.isAfter(before.add(const Duration(seconds: 1))), isFalse);
+    }),
+  );
 
   test('retryNow that reaches the service reports so', () async {
     final engine = build();

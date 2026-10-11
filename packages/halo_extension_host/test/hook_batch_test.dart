@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
+import 'support/fake_clock.dart';
 
 // Two extensions answering one ref type: `alpha` claims the whole family, and
 // `kilo` claims only the codes beginning with K — the shape the QSO parties
@@ -142,43 +143,52 @@ void main() {
     expect((entries[1]['value'] as Map)['name'], 'Alpha X-1');
   });
 
-  test('a call that never answers keeps the ones that did, when partial results are asked for', () async {
-    // The runtime answers a batch with ONE message, so without the narration a
-    // host that stops waiting would throw away every reference that was
-    // decorated long before the stalled one gave up.
-    final host = await start();
-    final entries = await host.invokeHookBatch(
-      [_decorate('alpha', 'X-1'), _decorate('stalled', 'S-1'), _decorate('alpha', 'X-2')],
-      timeout: const Duration(seconds: 1),
-      partialOnTimeout: true,
-    );
+  test(
+    'a call that never answers keeps the ones that did, when partial results are asked for',
+    () => runOnFakeClock((_) async {
+      // The runtime answers a batch with ONE message, so without the narration a
+      // host that stops waiting would throw away every reference that was
+      // decorated long before the stalled one gave up.
+      final host = await start();
+      final entries = await host.invokeHookBatch(
+        [_decorate('alpha', 'X-1'), _decorate('stalled', 'S-1'), _decorate('alpha', 'X-2')],
+        timeout: const Duration(seconds: 1),
+        partialOnTimeout: true,
+      );
 
-    expect(entries, hasLength(3));
-    expect((entries[0]['value'] as Map)['name'], 'Alpha X-1');
-    expect(entries[1]['ok'], false);
-    expect(entries[1]['timedOut'], true, reason: 'a call that never answered must be distinguishable from one that answered with an error');
-    expect((entries[2]['value'] as Map)['name'], 'Alpha X-2', reason: 'salvaged entries arrive in settle order and must come back in call order');
-  });
+      expect(entries, hasLength(3));
+      expect((entries[0]['value'] as Map)['name'], 'Alpha X-1');
+      expect(entries[1]['ok'], false);
+      expect(entries[1]['timedOut'], true, reason: 'a call that never answered must be distinguishable from one that answered with an error');
+      expect((entries[2]['value'] as Map)['name'], 'Alpha X-2', reason: 'salvaged entries arrive in settle order and must come back in call order');
+    }),
+  );
 
-  test('a batch of one that runs out of time answers with its own timed-out entry', () async {
-    // A batch of one is not narrated — there is nothing else to salvage — so
-    // its timed-out entry is made up host-side rather than thrown as the
-    // whole batch failing.
-    final host = await start();
-    final entries = await host.invokeHookBatch([_decorate('stalled', 'S-1')], timeout: const Duration(seconds: 1), partialOnTimeout: true);
+  test(
+    'a batch of one that runs out of time answers with its own timed-out entry',
+    () => runOnFakeClock((_) async {
+      // A batch of one is not narrated — there is nothing else to salvage — so
+      // its timed-out entry is made up host-side rather than thrown as the
+      // whole batch failing.
+      final host = await start();
+      final entries = await host.invokeHookBatch([_decorate('stalled', 'S-1')], timeout: const Duration(seconds: 1), partialOnTimeout: true);
 
-    expect(entries, hasLength(1));
-    expect(entries.single['ok'], false);
-    expect(entries.single['timedOut'], true);
-  });
+      expect(entries, hasLength(1));
+      expect(entries.single['ok'], false);
+      expect(entries.single['timedOut'], true);
+    }),
+  );
 
-  test('still throws on a timeout when the caller did not ask for partial results', () async {
-    final host = await start();
-    await expectLater(
-      host.invokeHookBatch([_decorate('alpha', 'X-1'), _decorate('stalled', 'S-1')], timeout: const Duration(seconds: 1)),
-      throwsA(isA<HookTimeoutException>()),
-    );
-  });
+  test(
+    'still throws on a timeout when the caller did not ask for partial results',
+    () => runOnFakeClock((_) async {
+      final host = await start();
+      await expectLater(
+        host.invokeHookBatch([_decorate('alpha', 'X-1'), _decorate('stalled', 'S-1')], timeout: const Duration(seconds: 1)),
+        throwsA(isA<HookTimeoutException>()),
+      );
+    }),
+  );
 
   test('an empty batch answers without crossing', () async {
     final host = await start();

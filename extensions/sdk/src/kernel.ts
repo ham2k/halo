@@ -129,8 +129,14 @@ const { realNow, setClockTravel } = installAppClock()
 // bundle evaluates, the same way the raw message channel is.
 if (!removeAmbientTimers()) log("ERROR the engine's own timers could not be removed; extensions can reach them outside any budget")
 
+// The timer queue's clock: the engine's own monotonic one, unless the host
+// stamps a time in before each evaluation. Only a test does that, to run
+// extension timers on the same fake clock as the host's wake timer — with the
+// two on different clocks, a wake fires on fake time and finds nothing due.
+let stampedNow: number | null = null
+
 const timerQueue = createTimerQueue({
-  realNow: () => performance.now(),
+  realNow: () => stampedNow ?? performance.now(),
   wake: (delayMillis) => post({ type: "timerWake", delayMillis }),
   log,
   describeError,
@@ -1133,6 +1139,12 @@ const kernel = {
   /// error would keep growing. Re-sent whenever travel changes and whenever an
   /// engine boots; `anchorRealMillis: 0` means real time.
   setClockTravel,
+
+  /// The timer queue's time until the host stamps another, in milliseconds on
+  /// the host's monotonic clock. Sent only by a host given a test clock.
+  setMonotonicNow(millis: number) {
+    stampedNow = millis
+  },
 
   /// The host's answer to a `timerWake`: fires every timer now due.
   runTimers() {

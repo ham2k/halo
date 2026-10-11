@@ -84,10 +84,10 @@ clock is the entire point of the feature.
 | `dev_log.dart` — event timestamps | Read against the operator's own wall clock |
 | `peer_outbox.dart` — scan debounce window | Its remainder becomes a `Timer` duration |
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
-| `peer_ble_transport.dart` — the link keepalive cutoff (`PeerBleLink.now`), candidate `lastSeenMillis` and dial cooldowns, link uptime | Protocol timeouts and rate limiting a real radio. The keepalive's clock is behind a default argument so a test can drive it; the DEFAULT is the contract, and `peer_ble_transport_test.dart` pins it |
+| `peer_ble_transport.dart` — the link keepalive cutoff, candidate `lastSeenMillis` and dial cooldowns, link uptime | Protocol timeouts and rate limiting a real radio. `peer_ble_transport_test.dart` pins that a travelled clock does not drop a link |
 | `weather_panel.dart` — fetch-attempt throttle | Rate limiting a real request |
 | `catalog_service.dart` — the listing cache's TTL | A staleness timeout mirroring the catalog's own `max-age`, which is real seconds; travelled, a listing fetched under `DEVTT` would expire at once or never |
-| `map_ready_watchdog.dart` — the visible-time the map's give-up horizon accumulates (`MapReadyWatchdog.now`) | Its remainder becomes a `Timer` duration. Behind a default argument so a test can put it on the same timeline as those timers; the DEFAULT is the contract, and `map_ready_watchdog_test.dart` pins it |
+| `map_ready_watchdog.dart` — the visible-time the map's give-up horizon accumulates | Its remainder becomes a `Timer` duration. `map_ready_watchdog_test.dart` pins that travel does not count as time on screen |
 
 A `Timer` fires on real time and knows nothing about travel, so any duration
 handed to one has to be measured on the same clock it will be counted on.
@@ -400,44 +400,79 @@ suite runtime.
 So: **assert in the safe direction on real timers, or move to a fake clock.**
 There is no third option that is merely "careful".
 
-### Faking the timer is not enough
+### `fakeAsync` can drive the app clock, and nothing else's
 
-`fakeAsync` replaces `Timer` and `clock`. It does **not** replace
-`DateTime.now()`, and therefore does not replace `realNowMillis()` — which is
-exactly what §1 tells you to use for a staleness check or a protocol timeout.
-
-Put those two facts together and the failure is silent. The code's timer fires
-on fake time while its own comparison still reads the wall clock, so the
-elapsed value it computes is always about zero however far the test elapses.
-Nothing throws. The branch under test simply never runs, and the test passes
-for the rest of its life without exercising the thing it names.
-
-**Both halves have to come off one clock.** Inside a `fakeAsync` zone, `clock`
-IS the fake clock that `elapse` advances, so a `now`-shaped seam handed
-`clock.now()` puts the code's arithmetic on the same timeline as its timers:
+`fakeAsync` replaces `Timer` and package:clock's `clock`. AppClock's one real
+read follows that clock when a test sets `AppClock.followZoneClock`: every
+`nowUtc()`, `realNowUtc()` and `*Millis` read then moves with the fake clock
+`elapse` advances, with travel still applied on top. Code that takes its time
+from halo_core needs no seam: a sync engine's debounce cap and its `Timer`
+move together.
 
 ```dart
+AppClock.followZoneClock = true;   // and back to false in tearDown
 fakeAsync((async) {
-  final link = PeerBleLink(..., now: () => clock.now().millisecondsSinceEpoch);
-  async.elapse(const Duration(milliseconds: 150));   // exact, not a bet
+  engine.notifyChanged();
+  async.elapse(SyncEngine.debounceDelay + const Duration(milliseconds: 100));   // exact, not a bet
 });
 ```
 
-### A clock seam's DEFAULT is the contract, so pin it
+Each test package has a `runOnFakeClock` driver in `test/support/fake_clock.dart`
+that does this for an async test body, stepping the clock until the body
+finishes. Only work in this isolate can progress while it steps, and a drift
+stream is not such work: under the Flutter test binding its emissions arrive
+through the real event loop, so a body on the fake clock reads the database
+with a one-off query (`.get()`) rather than a stream's `.first`.
 
-Code that reads a clock needs that read behind a parameter before a test can
-drive it, and the parameter must default to the real function so production is
-unchanged. That default is then load-bearing and completely unguarded: swapping
-`realNowMillis` for `nowMillis` reads as an ordinary application of §1's own
-"everything goes through the app clock" rule, and `check_clock_discipline`
-greps for `DateTime.now()` — which this still isn't — so nothing catches it.
-The suite stays green while a travelled session silently expires every timeout
-at once.
+It is opt-in because `testWidgets` is a `fakeAsync` zone too, with a clock
+fixed at 2015-01-01, while a `tester.runAsync` body reads the real time.
+Followed there, a fixture written in `runAsync` and a save the widgets make
+would be stamped a decade apart, and the save would be dropped as stale. So
+widget tests, like production, read the system clock whatever zone they run
+in. `app_clock_test.dart` pins both.
 
-A seam therefore ships with a test that travels the clock and asserts the value
-does **not** follow. Assert it through behaviour rather than by comparing
-function references — what matters is that the number does not move, not which
-function produced it.
+What it does NOT reach is any clock that is not the app's: a `Stopwatch`, a
+`DateTime.now()` in third-party code, a native engine's own deadline
+(QuickJS's interrupt), and the extension kernel's `performance.now()`. Put a
+timer on fake time while its comparison reads one of those, and the failure
+is silent. The timer fires, the elapsed value the code computes is about zero
+however far the test elapses, nothing throws, and the branch under test never
+runs while the test passes for the rest of its life.
+
+**Both halves have to come off one clock.** Where the code reads a clock other
+than the app's, give the read a seam and hand it the fake one. For the
+extension kernel that seam is `extensionTimerClock` (halo_extension_host's
+`engine_runtime_io.dart`), which the host stamps into the kernel before every
+evaluation; `timers_test.dart` runs on it.
+
+### Waiting on something that is not a timer
+
+A fixed sleep before checking an I/O result — a socket's bytes, a database
+write, a download — is the same bet in a different shape. Poll for the
+result with a generous deadline that only guards against a hang. If the
+assertion is "exactly one", follow it with a quiet window, which is the safe
+direction.
+
+### "It finished within X" is a bet on the CPU
+
+An upper bound on real elapsed time fails on a starved machine as surely as a
+late timer does. Where the code's own deadline is real (an engine interrupt
+that has to stop a real runaway loop), assert that it stopped, not how fast.
+
+### Pin the choice of the real clock
+
+A read that must not travel calls `realNowMillis`, and that choice is
+load-bearing and completely unguarded: swapping it for `nowMillis` reads as an
+ordinary application of §1's own "everything goes through the app clock" rule,
+and `check_clock_discipline` greps for direct reads, which neither is. The
+suite stays green while a travelled session silently expires every timeout at
+once.
+
+So code with such a read ships with a test that travels the clock and asserts
+the behaviour does **not** follow — a link that is not dropped, a horizon that
+is not reached. With `followZoneClock` the test can do it on the fake clock,
+travelling between two exact instants. A seam onto a clock that is not the
+app's, such as `extensionTimerClock`, gets the same treatment for its default.
 
 ### Elapse inside the boundary, not onto it
 
@@ -473,7 +508,9 @@ Each layer is tested where its failure would actually appear:
 | The `Date` substitution's whole surface | `extensions/sdk/src/appClock.test.ts` |
 | Ordinary rounds running while travelled, and the destructive pair still refusing | `packages/halo_core/test/sync_engine_test.dart` |
 | **The write gate** — what a travelled session may author, and its escape hatches | `packages/halo_core/test/travel_write_gate_test.dart` |
-| **A clock seam's default** — that an injected real-clock read does not follow travel (§7) | `app/test/peer/peer_ble_transport_test.dart`, `app/test/spots/map_ready_watchdog_test.dart` |
+| **A real-clock read's choice of clock** — that a protocol timeout or a Timer's remainder does not follow travel | `app/test/peer/peer_ble_transport_test.dart`, `app/test/spots/map_ready_watchdog_test.dart` |
+| **The app clock on a fake one** — that `followZoneClock` lets `fakeAsync` move `nowUtc` and `realNowUtc`, travel on top, and that nothing follows it by default (§7) | `packages/halo_core/test/app_clock_test.dart` |
+| **Extension timers on a fake clock**, and on the engine's own clock without one, unmoved by travel | `packages/halo_extension_host/test/timers_test.dart` |
 
 The sandbox test runs the real kernel and the real clock-dashboard bundle
 deliberately. Replacing a global `Date` either works completely or fails

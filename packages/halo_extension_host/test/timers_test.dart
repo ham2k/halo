@@ -7,21 +7,27 @@
 // moved by hand; this is where a timer has to actually fire, with no hook call
 // outstanding to keep the engine pumped.
 //
-// Real timers throughout (docs/design/time.md §7). A timer fires late, never
-// early, so each assertion is either "it fired, and not before its delay" or
-// "it did not fire, well after it would have".
+// On a fake clock (docs/design/time.md §7): the host's wake timer, the
+// kernel's queue (through `extensionTimerClock`) and the test's own waits all
+// read the one clock `fakeAsync` advances, so "it fired by then" is exact
+// rather than a bet on how loaded the machine is. The one exception is pinned
+// separately: with no test clock the kernel keeps its own monotonic one,
+// which travelling the app clock does not move.
 //
 // The extension drives the kernel's `api.timers` directly, the way the SDK's
 // `host.setTimeout` does, so what is under test is the kernel and the host.
 
 import 'dart:async';
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_extension_host/src/engine_runtime_io.dart' show extensionEvalBudget;
 import 'package:halo_extension_host/src/extension_timers.dart';
 
 import 'support/bundles.dart';
+import 'support/fake_clock.dart';
 
 /// An extension that sets timers on request and records what they did.
 ///
@@ -43,8 +49,7 @@ __polo.defineExtension({
     timers = api.timers
     api.registerHook('bench', { key: '$key', hook: {
       after: async function (args) {
-        var setAt = Date.now()
-        timers.set(function (tag) { fired.push({ tag: tag, waited: Date.now() - setAt }) }, args.delay, false, [args.tag])
+        timers.set(function (tag) { fired.push({ tag: tag }) }, args.delay, false, [args.tag])
       },
       every: async function (args) {
         return timers.set(function () { fired.push({ tag: 'tick' }) }, args.delay, true, [])
@@ -131,6 +136,8 @@ __polo.defineExtension({
 void main() {
   requireBundles();
 
+  void onFakeClock(String description, Future<void> Function(FakeAsync async) body) => test(description, () => runOnFakeClock(body));
+
   Future<ExtensionHost> start(List<ExtensionBundle> bundles, {bool awaitActivation = true}) async {
     final host = await ExtensionHost.start(kernelSource: bundleSource('kernel'), extensions: bundles, useIsolate: false);
     addTearDown(host.dispose);
@@ -145,56 +152,55 @@ void main() {
 
   Future<List<Map>> fired(ExtensionHost host, String key) async => ((await call(host, key, 'fired')) as List).cast<Map>();
 
-  /// Polls until [condition] holds: timers fire on the real clock, not the test's.
-  Future<void> until(FutureOr<bool> Function() condition, {String reason = 'condition', Duration within = const Duration(seconds: 5)}) async {
-    final waited = Stopwatch()..start();
-    while (!await condition()) {
-      if (waited.elapsed > within) fail('timed out waiting for $reason');
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
-  }
+  Future<void> wait(int millis) => Future<void>.delayed(Duration(milliseconds: millis));
 
-  test('a timeout fires on its own, with no hook call keeping the engine awake, and not before its delay', () async {
+  onFakeClock('a timeout fires on its own, with no hook call keeping the engine awake, and not before its delay', (_) async {
     // The host pumps QuickJS only while a hook call is outstanding. A timer
     // that waited on that pump would fire only when something else happened
     // to call a hook — so this one is set, the call returns, and nothing
-    // else is asked of the engine until it has fired.
+    // else is asked of the engine until it is due.
     final host = await hostWith(['a']);
     await call(host, 'a', 'after', {'delay': 100, 'tag': 'first'});
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    final got = await fired(host, 'a');
-    expect(got.map((f) => f['tag']), ['first']);
-    expect(got.single['waited'] as int, greaterThanOrEqualTo(100));
+    await wait(80);
+    expect(await fired(host, 'a'), isEmpty);
+    await wait(40);
+    expect((await fired(host, 'a')).map((f) => f['tag']), ['first']);
   });
 
-  test('an interval keeps firing until it is cleared, and never after', () async {
+  onFakeClock('an interval keeps firing until it is cleared, and never after', (_) async {
     final host = await hostWith(['a']);
     final id = await call(host, 'a', 'every', {'delay': 20});
-    await until(() async => (await fired(host, 'a')).length >= 3, reason: 'three ticks');
+    await wait(70);
+    expect(await fired(host, 'a'), hasLength(3));
     await call(host, 'a', 'clear', {'id': id});
-    final count = (await fired(host, 'a')).length;
-    await Future<void>.delayed(const Duration(milliseconds: 200));
-    expect((await fired(host, 'a')).length, count);
+    await wait(200);
+    expect(await fired(host, 'a'), hasLength(3));
   });
 
-  test("a zero-delay chain loses its timers, and nobody else's work stops with it", () async {
+  onFakeClock("a zero-delay chain loses its timers, and nobody else's work stops with it", (_) async {
+    // On the fake clock no time passes between the chain's wakes, so nothing
+    // drains its debt and each wake's surcharge counts in full: the budget
+    // breaks at a fixed number of links, at any machine speed.
     final host = await hostWith(['spinner', 'bystander']);
-    final suspended = host.timerSuspensions.first;
+    final suspensions = <TimerSuspension>[];
+    host.timerSuspensions.listen(suspensions.add);
     await call(host, 'bystander', 'every', {'delay': 20});
     await call(host, 'spinner', 'spin');
+    await wait(1);
+    expect(suspensions, [(extensionKey: 'spinner', reason: 'budget')]);
 
-    expect(await suspended.timeout(const Duration(seconds: 5)), (extensionKey: 'spinner', reason: 'budget'));
     // Its hooks still answer — it is the clock that misbehaved, not the
-    // extension — and a new timer is refused out loud rather than dropped.
+    // extension — and a new timer is refused out loud rather than thrown,
+    // so the hook that asked keeps working.
     expect(await fired(host, 'spinner'), isEmpty);
-    // A new timer is ignored, not thrown: the hook that asked keeps working.
     await call(host, 'spinner', 'after', {'delay': 0, 'tag': 'again'});
     expect(host.logLines, contains(contains('spinner set a timer while its timers are suspended')));
     final before = (await fired(host, 'bystander')).length;
-    await until(() async => (await fired(host, 'bystander')).length > before + 2, reason: "the bystander's interval to keep ticking");
+    await wait(70);
+    expect((await fired(host, 'bystander')).length, greaterThanOrEqualTo(before + 3), reason: "the bystander's interval keeps ticking");
   });
 
-  test("a callback that throws something unprintable is one failure, not a stuck callback", () async {
+  onFakeClock('a callback that throws something unprintable is one failure, not a stuck callback', (_) async {
     // `String(Object.create(null))` throws. Formatting it inside the kernel's
     // own error handling once abandoned the run, which on native reads as an
     // interrupted callback and suspends the extension for the wrong reason —
@@ -203,22 +209,22 @@ void main() {
     final suspensions = <TimerSuspension>[];
     host.timerSuspensions.listen(suspensions.add);
     await call(host, 'a', 'throwOdd');
-    await until(() => host.logLines.any((l) => l.contains('a timer callback: (an error that cannot be printed)')), reason: 'the failure logged');
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+    await wait(5000);
+    expect(host.logLines, contains(contains('a timer callback: (an error that cannot be printed)')));
     expect(suspensions, isEmpty);
   });
 
-  test('reloading an extension cancels the timers its old code set', () async {
+  onFakeClock('reloading an extension cancels the timers its old code set', (_) async {
     // The old closure would otherwise fire into a runtime where its extension
     // no longer exists — work nobody can see, or cancel, or account for.
     final host = await hostWith(['a']);
     await call(host, 'a', 'markLater', {'delay': 150});
     await host.reloadBundle(ExtensionBundle(key: 'a', source: _timerExtension('a')));
-    await Future<void>.delayed(const Duration(milliseconds: 400));
+    await wait(400);
     expect(await call(host, 'a', 'probe'), isNull);
   });
 
-  test("an unloaded extension's old code cannot set timers under the key its new code holds", () async {
+  onFakeClock("an unloaded extension's old code cannot set timers under the key its new code holds", (_) async {
     // Old code outlives its unload whenever something it awaited resolves
     // afterwards. Accepted, its timers would be a loop nobody can see or
     // clear, billed to the code that replaced it.
@@ -226,20 +232,20 @@ void main() {
     await call(host, 'a', 'keepSetter');
     await host.reloadBundle(ExtensionBundle(key: 'a', source: _timerExtension('a')));
     await call(host, 'a', 'useOldSetter');
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await wait(200);
     expect(await call(host, 'a', 'probe'), isNull);
     expect(host.logLines, contains(contains('a set a timer after it was unloaded')));
   });
 
-  test('an extension whose activation fails keeps no timers running, and hears nothing of the app', () async {
+  onFakeClock('an extension whose activation fails keeps no timers running, and hears nothing of the app', (_) async {
     final host = await start([ExtensionBundle(key: 'broken', source: _failingActivation('broken'))]);
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await wait(200);
     expect(await call(host, 'broken', 'ticks'), 0);
     host.setAppVisible(false);
     expect(await call(host, 'broken', 'heard'), isNull);
   });
 
-  test('an extension still activating when the app hides hears onHide once it has activated, not before', () async {
+  onFakeClock('an extension still activating when the app hides hears onHide once it has activated, not before', (_) async {
     // The host's push after boot waits for activation, but a lifecycle change
     // can land in that window; an onHide then would reach state its
     // onActivation has not finished building.
@@ -251,7 +257,7 @@ void main() {
     expect(await call(host, 'gated', 'shown'), ['hide']);
   });
 
-  test('onHide and onShow reach an extension when the app changes, and only then', () async {
+  onFakeClock('onHide and onShow reach an extension when the app changes, and only then', (_) async {
     final host = await hostWith(['a']);
     // What the app sends after every boot: an app already visible is no news.
     host.setAppVisible(true);
@@ -263,34 +269,52 @@ void main() {
     expect(await call(host, 'a', 'shown'), ['hide', 'show']);
   });
 
-  test("callbacks the engine has to interrupt cost only their own extensions' timers, even two in one run", () async {
+  onFakeClock("callbacks the engine has to interrupt cost only their own extensions' timers, even two in one run", (_) async {
     // The interrupt unwinds through every catch and finally in the kernel,
     // so the run it cut short never asks for its next wake. Without the host
     // running the queue again, every extension's timers stop for good; and
     // the run that recovers from the first stuck callback meets the second.
-    // Two seconds rather than the real fifteen, so the test waits out two
-    // interrupts in about five.
+    //
+    // The interrupts themselves are real: the engine stops a callback that
+    // has spun its evaluation budget of the real clock, so each costs that
+    // budget in real time — two seconds here rather than the real fifteen.
+    // Everything around them, the retry and the bystander, is on the fake one.
     extensionEvalBudget = const Duration(seconds: 2);
     addTearDown(() => extensionEvalBudget = const Duration(seconds: 15));
     final host = await start([
       for (final key in ['runaway', 'stuck', 'bystander']) ExtensionBundle(key: key, source: _timerExtension(key)),
     ]);
-    final suspended = host.timerSuspensions.take(2).toList();
+    final suspensions = <TimerSuspension>[];
+    host.timerSuspensions.listen(suspensions.add);
     await call(host, 'bystander', 'every', {'delay': 50});
     // Not awaited one by one: in-process, both evaluate before the host's
     // wake timer can fire, so both are due in the same run.
     await Future.wait([call(host, 'runaway', 'hang'), call(host, 'stuck', 'hang')]);
-
-    expect(await suspended.timeout(const Duration(seconds: 20)), [
-      (extensionKey: 'runaway', reason: 'interrupted'),
-      (extensionKey: 'stuck', reason: 'interrupted'),
-    ]);
+    await wait(2500);
+    expect(suspensions, [(extensionKey: 'runaway', reason: 'interrupted'), (extensionKey: 'stuck', reason: 'interrupted')]);
     final before = (await fired(host, 'bystander')).length;
-    await until(() async => (await fired(host, 'bystander')).length > before + 2, reason: "the bystander's interval to keep ticking");
+    await wait(170);
+    expect((await fired(host, 'bystander')).length, greaterThanOrEqualTo(before + 3), reason: "the bystander's interval keeps ticking");
+  });
+
+  test("with no test clock, extension timers keep the engine's own clock, which travelling the app clock does not move", () async {
+    // The seam's default is the contract (docs/design/time.md §7). A queue on
+    // the app clock would find a 500 ms timer long overdue at the first wake
+    // anything else asked for — here a 20 ms interval's — under DEVTT's
+    // thousandfold speed. Real timers, asserting only what has NOT happened.
+    final host = await hostWith(['a']);
+    addTearDown(AppClock.instance.reset);
+    AppClock.instance.travel(speed: AppClock.maxSpeed);
+    final clock = AppClock.instance;
+    host.setClockTravel(anchorRealMillis: clock.anchorRealMillis, anchorVirtualMillis: clock.anchorVirtualMillis, speed: clock.speed);
+    await call(host, 'a', 'after', {'delay': 500, 'tag': 'late'});
+    await call(host, 'a', 'every', {'delay': 20});
+    await wait(200);
+    expect((await fired(host, 'a')).map((f) => f['tag']), isNot(contains('late')));
   });
 
   group('ExtensionTimerWake', () {
-    test("a wake the kernel asks for meanwhile does not put off the retry after a failed run", () async {
+    onFakeClock('a wake the kernel asks for meanwhile does not put off the retry after a failed run', (_) async {
       // The retry is the run that notices the interrupted callback. A hook
       // setting a timer a minute out before it fires would otherwise push that
       // notice — and the suspension — a minute later.
@@ -307,10 +331,11 @@ void main() {
       );
       addTearDown(wake.dispose);
       wake.arm(0);
-      await until(() => calls == 2, reason: 'the retry', within: const Duration(seconds: 1));
+      await wait(100);
+      expect(calls, 2);
     });
 
-    test('keeps retrying a run that fails, at once and then a second apart, until one succeeds', () async {
+    onFakeClock('keeps retrying a run that fails, at once and then a second apart, until one succeeds', (_) async {
       // A run fails when the engine interrupts a stuck callback, and a second
       // stuck callback in the same run fails the retry too. Giving up after
       // one retry would leave every extension's timers stopped for good.
@@ -323,11 +348,16 @@ void main() {
         log: (_) {},
       );
       addTearDown(wake.dispose);
-      final started = Stopwatch()..start();
       wake.arm(0);
-      await until(() => calls == 4, reason: 'the fourth run', within: const Duration(seconds: 5));
       // Immediate, then 1s, then 1s: the retries back off rather than spin.
-      expect(started.elapsedMilliseconds, greaterThanOrEqualTo(2000));
+      await wait(500);
+      expect(calls, 2);
+      await wait(1000);
+      expect(calls, 3);
+      await wait(1000);
+      expect(calls, 4);
+      await wait(5000);
+      expect(calls, 4, reason: 'a run that succeeded is not retried');
     });
   });
 }

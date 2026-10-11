@@ -37,15 +37,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/error_reporting_fakes.dart';
 import '../support/peer_network_fakes.dart';
-
-Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    if (await condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-  }
-  fail('timed out waiting for: $what');
-}
+import '../support/wait_for.dart';
 
 /// A screen this device claims to have. Records what was actually started and
 /// stopped, which is the only way to check the rule the whole producer is

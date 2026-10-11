@@ -196,6 +196,10 @@ run_guard_tests() {
 # all: a QSO stamped on the travelled clock next to a duplicate check run on
 # the real one fails in ways that look like logic bugs.
 #
+# package:clock's `clock.now()` counts as a direct read too. AppClock's own
+# real read can go through it so `fakeAsync` can drive the app clock (time.md
+# §7); anywhere else it is a `DateTime.now()` that also skips travel.
+#
 # This is a grep rather than a custom lint because the repo has no custom_lint
 # infrastructure, and a grep catches the same thing for none of the cost.
 #
@@ -260,7 +264,7 @@ check_clock_discipline() {
   # a "Binary file … matches" line with no line number, which the comment filter
   # below would pass straight through and fail the gate naming nothing useful.
   local offenders
-  offenders=$(grep -ran --include='*.dart' -E 'DateTime\.(now|timestamp)\b' "${dirs[@]}" 2>/dev/null \
+  offenders=$(grep -ran --include='*.dart' -E 'DateTime\.(now|timestamp)\b|\bclock\.now\(' "${dirs[@]}" 2>/dev/null \
     | grep -v 'clock:allow' \
     | grep -vE '^[^:]+:[0-9]+: *//' || true)
   if [[ -n "$offenders" ]]; then

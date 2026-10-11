@@ -22,6 +22,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_extension_host/src/fetch_policy.dart';
 
 import 'support/bundles.dart';
+import 'support/fake_clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -129,27 +130,33 @@ void main() {
     expect(sent, hasLength(2));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('the retry delay stays within its documented 300-500ms jitter range', () async {
-    var calls = 0;
-    final client = MockClient((request) async {
-      calls++;
-      if (calls == 1) {
-        throw http.ClientException("Failed host lookup: 'api.pota.app'", request.url);
+  test(
+    'the retry delay stays within its documented 300-500ms jitter range',
+    () => runOnFakeClock((async) async {
+      var calls = 0;
+      Duration? retriedAfter;
+      final client = MockClient((request) async {
+        calls++;
+        if (calls == 1) {
+          retriedAfter = async.elapsed;
+          throw http.ClientException("Failed host lookup: 'api.pota.app'", request.url);
+        }
+        retriedAfter = async.elapsed - retriedAfter!;
+        return http.Response('[]', 200, headers: {'content-type': 'application/json; charset=utf-8'});
+      });
+      final host = await hostWith(client);
+
+      // Many tries, each a fresh draw of the jitter, so a range swapped or
+      // stretched is seen rather than landed inside by luck. Measured between
+      // the failed request and its retry, on the fake clock the delay runs on.
+      for (var i = 0; i < 20; i++) {
+        calls = 0;
+        await host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
+        expect(calls, 2);
+        expect(retriedAfter!.inMilliseconds, inInclusiveRange(300, 500));
       }
-      return http.Response('[]', 200, headers: {'content-type': 'application/json; charset=utf-8'});
-    });
-    final host = await hostWith(client);
-
-    final stopwatch = Stopwatch()..start();
-    await host.invokeHook('spots', key: 'ham2k-pota', method: 'fetchSpots', args: {'online': true}, timeout: const Duration(seconds: 20));
-    stopwatch.stop();
-
-    // Generous slack above the 300-500ms production range for test/CI
-    // scheduling noise — this only needs to catch a gross regression (e.g.
-    // the base and jitter width getting swapped), not pin the exact bounds.
-    expect(stopwatch.elapsedMilliseconds, greaterThanOrEqualTo(250));
-    expect(stopwatch.elapsedMilliseconds, lessThan(2000));
-  }, timeout: const Timeout(Duration(seconds: 60)));
+    }),
+  );
 
   test('a second consecutive DNS lookup failure is not retried again', () async {
     final sent = <http.Request>[];

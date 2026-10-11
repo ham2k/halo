@@ -10,27 +10,13 @@
 // depends on the machine's network, never collides with a HaLo running on
 // the standard port, and never puts a broadcast on the operator's LAN.
 
-import 'dart:async';
-
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 
 import '../support/peer_network_fakes.dart';
-
-/// Polls until [condition] holds, so a test waits on the thing it cares
-/// about rather than on a guessed sleep. Real sockets and timers are
-/// involved, so there is no fixed number of pumps that is both reliable and
-/// quick.
-Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    if (await condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-  }
-  fail('timed out waiting for: $what');
-}
+import '../support/wait_for.dart';
 
 class _Device {
   _Device(this.deviceId, this.name, FakeHost host) {

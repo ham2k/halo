@@ -18,6 +18,7 @@ import 'package:ham2k_logger/services/flags_service.dart';
 import 'package:ham2k_logger/services/staleness_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../support/wait_for.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -231,10 +232,8 @@ void main() {
       gate.complete();
       await Future.wait([first, second]);
       // The queued follow-up is fire-and-forget from the first round's
-      // `finally`; give it time to run to completion.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-
-      expect(requested, contains('w1/w1aw.json'));
+      // `finally`, so it is waited for rather than given a fixed time.
+      await waitFor('the queued call to be fetched', () => requested.contains('w1/w1aw.json'));
     });
   });
 

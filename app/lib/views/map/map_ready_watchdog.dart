@@ -47,22 +47,7 @@ class MapReadyWatchdog {
   /// Raise the empty state. Called at most once.
   final void Function() onUnavailable;
 
-  /// The clock the visible-time arithmetic below reads.
-  ///
-  /// Defaults to [realNowMillis], and that default is the contract: what it
-  /// measures becomes a [Timer] duration, so a travelled session must not
-  /// expire every horizon at once — see docs/design/time.md §1. Swapping it
-  /// for `nowMillis` would read as an ordinary application of the app-clock
-  /// rule and nothing in the clock-discipline check would catch it, so a test
-  /// travels the clock and pins that this number does not follow.
-  ///
-  /// Injected only so a test can put it on the same timeline as the timers:
-  /// `fakeAsync` replaces `Timer` and `clock` but NOT `DateTime.now()`, so
-  /// code measuring on the wall clock while its timers run on fake time
-  /// computes about zero however far the test elapses (time.md §7).
-  final int Function() now;
-
-  MapReadyWatchdog({required this.onUnavailable, this.now = realNowMillis});
+  MapReadyWatchdog({required this.onUnavailable});
 
   Timer? _graceTimer;
   Timer? _giveUpTimer;
@@ -84,6 +69,13 @@ class MapReadyWatchdog {
   /// [grace] deliberately does NOT accumulate: it exists to decide when to
   /// stop claiming a map is coming, and a map that has just come back on
   /// screen is owed a fresh look before the pane gives up on it.
+  ///
+  /// Measured on [realNowMillis], not the app clock: what it measures becomes
+  /// a [Timer] duration, so a travelled session must not expire every horizon
+  /// at once — see docs/design/time.md §1. Swapping it for `nowMillis` reads
+  /// as an ordinary application of the app-clock rule and nothing in the
+  /// clock-discipline check would catch it, so a test travels the clock and
+  /// pins that the horizon does not follow.
   int _visibleMillis = 0;
   int? _visibleSince;
 
@@ -91,10 +83,11 @@ class MapReadyWatchdog {
     if (_disposed || visible == _visible) return;
     _visible = visible;
     if (visible) {
-      _visibleSince = now();
+      _visibleSince = realNowMillis();
       _start();
     } else {
-      _visibleMillis += now() - (_visibleSince ?? now());
+      final now = realNowMillis();
+      _visibleMillis += now - (_visibleSince ?? now);
       _visibleSince = null;
       _stop();
     }

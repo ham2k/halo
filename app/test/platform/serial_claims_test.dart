@@ -14,6 +14,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/serial_claims.dart';
+import '../support/fake_clock.dart';
 
 const _op = 'op-1';
 const _descriptor = SequenceDescriptor(refType: 'cqwpx', field: 'ourSerial', key: 'cqwpx/serial');
@@ -269,22 +270,25 @@ void main() {
     expect(await b.claim(_op, _request()), 1);
   });
 
-  test('a number just committed stays held until the log can carry it', () async {
-    final a = lan.add('a');
-    final b = lan.add('b');
-    expect(await a.claim(_op, _request()), 1);
-    await lan.settle();
-    // Committed, so a's own claim is gone — but b's peek has not seen the
-    // QSO yet, and would hand out 1 again without the grace hold.
-    a.release(_op, committed: {_request(): 1});
-    await lan.settle();
-    expect(await b.claim(_op, _request()), 2);
-    b.release(_op);
-    await Future<void>.delayed(const Duration(milliseconds: 250));
-    await lan.settle();
-    // Grace over: from here the log is what keeps 1 from being reissued.
-    expect(await b.claim(_op, _request()), 1);
-  });
+  test(
+    'a number just committed stays held until the log can carry it',
+    () => runOnFakeClock((_) async {
+      final a = lan.add('a');
+      final b = lan.add('b');
+      expect(await a.claim(_op, _request()), 1);
+      await lan.settle();
+      // Committed, so a's own claim is gone — but b's peek has not seen the
+      // QSO yet, and would hand out 1 again without the grace hold.
+      a.release(_op, committed: {_request(): 1});
+      await lan.settle();
+      expect(await b.claim(_op, _request()), 2);
+      b.release(_op);
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      await lan.settle();
+      // Grace over: from here the log is what keeps 1 from being reissued.
+      expect(await b.claim(_op, _request()), 1);
+    }),
+  );
 
   test('sequences with different labels never compete', () async {
     final a = lan.add('a');

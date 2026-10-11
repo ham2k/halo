@@ -20,6 +20,8 @@ import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
+import 'support/fake_clock.dart';
+
 /// Two edits of one record inside a single millisecond share a revision
 /// stamp, and the outbox reads the second as already recorded (see
 /// `PeerOutbox.scanNow`). Every test that edits a record the outbox has
@@ -238,19 +240,23 @@ void main() {
       expect(after.where((e) => e.recordUuid == qso.uuid), hasLength(1));
     });
 
-    test('notifyChanged debounces into one scan', () async {
-      final op = await operations.create(stationCall: 'KI2D');
-      outbox.activeOperationUuid = op.uuid;
-      await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'},
-      });
+    test(
+      'notifyChanged debounces into one scan',
+      () => runOnFakeClock((_) async {
+        final op = await operations.create(stationCall: 'KI2D');
+        outbox.activeOperationUuid = op.uuid;
+        await qsos.add(op.uuid, {
+          'their': {'call': 'W1AW'},
+        });
 
-      outbox.notifyChanged();
-      expect(await outbox.latestSeq(op.uuid), 0); // not yet — still debouncing
+        outbox.notifyChanged();
+        await Future<void>.delayed(PeerOutbox.debounceDelay - const Duration(milliseconds: 100));
+        expect(await outbox.latestSeq(op.uuid), 0, reason: 'still debouncing');
 
-      await Future<void>.delayed(PeerOutbox.debounceDelay + const Duration(milliseconds: 200));
-      expect(await outbox.latestSeq(op.uuid), greaterThan(0));
-    });
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(await outbox.latestSeq(op.uuid), greaterThan(0));
+      }),
+    );
 
     test('two concurrent scans for the same operation do not duplicate events', () async {
       final op = await operations.create(stationCall: 'KI2D');

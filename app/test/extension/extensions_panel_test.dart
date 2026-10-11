@@ -1799,14 +1799,24 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    /// Lets the download's stream run until [done]. It does not finish on the
+    /// fake clock alone, and how long it takes in real time is the machine's
+    /// business, so it is polled for rather than given a fixed moment.
+    Future<void> downloadUntil(WidgetTester tester, bool Function() done) async {
+      for (var i = 0; i < 500 && !done(); i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pumpAndSettle();
+      }
+    }
+
+    final consent = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_ConsentDialog');
+
     /// Presses the link row's Install, through to the consent screen.
     Future<void> installLink(WidgetTester tester) async {
       await tester.tap(find.descendant(of: find.byKey(const ValueKey('extensions-install-link')), matching: find.widgetWithText(FilledButton, 'Install')));
       await tester.pumpAndSettle();
-      // The download's stream does not finish on the fake clock alone; a
-      // real moment lets it, and the consent screen then opens.
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
-      await tester.pumpAndSettle();
+      await downloadUntil(tester, () => consent.evaluate().isNotEmpty);
+      expect(consent, findsOneWidget, reason: 'the download finished and the consent screen opened');
     }
 
     final linkRow = find.byKey(const ValueKey('extensions-install-link'));
@@ -1886,8 +1896,7 @@ void main() {
       expect(find.byType(PreReleaseWarning), findsNothing);
 
       await tester.tap(find.widgetWithText(FilledButton, 'Install'));
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
-      await tester.pumpAndSettle();
+      await downloadUntil(tester, () => panel.storage.files.isNotEmpty);
       expect(panel.storage.files.keys, ['ki2d-my-clock']);
       expect(panel.settings.extensionInstalledFrom['ki2d-my-clock']?['channel'], 'unstable');
       // The footer's "Installed" line takes itself down on a timer.

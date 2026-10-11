@@ -86,16 +86,20 @@ void main() {
         ),
       ),
     );
-    Future<void> bridgeSettles() async {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
-      await tester.pump();
-      await tester.pump();
+    // The bridge crosses into the runtime and back on real I/O, so it is
+    // polled for what it should deliver rather than given a fixed time.
+    Future<void> bridgeUntil(bool Function() delivered) async {
+      for (var i = 0; i < 500 && !delivered(); i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump();
+        await tester.pump();
+      }
     }
 
-    await bridgeSettles();
+    await bridgeUntil(() => find.text('14074.0 kHz').evaluate().isNotEmpty);
     expect(find.text('14074.0 kHz'), findsOneWidget);
     await tester.tap(find.bySemanticsLabel('Simulate external tuning'));
-    await bridgeSettles();
+    await bridgeUntil(() => find.text('14079.0 kHz').evaluate().isNotEmpty);
     expect(service.events, 1);
     expect(find.text('14079.0 kHz'), findsOneWidget);
     // Remove the widget before stopping the runtime: no timer may invoke it later.
@@ -126,19 +130,23 @@ void main() {
         ),
       ),
     );
-    Future<void> bridgeSettles() async {
-      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
-      await tester.pump();
-      await tester.pump();
+    // The bridge crosses into the runtime and back on real I/O, so it is
+    // polled for what it should deliver rather than given a fixed time.
+    Future<void> bridgeUntil(bool Function() delivered) async {
+      for (var i = 0; i < 500 && !delivered(); i++) {
+        await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+        await tester.pump();
+        await tester.pump();
+      }
     }
 
-    await bridgeSettles();
+    await bridgeUntil(() => find.text('Nothing spotted yet').evaluate().isNotEmpty);
     expect(find.text('Nothing spotted yet'), findsOneWidget);
     await tester.enterText(find.widgetWithText(TextField, 'Callsign'), 'k2hrc');
     await tester.testTextInput.receiveAction(TextInputAction.done);
-    await bridgeSettles();
+    await bridgeUntil(() => service.events == 1);
     await tester.tap(find.text('Spot'));
-    await bridgeSettles();
+    await bridgeUntil(() => find.text('Spotted K2HRC on 20m CW, 100 W').evaluate().isNotEmpty);
     expect(service.events, 2);
     expect(find.text('Spotted K2HRC on 20m CW, 100 W'), findsOneWidget);
     expect(

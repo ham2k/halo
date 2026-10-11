@@ -22,6 +22,7 @@ import 'package:ham2k_logger/services/spot_board_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_extension_host.dart';
+import '../support/fake_clock.dart';
 
 class _FakeExtensions extends ExtensionService {
   final List<Map<String, Map<String, dynamic>>> passes = [];
@@ -103,7 +104,10 @@ void main() {
   late HaLoServices services;
   late SpotBoardSubscription view;
 
-  setUp(() async {
+  /// Called inside each test rather than from setUp: the board's scoring
+  /// debounce is a timer, and a test can only drive it on a fake clock if
+  /// everything that arms it was built inside that clock's zone.
+  Future<void> openBoard() async {
     SharedPreferences.setMockInitialValues({});
     settings = await SettingsService.load();
     extensions = _FakeExtensions();
@@ -114,7 +118,7 @@ void main() {
     addTearDown(view.cancel);
     await services.spots.refresh();
     await pumpEventQueue();
-  });
+  }
 
   /// A fresh operation shown, its pass landed and nothing left pending.
   Future<Operation> show({String logRevision = 'r0'}) async {
@@ -125,7 +129,8 @@ void main() {
   }
 
   group('revision', () {
-    test('moves with the radio\'s band and mode, not with every frequency it reports', () {
+    test('moves with the radio\'s band and mode, not with every frequency it reports', () async {
+      await openBoard();
       final board = services.spotBoard;
       services.radio.setVfo('vfoA', freq: 14074.0, mode: 'USB');
       final before = board.revision;
@@ -139,6 +144,7 @@ void main() {
     });
 
     test('moves with the operator\'s spot filters, not with every settings write', () async {
+      await openBoard();
       final board = services.spotBoard;
       final before = board.revision;
       await settings.setKeepDeviceAwake(true);
@@ -148,38 +154,50 @@ void main() {
     });
   });
 
-  test('a moved log is rescored; an unchanged one is not', () async {
-    final operation = await show();
-    final passes = extensions.passes.length;
+  test(
+    'a moved log is rescored; an unchanged one is not',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      final operation = await show();
+      final passes = extensions.passes.length;
 
-    view.show(operation, const [], logRevision: 'r0');
-    await Future<void>.delayed(_debounce);
-    expect(extensions.passes, hasLength(passes));
+      view.show(operation, const [], logRevision: 'r0');
+      await Future<void>.delayed(_debounce);
+      expect(extensions.passes, hasLength(passes));
 
-    view.show(operation, const [], logRevision: 'r1');
-    await Future<void>.delayed(_debounce);
-    expect(extensions.passes, hasLength(passes + 1));
-  });
+      view.show(operation, const [], logRevision: 'r1');
+      await Future<void>.delayed(_debounce);
+      expect(extensions.passes, hasLength(passes + 1));
+    }),
+  );
 
   // Which sources are on decides which reports merge, so which questions the
   // scorers are asked: a spot only one source carried would otherwise stay
   // unscored until the next refresh.
-  test('switching a source off rescores the board', () async {
-    await show();
-    final passes = extensions.passes.length;
-    await settings.setSpottingFilters({
-      'disabledSources': ['sota'],
-    });
-    await Future<void>.delayed(_debounce);
-    expect(extensions.passes, hasLength(passes + 1));
-  });
+  test(
+    'switching a source off rescores the board',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      await show();
+      final passes = extensions.passes.length;
+      await settings.setSpottingFilters({
+        'disabledSources': ['sota'],
+      });
+      await Future<void>.delayed(_debounce);
+      expect(extensions.passes, hasLength(passes + 1));
+    }),
+  );
 
-  test('one operation\'s verdicts are never served for another', () async {
-    final first = await show();
-    expect(services.spotBoard.scoresFor(first.uuid), isNotEmpty);
-    await show();
-    expect(services.spotBoard.scoresFor(first.uuid), isNull);
-  });
+  test(
+    'one operation\'s verdicts are never served for another',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      final first = await show();
+      expect(services.spotBoard.scoresFor(first.uuid), isNotEmpty);
+      await show();
+      expect(services.spotBoard.scoresFor(first.uuid), isNull);
+    }),
+  );
 
   // Operation Views stack: ⌘K and deep links push one over another.
   group('stacked viewers', () {
@@ -187,7 +205,8 @@ void main() {
     late Operation a;
     late Operation b;
 
-    setUp(() async {
+    Future<void> stack() async {
+      await openBoard();
       a = await services.operations.create(stationCall: 'N0DEV');
       b = await services.operations.create(stationCall: 'N0DEV');
       view.show(a, const [], logRevision: 'r0');
@@ -197,67 +216,91 @@ void main() {
       addTearDown(view.cancel);
       view.show(b, const [], logRevision: 'r0');
       await Future<void>.delayed(_debounce);
-    });
+    }
 
-    test('the view on top decides, whatever the one beneath it writes', () async {
-      covered.show(a, const [], logRevision: 'r1');
-      await Future<void>.delayed(_debounce);
-      expect(services.spotBoard.operation?.uuid, b.uuid);
-      expect(services.spotBoard.scoresFor(b.uuid), isNotEmpty, reason: 'a sync write to a covered operation must not take the board');
-    });
+    test(
+      'the view on top decides, whatever the one beneath it writes',
+      () => runOnFakeClock((_) async {
+        await stack();
+        covered.show(a, const [], logRevision: 'r1');
+        await Future<void>.delayed(_debounce);
+        expect(services.spotBoard.operation?.uuid, b.uuid);
+        expect(services.spotBoard.scoresFor(b.uuid), isNotEmpty, reason: 'a sync write to a covered operation must not take the board');
+      }),
+    );
 
     // A covered view's Spots Panel mounts on a delay, after the view in front
     // has subscribed; landing on top, it would judge an operation nobody sees.
-    test('a covered view\'s panel subscribing late does not take the board', () async {
-      final panel = services.spotBoard.subscribe(follower: true);
-      addTearDown(panel.cancel);
-      panel.show(a, const [], logRevision: 'r0');
-      await Future<void>.delayed(_debounce);
-      expect(services.spotBoard.operation?.uuid, b.uuid);
-      expect(services.spotBoard.scoresFor(b.uuid), isNotEmpty);
-    });
+    test(
+      'a covered view\'s panel subscribing late does not take the board',
+      () => runOnFakeClock((_) async {
+        await stack();
+        final panel = services.spotBoard.subscribe(follower: true);
+        addTearDown(panel.cancel);
+        panel.show(a, const [], logRevision: 'r0');
+        await Future<void>.delayed(_debounce);
+        expect(services.spotBoard.operation?.uuid, b.uuid);
+        expect(services.spotBoard.scoresFor(b.uuid), isNotEmpty);
+      }),
+    );
 
-    test('closing the top view hands the board back, judged at once', () async {
-      view.cancel();
+    test(
+      'closing the top view hands the board back, judged at once',
+      () => runOnFakeClock((_) async {
+        await stack();
+        view.cancel();
+        await pumpEventQueue();
+        expect(services.spotBoard.operation?.uuid, a.uuid);
+        expect(services.spotBoard.scoresFor(a.uuid), isNotEmpty, reason: 'without it the operation underneath shows no strikes until its log moves');
+      }),
+    );
+  });
+
+  test(
+    'switching operation while a pass is in flight still scores the new one',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      final first = await services.operations.create(stationCall: 'N0DEV');
+      final second = await services.operations.create(stationCall: 'N0DEV');
+      extensions.hold = Completer<void>();
+      view.show(first, const [], logRevision: 'r0');
       await pumpEventQueue();
-      expect(services.spotBoard.operation?.uuid, a.uuid);
-      expect(services.spotBoard.scoresFor(a.uuid), isNotEmpty, reason: 'without it the operation underneath shows no strikes until its log moves');
-    });
-  });
-
-  test('switching operation while a pass is in flight still scores the new one', () async {
-    final first = await services.operations.create(stationCall: 'N0DEV');
-    final second = await services.operations.create(stationCall: 'N0DEV');
-    extensions.hold = Completer<void>();
-    view.show(first, const [], logRevision: 'r0');
-    await pumpEventQueue();
-    view.show(second, const [], logRevision: 'r0');
-    await pumpEventQueue();
-    extensions.hold!.complete();
-    await pumpEventQueue();
-    expect(services.spotBoard.scoresFor(second.uuid), isNotEmpty);
-  });
+      view.show(second, const [], logRevision: 'r0');
+      await pumpEventQueue();
+      extensions.hold!.complete();
+      await pumpEventQueue();
+      expect(services.spotBoard.scoresFor(second.uuid), isNotEmpty);
+    }),
+  );
 
   // Null is no answer — a runtime still booting, a lookup timed out.
   // Cached, the call would keep no note or emoji for the rest of the session.
-  test('a call whose lookup did not answer is asked again on the next refresh', () async {
-    // Released by everyone, the board forgets what it knew.
-    view.cancel();
-    extensions.unanswered.add('K1ABC');
-    view = services.spotBoard.subscribe();
-    addTearDown(view.cancel);
-    await services.spots.refresh();
-    await pumpEventQueue();
-    expect(services.spotBoard.callInfo.containsKey('K1ABC'), isFalse);
-    extensions.unanswered.clear();
-    await services.spots.refresh();
-    await pumpEventQueue();
-    expect(services.spotBoard.callInfo.containsKey('K1ABC'), isTrue);
-  });
+  test(
+    'a call whose lookup did not answer is asked again on the next refresh',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      // Released by everyone, the board forgets what it knew.
+      view.cancel();
+      extensions.unanswered.add('K1ABC');
+      view = services.spotBoard.subscribe();
+      addTearDown(view.cancel);
+      await services.spots.refresh();
+      await pumpEventQueue();
+      expect(services.spotBoard.callInfo.containsKey('K1ABC'), isFalse);
+      extensions.unanswered.clear();
+      await services.spots.refresh();
+      await pumpEventQueue();
+      expect(services.spotBoard.callInfo.containsKey('K1ABC'), isTrue);
+    }),
+  );
 
-  test('each spotted call is looked up once, however often the spots refresh', () async {
-    await services.spots.refresh();
-    await pumpEventQueue();
-    expect(extensions.lookedUp..sort(), ['K1ABC', 'W1AW']);
-  });
+  test(
+    'each spotted call is looked up once, however often the spots refresh',
+    () => runOnFakeClock((_) async {
+      await openBoard();
+      await services.spots.refresh();
+      await pumpEventQueue();
+      expect(extensions.lookedUp..sort(), ['K1ABC', 'W1AW']);
+    }),
+  );
 }

@@ -21,7 +21,6 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import 'package:clock/clock.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -29,16 +28,7 @@ import 'package:ham2k_logger/services/peer/ble/peer_ble_gateway.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 
 import '../support/peer_ble_fakes.dart';
-
-/// Polls until [condition] holds — same rationale as peer_service_test.
-Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 10)}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    if (await condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-  }
-  fail('timed out waiting for: $what');
-}
+import '../support/wait_for.dart';
 
 class _Side {
   _Side(FakeBleWorld world, String address, this.deviceId) {
@@ -242,27 +232,46 @@ void main() {
   });
 
   test('the keepalive clock does NOT time travel', () {
-    // The seam that makes the test below possible also makes it one word's
-    // edit to hand this a travelling clock — `nowMillis` instead of
-    // `realNowMillis` reads as an ordinary application of the house rule,
-    // and scripts/test.sh's clock-discipline grep only bans `DateTime.now()`
-    // so it would not fire. The whole suite would stay green while a
-    // developer time-travelling the app dropped every BLE link on the
-    // network at once, mid-field-day, for reasons nothing would explain.
-    //
-    // Asserted through behaviour rather than by comparing tear-offs: what
-    // matters is that the value does not follow travel, not which function
-    // supplies it.
-    final link = PeerBleLink(sendPacket: (_) async {}, shutdown: () async {});
-    addTearDown(link.close);
-    final before = link.now();
-    AppClock.instance.travel(delta: const Duration(days: 3));
+    // `realNowMillis` is what keeps the keepalive measuring real silence;
+    // `nowMillis` instead reads as an ordinary application of the house rule,
+    // and scripts/test.sh's clock-discipline check would not fire. The whole
+    // suite would stay green while a developer time-travelling the app
+    // dropped every BLE link on the network at once, mid-field-day, for
+    // reasons nothing would explain. On the app clock, three days of travel
+    // read as three days of silence at the next keepalive tick.
+    final followed = AppClock.followZoneClock;
+    AppClock.followZoneClock = true;
+    addTearDown(() => AppClock.followZoneClock = followed);
     addTearDown(AppClock.instance.reset);
-    expect(
-      (link.now() - before).abs(),
-      lessThan(const Duration(minutes: 1).inMilliseconds),
-      reason: 'a protocol timeout reads the real clock (docs/design/time.md §1)',
-    );
+    fakeAsync((async) {
+      late PeerBleLink linkA;
+      late PeerBleLink linkB;
+      linkA = PeerBleLink(
+        sendPacket: (packet) async => linkB.feed(packet),
+        shutdown: () async {},
+        keepaliveInterval: const Duration(milliseconds: 50),
+        idleCutoff: const Duration(milliseconds: 200),
+      );
+      linkB = PeerBleLink(
+        sendPacket: (packet) async => linkA.feed(packet),
+        shutdown: () async {},
+        keepaliveInterval: const Duration(milliseconds: 50),
+        idleCutoff: const Duration(milliseconds: 200),
+      );
+      var aClosed = false;
+      unawaited(linkA.closed.then((_) => aClosed = true));
+      linkA.start(50);
+      linkB.start(50);
+      async.flushMicrotasks();
+
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      async.elapse(const Duration(milliseconds: 100));
+      expect(aClosed, isFalse, reason: 'a protocol timeout reads the real clock (docs/design/time.md §1)');
+
+      unawaited(linkA.close());
+      unawaited(linkB.close());
+      async.flushMicrotasks();
+    });
   });
 
   test('keepalive: a silent peer is dropped, a pinging one is kept', () {
@@ -273,11 +282,14 @@ void main() {
     // late is exactly what breaks. On real timers it failed under a loaded
     // suite, and the failure landed on whichever test ran next.
     //
-    // The link's staleness check reads `now` and its pings come off a
-    // Timer — two different clocks unless something drives both. Inside
-    // `fakeAsync`, `clock` IS the fake clock that `elapse` advances, so
-    // handing it to the link keeps them in lockstep and every gap below is
-    // exact rather than a bet on scheduler latency.
+    // The link's staleness check reads the real clock and its pings come off
+    // a Timer — two different clocks unless something drives both. With the
+    // app clock following the fake one `elapse` advances, they move in
+    // lockstep and every gap below is exact rather than a bet on scheduler
+    // latency.
+    final followed = AppClock.followZoneClock;
+    AppClock.followZoneClock = true;
+    addTearDown(() => AppClock.followZoneClock = followed);
     fakeAsync((async) {
       // Link-level, wired directly — the death being detected is the one the
       // radio cannot report.
@@ -287,8 +299,6 @@ void main() {
         };
       }
 
-      int fakeNow() => clock.now().millisecondsSinceEpoch;
-
       var dropTowardsA = false;
       late PeerBleLink linkA;
       late PeerBleLink linkB;
@@ -297,14 +307,12 @@ void main() {
         shutdown: () async {},
         keepaliveInterval: const Duration(milliseconds: 50),
         idleCutoff: const Duration(milliseconds: 200),
-        now: fakeNow,
       );
       linkB = PeerBleLink(
         sendPacket: feedInto(() => linkA, () => dropTowardsA),
         shutdown: () async {},
         keepaliveInterval: const Duration(milliseconds: 50),
         idleCutoff: const Duration(milliseconds: 200),
-        now: fakeNow,
       );
       var aReady = false;
       var bReady = false;

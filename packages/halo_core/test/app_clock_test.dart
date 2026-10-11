@@ -16,6 +16,7 @@
 //    every staleness check assume it, so a zero or negative speed is refused
 //    rather than passed through to break them subtly.
 
+import 'package:fake_async/fake_async.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
 
@@ -110,15 +111,6 @@ void main() {
       expect(AppClock.instance.offset, greaterThan(first));
     });
 
-    test('a fractional factor slows the clock without stopping it', () async {
-      AppClock.instance.travel(speed: 0.5);
-      final start = nowUtc();
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      final elapsed = nowUtc().difference(start);
-      expect(elapsed, greaterThan(Duration.zero), reason: 'slower is not stopped');
-      expect(elapsed, lessThan(const Duration(milliseconds: 20)));
-    });
-
     test('reset restores 1x', () {
       AppClock.instance.travel(speed: 10);
       AppClock.instance.reset();
@@ -151,6 +143,64 @@ void main() {
   // A request that resolves to real time must LEAVE real time, not sit in a
   // travelling state with a zero offset: everything gated on `isTravelling` —
   // above all sync — would stay barred with nothing on screen explaining it.
+  // Tests drive timers on fake time and need every "now" the code reads to
+  // move with them, or its elapsed-time arithmetic reads zero and the branch
+  // under test silently never runs (docs/design/time.md §7). A clock read that
+  // escaped package:clock would keep production identical and break exactly
+  // this.
+  group('on a fake clock', () {
+    late bool followed;
+    setUp(() {
+      followed = AppClock.followZoneClock;
+      AppClock.followZoneClock = true;
+    });
+    tearDown(() => AppClock.followZoneClock = followed);
+
+    test('both clocks move with it', () {
+      fakeAsync((async) {
+        final real = realNowUtc();
+        final app = nowUtc();
+        async.elapse(const Duration(hours: 1));
+        expect(realNowUtc().difference(real), const Duration(hours: 1));
+        expect(nowUtc().difference(app), const Duration(hours: 1));
+      });
+    });
+
+    test('travel still applies on top of it, and the real clock still ignores it', () {
+      fakeAsync((async) {
+        AppClock.instance.travel(speed: 10);
+        final real = realNowUtc();
+        final app = nowUtc();
+        async.elapse(const Duration(minutes: 1));
+        expect(realNowUtc().difference(real), const Duration(minutes: 1));
+        expect(nowUtc().difference(app), const Duration(minutes: 10));
+      });
+    });
+
+    // On the fake clock because, over a short real delay, a halved clock and
+    // an unscaled one differ by less than the jitter around the reads — no
+    // real-time bound tells a broken factor from a working one.
+    test('a fractional factor slows the clock without stopping it', () {
+      fakeAsync((async) {
+        AppClock.instance.travel(speed: 0.5);
+        final app = nowUtc();
+        async.elapse(const Duration(milliseconds: 20));
+        expect(nowUtc().difference(app), const Duration(milliseconds: 10));
+      });
+    });
+  });
+
+  // The default is the contract: production, and every widget test, read the
+  // system clock whatever zone they run in.
+  test('by default neither clock follows a fake one', () {
+    fakeAsync((async) {
+      final real = realNowUtc();
+      async.elapse(const Duration(hours: 1));
+      expect(realNowUtc().difference(real), lessThan(const Duration(minutes: 1)));
+      expect(nowUtc().difference(real), lessThan(const Duration(minutes: 1)));
+    });
+  });
+
   group('a no-op request is not travel', () {
     test('1x with no offset stays on real time', () {
       AppClock.instance.travel(speed: 1);

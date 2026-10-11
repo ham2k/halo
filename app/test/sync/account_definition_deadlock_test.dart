@@ -48,7 +48,7 @@ void main() {
 
   /// Boots [service], capturing debugPrint so the test can see the failure the
   /// service swallows.
-  Future<({ExtensionService extensions, List<String> logs, Duration elapsed})> boot() async {
+  Future<({ExtensionService extensions, List<String> logs})> boot() async {
     final logs = <String>[];
     final original = debugPrint;
     debugPrint = (String? message, {int? wrapWidth}) {
@@ -57,10 +57,8 @@ void main() {
     addTearDown(() => debugPrint = original);
 
     final extensions = await service();
-    final clock = Stopwatch()..start();
     await extensions.start();
-    clock.stop();
-    return (extensions: extensions, logs: logs, elapsed: clock.elapsed);
+    return (extensions: extensions, logs: logs);
   }
 
   test('the boot-time account refresh does not deadlock against its own gate', () async {
@@ -68,6 +66,9 @@ void main() {
 
     // The flags are the point. An empty map means the refresh never got its
     // answer — which is what shipped: every account silently device-local.
+    // It is also what a deadlock leaves whatever the hook's timeout, so this
+    // catches one "fixed" by lowering the timeout without timing the boot,
+    // which is CPU work a loaded machine stretches (docs/design/time.md §7).
     expect(
       booted.extensions.accountSynchronizable,
       isNotEmpty,
@@ -93,23 +94,6 @@ void main() {
       reason:
           'boot logged a getAccounts failure:\n'
           '${booted.logs.where((l) => l.contains('getAccounts')).join('\n')}',
-    );
-  });
-
-  test('start() does not stall on the account hook timeout', () async {
-    final booted = await boot();
-
-    // The healthy fan-out costs single-digit ms; the deadlock cost exactly the
-    // 2000ms hook budget, every launch. A whole second of margin keeps this
-    // from being a flaky timing assertion while still catching a reintroduced
-    // wait — and unlike the log check above, this one still fires if someone
-    // "fixes" the deadlock by lowering the timeout.
-    expect(
-      booted.elapsed,
-      lessThan(const Duration(milliseconds: 1500)),
-      reason:
-          'start() took ${booted.elapsed.inMilliseconds}ms, which is the '
-          'shape of waiting out a hook timeout rather than doing work',
     );
   });
 

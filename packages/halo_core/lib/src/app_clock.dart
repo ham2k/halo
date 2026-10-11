@@ -16,6 +16,9 @@
 // this class is the mechanism, pure Dart so core, widgets, app and CLI can all
 // share it.
 
+import 'package:clock/clock.dart';
+import 'package:meta/meta.dart';
+
 /// A clock that can be offset and rescaled at runtime.
 ///
 /// The travelled clock is defined by an ANCHOR pair rather than a bare offset:
@@ -236,8 +239,21 @@ class AppClock {
     return _anchorVirtual!.add(_speed == 1.0 ? elapsed : elapsed * _speed);
   }
 
+  /// Whether the real read follows package:clock's zone clock — the fake one
+  /// `elapse` advances inside `fakeAsync` — instead of the system's, so a test
+  /// that drives timers on fake time drives every [nowUtc] and [realNowUtc]
+  /// read along with them (docs/design/time.md §7).
+  ///
+  /// Opt-in, and never in a widget test: `testWidgets` runs every test on a
+  /// fake clock fixed at 2015, while `tester.runAsync` bodies read the real
+  /// one. Followed there, a fixture written in `runAsync` and a save the
+  /// widgets make would be stamped a decade apart, and the save dropped as
+  /// stale.
+  @visibleForTesting
+  static bool followZoneClock = false;
+
   /// The one real-time read in the codebase.
-  DateTime _realNowUtc() => DateTime.now().toUtc(); // clock:allow — the clock itself
+  DateTime _realNowUtc() => (followZoneClock ? clock.now() : DateTime.now()).toUtc(); // clock:allow — the clock itself
 }
 
 /// The current time, UTC. The default "now" for library code.

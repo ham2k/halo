@@ -241,8 +241,12 @@ Future<void> _pump(WidgetTester tester, {int times = 12}) async {
 /// token exchange after it are invisible to fake async. Without this the
 /// wait appears to end while `_startingOAuth` is still set, so the NEXT
 /// press of Connect silently does nothing.
+///
+/// Turns of the loop, not a stretch of real time: that work is completers
+/// and an in-memory HTTP fake, done in a bounded number of turns however
+/// slow the machine, where a fixed sleep is a bet on its speed.
 Future<void> _flush(WidgetTester tester) async {
-  await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+  await tester.runAsync(() => pumpEventQueue(times: 100));
   await _pump(tester);
 }
 

@@ -19,6 +19,7 @@ import 'package:ham2k_logger/views/peers_panel.dart';
 import '../support/peer_network_fakes.dart';
 
 import '../support/halo_test_support.dart';
+import '../support/wait_for.dart';
 
 void main() {
   late HaLoDatabase db;
@@ -99,8 +100,7 @@ void main() {
       final withPeer = await servicesOnFakeLan();
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.running, isTrue);
+      await waitFor('sharing to start', () => withPeer.peerService.running);
       expect(withPeer.peerService.sharedOperationUuid, 'op-1');
     });
 
@@ -109,13 +109,12 @@ void main() {
       final withPeer = await servicesOnFakeLan();
       await settings.setPeerSyncEnabled(true);
       withPeer.openOperationContext('op-1');
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.running, isTrue);
+      await waitFor('sharing to start', () => withPeer.peerService.running);
 
       await settings.setExperimentEnabled('p2p', false);
       withPeer.updatePeerSharing();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(withPeer.peerService.running, isFalse, reason: 'a device already on the network must leave it when the gate closes');
+      // A device already on the network must leave it when the gate closes.
+      await waitFor('sharing to stop', () => !withPeer.peerService.running);
     });
   });
 

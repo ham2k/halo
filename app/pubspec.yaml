@@ -143,7 +143,7 @@ dev_dependencies:
   # `clock` is the OTHER half of fake_async: inside its zone, `clock.now()`
   # is the fake clock `elapse` advances, which is how a test drives a
   # timer and a staleness check off one clock — see
-  # peer_ble_transport_test.dart. Same rule as fake_async: transitive
+  # cat_service_test.dart. Same rule as fake_async: transitive
   # through it, imported directly, so declared directly.
   clock: ^1.1.1
   # Faking the url_launcher platform to fence openExternalUrl's scheme

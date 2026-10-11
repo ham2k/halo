@@ -14,6 +14,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'fake_cat_server_rig.dart';
+import '../support/fake_clock.dart';
 
 class _FakeListener implements CatServerListener {
   final CatServerProtocol protocol;
@@ -257,17 +258,20 @@ void main() {
     expect(service.status.error, isNull);
   });
 
-  test('a failed bind is tried again on its own — the program holding the port may have quit', () async {
-    bindError = const SocketException('port held');
-    await start(radio: {protocolKey: 'rigctld'}, retryDelay: const Duration(milliseconds: 20));
-    expect(service.status.error, isNotNull);
-    bindError = null;
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    await pumpEventQueue();
-    expect(bound.single.port, 4532);
-    expect(service.status.listening, isTrue);
-    expect(service.status.error, isNull);
-  });
+  test(
+    'a failed bind is tried again on its own — the program holding the port may have quit',
+    () => runOnFakeClock((_) async {
+      bindError = const SocketException('port held');
+      await start(radio: {protocolKey: 'rigctld'}, retryDelay: const Duration(milliseconds: 20));
+      expect(service.status.error, isNotNull);
+      bindError = null;
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await pumpEventQueue();
+      expect(bound.single.port, 4532);
+      expect(service.status.listening, isTrue);
+      expect(service.status.error, isNull);
+    }),
+  );
 
   test('a bind overtaken by settings that changed and changed back is not mistaken for the current one', () async {
     await start();
@@ -366,16 +370,19 @@ void main() {
     expect(service.status.failure, CatServerFailure.portDenied);
   });
 
-  test('a retry keeps the failure on show until it has an answer, rather than flickering to "starting"', () async {
-    bindError = const SocketException('port held');
-    await start(radio: {protocolKey: 'rigctld'}, retryDelay: const Duration(milliseconds: 20));
-    bindError = null;
-    holdBind = Completer<void>();
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    expect(bindCalls, 2, reason: 'the retry is in flight');
-    expect(service.status.error, isNotNull);
-    holdBind?.complete();
-  });
+  test(
+    'a retry keeps the failure on show until it has an answer, rather than flickering to "starting"',
+    () => runOnFakeClock((_) async {
+      bindError = const SocketException('port held');
+      await start(radio: {protocolKey: 'rigctld'}, retryDelay: const Duration(milliseconds: 20));
+      bindError = null;
+      holdBind = Completer<void>();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(bindCalls, 2, reason: 'the retry is in flight');
+      expect(service.status.error, isNotNull);
+      holdBind?.complete();
+    }),
+  );
 
   test('a bind that fails for a reason other than the network is shown but not retried', () async {
     // Retrying a bug every few seconds only buries it; it goes to error
@@ -388,17 +395,20 @@ void main() {
     expect(service.status.listening, isFalse);
   });
 
-  test('a listening socket the system closes is shown as stopped, and tried again', () async {
-    await start(radio: {protocolKey: 'rigctld'}, retryDelay: const Duration(milliseconds: 20));
-    expect(service.status.listening, isTrue);
-    bound.single.closed = true; // the system took it
-    stopped!();
-    expect(service.status.failure, CatServerFailure.stopped);
-    expect(service.status.listening, isFalse);
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    expect(bound, hasLength(2));
-    expect(service.status.listening, isTrue);
-  });
+  test(
+    'a listening socket the system closes is shown as stopped, and tried again',
+    () => runOnFakeClock((_) async {
+      await start(radio: {protocolKey: 'rigctld'}, retryDelay: const Duration(milliseconds: 20));
+      expect(service.status.listening, isTrue);
+      bound.single.closed = true; // the system took it
+      stopped!();
+      expect(service.status.failure, CatServerFailure.stopped);
+      expect(service.status.listening, isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(bound, hasLength(2));
+      expect(service.status.listening, isTrue);
+    }),
+  );
 
   test('disposing the service closes the server', () async {
     await start(radio: {protocolKey: 'rigctld'}, disposeAfter: false);

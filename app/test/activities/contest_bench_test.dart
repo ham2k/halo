@@ -254,11 +254,10 @@ void main() {
     BenchPhase phase(BenchResult result, String name) => result.phases.singleWhere((p) => p.name == name);
 
     test('a dupe check and a spots pass that were answered are measured', () async {
-      final sw = Stopwatch()..start();
       final result = await run(answering());
-      // A run this small takes milliseconds, a few seconds under a loaded
-      // suite; the wait it guards against runs out at five.
-      expect(sw.elapsed, lessThan(const Duration(seconds: 3)), reason: 'a silent timeout is hiding in the run');
+      // Each phase reports a check that ran out its clock as its warning, so
+      // a timeout hiding in the run fails these rather than a wall-clock
+      // bound, which a loaded suite stretches (docs/design/time.md §7).
       expect(phase(result, 'dupe check, cold').warning, isNull);
       expect(phase(result, 'dupe check, resumed').warning, isNull);
       expect(phase(result, 'resume resolution').warning, isNull);

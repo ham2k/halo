@@ -30,15 +30,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/peer/peer_drafts.dart';
 
 import '../support/peer_network_fakes.dart';
-
-Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    if (await condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-  }
-  fail('timed out waiting for: $what');
-}
+import '../support/wait_for.dart';
 
 Position fixAt(double lat, double lon) => Position(
   latitude: lat,
@@ -507,10 +499,11 @@ void main() {
       await waitFor('the report', () => phone.radio.vfoA.freq == 14285.0);
 
       phone.service.broadcastEphemeral(PeerMessage.catSet(radioId: 'rig-nobody-has', freqKHz: 1234.0, mode: 'CW'));
-      await Future<void>.delayed(const Duration(milliseconds: 500));
-
-      expect(laptop.station.tuneRequests, contains('rig-nobody-has'));
-      expect(laptop.radio.vfoA.freq, 14285.0);
+      await waitFor('the station to be asked', () => laptop.station.tuneRequests.contains('rig-nobody-has'));
+      // Long enough for a tune that went through to have landed; a late one
+      // only makes "it did not move" more true.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(laptop.radio.vfoA.freq, 14285.0, reason: 'asked, and refused');
     });
 
     test('the three-hop loop settles instead of ping-ponging', () async {

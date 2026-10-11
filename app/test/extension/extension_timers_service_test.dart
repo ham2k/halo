@@ -6,6 +6,13 @@
 // runtime whether the app is in view, including one that boots while it is
 // hidden, and saying so when an extension's timers are suspended. Through the
 // real runtime, with a probe extension loaded the way the dev loop loads one.
+//
+// The runtime runs in its own isolate here, out of reach of a fake clock, so
+// the suspension is brought on by failures rather than by the time budget:
+// a callback that throws every time is suspended after a fixed number of
+// fires however fast the machine runs them, where breaking the budget
+// depends on how fast wakes come (timers_test.dart drives that one on a
+// fake clock).
 
 import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_test/flutter_test.dart';
@@ -27,8 +34,11 @@ __polo.defineExtension({
   onActivation: function (api) {
     api.registerHook('bench', { key: 'dev-timers', hook: {
       heard: async function () { return heard },
-      spin: async function () {
-        var chain = function () { api.timers.set(chain, 0, false, []) }
+      fail: async function () {
+        var chain = function () {
+          api.timers.set(chain, 0, false, [])
+          throw new Error('every time')
+        }
         api.timers.set(chain, 0, false, [])
       },
     }})
@@ -81,7 +91,9 @@ void main() {
   Future<void> suspendProbe() async {
     await extensions.start();
     await loadProbe();
-    await extensions.host!.invokeHook('bench', key: 'dev-timers', method: 'spin');
+    await extensions.host!.invokeHook('bench', key: 'dev-timers', method: 'fail');
+    // A hang guard, not a timing claim: the suspension is due after a fixed
+    // number of fires, so only a machine stalled for the whole of it misses.
     final waited = Stopwatch()..start();
     while (!backend.exceptions.any((e) => e.error is ExtensionTimersSuspended)) {
       if (waited.elapsed > const Duration(seconds: 15)) fail('the suspension was never reported');
@@ -93,7 +105,7 @@ void main() {
     await harness.settings.setDeveloperMode(true);
     await suspendProbe();
     final reported = backend.exceptions.firstWhere((e) => e.error is ExtensionTimersSuspended).error as ExtensionTimersSuspended;
-    expect((reported.extensionKey, reported.reason), ('dev-timers', 'budget'));
+    expect((reported.extensionKey, reported.reason), ('dev-timers', 'failures'));
     expect(harness.services.statusBar.activeNotices.map((n) => n.key), contains('extension-timers:dev-timers'));
   });
 

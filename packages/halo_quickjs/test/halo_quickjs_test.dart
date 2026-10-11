@@ -105,11 +105,13 @@ void main() {
     });
 
     test('a runaway reaction is still bounded', () {
+      // Unbounded, the pump never returns. How fast it returns is a measure
+      // of the machine (docs/design/time.md §7), so only that it does is
+      // asserted, and that the engine is still usable after.
       js.evalBudgetMs = 200;
       js.eval('Promise.resolve(1).then(() => { while (true) {} })');
-      final sw = Stopwatch()..start();
       js.pump();
-      expect(sw.elapsedMilliseconds, lessThan(1000));
+      expect(js.eval("'alive'").text, 'alive');
     });
   });
 
@@ -132,7 +134,10 @@ void main() {
       final sw = Stopwatch()..start();
       final r = js.eval("while (true) { sendMessage('c','m') }");
       expect(r.ok, isFalse);
-      expect(sw.elapsedMilliseconds, lessThan(1000), reason: 'the budget must hold on the re-entrant path, not just the simple one');
+      // A wall-clock bound, so it is set wide: past the budget by whatever a
+      // starved machine adds before the next interrupt poll, well short of
+      // the regression's eleven budgets.
+      expect(sw.elapsedMilliseconds, lessThan(1500), reason: 'the budget must hold on the re-entrant path, not just the simple one');
     });
 
     test('the memory limit trips instead of taking the process down', () {
@@ -182,11 +187,11 @@ void main() {
       // REGRESSION: halo_leave ran BEFORE stringification, so coercion - which
       // is arbitrary JS - executed with no deadline armed and no interrupt
       // handler in force. This hung indefinitely and then returned rc=0.
+      // Outside the budget, the coercion never returns; that it does, and
+      // fails, is the whole claim.
       js.evalBudgetMs = 200;
-      final sw = Stopwatch()..start();
       final r = js.eval('({ toString() { while (true) {} } })');
-      expect(r.ok, isFalse);
-      expect(sw.elapsedMilliseconds, lessThan(2000), reason: 'coercion must run inside the same budget as the eval');
+      expect(r.ok, isFalse, reason: 'coercion must run inside the same budget as the eval');
     });
   });
 

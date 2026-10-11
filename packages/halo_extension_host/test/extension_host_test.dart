@@ -12,6 +12,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_extension_host/src/fetch_policy.dart';
 
 import 'support/bundles.dart';
+import 'support/fake_clock.dart';
 
 // Plain JS (no bundler): registers two lookup hooks, one of which fails,
 // and a KV round-trip hook. Declared hooks come AFTER defineExtension to prove
@@ -1345,32 +1346,35 @@ __polo.defineExtension({
     expect(getSettingsCalls, 2);
   });
 
-  test('a command hook can push a later interpretation via host.updateInterpretation (issue #189)', () async {
-    final host = await ExtensionHost.start(
-      kernelSource: bundleSource('kernel'),
-      extensions: const [ExtensionBundle(key: 'test-extension', source: _asyncInterpretationSource)],
-      useIsolate: false,
-    );
-    addTearDown(host.dispose);
+  test(
+    'a command hook can push a later interpretation via host.updateInterpretation (issue #189)',
+    () => runOnFakeClock((_) async {
+      final host = await ExtensionHost.start(
+        kernelSource: bundleSource('kernel'),
+        extensions: const [ExtensionBundle(key: 'test-extension', source: _asyncInterpretationSource)],
+        useIsolate: false,
+      );
+      addTearDown(host.dispose);
 
-    final updates = <Map<String, dynamic>>[];
-    final sub = host.interpretationUpdates.listen(updates.add);
-    addTearDown(sub.cancel);
+      final updates = <Map<String, dynamic>>[];
+      final sub = host.interpretationUpdates.listen(updates.add);
+      addTearDown(sub.cancel);
 
-    // interpret() itself returns quickly, with a placeholder — the caller
-    // isn't blocked on the "fetch" the hook kicked off in the background.
-    final entries = await host.invokeHookAll('command', method: 'interpret', args: {'input': 'SOLAR'});
-    expect(entries.single['ok'], true);
-    expect((entries.single['value'] as Map)['describe'], 'Fetching…');
+      // interpret() itself returns quickly, with a placeholder — the caller
+      // isn't blocked on the "fetch" the hook kicked off in the background.
+      final entries = await host.invokeHookAll('command', method: 'interpret', args: {'input': 'SOLAR'});
+      expect(entries.single['ok'], true);
+      expect((entries.single['value'] as Map)['describe'], 'Fetching…');
 
-    // The background "fetch" pushes the real result via
-    // updateInterpretation — same input, a different (later) interpretation
-    // than what interpret() itself returned above.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(updates, hasLength(1));
-    expect(updates.single['input'], 'SOLAR');
-    expect((updates.single['interpretation'] as Map)['confirm'], 'Solar flux: 120');
-  });
+      // The background "fetch" pushes the real result via
+      // updateInterpretation — same input, a different (later) interpretation
+      // than what interpret() itself returned above.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(updates, hasLength(1));
+      expect(updates.single['input'], 'SOLAR');
+      expect((updates.single['interpretation'] as Map)['confirm'], 'Solar flux: 120');
+    }),
+  );
 }
 
 // Registers a `command` hook whose interpret() returns immediately with a

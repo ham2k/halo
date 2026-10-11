@@ -28,6 +28,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_secure_storage.dart';
+import '../support/fake_clock.dart';
 
 class _FakeConnection implements EquipmentConnection {
   final _data = StreamController<Uint8List>();
@@ -239,25 +240,28 @@ void main() {
     expect(switchDriver.sessions.single.selections, isEmpty);
   });
 
-  test('a radio that goes silent mid-over stops holding the switch shut', () async {
-    // Nothing in any of these protocols announces an unkey, so a rig
-    // unplugged or switched off while keyed leaves its last word standing:
-    // "transmitting", for the rest of the session. Left to gate on that, the
-    // antenna switch refuses every selection for ever, with nothing on
-    // screen to say why. Staleness is what already knows the radio has
-    // stopped answering.
-    final station = await connectedStation();
-    radioDriver.sessions.single.sink.reportTransmitting(true);
-    expect(cat.radio1IsTransmitting, isTrue);
+  test(
+    'a radio that goes silent mid-over stops holding the switch shut',
+    () => runOnFakeClock((_) async {
+      // Nothing in any of these protocols announces an unkey, so a rig
+      // unplugged or switched off while keyed leaves its last word standing:
+      // "transmitting", for the rest of the session. Left to gate on that, the
+      // antenna switch refuses every selection for ever, with nothing on
+      // screen to say why. Staleness is what already knows the radio has
+      // stopped answering.
+      final station = await connectedStation();
+      radioDriver.sessions.single.sink.reportTransmitting(true);
+      expect(cat.radio1IsTransmitting, isTrue);
 
-    // Let the silence watch trip, the way it does on a radio that has
-    // stopped answering — see [staleAfter] on the service built above.
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    expect(cat.stateFor(station.radioNode.uuid).stale, isTrue);
-    expect(cat.radio1IsTransmitting, isFalse, reason: 'silence is not a transmission');
-    cat.selectAntenna(station.switchNode.uuid, '1', '3');
-    expect(switchDriver.sessions.single.selections, ['1->3']);
-  });
+      // Let the silence watch trip, the way it does on a radio that has
+      // stopped answering — see [staleAfter] on the service built above.
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(cat.stateFor(station.radioNode.uuid).stale, isTrue);
+      expect(cat.radio1IsTransmitting, isFalse, reason: 'silence is not a transmission');
+      cat.selectAntenna(station.switchNode.uuid, '1', '3');
+      expect(switchDriver.sessions.single.selections, ['1->3']);
+    }),
+  );
 
   test("the app's own key shuts the switch, before the radio says a word", () async {
     // The app keyed this radio itself; waiting for the radio to confirm it
@@ -273,21 +277,24 @@ void main() {
     expect(switchDriver.sessions.single.selections, ['1->3']);
   });
 
-  test("a radio that goes silent under the app's key still holds the switch shut", () async {
-    // RF in the CAT cable is what silences a radio exactly while it
-    // transmits. Its last word goes stale; the app's own key does not — it
-    // has its own minute, and a relay moved under that carrier is destroyed.
-    final station = await connectedStation();
-    cat.togglePtt(station.radioNode.uuid);
+  test(
+    "a radio that goes silent under the app's key still holds the switch shut",
+    () => runOnFakeClock((_) async {
+      // RF in the CAT cable is what silences a radio exactly while it
+      // transmits. Its last word goes stale; the app's own key does not — it
+      // has its own minute, and a relay moved under that carrier is destroyed.
+      final station = await connectedStation();
+      cat.togglePtt(station.radioNode.uuid);
 
-    await Future<void>.delayed(const Duration(milliseconds: 80));
-    expect(cat.stateFor(station.radioNode.uuid).stale, isTrue, reason: 'sanity: the silence watch tripped');
-    expect(cat.radio1IsTransmitting, isTrue);
-    cat.selectAntenna(station.switchNode.uuid, '1', '3');
-    expect(switchDriver.sessions.single.selections, isEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(cat.stateFor(station.radioNode.uuid).stale, isTrue, reason: 'sanity: the silence watch tripped');
+      expect(cat.radio1IsTransmitting, isTrue);
+      cat.selectAntenna(station.switchNode.uuid, '1', '3');
+      expect(switchDriver.sessions.single.selections, isEmpty);
 
-    cat.pttKeys.release();
-  });
+      cat.pttKeys.release();
+    }),
+  );
 
   test('a meter reading that repeats its value does not wake every listener', () async {
     // Three meters on a 200 ms cycle is fifteen notifications a second, and

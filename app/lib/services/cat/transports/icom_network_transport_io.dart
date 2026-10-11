@@ -132,7 +132,9 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       throw const IcomCredentialsMissing();
     }
 
-    final address = (await InternetAddress.lookup(host)).first;
+    // A radio's address is usually typed as one, and an address needs no
+    // lookup — which is real I/O, out of reach of a test's fake clock.
+    final address = InternetAddress.tryParse(host) ?? (await InternetAddress.lookup(host)).first;
     _IcomSession? control;
     _IcomSession? serial;
     RawDatagramSocket? audio;

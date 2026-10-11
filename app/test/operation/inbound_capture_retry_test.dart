@@ -18,6 +18,8 @@ import 'package:ham2k_logger/services/lookup_queue_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
+import '../support/fake_clock.dart';
+
 /// [capture] throws for the first [failures] calls, then behaves normally —
 /// the transient-database-error stand-in.
 class _FailingCaptures extends InboundCaptureRepository {
@@ -74,6 +76,11 @@ void main() {
     await db.close();
   });
 
+  /// What `watchPending` would emit, read once. These tests run on a fake
+  /// clock, and a drift stream delivers through the real event loop, which
+  /// the clock's steps hold up.
+  Future<List<InboundCaptureRow>> pendingNow() => (db.select(db.inboundCaptures)..where((c) => c.addedToOperation.isNull())).get();
+
   InboundQsoListenerService service(InboundCaptureRepository captures) => InboundQsoListenerService(
     settings: settings,
     captures: captures,
@@ -83,103 +90,112 @@ void main() {
     captureRetryInterval: const Duration(milliseconds: 20),
   );
 
-  test('a failed capture surfaces captureError and is retried until it lands, then the error clears', () async {
-    final captures = _FailingCaptures(db, failures: 1);
-    final listener = service(captures);
-    addTearDown(listener.dispose);
+  test(
+    'a failed capture surfaces captureError and is retried until it lands, then the error clears',
+    () => runOnFakeClock((_) async {
+      final captures = _FailingCaptures(db, failures: 1);
+      final listener = service(captures);
+      addTearDown(listener.dispose);
 
-    await listener.captureIncoming(
-      source: wsjtxSource,
-      dedupeKey: 'k1',
-      qso: {
-        'their': {'call': 'W1AW'},
-        'band': '20m',
-        'mode': 'FT8',
-      },
-    );
+      await listener.captureIncoming(
+        source: wsjtxSource,
+        dedupeKey: 'k1',
+        qso: {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'FT8',
+        },
+      );
 
-    // The insert threw: nothing stored yet, but the failure is visible and
-    // the payload is queued — not silently dropped.
-    expect(listener.captureError, contains('disk full'));
-    expect(await captures.watchPending().first, isEmpty);
+      // The insert threw: nothing stored yet, but the failure is visible and
+      // the payload is queued — not silently dropped.
+      expect(listener.captureError, contains('disk full'));
+      expect(await pendingNow(), isEmpty);
 
-    // After the retry interval the insert succeeds and the error clears.
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    final pending = await captures.watchPending().first;
-    expect(pending.map((r) => (r.qso['their'] as Map)['call']).toList(), ['W1AW']);
-    expect(listener.captureError, isNull);
-  });
+      // After the retry interval the insert succeeds and the error clears.
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      final pending = await pendingNow();
+      expect(pending.map((r) => (r.qso['their'] as Map)['call']).toList(), ['W1AW']);
+      expect(listener.captureError, isNull);
+    }),
+  );
 
-  test('a capture that keeps failing keeps the error visible and keeps retrying without duplicating', () async {
-    final captures = _FailingCaptures(db, failures: 3);
-    final listener = service(captures);
-    addTearDown(listener.dispose);
+  test(
+    'a capture that keeps failing keeps the error visible and keeps retrying without duplicating',
+    () => runOnFakeClock((_) async {
+      final captures = _FailingCaptures(db, failures: 3);
+      final listener = service(captures);
+      addTearDown(listener.dispose);
 
-    await listener.captureIncoming(
-      source: n1mmSource,
-      dedupeKey: 'k2',
-      qso: {
-        'their': {'call': 'K1ABC'},
-      },
-    );
-    expect(listener.captureError, isNotNull);
+      await listener.captureIncoming(
+        source: n1mmSource,
+        dedupeKey: 'k2',
+        qso: {
+          'their': {'call': 'K1ABC'},
+        },
+      );
+      expect(listener.captureError, isNotNull);
 
-    // Two more retries fail (failures: 3 in total); the error must still be
-    // showing in between — a cleared error with the QSO still unsaved is the
-    // silent-loss state this service exists to prevent.
-    await Future<void>.delayed(const Duration(milliseconds: 30));
-    expect(listener.captureError, isNotNull);
+      // Two more retries fail (failures: 3 in total); the error must still be
+      // showing in between — a cleared error with the QSO still unsaved is the
+      // silent-loss state this service exists to prevent.
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      expect(listener.captureError, isNotNull);
 
-    await Future<void>.delayed(const Duration(milliseconds: 90));
-    final pending = await captures.watchPending().first;
-    expect(pending, hasLength(1));
-    expect(listener.captureError, isNull);
-  });
+      await Future<void>.delayed(const Duration(milliseconds: 90));
+      final pending = await pendingNow();
+      expect(pending, hasLength(1));
+      expect(listener.captureError, isNull);
+    }),
+  );
 
-  test('a routing failure mid-drain does not drop the rest of the retry queue', () async {
-    // The trap: the drain clears the queue before iterating, so a throw
-    // from the post-insert routing (addToOperation) escaping the loop
-    // would vanish every not-yet-retried entry — unreplayable QSOs — and
-    // leave no timer armed.
-    final captures = _FailingCaptures(db, failures: 2);
-    final failingQsos = _FailingQsos(db);
-    final listener = InboundQsoListenerService(
-      settings: settings,
-      captures: captures,
-      qsos: failingQsos,
-      operations: operations,
-      lookupQueue: lookupQueue,
-      captureRetryInterval: const Duration(milliseconds: 20),
-    );
-    addTearDown(listener.dispose);
-    final op = await operations.create(stationCall: 'KI2D');
-    listener.setReceivingOperation(op.uuid);
+  test(
+    'a routing failure mid-drain does not drop the rest of the retry queue',
+    () => runOnFakeClock((_) async {
+      // The trap: the drain clears the queue before iterating, so a throw
+      // from the post-insert routing (addToOperation) escaping the loop
+      // would vanish every not-yet-retried entry — unreplayable QSOs — and
+      // leave no timer armed.
+      final captures = _FailingCaptures(db, failures: 2);
+      final failingQsos = _FailingQsos(db);
+      final listener = InboundQsoListenerService(
+        settings: settings,
+        captures: captures,
+        qsos: failingQsos,
+        operations: operations,
+        lookupQueue: lookupQueue,
+        captureRetryInterval: const Duration(milliseconds: 20),
+      );
+      addTearDown(listener.dispose);
+      final op = await operations.create(stationCall: 'KI2D');
+      listener.setReceivingOperation(op.uuid);
 
-    await listener.captureIncoming(
-      source: wsjtxSource,
-      dedupeKey: 'a',
-      qso: {
-        'their': {'call': 'W1AW'},
-      },
-    );
-    await listener.captureIncoming(
-      source: wsjtxSource,
-      dedupeKey: 'b',
-      qso: {
-        'their': {'call': 'K1ABC'},
-      },
-    );
+      await listener.captureIncoming(
+        source: wsjtxSource,
+        dedupeKey: 'a',
+        qso: {
+          'their': {'call': 'W1AW'},
+        },
+      );
+      await listener.captureIncoming(
+        source: wsjtxSource,
+        dedupeKey: 'b',
+        qso: {
+          'their': {'call': 'K1ABC'},
+        },
+      );
 
-    // First drain: entry a's insert lands but its routing throws. Entry b
-    // must survive to a later drain; once routing recovers, both rows
-    // exist in the capture table.
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    failingQsos.failing = false;
-    await Future<void>.delayed(const Duration(milliseconds: 100));
+      // First drain: entry a's insert lands but its routing throws. Entry b
+      // must survive to a later drain; once routing recovers, both rows
+      // exist in the capture table.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      failingQsos.failing = false;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
 
-    final rows = await db.select(db.inboundCaptures).get();
-    expect(rows.map((r) => r.dedupeKey).toSet(), {'a', 'b'});
-  });
+      final rows = await db.select(db.inboundCaptures).get();
+      expect(rows.map((r) => r.dedupeKey).toSet(), {'a', 'b'});
+    }),
+  );
 
   test('a routed capture is stamped with the operator and position of the operation it lands in', () async {
     // The parsers stay pure — a datagram says nothing about which of this

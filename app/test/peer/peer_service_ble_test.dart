@@ -19,15 +19,7 @@ import 'package:ham2k_logger/services/peer/serial_claims.dart';
 
 import '../support/peer_ble_fakes.dart';
 import '../support/peer_network_fakes.dart';
-
-Future<void> waitFor(String what, FutureOr<bool> Function() condition, {Duration timeout = const Duration(seconds: 20)}) async {
-  final deadline = DateTime.now().add(timeout);
-  while (DateTime.now().isBefore(deadline)) {
-    if (await condition()) return;
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-  }
-  fail('timed out waiting for: $what');
-}
+import '../support/wait_for.dart';
 
 class _Device {
   _Device(this.deviceId, this.name, FakeHost host, FakeBleWorld world, String bleAddress) {

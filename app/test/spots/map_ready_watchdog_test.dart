@@ -27,12 +27,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:clock/clock.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import 'package:halo_core/halo_core.dart' show AppClock, realNowMillis;
+import 'package:halo_core/halo_core.dart' show AppClock;
 
 import 'package:ham2k_logger/services/connectivity_service.dart';
 import 'package:ham2k_logger/services/error_reporting_backend.dart';
@@ -116,18 +115,24 @@ void main() {
     late int unavailableCalls;
     late MapReadyWatchdog watchdog;
 
+    late bool followed;
+
     setUp(() {
       unavailableCalls = 0;
       // The visible-time arithmetic and the timers have to come off ONE
-      // clock: fakeAsync replaces Timer and `clock` but not `DateTime.now()`,
-      // so leaving the default here would measure the wall clock while the
-      // timers ran on fake time — every elapsed span would compute as zero
-      // and the accumulation tests would pass without exercising anything
-      // (docs/design/time.md §7).
-      watchdog = MapReadyWatchdog(onUnavailable: () => unavailableCalls++, now: () => clock.now().millisecondsSinceEpoch);
+      // clock: without the app clock following the fake one, the arithmetic
+      // would read the wall clock while the timers ran on fake time, every
+      // elapsed span would compute as zero, and the accumulation tests would
+      // pass without exercising anything (docs/design/time.md §7).
+      followed = AppClock.followZoneClock;
+      AppClock.followZoneClock = true;
+      watchdog = MapReadyWatchdog(onUnavailable: () => unavailableCalls++);
     });
 
-    tearDown(() => watchdog.dispose());
+    tearDown(() {
+      watchdog.dispose();
+      AppClock.followZoneClock = followed;
+    });
 
     test('a map that arrives late is reported as late, never as never-ready', () {
       fakeAsync((async) {
@@ -254,24 +259,31 @@ void main() {
   });
 
   test('the horizons do not follow a travelled clock', () {
-    // The seam's DEFAULT is the contract. `realNowMillis` is what keeps a
-    // horizon measuring real seconds; swapping it for `nowMillis` would read
-    // as an ordinary application of the app-clock rule, and the
-    // clock-discipline check greps for `DateTime.now()`, which that still is
-    // not — so nothing but this would catch a travelled session expiring
-    // every horizon at once. Asserted through behaviour rather than by
-    // comparing function references: what matters is that the number does not
-    // move (docs/design/time.md §7).
-    final watchdog = MapReadyWatchdog(onUnavailable: () {});
-    addTearDown(watchdog.dispose);
-
+    // The horizons measure on the REAL clock. `realNowMillis` is what keeps
+    // them measuring real seconds; swapping it for `nowMillis` would read as
+    // an ordinary application of the app-clock rule, and the clock-discipline
+    // check would not catch it — so nothing but this would catch a travelled
+    // session expiring every horizon at once. On the app clock, three days of
+    // travel while the map is on screen would be three days of visible time,
+    // past the give-up horizon the moment it is counted.
+    final followed = AppClock.followZoneClock;
+    AppClock.followZoneClock = true;
+    addTearDown(() => AppClock.followZoneClock = followed);
     // `reset`, never `travel(delta: Duration.zero)` — a delta is CUMULATIVE,
     // so a zero one is a no-op that reads like a reset and leaves this
     // process-wide singleton three days out for every test after it.
-    AppClock.instance.travel(delta: const Duration(days: 3));
     addTearDown(AppClock.instance.reset);
 
-    expect((watchdog.now() - realNowMillis()).abs(), lessThan(2000), reason: 'three days of travel must not reach a value that becomes a Timer duration');
+    fakeAsync((async) {
+      final watchdog = MapReadyWatchdog(onUnavailable: () {});
+      watchdog.setVisible(true);
+      AppClock.instance.travel(delta: const Duration(days: 3));
+      watchdog.setVisible(false);
+      watchdog.setVisible(true);
+      async.elapse(const Duration(seconds: 1));
+      expect(reported(), isEmpty, reason: 'three days of travel must not count as time on screen');
+      watchdog.dispose();
+    });
   });
 
   testWidgets('a map behind another tab is never reported', (tester) async {
