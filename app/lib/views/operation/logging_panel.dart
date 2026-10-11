@@ -16,6 +16,7 @@ import '../../services/cat/equipment.dart';
 import '../../services/cat/cat_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
+import '../../services/logging_scope.dart';
 import '../../services/settings_service.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/operation_stats.dart';
@@ -143,6 +144,20 @@ class LoggingPanel extends StatefulWidget {
   /// the operation's own info the same two ways.
   final VoidCallback? onOperationInfoTap;
 
+  /// The controls ABOVE the QSO list instead of below it — the Chasing view's
+  /// arrangement (see [LoggingPreferences.aboveLog]). The list then runs
+  /// newest first, and every key that walks it follows the screen.
+  final bool controlsAboveLog;
+
+  /// A last say over a contact on its way to the log, after the operator and
+  /// station info are stamped — for a host whose log has no operation to
+  /// carry what every contact shares (the Chasing view's location).
+  final Map<String, dynamic> Function(Map<String, dynamic> qso)? stampQso;
+
+  /// Whose arrangement of the panel this is — see [LoggingScope]. The Chasing
+  /// view's also puts Spotting after the references by default.
+  final LoggingScope scope;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -182,6 +197,9 @@ class LoggingPanel extends StatefulWidget {
     this.cwTemplateContext,
     this.keyingPhone = false,
     this.onOperationInfoTap,
+    this.controlsAboveLog = false,
+    this.stampQso,
+    this.scope = LoggingScope.operation,
   });
 
   @override
@@ -204,8 +222,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // Imperative handle into LoggingControls, used to drive the dev bridge
   // (window.__halo setField/tap) when it's installed (dev/preview web).
   final _loggingController = LoggingControlsController();
-  late List<String> _controlOrder = widget.services.settings.secondaryControlsOrder;
-  late Set<String> _hiddenControls = widget.services.settings.hiddenSecondaryControls;
+  late List<String> _controlOrder = widget.services.settings.secondaryControlsOrderFor(widget.scope);
+  late Set<String> _hiddenControls = widget.services.settings.hiddenSecondaryControlsFor(widget.scope);
   // Read once, not per build: each getter re-parses the logging prefs JSON,
   // and this panel rebuilds on every QSO-stream emission. Fresh values
   // arrive with a fresh panel — the settings view is only reachable from
@@ -446,11 +464,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   /// Moves the selection [delta] rows through [_navigable].
   ///
-  /// Walking a single row past the newest QSO leaves the list entirely and
-  /// hands the keyboard back to the pill strip, mirroring the Up that got
-  /// here. It also deselects, back to the new QSO being composed — the state
-  /// this walk started from, up through the pills, before Up ever touched the
-  /// list. A [jump] — a page or an end key — clamps at that edge instead:
+  /// [delta] counts toward the newer end, whichever way up the list is
+  /// drawn. Walking a single row past the newest QSO leaves the list entirely
+  /// and hands the keyboard back to the pill strip, mirroring the arrow that
+  /// got here. It also deselects, back to the new QSO being composed — the
+  /// state this walk started from, out through the pills, before that arrow
+  /// ever touched the list. A [jump] — a page or an end key — clamps at that edge instead:
   /// nobody presses Page Down meaning "and then leave the list".
   void _moveListSelection(int delta, {bool jump = false}) {
     final (:indices, :slot) = _navigable;
@@ -519,20 +538,23 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final meta = keyboard.isMetaPressed;
     final alt = keyboard.isAltPressed;
     final key = event.logicalKey;
+    // The keys follow the screen: with the list newest-first under the
+    // controls, the newer rows — and the way back out to the pills — are UP.
+    final newestOnTop = widget.controlsAboveLog;
 
     // The arrows, with the two modifiers the platform gives them: Cmd+Up/Down
     // is "to the start/end of the document" and Option+Up/Down is the bigger
     // step between them — a screenful here, the same as Page Up/Down. Both
     // together mean nothing, so they're left alone rather than guessed at.
     if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
-      final down = key == LogicalKeyboardKey.arrowDown;
+      final newer = (key == LogicalKeyboardKey.arrowDown) != newestOnTop;
       if (meta && alt) return KeyEventResult.ignored;
       if (meta) {
-        _selectListEdge(newest: down);
+        _selectListEdge(newest: newer);
       } else if (alt) {
-        _moveListSelection(down ? _pageRows : -_pageRows, jump: true);
+        _moveListSelection(newer ? _pageRows : -_pageRows, jump: true);
       } else {
-        _moveListSelection(down ? 1 : -1);
+        _moveListSelection(newer ? 1 : -1);
       }
       return KeyEventResult.handled;
     }
@@ -541,16 +563,16 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
     switch (key) {
       case LogicalKeyboardKey.pageUp:
-        _moveListSelection(-_pageRows, jump: true);
+        _moveListSelection(newestOnTop ? _pageRows : -_pageRows, jump: true);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.pageDown:
-        _moveListSelection(_pageRows, jump: true);
+        _moveListSelection(newestOnTop ? -_pageRows : _pageRows, jump: true);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.home:
-        _selectListEdge(newest: false);
+        _selectListEdge(newest: newestOnTop);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.end:
-        _selectListEdge(newest: true);
+        _selectListEdge(newest: !newestOnTop);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
@@ -679,8 +701,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
       _controlOrder = order;
       _hiddenControls = hidden;
     });
-    widget.services.settings.setSecondaryControlsOrder(order);
-    widget.services.settings.setHiddenSecondaryControls(hidden);
+    widget.services.settings.setSecondaryControlsOrderFor(widget.scope, order);
+    widget.services.settings.setHiddenSecondaryControlsFor(widget.scope, hidden);
   }
 
   /// The call-info panel's line-1 location string, against THIS operation
@@ -727,6 +749,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       ourEntityPrefix: widget.ourEntityPrefix,
       dxFlags: widget.dxFlags,
       daySections: daySections,
+      newestFirst: widget.controlsAboveLog,
     );
 
     // Escape deselecting a QSO regardless of what has focus (e.g. the QSO
@@ -735,208 +758,209 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // CallbackShortcuts, closer to the compose form's fields, still handles
     // Escape whenever focus IS there (discard-typed-changes) —
     // this one only fires when that inner one doesn't.
+    final listPane = Expanded(
+      // skipTraversal: Tab belongs to the logging controls' own field
+      // rotation; the list is reached with the arrow keys, not
+      // by tabbing into it.
+      child: Focus(
+        focusNode: _listFocus,
+        skipTraversal: true,
+        onKeyEvent: _onQsoListKeyEvent,
+        child: _LazyQsoList(
+          // Only worth deferring a large log's expensive first build —
+          // a short one (including a brand-new, empty operation) is
+          // cheap enough that showing it immediately, empty-state
+          // message and all, beats replacing it with a spinner first.
+          // A field on the SAME widget type, not a ternary between two
+          // different ones at this tree slot: logging (or deleting) a
+          // QSO can cross the threshold while the panel is open, and a
+          // changed runtimeType here would discard and remount
+          // _QsoListState — silently throwing an operator's scroll
+          // position and jumping back to the bottom mid-review.
+          largeEnough: widget.qsos.length >= _lazyQsoListThreshold,
+          child: list,
+        ),
+      ),
+    );
+    final controls = LoggingControls(
+      log: LogHooks(
+        operation: widget.operation,
+        qsosRepository: widget.services.qsos,
+        qsos: widget.qsos,
+        decorateQsoBeforeSave: (qso, operation) {
+          final stamped = qsoWithOperator(_withStationInfo(qso), widget.operation);
+          return widget.services.extensions.decorateQsoBeforeSave(widget.stampQso?.call(stamped) ?? stamped, operation);
+        },
+        onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
+        serialNumbers: widget.serialNumbers,
+        onLogged: (qso) {
+          // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation
+          // start/break/end) also arrive here via the command `addQso`
+          // action — they're not contacts and must not count as QSOs.
+          // _selectedQso is still set here for a save-of-edit; it only
+          // clears below — that's what tells the two events apart.
+          if (!qso.isEvent) {
+            widget.services.track(_selectedQso != null ? 'qso_edited' : 'qso_added', _qsoTrackProps(qso));
+          }
+          setState(() => _selectedQso = null);
+          widget.onQsoLogged?.call();
+        },
+        onQsoDeleted: (qso) {
+          if (!qso.isEvent) widget.services.track('qso_deleted', _qsoTrackProps(qso));
+        },
+        onQsoUndeleted: (qso) {
+          if (!qso.isEvent) widget.services.track('qso_undeleted', _qsoTrackProps(qso));
+        },
+        // A comma-separated call list logs several QSOs at
+        // once — one rescore for the whole batch, not one per call.
+        onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
+      ),
+      session: LoggingSession(
+        controller: _loggingController,
+        // Only with CAT: the strip reads CatService.cwProgress, which
+        // nothing writes without a keyer-capable radio.
+        // Escape stops every message, chain and repeat before it closes
+        // or cancels anything — see LoggingSession.escapeClaimed. The
+        // stop itself is OperationView's key handler's, which runs first.
+        escapeClaimed: _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
+        // A call typed over a CQ stops it — see CatService.stopMessageOne.
+        onCallTyped: _keyerEnabled ? widget.services.cat.stopMessageOne : null,
+        enterSends: _enterSends,
+        editingQso: _selectedQso,
+        suggestedQso: widget.suggestedQso,
+        logRequest: widget.logRequest,
+        confirmLogOverwrite: widget.confirmLogOverwrite,
+        suggestedQsoIsTentative: widget.suggestedQsoIsTentative,
+        suggestionSettledSerial: widget.suggestionSettledSerial,
+        onCallEdited: widget.onCallEdited,
+        onEditCanceled: () => setState(() => _selectedQso = null),
+        onNavigateToQsoList: _handleNavigateToQsoList,
+        onQsoChanged: widget.onQsoChanged,
+        onPeerDraftChanged: widget.onPeerDraftChanged,
+      ),
+      radio: RadioHookup(
+        enabledBands: _enabledBands,
+        enabledModes: _enabledModes,
+        radioService: widget.services.radio,
+        // Same object, as a Listenable — so the Radio control follows a
+        // connected rig (CAT) instead of only reading the VFO when it
+        // seeds. See RadioHookup.radioUpdates.
+        radioUpdates: widget.services.radio,
+        hasConfiguredRadio: _hasConfiguredRadio,
+        radioConnected: _radioConnected,
+        radioTransmitting: _radioTransmitting,
+        // Offered with no radio configured too: the dialog is where
+        // one gets configured.
+        onOpenStationConfig: () => _openStationConfigDialog(context),
+        onConnectRadio: _hasConfiguredRadio ? radio1ConnectAction(widget.services.cat, connected: _radioConnected) : null,
+        radioName: _radioName,
+        ourItuRegion: widget.ourItuRegion,
+        ourCountryCode: widget.ourCountryCode,
+        trackingPower: _trackingPower,
+      ),
+      lookups: LookupHooks(
+        // Call notes carry socials and URLs, styled as links; this makes
+        // them open.
+        onOpenLink: openExternalUrl,
+        lookup: widget.services.extensions.lookupCall,
+        enqueueLookup: widget.services.lookupQueue.enqueue,
+        // force: false — unlike the explicit "Lookup all QSOs" action,
+        // a SEED batch shouldn't force-refresh a QSO that (somehow)
+        // already carries real online lookup data.
+        enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
+        operationStatsLines: (qsos) => operationStatsLines(context, qsos),
+        callLocationLine: (guess) => _callLocationLine(context, guess),
+        // Wrapped rather than torn off, to inject the activities this
+        // operation has hunted — an operation that activates nothing names
+        // no activity on its own refs, so without this the pills fall back
+        // to the core dupe rule and call a station worked at another park a
+        // plain duplicate (docs/design/activities.md §4).
+        scoreQso: ({required operation, required qso, excludeUuid, segments}) {
+          // The last rescore's checkpoints, when the log this panel holds
+          // is exactly what they folded plus appended contacts — so the
+          // pills resume from a cached sheet instead of re-folding a
+          // long log on every keystroke (liveResumeFor says when).
+          final resume = widget.services.scoring.liveResumeFor(widget.operation, widget.qsos, excludeUuid: excludeUuid);
+          return widget.services.extensions.scoreQso(
+            operation: operation,
+            qso: qso,
+            excludeUuid: excludeUuid,
+            segments: segments,
+            huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
+            resume: resume,
+          );
+        },
+        scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
+        workedBefore: (call, {excludingQsoUuid}) => widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
+        workedBeforeLabel: (times) => workedBeforeLabel(context, times),
+        onCallInfoChanged: widget.onCallInfoChanged,
+        onCallInfoTap: widget.onCallInfoTap,
+        onOperationInfoTap: widget.onOperationInfoTap,
+      ),
+      activities: ActivityHooks(
+        activityControls: widget.loggingControls,
+        refreshActivityControls: (qso) => widget.services.extensions
+            .loggingControls(operationPayloadFor(widget.operation), qso: qso)
+            .then((result) => result.loadFailed ? null : result.controls),
+        decorateRef: widget.services.extensions.decorateRef,
+      ),
+      commands: CommandHooks(
+        interpretCommand: widget.services.extensions.interpretCommand,
+        interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
+        onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
+        onCommandAction: widget.onCommandAction,
+        // Lets the ⌘K dialog apply a command to this panel — see
+        // HaLoServices.currentCommandDispatch. Attached to this
+        // operation's own stack entry, so a disposing panel can't detach a
+        // still-live one's dispatcher.
+        onDispatcherChanged: (dispatch) => widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
+      ),
+      strip: ControlStripSettings(
+        aboveEntryRow: _keyerEnabled
+            ? KeyerArea(
+                cat: widget.services.cat,
+                services: widget.services,
+                onSendMessage: widget.onSendCwMessage,
+                templateContext: widget.cwTemplateContext,
+                phone: widget.keyingPhone,
+                enterSends: _esmEnabled,
+                suppressed: _selectedQso != null,
+              )
+            : null,
+        controlOrder: _controlOrder,
+        hiddenControlKeys: _hiddenControls,
+        spottingAfterReferences: widget.scope == LoggingScope.chase,
+        onControlsSettingsChanged: _handleControlsSettingsChanged,
+      ),
+      spotting: SpottingHooks(suggestSpotSources: widget.services.extensions.suggestSpotSources, sendSpot: widget.services.extensions.sendSpot),
+      prefs: LoggingPreferences(
+        // Leftie Mode is a one-handed-phone layout; a desktop or web session
+        // carrying a stored `true` (restored from a phone) has no toggle to
+        // clear it, so the platform gates the layout, not just the setting.
+        leftieMode: isMobilePlatform && _leftieMode,
+        showRSTFields: widget.showRSTFields,
+        showStateField: widget.showStateField,
+        showGridField: widget.showGridField,
+        defaultReport: widget.defaultReport,
+        defaultReportCW: widget.defaultReportCW,
+        defaultReportFT8: widget.defaultReportFT8,
+        switchSentRcvd: widget.switchSentRcvd,
+        jumpAfterRST: widget.jumpAfterRST,
+        keyboardAccessory: widget.services.keyboardAccessory,
+        showNumbersRow: _showNumbersRow,
+        showExtraInNumbersRow: _showExtraInNumbersRow,
+        vibrateNumbersRow: _vibrateNumbersRow,
+        // What the save path would stamp on a contact that names neither
+        // — the pane offers them as placeholders, not as values.
+        defaultOperatorCall: operatorCallFor(widget.operation),
+        defaultPosition: multiIdentifierFor(widget.operation),
+        showPositionField: operationHasPositions(widget.operation),
+        aboveLog: widget.controlsAboveLog,
+      ),
+    );
     final panel = CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handlePanelEscape},
-      child: Column(
-        children: [
-          Expanded(
-            // skipTraversal: Tab belongs to the logging controls' own field
-            // rotation; the list is reached with the arrow keys, not
-            // by tabbing into it.
-            child: Focus(
-              focusNode: _listFocus,
-              skipTraversal: true,
-              onKeyEvent: _onQsoListKeyEvent,
-              child: _LazyQsoList(
-                // Only worth deferring a large log's expensive first build —
-                // a short one (including a brand-new, empty operation) is
-                // cheap enough that showing it immediately, empty-state
-                // message and all, beats replacing it with a spinner first.
-                // A field on the SAME widget type, not a ternary between two
-                // different ones at this tree slot: logging (or deleting) a
-                // QSO can cross the threshold while the panel is open, and a
-                // changed runtimeType here would discard and remount
-                // _QsoListState — silently throwing an operator's scroll
-                // position and jumping back to the bottom mid-review.
-                largeEnough: widget.qsos.length >= _lazyQsoListThreshold,
-                child: list,
-              ),
-            ),
-          ),
-          LoggingControls(
-            log: LogHooks(
-              operation: widget.operation,
-              qsosRepository: widget.services.qsos,
-              qsos: widget.qsos,
-              decorateQsoBeforeSave: (qso, operation) =>
-                  widget.services.extensions.decorateQsoBeforeSave(qsoWithOperator(_withStationInfo(qso), widget.operation), operation),
-              onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
-              serialNumbers: widget.serialNumbers,
-              onLogged: (qso) {
-                // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation
-                // start/break/end) also arrive here via the command `addQso`
-                // action — they're not contacts and must not count as QSOs.
-                // _selectedQso is still set here for a save-of-edit; it only
-                // clears below — that's what tells the two events apart.
-                if (!qso.isEvent) {
-                  widget.services.track(_selectedQso != null ? 'qso_edited' : 'qso_added', _qsoTrackProps(qso));
-                }
-                setState(() => _selectedQso = null);
-                widget.onQsoLogged?.call();
-              },
-              onQsoDeleted: (qso) {
-                if (!qso.isEvent) widget.services.track('qso_deleted', _qsoTrackProps(qso));
-              },
-              onQsoUndeleted: (qso) {
-                if (!qso.isEvent) widget.services.track('qso_undeleted', _qsoTrackProps(qso));
-              },
-              // A comma-separated call list logs several QSOs at
-              // once — one rescore for the whole batch, not one per call.
-              onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
-            ),
-            session: LoggingSession(
-              controller: _loggingController,
-              // Only with CAT: the strip reads CatService.cwProgress, which
-              // nothing writes without a keyer-capable radio.
-              // Escape stops every message, chain and repeat before it closes
-              // or cancels anything — see LoggingSession.escapeClaimed. The
-              // stop itself is OperationView's key handler's, which runs first.
-              escapeClaimed: _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
-              // A call typed over a CQ stops it — see CatService.stopMessageOne.
-              onCallTyped: _keyerEnabled ? widget.services.cat.stopMessageOne : null,
-              enterSends: _enterSends,
-              editingQso: _selectedQso,
-              suggestedQso: widget.suggestedQso,
-              logRequest: widget.logRequest,
-              confirmLogOverwrite: widget.confirmLogOverwrite,
-              suggestedQsoIsTentative: widget.suggestedQsoIsTentative,
-              suggestionSettledSerial: widget.suggestionSettledSerial,
-              onCallEdited: widget.onCallEdited,
-              onEditCanceled: () => setState(() => _selectedQso = null),
-              onNavigateToQsoList: _handleNavigateToQsoList,
-              onQsoChanged: widget.onQsoChanged,
-              onPeerDraftChanged: widget.onPeerDraftChanged,
-            ),
-            radio: RadioHookup(
-              enabledBands: _enabledBands,
-              enabledModes: _enabledModes,
-              radioService: widget.services.radio,
-              // Same object, as a Listenable — so the Radio control follows a
-              // connected rig (CAT) instead of only reading the VFO when it
-              // seeds. See RadioHookup.radioUpdates.
-              radioUpdates: widget.services.radio,
-              hasConfiguredRadio: _hasConfiguredRadio,
-              radioConnected: _radioConnected,
-              radioTransmitting: _radioTransmitting,
-              // Offered with no radio configured too: the dialog is where
-              // one gets configured.
-              onOpenStationConfig: () => _openStationConfigDialog(context),
-              onConnectRadio: _hasConfiguredRadio ? radio1ConnectAction(widget.services.cat, connected: _radioConnected) : null,
-              radioName: _radioName,
-              ourItuRegion: widget.ourItuRegion,
-              ourCountryCode: widget.ourCountryCode,
-              trackingPower: _trackingPower,
-            ),
-            lookups: LookupHooks(
-              // Call notes carry socials and URLs, styled as links; this makes
-              // them open.
-              onOpenLink: openExternalUrl,
-              lookup: widget.services.extensions.lookupCall,
-              enqueueLookup: widget.services.lookupQueue.enqueue,
-              // force: false — unlike the explicit "Lookup all QSOs" action,
-              // a SEED batch shouldn't force-refresh a QSO that (somehow)
-              // already carries real online lookup data.
-              enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
-              operationStatsLines: (qsos) => operationStatsLines(context, qsos),
-              callLocationLine: (guess) => _callLocationLine(context, guess),
-              // Wrapped rather than torn off, to inject the activities this
-              // operation has hunted — an operation that activates nothing names
-              // no activity on its own refs, so without this the pills fall back
-              // to the core dupe rule and call a station worked at another park a
-              // plain duplicate (docs/design/activities.md §4).
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) {
-                // The last rescore's checkpoints, when the log this panel holds
-                // is exactly what they folded plus appended contacts — so the
-                // pills resume from a cached sheet instead of re-folding a
-                // long log on every keystroke (liveResumeFor says when).
-                final resume = widget.services.scoring.liveResumeFor(widget.operation, widget.qsos, excludeUuid: excludeUuid);
-                return widget.services.extensions.scoreQso(
-                  operation: operation,
-                  qso: qso,
-                  excludeUuid: excludeUuid,
-                  segments: segments,
-                  huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
-                  resume: resume,
-                );
-              },
-              scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
-              workedBefore: (call, {excludingQsoUuid}) => widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
-              workedBeforeLabel: (times) => workedBeforeLabel(context, times),
-              onCallInfoChanged: widget.onCallInfoChanged,
-              onCallInfoTap: widget.onCallInfoTap,
-              onOperationInfoTap: widget.onOperationInfoTap,
-            ),
-            activities: ActivityHooks(
-              activityControls: widget.loggingControls,
-              refreshActivityControls: (qso) => widget.services.extensions
-                  .loggingControls(operationPayloadFor(widget.operation), qso: qso)
-                  .then((result) => result.loadFailed ? null : result.controls),
-              decorateRef: widget.services.extensions.decorateRef,
-            ),
-            commands: CommandHooks(
-              interpretCommand: widget.services.extensions.interpretCommand,
-              interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
-              onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
-              onCommandAction: widget.onCommandAction,
-              // Lets the ⌘K dialog apply a command to this panel — see
-              // HaLoServices.currentCommandDispatch. Attached to this
-              // operation's own stack entry, so a disposing panel can't detach a
-              // still-live one's dispatcher.
-              onDispatcherChanged: (dispatch) => widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
-            ),
-            strip: ControlStripSettings(
-              aboveEntryRow: _keyerEnabled
-                  ? KeyerArea(
-                      cat: widget.services.cat,
-                      services: widget.services,
-                      onSendMessage: widget.onSendCwMessage,
-                      templateContext: widget.cwTemplateContext,
-                      phone: widget.keyingPhone,
-                      enterSends: _esmEnabled,
-                      suppressed: _selectedQso != null,
-                    )
-                  : null,
-              controlOrder: _controlOrder,
-              hiddenControlKeys: _hiddenControls,
-              onControlsSettingsChanged: _handleControlsSettingsChanged,
-            ),
-            spotting: SpottingHooks(suggestSpotSources: widget.services.extensions.suggestSpotSources, sendSpot: widget.services.extensions.sendSpot),
-            prefs: LoggingPreferences(
-              // Leftie Mode is a one-handed-phone layout; a desktop or web session
-              // carrying a stored `true` (restored from a phone) has no toggle to
-              // clear it, so the platform gates the layout, not just the setting.
-              leftieMode: isMobilePlatform && _leftieMode,
-              showRSTFields: widget.showRSTFields,
-              showStateField: widget.showStateField,
-              showGridField: widget.showGridField,
-              defaultReport: widget.defaultReport,
-              defaultReportCW: widget.defaultReportCW,
-              defaultReportFT8: widget.defaultReportFT8,
-              switchSentRcvd: widget.switchSentRcvd,
-              jumpAfterRST: widget.jumpAfterRST,
-              keyboardAccessory: widget.services.keyboardAccessory,
-              showNumbersRow: _showNumbersRow,
-              showExtraInNumbersRow: _showExtraInNumbersRow,
-              vibrateNumbersRow: _vibrateNumbersRow,
-              // What the save path would stamp on a contact that names neither
-              // — the pane offers them as placeholders, not as values.
-              defaultOperatorCall: operatorCallFor(widget.operation),
-              defaultPosition: multiIdentifierFor(widget.operation),
-              showPositionField: operationHasPositions(widget.operation),
-            ),
-          ),
-        ],
-      ),
+      child: Column(children: widget.controlsAboveLog ? [controls, listPane] : [listPane, controls]),
     );
 
     // LoggingControls' modifier chords, for the same reason as Escape above:

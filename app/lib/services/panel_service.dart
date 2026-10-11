@@ -31,6 +31,7 @@ abstract final class PanelViews {
   static const home = 'home';
   static const operation = 'operation';
   static const logs = 'logs';
+  static const chase = 'chase';
 }
 
 class PanelDefinition {

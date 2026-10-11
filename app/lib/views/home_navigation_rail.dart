@@ -36,6 +36,9 @@ class HomeNavigationRail extends StatelessWidget {
   /// other experiment-gated entry point.
   final bool showLogs;
 
+  /// Whether the `chase` experiment is on — same treatment as [showLogs].
+  final bool showChase;
+
   final ValueChanged<HomeDestination> onDestination;
 
   /// Flips [expanded]. The mark is the other control that runs it — see
@@ -52,6 +55,7 @@ class HomeNavigationRail extends StatelessWidget {
     required this.expanded,
     required this.destination,
     required this.showLogs,
+    required this.showChase,
     required this.onDestination,
     required this.onToggle,
   });
@@ -114,13 +118,13 @@ class HomeNavigationRail extends StatelessWidget {
   static const leadingInset = (collapsedWidth - iconSize) / 2;
 
   /// Where closing Settings lands: [homeRail]'s own record of what was open
-  /// before, unless that was Logs and the experiment has since been turned
-  /// off underneath it — in which case [HomeRailShell]'s own reset is about
+  /// before, unless that was Logs or Chasing and its experiment has since been
+  /// turned off underneath it — in which case [HomeRailShell]'s own reset is about
   /// to fire anyway, and returning straight to it here avoids the flash of
   /// landing on Logs first.
   HomeDestination _returnFromSettingsDestination() {
     final last = homeRail.lastNonSettingsDestination;
-    return (last == HomeDestination.logs && !showLogs) ? HomeDestination.operations : last;
+    return homeDestinationOffered(last, showLogs: showLogs, showChase: showChase) ? last : HomeDestination.operations;
   }
 
   @override
@@ -214,6 +218,19 @@ class HomeNavigationRail extends StatelessWidget {
                                       // control that does nothing.
                                       onTap: destination == HomeDestination.operations ? null : () => onDestination(HomeDestination.operations),
                                     ),
+                                    if (showChase) ...[
+                                      const SizedBox(height: Space.lg),
+                                      _RailDestination(
+                                        // MDI has no `binoculars-outline`
+                                        // either, same fallback as Operations.
+                                        solid: MdiIcons.binoculars,
+                                        outline: null,
+                                        label: t.chase,
+                                        expanded: expanded,
+                                        selected: destination == HomeDestination.chase,
+                                        onTap: destination == HomeDestination.chase ? null : () => onDestination(HomeDestination.chase),
+                                      ),
+                                    ],
                                     if (showLogs) ...[
                                       const SizedBox(height: Space.lg),
                                       _RailDestination(
@@ -771,21 +788,22 @@ class _HomeRailShellState extends State<HomeRailShell> {
 
   Widget _shell(BuildContext context) {
     return ListenableBuilder(
-      // Settings too, alongside the rail's own state: `showLogs` below reads
-      // the `logs` experiment straight off it, and this is the rail's only
-      // path back to the screen when a Developer Settings toggle flips it —
-      // nothing else here reads settings on every build.
+      // Settings too, alongside the rail's own state: `showLogs` and
+      // `showChase` below read their experiments straight off it, and this is
+      // the rail's only path back to the screen when a Developer Settings
+      // toggle flips one — nothing else here reads settings on every build.
       listenable: Listenable.merge([homeRail, widget.services.settings]),
       builder: (context, child) {
         final showLogs = widget.services.settings.experimentEnabled('logs') /* stored key, see experiments.yaml */;
-        // A Developer Settings toggle can flip the experiment off while
-        // Logs is the destination on screen — its rail entry disappears
+        final showChase = widget.services.settings.experimentEnabled('chase') /* stored key, see experiments.yaml */;
+        // A Developer Settings toggle can flip an experiment off while its
+        // destination is the one on screen — its rail entry disappears
         // (below), but nothing else would ever put the pane away, since
         // `_HomeViewState._onRailChanged` only mirrors whatever
         // `homeRail.destination` already says. `_set` defers the
         // notification when called mid-build (see its own doc comment), so
         // this is safe here.
-        if (!showLogs && homeRail.destination == HomeDestination.logs) {
+        if (!homeDestinationOffered(homeRail.destination, showLogs: showLogs, showChase: showChase)) {
           homeRail.destination = HomeDestination.operations;
         }
         // The stored preference AND enough width to honour it. At XS/S the
@@ -846,6 +864,7 @@ class _HomeRailShellState extends State<HomeRailShell> {
                     expanded: showingLabels,
                     destination: homeRail.destination,
                     showLogs: showLogs,
+                    showChase: showChase,
                     onDestination: (destination) => unawaited(homeRail.leaveTo(destination)),
                     onToggle: toggleRail,
                   ),

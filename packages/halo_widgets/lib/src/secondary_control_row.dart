@@ -179,6 +179,11 @@ class SecondaryControlRow extends StatefulWidget {
   /// edges instead of stopping at the parent's padding.
   final double horizontalBleed;
 
+  /// The expanded control opens BELOW the pills rather than above them — a
+  /// logging panel drawn above its QSO list, whose pills sit over the panel's
+  /// bottom edge.
+  final bool panelBelow;
+
   const SecondaryControlRow({
     super.key,
     required this.controls,
@@ -187,6 +192,7 @@ class SecondaryControlRow extends StatefulWidget {
     this.trailing,
     this.onOpenSettings,
     this.horizontalBleed = 0,
+    this.panelBelow = false,
   });
 
   @override
@@ -537,6 +543,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
       key: _rowKey,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
+      verticalDirection: widget.panelBelow ? VerticalDirection.up : VerticalDirection.down,
       children: [
         LayoutBuilder(
           builder: (context, constraints) => OverflowBox(
@@ -560,7 +567,9 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
             // reveal window). Closing reverses the same slide.
             child: SizeTransition(
               sizeFactor: _panelReveal,
-              alignment: Alignment.topCenter,
+              // Mirrored when the panel opens downward: its content rides
+              // down with the bottom edge instead.
+              alignment: widget.panelBelow ? Alignment.bottomCenter : Alignment.topCenter,
               child: _panelSpec == null
                   ? SizedBox(width: constraints.maxWidth)
                   : Container(

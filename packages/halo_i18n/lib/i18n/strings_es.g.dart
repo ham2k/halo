@@ -45,6 +45,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$testerOverlay$es testerOverlay = _Translations$testerOverlay$es._(_root);
 	@override late final _Translations$extensionsPanel$es extensionsPanel = _Translations$extensionsPanel$es._(_root);
 	@override late final _Translations$home$es home = _Translations$home$es._(_root);
+	@override late final _Translations$chase$es chase = _Translations$chase$es._(_root);
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
 	@override late final _Translations$map$es map = _Translations$map$es._(_root);
@@ -315,6 +316,25 @@ class _Translations$home$es extends Translations$home$en {
 	@override late final _Translations$home$panels$es panels = _Translations$home$panels$es._(_root);
 	@override String get toggleNav => 'Mostrar u ocultar las etiquetas de navegación';
 	@override late final _Translations$home$logs$es logs = _Translations$home$logs$es._(_root);
+}
+
+// Path: chase
+class _Translations$chase$es extends Translations$chase$en {
+	_Translations$chase$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get operatorPrefix => 'op';
+	@override String get chasing => 'cazando';
+	@override String goalsTwo({required Object first, required Object second}) => '${first} y ${second}';
+	@override String goalsMore({required Object first, required Object second}) => '${first}, ${second} y más';
+	@override late final _Translations$chase$station$es station = _Translations$chase$station$es._(_root);
+	@override late final _Translations$chase$periodInline$es periodInline = _Translations$chase$periodInline$es._(_root);
+	@override late final _Translations$chase$periodStats$es periodStats = _Translations$chase$periodStats$es._(_root);
+	@override late final _Translations$chase$period$es period = _Translations$chase$period$es._(_root);
+	@override late final _Translations$chase$goals$es goals = _Translations$chase$goals$es._(_root);
+	@override late final _Translations$chase$panels$es panels = _Translations$chase$panels$es._(_root);
 }
 
 // Path: dialogs
@@ -1218,6 +1238,7 @@ class _Translations$home$nav$es extends Translations$home$nav$en {
 
 	// Translations
 	@override String get operations => 'Operaciones';
+	@override String get chase => 'Cacería';
 	@override String get logs => 'Registros';
 	@override String get settings => 'Ajustes';
 }
@@ -1260,6 +1281,87 @@ class _Translations$home$logs$es extends Translations$home$logs$en {
 	@override late final _Translations$home$logs$panels$es panels = _Translations$home$logs$panels$es._(_root);
 	@override late final _Translations$home$logs$import$es import = _Translations$home$logs$import$es._(_root);
 	@override late final _Translations$home$logs$columns$es columns = _Translations$home$logs$columns$es._(_root);
+}
+
+// Path: chase.station
+class _Translations$chase$station$es extends Translations$chase$station$en {
+	_Translations$chase$station$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Estación de cacería';
+	@override String get stationLabel => 'Estación: ';
+	@override String get operatorLabel => 'Op: ';
+	@override String get noLocation => 'Sin ubicación';
+}
+
+// Path: chase.periodInline
+class _Translations$chase$periodInline$es extends Translations$chase$periodInline$en {
+	_Translations$chase$periodInline$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get today => 'hoy';
+	@override String get thisWeek => 'esta semana';
+	@override String get last14Days => 'en los últimos 14 días';
+	@override String get thisMonth => 'este mes';
+}
+
+// Path: chase.periodStats
+class _Translations$chase$periodStats$es extends Translations$chase$periodStats$en {
+	_Translations$chase$periodStats$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get today => 'Estadísticas de hoy';
+	@override String get thisWeek => 'Estadísticas de esta semana';
+	@override String get last14Days => 'Estadísticas de los últimos 14 días';
+	@override String get thisMonth => 'Estadísticas de este mes';
+}
+
+// Path: chase.period
+class _Translations$chase$period$es extends Translations$chase$period$en {
+	_Translations$chase$period$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get today => 'Hoy';
+	@override String get thisWeek => 'Esta semana';
+	@override String get last14Days => 'Últimos 14 días';
+	@override String get thisMonth => 'Este mes';
+}
+
+// Path: chase.goals
+class _Translations$chase$goals$es extends Translations$chase$goals$en {
+	_Translations$chase$goals$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Objetivos de cacería';
+	@override String remove({required Object name}) => 'Dejar de cazar ${name}';
+	@override String get extensionsTitle => 'Extensiones que incluyen cacería';
+}
+
+// Path: chase.panels
+class _Translations$chase$panels$es extends Translations$chase$panels$en {
+	_Translations$chase$panels$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get logging => 'QSOs';
+	@override String get loggingDescription => 'Controles de registro sobre los QSOs cazados en el período.';
+	@override String get info => 'Info';
+	@override String get infoDescription => 'El indicativo que se está registrando, o las estadísticas del período.';
+	@override String get spots => 'Spots';
+	@override String get spotsDescription => 'Estaciones anunciadas en el aire, listas para cazar.';
+	@override String get map => 'Mapa';
+	@override String get mapDescription => 'Los QSOs del período y la estación que se está registrando.';
 }
 
 // Path: dialogs.callChange
@@ -3654,6 +3756,7 @@ extension on TranslationsEs {
 			'home.emptyList' => 'Aún no hay operaciones. Crea una para comenzar a registrar.',
 			'home.quickLookup' => 'Búsqueda Rápida',
 			'home.nav.operations' => 'Operaciones',
+			'home.nav.chase' => 'Cacería',
 			'home.nav.logs' => 'Registros',
 			'home.nav.settings' => 'Ajustes',
 			'home.panels.operations' => 'Lista de Operaciones',
@@ -3705,6 +3808,37 @@ extension on TranslationsEs {
 			'home.logs.columns.state' => 'Estado',
 			'home.logs.columns.country' => 'País',
 			'home.logs.columns.refs' => 'Refs',
+			'chase.operatorPrefix' => 'op',
+			'chase.chasing' => 'cazando',
+			'chase.goalsTwo' => ({required Object first, required Object second}) => '${first} y ${second}',
+			'chase.goalsMore' => ({required Object first, required Object second}) => '${first}, ${second} y más',
+			'chase.station.title' => 'Estación de cacería',
+			'chase.station.stationLabel' => 'Estación: ',
+			'chase.station.operatorLabel' => 'Op: ',
+			'chase.station.noLocation' => 'Sin ubicación',
+			'chase.periodInline.today' => 'hoy',
+			'chase.periodInline.thisWeek' => 'esta semana',
+			'chase.periodInline.last14Days' => 'en los últimos 14 días',
+			'chase.periodInline.thisMonth' => 'este mes',
+			'chase.periodStats.today' => 'Estadísticas de hoy',
+			'chase.periodStats.thisWeek' => 'Estadísticas de esta semana',
+			'chase.periodStats.last14Days' => 'Estadísticas de los últimos 14 días',
+			'chase.periodStats.thisMonth' => 'Estadísticas de este mes',
+			'chase.period.today' => 'Hoy',
+			'chase.period.thisWeek' => 'Esta semana',
+			'chase.period.last14Days' => 'Últimos 14 días',
+			'chase.period.thisMonth' => 'Este mes',
+			'chase.goals.title' => 'Objetivos de cacería',
+			'chase.goals.remove' => ({required Object name}) => 'Dejar de cazar ${name}',
+			'chase.goals.extensionsTitle' => 'Extensiones que incluyen cacería',
+			'chase.panels.logging' => 'QSOs',
+			'chase.panels.loggingDescription' => 'Controles de registro sobre los QSOs cazados en el período.',
+			'chase.panels.info' => 'Info',
+			'chase.panels.infoDescription' => 'El indicativo que se está registrando, o las estadísticas del período.',
+			'chase.panels.spots' => 'Spots',
+			'chase.panels.spotsDescription' => 'Estaciones anunciadas en el aire, listas para cazar.',
+			'chase.panels.map' => 'Mapa',
+			'chase.panels.mapDescription' => 'Los QSOs del período y la estación que se está registrando.',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -3960,6 +4094,8 @@ extension on TranslationsEs {
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo combinado', other: 'Descargar ${count} archivos combinados', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Guardar ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Compartir ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descargar ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo en el Stash', other: 'Guardar ${count} archivos en el Stash', ), 
@@ -3992,8 +4128,6 @@ extension on TranslationsEs {
 			'operation.export.stash.mayHaveArrived' => 'El Stash no respondió — puede que el archivo haya llegado de todos modos. Revisa stash.ham2k.net antes de volver a enviarlo',
 			'operation.export.stash.notSent' => 'no enviado',
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Este archivo no llegó:', other: 'Estos ${count} archivos no llegaron:', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.stash.emailOffer' => 'O, si te resulta más cómodo, podemos enviarte un correo con un enlace directo.',
 			'operation.export.stash.emailMe' => 'Envíame un enlace',
 			'operation.export.stash.emailSent' => 'Te enviamos un enlace de descarga por correo.',
@@ -4474,6 +4608,8 @@ extension on TranslationsEs {
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.',
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Quedándose exactamente donde la sintonizaste.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.snapDebounce.title' => 'Ajuste inteligente: retardo de reposo',
 			'settings.radio.snapDebounce.description' => 'Cuánto debe detenerse el dial antes de redondear la frecuencia. Menos se siente inmediato; más deja margen para un giro lento.',
 			'settings.radio.snapLongMove.title' => 'Ajuste inteligente: giro largo',
@@ -4506,8 +4642,6 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.newSet' => 'Nuevo juego',
 			'settings.radio.cwMessages.renameSet' => 'Renombrar juego',
 			'settings.radio.cwMessages.deleteSet' => 'Eliminar juego',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.newSetName' => 'Nombre',
 			'settings.radio.cwMessages.setDefault' => 'Predeterminado',
 			'settings.radio.cwMessages.setPota' => 'POTA',
@@ -4988,6 +5122,8 @@ extension on TranslationsEs {
 			'settings.station.placeholderFreq' => 'Frecuencia (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.',
 			'settings.station.placeholderMode' => 'Modo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.placeholderModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potencia (vatios)',
 			'settings.station.placeholderPurpose' => 'Usa esta radio para registrar con qué equipo estás operando',
@@ -5020,8 +5156,6 @@ extension on TranslationsEs {
 			'settings.station.voiceDialectDescription' => 'Cómo reproduce esta radio sus memorias de voz por CAT. Ninguno significa sin memorias de voz por CAT. Con dialecto y sin cantidad, se aplica la cantidad predeterminada del dialecto.',
 			'settings.station.voiceDialectPb' => 'Kenwood (PB, estilo TS-590)',
 			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB y DA)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (pulsaciones de teclas)',
 			'settings.station.placeholderDiagnostic' => 'Simulada',
 			'settings.station.placeholderWholeNumberInvalid' => 'Debe ser un número entero, 0 o más',

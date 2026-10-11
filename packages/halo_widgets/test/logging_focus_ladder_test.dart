@@ -58,6 +58,7 @@ class _Harness {
       eventTextFocus: eventTextFocus,
       callFocus: callFocus,
       navigateToQsoList: navigateToQsoList,
+      aboveLog: false,
     ),
     // The panel's tap: `more` and event rows are its business; the rest
     // comes straight back to the ladder.

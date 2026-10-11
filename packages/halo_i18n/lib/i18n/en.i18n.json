@@ -194,6 +194,7 @@
     "quickLookup": "Quick Lookup",
     "nav": {
       "operations": "Operations",
+      "chase": "Chasing",
       "logs": "Logs",
       "settings": "Settings"
     },
@@ -255,6 +256,51 @@
         "checkingDetail": "${done} of ${total} checked",
         "importingDetail": "${imported} imported, out of ${total}"
       }
+    }
+  },
+  "chase": {
+    "operatorPrefix": "op",
+    "chasing": "chasing",
+    "goalsTwo": "${first} & ${second}",
+    "goalsMore": "${first}, ${second} & more",
+    "station": {
+      "title": "Chasing Station",
+      "stationLabel": "Station: ",
+      "operatorLabel": "Op: ",
+      "noLocation": "No location"
+    },
+    "periodInline": {
+      "today": "today",
+      "thisWeek": "this week",
+      "last14Days": "in the last 14 days",
+      "thisMonth": "this month"
+    },
+    "periodStats": {
+      "today": "Stats for today",
+      "thisWeek": "Stats for this week",
+      "last14Days": "Stats for last 14 days",
+      "thisMonth": "Stats for this month"
+    },
+    "period": {
+      "today": "Today",
+      "thisWeek": "This Week",
+      "last14Days": "Last 14 Days",
+      "thisMonth": "This Month"
+    },
+    "goals": {
+      "title": "Chasing Goals",
+      "remove": "Stop chasing ${name}",
+      "extensionsTitle": "Extensions that include chasing"
+    },
+    "panels": {
+      "logging": "QSOs",
+      "loggingDescription": "Logging controls above the QSOs chased in the period.",
+      "info": "Info",
+      "infoDescription": "The callsign being logged, or the period's stats.",
+      "spots": "Spots",
+      "spotsDescription": "Stations spotted on the air, ready to chase.",
+      "map": "Map",
+      "mapDescription": "The period's QSOs and the station being logged."
     }
   },
   "dialogs": {

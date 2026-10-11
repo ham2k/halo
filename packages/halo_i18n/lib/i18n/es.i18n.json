@@ -194,6 +194,7 @@
     "quickLookup": "Búsqueda Rápida",
     "nav": {
       "operations": "Operaciones",
+      "chase": "Cacería",
       "logs": "Registros",
       "settings": "Ajustes"
     },
@@ -255,6 +256,51 @@
         "country": "País",
         "refs": "Refs"
       }
+    }
+  },
+  "chase": {
+    "operatorPrefix": "op",
+    "chasing": "cazando",
+    "goalsTwo": "${first} y ${second}",
+    "goalsMore": "${first}, ${second} y más",
+    "station": {
+      "title": "Estación de cacería",
+      "stationLabel": "Estación: ",
+      "operatorLabel": "Op: ",
+      "noLocation": "Sin ubicación"
+    },
+    "periodInline": {
+      "today": "hoy",
+      "thisWeek": "esta semana",
+      "last14Days": "en los últimos 14 días",
+      "thisMonth": "este mes"
+    },
+    "periodStats": {
+      "today": "Estadísticas de hoy",
+      "thisWeek": "Estadísticas de esta semana",
+      "last14Days": "Estadísticas de los últimos 14 días",
+      "thisMonth": "Estadísticas de este mes"
+    },
+    "period": {
+      "today": "Hoy",
+      "thisWeek": "Esta semana",
+      "last14Days": "Últimos 14 días",
+      "thisMonth": "Este mes"
+    },
+    "goals": {
+      "title": "Objetivos de cacería",
+      "remove": "Dejar de cazar ${name}",
+      "extensionsTitle": "Extensiones que incluyen cacería"
+    },
+    "panels": {
+      "logging": "QSOs",
+      "loggingDescription": "Controles de registro sobre los QSOs cazados en el período.",
+      "info": "Info",
+      "infoDescription": "El indicativo que se está registrando, o las estadísticas del período.",
+      "spots": "Spots",
+      "spotsDescription": "Estaciones anunciadas en el aire, listas para cazar.",
+      "map": "Mapa",
+      "mapDescription": "Los QSOs del período y la estación que se está registrando."
     }
   },
   "dialogs": {

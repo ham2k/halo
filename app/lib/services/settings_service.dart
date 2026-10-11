@@ -1762,4 +1762,20 @@ abstract final class LayoutKeys {
   /// The Logs destination's last pick in its callsign picker, for the next
   /// visit to open on: `call`, a station callsign, or null for All.
   static const logsFilter = 'logs.filter';
+
+  /// The Chasing destination's dock, wide and narrow, in the same four parts
+  /// and for the same reasons as Home's.
+  static const chaseDock = 'chase.dock';
+  static const chaseDockState = 'chase.dockState';
+  static const chasePaneOptions = 'chase.paneOptions';
+  static const chaseViewOptions = 'chase.viewOptions';
+  static const chaseNarrowDock = 'chase.narrowDock';
+  static const chaseNarrowDockState = 'chase.narrowDockState';
+  static const chaseNarrowPaneOptions = 'chase.narrowPaneOptions';
+  static const chaseNarrowViewOptions = 'chase.narrowViewOptions';
+
+  /// The Chasing view's own options: `period`, `goals` (`{key, on}` in the
+  /// operator's order), `stations` (by profile id) and `location` — see
+  /// `ChaseView`.
+  static const chaseOptions = 'chase.options';
 }

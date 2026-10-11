@@ -28,6 +28,7 @@ class LoggingInfoFrame extends StatefulWidget {
     required this.strip,
     required this.actionButton,
     required this.child,
+    this.entryRowAbove = false,
   });
 
   /// The log button's diameter (measured, or the first-frame fallback): the
@@ -56,6 +57,12 @@ class LoggingInfoFrame extends StatefulWidget {
   /// The area's content.
   final Widget child;
 
+  /// The entry row is ABOVE this frame rather than below it — a panel drawn
+  /// above its QSO list. The strip still sits against the entry row, so it
+  /// comes first, and the action button pins to the top edge, still directly
+  /// beside the log button.
+  final bool entryRowAbove;
+
   @override
   State<LoggingInfoFrame> createState() => _LoggingInfoFrameState();
 }
@@ -83,6 +90,7 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
+          verticalDirection: widget.entryRowAbove ? VerticalDirection.up : VerticalDirection.down,
           children: [
             ConstrainedBox(
               constraints: BoxConstraints(minHeight: reserve),
@@ -120,7 +128,13 @@ class _LoggingInfoFrameState extends State<LoggingInfoFrame> {
               ),
           ],
         ),
-        Positioned(left: widget.leftieMode ? 0 : null, right: widget.leftieMode ? null : 0, bottom: 0, child: widget.actionButton),
+        Positioned(
+          left: widget.leftieMode ? 0 : null,
+          right: widget.leftieMode ? null : 0,
+          top: widget.entryRowAbove ? 0 : null,
+          bottom: widget.entryRowAbove ? null : 0,
+          child: widget.actionButton,
+        ),
       ],
     );
   }

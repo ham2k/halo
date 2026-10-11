@@ -408,6 +408,7 @@ Future<(String, String)?> editTwoFieldDialog(
   required String field2Initial,
   TextCapitalization field1Capitalization = TextCapitalization.none,
   bool field2Obscure = false,
+  bool callsigns = false,
 }) {
   return showHaloDialog<(String, String)>(
     context: context,
@@ -419,6 +420,7 @@ Future<(String, String)?> editTwoFieldDialog(
       field2Initial: field2Initial,
       field1Capitalization: field1Capitalization,
       field2Obscure: field2Obscure,
+      callsigns: callsigns,
     ),
   );
 }
@@ -527,6 +529,11 @@ class _TwoFieldDialog extends StatefulWidget {
   final TextCapitalization field1Capitalization;
   final bool field2Obscure;
 
+  /// Both fields hold one callsign each: shaped by [_CallsignField] and
+  /// warned about when they don't parse, as [_OneFieldDialog]'s `callsign`.
+  /// [field1Capitalization] and [field2Obscure] are then moot.
+  final bool callsigns;
+
   const _TwoFieldDialog({
     required this.title,
     required this.field1Label,
@@ -535,6 +542,7 @@ class _TwoFieldDialog extends StatefulWidget {
     required this.field2Initial,
     required this.field1Capitalization,
     required this.field2Obscure,
+    this.callsigns = false,
   });
 
   @override
@@ -560,8 +568,42 @@ class _TwoFieldDialogState extends State<_TwoFieldDialog> {
 
   void _save() => Navigator.of(context).pop((_controller1.text, _controller2.text));
 
+  /// A callsign field that says so when what it holds does not parse —
+  /// empty is fine, an operator call is optional.
+  Widget _callsignField(TextEditingController controller, String label, {bool autofocus = false, ValueChanged<String>? onSubmitted}) => ListenableBuilder(
+    listenable: controller,
+    builder: (context, _) {
+      final call = controller.text.trim();
+      return _CallsignField(
+        controller: controller,
+        autofocus: autofocus,
+        decoration: poloFieldDecoration(
+          context,
+          label,
+          errorText: call.isEmpty || looksLikeCallsign(call) ? null : context.t.dialogs.callChange.invalidCallsign(call: call),
+        ),
+        onSubmitted: onSubmitted ?? (_) {},
+      );
+    },
+  );
+
   @override
   Widget build(BuildContext context) {
+    if (widget.callsigns) {
+      return HaloDialog(
+        title: Text(widget.title),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _callsignField(_controller1, widget.field1Label, autofocus: true),
+            const SizedBox(height: Space.md),
+            _callsignField(_controller2, widget.field2Label, onSubmitted: (_) => _save()),
+          ],
+        ),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+        actions: [FilledButton(onPressed: _save, child: Text(context.t.common.save))],
+      );
+    }
     return HaloDialog(
       title: Text(widget.title),
       content: Column(

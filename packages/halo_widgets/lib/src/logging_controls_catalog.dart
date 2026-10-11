@@ -71,6 +71,10 @@ typedef ControlCatalogConfig = ({
   /// The operator's saved order and hidden set, as stored.
   List<String> controlOrder,
   Set<String> hiddenControlKeys,
+
+  /// Spotting after the activity references rather than before them — see
+  /// [ControlStripSettings.spottingAfterReferences].
+  bool spottingAfterReferences,
 });
 
 /// The strip's catalog. See the file comment.
@@ -90,7 +94,7 @@ class SecondaryControlCatalog {
     ControlDescriptor(key: 'time', icon: timeChipIcon, label: t.loggingControls.timeControl, mandatory: true),
     ControlDescriptor(key: 'radio', icon: config.radioIcon, label: t.loggingControls.radioControl, mandatory: true),
     if (config.hasPowerStore) ControlDescriptor(key: 'power', icon: powerChipIcon, label: t.loggingControls.powerControl, defaultHidden: true),
-    if (config.canSpot) ControlDescriptor(key: 'spotting', icon: spottingChipIcon, label: t.loggingControls.spottingControl),
+    if (config.canSpot && !config.spottingAfterReferences) ControlDescriptor(key: 'spotting', icon: spottingChipIcon, label: t.loggingControls.spottingControl),
     for (final control in config.activityControls)
       if ((control['input'] as Map?)?['kind'] == 'refList')
         ControlDescriptor(
@@ -99,6 +103,7 @@ class SecondaryControlCatalog {
           label: (control['label'] as String?) ?? control['key'] as String,
           activityControl: control,
         ),
+    if (config.canSpot && config.spottingAfterReferences) ControlDescriptor(key: 'spotting', icon: spottingChipIcon, label: t.loggingControls.spottingControl),
     // Beside More, and off until the operator has been asked: a note
     // per contact is a thing few operators keep, and the ones who do
     // know to go looking for it. The More pane edits the same value for

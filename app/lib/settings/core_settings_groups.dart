@@ -19,6 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat_server/cat_server_service.dart';
 import '../services/extensions/extension_service.dart';
+import '../services/logging_scope.dart';
 import '../services/settings_service.dart';
 import '../tools/sync_account_identity.dart';
 import 'cat_server_dialog.dart';
@@ -323,7 +324,14 @@ class GeneralSettingsGroup extends SettingsGroup {
 class LoggingSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
-  LoggingSettingsGroup(this.settings);
+  /// Whose display settings this instance shows and writes. The registry
+  /// holds the operation's; the Chasing view's tune button builds its own
+  /// over it (see `settingsFormForTarget`'s `groupOverrides`), so the same
+  /// dialog edits its copy of [loggingScopedKeys] and the
+  /// shared rest.
+  final LoggingScope scope;
+
+  LoggingSettingsGroup(this.settings, {this.scope = LoggingScope.operation});
 
   @override
   String get key => 'logging';
@@ -503,16 +511,40 @@ class LoggingSettingsGroup extends SettingsGroup {
         'common': true,
         'target': 'logging-extended',
       },
-      _toggle(key: 'showRSTFields', label: t.operation.menu.showRstFields, icon: 'signal', value: settings.showRSTFields, target: 'logging'),
-      _toggle(key: 'showStateField', label: t.operation.menu.showStateField, icon: 'map', value: settings.showStateField, target: 'logging'),
-      _toggle(key: 'showGridField', label: t.operation.menu.showGridField, icon: 'grid', value: settings.showGridField, target: 'logging'),
-      _toggle(key: 'showQsoNumbers', label: t.operation.menu.showQsoNumbers, icon: 'counter', target: 'logging', value: settings.showQsoNumbers),
+      _toggle(
+        key: 'showRSTFields',
+        label: t.operation.menu.showRstFields,
+        icon: 'signal',
+        value: settings.loggingDisplay('showRSTFields', scope),
+        target: 'logging',
+      ),
+      _toggle(
+        key: 'showStateField',
+        label: t.operation.menu.showStateField,
+        icon: 'map',
+        value: settings.loggingDisplay('showStateField', scope),
+        target: 'logging',
+      ),
+      _toggle(
+        key: 'showGridField',
+        label: t.operation.menu.showGridField,
+        icon: 'grid',
+        value: settings.loggingDisplay('showGridField', scope),
+        target: 'logging',
+      ),
+      _toggle(
+        key: 'showQsoNumbers',
+        label: t.operation.menu.showQsoNumbers,
+        icon: 'counter',
+        target: 'logging',
+        value: settings.loggingDisplay('showQsoNumbers', scope),
+      ),
       _toggle(
         key: 'showDeletedQSOs',
         aliases: const ['deletedQSOs'],
         label: t.operation.menu.showDeletedQsos,
         icon: 'delete',
-        value: settings.showDeletedQSOs,
+        value: settings.loggingDisplay('showDeletedQSOs', scope),
         target: 'logging',
       ),
       _toggle(
@@ -548,7 +580,7 @@ class LoggingSettingsGroup extends SettingsGroup {
           await settings.setSettingValue(SettingsService.loggingGroup, fieldKey, value.trim().toUpperCase());
         }
       default:
-        if (value is bool) await settings.setSettingValue(SettingsService.loggingGroup, fieldKey, value);
+        if (value is bool) await settings.setSettingValue(loggingGroupFor(fieldKey, scope), fieldKey, value);
     }
   }
 }

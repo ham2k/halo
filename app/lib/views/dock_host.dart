@@ -30,6 +30,7 @@ import '../services/error_reporting_service.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
+import '../settings/settings_registry.dart' show SettingsGroup;
 import '../settings/settings_target_dialog.dart';
 import 'extensions_panel.dart';
 import 'operation/clock/clock_panel.dart';
@@ -85,9 +86,11 @@ class DockLayoutKeys {
     LayoutKeys.homeDock,
     LayoutKeys.operationDock,
     LayoutKeys.logsDock,
+    LayoutKeys.chaseDock,
     LayoutKeys.homeNarrowDock,
     LayoutKeys.operationNarrowDock,
     LayoutKeys.logsNarrowDock,
+    LayoutKeys.chaseNarrowDock,
   ];
 
   /// The arrangement — splits, weights and module ids.
@@ -1178,7 +1181,13 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// counterpart of [buildPanelSettingsButton] for a pane the VIEW answers
   /// for natively (through its own [nativePanelSettingsForm] override)
   /// rather than through `formFields`.
-  Widget buildTargetSettingsButton(BuildContext context, {required String target, required String title, List<TargetDialogAction> actions = const []}) {
+  Widget buildTargetSettingsButton(
+    BuildContext context, {
+    required String target,
+    required String title,
+    List<TargetDialogAction> actions = const [],
+    Map<String, SettingsGroup>? groupOverrides,
+  }) {
     final theme = Theme.of(context);
     return Builder(
       builder: (buttonContext) => IconButton(
@@ -1187,7 +1196,8 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           color: theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary,
           semanticLabel: MaterialLocalizations.of(context).showMenuTooltip,
         ),
-        onPressed: () => showSettingsForTarget(buttonContext, services: dockServices, target: target, title: title, actions: actions),
+        onPressed: () =>
+            showSettingsForTarget(buttonContext, services: dockServices, target: target, title: title, actions: actions, groupOverrides: groupOverrides),
       ),
     );
   }
@@ -1611,7 +1621,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   void registerSharedDashboardPanels() {
     final t = context.t.operation;
     final service = dockServices.panels;
-    const sharedViews = {PanelViews.home, PanelViews.operation, PanelViews.logs};
+    const sharedViews = {PanelViews.home, PanelViews.operation, PanelViews.logs, PanelViews.chase};
     service.registerNative(
       PanelDefinition(
         id: clockPanelId,

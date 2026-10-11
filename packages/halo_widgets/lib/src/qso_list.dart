@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Reactive QSO list, styled after app-polo's log rows: Roboto Mono data
-// columns, hairline dividers, newest QSO at the bottom edge next to the
-// logging panel. Row layout follows ham2k/halo-dist#2's field list and
+// columns, hairline dividers, newest QSO at the edge next to the logging
+// panel — the bottom, or the top when the panel sits above the list. Row layout follows ham2k/halo-dist#2's field list and
 // order: Number (optional) | Time | Frequency (or Band, if no frequency) |
 // Mode (only when the operation uses more than one) | Callsign |
 // Emoji(s)/Name | References | RST.
@@ -311,6 +311,11 @@ class QsoList extends StatefulWidget {
   /// the first rescore lands) just means that header shows no score badges.
   final List<Map<String, dynamic>> daySections;
 
+  /// Newest first — days and the rows within them — for a list drawn BELOW
+  /// its logging panel, so the live edge is still the one beside the panel.
+  /// The list then rests at its top rather than its bottom.
+  final bool newestFirst;
+
   const QsoList({
     super.key,
     required this.qsos,
@@ -328,6 +333,7 @@ class QsoList extends StatefulWidget {
     this.ourEntityPrefix,
     this.dxFlags = DxFlags.dx,
     this.daySections = const [],
+    this.newestFirst = false,
   });
 
   @override
@@ -337,8 +343,14 @@ class QsoList extends StatefulWidget {
 class _QsoListState extends State<QsoList> {
   final _scrollController = ScrollController();
   int _lastQsoCount = 0;
-  bool _wasNearBottom = true;
+  bool _wasNearLiveEdge = true;
   double? _lastMaxScrollExtent;
+
+  /// Set when contacts arrived at the TOP of a newest-first list while the
+  /// operator was reading further down it: everything below them moves down
+  /// by what they added, so the next metrics change scrolls by the same
+  /// amount and the rows under the pointer stay where they were.
+  bool _holdForTopInsert = false;
 
   /// Attached to whichever row is currently selected, so a selection made
   /// from the keyboard (APP-19 walks the list with the arrow keys) can be
@@ -447,8 +459,8 @@ class _QsoListState extends State<QsoList> {
   void initState() {
     super.initState();
     _lastQsoCount = widget.qsos.length;
-    _wasNearBottom = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
+    _wasNearLiveEdge = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLiveEdge());
   }
 
   @override
@@ -456,13 +468,15 @@ class _QsoListState extends State<QsoList> {
     super.didUpdateWidget(oldWidget);
     final grew = widget.qsos.length > _lastQsoCount;
     _lastQsoCount = widget.qsos.length;
-    // Only follow new QSOs down when the user is already looking at the
-    // live edge — someone scrolled up to review earlier contacts shouldn't
-    // get yanked back to the bottom by the next logged QSO.
-    if (grew && _isNearBottom()) {
-      _wasNearBottom = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
+    // Only follow new QSOs when the user is already looking at the live
+    // edge — someone scrolled away to review earlier contacts shouldn't get
+    // yanked back by the next logged QSO.
+    final atLiveEdge = _isNearLiveEdge();
+    if (grew && atLiveEdge) {
+      _wasNearLiveEdge = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLiveEdge());
     }
+    _holdForTopInsert = grew && !atLiveEdge && widget.newestFirst;
     if (widget.selectedUuid != oldWidget.selectedUuid && widget.selectedUuid != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _revealSelected());
     }
@@ -513,14 +527,18 @@ class _QsoListState extends State<QsoList> {
   double _estimatedTopOf(int index) {
     var offset = 0.0;
     int? lastDay;
-    for (var i = 0; i <= index; i++) {
+    // In display order: oldest down to [index], or newest up to it.
+    final last = widget.qsos.length - 1;
+    final steps = widget.newestFirst ? last - index : index;
+    for (var step = 0; step <= steps; step++) {
+      final i = widget.newestFirst ? last - step : step;
       final millis = widget.qsos[i].startAtMillis ?? 0;
       final day = millis - (millis % _dayInMillis);
       if (day != lastDay) {
         offset += _metrics.sectionHeaderHeight * _rowHeightScale;
         lastDay = day;
       }
-      if (i < index) offset += _metrics.qsoRowHeight * _rowHeightScale;
+      if (step < steps) offset += _metrics.qsoRowHeight * _rowHeightScale;
     }
     return offset;
   }
@@ -570,21 +588,25 @@ class _QsoListState extends State<QsoList> {
     _scrollTo(position.pixels + top, position.pixels + top + box.size.height);
   }
 
-  bool _isNearBottom() {
+  /// Whether the newest QSO is in view, or nearly — the bottom of the list,
+  /// or its top when it runs [QsoList.newestFirst].
+  bool _isNearLiveEdge() {
     if (!_scrollController.hasClients) return true;
     final position = _scrollController.position;
+    if (widget.newestFirst) return position.pixels - position.minScrollExtent < 120;
     return position.maxScrollExtent - position.pixels < 120;
   }
 
-  void _jumpToBottom() {
+  void _jumpToLiveEdge() {
     if (!_scrollController.hasClients) return;
-    _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-    _wasNearBottom = true;
+    final position = _scrollController.position;
+    _scrollController.jumpTo(widget.newestFirst ? position.minScrollExtent : position.maxScrollExtent);
+    _wasNearLiveEdge = true;
   }
 
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification.depth == 0) {
-      _wasNearBottom = _isNearBottom();
+      _wasNearLiveEdge = _isNearLiveEdge();
     }
     return false;
   }
@@ -592,11 +614,19 @@ class _QsoListState extends State<QsoList> {
   bool _onScrollMetricsNotification(ScrollMetricsNotification notification) {
     if (notification.depth == 0) {
       final metrics = notification.metrics;
-      if (_lastMaxScrollExtent != null && metrics.maxScrollExtent > _lastMaxScrollExtent!) {
+      final previous = _lastMaxScrollExtent;
+      if (_holdForTopInsert && previous != null && metrics.maxScrollExtent > previous) {
+        _holdForTopInsert = false;
+        final added = metrics.maxScrollExtent - previous;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _scrollController.hasClients) _scrollController.jumpTo(_scrollController.position.pixels + added);
+        });
+      } else if (previous != null && metrics.maxScrollExtent > previous) {
         // If maxScrollExtent increased (e.g. secondary controls expanded,
-        // layout resized) and user was near bottom, keep bottom QSO in view.
-        if (_wasNearBottom) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
+        // layout resized) and user was near the live edge, keep the newest
+        // QSO in view.
+        if (_wasNearLiveEdge) {
+          WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLiveEdge());
         }
       }
       _lastMaxScrollExtent = metrics.maxScrollExtent;
@@ -1098,7 +1128,7 @@ class _QsoListState extends State<QsoList> {
                   child: CustomScrollView(
                     controller: _scrollController,
                     slivers: [
-                      for (var g = 0; g < dayGroups.length; g++)
+                      for (final g in widget.newestFirst ? [for (var d = dayGroups.length - 1; d >= 0; d--) d] : [for (var d = 0; d < dayGroups.length; d++) d])
                         // Groups each day's header with its own rows so Flutter's sliver
                         // protocol coordinates pinning *between* groups — without this,
                         // sibling `SliverPersistentHeader`s pin independently of each
@@ -1132,8 +1162,10 @@ class _QsoListState extends State<QsoList> {
                             // row's for exactly this reason.
                             SliverFixedExtentList(
                               itemExtent: rowExtent,
-                              delegate: SliverChildBuilderDelegate(
-                                (context, i) => _RowDivider(
+                              delegate: SliverChildBuilderDelegate((context, i) {
+                                final group = dayGroups[g];
+                                final index = group[widget.newestFirst ? group.length - 1 - i : i];
+                                return _RowDivider(
                                   // The last row of a day already meets the
                                   // next day's pinned header — a divider there
                                   // would just be a hairline under the header,
@@ -1142,11 +1174,10 @@ class _QsoListState extends State<QsoList> {
                                   // (buildRow, above) — the divider would paint
                                   // over it, since foreground decorations paint
                                   // in child-to-ancestor order.
-                                  draw: i < dayGroups[g].length - 1 && qsos[dayGroups[g][i]].uuid != selectedUuid,
-                                  child: buildRow(context, dayGroups[g][i], plan),
-                                ),
-                                childCount: dayGroups[g].length,
-                              ),
+                                  draw: i < group.length - 1 && qsos[index].uuid != selectedUuid,
+                                  child: buildRow(context, index, plan),
+                                );
+                              }, childCount: dayGroups[g].length),
                             ),
                           ],
                         ),

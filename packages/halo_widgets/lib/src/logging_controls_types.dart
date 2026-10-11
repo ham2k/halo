@@ -734,7 +734,13 @@ class CommandHooks {
 /// The secondary control strip as the operator arranged it, and what the app
 /// lays between the info area and the entry row.
 class ControlStripSettings {
-  const ControlStripSettings({this.controlOrder = const [], this.hiddenControlKeys = const {}, this.onControlsSettingsChanged, this.aboveEntryRow});
+  const ControlStripSettings({
+    this.controlOrder = const [],
+    this.hiddenControlKeys = const {},
+    this.onControlsSettingsChanged,
+    this.aboveEntryRow,
+    this.spottingAfterReferences = false,
+  });
 
   /// The user's preferred order for the secondary control chips, by key
   /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
@@ -759,6 +765,12 @@ class ControlStripSettings {
   /// takes no room at all while it has nothing to show, so the row above and
   /// below sit exactly as they do with it null.
   final Widget? aboveEntryRow;
+
+  /// Where Spotting sits in the DEFAULT order: after every activity
+  /// reference, just before Notes, rather than ahead of them. For a log made
+  /// of chasing, where the reference is what each contact is about and the
+  /// spot back comes after it. An order the operator saved still wins.
+  final bool spottingAfterReferences;
 }
 
 /// The Spotting control's way out to the spotting networks.
@@ -792,6 +804,7 @@ class LoggingPreferences {
     this.showExtraInNumbersRow = true,
     this.vibrateNumbersRow = true,
     this.leftieMode = false,
+    this.aboveLog = false,
     this.keyboardAccessory,
   });
 
@@ -854,6 +867,12 @@ class LoggingPreferences {
   /// controls row and the text fields on the right.
   final bool leftieMode;
 
+  /// Whether the panel sits ABOVE the QSO list rather than below it — the
+  /// Chasing view's arrangement. The tinted divider moves to the panel's
+  /// bottom edge, the one it shares with the list, and no home-indicator
+  /// strip is reserved: the list below is what reaches the window's edge.
+  final bool aboveLog;
+
   /// Where the numbers row is published for drawing. The row has to be painted
   /// below the status footer and directly on the keyboard, which is one level
   /// up from here — see [KeyboardAccessoryController]. Null (tests, and any
@@ -883,6 +902,7 @@ class LoggingPreferences {
     bool? showExtraInNumbersRow,
     bool? vibrateNumbersRow,
     bool? leftieMode,
+    bool? aboveLog,
     KeyboardAccessoryController? keyboardAccessory,
   }) => LoggingPreferences(
     defaultOperatorCall: defaultOperatorCall ?? this.defaultOperatorCall,
@@ -900,6 +920,7 @@ class LoggingPreferences {
     showExtraInNumbersRow: showExtraInNumbersRow ?? this.showExtraInNumbersRow,
     vibrateNumbersRow: vibrateNumbersRow ?? this.vibrateNumbersRow,
     leftieMode: leftieMode ?? this.leftieMode,
+    aboveLog: aboveLog ?? this.aboveLog,
     keyboardAccessory: keyboardAccessory ?? this.keyboardAccessory,
   );
 }

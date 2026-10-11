@@ -47,6 +47,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$testerOverlay$en testerOverlay = Translations$testerOverlay$en.internal(_root);
 	late final Translations$extensionsPanel$en extensionsPanel = Translations$extensionsPanel$en.internal(_root);
 	late final Translations$home$en home = Translations$home$en.internal(_root);
+	late final Translations$chase$en chase = Translations$chase$en.internal(_root);
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
 	late final Translations$map$en map = Translations$map$en.internal(_root);
@@ -667,6 +668,34 @@ class Translations$home$en {
 	String get toggleNav => 'Show or hide the navigation labels';
 
 	late final Translations$home$logs$en logs = Translations$home$logs$en.internal(_root);
+}
+
+// Path: chase
+class Translations$chase$en {
+	Translations$chase$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'op'
+	String get operatorPrefix => 'op';
+
+	/// en: 'chasing'
+	String get chasing => 'chasing';
+
+	/// en: '${first} & ${second}'
+	String goalsTwo({required Object first, required Object second}) => '${first} & ${second}';
+
+	/// en: '${first}, ${second} & more'
+	String goalsMore({required Object first, required Object second}) => '${first}, ${second} & more';
+
+	late final Translations$chase$station$en station = Translations$chase$station$en.internal(_root);
+	late final Translations$chase$periodInline$en periodInline = Translations$chase$periodInline$en.internal(_root);
+	late final Translations$chase$periodStats$en periodStats = Translations$chase$periodStats$en.internal(_root);
+	late final Translations$chase$period$en period = Translations$chase$period$en.internal(_root);
+	late final Translations$chase$goals$en goals = Translations$chase$goals$en.internal(_root);
+	late final Translations$chase$panels$en panels = Translations$chase$panels$en.internal(_root);
 }
 
 // Path: dialogs
@@ -2641,6 +2670,9 @@ class Translations$home$nav$en {
 	/// en: 'Operations'
 	String get operations => 'Operations';
 
+	/// en: 'Chasing'
+	String get chase => 'Chasing';
+
 	/// en: 'Logs'
 	String get logs => 'Logs';
 
@@ -2725,6 +2757,141 @@ class Translations$home$logs$en {
 	late final Translations$home$logs$columns$en columns = Translations$home$logs$columns$en.internal(_root);
 	late final Translations$home$logs$panels$en panels = Translations$home$logs$panels$en.internal(_root);
 	late final Translations$home$logs$import$en import = Translations$home$logs$import$en.internal(_root);
+}
+
+// Path: chase.station
+class Translations$chase$station$en {
+	Translations$chase$station$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Chasing Station'
+	String get title => 'Chasing Station';
+
+	/// en: 'Station: '
+	String get stationLabel => 'Station: ';
+
+	/// en: 'Op: '
+	String get operatorLabel => 'Op: ';
+
+	/// en: 'No location'
+	String get noLocation => 'No location';
+}
+
+// Path: chase.periodInline
+class Translations$chase$periodInline$en {
+	Translations$chase$periodInline$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'today'
+	String get today => 'today';
+
+	/// en: 'this week'
+	String get thisWeek => 'this week';
+
+	/// en: 'in the last 14 days'
+	String get last14Days => 'in the last 14 days';
+
+	/// en: 'this month'
+	String get thisMonth => 'this month';
+}
+
+// Path: chase.periodStats
+class Translations$chase$periodStats$en {
+	Translations$chase$periodStats$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Stats for today'
+	String get today => 'Stats for today';
+
+	/// en: 'Stats for this week'
+	String get thisWeek => 'Stats for this week';
+
+	/// en: 'Stats for last 14 days'
+	String get last14Days => 'Stats for last 14 days';
+
+	/// en: 'Stats for this month'
+	String get thisMonth => 'Stats for this month';
+}
+
+// Path: chase.period
+class Translations$chase$period$en {
+	Translations$chase$period$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Today'
+	String get today => 'Today';
+
+	/// en: 'This Week'
+	String get thisWeek => 'This Week';
+
+	/// en: 'Last 14 Days'
+	String get last14Days => 'Last 14 Days';
+
+	/// en: 'This Month'
+	String get thisMonth => 'This Month';
+}
+
+// Path: chase.goals
+class Translations$chase$goals$en {
+	Translations$chase$goals$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Chasing Goals'
+	String get title => 'Chasing Goals';
+
+	/// en: 'Stop chasing ${name}'
+	String remove({required Object name}) => 'Stop chasing ${name}';
+
+	/// en: 'Extensions that include chasing'
+	String get extensionsTitle => 'Extensions that include chasing';
+}
+
+// Path: chase.panels
+class Translations$chase$panels$en {
+	Translations$chase$panels$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'QSOs'
+	String get logging => 'QSOs';
+
+	/// en: 'Logging controls above the QSOs chased in the period.'
+	String get loggingDescription => 'Logging controls above the QSOs chased in the period.';
+
+	/// en: 'Info'
+	String get info => 'Info';
+
+	/// en: 'The callsign being logged, or the period's stats.'
+	String get infoDescription => 'The callsign being logged, or the period\'s stats.';
+
+	/// en: 'Spots'
+	String get spots => 'Spots';
+
+	/// en: 'Stations spotted on the air, ready to chase.'
+	String get spotsDescription => 'Stations spotted on the air, ready to chase.';
+
+	/// en: 'Map'
+	String get map => 'Map';
+
+	/// en: 'The period's QSOs and the station being logged.'
+	String get mapDescription => 'The period\'s QSOs and the station being logged.';
 }
 
 // Path: dialogs.callChange
@@ -7711,6 +7878,7 @@ extension on Translations {
 			'home.emptyList' => 'No operations yet. Create one to start logging.',
 			'home.quickLookup' => 'Quick Lookup',
 			'home.nav.operations' => 'Operations',
+			'home.nav.chase' => 'Chasing',
 			'home.nav.logs' => 'Logs',
 			'home.nav.settings' => 'Settings',
 			'home.panels.operations' => 'Operation List',
@@ -7762,6 +7930,37 @@ extension on Translations {
 			'home.logs.import.readingDetail' => ({required Object kb}) => '${kb} Kb',
 			'home.logs.import.checkingDetail' => ({required Object done, required Object total}) => '${done} of ${total} checked',
 			'home.logs.import.importingDetail' => ({required Object imported, required Object total}) => '${imported} imported, out of ${total}',
+			'chase.operatorPrefix' => 'op',
+			'chase.chasing' => 'chasing',
+			'chase.goalsTwo' => ({required Object first, required Object second}) => '${first} & ${second}',
+			'chase.goalsMore' => ({required Object first, required Object second}) => '${first}, ${second} & more',
+			'chase.station.title' => 'Chasing Station',
+			'chase.station.stationLabel' => 'Station: ',
+			'chase.station.operatorLabel' => 'Op: ',
+			'chase.station.noLocation' => 'No location',
+			'chase.periodInline.today' => 'today',
+			'chase.periodInline.thisWeek' => 'this week',
+			'chase.periodInline.last14Days' => 'in the last 14 days',
+			'chase.periodInline.thisMonth' => 'this month',
+			'chase.periodStats.today' => 'Stats for today',
+			'chase.periodStats.thisWeek' => 'Stats for this week',
+			'chase.periodStats.last14Days' => 'Stats for last 14 days',
+			'chase.periodStats.thisMonth' => 'Stats for this month',
+			'chase.period.today' => 'Today',
+			'chase.period.thisWeek' => 'This Week',
+			'chase.period.last14Days' => 'Last 14 Days',
+			'chase.period.thisMonth' => 'This Month',
+			'chase.goals.title' => 'Chasing Goals',
+			'chase.goals.remove' => ({required Object name}) => 'Stop chasing ${name}',
+			'chase.goals.extensionsTitle' => 'Extensions that include chasing',
+			'chase.panels.logging' => 'QSOs',
+			'chase.panels.loggingDescription' => 'Logging controls above the QSOs chased in the period.',
+			'chase.panels.info' => 'Info',
+			'chase.panels.infoDescription' => 'The callsign being logged, or the period\'s stats.',
+			'chase.panels.spots' => 'Spots',
+			'chase.panels.spotsDescription' => 'Stations spotted on the air, ready to chase.',
+			'chase.panels.map' => 'Map',
+			'chase.panels.mapDescription' => 'The period\'s QSOs and the station being logged.',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
@@ -8017,6 +8216,8 @@ extension on Translations {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export combined ${count} file', other: 'Export combined ${count} files', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download combined ${count} file', other: 'Download combined ${count} files', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Save ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Export ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Download ${name}',
@@ -8049,8 +8250,6 @@ extension on Translations {
 			'operation.export.stash.retrieve' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'You can retrieve this file by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', other: 'You can retrieve these files by visiting **[stash.ham2k.net](https://stash.ham2k.net)** on any browser.', ), 
 			'operation.export.stash.mayHaveArrived' => 'No answer from the stash — the file may have arrived anyway. Check stash.ham2k.net before sending again',
 			'operation.export.stash.notSent' => 'not sent',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.stash.notArrived' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'This file didn’t arrive:', other: 'These ${count} files didn’t arrive:', ), 
 			'operation.export.stash.emailOffer' => 'Or for your convenience, we can send you an email with a direct link.',
 			'operation.export.stash.emailMe' => 'Email Me a Link',
@@ -8531,6 +8730,8 @@ extension on Translations {
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.',
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Staying exactly where you tuned it.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.snapDebounce.title' => 'Smart Snap: Settle delay',
 			'settings.radio.snapDebounce.description' => 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.',
 			'settings.radio.snapLongMove.title' => 'Smart Snap: Long move',
@@ -8563,8 +8764,6 @@ extension on Translations {
 			'settings.radio.cwMessages.newSet' => 'New Set',
 			'settings.radio.cwMessages.renameSet' => 'Rename Set',
 			'settings.radio.cwMessages.deleteSet' => 'Delete Set',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.cwMessages.newSetName' => 'Name',
 			'settings.radio.cwMessages.setDefault' => 'Default',
 			'settings.radio.cwMessages.setPota' => 'POTA',
@@ -9045,6 +9244,8 @@ extension on Translations {
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
 			'settings.station.antennaTypes.dipole' => 'Dipole',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
 			'settings.station.antennaTypes.loop' => 'Loop',
@@ -9077,8 +9278,6 @@ extension on Translations {
 			'settings.station.watts' => 'Watts',
 			'settings.station.trackFieldAntenna' => 'Antenna',
 			'settings.station.trackFieldKey' => 'CW Key',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderConnectDelay' => 'Connect delay (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'How long the simulated handshake takes. Blank or 0 connects instantly.',
 			'settings.station.placeholderDropAfter' => 'Drop after (seconds)',

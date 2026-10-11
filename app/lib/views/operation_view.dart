@@ -45,6 +45,7 @@ import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation/positions_panel.dart';
 import 'operation/read_only_while_deleted.dart';
 import 'peers_panel.dart';
+import 'sheet_header_dots.dart';
 import '../tools/operation_title.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 

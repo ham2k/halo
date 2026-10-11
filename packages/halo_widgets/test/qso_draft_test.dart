@@ -52,8 +52,15 @@ class _Harness {
   )..bind();
   late final TimeControlModel time = TimeControlModel(config: () => (editingQso: editingQso), draft: draft)..bind();
   late final ExchangeFieldsModel exchange = ExchangeFieldsModel(
-    config: () =>
-        (textControls: () => const <Map<String, dynamic>>[], editingQso: editingQso, operationUuid: 'op', serialNumbers: null, sequences: null, call: callText),
+    config: () => (
+      textControls: () => const <Map<String, dynamic>>[],
+      editingQso: editingQso,
+      operationUuid: 'op',
+      serialNumbers: null,
+      sequences: null,
+      call: callText,
+      menuBelow: false,
+    ),
     draftQsoData: () => draft.toData(),
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) {},

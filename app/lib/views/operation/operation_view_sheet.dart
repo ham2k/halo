@@ -216,20 +216,8 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
         // still works via the barrier tap, Escape, and onDismiss above.
         showHeader: false,
         headerLeading: Builder(
-          builder: (context) => AnimatedBuilder(
-            animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
-            // Grows out of the falling dots' top circle instead of popping
-            // in at full size — same _sheetHandoffThreshold cutoff the dots
-            // fade out by (see _FallingDotsPainter), so the two read as one
-            // handoff rather than two unrelated motions layered on each
-            // other.
-            builder: (context, child) {
-              final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
-              return Opacity(
-                opacity: growth,
-                child: Transform.scale(scale: 0.2 + 0.8 * growth, alignment: Alignment.centerLeft, child: child),
-              );
-            },
+          builder: (context) => SheetAcceptHandoff(
+            animation: _sheetAnimation,
             child: KeyedSubtree(key: _sheetOkButtonKey, child: _sheetOkButton(context, sheetKey, sheetClosing)),
           ),
         ),
@@ -265,7 +253,7 @@ mixin _OperationSheetHost on State<OperationView>, DockHost<OperationView>, _Ope
                 builder: (context, pushedLines, _) => AnimatedBuilder(
                   animation: _sheetAnimation ?? const AlwaysStoppedAnimation(1.0),
                   builder: (context, _) {
-                    final growth = ((_sheetAnimation?.value ?? 1.0) / _sheetHandoffThreshold).clamp(0.0, 1.0);
+                    final growth = ((_sheetAnimation?.value ?? 1.0) / sheetHandoffThreshold).clamp(0.0, 1.0);
                     final lines = pushedLines ?? _headerTitleLines(context, _draftOperation ?? operation);
                     return Stack(
                       children: [

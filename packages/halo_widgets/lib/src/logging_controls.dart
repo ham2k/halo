@@ -208,6 +208,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       serialNumbers: widget.log.serialNumbers,
       sequences: widget.log.qsosRepository.sequences,
       call: _call,
+      menuBelow: widget.prefs.aboveLog,
     ),
     draftQsoData: _draft.toData,
     onPrimaryFieldKeyEvent: _ladder.onPrimaryFieldKeyEvent,
@@ -279,6 +280,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       eventTextFocus: _eventTextFocus,
       callFocus: _callFocus,
       navigateToQsoList: widget.session.onNavigateToQsoList,
+      aboveLog: widget.prefs.aboveLog,
     ),
     selectControl: _onSelectControl,
     showControl: _showControl,
@@ -1816,6 +1818,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       activityControls: _refs.controls,
       controlOrder: widget.strip.controlOrder,
       hiddenControlKeys: widget.strip.hiddenControlKeys,
+      spottingAfterReferences: widget.strip.spottingAfterReferences,
     ),
   );
 
@@ -3376,7 +3379,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(height: 2, color: accentPoloColors.tertiaryLight),
+              if (!widget.prefs.aboveLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
               Padding(
                 // No top inset at all — SecondaryControlRow's expanded
                 // panel slides out flush against the divider above, and the
@@ -3388,7 +3391,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 // `secondaryPanelHorizontalInset` only, so its expanded
                 // panel still stops short of the physical edge by that
                 // device inset instead of bleeding into it.
-                padding: PaneSafeArea.symmetricOf(context, horizontal: secondaryPanelHorizontalInset).add(const EdgeInsets.only(bottom: Space.md)),
+                // Mirrored above the log: the expanded panel then sits flush
+                // against the divider BELOW, and the inset goes over the fields.
+                padding: PaneSafeArea.symmetricOf(
+                  context,
+                  horizontal: secondaryPanelHorizontalInset,
+                ).add(EdgeInsets.only(top: widget.prefs.aboveLog ? Space.md : 0, bottom: widget.prefs.aboveLog ? 0 : Space.md)),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
                 // rest of the theme (the log button keeps its own
@@ -3410,6 +3418,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    // Above the log the whole stack reads the other way up —
+                    // fields, then keyer and info, then the pills and what they
+                    // open — so the fields are what meets the panel's edge.
+                    verticalDirection: widget.prefs.aboveLog ? VerticalDirection.up : VerticalDirection.down,
                     children: [
                       AbsorbPointer(
                         absorbing: fieldsLocked,
@@ -3428,6 +3440,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
                             horizontalBleed: secondaryPanelHorizontalInset,
+                            panelBelow: widget.prefs.aboveLog,
                             // The dupe warning (and the other scoring notices)
                             // live on the info area's third line — see
                             // `_buildInfoArea` (issue #40).
@@ -3441,6 +3454,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
                         strip: widget.strip.aboveEntryRow,
                         actionButton: _buildWipeOrEditButton(accentTheme),
+                        entryRowAbove: widget.prefs.aboveLog,
                         child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),
                       ),
                       const SizedBox(height: Space.md),
@@ -3523,6 +3537,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // panel's own background (Material above), so the home-indicator
               // strip matches the panel.
               if (_bottomReserve > 0) SizedBox(width: double.infinity, height: _bottomReserve),
+              if (widget.prefs.aboveLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
             ],
           ),
         ),
@@ -3577,7 +3592,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the safe area with a `SafeArea` of its own — takes it out of, so this
   /// panel does not reserve the same space a second time.
   double get _bottomReserve {
-    if (!isMobilePlatform) return 0;
+    if (!isMobilePlatform || widget.prefs.aboveLog) return 0;
     if (View.of(context).viewInsets.bottom > 0) return 0;
     return MediaQuery.paddingOf(context).bottom;
   }

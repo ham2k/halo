@@ -31,6 +31,10 @@ class InformationPanel extends StatelessWidget {
   /// color, same as the QSO rows' ref icons would be if they used one.
   final List<Map<String, dynamic>> activityControls;
 
+  /// The stats' heading, when the log is not an operation's — the Chasing
+  /// view's names its period. Null reads "Operation Stats".
+  final String? statsTitle;
+
   const InformationPanel({
     super.key,
     required this.operation,
@@ -39,6 +43,7 @@ class InformationPanel extends StatelessWidget {
     this.services,
     this.ourEntityPrefix,
     this.activityControls = const [],
+    this.statsTitle,
   });
 
   @override
@@ -88,7 +93,7 @@ class InformationPanel extends StatelessWidget {
       // device safe area.
       padding: EdgeInsets.all(Space.xl).add(PaneSafeArea.paddingOf(context)),
       children: [
-        Text(context.t.loggingPanel.stats, style: theme.textTheme.titleSmall),
+        Text(statsTitle ?? context.t.loggingPanel.stats, style: theme.textTheme.titleSmall),
         // The stats' "since last" segment is now-relative — re-derive once a
         // second (scoped to these lines) so it doesn't sit stale between QSO
         // stream updates.

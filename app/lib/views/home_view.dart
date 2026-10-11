@@ -23,6 +23,7 @@ import 'dock_host.dart';
 import 'header_profile_label.dart';
 import 'home_branding_pane.dart';
 import 'home_navigation_rail.dart';
+import 'chase_view.dart';
 import 'logs_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
@@ -497,6 +498,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     // would also notify an ancestor already being torn down.
     _settingsSlide.dispose();
     _logsSlide.dispose();
+    _chaseSlide.dispose();
     homeRail.removeListener(_onRailChanged);
     widget.services.settings.removeListener(_onSettingsChanged);
     homeRouteObserver.unsubscribe(this);
@@ -585,6 +587,16 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   /// Same as [_showingSettings], for the Logs destination.
   bool _showingLogs = false;
 
+  /// Same as [_showingSettings], for the Chasing destination.
+  bool _showingChase = false;
+
+  /// Whether Chasing has been shown at all. From then on it stays MOUNTED,
+  /// offstage while another destination is up, rather than torn down like
+  /// Settings and Logs: it holds a contact being logged, or an earlier one
+  /// being edited, and a trip to the Operations list must not throw either
+  /// away.
+  bool _chaseMounted = false;
+
   /// Drives Settings on and off OVER Home. An explicit controller rather than
   /// an AnimatedSwitcher: a switcher animates both children, and coming back
   /// has to leave Home exactly where it is so that it is REVEALED rather than
@@ -604,6 +616,14 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _logsSlide, curve: layoutAnimationCurve));
 
+  /// Same as [_settingsSlide], for the Chasing destination.
+  late final AnimationController _chaseSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
+
+  late final Animation<Offset> _chaseOffset = Tween<Offset>(
+    begin: const Offset(-1, 0),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _chaseSlide, curve: layoutAnimationCurve));
+
   void _showSettings(bool showing) {
     if (_showingSettings == showing) return;
     setState(() => _showingSettings = showing);
@@ -614,10 +634,15 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   /// system back press both come here, so the two cannot drift apart.
   void _leaveSettings() {
     final last = homeRail.lastNonSettingsDestination;
-    // Same guard as the rail's own Settings toggle — Logs may have gone
-    // behind the experiment flag while Settings sat over it.
-    final showLogs = widget.services.settings.experimentEnabled('logs') /* stored key, see experiments.yaml */;
-    homeRail.destination = (last == HomeDestination.logs && !showLogs) ? HomeDestination.operations : last;
+    // Same guard as the rail's own Settings toggle — Logs or Chasing may have
+    // gone behind its experiment flag while Settings sat over it.
+    final settings = widget.services.settings;
+    final offered = homeDestinationOffered(
+      last,
+      showLogs: settings.experimentEnabled('logs') /* stored key, see experiments.yaml */,
+      showChase: settings.experimentEnabled('chase') /* stored key, see experiments.yaml */,
+    );
+    homeRail.destination = offered ? last : HomeDestination.operations;
   }
 
   /// Same as [_showSettings], for the Logs destination.
@@ -625,6 +650,16 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     if (_showingLogs == showing) return;
     setState(() => _showingLogs = showing);
     showing ? _logsSlide.forward() : _logsSlide.reverse();
+  }
+
+  /// Same as [_showSettings], for the Chasing destination.
+  void _showChaseView(bool showing) {
+    if (_showingChase == showing) return;
+    setState(() {
+      _showingChase = showing;
+      if (showing) _chaseMounted = true;
+    });
+    showing ? _chaseSlide.forward() : _chaseSlide.reverse();
   }
 
   /// Which destination [_onRailChanged] last tracked a visit for — set to
@@ -641,6 +676,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     final destination = homeRail.destination;
     _showSettings(destination == HomeDestination.settings);
     _showLogsView(destination == HomeDestination.logs);
+    _showChaseView(destination == HomeDestination.chase);
     // Settings/Logs shown IN PLACE is navigation without a route, so
     // `didPopNext` never fires for it. Settings and Logs track their own
     // `screen_viewed` in `initState` (embedded panes get freshly remounted
@@ -693,7 +729,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
         // clicks, so a click on an empty stretch of Logs or Settings would
         // open the operation card beneath it, and a screen reader would read
         // a list nobody can see.
-        ExcludeSemantics(excluding: _showingSettings || _showingLogs, child: besideRail(_homeScaffold(context, theme, isTwoPane))),
+        ExcludeSemantics(excluding: _showingSettings || _showingLogs || _showingChase, child: besideRail(_homeScaffold(context, theme, isTwoPane))),
         // Listening to the controller, not just to `setState`: the slide OUT
         // ends without any rebuild of its own, and a Settings left mounted
         // off-screen keeps laying itself out against a pane it no longer has —
@@ -749,6 +785,34 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
                   child: SlideTransition(position: _logsOffset, child: child!),
                 ),
           child: besideRail(LogsView(services: widget.services)),
+        ),
+        // Same arrangement again, for the Chasing destination — except that
+        // once shown it is only ever HIDDEN (see [_chaseMounted]): offstage,
+        // its tickers stopped, and out of the focus tree, so nothing it holds
+        // takes a key while another destination is up.
+        ListenableBuilder(
+          listenable: _chaseSlide,
+          builder: (context, child) {
+            if (!_chaseMounted) return const SizedBox.shrink();
+            final hidden = _chaseSlide.isDismissed;
+            return Offstage(
+              offstage: hidden,
+              child: TickerMode(
+                enabled: !hidden,
+                child: ExcludeFocus(
+                  excluding: hidden,
+                  child: PopScope(
+                    canPop: !_showingChase,
+                    onPopInvokedWithResult: (didPop, _) {
+                      if (!didPop && _showingChase) unawaited(homeRail.leaveTo(HomeDestination.operations));
+                    },
+                    child: SlideTransition(position: _chaseOffset, child: child!),
+                  ),
+                ),
+              ),
+            );
+          },
+          child: besideRail(ChaseView(services: widget.services, visible: _showingChase)),
         ),
       ],
     );

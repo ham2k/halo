@@ -98,7 +98,8 @@ class _Harness {
   final focusEvents = <FocusNode>[];
 
   late final model = ExchangeFieldsModel(
-    config: () => (textControls: () => controls, editingQso: editingQso, operationUuid: 'op', serialNumbers: source, sequences: sequences, call: call),
+    config: () =>
+        (textControls: () => controls, editingQso: editingQso, operationUuid: 'op', serialNumbers: source, sequences: sequences, call: call, menuBelow: false),
     draftQsoData: () => draft,
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) => focusEvents.add(node),

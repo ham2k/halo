@@ -62,7 +62,8 @@ class _Harness {
   );
 
   late final exchange = ExchangeFieldsModel(
-    config: () => (textControls: () => _exchangeControls, editingQso: null, operationUuid: 'op', serialNumbers: null, sequences: null, call: ''),
+    config: () =>
+        (textControls: () => _exchangeControls, editingQso: null, operationUuid: 'op', serialNumbers: null, sequences: null, call: '', menuBelow: false),
     draftQsoData: () => const {},
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) {},

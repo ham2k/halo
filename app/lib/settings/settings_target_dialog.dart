@@ -59,6 +59,7 @@ Future<void> showSettingsForTarget(
   required String target,
   required String title,
   List<TargetDialogAction> actions = const [],
+  Map<String, SettingsGroup>? groupOverrides,
 }) => _showSettingsDialog(
   context,
   services: services,
@@ -66,6 +67,7 @@ Future<void> showSettingsForTarget(
   actions: actions,
   inBase: (scanned) => elementMatchesTarget(scanned.element, target),
   inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
+  groupOverrides: groupOverrides,
 );
 
 /// The same target-scoped settings form [showSettingsForTarget] renders
@@ -74,13 +76,19 @@ Future<void> showSettingsForTarget(
 /// "Panel Settings" section, for a native panel whose settings are more
 /// than [PanelDefinition.formFields] can express) instead of opening a
 /// second dialog over it.
-Widget settingsFormForTarget({required HaLoServices services, required String target, List<TargetDialogAction> actions = const []}) => _TargetSettingsForm(
+Widget settingsFormForTarget({
+  required HaLoServices services,
+  required String target,
+  List<TargetDialogAction> actions = const [],
+  Map<String, SettingsGroup>? groupOverrides,
+}) => _TargetSettingsForm(
   services: services,
   inBase: (scanned) => elementMatchesTarget(scanned.element, target),
   inExtended: (scanned) => elementMatchesTarget(scanned.element, '$target-extended'),
   order: null,
   stripVisibleWhen: false,
   actions: actions,
+  groupOverrides: groupOverrides,
 );
 
 /// The settings targeting [target] as one section of a sectioned list, under
@@ -144,6 +152,7 @@ Future<void> _showSettingsDialog(
   ScannedSettingOrder? order,
   bool stripVisibleWhen = false,
   List<TargetDialogAction> actions = const [],
+  Map<String, SettingsGroup>? groupOverrides,
 }) {
   final t = context.t;
   return showHaloDialog<void>(
@@ -167,6 +176,7 @@ Future<void> _showSettingsDialog(
           order: order,
           stripVisibleWhen: stripVisibleWhen,
           actions: actions,
+          groupOverrides: groupOverrides,
         ),
         // Settings commit as each control changes, so this closes rather
         // than confirms: a plain Done in the cancel slot.
@@ -230,6 +240,9 @@ class _TargetSettingsForm extends StatefulWidget {
   /// box — see [settingsSliverForTarget].
   final String? sliverTitle;
 
+  /// See [scanSettings]'s own.
+  final Map<String, SettingsGroup>? groupOverrides;
+
   const _TargetSettingsForm({
     required this.services,
     required this.inBase,
@@ -238,6 +251,7 @@ class _TargetSettingsForm extends StatefulWidget {
     required this.stripVisibleWhen,
     required this.actions,
     this.sliverTitle,
+    this.groupOverrides,
   });
 
   @override
@@ -313,7 +327,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
         final groupForKey = <String, SettingsGroup>{};
         final extensionFieldForKey = <String, ExtensionFieldRoute>{};
         final extensionActionForKey = <String, ExtensionActionRoute>{};
-        for (final scanned in await scanSettings(widget.services)) {
+        for (final scanned in await scanSettings(widget.services, groupOverrides: widget.groupOverrides)) {
           final inBase = widget.inBase(scanned);
           if (!inBase && !widget.inExtended(scanned)) continue;
           (inBase ? baseScanned : extendedScanned).add(scanned);

@@ -29,10 +29,10 @@ final homeRouteObserver = RouteObserver<PageRoute<dynamic>>();
 /// it; an operation takes it away.
 ///
 /// One of the destinations the rail can point at — [HomeDestination.logs]
-/// only reaches the rail when the `logs` experiment is on, but the state
-/// still carries it whether or not it's currently offered, same as the
-/// others.
-enum HomeDestination { operations, logs, settings }
+/// only reaches the rail when the `logs` experiment is on, and
+/// [HomeDestination.chase] when `chase` is, but the state still carries them
+/// whether or not they're currently offered, same as the others.
+enum HomeDestination { operations, chase, logs, settings }
 
 class HomeRailState extends ChangeNotifier {
   int _covering = 0;
@@ -71,11 +71,11 @@ class HomeRailState extends ChangeNotifier {
   bool get expanded => _expanded;
   HomeDestination get destination => _destination;
 
-  /// Whichever of [HomeDestination.operations]/[HomeDestination.logs] was
-  /// active right before Settings opened — what closing Settings (the rail
-  /// entry's own toggle, or its in-pane back button) returns to, rather than
-  /// both of those hardcoding [HomeDestination.operations] and silently
-  /// dropping out of Logs.
+  /// Whichever of the other destinations was active right before Settings
+  /// opened — what closing Settings (the rail entry's own toggle, or its
+  /// in-pane back button) returns to, rather than both of those hardcoding
+  /// [HomeDestination.operations] and silently dropping out of Logs or
+  /// Chasing.
   HomeDestination _lastNonSettingsDestination = HomeDestination.operations;
   HomeDestination get lastNonSettingsDestination => _lastNonSettingsDestination;
 
@@ -133,6 +133,15 @@ class HomeRailState extends ChangeNotifier {
 }
 
 final homeRail = HomeRailState();
+
+/// Whether [destination] is on the rail at all — false only for one whose
+/// experiment is off. Shared by everything that has to step off a destination
+/// the rail no longer offers.
+bool homeDestinationOffered(HomeDestination destination, {required bool showLogs, required bool showChase}) => switch (destination) {
+  HomeDestination.logs => showLogs,
+  HomeDestination.chase => showChase,
+  HomeDestination.operations || HomeDestination.settings => true,
+};
 
 /// Keeps [HomeRailState.covered] in sync with the navigator's route stack.
 ///

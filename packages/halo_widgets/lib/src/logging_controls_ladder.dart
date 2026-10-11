@@ -8,7 +8,10 @@
 //               ──▼──                   ──▼──
 //
 // Arrow Up walks outward from the fields, Arrow Down walks back in, so the
-// whole panel is reachable without leaving the home row. Every rung hangs
+// whole panel is reachable without leaving the home row. A panel drawn ABOVE
+// its QSO list (`LoggingPreferences.aboveLog`) stacks every rung the other
+// way up, so there the two arrows trade meanings throughout — the ladder
+// always follows the screen. Every rung hangs
 // its handling off a FocusNode's own `onKeyEvent` rather than a panel-wide
 // `CallbackShortcuts`: a node handler only sees keys aimed at that rung,
 // while a panel-wide arrow binding would swallow the arrow keys for
@@ -66,6 +69,10 @@ typedef FocusLadderConfig = ({
   /// Hands the keyboard up to the host's QSO list; true when it took it.
   /// Null when the host has none — then the pills are the top rung.
   bool Function()? navigateToQsoList,
+
+  /// Whether the panel sits above its QSO list, which turns the ladder
+  /// upside down — see the file comment.
+  bool aboveLog,
 });
 
 /// The ladder. See the file comment.
@@ -91,6 +98,11 @@ class LoggingFocusLadder {
   final void Function(String? key) showControl;
 
   bool _disposed = false;
+
+  /// The arrow that walks outward, from the fields toward the QSO list, and
+  /// the one that walks back in.
+  LogicalKeyboardKey get _outward => config().aboveLog ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowUp;
+  LogicalKeyboardKey get _inward => config().aboveLog ? LogicalKeyboardKey.arrowUp : LogicalKeyboardKey.arrowDown;
 
   // ---- The main fields ----
 
@@ -220,7 +232,7 @@ class LoggingFocusLadder {
     // and dimmed, and the keyboard shouldn't reach past that either. (An
     // open options menu keeps Up for its own highlight; the exchange node
     // takes it before it reaches here.)
-    if (key == LogicalKeyboardKey.arrowUp) {
+    if (key == _outward) {
       if (config().fieldsLocked()) return KeyEventResult.ignored;
       focusPillAndOpen();
       return KeyEventResult.handled;
@@ -478,7 +490,22 @@ class LoggingFocusLadder {
       return KeyEventResult.handled;
     }
     if (shift) return KeyEventResult.ignored;
-    switch (event.logicalKey) {
+    final logicalKey = event.logicalKey;
+    if (logicalKey == _outward) {
+      // Off the far side of the panel, into the QSO list — when the host has
+      // one. Without a host to take it, the pills are simply the last rung.
+      config().navigateToQsoList?.call();
+      return KeyEventResult.handled;
+    }
+    if (logicalKey == _inward) {
+      // Closes whatever this pill has open (a fieldless control — one with
+      // a field parked the keyboard inside it instead, on
+      // [onExpandedKeyEvent]'s turf) on the way back to the main field,
+      // same as Escape below.
+      closeControl();
+      return KeyEventResult.handled;
+    }
+    switch (logicalKey) {
       case LogicalKeyboardKey.arrowLeft:
       case LogicalKeyboardKey.arrowRight:
         final order = pillOrder;
@@ -497,19 +524,7 @@ class LoggingFocusLadder {
         // (More, Spotting without a comment) leaves the keyboard on. Goes
         // through _crossToNextControl, not crossToPill directly, so the
         // landing field matches [onExpandedKeyEvent]'s cursor-key move.
-        _crossToNextControl(key, forward: event.logicalKey == LogicalKeyboardKey.arrowRight);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowUp:
-        // Off the top of the panel, into the QSO list — when the host has
-        // one. Without a host to take it, the pills are simply the top rung.
-        config().navigateToQsoList?.call();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowDown:
-        // Closes whatever this pill has open (a fieldless control — one with
-        // a field parked the keyboard inside it instead, on
-        // [onExpandedKeyEvent]'s turf) on the way back to the main field,
-        // same as Escape below.
-        closeControl();
+        _crossToNextControl(key, forward: logicalKey == LogicalKeyboardKey.arrowRight);
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
@@ -607,11 +622,11 @@ class LoggingFocusLadder {
     }
 
     if (shift) return KeyEventResult.ignored;
-    if (logicalKey == LogicalKeyboardKey.arrowUp) {
+    if (logicalKey == _outward) {
       _closeExpandedControlToQsoList(key);
       return KeyEventResult.handled;
     }
-    if (logicalKey == LogicalKeyboardKey.arrowDown || logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) {
+    if (logicalKey == _inward || logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) {
       closeExpandedControl(key);
       return KeyEventResult.handled;
     }

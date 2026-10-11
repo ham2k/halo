@@ -6,15 +6,6 @@
 
 part of '../operation_view.dart';
 
-/// How far into the sheet's open/close slide (0 closed, 1 open) the header's
-/// falling-dots handoff to the accept button completes — shared by the
-/// title's leading-gap animation ([_OperationHeader._leadingGapWidth]),
-/// the accept button's own grow-in (headerLeading in _openOperationSheet),
-/// and the dots' fade-out ([_FallingDotsPainter]), which all have to reach
-/// their end state at the same instant for the handoff to read as one
-/// motion rather than three drifting apart.
-const _sheetHandoffThreshold = 0.6;
-
 mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   // Owned by `_OperationSheetHost`.
   Animation<double>? get _sheetAnimation;
@@ -94,7 +85,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// second controller can drift out of sync with the route's own reverse
   /// transition (variable duration/curve) for no benefit.
   ///
-  /// Reaches the target width on the same `progress / _sheetHandoffThreshold`
+  /// Reaches the target width on the same `progress / sheetHandoffThreshold`
   /// curve the accept button's own grow-in uses (see headerLeading in
   /// _openOperationSheet), not raw progress — the button finishes growing at
   /// that threshold and holds there while the sheet keeps sliding to 1.0, so
@@ -113,7 +104,6 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
     const dotsWidth = _headerDotsWidth;
     final progress = _sheetAnimation?.value ?? 0.0;
     if (progress == 0.0) return dotsWidth;
-    final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
     var targetWidth = _sheetOkButtonWidth ?? dotsWidth;
     if (!isTwoPane) {
       // Narrow starts that button at the header's leading corner, which is
@@ -126,17 +116,17 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
       final overhang = targetWidth - (_leadingWidthFor(false, context) - _narrowSheetLeftInset(context));
       targetWidth = math.max(dotsWidth, overhang);
     }
-    return dotsWidth + (targetWidth - dotsWidth) * growth;
+    return sheetLeadingGapWidth(progress, targetWidth);
   }
 
   /// Shared fade for the AppBar's own leading/Options/Export/layout icons
   /// while the sheet is up — same curve and threshold the falling dots use
-  /// ([_FallingDotsPainter]), so the whole header's hand-off to the sheet's
+  /// ([SheetHeaderDots]), so the whole header's hand-off to the sheet's
   /// live copies reads as one motion instead of several independently-timed
   /// ones.
   double get _headerIconsFadeOpacity {
     final progress = _sheetAnimation?.value ?? 0.0;
-    return (1.0 - progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
+    return (1.0 - progress / sheetHandoffThreshold).clamp(0.0, 1.0);
   }
 
   /// Whether the AppBar's own leading/Options/Export/layout icons should
@@ -161,7 +151,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
   /// stops the taps; this is only how that reads.
   double get _layoutControlsDisabledOpacity {
     final progress = _sheetAnimation?.value ?? 0.0;
-    final growth = (progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
+    final growth = (progress / sheetHandoffThreshold).clamp(0.0, 1.0);
     return 1.0 - (1.0 - 0.38) * growth;
   }
 
@@ -293,7 +283,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
 
   /// The falling-dots control's own footprint in the title row — the width
   /// the leading gap rests at while the sheet is closed.
-  static const double _headerDotsWidth = 10.0;
+  static const double _headerDotsWidth = sheetHeaderDotsWidth;
 
   /// A labeled header button's own chrome beyond the 48 logical pixels an
   /// icon-only IconButton spends on the same icon — TextButton.icon's
@@ -704,7 +694,7 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
                   height: 32,
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: _HeaderDotsControl(progress: _sheetAnimation?.value ?? 0.0),
+                    child: SheetHeaderDots(progress: _sheetAnimation?.value ?? 0.0),
                   ),
                 ),
                 // Separates the title from whichever control
@@ -760,59 +750,4 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
       ),
     );
   }
-}
-
-class _HeaderDotsControl extends StatelessWidget {
-  final double progress;
-
-  const _HeaderDotsControl({required this.progress});
-
-  @override
-  Widget build(BuildContext context) {
-    final onPrimary = Theme.of(context).colorScheme.onPrimary;
-
-    // Fixed width: the space stays reserved while the sheet is open, so the
-    // header title never shifts — the accept button draws over this corner
-    // via headerLeading instead (see _sheetOkButton's doc).
-    return SizedBox(
-      width: 10,
-      height: 32,
-      child: CustomPaint(
-        size: const Size(10, 32),
-        painter: _FallingDotsPainter(progress: progress, dotColor: onPrimary),
-      ),
-    );
-  }
-}
-
-class _FallingDotsPainter extends CustomPainter {
-  final double progress;
-  final Color dotColor;
-
-  _FallingDotsPainter({required this.progress, required this.dotColor});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // The dots fall toward the sheet sliding in below and fade out on the
-    // way; the top dot grows slightly as it goes, reading as a hand-off to
-    // the accept button growing in over it (see headerLeading in
-    // _openOperationSheet).
-    final opacity = (1.0 - progress / _sheetHandoffThreshold).clamp(0.0, 1.0);
-    if (opacity <= 0) return;
-
-    final paint = Paint()
-      ..color = dotColor.withValues(alpha: dotColor.a * opacity)
-      ..style = PaintingStyle.fill;
-
-    const x = 4.0;
-    const dotRadius = 1.8;
-    final dy = 26.0 * progress;
-
-    canvas.drawCircle(Offset(x, 10.0 + dy), dotRadius + 4.0 * progress, paint);
-    canvas.drawCircle(Offset(x, 16.0 + dy), dotRadius, paint);
-    canvas.drawCircle(Offset(x, 22.0 + dy), dotRadius, paint);
-  }
-
-  @override
-  bool shouldRepaint(_FallingDotsPainter oldDelegate) => oldDelegate.progress != progress || oldDelegate.dotColor != dotColor;
 }

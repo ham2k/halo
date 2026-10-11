@@ -47,6 +47,14 @@ experiments:
   - key: logs
     name: Logs
     description: A rail destination listing all QSOs across operations, by station callsign.
+  # A home-rail destination for chasing — hunting parks, summits and the
+  # like — that logs contacts belonging to no operation, the same loose
+  # bucket an ADIF import into Logs fills.
+  - key: chase
+    name: Chasing
+    description: A rail destination for logging contacts while chasing parks, summits and more, outside of any operation.
+    aliases: [hunt]
+    private: true
   # Direct device-to-device sync over the local network (HALO-310): the Peer
   # Devices settings panel, and everything under it. With this off nothing
   # binds a socket, nothing is announced, and this device is invisible to

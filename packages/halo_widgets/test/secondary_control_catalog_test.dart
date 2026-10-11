@@ -25,6 +25,7 @@ class _Harness {
       activityControls: activityControls,
       controlOrder: controlOrder,
       hiddenControlKeys: hidden,
+      spottingAfterReferences: false,
     ),
   );
 }

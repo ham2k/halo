@@ -89,10 +89,17 @@ class ScannedSetting {
 /// applied — they're per-surface (a target dialog renders through
 /// [FormRenderer], which evaluates both itself), so a caller that needs them
 /// applies them on top; see settings_catalog.dart.
-Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
+///
+/// [groupOverrides] stands a group in for the registered one with the same
+/// key — the Chasing view's logging settings, scoped to that view, in place
+/// of the operation's. Over [frontSettingsOverrides], which a scan with none
+/// of its own gets: what SET/SHOW/HIDE and the command catalog read.
+Future<List<ScannedSetting>> scanSettings(HaLoServices services, {Map<String, SettingsGroup>? groupOverrides}) async {
   final scanned = <ScannedSetting>[];
+  final overrides = groupOverrides ?? frontSettingsOverrides.forScan(services);
 
-  for (final group in services.settingsRegistry.groups) {
+  for (final registered in services.settingsRegistry.groups) {
+    final group = overrides[registered.key] ?? registered;
     final resolved = await services.systemLists.resolveInElements(await group.buildElements());
     final elements = filterElementsForEnvironment(resolved);
     final values = _valuesOf(elements);
@@ -110,6 +117,32 @@ Future<List<ScannedSetting>> scanSettings(HaLoServices services) async {
 
   return scanned;
 }
+
+/// The settings groups the view the operator is logging in has standing in
+/// for the registered ones — so a SET typed into the Chasing view's call field
+/// writes the Chasing view's copy. An operation open over that view is where
+/// the operator is logging then, and gets the registered groups.
+class FrontSettingsOverrides {
+  Object? _owner;
+  Map<String, SettingsGroup> _groups = const {};
+
+  void set(Object owner, Map<String, SettingsGroup> groups) {
+    _owner = owner;
+    _groups = groups;
+  }
+
+  /// Only [owner]'s own: a view going away after another took over must not
+  /// take the newer one's overrides with it.
+  void clear(Object owner) {
+    if (!identical(_owner, owner)) return;
+    _owner = null;
+    _groups = const {};
+  }
+
+  Map<String, SettingsGroup> forScan(HaLoServices services) => services.frontOperationContext == null ? _groups : const {};
+}
+
+final frontSettingsOverrides = FrontSettingsOverrides();
 
 /// The extension-contributed half of [scanSettings], asked of one runtime.
 Future<List<ScannedSetting>> _scanExtensionSettings(HaLoServices services) async {

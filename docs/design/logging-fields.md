@@ -749,6 +749,17 @@ QSO list  ──▲──  secondary pills  ──▲──  main logging fields
           ──▼──                   ──▼──
 ```
 
+**Above the log, everything is mirrored.** A panel drawn above its QSO list
+(the Chasing view; `LoggingPreferences.aboveLog`) stacks its parts the other
+way up — main fields at the top, then the keyer and the information area,
+then the pills, with an open control expanding below them — and its list runs
+newest first, so the live edge still meets the panel. Every rule in this
+section then holds with Up and Down swapped: Down leaves the fields for the
+pills and the pills for the list, Up walks back in, and in the list Up moves
+toward the newest contact and past it to the pills. Home, End and the page
+keys follow the screen too (Home is the top, the newest). An `options`
+suggestion menu opens below its field, best match nearest the field.
+
 - **From a main field**, Up moves to the secondary pill strip, opening
   whichever pill the keyboard was last on (or the first) and focusing its
   field — see above. An open `options` suggestion menu keeps Up and Down for

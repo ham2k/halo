@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
+import 'package:ham2k_logger/views/sheet_header_dots.dart';
 
 import '../support/halo_test_support.dart';
 
@@ -186,7 +187,7 @@ void main() {
 
     expect(find.byKey(const Key('operationHeaderGrab')), findsNothing);
     // The 3-dots control next to the title/subtitle.
-    expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsControl'), findsOneWidget);
+    expect(find.byType(SheetHeaderDots), findsOneWidget);
 
     final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
     final panesTop = tester.getTopLeft(find.byType(DockLayoutView)).dy;
@@ -435,13 +436,13 @@ void main() {
     // The control reserves a fixed width (the header title must not shift as
     // the sheet opens), so its geometry says nothing about the animation —
     // the painter's own progress is the thing to read. The painter class is
-    // private to operation_view.dart, but `progress` is a public member on
+    // private to sheet_header_dots.dart, but `progress` is a public member on
     // it, so a dynamic read reaches it from here. It stays MOUNTED the whole
     // time — the sheet's own accept button (headerLeading, reachable above
     // the pane's dismiss layer — see modal_pane.dart) draws on top of it
     // once open, but doesn't unmount it, which is what lets this control
     // keep animating underneath for the close transition this test pins.
-    final control = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsControl');
+    final control = find.byType(SheetHeaderDots);
     double progress() {
       final paint = tester.widget<CustomPaint>(find.descendant(of: control, matching: find.byType(CustomPaint)));
       return (paint.painter as dynamic).progress as double;

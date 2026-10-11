@@ -52,6 +52,12 @@ typedef ExchangeFieldsConfig = ({
   /// The call as typed, trimmed and uppercased — what decides whether the
   /// draft has content.
   String call,
+
+  /// Whether the suggestions menu opens BELOW its field rather than above
+  /// it — a panel drawn above its QSO list has the information area under
+  /// the fields, not over them. The menu keeps its best match against the
+  /// field either way, so the arrows trade meanings with it.
+  bool menuBelow,
 });
 
 /// An open suggestions menu: the focused `options` control and what it
@@ -265,9 +271,10 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       // every ask — a plain keystroke must not pay for that.
       final bare = !(keyboard.isShiftPressed || keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed);
       if (bare && (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) && menuOpen) {
-        // The menu is drawn best-at-the-bottom, so Up walks up the screen,
-        // away from the field, which is +1 in rank order.
-        moveSelection(key == LogicalKeyboardKey.arrowUp ? 1 : -1);
+        // The menu is drawn best-against-the-field, so the arrow pointing
+        // away from the field walks down the ranking, which is +1.
+        final away = config().menuBelow ? LogicalKeyboardKey.arrowDown : LogicalKeyboardKey.arrowUp;
+        moveSelection(key == away ? 1 : -1);
         return KeyEventResult.handled;
       }
       if (event is KeyDownEvent && key == LogicalKeyboardKey.tab && !keyboard.isShiftPressed) {
@@ -1136,18 +1143,20 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
       );
     }
 
+    final below = model.config().menuBelow;
     return Positioned(
       left: 0,
       top: 0,
       child: CompositedTransformFollower(
         key: exchangeSuggestionsKey,
         link: model.linkFor(control['key'] as String),
-        // The menu's bottom-LEFT corner against the field's top-left, then shifted
-        // left by exactly the name column: that puts the code column's left edge
-        // on the field's own left edge.
-        targetAnchor: Alignment.topLeft,
-        followerAnchor: Alignment.bottomLeft,
-        offset: Offset(-nameWidth, -6),
+        // The menu's bottom-LEFT corner against the field's top-left (or its
+        // top-left against the field's bottom-left, [below]), then shifted left
+        // by exactly the name column: that puts the code column's left edge on
+        // the field's own left edge.
+        targetAnchor: below ? Alignment.bottomLeft : Alignment.topLeft,
+        followerAnchor: below ? Alignment.topLeft : Alignment.bottomLeft,
+        offset: Offset(-nameWidth, below ? 6 : -6),
         child: Material(
           // A menu, so it casts a shadow over what it covers rather than looking
           // like part of the panel underneath.
@@ -1158,8 +1167,8 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Reversed: worst at the top, best at the bottom against the field.
-              for (final entry in suggestions.indexed.toList().reversed) row(entry.$1, entry.$2),
+              // Best against the field: reversed above it, worst at the top.
+              for (final entry in below ? suggestions.indexed.toList() : suggestions.indexed.toList().reversed) row(entry.$1, entry.$2),
             ],
           ),
         ),
