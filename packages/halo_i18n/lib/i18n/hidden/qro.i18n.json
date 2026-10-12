@@ -327,6 +327,11 @@
       "spotsDescription": "STATIONS SPOTTED ON THE AIR, READY TO CHASE.",
       "map": "MAP",
       "mapDescription": "THE PERIOD'S QSOS AND THE STATION BEING LOGGED."
+    },
+    "claims": {
+      "checking": "CHECKING QSOS FOR CHASING",
+      "rebuilding": "CHECKING THE LOG FOR ${program}",
+      "progress": "${done} OF ${total} QSOS"
     }
   },
   "dialogs": {

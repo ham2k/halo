@@ -173,6 +173,10 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
     updates: updates ?? (kIsWeb || kDebugMode ? const NoopUpdateService() : ShorebirdUpdateService(settings)),
     updateCheck: updateCheck,
   );
+  // Claims are passed on only once the extension runtime is up (below), but
+  // sync and peers merge contacts before then, and a change nobody heard is
+  // never caught up.
+  services.claimsService.listen();
   // Cache the running code-push number for the synchronous version displays
   // (views/version_label.dart's buildDetails). Awaited rather than
   // fire-and-forget: a late arrival would leave the first frames naming a
@@ -353,6 +357,20 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
         })
         .catchError((Object e) {
           debugPrint('[boot] failed to start the catalog update check: $e');
+        }),
+  );
+
+  // Claims follow the log once the runtime that answers for the chasing
+  // programs is up; until then there is no program to ask. The service itself
+  // stays idle unless EXP CHASE is on, and wakes when it is turned on.
+  unawaited(
+    extensions
+        .start()
+        .then((_) {
+          services.claimsService.start();
+        })
+        .catchError((Object e) {
+          debugPrint('[boot] failed to start claims: $e');
         }),
   );
 

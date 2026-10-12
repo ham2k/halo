@@ -168,6 +168,9 @@ const _qsoFields = <String, QsonFieldType>{
   'their': QsonFieldType.map,
   'event': QsonFieldType.map,
   'refs': QsonFieldType.list,
+  // Sponsor credit per chasing program (docs/design/claims.md §4). No Dart
+  // getter reads it; every chasing program's `claimsForQsos` does.
+  'credits': QsonFieldType.map,
 };
 
 const _qsoOurFields = <String, QsonFieldType>{

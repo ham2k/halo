@@ -336,6 +336,7 @@ class _Translations$chase$qro extends Translations$chase$en {
 	@override late final _Translations$chase$period$qro period = _Translations$chase$period$qro._(_root);
 	@override late final _Translations$chase$goals$qro goals = _Translations$chase$goals$qro._(_root);
 	@override late final _Translations$chase$panels$qro panels = _Translations$chase$panels$qro._(_root);
+	@override late final _Translations$chase$claims$qro claims = _Translations$chase$claims$qro._(_root);
 }
 
 // Path: dialogs
@@ -1404,6 +1405,18 @@ class _Translations$chase$panels$qro extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'STATIONS SPOTTED ON THE AIR, READY TO CHASE.';
 	@override String get map => 'MAP';
 	@override String get mapDescription => 'THE PERIOD\'S QSOS AND THE STATION BEING LOGGED.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$qro extends Translations$chase$claims$en {
+	_Translations$chase$claims$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'CHECKING QSOS FOR CHASING';
+	@override String rebuilding({required Object program}) => 'CHECKING THE LOG FOR ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} OF ${total} QSOS';
 }
 
 // Path: dialogs.callChange
@@ -4002,6 +4015,9 @@ extension on TranslationsQro {
 			'chase.panels.spotsDescription' => 'STATIONS SPOTTED ON THE AIR, READY TO CHASE.',
 			'chase.panels.map' => 'MAP',
 			'chase.panels.mapDescription' => 'THE PERIOD\'S QSOS AND THE STATION BEING LOGGED.',
+			'chase.claims.checking' => 'CHECKING QSOS FOR CHASING',
+			'chase.claims.rebuilding' => ({required Object program}) => 'CHECKING THE LOG FOR ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} OF ${total} QSOS',
 			'dialogs.operationDetails' => 'OPERATION DETAILS',
 			'dialogs.activities' => 'ACTIVITIES',
 			'dialogs.stationCallsign' => 'STATION CALLSIGN',
@@ -4236,11 +4252,11 @@ extension on TranslationsQro {
 			'operation.layout.htmlPanelUnsupported' => 'THIS PANEL NEEDS A WEB VIEW, WHICH THIS PLATFORM DOES NOT PROVIDE',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'THIS PANEL NEEDS A SANDBOX THE WEB VERSION CANNOT PROVIDE',
 			'operation.export.title' => 'OPERATION EXPORTS',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.syncedOperation' => 'OPERATION IS SYNCED',
 			'operation.export.unsyncedOperation' => 'OPERATION HAS UNSYNCED CHANGES',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO IN THIS OPERATION', other: '${count} QSOS IN THIS OPERATION', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.qsosSynced' => ({required Object total}) => 'ALL ${total} QSOS ARE SYNCED',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} OF ${total} QSOS PENDING SYNC',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} EVENT MARKERS SYNCED',
@@ -4750,11 +4766,11 @@ extension on TranslationsQro {
 			'settings.logging.numbersRow.description' => 'SHOW A ROW OF NUMBER KEYS ABOVE THE KEYBOARD WHILE LOGGING',
 			'settings.logging.numbersRowExtra.title' => 'SLASH AND PERIOD KEY',
 			'settings.logging.numbersRowExtra.description' => 'ADDS A CONTEXTUAL KEY: “/” FOR CALLSIGNS, “.” FOR NUMBERS',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'VIBRATE ON KEY PRESS',
 			'settings.logging.numbersRowVibrate.description' => 'HAPTIC FEEDBACK WHEN YOU TAP A NUMBER KEY',
 			'settings.logging.bands' => 'PREFERRED BANDS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.modes' => 'PREFERRED MODES',
 			'settings.catServer.title' => 'CAT SERVER',
 			'settings.catServer.description' => 'ALLOW OTHER APPS (WSJT-X, LOGGERS, ETC) TO CONTROL THE RADIO THROUGH HAM2K LOGGER.',
@@ -5264,11 +5280,11 @@ extension on TranslationsQro {
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.yaesuTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuTroubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW. ON A DIGIRIG, SIGNALINK OR MOST HOME-BREW CABLES THAT SAME LINE IS PTT, SO RAISING IT WOULD KEY YOUR TRANSMITTER. ON THE RADIO\'S OWN USB PORT, **HOLD RTS HIGH** UNDER ADVANCED SETTINGS IS THE ALTERNATIVE. WHERE THAT SETTING LIVES DIFFERS BY MODEL (MENU **05-08** ON AN FT-891).\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **MODES FOLLOW THE FT-891\'S TABLE.** MOST OF THE YAESU LINE MATCHES IT, BUT A RADIO THAT NUMBERS ITS MODES DIFFERENTLY WILL SHOW AND SET THE WRONG ONE FOR THOSE. THE FREQUENCY IS UNAFFECTED.',
 			'settings.station.yaesuRs232Troubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **THE CAT JACK IS RS-232.** IT NEEDS A USB-TO-SERIAL ADAPTER AND A STRAIGHT-THROUGH DB-9 CABLE — A NULL-MODEM CABLE SWAPS THE LINES, AND THE RADIO NEVER HEARS A THING.\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW UNLESS **HOLD RTS HIGH** IS ON UNDER ADVANCED SETTINGS.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS ENTRY WAS WRITTEN FROM PUBLISHED CAT DOCUMENTATION AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.yaesuUsbTroubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **USE THE FIRST OF THE RADIO\'S TWO USB PORTS.** CAT IS NORMALLY ON THE FIRST (THE **ENHANCED** COM PORT ON WINDOWS); THE SECOND (**STANDARD**) IS FOR PTT AND KEYING. THE PICKER POINTS AT THE FIRST WHEREVER IT CAN TELL THE TWO APART.\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW UNLESS **HOLD RTS HIGH** IS ON UNDER ADVANCED SETTINGS.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4SerialNotes' => 'CONNECT THE K4’S REAR USB-B (PC) SOCKET. EITHER USB-PC1 OR USB-PC2 WORKS FOR CAT; CHOOSE AN UNUSED PORT AND MATCH ITS SERIAL USB-PCN: BAUD RATE SETTING ON THE RADIO. HALO PREFILLS 38400; CHANGE IT IF NEEDED. ANOTHER APPLICATION MUST USE THE OTHER PORT OR ETHERNET.\n\nTHIS CONNECTION CONTROLS THE RADIO AND ITS KEYERS; IT DOES NOT SEND AUDIO TO HALO.',
 			'settings.station.k4TcpNotes' => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. THIS IS CAT CONTROL, NOT THE SEPARATE REMOTE-AUDIO CONNECTION ON PORT 9204.\n\nHALO CONTROLS THE RADIO AND ITS KEYERS WITHOUT STREAMING AUDIO OR PANADAPTER DATA.',
 			'settings.station.k4PowerTimeout' => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.',
@@ -5778,11 +5794,11 @@ extension on TranslationsQro {
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${count} CONTACT', other: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${formatted} CONTACTS', ), 
 			'adifImport.stackingTypesUnknown' => 'COMBINED CONTACTS MAY LOSE A REFERENCE — THE ACTIVITIES COULD NOT SAY WHICH TYPES STACK. CANCEL AND RETRY TO AVOID THIS.',
 			'adifImport.nothingToImport' => 'NOTHING IN THIS FILE CAN BE IMPORTED',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.confirm' => 'IMPORT',
 			'adifImport.importing' => ({required Object filename}) => 'IMPORTING ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} CONTACT FROM ${filename}', other: 'IMPORTED ${formatted} CONTACTS FROM ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} DOES NOT LOOK LIKE AN ADIF FILE',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'WARNING: THIS ADIF HAS QSOS FROM ${calls}, BUT THEY WILL BE IMPORTED AS ${station} IF YOU CONTINUE.',

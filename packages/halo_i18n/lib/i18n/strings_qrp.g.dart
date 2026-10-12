@@ -336,6 +336,7 @@ class _Translations$chase$qrp extends Translations$chase$en {
 	@override late final _Translations$chase$period$qrp period = _Translations$chase$period$qrp._(_root);
 	@override late final _Translations$chase$goals$qrp goals = _Translations$chase$goals$qrp._(_root);
 	@override late final _Translations$chase$panels$qrp panels = _Translations$chase$panels$qrp._(_root);
+	@override late final _Translations$chase$claims$qrp claims = _Translations$chase$claims$qrp._(_root);
 }
 
 // Path: dialogs
@@ -1404,6 +1405,18 @@ class _Translations$chase$panels$qrp extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'stations spotted on the air, ready to chase.';
 	@override String get map => 'map';
 	@override String get mapDescription => 'the period\'s qsos and the station being logged.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$qrp extends Translations$chase$claims$en {
+	_Translations$chase$claims$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'checking qsos for chasing';
+	@override String rebuilding({required Object program}) => 'checking the log for ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} of ${total} qsos';
 }
 
 // Path: dialogs.callChange
@@ -4002,6 +4015,9 @@ extension on TranslationsQrp {
 			'chase.panels.spotsDescription' => 'stations spotted on the air, ready to chase.',
 			'chase.panels.map' => 'map',
 			'chase.panels.mapDescription' => 'the period\'s qsos and the station being logged.',
+			'chase.claims.checking' => 'checking qsos for chasing',
+			'chase.claims.rebuilding' => ({required Object program}) => 'checking the log for ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} of ${total} qsos',
 			'dialogs.operationDetails' => 'operation details',
 			'dialogs.activities' => 'activities',
 			'dialogs.stationCallsign' => 'station callsign',
@@ -4236,11 +4252,11 @@ extension on TranslationsQrp {
 			'operation.layout.htmlPanelUnsupported' => 'this panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'this panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'operation exports',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.syncedOperation' => 'operation is synced',
 			'operation.export.unsyncedOperation' => 'operation has unsynced changes',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso in this operation', other: '${count} qsos in this operation', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.qsosSynced' => ({required Object total}) => 'all ${total} qsos are synced',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} qsos pending sync',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} event markers synced',
@@ -4750,11 +4766,11 @@ extension on TranslationsQrp {
 			'settings.logging.numbersRow.description' => 'show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'adds a contextual key: “/” for callsigns, “.” for numbers',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'preferred bands',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.modes' => 'preferred modes',
 			'settings.catServer.title' => 'cat server',
 			'settings.catServer.description' => 'allow other apps (wsjt-x, loggers, etc) to control the radio through ham2k logger.',
@@ -5264,11 +5280,11 @@ extension on TranslationsQrp {
 			'settings.station.guohetecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'the q900 has two cat protocols, and this entry uses its native one rather than the ft-817 imitation. pick **guohetec q900** here, not an ft-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **the usb-c cable is the cat link**, and it connects the sound card too. speed does not matter on it; the port ignores whatever it is set to.\n- **never let anything raise rts or dtr on this port.** on a serial cable those lines are ptt and keying.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **a second-generation radio behaves differently** from a first. long press menu, then about: hw 2.0 is the second generation.\n\nthis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'if the radio connects but shows no frequency',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low. on a digirig, signalink or most home-brew cables that same line is ptt, so raising it would key your transmitter. on the radio\'s own usb port, **hold rts high** under advanced settings is the alternative. where that setting lives differs by model (menu **05-08** on an ft-891).\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **modes follow the ft-891\'s table.** most of the yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. the frequency is unaffected.',
 			'settings.station.yaesuRs232Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **the cat jack is rs-232.** it needs a usb-to-serial adapter and a straight-through db-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis entry was written from published cat documentation and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **use the first of the radio\'s two usb ports.** cat is normally on the first (the **enhanced** com port on windows); the second (**standard**) is for ptt and keying. the picker points at the first wherever it can tell the two apart.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.k4SerialNotes' => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.',
 			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. this is cat control, not the separate remote-audio connection on port 9204.\n\nhalo controls the radio and its keyers without streaming audio or panadapter data.',
 			'settings.station.k4PowerTimeout' => 'k4 power was not changed because the radio did not confirm its output range. try again.',
@@ -5778,11 +5794,11 @@ extension on TranslationsQrp {
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 
 			'adifImport.stackingTypesUnknown' => 'combined contacts may lose a reference — the activities could not say which types stack. cancel and retry to avoid this.',
 			'adifImport.nothingToImport' => 'nothing in this file can be imported',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.confirm' => 'import',
 			'adifImport.importing' => ({required Object filename}) => 'importing ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} contact from ${filename}', other: 'imported ${formatted} contacts from ${filename}', ), 
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an adif file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'warning: this adif has qsos from ${calls}, but they will be imported as ${station} if you continue.',

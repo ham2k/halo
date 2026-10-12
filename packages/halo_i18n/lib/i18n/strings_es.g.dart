@@ -336,6 +336,7 @@ class _Translations$chase$es extends Translations$chase$en {
 	@override late final _Translations$chase$period$es period = _Translations$chase$period$es._(_root);
 	@override late final _Translations$chase$goals$es goals = _Translations$chase$goals$es._(_root);
 	@override late final _Translations$chase$panels$es panels = _Translations$chase$panels$es._(_root);
+	@override late final _Translations$chase$claims$es claims = _Translations$chase$claims$es._(_root);
 }
 
 // Path: dialogs
@@ -1397,6 +1398,18 @@ class _Translations$chase$panels$es extends Translations$chase$panels$en {
 	@override String get spotsDescription => 'Estaciones anunciadas en el aire, listas para cazar.';
 	@override String get map => 'Mapa';
 	@override String get mapDescription => 'Los QSOs del período y la estación que se está registrando.';
+}
+
+// Path: chase.claims
+class _Translations$chase$claims$es extends Translations$chase$claims$en {
+	_Translations$chase$claims$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get checking => 'Revisando QSOs para cacería';
+	@override String rebuilding({required Object program}) => 'Revisando el registro para ${program}';
+	@override String progress({required Object done, required Object total}) => '${done} de ${total} QSOs';
 }
 
 // Path: dialogs.callChange
@@ -3883,6 +3896,9 @@ extension on TranslationsEs {
 			'chase.panels.spotsDescription' => 'Estaciones anunciadas en el aire, listas para cazar.',
 			'chase.panels.map' => 'Mapa',
 			'chase.panels.mapDescription' => 'Los QSOs del período y la estación que se está registrando.',
+			'chase.claims.checking' => 'Revisando QSOs para cacería',
+			'chase.claims.rebuilding' => ({required Object program}) => 'Revisando el registro para ${program}',
+			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} de ${total} QSOs',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -4134,11 +4150,11 @@ extension on TranslationsEs {
 			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo', other: 'Descargar ${count} archivos', ), 
 			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo combinado', other: 'Guardar ${count} archivos combinados', ), 
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Compartir ${count} archivo combinado', other: 'Compartir ${count} archivos combinados', ), 
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Exportar ${count} archivo combinado', other: 'Exportar ${count} archivos combinados', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo combinado', other: 'Descargar ${count} archivos combinados', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Guardar ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.shareOne' => ({required Object name}) => 'Compartir ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descargar ${name}',
@@ -4648,11 +4664,11 @@ extension on TranslationsEs {
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} en el puerto ${port}, pero no hay una radio del VFO principal conectada.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} no puede escuchar en el puerto ${port}: ${error}',
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
 			'settings.radio.title' => 'Control CAT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.loggingAndCat' => 'Registro y CAT',
 			'settings.radio.tuningSection' => 'Sintonía',
 			'settings.radio.keyerSection' => 'Manipulador',
@@ -5162,11 +5178,11 @@ extension on TranslationsEs {
 			'settings.station.n3fjpTroubleshooting' => 'Esto se conecta a **un programa de registro de N3FJP que se ejecuta en tu computadora**, no directamente a la radio — N3FJP habla con la radio.\n\n- **La API del programa debe estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El puerto** es 1100 salvo que lo hayas cambiado ahí.\n- **N3FJP debe tener configurada una interfaz de radio** para seguir o sintonizar la radio. Sin ella, solo informa lo que se escribe en su ventana de entrada.\n- N3FJP informa solo banda, modo y frecuencia: ni potencia ni estado de transmisión.\n\nEsta entrada se escribió a partir de la API publicada de N3FJP y no se ha probado contra N3FJP. Si funciona a medias, merece la pena avisar.',
 			'settings.station.commanderTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.commanderTroubleshooting' => 'Esto se conecta a **DXLab Commander, que se ejecuta en tu computadora**, no directamente a la radio — Commander habla con la radio.\n\n- **Commander ya debe estar corriendo** y conectado a la radio.\n- **Su servicio de red debe estar activado**: el botón **Net Serv** del panel Radio en la ventana de configuración de Commander.\n- **El puerto** es 52002, el tercero del bloque que empieza en el **Base Port** de Net Serv (52000 salvo que lo hayas cambiado).\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de los mensajes TCP publicados de Commander y no se ha probado contra Commander. Si funciona a medias, merece la pena avisar.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio.** La WLAN debe estar encendida, la radio en la misma red y su función de control remoto (Network) activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión atascada en la radio.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio. Si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusDisconnected' => 'Sin conectar',
 			'settings.station.statusConnecting' => 'Conectando…',
 			'settings.station.statusDisconnecting' => 'Desconectando…',
@@ -5676,11 +5692,11 @@ extension on TranslationsEs {
 			'exportSettings.adifNotesTemplate' => 'Notas de QSO ADIF',
 			'exportSettings.adifCommentTemplate' => 'Comentarios de QSO ADIF',
 			'exportSettings.adifQslMessageTemplate' => 'Mensaje QSL ADIF',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.shared' => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.',
 			'exportSettings.defaultTemplates' => 'Activa Plantillas personalizadas para editar las plantillas de este tipo.',
 			'templateEditor.previewLabel' => 'Vista previa:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Restablecer',
 			'templateEditor.docs' => 'Documentación de plantillas',
 			'templateEditor.preview' => 'Vista previa de ejemplo',

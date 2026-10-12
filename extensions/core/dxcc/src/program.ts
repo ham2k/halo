@@ -58,11 +58,21 @@ function theirEntity(their: Record<string, JSONValue>, call: string): { dxccCode
   return { dxccCode: code, ...(name ? { entityName: name } : {}), ...(stored == null ? { guess: true } : {}) }
 }
 
-/// LoTW credit is verified; a LoTW or paper confirmation is confirmed. eQSL,
+/// The ADIF award DXCC credits each kind of slot under: Mixed, a band, a mode.
+type SlotKind = "DXCC" | "DXCC_BAND" | "DXCC_MODE"
+
+/// DXCC credit is verified; a LoTW or paper confirmation is confirmed. eQSL,
 /// QRZ and Club Log confirmations do not count for DXCC.
-function levelOf(qso: Record<string, JSONValue>): Pick<QsoClaim, "level" | "by"> {
+///
+/// DXCC credits a contact for Mixed, for its band and for its mode
+/// separately. A credit that lists its `awards` verifies only the slots it
+/// names; one that lists none verifies all three.
+function levelOf(qso: Record<string, JSONValue>, kind: SlotKind): Pick<QsoClaim, "level" | "by"> {
   const credit = obj(obj(qso.credits).dxcc)
-  if (credit.level === "verified") return { level: "verified", ...(typeof credit.by === "string" ? { by: credit.by } : {}) }
+  const awards = Array.isArray(credit.awards) ? credit.awards : undefined
+  if (credit.level === "verified" && (awards == null || awards.includes(kind))) {
+    return { level: "verified", ...(typeof credit.by === "string" ? { by: credit.by } : {}) }
+  }
   const qsl = obj(qso.qsl)
   if (obj(qsl.lotw).received === true) return { level: "confirmed", by: "lotw" }
   if (obj(qsl.qsl).received === true) return { level: "confirmed", by: "qsl" }
@@ -89,11 +99,11 @@ function claimsForQso(
   if (dxccCode == null) return []
 
   const holder = holderFor(our.call, storedCode(our) ?? stationEntity(our.call))
-  const base = { holder, ref: String(dxccCode), ...(entityName ? { label: entityName } : {}), ...(guess ? { guess } : {}), ...levelOf(qso) }
-  const claims: QsoClaim[] = [{ ...base, band: null, mode: null }]
-  if (typeof qso.band === "string" && qso.band) claims.push({ ...base, band: qso.band, mode: null })
+  const base = { holder, ref: String(dxccCode), ...(entityName ? { label: entityName } : {}), ...(guess ? { guess } : {}) }
+  const claims: QsoClaim[] = [{ ...base, band: null, mode: null, ...levelOf(qso, "DXCC") }]
+  if (typeof qso.band === "string" && qso.band) claims.push({ ...base, band: qso.band, mode: null, ...levelOf(qso, "DXCC_BAND") })
   const mode = awardModeOf(qso.mode)
-  if (mode) claims.push({ ...base, band: null, mode })
+  if (mode) claims.push({ ...base, band: null, mode, ...levelOf(qso, "DXCC_MODE") })
   return claims
 }
 

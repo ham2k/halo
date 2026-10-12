@@ -83,6 +83,16 @@ void main() {
       expect(normalized['band'], '20m', reason: 'the rest of the record survives');
     });
 
+    // Every chasing program reads `credits` as a map of programs; a record
+    // whose `credits` is anything else would have to be guarded against in
+    // each of them.
+    test('drops a credits value that is not a map, and reports it', () {
+      final violations = <QsonTypeViolation>[];
+      final normalized = normalizeQsoQson({'credits': 'DXCC:lotw', 'band': '20m'}, violations: violations);
+      expect(normalized.containsKey('credits'), isFalse);
+      expect(violations.single.path, 'credits');
+    });
+
     test('normalizes inside our/their, and inside their.guess', () {
       final normalized = normalizeQsoQson({
         'our': {'call': 'N0DEV', 'rig': 42},

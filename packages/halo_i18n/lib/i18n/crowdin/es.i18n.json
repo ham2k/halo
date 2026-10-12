@@ -302,6 +302,11 @@
       "spotsDescription": "Estaciones anunciadas en el aire, listas para cazar.",
       "map": "Mapa",
       "mapDescription": "Los QSOs del período y la estación que se está registrando."
+    },
+    "claims": {
+      "checking": "Revisando QSOs para cacería",
+      "rebuilding": "Revisando el registro para ${program}",
+      "progress": "${done} de ${total} QSOs"
     }
   },
   "dialogs": {

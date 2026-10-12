@@ -34,6 +34,7 @@ export 'src/peer/peer_protocol.dart';
 export 'src/peer/peer_screen.dart';
 export 'src/peer/peer_session.dart';
 export 'src/peer/peer_trust.dart';
+export 'src/repo/claims_repository.dart';
 export 'src/repo/operations_repository.dart';
 export 'src/repo/operation_undelete.dart';
 export 'src/repo/history_filter.dart';

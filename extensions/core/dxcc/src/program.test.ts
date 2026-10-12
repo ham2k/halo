@@ -79,6 +79,22 @@ test("LoTW and paper confirm, sponsor credit verifies, and eQSL counts for nothi
   )
 })
 
+// ARRL credits Mixed, band and mode separately: a contact credited only for
+// 20m DXCC still needs a QSL to count as confirmed toward Mixed.
+test("a credit that lists its awards verifies only the slots it was granted for", async () => {
+  const answer = await claims(
+    qso("band-only", { qsl: { lotw: { received: true } }, credits: { dxcc: { level: "verified", by: "lotw", awards: ["DXCC_BAND"] } } }),
+  )
+  assert.deepEqual(
+    answer["band-only"].map((claim) => [claim.band ?? claim.mode ?? "mixed", claim.level]),
+    [
+      ["mixed", "confirmed"],
+      ["20m", "verified"],
+      ["CW", "confirmed"],
+    ],
+  )
+})
+
 test("a contact with no entity to claim, or no station to claim it for, claims nothing", async () => {
   const answer = await claims(qso("nocall", { their: {} }), qso("nostation", { our: {} }))
   assert.deepEqual(answer, { nocall: [], nostation: [] })

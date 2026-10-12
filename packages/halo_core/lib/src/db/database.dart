@@ -303,12 +303,70 @@ class PeerTrust extends Table {
   Set<Column> get primaryKey => {peerDeviceId};
 }
 
-@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences, InboundCaptures, PeerEvents, PeerCursors, PeerTrust])
+/// The best claim per checklist slot, per source (docs/design/claims.md §5).
+/// Synced through LoFi and backed up, but never over peer links: a claim is
+/// about the whole log, not one shared operation.
+///
+/// [uuid] is derived from the slot and source (`claimUuid`), so every device
+/// computing the same slot writes the same row. A slot's `log` row is
+/// derivable from the log and is stored anyway, so a device holding only
+/// part of the log still reads whole checklists.
+///
+/// `claims_qso` answers "which slots does this contact hold?", the question
+/// every edit, deletion and synced change of a contact asks.
+/// `claims_checklist` answers one holder's checklist.
+@DataClassName('ClaimRow')
+@TableIndex(name: 'claims_qso', columns: {#qso})
+@TableIndex(name: 'claims_checklist', columns: {#program, #holder, #edition})
+class Claims extends Table {
+  TextColumn get uuid => text()();
+  TextColumn get program => text()();
+  TextColumn get holder => text()();
+
+  /// Empty for a lifetime program.
+  TextColumn get edition => text().withDefault(const Constant(''))();
+  TextColumn get ref => text()();
+
+  /// Null: any band.
+  TextColumn get band => text().nullable()();
+
+  /// Null: any mode.
+  TextColumn get mode => text().nullable()();
+
+  /// `log`, or `import:<batchId>`.
+  TextColumn get source => text()();
+
+  /// A `ClaimLevel` name.
+  TextColumn get level => text()();
+
+  /// When the claiming contact happened; null when an import did not say.
+  IntColumn get atMillis => integer().nullable()();
+
+  /// The claiming contact; null for an import that matched none.
+  TextColumn get qso => text().nullable()();
+
+  /// `by`, `label`, `guess`, and an import's own fields.
+  TextColumn get data => text().withDefault(const Constant('{}'))();
+
+  /// The program version that computed this row.
+  IntColumn get version => integer()();
+
+  /// Raised by a rescan; outranks the claim itself on merge (§7).
+  IntColumn get epoch => integer().withDefault(const Constant(0))();
+  BoolColumn get deleted => boolean().withDefault(const Constant(false))();
+  BoolColumn get synced => boolean().withDefault(const Constant(false))();
+  IntColumn get updatedAtMillis => integer().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {uuid};
+}
+
+@DriftDatabase(tables: [Operations, Qsos, OperationsBackup, QsosBackup, Lookups, Sequences, InboundCaptures, PeerEvents, PeerCursors, PeerTrust, Claims])
 class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -387,6 +445,11 @@ class HaLoDatabase extends _$HaLoDatabase {
         }
         if (from < 14) {
           await _repairStatedLocations(m);
+        }
+        if (from < 15) {
+          await m.createTable(claims);
+          await m.createIndex(claimsQso);
+          await m.createIndex(claimsChecklist);
         }
       });
     },

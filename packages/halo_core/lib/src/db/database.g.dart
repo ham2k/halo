@@ -322,10 +322,12 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
 
   /// Set alongside `deleted` when a Test Operation is deleted
   /// (`OperationsRepository.purge`, docs: Test Operations): the tombstone
-  /// still pushes through the normal dirty-row sync so other devices learn
-  /// about the deletion, but once that push is acknowledged the row is
-  /// physically removed. `purged` alone doesn't say WHO gets to act on it
-  /// without asking — see [purgedLocally].
+  /// still pushes through the normal dirty-row sync, and once that push is
+  /// acknowledged the row is physically removed. LoFi removes a purged
+  /// record outright rather than keeping the tombstone, so no other device
+  /// hears of it from there; peer sync still carries the flag. `purged`
+  /// alone doesn't say WHO gets to act on it without asking — see
+  /// [purgedLocally].
   final bool purged;
 
   /// True only when THIS device is the one that called
@@ -336,9 +338,9 @@ class OperationRow extends DataClass implements Insertable<OperationRow> {
   /// this device, so it's safe to remove once synced, but a `purged` flag
   /// that only ever arrived via sync has not been confirmed HERE and must
   /// wait for the operator to say so (`OperationsRepository.
-  /// confirmReceivedPurges`) — the whole point of `purged` round-tripping
-  /// through sync at all is so every device eventually asks, not so every
-  /// device silently agrees.
+  /// confirmReceivedPurges`) — the whole point of `purged` travelling to
+  /// another device at all (in practice from a peer; LoFi relays none) is
+  /// so every device that receives it asks, not so it silently agrees.
   final bool purgedLocally;
 
   /// Mirrors `data.updatedAtMillis` (stamped on every local write, app-polo
@@ -4925,6 +4927,954 @@ class PeerTrustCompanion extends UpdateCompanion<PeerTrustRow> {
   }
 }
 
+class $ClaimsTable extends Claims with TableInfo<$ClaimsTable, ClaimRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ClaimsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _programMeta = const VerificationMeta(
+    'program',
+  );
+  @override
+  late final GeneratedColumn<String> program = GeneratedColumn<String>(
+    'program',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _holderMeta = const VerificationMeta('holder');
+  @override
+  late final GeneratedColumn<String> holder = GeneratedColumn<String>(
+    'holder',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _editionMeta = const VerificationMeta(
+    'edition',
+  );
+  @override
+  late final GeneratedColumn<String> edition = GeneratedColumn<String>(
+    'edition',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _refMeta = const VerificationMeta('ref');
+  @override
+  late final GeneratedColumn<String> ref = GeneratedColumn<String>(
+    'ref',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bandMeta = const VerificationMeta('band');
+  @override
+  late final GeneratedColumn<String> band = GeneratedColumn<String>(
+    'band',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _modeMeta = const VerificationMeta('mode');
+  @override
+  late final GeneratedColumn<String> mode = GeneratedColumn<String>(
+    'mode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _levelMeta = const VerificationMeta('level');
+  @override
+  late final GeneratedColumn<String> level = GeneratedColumn<String>(
+    'level',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _atMillisMeta = const VerificationMeta(
+    'atMillis',
+  );
+  @override
+  late final GeneratedColumn<int> atMillis = GeneratedColumn<int>(
+    'at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _qsoMeta = const VerificationMeta('qso');
+  @override
+  late final GeneratedColumn<String> qso = GeneratedColumn<String>(
+    'qso',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dataMeta = const VerificationMeta('data');
+  @override
+  late final GeneratedColumn<String> data = GeneratedColumn<String>(
+    'data',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('{}'),
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _epochMeta = const VerificationMeta('epoch');
+  @override
+  late final GeneratedColumn<int> epoch = GeneratedColumn<int>(
+    'epoch',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _deletedMeta = const VerificationMeta(
+    'deleted',
+  );
+  @override
+  late final GeneratedColumn<bool> deleted = GeneratedColumn<bool>(
+    'deleted',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("deleted" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _syncedMeta = const VerificationMeta('synced');
+  @override
+  late final GeneratedColumn<bool> synced = GeneratedColumn<bool>(
+    'synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("synced" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _updatedAtMillisMeta = const VerificationMeta(
+    'updatedAtMillis',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAtMillis = GeneratedColumn<int>(
+    'updated_at_millis',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    uuid,
+    program,
+    holder,
+    edition,
+    ref,
+    band,
+    mode,
+    source,
+    level,
+    atMillis,
+    qso,
+    data,
+    version,
+    epoch,
+    deleted,
+    synced,
+    updatedAtMillis,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'claims';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ClaimRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('program')) {
+      context.handle(
+        _programMeta,
+        program.isAcceptableOrUnknown(data['program']!, _programMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_programMeta);
+    }
+    if (data.containsKey('holder')) {
+      context.handle(
+        _holderMeta,
+        holder.isAcceptableOrUnknown(data['holder']!, _holderMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_holderMeta);
+    }
+    if (data.containsKey('edition')) {
+      context.handle(
+        _editionMeta,
+        edition.isAcceptableOrUnknown(data['edition']!, _editionMeta),
+      );
+    }
+    if (data.containsKey('ref')) {
+      context.handle(
+        _refMeta,
+        ref.isAcceptableOrUnknown(data['ref']!, _refMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_refMeta);
+    }
+    if (data.containsKey('band')) {
+      context.handle(
+        _bandMeta,
+        band.isAcceptableOrUnknown(data['band']!, _bandMeta),
+      );
+    }
+    if (data.containsKey('mode')) {
+      context.handle(
+        _modeMeta,
+        mode.isAcceptableOrUnknown(data['mode']!, _modeMeta),
+      );
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceMeta);
+    }
+    if (data.containsKey('level')) {
+      context.handle(
+        _levelMeta,
+        level.isAcceptableOrUnknown(data['level']!, _levelMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_levelMeta);
+    }
+    if (data.containsKey('at_millis')) {
+      context.handle(
+        _atMillisMeta,
+        atMillis.isAcceptableOrUnknown(data['at_millis']!, _atMillisMeta),
+      );
+    }
+    if (data.containsKey('qso')) {
+      context.handle(
+        _qsoMeta,
+        qso.isAcceptableOrUnknown(data['qso']!, _qsoMeta),
+      );
+    }
+    if (data.containsKey('data')) {
+      context.handle(
+        _dataMeta,
+        this.data.isAcceptableOrUnknown(data['data']!, _dataMeta),
+      );
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_versionMeta);
+    }
+    if (data.containsKey('epoch')) {
+      context.handle(
+        _epochMeta,
+        epoch.isAcceptableOrUnknown(data['epoch']!, _epochMeta),
+      );
+    }
+    if (data.containsKey('deleted')) {
+      context.handle(
+        _deletedMeta,
+        deleted.isAcceptableOrUnknown(data['deleted']!, _deletedMeta),
+      );
+    }
+    if (data.containsKey('synced')) {
+      context.handle(
+        _syncedMeta,
+        synced.isAcceptableOrUnknown(data['synced']!, _syncedMeta),
+      );
+    }
+    if (data.containsKey('updated_at_millis')) {
+      context.handle(
+        _updatedAtMillisMeta,
+        updatedAtMillis.isAcceptableOrUnknown(
+          data['updated_at_millis']!,
+          _updatedAtMillisMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uuid};
+  @override
+  ClaimRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ClaimRow(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      program: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}program'],
+      )!,
+      holder: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}holder'],
+      )!,
+      edition: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}edition'],
+      )!,
+      ref: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}ref'],
+      )!,
+      band: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}band'],
+      ),
+      mode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mode'],
+      ),
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      level: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}level'],
+      )!,
+      atMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}at_millis'],
+      ),
+      qso: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}qso'],
+      ),
+      data: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}data'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      epoch: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}epoch'],
+      )!,
+      deleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}deleted'],
+      )!,
+      synced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}synced'],
+      )!,
+      updatedAtMillis: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at_millis'],
+      ),
+    );
+  }
+
+  @override
+  $ClaimsTable createAlias(String alias) {
+    return $ClaimsTable(attachedDatabase, alias);
+  }
+}
+
+class ClaimRow extends DataClass implements Insertable<ClaimRow> {
+  final String uuid;
+  final String program;
+  final String holder;
+
+  /// Empty for a lifetime program.
+  final String edition;
+  final String ref;
+
+  /// Null: any band.
+  final String? band;
+
+  /// Null: any mode.
+  final String? mode;
+
+  /// `log`, or `import:<batchId>`.
+  final String source;
+
+  /// A `ClaimLevel` name.
+  final String level;
+
+  /// When the claiming contact happened; null when an import did not say.
+  final int? atMillis;
+
+  /// The claiming contact; null for an import that matched none.
+  final String? qso;
+
+  /// `by`, `label`, `guess`, and an import's own fields.
+  final String data;
+
+  /// The program version that computed this row.
+  final int version;
+
+  /// Raised by a rescan; outranks the claim itself on merge (§7).
+  final int epoch;
+  final bool deleted;
+  final bool synced;
+  final int? updatedAtMillis;
+  const ClaimRow({
+    required this.uuid,
+    required this.program,
+    required this.holder,
+    required this.edition,
+    required this.ref,
+    this.band,
+    this.mode,
+    required this.source,
+    required this.level,
+    this.atMillis,
+    this.qso,
+    required this.data,
+    required this.version,
+    required this.epoch,
+    required this.deleted,
+    required this.synced,
+    this.updatedAtMillis,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['program'] = Variable<String>(program);
+    map['holder'] = Variable<String>(holder);
+    map['edition'] = Variable<String>(edition);
+    map['ref'] = Variable<String>(ref);
+    if (!nullToAbsent || band != null) {
+      map['band'] = Variable<String>(band);
+    }
+    if (!nullToAbsent || mode != null) {
+      map['mode'] = Variable<String>(mode);
+    }
+    map['source'] = Variable<String>(source);
+    map['level'] = Variable<String>(level);
+    if (!nullToAbsent || atMillis != null) {
+      map['at_millis'] = Variable<int>(atMillis);
+    }
+    if (!nullToAbsent || qso != null) {
+      map['qso'] = Variable<String>(qso);
+    }
+    map['data'] = Variable<String>(data);
+    map['version'] = Variable<int>(version);
+    map['epoch'] = Variable<int>(epoch);
+    map['deleted'] = Variable<bool>(deleted);
+    map['synced'] = Variable<bool>(synced);
+    if (!nullToAbsent || updatedAtMillis != null) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis);
+    }
+    return map;
+  }
+
+  ClaimsCompanion toCompanion(bool nullToAbsent) {
+    return ClaimsCompanion(
+      uuid: Value(uuid),
+      program: Value(program),
+      holder: Value(holder),
+      edition: Value(edition),
+      ref: Value(ref),
+      band: band == null && nullToAbsent ? const Value.absent() : Value(band),
+      mode: mode == null && nullToAbsent ? const Value.absent() : Value(mode),
+      source: Value(source),
+      level: Value(level),
+      atMillis: atMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(atMillis),
+      qso: qso == null && nullToAbsent ? const Value.absent() : Value(qso),
+      data: Value(data),
+      version: Value(version),
+      epoch: Value(epoch),
+      deleted: Value(deleted),
+      synced: Value(synced),
+      updatedAtMillis: updatedAtMillis == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updatedAtMillis),
+    );
+  }
+
+  factory ClaimRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ClaimRow(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      program: serializer.fromJson<String>(json['program']),
+      holder: serializer.fromJson<String>(json['holder']),
+      edition: serializer.fromJson<String>(json['edition']),
+      ref: serializer.fromJson<String>(json['ref']),
+      band: serializer.fromJson<String?>(json['band']),
+      mode: serializer.fromJson<String?>(json['mode']),
+      source: serializer.fromJson<String>(json['source']),
+      level: serializer.fromJson<String>(json['level']),
+      atMillis: serializer.fromJson<int?>(json['atMillis']),
+      qso: serializer.fromJson<String?>(json['qso']),
+      data: serializer.fromJson<String>(json['data']),
+      version: serializer.fromJson<int>(json['version']),
+      epoch: serializer.fromJson<int>(json['epoch']),
+      deleted: serializer.fromJson<bool>(json['deleted']),
+      synced: serializer.fromJson<bool>(json['synced']),
+      updatedAtMillis: serializer.fromJson<int?>(json['updatedAtMillis']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'program': serializer.toJson<String>(program),
+      'holder': serializer.toJson<String>(holder),
+      'edition': serializer.toJson<String>(edition),
+      'ref': serializer.toJson<String>(ref),
+      'band': serializer.toJson<String?>(band),
+      'mode': serializer.toJson<String?>(mode),
+      'source': serializer.toJson<String>(source),
+      'level': serializer.toJson<String>(level),
+      'atMillis': serializer.toJson<int?>(atMillis),
+      'qso': serializer.toJson<String?>(qso),
+      'data': serializer.toJson<String>(data),
+      'version': serializer.toJson<int>(version),
+      'epoch': serializer.toJson<int>(epoch),
+      'deleted': serializer.toJson<bool>(deleted),
+      'synced': serializer.toJson<bool>(synced),
+      'updatedAtMillis': serializer.toJson<int?>(updatedAtMillis),
+    };
+  }
+
+  ClaimRow copyWith({
+    String? uuid,
+    String? program,
+    String? holder,
+    String? edition,
+    String? ref,
+    Value<String?> band = const Value.absent(),
+    Value<String?> mode = const Value.absent(),
+    String? source,
+    String? level,
+    Value<int?> atMillis = const Value.absent(),
+    Value<String?> qso = const Value.absent(),
+    String? data,
+    int? version,
+    int? epoch,
+    bool? deleted,
+    bool? synced,
+    Value<int?> updatedAtMillis = const Value.absent(),
+  }) => ClaimRow(
+    uuid: uuid ?? this.uuid,
+    program: program ?? this.program,
+    holder: holder ?? this.holder,
+    edition: edition ?? this.edition,
+    ref: ref ?? this.ref,
+    band: band.present ? band.value : this.band,
+    mode: mode.present ? mode.value : this.mode,
+    source: source ?? this.source,
+    level: level ?? this.level,
+    atMillis: atMillis.present ? atMillis.value : this.atMillis,
+    qso: qso.present ? qso.value : this.qso,
+    data: data ?? this.data,
+    version: version ?? this.version,
+    epoch: epoch ?? this.epoch,
+    deleted: deleted ?? this.deleted,
+    synced: synced ?? this.synced,
+    updatedAtMillis: updatedAtMillis.present
+        ? updatedAtMillis.value
+        : this.updatedAtMillis,
+  );
+  ClaimRow copyWithCompanion(ClaimsCompanion data) {
+    return ClaimRow(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      program: data.program.present ? data.program.value : this.program,
+      holder: data.holder.present ? data.holder.value : this.holder,
+      edition: data.edition.present ? data.edition.value : this.edition,
+      ref: data.ref.present ? data.ref.value : this.ref,
+      band: data.band.present ? data.band.value : this.band,
+      mode: data.mode.present ? data.mode.value : this.mode,
+      source: data.source.present ? data.source.value : this.source,
+      level: data.level.present ? data.level.value : this.level,
+      atMillis: data.atMillis.present ? data.atMillis.value : this.atMillis,
+      qso: data.qso.present ? data.qso.value : this.qso,
+      data: data.data.present ? data.data.value : this.data,
+      version: data.version.present ? data.version.value : this.version,
+      epoch: data.epoch.present ? data.epoch.value : this.epoch,
+      deleted: data.deleted.present ? data.deleted.value : this.deleted,
+      synced: data.synced.present ? data.synced.value : this.synced,
+      updatedAtMillis: data.updatedAtMillis.present
+          ? data.updatedAtMillis.value
+          : this.updatedAtMillis,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ClaimRow(')
+          ..write('uuid: $uuid, ')
+          ..write('program: $program, ')
+          ..write('holder: $holder, ')
+          ..write('edition: $edition, ')
+          ..write('ref: $ref, ')
+          ..write('band: $band, ')
+          ..write('mode: $mode, ')
+          ..write('source: $source, ')
+          ..write('level: $level, ')
+          ..write('atMillis: $atMillis, ')
+          ..write('qso: $qso, ')
+          ..write('data: $data, ')
+          ..write('version: $version, ')
+          ..write('epoch: $epoch, ')
+          ..write('deleted: $deleted, ')
+          ..write('synced: $synced, ')
+          ..write('updatedAtMillis: $updatedAtMillis')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    uuid,
+    program,
+    holder,
+    edition,
+    ref,
+    band,
+    mode,
+    source,
+    level,
+    atMillis,
+    qso,
+    data,
+    version,
+    epoch,
+    deleted,
+    synced,
+    updatedAtMillis,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ClaimRow &&
+          other.uuid == this.uuid &&
+          other.program == this.program &&
+          other.holder == this.holder &&
+          other.edition == this.edition &&
+          other.ref == this.ref &&
+          other.band == this.band &&
+          other.mode == this.mode &&
+          other.source == this.source &&
+          other.level == this.level &&
+          other.atMillis == this.atMillis &&
+          other.qso == this.qso &&
+          other.data == this.data &&
+          other.version == this.version &&
+          other.epoch == this.epoch &&
+          other.deleted == this.deleted &&
+          other.synced == this.synced &&
+          other.updatedAtMillis == this.updatedAtMillis);
+}
+
+class ClaimsCompanion extends UpdateCompanion<ClaimRow> {
+  final Value<String> uuid;
+  final Value<String> program;
+  final Value<String> holder;
+  final Value<String> edition;
+  final Value<String> ref;
+  final Value<String?> band;
+  final Value<String?> mode;
+  final Value<String> source;
+  final Value<String> level;
+  final Value<int?> atMillis;
+  final Value<String?> qso;
+  final Value<String> data;
+  final Value<int> version;
+  final Value<int> epoch;
+  final Value<bool> deleted;
+  final Value<bool> synced;
+  final Value<int?> updatedAtMillis;
+  final Value<int> rowid;
+  const ClaimsCompanion({
+    this.uuid = const Value.absent(),
+    this.program = const Value.absent(),
+    this.holder = const Value.absent(),
+    this.edition = const Value.absent(),
+    this.ref = const Value.absent(),
+    this.band = const Value.absent(),
+    this.mode = const Value.absent(),
+    this.source = const Value.absent(),
+    this.level = const Value.absent(),
+    this.atMillis = const Value.absent(),
+    this.qso = const Value.absent(),
+    this.data = const Value.absent(),
+    this.version = const Value.absent(),
+    this.epoch = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ClaimsCompanion.insert({
+    required String uuid,
+    required String program,
+    required String holder,
+    this.edition = const Value.absent(),
+    required String ref,
+    this.band = const Value.absent(),
+    this.mode = const Value.absent(),
+    required String source,
+    required String level,
+    this.atMillis = const Value.absent(),
+    this.qso = const Value.absent(),
+    this.data = const Value.absent(),
+    required int version,
+    this.epoch = const Value.absent(),
+    this.deleted = const Value.absent(),
+    this.synced = const Value.absent(),
+    this.updatedAtMillis = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : uuid = Value(uuid),
+       program = Value(program),
+       holder = Value(holder),
+       ref = Value(ref),
+       source = Value(source),
+       level = Value(level),
+       version = Value(version);
+  static Insertable<ClaimRow> custom({
+    Expression<String>? uuid,
+    Expression<String>? program,
+    Expression<String>? holder,
+    Expression<String>? edition,
+    Expression<String>? ref,
+    Expression<String>? band,
+    Expression<String>? mode,
+    Expression<String>? source,
+    Expression<String>? level,
+    Expression<int>? atMillis,
+    Expression<String>? qso,
+    Expression<String>? data,
+    Expression<int>? version,
+    Expression<int>? epoch,
+    Expression<bool>? deleted,
+    Expression<bool>? synced,
+    Expression<int>? updatedAtMillis,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (program != null) 'program': program,
+      if (holder != null) 'holder': holder,
+      if (edition != null) 'edition': edition,
+      if (ref != null) 'ref': ref,
+      if (band != null) 'band': band,
+      if (mode != null) 'mode': mode,
+      if (source != null) 'source': source,
+      if (level != null) 'level': level,
+      if (atMillis != null) 'at_millis': atMillis,
+      if (qso != null) 'qso': qso,
+      if (data != null) 'data': data,
+      if (version != null) 'version': version,
+      if (epoch != null) 'epoch': epoch,
+      if (deleted != null) 'deleted': deleted,
+      if (synced != null) 'synced': synced,
+      if (updatedAtMillis != null) 'updated_at_millis': updatedAtMillis,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ClaimsCompanion copyWith({
+    Value<String>? uuid,
+    Value<String>? program,
+    Value<String>? holder,
+    Value<String>? edition,
+    Value<String>? ref,
+    Value<String?>? band,
+    Value<String?>? mode,
+    Value<String>? source,
+    Value<String>? level,
+    Value<int?>? atMillis,
+    Value<String?>? qso,
+    Value<String>? data,
+    Value<int>? version,
+    Value<int>? epoch,
+    Value<bool>? deleted,
+    Value<bool>? synced,
+    Value<int?>? updatedAtMillis,
+    Value<int>? rowid,
+  }) {
+    return ClaimsCompanion(
+      uuid: uuid ?? this.uuid,
+      program: program ?? this.program,
+      holder: holder ?? this.holder,
+      edition: edition ?? this.edition,
+      ref: ref ?? this.ref,
+      band: band ?? this.band,
+      mode: mode ?? this.mode,
+      source: source ?? this.source,
+      level: level ?? this.level,
+      atMillis: atMillis ?? this.atMillis,
+      qso: qso ?? this.qso,
+      data: data ?? this.data,
+      version: version ?? this.version,
+      epoch: epoch ?? this.epoch,
+      deleted: deleted ?? this.deleted,
+      synced: synced ?? this.synced,
+      updatedAtMillis: updatedAtMillis ?? this.updatedAtMillis,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (program.present) {
+      map['program'] = Variable<String>(program.value);
+    }
+    if (holder.present) {
+      map['holder'] = Variable<String>(holder.value);
+    }
+    if (edition.present) {
+      map['edition'] = Variable<String>(edition.value);
+    }
+    if (ref.present) {
+      map['ref'] = Variable<String>(ref.value);
+    }
+    if (band.present) {
+      map['band'] = Variable<String>(band.value);
+    }
+    if (mode.present) {
+      map['mode'] = Variable<String>(mode.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (level.present) {
+      map['level'] = Variable<String>(level.value);
+    }
+    if (atMillis.present) {
+      map['at_millis'] = Variable<int>(atMillis.value);
+    }
+    if (qso.present) {
+      map['qso'] = Variable<String>(qso.value);
+    }
+    if (data.present) {
+      map['data'] = Variable<String>(data.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (epoch.present) {
+      map['epoch'] = Variable<int>(epoch.value);
+    }
+    if (deleted.present) {
+      map['deleted'] = Variable<bool>(deleted.value);
+    }
+    if (synced.present) {
+      map['synced'] = Variable<bool>(synced.value);
+    }
+    if (updatedAtMillis.present) {
+      map['updated_at_millis'] = Variable<int>(updatedAtMillis.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ClaimsCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('program: $program, ')
+          ..write('holder: $holder, ')
+          ..write('edition: $edition, ')
+          ..write('ref: $ref, ')
+          ..write('band: $band, ')
+          ..write('mode: $mode, ')
+          ..write('source: $source, ')
+          ..write('level: $level, ')
+          ..write('atMillis: $atMillis, ')
+          ..write('qso: $qso, ')
+          ..write('data: $data, ')
+          ..write('version: $version, ')
+          ..write('epoch: $epoch, ')
+          ..write('deleted: $deleted, ')
+          ..write('synced: $synced, ')
+          ..write('updatedAtMillis: $updatedAtMillis, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$HaLoDatabase extends GeneratedDatabase {
   _$HaLoDatabase(QueryExecutor e) : super(e);
   $HaLoDatabaseManager get managers => $HaLoDatabaseManager(this);
@@ -4942,6 +5892,7 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
   late final $PeerEventsTable peerEvents = $PeerEventsTable(this);
   late final $PeerCursorsTable peerCursors = $PeerCursorsTable(this);
   late final $PeerTrustTable peerTrust = $PeerTrustTable(this);
+  late final $ClaimsTable claims = $ClaimsTable(this);
   late final Index qsosOperationStart = Index(
     'qsos_operation_start',
     'CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)',
@@ -4958,6 +5909,14 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     'peer_events_operation_record',
     'CREATE INDEX peer_events_operation_record ON peer_events (operation_uuid, record_uuid)',
   );
+  late final Index claimsQso = Index(
+    'claims_qso',
+    'CREATE INDEX claims_qso ON claims (qso)',
+  );
+  late final Index claimsChecklist = Index(
+    'claims_checklist',
+    'CREATE INDEX claims_checklist ON claims (program, holder, edition)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -4973,10 +5932,13 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     peerEvents,
     peerCursors,
     peerTrust,
+    claims,
     qsosOperationStart,
     inboundCapturesDedupeKey,
     peerEventsOperationSeq,
     peerEventsOperationRecord,
+    claimsQso,
+    claimsChecklist,
   ];
 }
 
@@ -7455,6 +8417,430 @@ typedef $$PeerTrustTableProcessedTableManager =
       PeerTrustRow,
       PrefetchHooks Function()
     >;
+typedef $$ClaimsTableCreateCompanionBuilder =
+    ClaimsCompanion Function({
+      required String uuid,
+      required String program,
+      required String holder,
+      Value<String> edition,
+      required String ref,
+      Value<String?> band,
+      Value<String?> mode,
+      required String source,
+      required String level,
+      Value<int?> atMillis,
+      Value<String?> qso,
+      Value<String> data,
+      required int version,
+      Value<int> epoch,
+      Value<bool> deleted,
+      Value<bool> synced,
+      Value<int?> updatedAtMillis,
+      Value<int> rowid,
+    });
+typedef $$ClaimsTableUpdateCompanionBuilder =
+    ClaimsCompanion Function({
+      Value<String> uuid,
+      Value<String> program,
+      Value<String> holder,
+      Value<String> edition,
+      Value<String> ref,
+      Value<String?> band,
+      Value<String?> mode,
+      Value<String> source,
+      Value<String> level,
+      Value<int?> atMillis,
+      Value<String?> qso,
+      Value<String> data,
+      Value<int> version,
+      Value<int> epoch,
+      Value<bool> deleted,
+      Value<bool> synced,
+      Value<int?> updatedAtMillis,
+      Value<int> rowid,
+    });
+
+class $$ClaimsTableFilterComposer
+    extends Composer<_$HaLoDatabase, $ClaimsTable> {
+  $$ClaimsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get program => $composableBuilder(
+    column: $table.program,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get holder => $composableBuilder(
+    column: $table.holder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get edition => $composableBuilder(
+    column: $table.edition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ref => $composableBuilder(
+    column: $table.ref,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get band => $composableBuilder(
+    column: $table.band,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get atMillis => $composableBuilder(
+    column: $table.atMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get qso => $composableBuilder(
+    column: $table.qso,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get epoch => $composableBuilder(
+    column: $table.epoch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ClaimsTableOrderingComposer
+    extends Composer<_$HaLoDatabase, $ClaimsTable> {
+  $$ClaimsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get program => $composableBuilder(
+    column: $table.program,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get holder => $composableBuilder(
+    column: $table.holder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get edition => $composableBuilder(
+    column: $table.edition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get ref => $composableBuilder(
+    column: $table.ref,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get band => $composableBuilder(
+    column: $table.band,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mode => $composableBuilder(
+    column: $table.mode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get level => $composableBuilder(
+    column: $table.level,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get atMillis => $composableBuilder(
+    column: $table.atMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get qso => $composableBuilder(
+    column: $table.qso,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get data => $composableBuilder(
+    column: $table.data,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get epoch => $composableBuilder(
+    column: $table.epoch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get deleted => $composableBuilder(
+    column: $table.deleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get synced => $composableBuilder(
+    column: $table.synced,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ClaimsTableAnnotationComposer
+    extends Composer<_$HaLoDatabase, $ClaimsTable> {
+  $$ClaimsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get program =>
+      $composableBuilder(column: $table.program, builder: (column) => column);
+
+  GeneratedColumn<String> get holder =>
+      $composableBuilder(column: $table.holder, builder: (column) => column);
+
+  GeneratedColumn<String> get edition =>
+      $composableBuilder(column: $table.edition, builder: (column) => column);
+
+  GeneratedColumn<String> get ref =>
+      $composableBuilder(column: $table.ref, builder: (column) => column);
+
+  GeneratedColumn<String> get band =>
+      $composableBuilder(column: $table.band, builder: (column) => column);
+
+  GeneratedColumn<String> get mode =>
+      $composableBuilder(column: $table.mode, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<String> get level =>
+      $composableBuilder(column: $table.level, builder: (column) => column);
+
+  GeneratedColumn<int> get atMillis =>
+      $composableBuilder(column: $table.atMillis, builder: (column) => column);
+
+  GeneratedColumn<String> get qso =>
+      $composableBuilder(column: $table.qso, builder: (column) => column);
+
+  GeneratedColumn<String> get data =>
+      $composableBuilder(column: $table.data, builder: (column) => column);
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<int> get epoch =>
+      $composableBuilder(column: $table.epoch, builder: (column) => column);
+
+  GeneratedColumn<bool> get deleted =>
+      $composableBuilder(column: $table.deleted, builder: (column) => column);
+
+  GeneratedColumn<bool> get synced =>
+      $composableBuilder(column: $table.synced, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAtMillis => $composableBuilder(
+    column: $table.updatedAtMillis,
+    builder: (column) => column,
+  );
+}
+
+class $$ClaimsTableTableManager
+    extends
+        RootTableManager<
+          _$HaLoDatabase,
+          $ClaimsTable,
+          ClaimRow,
+          $$ClaimsTableFilterComposer,
+          $$ClaimsTableOrderingComposer,
+          $$ClaimsTableAnnotationComposer,
+          $$ClaimsTableCreateCompanionBuilder,
+          $$ClaimsTableUpdateCompanionBuilder,
+          (ClaimRow, BaseReferences<_$HaLoDatabase, $ClaimsTable, ClaimRow>),
+          ClaimRow,
+          PrefetchHooks Function()
+        > {
+  $$ClaimsTableTableManager(_$HaLoDatabase db, $ClaimsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ClaimsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ClaimsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ClaimsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uuid = const Value.absent(),
+                Value<String> program = const Value.absent(),
+                Value<String> holder = const Value.absent(),
+                Value<String> edition = const Value.absent(),
+                Value<String> ref = const Value.absent(),
+                Value<String?> band = const Value.absent(),
+                Value<String?> mode = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<String> level = const Value.absent(),
+                Value<int?> atMillis = const Value.absent(),
+                Value<String?> qso = const Value.absent(),
+                Value<String> data = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<int> epoch = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ClaimsCompanion(
+                uuid: uuid,
+                program: program,
+                holder: holder,
+                edition: edition,
+                ref: ref,
+                band: band,
+                mode: mode,
+                source: source,
+                level: level,
+                atMillis: atMillis,
+                qso: qso,
+                data: data,
+                version: version,
+                epoch: epoch,
+                deleted: deleted,
+                synced: synced,
+                updatedAtMillis: updatedAtMillis,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uuid,
+                required String program,
+                required String holder,
+                Value<String> edition = const Value.absent(),
+                required String ref,
+                Value<String?> band = const Value.absent(),
+                Value<String?> mode = const Value.absent(),
+                required String source,
+                required String level,
+                Value<int?> atMillis = const Value.absent(),
+                Value<String?> qso = const Value.absent(),
+                Value<String> data = const Value.absent(),
+                required int version,
+                Value<int> epoch = const Value.absent(),
+                Value<bool> deleted = const Value.absent(),
+                Value<bool> synced = const Value.absent(),
+                Value<int?> updatedAtMillis = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ClaimsCompanion.insert(
+                uuid: uuid,
+                program: program,
+                holder: holder,
+                edition: edition,
+                ref: ref,
+                band: band,
+                mode: mode,
+                source: source,
+                level: level,
+                atMillis: atMillis,
+                qso: qso,
+                data: data,
+                version: version,
+                epoch: epoch,
+                deleted: deleted,
+                synced: synced,
+                updatedAtMillis: updatedAtMillis,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ClaimsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$HaLoDatabase,
+      $ClaimsTable,
+      ClaimRow,
+      $$ClaimsTableFilterComposer,
+      $$ClaimsTableOrderingComposer,
+      $$ClaimsTableAnnotationComposer,
+      $$ClaimsTableCreateCompanionBuilder,
+      $$ClaimsTableUpdateCompanionBuilder,
+      (ClaimRow, BaseReferences<_$HaLoDatabase, $ClaimsTable, ClaimRow>),
+      ClaimRow,
+      PrefetchHooks Function()
+    >;
 
 class $HaLoDatabaseManager {
   final _$HaLoDatabase _db;
@@ -7478,4 +8864,6 @@ class $HaLoDatabaseManager {
       $$PeerCursorsTableTableManager(_db, _db.peerCursors);
   $$PeerTrustTableTableManager get peerTrust =>
       $$PeerTrustTableTableManager(_db, _db.peerTrust);
+  $$ClaimsTableTableManager get claims =>
+      $$ClaimsTableTableManager(_db, _db.claims);
 }

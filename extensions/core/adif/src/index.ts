@@ -35,6 +35,7 @@ import { adifCounty } from "./county.ts"
 import { field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
 import { filenameFor } from "./filename.ts"
+import { qslFields } from "./qsl.ts"
 import { baseCallOf } from "../../../sdk/src/callsigns.ts"
 
 const ADIF_VERSION = "3.1.5"
@@ -409,6 +410,9 @@ function baseFieldsFor(
   // the other station SENT, which is what a submission has to carry, and a
   // hook's answer outranks this one ([renderRow]).
   add("ARRL_SECT", their.arrlSection ?? theirGuess.arrlSection)
+  // Facts about the contact, not the operator's own notes, so they go out
+  // whether or not private data does.
+  fields.push(...qslFields(qso))
   // No PFX. ADIF's is the contacted station's WPX PREFIX — `W1` for W1AW —
   // and QSON's `entityPrefix` is its DXCC entity's, `K`. Writing one as the
   // other reads back correctly through our own importer and hands a contest

@@ -1,7 +1,8 @@
 # Claims: what a contact counts toward
 
-*Status: partial. The hook (§2) is built, with DXCC as its first program;
-nothing keeps or syncs claims yet (§5–§7), and the Chasing view's goals
+*Status: partial. The hook (§2) is built, with DXCC as its first program.
+The `claims` table and the service keeping it current (§5–§7) are built, and
+run only under `EXP CHASE`. Claims do not sync yet. The Chasing view's goals
 (`app/lib/views/chase_view.dart`) are still activities' hunter controls.*
 
 Chasing is about programs that ask for contacts with references: a POTA
@@ -121,10 +122,20 @@ What does belong on the QSO is outside fact about that contact, which
 programs read to decide a level:
 
 ```jsonc
-"qsl":     { "lotw": { "received": true, "receivedOn": … } },   // exists: confirmations
-"credits": { "dxcc": { "level": "verified", "by": "lotw", "at": … },
-             "pota": { "level": "verified", "by": "pota", "at": … } }   // new: sponsor credit
+"qsl":     { "lotw": { "received": true, "receivedOn": … } },   // confirmations
+"credits": { "dxcc": { "level": "verified", "by": "lotw", "awards": ["DXCC", "DXCC_BAND"] },
+             "ham2k-pota": { "level": "verified", "by": "pota", "at": … } }   // sponsor credit
 ```
+
+`credits` is keyed by program. `awards`, when present, names the ADIF awards
+the sponsor granted: DXCC credits Mixed, a band and a mode separately, and a
+credit listing its awards verifies only those slots.
+
+ADIF carries both fields both ways. Each confirmation goes in its own
+`*_QSL_RCVD` and date fields, and credit goes in `CREDIT_GRANTED`
+(`DXCC:LOTW,DXCC_BAND:LOTW`). Only the awards of a program that exists are
+read; the table mapping awards to programs is in `adif_to_qson.dart`, and its
+mirror is in the ADIF export.
 
 The planned `confirmation` hook (LoTW download and the like) writes these
 same two fields.
@@ -133,13 +144,13 @@ same two fields.
 
 ```
 claims                     synced through LoFi and backed up; never over peer links
-  uuid        v5(program|holder|edition|ref|band|mode|source)
+  uuid        v5 of the JSON array [program, holder, edition, ref, band, mode, source]
   program, holder, edition, ref, band, mode
   source      'log' | 'import:<batchId>'
   level       'worked' | 'confirmed' | 'verified'
   at_millis   when the claiming contact happened (null if an import didn't say)
   qso         the claiming contact; null for an unmatched import     (indexed)
-  by, data    data: label, guess, import fields
+  data        by, label, guess, and an import's own fields
   version     the program version that computed it
   epoch       raised by a rescan; outranks the claim on merge (§7)
   deleted, synced, updated_at_millis
@@ -155,7 +166,26 @@ uuid is deterministic, so they agree on which row they are writing.
 
 ## 6. Keeping it current
 
-Driven by the QSO write ledger, as scoring is.
+`ClaimsService` follows every write to the log through
+`QsosRepository.changes`. That covers local edits, imports, and what sync
+and peers merge; writes to the score cache are not included.
+
+The log is every contact that is not deleted and is not in a deleted
+operation. Deleting or restoring an operation writes none of its contacts,
+so `OperationsRepository.deletions` reports it instead, and a device
+holding the whole log rescans. A program that is missing when changes
+arrive, because its extension is off or the runtime is restarting, never
+sees them, so it is rebuilt once it is back. One that fails on a pass is
+rebuilt once more right after it.
+
+Changes waiting for a pass are held in memory, so a marker on disk says
+some are waiting; a launch that finds it, after a quit or a crash, rebuilds.
+The service hears changes from the start of boot, before the runtime that
+answers for the programs is up, and holds them until it is.
+
+**Holding the whole log.** A device holds the whole log when sync is off, or
+when LoFi has reported a completed full sync. A device still backfilling
+holds part of it.
 
 | Change | Needs | Done by |
 | --- | --- | --- |
@@ -166,14 +196,25 @@ Driven by the QSO write ledger, as scoring is.
 
 An upgrade is the hook's claims for the changed contact, each compared with
 its slot's row. "Which slots does this contact hold?" is `claims WHERE qso =
-?`; "what does it count for?" is a fresh hook call.
+?`; "what does it count for?" is a fresh hook call. An upgrade keeps the
+row's epoch.
 
 A downgrade has no runner-up on record — the hook maps a contact to claims,
 never a slot to contacts — so a device holding the whole log rescans that
-program, in the background and in batches, and writes the result under a
-raised `epoch`. It does this for its own edits and for deletions and edits
-that arrive by sync alike: a whole-log device that syncs a deletion of a
-slot's contact finds it in `claims.qso` and rescans.
+program, in the background and in batches. It writes only the rows that
+changed, each under an epoch above any of the program's rows, so they
+outrank what devices that missed the change computed. A program that fails
+on any batch abandons the rescan, writing nothing, since a checklist built
+from part of the log would withdraw every slot the rest of it holds. It does
+this for its own edits and for deletions and edits that arrive by sync
+alike: a whole-log device that syncs a deletion of a slot's contact finds it
+in `claims.qso` and rescans.
+
+**Batching.** Changes gather until the log has been quiet for a second, so
+an import or a sync backlog reaches the programs as one pass rather than one
+per contact. A pass reads the changed contacts, and a rescan reads the log,
+250 at a time, with one hook call per program per batch. A pass over more
+than a thousand contacts shows its progress in the footer.
 
 A device holding only part of the log leaves the slot as it was. A claim
 withdrawn there stays overstated until a whole-log device syncs — or, for a
@@ -181,7 +222,12 @@ user with none, until LoFi can rescan (§9). That is accepted: withdrawing a
 claim is rare, and is expected on a device with the whole log.
 
 The rows' `version` tells a partial device its claims are from an older
-program version it cannot rebuild itself.
+program version it cannot rebuild itself. A whole-log device rebuilds a
+program when its version changes, or when it has not yet rebuilt it from the
+whole log. That second condition covers a first run, a device that has just
+finished its backfill, and turning `EXP CHASE` back on after changes went
+unfollowed. A row computed by a newer version than this device's extension
+is never overwritten by a rebuild.
 
 ## 7. Merging on sync
 
@@ -191,7 +237,9 @@ merged:
 
 1. The higher `epoch` wins — only a rescan raises it, which is how a
    deliberate downgrade gets through.
-2. At the same epoch, the better claim wins, by §1's rule.
+2. At the same epoch, a live claim beats a withdrawn one. An upgrade made
+   by a device that missed a rescan refills the slot at the rescan's epoch.
+3. Then the better claim wins, by §1's rule, and then the newer write.
 
 A device that holds a better row than the one it received writes it back.
 The order is total, so every device converges on the same rows.

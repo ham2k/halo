@@ -329,6 +329,9 @@ Map<String, dynamic> _qsoFrom(Map<String, String> f, bool genericQsl) {
   final qsl = _qslFrom(f, genericQsl);
   if (qsl.isNotEmpty) qso['qsl'] = qsl;
 
+  final credits = _creditsFrom(f);
+  if (credits.isNotEmpty) qso['credits'] = credits;
+
   return qso;
 }
 
@@ -368,7 +371,7 @@ Map<String, dynamic> _qslFrom(Map<String, String> f, bool genericQsl) {
 
   if (_confirmed(f['eqsl_qsl_rcvd'])) {
     final eqsl = <String, dynamic>{'received': true};
-    _set(f, eqsl, 'eqsl_qsl_rdate', 'receivedOn', _dateMillis);
+    _set(f, eqsl, 'eqsl_qslrdate', 'receivedOn', _dateMillis);
     qsl['eqsl'] = eqsl;
   }
 
@@ -387,6 +390,47 @@ Map<String, dynamic> _qslFrom(Map<String, String> f, bool genericQsl) {
 
   if (qsl.isNotEmpty) qsl['received'] = true;
   return qsl;
+}
+
+/// The chasing program each ADIF award credit counts toward
+/// (docs/design/claims.md §4). An award no program here chases is left out:
+/// a credit is read only by the program it names. The ADIF export
+/// (`extensions/core/adif`) holds the same table the other way round.
+const _adifCreditPrograms = {'DXCC': 'dxcc', 'DXCC_BAND': 'dxcc', 'DXCC_MODE': 'dxcc'};
+
+/// ADIF's QSL media, in the order a credit names what verified it: what the
+/// sponsor itself checked first.
+const _adifCreditMedia = {'LOTW': 'lotw', 'CARD': 'qsl', 'EQSL': 'eqsl'};
+
+/// `CREDIT_GRANTED` as `credits.<program>`: verified, by the medium the
+/// sponsor checked, with the ADIF awards granted kept as `awards` — DXCC
+/// credits a contact for Mixed, a band and a mode separately.
+///
+/// The field is ADIF's credit list: `DXCC:card&lotw,DXCC_BAND:lotw`.
+Map<String, dynamic> _creditsFrom(Map<String, String> f) {
+  final granted = _present(f['credit_granted']);
+  if (granted == null) return const {};
+  final awards = <String, List<String>>{};
+  final media = <String, Set<String>>{};
+  for (final entry in granted.split(',')) {
+    final parts = entry.trim().split(':');
+    final award = parts.first.trim().toUpperCase();
+    final program = _adifCreditPrograms[award];
+    if (program == null) continue;
+    final list = awards.putIfAbsent(program, () => []);
+    if (!list.contains(award)) list.add(award);
+    final used = media.putIfAbsent(program, () => {});
+    if (parts.length > 1) {
+      for (final medium in parts[1].split('&')) {
+        final name = _adifCreditMedia[medium.trim().toUpperCase()];
+        if (name != null) used.add(name);
+      }
+    }
+  }
+  return {
+    for (final MapEntry(key: program, value: list) in awards.entries)
+      program: {'level': 'verified', 'by': ?_adifCreditMedia.values.where(media[program]!.contains).firstOrNull, 'awards': list},
+  };
 }
 
 /// `TIME_OFF` without `QSO_DATE_OFF` that reads earlier than `TIME_ON` means

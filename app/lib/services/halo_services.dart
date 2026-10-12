@@ -79,6 +79,7 @@ import 'purchase_service.dart';
 import 'pusher_service.dart';
 import 'radio_service.dart';
 import 'operation_title_service.dart';
+import 'claims_service.dart';
 import 'scoring_service.dart';
 import 'settings_service.dart';
 import 'spot_board_service.dart';
@@ -328,6 +329,18 @@ class HaLoServices {
   final ExportService? _exportsOverride;
   late final ExportService exports = _exportsOverride ?? ExportService(extensions: extensions, qsos: qsos, settings: settings);
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
+
+  /// The claims each chasing program makes on the log (docs/design/claims.md).
+  /// Not synced yet, so nothing pushes on a write.
+  late final ClaimsRepository claims = ClaimsRepository(db);
+  late final ClaimsService claimsService = ClaimsService.forApp(
+    extensions: extensions,
+    qsos: qsos,
+    operations: operations,
+    claims: claims,
+    settings: settings,
+    statusBar: statusBar,
+  );
 
   /// The panel catalog a customizable view arranges (docs/design/layouts.md).
   /// Lazy like the rest: nothing asks the extensions for panels until a view

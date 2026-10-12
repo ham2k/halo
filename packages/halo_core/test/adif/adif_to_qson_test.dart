@@ -448,6 +448,44 @@ void main() {
     });
   });
 
+  // A sponsor's credit is the strongest level a chasing program can read
+  // (docs/design/claims.md §4), so a credit dropped here leaves the contact
+  // merely confirmed, and one filed under the wrong program verifies a slot
+  // the sponsor never credited.
+  group('award credit', () {
+    Map<String, dynamic>? creditsOf(String granted) {
+      final record = parseAdifLog('<EOH>\n<CALL:5>W1ABC<CREDIT_GRANTED:${granted.length}>$granted<EOR>\n').qsos.single;
+      return record.qso['credits'] as Map<String, dynamic>?;
+    }
+
+    test('DXCC credit is the DXCC program\'s, with each award it was granted for', () {
+      expect(creditsOf('DXCC:card&lotw,DXCC_BAND:lotw'), {
+        'dxcc': {
+          'level': 'verified',
+          'by': 'lotw',
+          'awards': ['DXCC', 'DXCC_BAND'],
+        },
+      });
+    });
+
+    test('a card counts as what verified it when it is the only medium named', () {
+      expect((creditsOf('dxcc_mode:CARD')!['dxcc'] as Map)['by'], 'qsl');
+    });
+
+    test('a credit naming no medium is still a credit', () {
+      expect(creditsOf('DXCC'), {
+        'dxcc': {
+          'level': 'verified',
+          'awards': ['DXCC'],
+        },
+      });
+    });
+
+    test('awards no program chases are left out, and a list of only those leaves no credits', () {
+      expect(creditsOf('WAS:lotw,IOTA:card'), isNull);
+    });
+  });
+
   group('lengths that over-declare', () {
     test('trailing whitespace dragged in by an over-declared length is stripped', () {
       // ki2d-qrz.adi really writes <qth:37> for a 36-byte value.
@@ -541,6 +579,15 @@ void main() {
       final lotw = (log.qsos.single.qso['qsl'] as Map)['lotw'] as Map;
 
       expect(lotw['receivedOn'], _at('2026-05-12T11:15:41Z'));
+    });
+
+    // The ADIF field is EQSL_QSLRDATE, and it is what the ADIF export writes:
+    // reading any other name loses the date on every round trip.
+    test('an eQSL confirmation keeps its date', () {
+      final log = parseAdifLog('<CALL:4>W1AW<EQSL_QSL_RCVD:1>Y<EQSL_QSLRDATE:8>20260512<EOR>');
+      final eqsl = (log.qsos.single.qso['qsl'] as Map)['eqsl'] as Map;
+
+      expect(eqsl['receivedOn'], _at('2026-05-12T00:00:00Z'));
     });
 
     test('every LoTW confirmation in the SMP file resolves a date', () {
