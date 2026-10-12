@@ -2335,15 +2335,15 @@ class _Translations$settings$station$tr extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'Ana VFO için ${name} kullan';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
 		zero: 'Telsiz yok',
-		one: '1 telsiz',
+		one: '${count} telsiz',
 		other: '${count} telsiz',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '1 anten',
+		one: '${count} anten',
 		other: '${count} anten',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
-		one: '1 diğer cihaz',
+		one: '${count} diğer cihaz',
 		other: '${count} diğer cihaz',
 	);
 	@override String get equipmentInventory => 'Ekipman Envanteri';
@@ -5087,9 +5087,9 @@ extension on TranslationsTr {
 			'settings.station.configurationSection' => 'Yapılandırma',
 			'settings.station.noTransceiverSelected' => 'Telsiz seçilmedi',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Ana VFO için ${name} kullan',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, zero: 'Telsiz yok', one: '1 telsiz', other: '${count} telsiz', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '1 anten', other: '${count} anten', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '1 diğer cihaz', other: '${count} diğer cihaz', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, zero: 'Telsiz yok', one: '${count} telsiz', other: '${count} telsiz', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} anten', other: '${count} anten', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${count} diğer cihaz', other: '${count} diğer cihaz', ), 
 			'settings.station.equipmentInventory' => 'Ekipman Envanteri',
 			'settings.station.equipmentInUse' => 'Telsiz Kontrolleri',
 			'settings.station.noTransceiver' => 'Yok',

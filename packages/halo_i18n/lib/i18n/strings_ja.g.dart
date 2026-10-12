@@ -2335,15 +2335,15 @@ class _Translations$settings$station$ja extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'メインVFOに${name}を使用';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
 		zero: 'トランシーバーなし',
-		one: 'トランシーバー1台',
+		one: 'トランシーバー${count}台',
 		other: 'トランシーバー${count}台',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: 'アンテナ1本',
+		one: 'アンテナ${count}本',
 		other: 'アンテナ${count}本',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
-		one: 'その他の機器1台',
+		one: 'その他の機器${count}台',
 		other: 'その他の機器${count}台',
 	);
 	@override String get equipmentInventory => '機器一覧';
@@ -5087,9 +5087,9 @@ extension on TranslationsJa {
 			'settings.station.configurationSection' => '構成',
 			'settings.station.noTransceiverSelected' => 'トランシーバーが選択されていません',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'メインVFOに${name}を使用',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, zero: 'トランシーバーなし', one: 'トランシーバー1台', other: 'トランシーバー${count}台', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'アンテナ1本', other: 'アンテナ${count}本', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'その他の機器1台', other: 'その他の機器${count}台', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, zero: 'トランシーバーなし', one: 'トランシーバー${count}台', other: 'トランシーバー${count}台', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'アンテナ${count}本', other: 'アンテナ${count}本', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: 'その他の機器${count}台', other: 'その他の機器${count}台', ), 
 			'settings.station.equipmentInventory' => '機器一覧',
 			'settings.station.equipmentInUse' => 'トランシーバーの操作',
 			'settings.station.noTransceiver' => 'なし',

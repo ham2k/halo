@@ -2335,15 +2335,15 @@ class _Translations$settings$station$nb extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'Bruk ${name} som hoved-VFO';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
 		zero: 'Ingen transceivere',
-		one: '1 transceiver',
+		one: '${count} transceiver',
 		other: '${count} transceivere',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: '1 antenne',
+		one: '${count} antenne',
 		other: '${count} antenner',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
-		one: '1 annen enhet',
+		one: '${count} annen enhet',
 		other: '${count} andre enheter',
 	);
 	@override String get equipmentInventory => 'Utstyrsliste';
@@ -5087,9 +5087,9 @@ extension on TranslationsNb {
 			'settings.station.configurationSection' => 'Oppsett',
 			'settings.station.noTransceiverSelected' => 'Ingen transceiver valgt',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Bruk ${name} som hoved-VFO',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, zero: 'Ingen transceivere', one: '1 transceiver', other: '${count} transceivere', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '1 antenne', other: '${count} antenner', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '1 annen enhet', other: '${count} andre enheter', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, zero: 'Ingen transceivere', one: '${count} transceiver', other: '${count} transceivere', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} antenne', other: '${count} antenner', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} annen enhet', other: '${count} andre enheter', ), 
 			'settings.station.equipmentInventory' => 'Utstyrsliste',
 			'settings.station.equipmentInUse' => 'Transceiverkontroller',
 			'settings.station.noTransceiver' => 'Ingen',

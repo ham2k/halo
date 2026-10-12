@@ -1784,15 +1784,15 @@
       "makeMainVfo": "Folosește ${name} pentru VFO principal",
       "sectionTransceivers": {
         "zero": "Niciun transceiver",
-        "one": "1 transceiver",
+        "one": "${count} transceiver",
         "other": "${count} transceivere"
       },
       "sectionAntennas": {
-        "one": "1 antenă",
+        "one": "${count} antenă",
         "other": "${count} antene"
       },
       "sectionOtherEquipment": {
-        "one": "1 alt dispozitiv",
+        "one": "${count} alt dispozitiv",
         "other": "${count} alte dispozitive"
       },
       "equipmentInventory": "Inventar echipamente",

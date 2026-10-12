@@ -2335,15 +2335,15 @@ class _Translations$settings$station$it extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'Usa ${name} per il VFO principale';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count,
 		zero: 'Nessun ricetrasmettitore',
-		one: '1 ricetrasmettitore',
+		one: '${count} ricetrasmettitore',
 		other: '${count} ricetrasmettitori',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count,
-		one: '1 antenna',
+		one: '${count} antenna',
 		other: '${count} antenne',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count,
-		one: '1 altro dispositivo',
+		one: '${count} altro dispositivo',
 		other: '${count} altri dispositivi',
 	);
 	@override String get equipmentInventory => 'Inventario apparecchiature';
@@ -5087,9 +5087,9 @@ extension on TranslationsIt {
 			'settings.station.configurationSection' => 'Configurazione',
 			'settings.station.noTransceiverSelected' => 'Nessun ricetrasmettitore selezionato',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Usa ${name} per il VFO principale',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, zero: 'Nessun ricetrasmettitore', one: '1 ricetrasmettitore', other: '${count} ricetrasmettitori', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '1 antenna', other: '${count} antenne', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '1 altro dispositivo', other: '${count} altri dispositivi', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, zero: 'Nessun ricetrasmettitore', one: '${count} ricetrasmettitore', other: '${count} ricetrasmettitori', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '${count} antenna', other: '${count} antenne', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: '${count} altro dispositivo', other: '${count} altri dispositivi', ), 
 			'settings.station.equipmentInventory' => 'Inventario apparecchiature',
 			'settings.station.equipmentInUse' => 'Controlli del ricetrasmettitore',
 			'settings.station.noTransceiver' => 'Nessuno',

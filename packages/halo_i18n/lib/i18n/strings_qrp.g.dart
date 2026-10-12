@@ -2366,15 +2366,15 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String makeMainVfo({required Object name}) => 'use ${name} for the main vfo';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
 		zero: 'no transceivers',
-		one: '1 transceiver',
+		one: '${count} transceiver',
 		other: '${count} transceivers',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '1 antenna',
+		one: '${count} antenna',
 		other: '${count} antennas',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
-		one: '1 other device',
+		one: '${count} other device',
 		other: '${count} other devices',
 	);
 	@override String get equipmentInventory => 'equipment inventory';
@@ -5136,9 +5136,9 @@ extension on TranslationsQrp {
 			'settings.station.configurationSection' => 'configuration',
 			'settings.station.noTransceiverSelected' => 'no transceiver selected',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'use ${name} for the main vfo',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, zero: 'no transceivers', one: '1 transceiver', other: '${count} transceivers', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '1 antenna', other: '${count} antennas', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '1 other device', other: '${count} other devices', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, zero: 'no transceivers', one: '${count} transceiver', other: '${count} transceivers', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} antenna', other: '${count} antennas', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} other device', other: '${count} other devices', ), 
 			'settings.station.equipmentInventory' => 'equipment inventory',
 			'settings.station.equipmentInUse' => 'transceiver controls',
 			'settings.station.noTransceiver' => 'none',

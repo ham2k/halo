@@ -2335,15 +2335,15 @@ class _Translations$settings$station$zh extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => '将 ${name} 用作主 VFO';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
 		zero: '没有收发信机',
-		one: '1 台收发信机',
+		one: '${count} 台收发信机',
 		other: '${count} 台收发信机',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '1 副天线',
+		one: '${count} 副天线',
 		other: '${count} 副天线',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
-		one: '1 台其他设备',
+		one: '${count} 台其他设备',
 		other: '${count} 台其他设备',
 	);
 	@override String get equipmentInventory => '设备清单';
@@ -5087,9 +5087,9 @@ extension on TranslationsZh {
 			'settings.station.configurationSection' => '配置',
 			'settings.station.noTransceiverSelected' => '未选择收发信机',
 			'settings.station.makeMainVfo' => ({required Object name}) => '将 ${name} 用作主 VFO',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, zero: '没有收发信机', one: '1 台收发信机', other: '${count} 台收发信机', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '1 副天线', other: '${count} 副天线', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '1 台其他设备', other: '${count} 台其他设备', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, zero: '没有收发信机', one: '${count} 台收发信机', other: '${count} 台收发信机', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 副天线', other: '${count} 副天线', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${count} 台其他设备', other: '${count} 台其他设备', ), 
 			'settings.station.equipmentInventory' => '设备清单',
 			'settings.station.equipmentInUse' => '收发信机控制',
 			'settings.station.noTransceiver' => '无',

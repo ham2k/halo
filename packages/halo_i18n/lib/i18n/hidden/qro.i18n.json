@@ -1807,15 +1807,15 @@
       "makeMainVfo": "USE ${name} FOR THE MAIN VFO",
       "sectionTransceivers": {
         "zero": "NO TRANSCEIVERS",
-        "one": "1 TRANSCEIVER",
+        "one": "${count} TRANSCEIVER",
         "other": "${count} TRANSCEIVERS"
       },
       "sectionAntennas": {
-        "one": "1 ANTENNA",
+        "one": "${count} ANTENNA",
         "other": "${count} ANTENNAS"
       },
       "sectionOtherEquipment": {
-        "one": "1 OTHER DEVICE",
+        "one": "${count} OTHER DEVICE",
         "other": "${count} OTHER DEVICES"
       },
       "equipmentInventory": "EQUIPMENT INVENTORY",

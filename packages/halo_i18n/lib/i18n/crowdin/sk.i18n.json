@@ -1784,15 +1784,15 @@
       "makeMainVfo": "Použiť ${name} pre hlavné VFO",
       "sectionTransceivers": {
         "zero": "Žiadne transceivery",
-        "one": "1 transceiver",
+        "one": "${count} transceiver",
         "other": "${count} transceiverov"
       },
       "sectionAntennas": {
-        "one": "1 anténa",
+        "one": "${count} anténa",
         "other": "${count} antén"
       },
       "sectionOtherEquipment": {
-        "one": "1 iné zariadenie",
+        "one": "${count} iné zariadenie",
         "other": "${count} iných zariadení"
       },
       "equipmentInventory": "Inventár vybavenia",

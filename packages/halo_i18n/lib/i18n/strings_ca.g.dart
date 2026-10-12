@@ -2335,15 +2335,15 @@ class _Translations$settings$station$ca extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'Utilitza ${name} per al VFO principal';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
 		zero: 'Cap transceptor',
-		one: '1 transceptor',
+		one: '${count} transceptor',
 		other: '${count} transceptors',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: '1 antena',
+		one: '${count} antena',
 		other: '${count} antenes',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
-		one: '1 altre dispositiu',
+		one: '${count} altre dispositiu',
 		other: '${count} altres dispositius',
 	);
 	@override String get equipmentInventory => 'Inventari d\'equips';
@@ -5087,9 +5087,9 @@ extension on TranslationsCa {
 			'settings.station.configurationSection' => 'Configuració',
 			'settings.station.noTransceiverSelected' => 'No hi ha cap transceptor seleccionat',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Utilitza ${name} per al VFO principal',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, zero: 'Cap transceptor', one: '1 transceptor', other: '${count} transceptors', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '1 antena', other: '${count} antenes', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '1 altre dispositiu', other: '${count} altres dispositius', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, zero: 'Cap transceptor', one: '${count} transceptor', other: '${count} transceptors', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} antena', other: '${count} antenes', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} altre dispositiu', other: '${count} altres dispositius', ), 
 			'settings.station.equipmentInventory' => 'Inventari d\'equips',
 			'settings.station.equipmentInUse' => 'Controls del transceptor',
 			'settings.station.noTransceiver' => 'Cap',

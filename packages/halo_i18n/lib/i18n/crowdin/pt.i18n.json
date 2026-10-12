@@ -1784,15 +1784,15 @@
       "makeMainVfo": "Usar ${name} como VFO Principal",
       "sectionTransceivers": {
         "zero": "Nenhum transcetor",
-        "one": "1 transcetor",
+        "one": "${count} transcetor",
         "other": "${count} transcetores"
       },
       "sectionAntennas": {
-        "one": "1 antena",
+        "one": "${count} antena",
         "other": "${count} antenas"
       },
       "sectionOtherEquipment": {
-        "one": "1 outro dispositivo",
+        "one": "${count} outro dispositivo",
         "other": "${count} outros dispositivos"
       },
       "equipmentInventory": "Inventário de Equipamento",

@@ -2335,15 +2335,15 @@ class _Translations$settings$station$sk extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'Použiť ${name} pre hlavné VFO';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
 		zero: 'Žiadne transceivery',
-		one: '1 transceiver',
+		one: '${count} transceiver',
 		other: '${count} transceiverov',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
-		one: '1 anténa',
+		one: '${count} anténa',
 		other: '${count} antén',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count,
-		one: '1 iné zariadenie',
+		one: '${count} iné zariadenie',
 		other: '${count} iných zariadení',
 	);
 	@override String get equipmentInventory => 'Inventár vybavenia';
@@ -5087,9 +5087,9 @@ extension on TranslationsSk {
 			'settings.station.configurationSection' => 'Konfigurácia',
 			'settings.station.noTransceiverSelected' => 'Nie je vybraný žiadny transceiver',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Použiť ${name} pre hlavné VFO',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, zero: 'Žiadne transceivery', one: '1 transceiver', other: '${count} transceiverov', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '1 anténa', other: '${count} antén', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '1 iné zariadenie', other: '${count} iných zariadení', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, zero: 'Žiadne transceivery', one: '${count} transceiver', other: '${count} transceiverov', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} anténa', other: '${count} antén', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: '${count} iné zariadenie', other: '${count} iných zariadení', ), 
 			'settings.station.equipmentInventory' => 'Inventár vybavenia',
 			'settings.station.equipmentInUse' => 'Ovládanie transceivera',
 			'settings.station.noTransceiver' => 'Žiadny',

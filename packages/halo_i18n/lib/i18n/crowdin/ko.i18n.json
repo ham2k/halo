@@ -1784,15 +1784,15 @@
       "makeMainVfo": "${name}을(를) 메인 VFO로 사용",
       "sectionTransceivers": {
         "zero": "트랜시버 없음",
-        "one": "트랜시버 1대",
+        "one": "트랜시버 ${count}대",
         "other": "트랜시버 ${count}대"
       },
       "sectionAntennas": {
-        "one": "안테나 1개",
+        "one": "안테나 ${count}개",
         "other": "안테나 ${count}개"
       },
       "sectionOtherEquipment": {
-        "one": "기타 장치 1개",
+        "one": "기타 장치 ${count}개",
         "other": "기타 장치 ${count}개"
       },
       "equipmentInventory": "장비 목록",

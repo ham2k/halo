@@ -1784,15 +1784,15 @@
       "makeMainVfo": "将 ${name} 用作主 VFO",
       "sectionTransceivers": {
         "zero": "没有收发信机",
-        "one": "1 台收发信机",
+        "one": "${count} 台收发信机",
         "other": "${count} 台收发信机"
       },
       "sectionAntennas": {
-        "one": "1 副天线",
+        "one": "${count} 副天线",
         "other": "${count} 副天线"
       },
       "sectionOtherEquipment": {
-        "one": "1 台其他设备",
+        "one": "${count} 台其他设备",
         "other": "${count} 台其他设备"
       },
       "equipmentInventory": "设备清单",

@@ -2335,15 +2335,15 @@ class _Translations$settings$station$ro extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => 'Folosește ${name} pentru VFO principal';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
 		zero: 'Niciun transceiver',
-		one: '1 transceiver',
+		one: '${count} transceiver',
 		other: '${count} transceivere',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '1 antenă',
+		one: '${count} antenă',
 		other: '${count} antene',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
-		one: '1 alt dispozitiv',
+		one: '${count} alt dispozitiv',
 		other: '${count} alte dispozitive',
 	);
 	@override String get equipmentInventory => 'Inventar echipamente';
@@ -5087,9 +5087,9 @@ extension on TranslationsRo {
 			'settings.station.configurationSection' => 'Configurație',
 			'settings.station.noTransceiverSelected' => 'Niciun transceiver selectat',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Folosește ${name} pentru VFO principal',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, zero: 'Niciun transceiver', one: '1 transceiver', other: '${count} transceivere', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '1 antenă', other: '${count} antene', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '1 alt dispozitiv', other: '${count} alte dispozitive', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, zero: 'Niciun transceiver', one: '${count} transceiver', other: '${count} transceivere', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} antenă', other: '${count} antene', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} alt dispozitiv', other: '${count} alte dispozitive', ), 
 			'settings.station.equipmentInventory' => 'Inventar echipamente',
 			'settings.station.equipmentInUse' => 'Controale transceiver',
 			'settings.station.noTransceiver' => 'Niciunul',

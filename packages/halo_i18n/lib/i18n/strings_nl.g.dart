@@ -2335,15 +2335,15 @@ class _Translations$settings$station$nl extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => '${name} gebruiken voor de hoofd-VFO';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
 		zero: 'Geen transceivers',
-		one: '1 transceiver',
+		one: '${count} transceiver',
 		other: '${count} transceivers',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '1 antenne',
+		one: '${count} antenne',
 		other: '${count} antennes',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
-		one: '1 ander apparaat',
+		one: '${count} ander apparaat',
 		other: '${count} andere apparaten',
 	);
 	@override String get equipmentInventory => 'Apparatuuroverzicht';
@@ -5087,9 +5087,9 @@ extension on TranslationsNl {
 			'settings.station.configurationSection' => 'Configuratie',
 			'settings.station.noTransceiverSelected' => 'Geen transceiver geselecteerd',
 			'settings.station.makeMainVfo' => ({required Object name}) => '${name} gebruiken voor de hoofd-VFO',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, zero: 'Geen transceivers', one: '1 transceiver', other: '${count} transceivers', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '1 antenne', other: '${count} antennes', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '1 ander apparaat', other: '${count} andere apparaten', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, zero: 'Geen transceivers', one: '${count} transceiver', other: '${count} transceivers', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} antenne', other: '${count} antennes', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} ander apparaat', other: '${count} andere apparaten', ), 
 			'settings.station.equipmentInventory' => 'Apparatuuroverzicht',
 			'settings.station.equipmentInUse' => 'Transceiverbediening',
 			'settings.station.noTransceiver' => 'Geen',

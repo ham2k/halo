@@ -2366,15 +2366,15 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => '··— ··· · / ${name} / ··—· ——— ·—· / — ···· · / —— ·— ·· —· / ···— ··—· ———';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		zero: '—· ——— / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
-		one: '·———— / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
+		one: '${count} / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
 		other: '${count} / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
-		one: '·———— / ·— —· — · —· —· ·—',
+		one: '${count} / ·— —· — · —· —· ·—',
 		other: '${count} / ·— —· — · —· —· ·— ···',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
-		one: '·———— / ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
+		one: '${count} / ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 		other: '${count} / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ···',
 	);
 	@override String get equipmentInventory => '· ——·— ··— ·· ·——· —— · —· — / ·· —· ···— · —· — ——— ·—· —·——';
@@ -5136,9 +5136,9 @@ extension on TranslationsCw {
 			'settings.station.configurationSection' => '—·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'settings.station.noTransceiverSelected' => '—· ——— / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· / ··· · ·—·· · —·—· — · —··',
 			'settings.station.makeMainVfo' => ({required Object name}) => '··— ··· · / ${name} / ··—· ——— ·—· / — ···· · / —— ·— ·· —· / ···— ··—· ———',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, zero: '—· ——— / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···', one: '·———— / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·', other: '${count} / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·———— / ·— —· — · —· —· ·—', other: '${count} / ·— —· — · —· —· ·— ···', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·———— / ——— — ···· · ·—· / —·· · ···— ·· —·—· ·', other: '${count} / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ···', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, zero: '—· ——— / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···', one: '${count} / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·', other: '${count} / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ·— —· — · —· —· ·—', other: '${count} / ·— —· — · —· —· ·— ···', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——— — ···· · ·—· / —·· · ···— ·· —·—· ·', other: '${count} / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ···', ), 
 			'settings.station.equipmentInventory' => '· ——·— ··— ·· ·——· —— · —· — / ·· —· ···— · —· — ——— ·—· —·——',
 			'settings.station.equipmentInUse' => '— ·—· ·— —· ··· —·—· · ·· ···— · ·—· / —·—· ——— —· — ·—· ——— ·—·· ···',
 			'settings.station.noTransceiver' => '—· ——— —· ·',

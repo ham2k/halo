@@ -1784,15 +1784,15 @@
       "makeMainVfo": "Bruk ${name} som hoved-VFO",
       "sectionTransceivers": {
         "zero": "Ingen transceivere",
-        "one": "1 transceiver",
+        "one": "${count} transceiver",
         "other": "${count} transceivere"
       },
       "sectionAntennas": {
-        "one": "1 antenne",
+        "one": "${count} antenne",
         "other": "${count} antenner"
       },
       "sectionOtherEquipment": {
-        "one": "1 annen enhet",
+        "one": "${count} annen enhet",
         "other": "${count} andre enheter"
       },
       "equipmentInventory": "Utstyrsliste",

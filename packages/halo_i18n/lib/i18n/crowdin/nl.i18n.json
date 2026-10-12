@@ -1784,15 +1784,15 @@
       "makeMainVfo": "${name} gebruiken voor de hoofd-VFO",
       "sectionTransceivers": {
         "zero": "Geen transceivers",
-        "one": "1 transceiver",
+        "one": "${count} transceiver",
         "other": "${count} transceivers"
       },
       "sectionAntennas": {
-        "one": "1 antenne",
+        "one": "${count} antenne",
         "other": "${count} antennes"
       },
       "sectionOtherEquipment": {
-        "one": "1 ander apparaat",
+        "one": "${count} ander apparaat",
         "other": "${count} andere apparaten"
       },
       "equipmentInventory": "Apparatuuroverzicht",

@@ -2335,15 +2335,15 @@ class Translations$settings$station$pt extends Translations$settings$station$en 
 	@override String makeMainVfo({required Object name}) => 'Usar ${name} como VFO Principal';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
 		zero: 'Nenhum transcetor',
-		one: '1 transcetor',
+		one: '${count} transcetor',
 		other: '${count} transcetores',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
-		one: '1 antena',
+		one: '${count} antena',
 		other: '${count} antenas',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
-		one: '1 outro dispositivo',
+		one: '${count} outro dispositivo',
 		other: '${count} outros dispositivos',
 	);
 	@override String get equipmentInventory => 'Inventário de Equipamento';
@@ -5087,9 +5087,9 @@ extension on TranslationsPt {
 			'settings.station.configurationSection' => 'Configuração',
 			'settings.station.noTransceiverSelected' => 'Nenhum transcetor selecionado',
 			'settings.station.makeMainVfo' => ({required Object name}) => 'Usar ${name} como VFO Principal',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, zero: 'Nenhum transcetor', one: '1 transcetor', other: '${count} transcetores', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '1 antena', other: '${count} antenas', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '1 outro dispositivo', other: '${count} outros dispositivos', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, zero: 'Nenhum transcetor', one: '${count} transcetor', other: '${count} transcetores', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} antena', other: '${count} antenas', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} outro dispositivo', other: '${count} outros dispositivos', ), 
 			'settings.station.equipmentInventory' => 'Inventário de Equipamento',
 			'settings.station.equipmentInUse' => 'Controlos do Transcetor',
 			'settings.station.noTransceiver' => 'Nenhum',

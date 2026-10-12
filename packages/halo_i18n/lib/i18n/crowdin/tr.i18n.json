@@ -1784,15 +1784,15 @@
       "makeMainVfo": "Ana VFO için ${name} kullan",
       "sectionTransceivers": {
         "zero": "Telsiz yok",
-        "one": "1 telsiz",
+        "one": "${count} telsiz",
         "other": "${count} telsiz"
       },
       "sectionAntennas": {
-        "one": "1 anten",
+        "one": "${count} anten",
         "other": "${count} anten"
       },
       "sectionOtherEquipment": {
-        "one": "1 diğer cihaz",
+        "one": "${count} diğer cihaz",
         "other": "${count} diğer cihaz"
       },
       "equipmentInventory": "Ekipman Envanteri",

@@ -2335,15 +2335,15 @@ class _Translations$settings$station$ko extends Translations$settings$station$en
 	@override String makeMainVfo({required Object name}) => '${name}을(를) 메인 VFO로 사용';
 	@override String sectionTransceivers({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
 		zero: '트랜시버 없음',
-		one: '트랜시버 1대',
+		one: '트랜시버 ${count}대',
 		other: '트랜시버 ${count}대',
 	);
 	@override String sectionAntennas({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '안테나 1개',
+		one: '안테나 ${count}개',
 		other: '안테나 ${count}개',
 	);
 	@override String sectionOtherEquipment({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
-		one: '기타 장치 1개',
+		one: '기타 장치 ${count}개',
 		other: '기타 장치 ${count}개',
 	);
 	@override String get equipmentInventory => '장비 목록';
@@ -5087,9 +5087,9 @@ extension on TranslationsKo {
 			'settings.station.configurationSection' => '구성',
 			'settings.station.noTransceiverSelected' => '선택된 트랜시버 없음',
 			'settings.station.makeMainVfo' => ({required Object name}) => '${name}을(를) 메인 VFO로 사용',
-			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, zero: '트랜시버 없음', one: '트랜시버 1대', other: '트랜시버 ${count}대', ), 
-			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '안테나 1개', other: '안테나 ${count}개', ), 
-			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '기타 장치 1개', other: '기타 장치 ${count}개', ), 
+			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, zero: '트랜시버 없음', one: '트랜시버 ${count}대', other: '트랜시버 ${count}대', ), 
+			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '안테나 ${count}개', other: '안테나 ${count}개', ), 
+			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '기타 장치 ${count}개', other: '기타 장치 ${count}개', ), 
 			'settings.station.equipmentInventory' => '장비 목록',
 			'settings.station.equipmentInUse' => '트랜시버 제어',
 			'settings.station.noTransceiver' => '없음',
