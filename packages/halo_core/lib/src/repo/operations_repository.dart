@@ -58,13 +58,13 @@ class OperationsRepository {
 
   OperationsRepository(this.db, {this.onChange, this.onLocalSave});
 
-  final _deletions = StreamController<void>.broadcast();
+  final _deletions = StreamController<String>.broadcast();
 
-  /// Fires when an operation is deleted or restored — here, by sync, or by a
+  /// The uuid of each operation deleted or restored — here, by sync, or by a
   /// peer. Its contacts leave or rejoin the log with no write to any of
   /// them, so `QsosRepository.changes` never names them; what follows the
   /// whole log hears it here (docs/design/claims.md §6).
-  Stream<void> get deletions => _deletions.stream;
+  Stream<String> get deletions => _deletions.stream;
 
   /// Creating is never refused while the clock is travelled — the station call
   /// is marked instead, by [markedForTravel]. A refusal here would be
@@ -208,7 +208,7 @@ class OperationsRepository {
       ),
     );
     onChange?.call();
-    _deletions.add(null);
+    _deletions.add(uuid);
     return true;
   }
 
@@ -252,7 +252,7 @@ class OperationsRepository {
     }
     await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
     onChange?.call();
-    if (operation != null && !operation.deleted) _deletions.add(null);
+    if (operation != null && !operation.deleted) _deletions.add(uuid);
   }
 
   /// The deferred half of a locally-confirmed [purge]: physically removes
@@ -527,7 +527,7 @@ class OperationsRepository {
     // Whether anything in this batch came out of the merge differing from
     // what the sender sent — see the seat-operator splice below.
     var repaired = false;
-    var deletionsChanged = false;
+    final deletionsChanged = <String>{};
     final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
       final existingRows = incomingUuids.isEmpty ? const <OperationRow>[] : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
@@ -595,7 +595,7 @@ class OperationsRepository {
             incomingUpdatedAtMillis: incomingUpdatedAtMillis,
           )) {
             await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(const OperationsCompanion(deleted: Value(true)));
-            deletionsChanged = true;
+            deletionsChanged.add(uuid);
           }
           continue;
         }
@@ -607,7 +607,7 @@ class OperationsRepository {
         // rejected — for good, and into their exports. It goes out as this
         // device's own newer revision instead, which is what the stamp bump
         // says (a revision stamp reads the real clock — time.md §1).
-        if ((existing?.deleted ?? false) != deleted) deletionsChanged = true;
+        if ((existing?.deleted ?? false) != deleted) deletionsChanged.add(uuid);
         final merged = _keepingOwnSeatOperator(data, existing);
         final defended = !identical(merged, data);
         if (defended) merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
@@ -626,7 +626,7 @@ class OperationsRepository {
             );
       }
     });
-    if (deletionsChanged) _deletions.add(null);
+    deletionsChanged.forEach(_deletions.add);
     // Only when a row came out dirty: everything merged untouched is already
     // marked synced, and there is nothing new for the outbound side to react
     // to (which is why this path stays silent in the ordinary case).
@@ -644,7 +644,7 @@ class OperationsRepository {
   /// comes, which is exactly what LoFi cloud sync's dirty-flag machinery
   /// already does for free once `synced` is false here too.
   Future<void> mergeFromPeer(List<Map<String, dynamic>> operations) async {
-    var deletionsChanged = false;
+    final deletionsChanged = <String>{};
     final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
     await db.transaction(() async {
       final existingRows = incomingUuids.isEmpty ? const <OperationRow>[] : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
@@ -683,7 +683,7 @@ class OperationsRepository {
         // still needs its own revision stamp: left at the sender's, this
         // device's version compares equal everywhere it lands, and
         // `inboundIsStale` (>=) drops it — the repair would never leave here.
-        if ((existing?.deleted ?? false) != deleted) deletionsChanged = true;
+        if ((existing?.deleted ?? false) != deleted) deletionsChanged.add(uuid);
         final merged = _keepingOwnSeatOperator(data, existing);
         if (!identical(merged, data)) {
           merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
@@ -703,7 +703,7 @@ class OperationsRepository {
       }
     });
     onChange?.call();
-    if (deletionsChanged) _deletions.add(null);
+    deletionsChanged.forEach(_deletions.add);
   }
 
   /// Marks every operation dirty, deleted ones included — used when

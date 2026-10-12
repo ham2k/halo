@@ -24,10 +24,13 @@ import 'status_bar_service.dart';
 const _builtVersionsKey = 'claimsBuiltVersions';
 const _changesPendingKey = 'claimsChangesPending';
 
-/// Whether this device holds the whole log (docs/design/claims.md §6): with
-/// sync off, the log here is all there is; with it on, only once the backfill
-/// has reached the start of the account's history.
-bool deviceHoldsWholeLog(SettingsService settings) => !settings.syncEnabled || settings.syncState['completedFullSync'] == true;
+/// Whether this device holds the whole log (docs/design/claims.md §6): once
+/// its backfill has reached the start of the account's history, or, with sync
+/// off, if it never linked an account at all. A device that linked one and
+/// turned sync off before its backfill finished holds part of that history,
+/// whatever the switch says now.
+bool deviceHoldsWholeLog(SettingsService settings) =>
+    settings.syncState['completedFullSync'] == true || (!settings.syncEnabled && settings.syncState['lastSyncAccountUUID'] == null);
 
 /// Contacts per `claimsForQsos` call: one batch is one crossing into the
 /// runtime and one timeout (`kClaimsForQsosTimeout`).
@@ -129,10 +132,16 @@ class ClaimsService {
   final int progressAbove;
 
   StreamSubscription<Set<String>?>? _subscription;
-  StreamSubscription<void>? _deletions;
+  StreamSubscription<String>? _deletions;
+  StreamSubscription<List<StoredClaim>>? _merges;
+  StreamSubscription<void>? _cleared;
   bool _started = false;
   bool _active = false;
   bool _markedPending = false;
+
+  /// Whether the built versions are already forgotten, so a settings change
+  /// owes no pass: settings change on every sync round, chasing on or off.
+  bool _forgotten = false;
   bool? _inheritedPending;
   bool _wasWhole = false;
   final _pending = <String>{};
@@ -155,8 +164,11 @@ class ClaimsService {
     _inheritedPending ??= changesPending();
     _subscription ??= qsos.changes.listen(_onChanges);
     // An operation deleted or restored takes its contacts out of the log, or
-    // puts them back, without naming any of them.
-    _deletions ??= operations.deletions.listen((_) => _onChanges(null));
+    // puts them back, without a write to any of them.
+    _deletions ??= operations.deletions.listen(_onOperationDeletion);
+    _merges ??= claims.merged.listen(_onMerged);
+    // Emptied for a new account: nothing is vouched for any more.
+    _cleared ??= claims.cleared.listen((_) => _enqueue(_forgetAll, evenIfIdle: true));
   }
 
   void start() {
@@ -174,6 +186,11 @@ class ClaimsService {
     extensions.runtimeGeneration.addListener(_onRuntime);
     _onSettings();
     if (_pending.isNotEmpty || _pendingAll) _schedule();
+    if (_mergedEarly.isNotEmpty) {
+      final early = [..._mergedEarly];
+      _mergedEarly.clear();
+      _onMerged(early);
+    }
   }
 
   void dispose() {
@@ -182,6 +199,10 @@ class ClaimsService {
     _subscription = null;
     _deletions?.cancel();
     _deletions = null;
+    _merges?.cancel();
+    _merges = null;
+    _cleared?.cancel();
+    _cleared = null;
     settingsChanges?.removeListener(_onSettings);
     extensions.runtimeGeneration.removeListener(_onRuntime);
     _timer?.cancel();
@@ -194,7 +215,10 @@ class ClaimsService {
     // the whole log. Off, changes go unfollowed; holding part of the log,
     // slots are only ever raised. Either way the rows stop vouching for
     // themselves, and a rebuild is owed once this device may make one.
-    if (!whole) _enqueue(_forgetAll, evenIfIdle: true);
+    if (!whole && !_forgotten) {
+      _forgotten = true;
+      _enqueue(_forgetAll, evenIfIdle: true);
+    }
     final wake = enabled && (!_active || whole != _wasWhole);
     _active = enabled;
     _wasWhole = whole;
@@ -215,6 +239,48 @@ class ClaimsService {
     }
     _markPending(true);
     if (_started) _schedule();
+  }
+
+  Future<void> _onOperationDeletion(String operation) async {
+    final contacts = await qsos.uuidsInOperation(operation);
+    if (contacts.isNotEmpty) _onChanges(contacts.toSet());
+  }
+
+  /// Rows sync merged before [start]: the check needs the programs, which
+  /// the runtime answers for only once it is up.
+  final _mergedEarly = <StoredClaim>[];
+
+  void _onMerged(List<StoredClaim> rows) {
+    if (!_started) {
+      if (isEnabled()) _mergedEarly.addAll(rows);
+    } else if (_active) {
+      _enqueue(() => _checkMerged(rows));
+    }
+  }
+
+  /// A row sync brought in that names a contact this device knows is gone —
+  /// deleted, or in a deleted operation — came from a device that has not
+  /// heard of it yet, and one an older version of the program computed from
+  /// a contact here is out of date. Only the whole log can correct either
+  /// (§7). A row naming a contact that has not arrived here says nothing.
+  Future<void> _checkMerged(List<StoredClaim> rows) async {
+    if (!holdsWholeLog()) return;
+    final named = {
+      for (final row in rows)
+        if (!row.deleted && row.qso != null) row.qso!,
+    };
+    if (named.isEmpty) return;
+    final programs = await _chasingPrograms();
+    if (programs == null) return;
+    final inLog = {for (final qso in await qsos.liveAmong(named)) qso.uuid};
+    final gone = (await qsos.knownAmong(named)).difference(inLog);
+    final stale = {
+      for (final row in rows)
+        if (!row.deleted && (gone.contains(row.qso) || (inLog.contains(row.qso) && row.version < (programs[row.program]?.version ?? 0)))) row.program,
+    };
+    for (final key in stale) {
+      if (programs[key] case final program?) await _rescan(program);
+    }
   }
 
   void _schedule() {
@@ -238,14 +304,16 @@ class ClaimsService {
   }
 
   /// Rebuilds, on a device that may, each program that this device has not
-  /// built from the whole log at its current version, or that holds rows an
-  /// older version computed.
+  /// built from the whole log at its current version. Rows an older version
+  /// computed elsewhere are caught as sync brings them ([_checkMerged]); a
+  /// rebuild keeps those it cannot judge, so they are no sign one is owed.
   Future<void> _refresh() async {
     if (!holdsWholeLog()) return;
     final programs = await _chasingPrograms();
+    if (programs == null) return;
     for (final program in programs.values) {
       if (!_active) return;
-      if (builtVersions()[program.key] == program.version && !await claims.hasRowsBelowVersion(program.key, program.version)) continue;
+      if (builtVersions()[program.key] == program.version) continue;
       await _rescan(program);
     }
   }
@@ -259,6 +327,13 @@ class ClaimsService {
     _pendingAll = false;
 
     final programs = await _chasingPrograms();
+    if (programs == null) {
+      // The runtime could not say which programs exist: these changes wait,
+      // still marked on disk, for the next pass.
+      _pending.addAll(uuids);
+      _pendingAll = _pendingAll || all;
+      return;
+    }
     // A program missing from this pass — its extension off, or the runtime
     // between generations — misses these changes, and only a rebuild
     // catches it up.
@@ -342,14 +417,17 @@ class ClaimsService {
 
   /// The registered programs, asked for once per runtime: only a new one
   /// can bring or take away a program, and asking on every pass is a
-  /// crossing into every extension for each contact logged.
-  Future<Map<String, ChasingProgram>> _chasingPrograms() async {
+  /// crossing into every extension for each contact logged. Null, and not
+  /// kept, when the runtime could not be asked.
+  Future<Map<String, ChasingProgram>?> _chasingPrograms() async {
     final generation = extensions.runtimeGeneration.value;
     if (_programs == null || _programsGeneration != generation) {
-      _programs = await extensions.getChasingPrograms();
+      final programs = await extensions.getChasingPrograms();
+      if (programs == null) return null;
+      _programs = programs;
       _programsGeneration = generation;
     }
-    return _programs!;
+    return _programs;
   }
 
   /// What each of [batch] — at most [kClaimsBatchSize] contacts, one crossing
@@ -406,16 +484,16 @@ class ClaimsService {
         }
         done += page.length;
       }
-      for (final held in await claims.heldBy(unanswered)) {
-        if (held.program != program.key) continue;
-        final other = best[held.uuid];
-        if (other == null || compareClaims(held, other) > 0) best[held.uuid] = held;
-      }
-      await claims.writeRescan(program.key, program.version, best);
+      // Kept as they stand unless something here beats them, decided where
+      // the rows are written so a row sync merges meanwhile is judged too: a
+      // contact the program left out, and one that has not reached this
+      // device yet, may each beat everything here.
+      await claims.writeRescan(program.key, program.version, best, unanswered: unanswered.toSet(), knownContacts: qsos.knownAmong);
     } finally {
       statusBar?.clear(_progressKey);
     }
     await saveBuiltVersions({...builtVersions(), program.key: program.version});
+    _forgotten = false;
   }
 
   /// Shows in the footer how far a pass over [total] contacts has got, once

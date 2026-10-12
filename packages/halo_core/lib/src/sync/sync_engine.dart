@@ -23,14 +23,22 @@ import 'dart:async';
 
 import '../app_clock.dart';
 import '../hook_names.dart';
+import '../models/claims.dart';
+import '../repo/claims_repository.dart';
 import '../repo/operations_repository.dart';
 import '../repo/qsos_repository.dart';
 import 'sync_progress.dart';
 import 'sync_types.dart';
 
+part 'claims_sync.dart';
+
 class SyncEngine {
   final OperationsRepository operations;
   final QsosRepository qsos;
+
+  /// The chasing claims (docs/design/claims.md §5, §7), a third side synced
+  /// forward only. Null leaves claims out of sync altogether.
+  final ClaimsRepository? claims;
   final SyncTransportCall transport;
   final SyncSettings settings;
 
@@ -185,6 +193,12 @@ class SyncEngine {
   static const backfillCursorKeys = {'operations': 'backfillOperationCursor', 'qsos': 'backfillQSOCursor'};
   static const forwardCursorKeys = {'operations': 'forwardOperationCursor', 'qsos': 'forwardQSOCursor'};
 
+  /// The claims side's state — see `claims_sync.dart`.
+  static const claimsSupportedKey = 'claimsSupported';
+  static const claimWatermarkKey = 'latestClaimSyncedAtMillis';
+  static const claimCursorKey = 'forwardClaimCursor';
+  static const claimsCaughtUpKey = 'claimsCaughtUp';
+
   int _largeBatchSize = defaultLargeBatchSize;
 
   /// How long a refused record is held out of the push batch before being
@@ -213,6 +227,7 @@ class SyncEngine {
   /// or never expire one (docs/design/time.md §4).
   final Map<String, int> _quarantinedOperations = {};
   final Map<String, int> _quarantinedQsos = {};
+  final Map<String, int> _quarantinedClaims = {};
 
   /// A ceiling on each quarantine map, so the `NOT IN` these build stays a
   /// statement SQLite will accept. Past it the oldest entries are dropped and
@@ -321,6 +336,7 @@ class SyncEngine {
   SyncEngine({
     required this.operations,
     required this.qsos,
+    this.claims,
     required this.transport,
     required this.settings,
     this.refusalQuarantine = defaultRefusalQuarantine,
@@ -420,6 +436,7 @@ class SyncEngine {
     _reportedRejections.clear();
     _quarantinedOperations.clear();
     _quarantinedQsos.clear();
+    _quarantinedClaims.clear();
     // Every watermark and cursor goes back to null below, so the next account's
     // first page has the same position as the request that was failing — but
     // it is not that request.
@@ -430,6 +447,10 @@ class SyncEngine {
       await operations.resetSyncedStatus();
       await qsos.resetSyncedStatus();
     }
+    // Either way: an epoch only ranks rows that share one history, so claims built from this
+    // device's log alone would outrank the account's and withdraw slots its other devices hold.
+    // They are rebuilt once the account's history is here.
+    await claims?.clearAll();
 
     final state = settings.state;
     await settings.setState({
@@ -442,6 +463,9 @@ class SyncEngine {
       'latestOperationSyncedAtMillis': null,
       'latestQSOSyncedAtMillis': null,
       for (final key in [...backfillCursorKeys.values, ...forwardCursorKeys.values]) key: null,
+      claimWatermarkKey: null,
+      claimCursorKey: null,
+      claimsCaughtUpKey: null,
     });
     _scheduleLoop(Duration.zero);
     return true;
@@ -486,8 +510,10 @@ class SyncEngine {
     _reportedRejections.clear(); // see resolveAccountChange
     _quarantinedOperations.clear();
     _quarantinedQsos.clear();
+    _quarantinedClaims.clear();
     _requestFailures = 0; // see resolveAccountChange
     await _backupAndClearAll();
+    await claims?.clearAll();
 
     final state = settings.state;
     await settings.setState({
@@ -498,6 +524,9 @@ class SyncEngine {
       'latestOperationSyncedAtMillis': null,
       'latestQSOSyncedAtMillis': null,
       for (final key in [...backfillCursorKeys.values, ...forwardCursorKeys.values]) key: null,
+      claimWatermarkKey: null,
+      claimCursorKey: null,
+      claimsCaughtUpKey: null,
     });
     _scheduleLoop(Duration.zero);
     return true;
@@ -567,6 +596,7 @@ class SyncEngine {
   Future<SyncBatch> selectBatch({required int qsoBatchSize, required int operationBatchSize}) async {
     final skipQsos = _activeQuarantine(_quarantinedQsos);
     final skipOperations = _activeQuarantine(_quarantinedOperations);
+    final pendingClaims = await _pendingClaims(qsoBatchSize);
     final pendingQsos = await qsos.unsyncedBatch(qsoBatchSize, excluding: skipQsos);
     if (pendingQsos.isNotEmpty) {
       final operationUuids = {for (final q in pendingQsos) q.operationUuid}.toList();
@@ -574,9 +604,12 @@ class SyncEngine {
       if (pendingOperations.length > operationBatchSize) {
         pendingOperations = pendingOperations.sublist(0, operationBatchSize);
       }
-      return SyncBatch(operations: pendingOperations, qsos: pendingQsos);
+      return SyncBatch(operations: pendingOperations, qsos: pendingQsos, claims: pendingClaims);
     }
-    return SyncBatch(operations: await operations.unsyncedBatch(operationBatchSize, excluding: skipOperations));
+    return SyncBatch(
+      operations: await operations.unsyncedBatch(operationBatchSize, excluding: skipOperations),
+      claims: pendingClaims,
+    );
   }
 
   /// The uuids still inside their quarantine window, dropping the ones whose
@@ -719,6 +752,9 @@ class SyncEngine {
         if (pull)
           for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries) entry.key: settings.state[entry.value] as String?,
       };
+      // Asked for whenever the server takes them, backfilling or not — see [claimWatermarkKey].
+      final claimsRequested = pull && _claimsOn;
+      final sentClaimCursor = claimsRequested ? settings.state[claimCursorKey] as String? : null;
       _pullInFlight = pull;
       if (pull) {
         final watermarks = backfilling
@@ -801,7 +837,6 @@ class SyncEngine {
       _reportUnreadable(response, 'qsos');
       _quarantine(rejectedOperations.keys, _quarantinedOperations);
       _quarantine(rejectedQsos.keys, _quarantinedQsos);
-
       // Passes the sent models, not just uuids: markSynced compares each
       // row's revision stamp against the copy that actually went out, so an
       // edit made during the network await above stays dirty and re-pushes.
@@ -813,6 +848,7 @@ class SyncEngine {
         for (final q in batch.qsos)
           if (!rejectedQsos.containsKey(q.uuid)) q,
       ];
+      final (accepted: acceptedClaims, inbound: inboundClaims) = await _receiveClaims(response, batch, requested: claimsRequested);
       await operations.markSynced(acceptedOperations);
       await qsos.markSynced(acceptedQsos);
 
@@ -823,7 +859,7 @@ class SyncEngine {
       // would otherwise loop against the server for as long as the app runs —
       // records stay dirty by design here, so "something is pending" is no
       // longer evidence that trying again immediately can achieve anything.
-      final pushProgressed = !batch.isEmpty && (acceptedOperations.isNotEmpty || acceptedQsos.isNotEmpty);
+      final pushProgressed = !batch.isEmpty && (acceptedOperations.isNotEmpty || acceptedQsos.isNotEmpty || acceptedClaims.isNotEmpty);
 
       // The deferred half of a Test Operation purge (`OperationsRepository.
       // purge`): sweeps every operation that is confirmed both `purged` and
@@ -849,6 +885,9 @@ class SyncEngine {
               onProgress: backfilling ? onProgress : null,
               abandoned: () => generation != _generation,
             );
+      // After the contacts, so a claim that arrives with the contact holding it finds it here.
+      if (generation != _generation) return _abandonRound();
+      if (inboundClaims.isNotEmpty) await claims!.mergeFromSync(inboundClaims);
 
       // The QSOs the `hardDeletePurgedForOperation` loop above can no longer
       // reach: their operation row is already gone (an earlier round's
@@ -879,6 +918,7 @@ class SyncEngine {
         opWatermark: opWatermark,
         qsoWatermark: qsoWatermark,
       );
+      if (claimsRequested) await _bankClaims(response, sentCursor: sentClaimCursor, inbound: inboundClaims);
 
       // A received purge this device holds no QSOs for has nothing for the
       // operator to confirm removing, so it is dropped instead of prompted
@@ -901,9 +941,9 @@ class SyncEngine {
       _errorCount = 0;
 
       if (!smallBatch) {
-        final morePending = pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced());
+        final morePending = pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced() || (_claimsOn && await claims!.hasUnsynced()));
         onPushBacklog?.call(morePending);
-        final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
+        final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit || inboundClaims.length >= pullLimit;
         // Three different waits. A push backlog goes straight back out:
         // pushes are not cooldown-gated. A full page waits the loop delay,
         // never less — a sooner request lands inside the server's cooldown
@@ -1189,6 +1229,7 @@ class SyncEngine {
               if (q.purged) 'purged': true,
             },
         ],
+      if (batch.claims.isNotEmpty) 'claims': [for (final c in batch.claims) c.toRecord()],
       'meta': {
         'operationCount': operationCounts.total,
         'unsyncedOperationCount': operationCounts.pending,
@@ -1209,35 +1250,38 @@ class SyncEngine {
         // own recent changes) once backfill has caught everything up.
         if (pull) 'inboundSync': true,
         if (pull)
-          'sync': backfilling
-              ? {
-                  'operations': {
-                    'syncedUntilMillis': (state['earliestOperationSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
-                    if (state[backfillCursorKeys['operations']!] != null) 'cursor': state[backfillCursorKeys['operations']!],
-                    'limit': limit,
-                    'anyClient': true,
+          'sync': {
+            ...backfilling
+                ? {
+                    'operations': {
+                      'syncedUntilMillis': (state['earliestOperationSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
+                      if (state[backfillCursorKeys['operations']!] != null) 'cursor': state[backfillCursorKeys['operations']!],
+                      'limit': limit,
+                      'anyClient': true,
+                    },
+                    'qsos': {
+                      'syncedUntilMillis': (state['earliestQSOSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
+                      if (state[backfillCursorKeys['qsos']!] != null) 'cursor': state[backfillCursorKeys['qsos']!],
+                      'limit': limit,
+                      'anyClient': true,
+                    },
+                  }
+                : {
+                    'operations': {
+                      'syncedSinceMillis': (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0,
+                      if (state[forwardCursorKeys['operations']!] != null) 'cursor': state[forwardCursorKeys['operations']!],
+                      'limit': limit,
+                      'anyClient': false,
+                    },
+                    'qsos': {
+                      'syncedSinceMillis': (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0,
+                      if (state[forwardCursorKeys['qsos']!] != null) 'cursor': state[forwardCursorKeys['qsos']!],
+                      'limit': limit,
+                      'anyClient': false,
+                    },
                   },
-                  'qsos': {
-                    'syncedUntilMillis': (state['earliestQSOSyncedAtMillis'] as num?)?.toInt() ?? backfillFrom,
-                    if (state[backfillCursorKeys['qsos']!] != null) 'cursor': state[backfillCursorKeys['qsos']!],
-                    'limit': limit,
-                    'anyClient': true,
-                  },
-                }
-              : {
-                  'operations': {
-                    'syncedSinceMillis': (state['latestOperationSyncedAtMillis'] as num?)?.toInt() ?? 0,
-                    if (state[forwardCursorKeys['operations']!] != null) 'cursor': state[forwardCursorKeys['operations']!],
-                    'limit': limit,
-                    'anyClient': false,
-                  },
-                  'qsos': {
-                    'syncedSinceMillis': (state['latestQSOSyncedAtMillis'] as num?)?.toInt() ?? 0,
-                    if (state[forwardCursorKeys['qsos']!] != null) 'cursor': state[forwardCursorKeys['qsos']!],
-                    'limit': limit,
-                    'anyClient': false,
-                  },
-                },
+            if (_claimsOn) 'claims': _claimsWindow(state, limit),
+          },
       },
     };
   }

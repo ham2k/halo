@@ -309,6 +309,30 @@ class QsosRepository with QsoHistoryQueries {
     return qsosFromRows(rows);
   }
 
+  /// Every contact [operationUuid] holds, deleted or not.
+  Future<List<String>> uuidsInOperation(String operationUuid) async {
+    final query = db.selectOnly(db.qsos)
+      ..addColumns([db.qsos.uuid])
+      ..where(db.qsos.operation.equals(operationUuid));
+    return [for (final row in await query.get()) row.read(db.qsos.uuid)!];
+  }
+
+  /// Which of [uuids] this device holds a row for, deleted or not. A contact
+  /// missing here has not reached this device yet, so nothing here can say
+  /// what it claims.
+  Future<Set<String>> knownAmong(Iterable<String> uuids) async {
+    final list = uuids.toSet().toList();
+    final known = <String>{};
+    for (var start = 0; start < list.length; start += inClauseChunkSize) {
+      final chunk = list.sublist(start, math.min(start + inClauseChunkSize, list.length));
+      final query = db.selectOnly(db.qsos)
+        ..addColumns([db.qsos.uuid])
+        ..where(db.qsos.uuid.isIn(chunk));
+      known.addAll([for (final row in await query.get()) row.read(db.qsos.uuid)!]);
+    }
+    return known;
+  }
+
   /// One page of every live contact in the log ([_isLive]), in uuid order
   /// after [afterUuid] — for a pass over the whole log that must not hold it
   /// all in memory at once.

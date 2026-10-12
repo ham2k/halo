@@ -126,27 +126,44 @@ void main() {
     expect(await qsos.liveCount(), 1);
   });
 
+  // A rescan leaves alone a slot held by a contact this device has not
+  // received yet; one it holds deleted is not that case.
+  test('a contact this device holds is known, deleted or not; one still on its way is not', () async {
+    final kept = await qsos.add('', {
+      'band': '20m',
+      'their': {'call': 'W1AW'},
+    });
+    final gone = await qsos.add('', {
+      'band': '20m',
+      'their': {'call': 'K1ABC'},
+    });
+    await qsos.softDelete(gone);
+
+    expect(await qsos.knownAmong([kept.uuid, gone.uuid, 'not-here-yet']), {kept.uuid, gone.uuid});
+  });
+
   // Deleting an operation writes none of its contacts, so `changes` never
   // hears of it, here or when the deletion arrives by sync.
   test('an operation deleted or restored is reported, here or by sync', () async {
     final operations = OperationsRepository(db);
-    var heard = 0;
-    operations.deletions.listen((_) => heard++);
+    final heard = <String>[];
+    operations.deletions.listen(heard.add);
     final op = await operations.create(stationCall: 'KI2D');
     await operations.saveData(op);
     await settle();
-    expect(heard, 0, reason: 'an edit that leaves the operation in the log takes no contact out of it');
+    expect(heard, isEmpty, reason: 'an edit that leaves the operation in the log takes no contact out of it');
 
     await operations.softDelete(op.uuid);
     await operations.undelete(op.uuid);
     await settle();
-    expect(heard, 2);
+    expect(heard, [op.uuid, op.uuid]);
 
     final stored = (await operations.get(op.uuid))!;
     await operations.mergeFromSync([
       {...stored.data, 'uuid': op.uuid, 'deleted': true, 'updatedAtMillis': realNowMillis() + 1000},
     ]);
     await settle();
-    expect(heard, 3);
+    expect(heard, [op.uuid, op.uuid, op.uuid]);
+    expect(await qsos.uuidsInOperation(op.uuid), isEmpty);
   });
 }

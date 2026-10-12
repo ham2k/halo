@@ -1898,6 +1898,9 @@ export interface CommandHook {
 export interface SyncPayload {
   operations?: Record<string, JSONValue>[]
   qsos?: Record<string, JSONValue>[]
+  /// Chasing claims (docs/design/claims.md), sent only to a server whose
+  /// reply carried `meta.flags.claims`.
+  claims?: Record<string, JSONValue>[]
   meta?: Record<string, JSONValue>
 }
 
@@ -1911,6 +1914,7 @@ export interface SyncPayload {
 export interface SyncResponse {
   operations?: Record<string, JSONValue>[]
   qsos?: Record<string, JSONValue>[]
+  claims?: Record<string, JSONValue>[]
   meta?: Record<string, JSONValue>
   account?: Record<string, JSONValue>
   /// A transport that can receive a 2xx it didn't earn (a proxy or error

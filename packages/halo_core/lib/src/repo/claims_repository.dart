@@ -6,6 +6,7 @@
 // keeps the best one per slot, by the slot rule for what the log says and by
 // the merge rule for what sync brings.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -24,6 +25,19 @@ class ClaimsRepository {
   /// Fired after a write that leaves rows to push, like the other
   /// repositories' — what nudges sync.
   final void Function()? onChange;
+
+  final _merged = StreamController<List<StoredClaim>>.broadcast();
+  final _cleared = StreamController<void>.broadcast();
+
+  /// The rows each [mergeFromSync] accepted. A device holding the whole log
+  /// checks them against its contacts: one from a device that has not yet
+  /// heard of a deletion can outrank the row here and still name a contact
+  /// that is gone (§7).
+  Stream<List<StoredClaim>> get merged => _merged.stream;
+
+  /// Fires when [clearAll] empties the table, so whatever vouched for the
+  /// rows stops vouching.
+  Stream<void> get cleared => _cleared.stream;
 
   /// The live `log` rows held by any of [qsoUuids]: the slots those contacts
   /// fill today, which an edit or a deletion may take from them.
@@ -50,22 +64,6 @@ class ClaimsRepository {
       if (held == null || compareClaims(claim, held) > 0) best[slot] = claim;
     }
     return best.values.toList();
-  }
-
-  /// Whether [program] has live rows an older version of it computed, which
-  /// a device holding the whole log rebuilds (§6). A row from a NEWER version
-  /// is left alone: it came from a device running a newer extension, and
-  /// rebuilding it here would replace a better answer with an older one. A
-  /// withdrawn row is not counted: a rebuild that claims nothing for its
-  /// slot leaves it as it is, so counting it would ask for a rebuild on
-  /// every launch.
-  Future<bool> hasRowsBelowVersion(String program, int version) async {
-    final row =
-        await (db.select(db.claims)
-              ..where((c) => c.program.equals(program) & c.source.equals(kClaimSourceLog) & c.deleted.equals(false) & c.version.isSmallerThanValue(version))
-              ..limit(1))
-            .getSingleOrNull();
-    return row != null;
   }
 
   /// Writes each of [candidates] that beats its slot's `log` row, or fills a
@@ -130,11 +128,34 @@ class ClaimsRepository {
   /// written or withdrawn: this device's older extension is not the one to
   /// overrule it.
   ///
+  /// So is a live row the pass could not judge, unless [best] beats it: one
+  /// held by a contact in [unanswered], which the program left out of its
+  /// answer, or by a contact [knownContacts] says this device has never
+  /// seen, which may beat everything here. Decided inside the write, so a
+  /// row sync merged while the pass read the log is judged as well.
+  ///
   /// Returns the rows written.
-  Future<int> writeRescan(String program, int version, Map<String, StoredClaim> best) async {
+  Future<int> writeRescan(
+    String program,
+    int version,
+    Map<String, StoredClaim> best, {
+    Set<String> unanswered = const {},
+    Future<Set<String>> Function(Iterable<String> qsoUuids)? knownContacts,
+  }) async {
     final written = await db.transaction(() async {
       final rows = await (db.select(db.claims)..where((c) => c.program.equals(program) & c.source.equals(kClaimSourceLog))).get();
       final existing = {for (final row in rows) row.uuid: _fromRow(row)};
+      final named = {
+        for (final held in existing.values)
+          if (!held.deleted && held.qso != null) held.qso!,
+      };
+      final unseen = knownContacts == null ? const <String>{} : named.difference(await knownContacts(named));
+      best = {...best};
+      for (final held in existing.values) {
+        if (held.deleted || !(unanswered.contains(held.qso) || unseen.contains(held.qso))) continue;
+        final other = best[held.uuid];
+        if (other == null || compareClaims(held, other) > 0) best[held.uuid] = held;
+      }
       final epoch = existing.values.fold(-1, (top, claim) => math.max(top, claim.epoch)) + 1;
       final now = realNowMillis();
       var written = 0;
@@ -186,14 +207,61 @@ class ClaimsRepository {
           await _write(claim, synced: true);
           accepted.add(claim);
         } else if (order < 0) {
-          await (db.update(db.claims)..where((c) => c.uuid.equals(claim.uuid))).write(const ClaimsCompanion(synced: Value(false)));
+          // Restamped past the row it beat: the server keeps the newer
+          // `updatedAtMillis`, so a write-back at the old stamp would be
+          // dropped there as stale and the worse row would stand.
+          final stamp = math.max(realNowMillis(), (claim.updatedAtMillis ?? 0) + 1);
+          await (db.update(
+            db.claims,
+          )..where((c) => c.uuid.equals(claim.uuid))).write(ClaimsCompanion(synced: const Value(false), updatedAtMillis: Value(stamp)));
           writeBack = true;
         }
       }
       return accepted;
     });
     if (writeBack) onChange?.call();
+    if (accepted.isNotEmpty) _merged.add(accepted);
     return accepted;
+  }
+
+  /// Up to [limit] rows waiting to be pushed, withdrawn ones included.
+  Future<List<StoredClaim>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
+    final query = db.select(db.claims)
+      ..where((c) => excluding.isEmpty ? c.synced.equals(false) : c.synced.equals(false) & c.uuid.isNotIn(excluding))
+      ..orderBy([(c) => OrderingTerm(expression: c.updatedAtMillis)])
+      ..limit(limit);
+    return (await query.get()).map(_fromRow).toList();
+  }
+
+  Future<bool> hasUnsynced() async {
+    final row =
+        await (db.select(db.claims)
+              ..where((c) => c.synced.equals(false))
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
+
+  /// Marks [sent] synced, each only if it is still the revision that went
+  /// out: one rewritten while the push was on the network stays dirty.
+  Future<void> markSynced(Iterable<StoredClaim> sent) async {
+    final list = sent.toList();
+    if (list.isEmpty) return;
+    await db.transaction(() async {
+      for (final claim in list) {
+        final stamp = claim.updatedAtMillis;
+        await (db.update(db.claims)..where((c) => c.uuid.equals(claim.uuid) & (stamp == null ? c.updatedAtMillis.isNull() : c.updatedAtMillis.equals(stamp))))
+            .write(const ClaimsCompanion(synced: Value(true)));
+      }
+    });
+  }
+
+  /// Empties the table. Claims are rebuilt from the log, and an epoch only
+  /// ranks rows that share one history, so a device joining or leaving an
+  /// account starts from none.
+  Future<void> clearAll() async {
+    await db.delete(db.claims).go();
+    _cleared.add(null);
   }
 
   Future<Map<String, StoredClaim>> _byUuid(Iterable<String> uuids) async {

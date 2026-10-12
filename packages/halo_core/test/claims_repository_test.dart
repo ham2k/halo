@@ -193,6 +193,22 @@ void main() {
       expect([row291.synced, row291.epoch], [true, 0]);
     });
 
+    // A row that went through a server can come back with its data in
+    // another key order; read as a change, every rescan would push it again.
+    test('agree with a row whose data differs only in key order', () async {
+      await claims.mergeFromSync([
+        {
+          ..._claim().toRecord(),
+          'data': {'label': 'Germany', 'by': 'lotw'},
+        },
+      ]);
+      final recomputed = StoredClaim.tryParseRecord({
+        ..._claim().toRecord(),
+        'data': {'by': 'lotw', 'label': 'Germany'},
+      })!;
+      expect(await claims.writeRescan(_program, 1, {recomputed.uuid: recomputed}), 0);
+    });
+
     test('leave alone what a newer version of the program computed', () async {
       await claims.applyUpgrades([_claim(ref: '230', version: 2), _claim(ref: '291', version: 2)]);
       final older = _claim(ref: '230', version: 1, level: ClaimLevel.verified);
@@ -202,21 +218,29 @@ void main() {
       expect((await row(_claim(ref: '291'))).deleted, isFalse);
     });
 
-    test('rebuild what an older version computed', () async {
-      await claims.applyUpgrades([_claim(version: 1)]);
-      expect(await claims.hasRowsBelowVersion(_program, 2), isTrue);
-      final rebuilt = _claim(version: 2);
-      await claims.writeRescan(_program, 2, {rebuilt.uuid: rebuilt});
-      expect(await claims.hasRowsBelowVersion(_program, 2), isFalse);
-    });
+    // A contact the program left out, or one not on this device yet, may
+    // beat everything the pass found; withdrawing its slot would publish
+    // that under an epoch every device obeys.
+    test('keep a slot the pass could not judge, unless something it found beats it', () async {
+      await claims.applyUpgrades([
+        _claim(ref: '230', qso: 'left-out', level: ClaimLevel.confirmed),
+        _claim(ref: '291', qso: 'not-here-yet'),
+        _claim(ref: '100', qso: 'gone'),
+        _claim(ref: '200', qso: 'on-its-way'),
+      ]);
+      final better = _claim(ref: '200', qso: 'here', level: ClaimLevel.verified);
+      await claims.writeRescan(
+        _program,
+        1,
+        {better.uuid: better},
+        unanswered: {'left-out'},
+        knownContacts: (uuids) async => uuids.toSet().difference({'not-here-yet', 'on-its-way'}),
+      );
 
-    // A rebuild that claims nothing for a withdrawn slot leaves its row at
-    // the old version; counting it would rebuild the program on every launch.
-    test('a slot withdrawn under an older version asks for no rebuild', () async {
-      await claims.applyUpgrades([_claim(version: 1)]);
-      await claims.writeRescan(_program, 2, {});
-      expect((await row(_claim())).version, 1);
-      expect(await claims.hasRowsBelowVersion(_program, 2), isFalse);
+      expect([(await row(_claim(ref: '230'))).deleted, (await row(_claim(ref: '230'))).epoch], [false, 0]);
+      expect((await row(_claim(ref: '291'))).deleted, isFalse);
+      expect((await row(_claim(ref: '100'))).deleted, isTrue, reason: 'a contact this device holds and the pass saw claims nothing here');
+      expect((await row(_claim(ref: '200'))).qso, 'here');
     });
   });
 
@@ -241,6 +265,26 @@ void main() {
       final held = await row(_claim());
       expect([held.qso, held.synced], ['early', false], reason: 'the sender holds the worse row, so this device writes it back');
       expect(changes, 1);
+    });
+
+    // The server keeps the newer `updatedAtMillis` and knows nothing of the
+    // slot rule: written back at its old stamp, the better row is dropped
+    // there as stale and the worse one stands for every device.
+    test('a row written back is stamped newer than the one it beat', () async {
+      await claims.applyUpgrades([_claim(qso: 'early', at: 1000)]);
+      final worse = _claim(qso: 'late', at: 9000, updatedAt: realNowMillis() + 60000);
+      await claims.mergeFromSync([worse.toRecord()]);
+      expect((await row(_claim())).updatedAtMillis, greaterThan(worse.updatedAtMillis!));
+    });
+
+    test('rows accepted from sync are announced, for the whole-log check', () async {
+      final announced = <List<StoredClaim>>[];
+      claims.merged.listen(announced.add);
+      await claims.applyUpgrades([_claim(ref: '230', qso: 'early', at: 1000)]);
+
+      await claims.mergeFromSync([_claim(ref: '230', qso: 'late', at: 9000).toRecord(), _claim(ref: '291', qso: 'new').toRecord()]);
+      await Future<void>.delayed(Duration.zero);
+      expect(announced.single.map((c) => c.ref), ['291'], reason: 'a row this device kept was not accepted');
     });
 
     // The withdrawal is stamped later than any local write, so only the rule
@@ -293,5 +337,42 @@ void main() {
   test('a contact\'s slots are found from the contact', () async {
     await claims.applyUpgrades([_claim(ref: '230', qso: 'q1'), _claim(ref: '230', band: '20m', qso: 'q1'), _claim(ref: '291', qso: 'q2')]);
     expect((await claims.heldBy(['q1'])).map((c) => c.band), unorderedEquals([null, '20m']));
+  });
+
+  group('pushing', () {
+    test('a dirty row goes out, withdrawn ones included, and is marked synced once sent', () async {
+      await claims.applyUpgrades([_claim(ref: '230'), _claim(ref: '291')]);
+      await claims.writeRescan(_program, 1, {
+        for (final c in [_claim(ref: '230')]) c.uuid: c,
+      });
+      final batch = await claims.unsyncedBatch(10);
+      expect(batch.map((c) => (c.ref, c.deleted)), unorderedEquals([('230', false), ('291', true)]));
+
+      await claims.markSynced(batch);
+      expect(await claims.hasUnsynced(), isFalse);
+      expect(await claims.unsyncedBatch(10, excluding: {_claim(ref: '230').uuid}), isEmpty);
+    });
+
+    // An upgrade landing while the push is on the network is a newer
+    // revision the server has not seen.
+    test('a row rewritten while its push was in flight stays dirty', () async {
+      await claims.applyUpgrades([_claim(qso: 'worked')]);
+      final sent = await claims.unsyncedBatch(10);
+      await claims.applyUpgrades([_claim(qso: 'confirmed', level: ClaimLevel.confirmed)]);
+
+      await claims.markSynced(sent);
+      expect((await row(_claim())).synced, isFalse);
+    });
+
+    test('clearing empties the table and says so', () async {
+      var cleared = 0;
+      claims.cleared.listen((_) => cleared++);
+      await claims.applyUpgrades([_claim()]);
+
+      await claims.clearAll();
+      await Future<void>.delayed(Duration.zero);
+      expect(await db.select(db.claims).get(), isEmpty);
+      expect(cleared, 1);
+    });
   });
 }

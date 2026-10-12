@@ -7,6 +7,7 @@
 // sync_engine.dart.
 
 import '../hook_names.dart';
+import '../models/claims.dart';
 import '../models/models.dart';
 
 /// Calls the highest-priority `syncTransport` hook's [hook] method with `args`
@@ -126,8 +127,9 @@ abstract class SyncSettings {
 class SyncBatch {
   final List<Operation> operations;
   final List<Qso> qsos;
-  const SyncBatch({this.operations = const [], this.qsos = const []});
-  bool get isEmpty => operations.isEmpty && qsos.isEmpty;
+  final List<StoredClaim> claims;
+  const SyncBatch({this.operations = const [], this.qsos = const [], this.claims = const []});
+  bool get isEmpty => operations.isEmpty && qsos.isEmpty && claims.isEmpty;
 }
 
 /// How to reconcile this device's local data with a new (or newly

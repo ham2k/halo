@@ -1555,6 +1555,11 @@ permission (pending challenge code for an email, immediately-active for an
 already-permitted account, or a blank permission for QR-code linking) and
 returns server rejections as `{ error, error_status }` data.
 
+`sync`'s payload and reply carry `claims` beside `operations` and `qsos`
+(docs/design/claims.md §7) once the server's reply has said it takes them
+with `meta.flags.claims`. A transport passes the array through like the
+other two, both ways.
+
 `linkClient` must NOT mail anything. The core shows the challenge code on
 screen and offers the email as a separate choice, so a transport that mails
 here sends a confirmation nobody asked for — and one more on every renewal,

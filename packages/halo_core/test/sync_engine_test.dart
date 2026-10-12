@@ -2998,6 +2998,187 @@ void main() {
       expect(forwardWindow(syncArgs.single, 'operations')['anyClient'], isTrue);
     });
   });
+
+  // Claims are a third side (docs/design/claims.md §5, §7), opt-in on both ends: a server that
+  // predates them answers 200 and drops them, so marking them synced on that answer loses them.
+  group('claims', () {
+    late ClaimsRepository claims;
+    late SyncEngine claimsEngine;
+
+    StoredClaim claim({String ref = '230', int? syncedAt}) => StoredClaim(
+      uuid: claimUuid(program: 'dxcc', holder: 'KI2D@291', edition: '', ref: ref, band: null, mode: null, source: kClaimSourceLog),
+      program: 'dxcc',
+      holder: 'KI2D@291',
+      edition: '',
+      ref: ref,
+      band: null,
+      mode: null,
+      source: kClaimSourceLog,
+      level: ClaimLevel.worked,
+      atMillis: 1000,
+      qso: 'q-$ref',
+      version: 1,
+      epoch: 0,
+      data: const {},
+      deleted: false,
+      updatedAtMillis: 1000,
+    );
+
+    Map<String, dynamic> takesClaims([Map<String, dynamic> extra = const {}]) => {
+      'account': {'uuid': 'acct-1'},
+      ...extra,
+      'meta': {
+        'flags': {'claims': true},
+        ...?(extra['meta'] as Map<String, dynamic>?),
+      },
+    };
+
+    setUp(() {
+      claims = ClaimsRepository(db);
+      claimsEngine = SyncEngine(operations: operations, qsos: qsos, claims: claims, transport: transport.call, settings: settings);
+    });
+    tearDown(() => claimsEngine.dispose());
+
+    test('are neither sent nor asked for until a reply says the server stores them', () async {
+      await claims.applyUpgrades([claim()]);
+      transport.responder = (method, args) => takesClaims();
+
+      await claimsEngine.runOneRound();
+      final first = transport.calls.single.$2;
+      expect(first.containsKey('claims'), isFalse);
+      expect((first['meta']['sync'] as Map).containsKey('claims'), isFalse);
+      expect(await claims.hasUnsynced(), isTrue, reason: 'nothing went out, so nothing is synced');
+
+      await claimsEngine.runOneRound();
+      final second = transport.calls.last.$2;
+      expect((second['claims'] as List).single['uuid'], claim().uuid);
+      expect(second['meta']['sync']['claims'], {'syncedSinceMillis': 0, 'limit': anything, 'anyClient': true});
+      expect(await claims.hasUnsynced(), isFalse);
+    });
+
+    // A rollback to a server without claims answers exactly as before, minus the flag.
+    test('a reply without the flag leaves the claims it was sent dirty, and stops sending them', () async {
+      settings.state = {...settings.state, SyncEngine.claimsSupportedKey: true};
+      await claims.applyUpgrades([claim()]);
+      transport.responder = (method, args) => {
+        'account': {'uuid': 'acct-1'},
+        'meta': {'flags': <String, dynamic>{}},
+      };
+
+      await claimsEngine.runOneRound();
+      expect(transport.calls.single.$2.containsKey('claims'), isTrue);
+      expect(await claims.hasUnsynced(), isTrue);
+
+      await claimsEngine.runOneRound();
+      expect(transport.calls.last.$2.containsKey('claims'), isFalse);
+    });
+
+    // A device still downloading its history reads its checklists at once, and the claims side
+    // must not hold the backfill open, nor be held by it.
+    test('are pulled forward during a backfill, with their own watermark and cursor', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': false, SyncEngine.claimsSupportedKey: true};
+      transport.responder = (method, args) => takesClaims({
+        'claims': [
+          {...claim().toRecord(), 'syncedAtMillis': 5000},
+        ],
+        'meta': {
+          'operations': {'records_left': 5},
+          'qsos': {'records_left': 5},
+          'claims': {'records_left': 0, 'next_cursor': 'c1'},
+        },
+      });
+
+      await claimsEngine.runOneRound();
+      final sent = transport.calls.single.$2['meta']['sync'] as Map;
+      expect(sent['qsos'].containsKey('syncedUntilMillis'), isTrue, reason: 'sanity: the other sides are backfilling');
+      expect(sent['claims']['syncedSinceMillis'], 0);
+      expect(sent['claims']['anyClient'], isTrue, reason: 'a device starting over needs back the rows it pushed itself');
+      expect((await claims.checklist('dxcc', 'KI2D@291')).single.ref, '230');
+      expect(settings.state[SyncEngine.claimWatermarkKey], 5000);
+      expect(settings.state[SyncEngine.claimCursorKey], 'c1');
+      expect(settings.state['completedFullSync'], isFalse);
+
+      await claimsEngine.runOneRound();
+      expect(transport.calls.last.$2['meta']['sync']['claims']['cursor'], 'c1');
+      expect(
+        transport.calls.last.$2['meta']['sync']['claims']['anyClient'],
+        isFalse,
+        reason: 'caught up, this device\'s own claims would only come straight back after every push',
+      );
+    });
+
+    // The QSO merge stops between slices when an account change overtakes the round; claims
+    // merged after it would land in the table that change has just cleared for the new account.
+    test('a round overtaken by an account change merges none of its claims', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': false, SyncEngine.claimsSupportedKey: true};
+      final merged = <List<StoredClaim>>[];
+      claims.merged.listen(merged.add);
+      late SyncEngine overtaken;
+      overtaken = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        claims: claims,
+        transport: transport.call,
+        settings: settings,
+        onProgress: (_) {
+          settings.state = {...settings.state, 'pendingAccountUUID': 'acct-2'};
+          unawaited(overtaken.resolveAccountChange(SyncAccountChoice.combine));
+        },
+      );
+      addTearDown(overtaken.dispose);
+      transport.responder = (method, args) => takesClaims({
+        'qsos': [
+          for (var i = 0; i < SyncEngine.mergeChunkSize + 1; i++)
+            {
+              'uuid': 'q$i',
+              'their': {'call': 'W1AW'},
+              'syncedAtMillis': 1000 + i,
+            },
+        ],
+        'claims': [
+          {...claim().toRecord(), 'syncedAtMillis': 5000},
+        ],
+        'meta': {
+          'qsos': {'records_left': 5, 'total_records': 2000},
+        },
+      });
+
+      await overtaken.runOneRound();
+      await Future<void>.delayed(Duration.zero);
+      expect(merged, isEmpty);
+    });
+
+    // An epoch ranks rows within one history. Claims built from this device's own log would
+    // outrank the account's and withdraw slots its other devices hold.
+    test('joining an account clears them and their window', () async {
+      await claims.applyUpgrades([claim()]);
+      settings.state = {
+        ...settings.state,
+        'pendingAccountUUID': 'acct-2',
+        SyncEngine.claimsSupportedKey: true,
+        SyncEngine.claimWatermarkKey: 5000,
+        SyncEngine.claimCursorKey: 'c1',
+        SyncEngine.claimsCaughtUpKey: true,
+      };
+
+      expect(await claimsEngine.resolveAccountChange(SyncAccountChoice.combine), isTrue);
+      expect(await claims.hasUnsynced(), isFalse);
+      expect(await claims.checklist('dxcc', 'KI2D@291'), isEmpty);
+      expect(settings.state[SyncEngine.claimWatermarkKey], isNull);
+      expect(settings.state[SyncEngine.claimCursorKey], isNull);
+      expect(settings.state[SyncEngine.claimsCaughtUpKey], isNull);
+      expect(settings.state[SyncEngine.claimsSupportedKey], isTrue, reason: 'still the same server');
+    });
+
+    test('a full resync clears them too', () async {
+      await claims.applyUpgrades([claim()]);
+      settings.state = {...settings.state, SyncEngine.claimWatermarkKey: 5000};
+
+      expect(await claimsEngine.forceFullResync(), isTrue);
+      expect(await claims.checklist('dxcc', 'KI2D@291'), isEmpty);
+      expect(settings.state[SyncEngine.claimWatermarkKey], isNull);
+    });
+  });
 }
 
 /// The sync round is also the app's connectivity probe. These

@@ -2,7 +2,8 @@
 
 *Status: partial. The hook (§2) is built, with DXCC as its first program.
 The `claims` table and the service keeping it current (§5–§7) are built, and
-run only under `EXP CHASE`. Claims do not sync yet. The Chasing view's goals
+run only under `EXP CHASE`. They sync through LoFi once the server
+advertises them. The Chasing view's goals
 (`app/lib/views/chase_view.dart`) are still activities' hunter controls.*
 
 Chasing is about programs that ask for contacts with references: a POTA
@@ -172,20 +173,24 @@ and peers merge; writes to the score cache are not included.
 
 The log is every contact that is not deleted and is not in a deleted
 operation. Deleting or restoring an operation writes none of its contacts,
-so `OperationsRepository.deletions` reports it instead, and a device
-holding the whole log rescans. A program that is missing when changes
-arrive, because its extension is off or the runtime is restarting, never
-sees them, so it is rebuilt once it is back. One that fails on a pass is
-rebuilt once more right after it.
+so `OperationsRepository.deletions` names the operation instead, and its
+contacts are treated as changed: a restore raises what they claim, and a
+deletion rescans only the programs whose slots they held. A program that is
+missing when changes arrive, because its extension is off or the runtime is
+restarting, never sees them, so it is rebuilt once it is back. One that
+fails on a pass is rebuilt once more right after it. A runtime that cannot
+list the programs at all says nothing about which exist, so the changes
+wait, still marked on disk, for a pass that can.
 
 Changes waiting for a pass are held in memory, so a marker on disk says
 some are waiting; a launch that finds it, after a quit or a crash, rebuilds.
 The service hears changes from the start of boot, before the runtime that
 answers for the programs is up, and holds them until it is.
 
-**Holding the whole log.** A device holds the whole log when sync is off, or
-when LoFi has reported a completed full sync. A device still backfilling
-holds part of it.
+**Holding the whole log.** A device holds the whole log once LoFi has
+reported a completed full sync, or, with sync off, if it never linked an
+account. A device still backfilling holds part of it, and so does one that
+linked an account and turned sync off before its backfill finished.
 
 | Change | Needs | Done by |
 | --- | --- | --- |
@@ -210,6 +215,13 @@ this for its own edits and for deletions and edits that arrive by sync
 alike: a whole-log device that syncs a deletion of a slot's contact finds it
 in `claims.qso` and rescans.
 
+A rescan never lowers or withdraws a row naming a contact this device has
+never seen. Sync is not instant: the contact holding that slot may not have
+arrived yet, and it may beat everything here. A contact the program left out
+of its answer keeps its rows for the same reason. Which rows to keep is
+decided inside the rescan's write, so a row sync merges while the rescan
+reads the log is judged too.
+
 **Batching.** Changes gather until the log has been quiet for a second, so
 an import or a sync backlog reaches the programs as one pass rather than one
 per contact. A pass reads the changed contacts, and a rescan reads the log,
@@ -227,7 +239,10 @@ program when its version changes, or when it has not yet rebuilt it from the
 whole log. That second condition covers a first run, a device that has just
 finished its backfill, and turning `EXP CHASE` back on after changes went
 unfollowed. A row computed by a newer version than this device's extension
-is never overwritten by a rebuild.
+is never overwritten by a rebuild. One an older version computed elsewhere,
+from a contact this device holds, is rebuilt when sync brings it (§7); the
+rows a rebuild kept because it could not judge them keep their old version,
+so the version of the rows on hand is no sign a rebuild is owed.
 
 ## 7. Merging on sync
 
@@ -241,8 +256,36 @@ merged:
    by a device that missed a rescan refills the slot at the rescan's epoch.
 3. Then the better claim wins, by §1's rule, and then the newer write.
 
-A device that holds a better row than the one it received writes it back.
-The order is total, so every device converges on the same rows.
+A device that holds a better row than the one it received writes it back,
+stamped newer than the row it beat: LoFi itself keeps the newer write and
+knows nothing of these rules. The order is total, so every device converges
+on the same rows.
+
+A row merged in can still be wrong. One from a device that has not yet
+heard of a deletion can carry a higher epoch and name the deleted contact.
+A device holding the whole log checks the contacts the accepted rows name,
+and rescans a program whose row names one it holds deleted, itself or
+through its operation, or was computed by an older version of the program
+from a contact it holds. A row naming a contact that has not arrived here says
+nothing either way.
+
+**Over the wire.** Claims are LoFi's third kind of record, beside
+operations and contacts. LoFi says it takes them with `meta.flags.claims`. A
+server without that flag answers 200 and drops them, so HaLo sends and asks
+for claims only after a reply carrying it, and marks them synced only on such
+a reply. They are paged forward from the start, by `synced_since`, in every
+round that pulls, during a backfill too. Until that first catch-up they
+include this device's own writes, which a device starting over needs back;
+after it they do not, or every push would come straight back.
+A device still downloading its history therefore reads its checklists at
+once. Claims take no part in deciding when the backfill is complete.
+
+An epoch only ranks rows within one history. Linking, combining, replacing
+or switching an account, and `SYNCALL`, therefore clear the table and the
+claims window. The device rebuilds from the whole log once its backfill
+completes. Claims are not kept in the local backup tables: `log` rows can be
+rebuilt, and LoFi's failure backup captures them with the rest of the
+payload.
 
 ## 8. Spots and the logging panel
 

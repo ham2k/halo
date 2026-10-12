@@ -272,7 +272,15 @@ class StoredClaim {
       other.qso == qso &&
       other.version == version &&
       other.deleted == deleted &&
-      jsonEncode(other.data) == jsonEncode(data);
+      jsonEncode(_canonical(other.data)) == jsonEncode(_canonical(data));
+
+  /// [value] with every map's keys in order: a row that went through a
+  /// server can come back with the same data in another order.
+  static Object? _canonical(Object? value) => switch (value) {
+    Map() => {for (final key in value.keys.map((k) => '$k').toList()..sort()) key: _canonical(value[key])},
+    List() => [for (final item in value) _canonical(item)],
+    _ => value,
+  };
 
   /// The record shape claims travel in.
   Map<String, dynamic> toRecord() => {

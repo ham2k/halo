@@ -13,17 +13,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/claims_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/error_reporting_fakes.dart';
+import '../support/fake_secure_storage.dart';
 import '../support/fake_extension_host.dart';
 
 class _Settings extends ChangeNotifier {
   bool enabled = true;
   bool whole = true;
-  Map<String, int> built = {};
+  Map<String, int> _built = {};
+  int builtReads = 0;
   bool pending = false;
+
+  Map<String, int> get built {
+    builtReads++;
+    return _built;
+  }
+
+  set built(Map<String, int> value) => _built = value;
 
   void set({bool? enabled, bool? whole}) {
     this.enabled = enabled ?? this.enabled;
@@ -58,6 +68,8 @@ void main() {
   late int calls;
   late bool absent;
   late int askedForPrograms;
+  late bool listingFails;
+  late int asked;
 
   ClaimsService newService({StatusBarService? statusBar, int progressAbove = kClaimsProgressAbove, Duration debounce = Duration.zero}) => ClaimsService(
     extensions: extensions,
@@ -86,9 +98,12 @@ void main() {
     calls = 0;
     absent = false;
     askedForPrograms = 0;
+    listingFails = false;
+    asked = 0;
     stubs = {
       'chasing:*:program': (_) {
         askedForPrograms++;
+        if (listingFails) throw ExtensionHostException('timed out');
         return [
           if (!absent)
             {
@@ -101,6 +116,7 @@ void main() {
       'chasing:calls:claimsForQsos': (Object? args) {
         calls++;
         final sent = ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>();
+        asked += sent.length;
         return {for (final qso in sent) qso['uuid']: _claimsOf(qso)};
       },
     };
@@ -467,5 +483,223 @@ void main() {
     await log('AA1A');
     await settle();
     expect(askedForPrograms, 2);
+  });
+
+  StoredClaim heldClaim(String call, {required String qso, ClaimLevel level = ClaimLevel.confirmed, int epoch = 0}) => StoredClaim(
+    uuid: claimUuid(program: 'calls', holder: 'ME', edition: '', ref: call, band: null, mode: null, source: kClaimSourceLog),
+    program: 'calls',
+    holder: 'ME',
+    edition: '',
+    ref: call,
+    band: null,
+    mode: null,
+    source: kClaimSourceLog,
+    level: level,
+    atMillis: 1000,
+    qso: qso,
+    version: 1,
+    epoch: epoch,
+    data: const {},
+    deleted: false,
+    updatedAtMillis: 1000,
+  );
+
+  // Sync lag: the contact holding a slot on another device may not have
+  // reached this one, and a rescan that read its absence as "nobody claims
+  // this" would withdraw the slot for every device, under a raised epoch.
+  test('a rescan leaves alone a slot held by a contact that has not arrived here', () async {
+    await claims.mergeFromSync([heldClaim('W1AW', qso: 'on-its-way').toRecord()]);
+    final gone = await log('K1ABC');
+    service.start();
+    await settle();
+
+    await qsos.softDelete(gone);
+    await settle();
+    expect(await checklist(), {'W1AW': (ClaimLevel.confirmed, 'on-its-way')});
+  });
+
+  // A device that has not heard of a deletion can send back, at a higher
+  // epoch, the claim the deleted contact used to hold. Only the whole log
+  // has the runner-up.
+  test('a synced row naming a contact deleted here is corrected on a whole-log device', () async {
+    final confirmed = await log('W1AW', at: 3000, lotw: true);
+    final runnerUp = await log('W1AW', at: 1000);
+    service.start();
+    await settle();
+    await qsos.softDelete(confirmed);
+    await settle();
+    expect(await checklist(), {'W1AW': (ClaimLevel.worked, runnerUp.uuid)});
+
+    await claims.mergeFromSync([heldClaim('W1AW', qso: confirmed.uuid, epoch: 9).toRecord()]);
+    await settle();
+    expect(await checklist(), {'W1AW': (ClaimLevel.worked, runnerUp.uuid)});
+  });
+
+  test('a device holding part of the log takes such a row as it is', () async {
+    settings.whole = false;
+    final gone = await log('W1AW');
+    await qsos.softDelete(gone);
+    service.start();
+    await settle();
+
+    await claims.mergeFromSync([heldClaim('W1AW', qso: gone.uuid, epoch: 9).toRecord()]);
+    await settle();
+    expect(await checklist(), {'W1AW': (ClaimLevel.confirmed, gone.uuid)});
+  });
+
+  // Emptied for another account: the built versions vouched for rows that
+  // are gone, and would stop the rebuild.
+  test('claims cleared away are rebuilt', () async {
+    final logged = await log('W1AW');
+    service.start();
+    await settle();
+    expect(settings.built, {'calls': 1});
+
+    await claims.clearAll();
+    await settle();
+    expect(settings.built, isEmpty);
+    extensions.runtimeGeneration.value++;
+    await settle();
+    expect(await checklist(), {'W1AW': (ClaimLevel.worked, logged.uuid)});
+  });
+
+  test('a synced row naming a deleted contact is checked even when it arrives before the service starts', () async {
+    final confirmed = await log('W1AW', at: 3000, lotw: true);
+    final runnerUp = await log('W1AW', at: 1000);
+    await qsos.softDelete(confirmed);
+    settings.built = {'calls': 1};
+    await claims.applyUpgrades([heldClaim('W1AW', qso: runnerUp.uuid, level: ClaimLevel.worked)]);
+    service.listen();
+
+    await claims.mergeFromSync([heldClaim('W1AW', qso: confirmed.uuid, epoch: 9).toRecord()]);
+    await Future<void>.delayed(Duration.zero);
+    service.start();
+    await settle();
+    expect(await checklist(), {'W1AW': (ClaimLevel.worked, runnerUp.uuid)});
+  });
+
+  // Epochs only rank rows within one history. A device that linked an
+  // account and stopped syncing before its backfill finished holds part of
+  // that history, and a rebuild from it would withdraw the rest.
+  test('only a device that finished its backfill, or never linked an account, holds the whole log', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
+    await prefs.setSyncEnabled(false);
+    expect(deviceHoldsWholeLog(prefs), isTrue, reason: 'a log that never left this device is all there is');
+
+    await prefs.setSyncState({'lastSyncAccountUUID': 'acct-1'});
+    expect(deviceHoldsWholeLog(prefs), isFalse, reason: 'sync off after a partial backfill');
+    await prefs.setSyncEnabled(true);
+    expect(deviceHoldsWholeLog(prefs), isFalse);
+
+    await prefs.setSyncState({'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true});
+    expect(deviceHoldsWholeLog(prefs), isTrue);
+    await prefs.setSyncEnabled(false);
+    expect(deviceHoldsWholeLog(prefs), isTrue);
+  });
+
+  // "No programs" read from a runtime that could not answer would forget every
+  // program's bookkeeping and drop the changes in hand, for the rest of the
+  // runtime: the answer is kept per runtime.
+  test('a runtime that cannot list the programs holds the changes until one can', () async {
+    service.start();
+    await settle();
+    listingFails = true;
+    extensions.runtimeGeneration.value++;
+    final first = await log('K1ABC');
+    await settle();
+    expect(settings.built, {'calls': 1}, reason: 'nothing says a program went away');
+    expect(settings.pending, isTrue);
+
+    listingFails = false;
+    final second = await log('N0CALL');
+    await settle();
+    expect(await checklist(), {'K1ABC': (ClaimLevel.worked, first.uuid), 'N0CALL': (ClaimLevel.worked, second.uuid)});
+  });
+
+  // A rebuild keeps rows it cannot judge, at whatever version they carry; a
+  // launch that read them as owed a rebuild would rescan the whole log every
+  // time.
+  test('rows a rebuild could not judge ask for no rebuild on the next launch', () async {
+    await log('W1AW');
+    await log('BAD');
+    final working = stubs['chasing:calls:claimsForQsos']! as Object? Function(Object?);
+    var malformed = false;
+    stubs['chasing:calls:claimsForQsos'] = (Object? args) {
+      final answer = (working(args)! as Map).cast<String, Object?>();
+      final sent = ((args! as Map)['qsos'] as List).cast<Map<String, dynamic>>();
+      return {
+        for (final MapEntry(:key, :value) in answer.entries)
+          if (!(malformed && sent.any((qso) => qso['uuid'] == key && (qso['their'] as Map)['call'] == 'BAD'))) key: value,
+      };
+    };
+    service.start();
+    await settle();
+
+    malformed = true;
+    version = 2;
+    await withErrorHooks(() async {
+      extensions.runtimeGeneration.value++;
+      await settle();
+    }, backend: FakeErrorReportingBackend());
+    expect(settings.built, {'calls': 2});
+
+    calls = 0;
+    service.dispose();
+    service = newService()..start();
+    await settle();
+    expect(calls, 0);
+  });
+
+  test('a row an older version computed elsewhere, from a contact here, is rebuilt when it arrives', () async {
+    version = 2;
+    final logged = await log('W1AW');
+    service.start();
+    await settle();
+
+    await claims.mergeFromSync([heldClaim('W1AW', qso: logged.uuid, epoch: 9).toRecord()]);
+    await settle();
+    final row = (await claims.checklist('calls', 'ME')).single;
+    expect([row.version, row.level], [2, ClaimLevel.worked]);
+  });
+
+  // Settings change on every sync round, chasing on or off.
+  test('a settings change asks for no pass once there is nothing left to forget', () async {
+    settings.enabled = false;
+    service.start();
+    await settle();
+    final reads = settings.builtReads;
+
+    for (var i = 0; i < 5; i++) {
+      settings.set();
+    }
+    await settle();
+    expect(settings.builtReads, reads);
+  });
+
+  // A restore can only raise slots, and a deletion lowers only what its own
+  // contacts held: neither needs every program to read the whole log.
+  test('deleting or restoring an operation asks only about its own contacts', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'startAtMillis': 1000,
+    });
+    for (final call in ['K1ABC', 'N0CALL', 'AA1A']) {
+      await log(call);
+    }
+    service.start();
+    await settle();
+
+    await operations.softDelete(op.uuid);
+    await settle();
+    expect((await checklist()).keys, unorderedEquals(['K1ABC', 'N0CALL', 'AA1A']));
+
+    asked = 0;
+    await operations.undelete(op.uuid);
+    await settle();
+    expect((await checklist()).keys, contains('W1AW'));
+    expect(asked, 1);
   });
 }

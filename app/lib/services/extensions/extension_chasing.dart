@@ -52,16 +52,18 @@ mixin ExtensionChasing {
 
   /// Every registered program, keyed by its hook key. A program whose
   /// `program` member is malformed is left out and reported; the others are
-  /// unaffected.
-  Future<Map<String, ChasingProgram>> getChasingPrograms() async {
+  /// unaffected. Null when the runtime could not be asked at all (none yet,
+  /// or the call failed): that says nothing about which programs exist, and
+  /// read as "none" it would withdraw every program's bookkeeping.
+  Future<Map<String, ChasingProgram>?> getChasingPrograms() async {
     final host = this.host;
-    if (host == null) return const {};
+    if (host == null) return null;
     final List<Map<String, dynamic>> entries;
     try {
       entries = await host.invokeAll(Hooks.chasingProgram, timeout: const Duration(seconds: 5));
     } catch (e) {
       debugPrint('[extensions] getChasingPrograms failed: $e');
-      return const {};
+      return null;
     }
     final programs = <String, ChasingProgram>{};
     for (final entry in entries) {

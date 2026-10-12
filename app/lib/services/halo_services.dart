@@ -331,8 +331,9 @@ class HaLoServices {
   late final ScoringService scoring = ScoringService(extensions: extensions, qsos: qsos, operations: operations);
 
   /// The claims each chasing program makes on the log (docs/design/claims.md).
-  /// Not synced yet, so nothing pushes on a write.
-  late final ClaimsRepository claims = ClaimsRepository(db);
+  /// Synced through LoFi and never over peer links, so a write nudges only
+  /// the sync engine.
+  late final ClaimsRepository claims = ClaimsRepository(db, onChange: () => syncEngine.notifyChanged());
   late final ClaimsService claimsService = ClaimsService.forApp(
     extensions: extensions,
     qsos: qsos,
@@ -939,6 +940,7 @@ class HaLoServices {
   late final SyncEngine syncEngine = SyncEngine(
     operations: operations,
     qsos: qsos,
+    claims: claims,
     transport: _syncTransportCall,
     settings: settings,
     log: debugPrint,

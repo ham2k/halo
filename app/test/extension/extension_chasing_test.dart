@@ -43,11 +43,11 @@ void main() {
       }),
     );
     final backend = FakeErrorReportingBackend();
-    late Map<String, ChasingProgram> programs;
+    late Map<String, ChasingProgram>? programs;
     await withErrorHooks(() async => programs = await service.getChasingPrograms(), backend: backend);
 
-    expect(programs.keys, ['dxcc']);
-    expect(programs['dxcc']!.editions, ChasingEditions.lifetime);
+    expect(programs!.keys, ['dxcc']);
+    expect(programs!['dxcc']!.editions, ChasingEditions.lifetime);
     expect(backend.exceptions.map((e) => (e.error as ChasingHookFailure).programKey), [
       'broken',
     ], reason: 'a version that is not a number is a defect worth knowing about');
