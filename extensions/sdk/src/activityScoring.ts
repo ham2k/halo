@@ -370,8 +370,18 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       const freshRefOnly = verdict === "ref" && !freshRefRescuesActivation
       const activationCredit = freshRefOnly ? 0 : activationValue
 
+      // A contact this scorer could award nothing — the operation activates
+      // nothing and the contact hunts none of its references — gets no
+      // worked-before verdict in EITHER direction. A chaser's QSO Party contact
+      // from yesterday is not `newDay` news to POTA, and one scorer's notice is
+      // enough for the spots board to un-strike what the party scorer called a
+      // duplicate (`spotDisplayFlags`).
+      const hasStake = activationValue + huntingValue > 0
+
       const score: QsoScoreVerdict = { value: isDupe ? 0 : activationCredit + huntingValue }
-      if (isDupe) {
+      if (!hasStake) {
+        // Silence: whichever scorer the contact does belong to rules on it.
+      } else if (isDupe) {
         score.dupe = true
         score.alerts = ["duplicate"]
       } else if (verdict) {

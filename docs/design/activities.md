@@ -400,6 +400,19 @@ live paths select from a short list instead of rescanning the log per keystroke;
 they add the refs of the work in hand as well, so the first contact with a new
 program selects its scorer before any rescore has recorded it.
 
+**A scorer with no stake rules on nothing.** The spots pass selects from the ref
+types of every spot on the board, so one park spot brings POTA in on a QSO Party
+operation — and POTA's per-day rule would call a party station worked yesterday
+`newDay`, un-striking a spot the party scorer calls a duplicate (a park hunted
+earlier in the log does the same to the entry row's pills). Two guards, either
+sufficient. The host consults a hunt-only scorer only about contacts hunting
+its references (`judgesCandidate`): `scoreCandidates` and `scoreQso` don't ask
+it about the rest, and the full rescore drops its verdicts on them. And
+`activityScorer` gives no worked-before verdict — no notice, no `duplicate` —
+on a contact it could award nothing (no activation on the operation, none of
+its references on the contact). The second is the rule; the first saves the
+bridge call and covers bundles built before it.
+
 **A multi-op activation shows each operator's own progress.** POTA credits
 each operator of a multi-op activation separately, so a park at 12 ✓ can
 still leave one operator short. The scorer keeps each reference's credit

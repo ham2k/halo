@@ -717,6 +717,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
         lookups: info.lookups,
         alertKeys: info.alertKeys,
         noticeKeys: info.noticeKeys,
+        scoreSources: info.scoreSources,
         ourEntityPrefix: _runtime.ourEntityPrefix,
       ),
     );

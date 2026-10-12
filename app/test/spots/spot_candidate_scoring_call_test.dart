@@ -141,6 +141,98 @@ void main() {
     expect(result?['fresh']?['notices'], ['newBand']);
   });
 
+  // A QSO Party board with one park spot on it: the park spot selects POTA
+  // hunt-only, and POTA asked about the party spot calls a station worked
+  // yesterday `newDay` — which un-strikes a spot the party scorer calls a
+  // duplicate.
+  group('a scorer selected only by hunting', () {
+    const scopes = {
+      'core': 'always',
+      'pota': {
+        'refTypes': ['potaActivation', 'pota'],
+        'huntingRefTypes': ['pota'],
+      },
+      'paqp': {
+        'refTypes': ['pa-qso-party'],
+      },
+    };
+    const partyOperation = {
+      'stationCall': 'N0DEV',
+      'refs': [
+        {'type': 'pa-qso-party', 'location': 'NNJ'},
+      ],
+    };
+    Map<String, dynamic> withRef(String call, String type, String ref) => {
+      ..._candidate(call),
+      'refs': [
+        {'type': type, 'ref': ref},
+      ],
+    };
+    List<String> sentTo(_RecordingHost host, String key) => [
+      for (final call in host.calls)
+        if (call.method == 'scoreCandidates' && call.key == key)
+          for (final candidate in (call.args as Map)['candidates'] as List) (candidate as Map)['key'] as String,
+    ];
+
+    test('is sent only the candidates hunting its references', () async {
+      final host = _RecordingHost(const {});
+      final service = _ServiceWithHost(host, scopes: scopes);
+
+      await service.scoreCandidates(
+        operation: partyOperation,
+        operationUuid: 'op-1',
+        candidates: {'party': withRef('W3ABC', 'pa-qso-party', 'CHE'), 'park': withRef('K1XYZ', 'pota', 'US-0001')},
+      );
+
+      expect(sentTo(host, 'pota'), ['park']);
+      expect(sentTo(host, 'paqp'), unorderedEquals(['party', 'park']));
+      expect(sentTo(host, 'core'), unorderedEquals(['party', 'park']));
+    });
+
+    // Selected by the LOG's hunted types, with nothing on the board to hunt:
+    // the call would carry the whole log across the bridge to say nothing.
+    test('is not called when no candidate hunts its references', () async {
+      final host = _RecordingHost(const {});
+      final service = _ServiceWithHost(host, scopes: scopes);
+
+      await service.scoreCandidates(
+        operation: partyOperation,
+        operationUuid: 'op-1',
+        candidates: {'party': withRef('W3ABC', 'pa-qso-party', 'CHE')},
+        huntedRefTypes: const {'pota'},
+      );
+
+      expect(host.calls.where((c) => c.key == 'pota'), isEmpty);
+      expect(sentTo(host, 'paqp'), ['party']);
+    });
+
+    // Null tells the panel to keep the verdicts it has. When every scorer that
+    // applies had nothing on the board to judge, that keeps strikes no scorer
+    // computes any more.
+    test('none of them having anything to judge is a pass with nothing to report, not no pass', () async {
+      final host = _RecordingHost(const {});
+      final service = _ServiceWithHost(
+        host,
+        scopes: const {
+          'pota': {
+            'refTypes': ['potaActivation', 'pota'],
+            'huntingRefTypes': ['pota'],
+          },
+        },
+      );
+
+      final result = await service.scoreCandidates(
+        operation: const {'stationCall': 'N0DEV'},
+        operationUuid: 'op-1',
+        candidates: {'bare': _candidate('W3ABC')},
+        huntedRefTypes: const {'pota'},
+      );
+
+      expect(host.calls, isEmpty);
+      expect(result, isEmpty);
+    });
+  });
+
   // A candidate a scorer had nothing to say about is dropped rather than
   // carried as empty lists — the panel reads "absent" and "nothing to report"
   // identically, and an empty entry per spot is pure payload.

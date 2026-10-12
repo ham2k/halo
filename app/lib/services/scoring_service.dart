@@ -385,7 +385,7 @@ class ScoringService {
             scorerKey: scorer.key,
             args: {...payload, 'ref': ?scorer.ref, 'resumeKey': ?resumedFrom?.key, 'resumeFrom': ?resumedFrom?.sheet, 'resumeDay': ?resumedFrom?.day},
           );
-          return (key: scorer.key, fallback: scorer.fallback, result: result);
+          return (key: scorer.key, fallback: scorer.fallback, scorer: scorer, result: result);
         }),
       );
       // On a full pass a scorer that failed is absent from every contact
@@ -404,12 +404,17 @@ class ScoringService {
       // and those contacts still need core's dupe rule.
       final fallbackScores = <String, Map<String, dynamic>>{};
       final judgedByOther = <String>{};
+      // Built only if a hunt-only scorer's verdicts are read (see
+      // [judgedVerdicts]).
+      late final refsByUuid = {
+        for (final qso in qsoList) qso.uuid: {'refs': qso.refs},
+      };
 
       for (final entry in results) {
         final result = entry.result;
         if (result == null) continue;
 
-        final qsoScores = (result['qsoScores'] as Map?) ?? const {};
+        final qsoScores = judgedVerdicts(entry.scorer, scopes[entry.key], (result['qsoScores'] as Map?) ?? const {}, (uuid) => refsByUuid[uuid]);
         for (final score in qsoScores.entries) {
           // A verdict that isn't a map is one this scorer never made: the live
           // paths read it the same way, and the three must agree about which

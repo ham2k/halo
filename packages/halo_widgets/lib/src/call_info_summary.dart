@@ -16,6 +16,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import 'flags.dart';
 import 'inline_markdown.dart';
@@ -33,6 +34,12 @@ class CallInfoData {
   final List<Map<String, dynamic>> lookups;
   final List<String> alertKeys;
   final List<String> noticeKeys;
+
+  /// The scorers behind each alert/notice key, by short name — present only
+  /// when scorers disagree about the QSO, so each pill can say whose rule it
+  /// is ("PAQP: Dupe!" beside "POTA: New Day"). A key with no entry is one
+  /// pill with no name.
+  final Map<String, List<String>> scoreSources;
 
   /// Whether this call-info is for an existing QSO being edited (vs a new one
   /// being composed) — the map uses it to pick the highlight colour (blue
@@ -54,6 +61,7 @@ class CallInfoData {
     this.lookups = const [],
     this.alertKeys = const [],
     this.noticeKeys = const [],
+    this.scoreSources = const {},
     this.isEditing = false,
     this.workedBefore,
   });
@@ -73,6 +81,17 @@ const infoGrey = Color(0xFF666666);
 enum NoticeLevel { alert, notice, info }
 
 typedef _Notice = ({String label, NoticeLevel level});
+
+/// The pills for [keys], one per key, naming the scorers [sources] lists for
+/// it: "PAQP: Dupe!", "CQWW, PAQP: New Mult". Shared by every pill row, so the
+/// compact line and the detail panel name scorers alike.
+List<String> scorePillLabels(List<String> keys, Map<String, List<String>> sources, String Function(String key) labelOf) => [
+  for (final key in keys)
+    if (sources[key] case final scorers? when scorers.isNotEmpty)
+      t.loggingControls.info.noticeFromScorer(scorer: scorers.join(', '), notice: labelOf(key))
+    else
+      labelOf(key),
+];
 
 /// One scoring pill. Top-level so the logging panel can paint the same pill
 /// outside a call-info line — its missing-band/mode warning is not a scoring
@@ -214,8 +233,8 @@ class CallInfoSummary extends StatelessWidget {
     final labelOf = noticeLabel ?? (String key) => key;
     final worked = _workedBeforeText;
     return [
-      for (final key in data.alertKeys) (label: labelOf(key), level: NoticeLevel.alert),
-      for (final key in data.noticeKeys) (label: labelOf(key), level: NoticeLevel.notice),
+      for (final label in scorePillLabels(data.alertKeys, data.scoreSources, labelOf)) (label: label, level: NoticeLevel.alert),
+      for (final label in scorePillLabels(data.noticeKeys, data.scoreSources, labelOf)) (label: label, level: NoticeLevel.notice),
       if (worked != null) (label: worked, level: NoticeLevel.info),
     ];
   }
@@ -278,15 +297,21 @@ class CallInfoSummary extends StatelessWidget {
   /// pills trail it on one line; otherwise the note takes line 2 and the pills
   /// move to line 3, left-aligned under it (measured with a TextPainter — the
   /// app scales at the root, so logical-pixel measurements match what's
-  /// painted).
+  /// painted). Pills on a line of their own wrap rather than run off the edge:
+  /// a pill naming its scorer ("PAQP: Dupe!") is twice the width of a bare one.
   Widget _buildNoticesAndNote(BuildContext context, ThemeData theme, List<_Notice> notices, ({String text, bool isNote})? nameInfo) {
     final pillsRow = <Widget>[
       for (var i = 0; i < notices.length; i++) ...[if (i > 0) const SizedBox(width: Space.xs), noticePill(theme, notices[i].label, level: notices[i].level)],
     ];
+    final pillsWrap = Wrap(
+      spacing: Space.xs,
+      runSpacing: Space.xxs,
+      children: [for (final notice in notices) noticePill(theme, notice.label, level: notice.level)],
+    );
     final note = nameInfo == null ? null : _buildNoteOrName(context, theme, nameInfo);
 
     if (notices.isEmpty) return note ?? const SizedBox.shrink();
-    if (note == null) return Row(children: pillsRow);
+    if (note == null) return pillsWrap;
 
     // Measured outside the LayoutBuilder: none of it reads `constraints`, and
     // leaving it inside re-parses the note's markdown on every frame of a
@@ -324,7 +349,7 @@ class CallInfoSummary extends StatelessWidget {
           children: [
             note,
             const SizedBox(height: Space.xxs),
-            Row(children: pillsRow),
+            pillsWrap,
           ],
         );
       },

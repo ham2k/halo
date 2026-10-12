@@ -3691,6 +3691,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       lookups: _currentLookups,
       alertKeys: ready ? _lookup.currentAlertKeys : const [],
       noticeKeys: ready ? _lookup.currentNoticeKeys : const [],
+      scoreSources: ready ? _lookup.currentScoreSources : const {},
       isEditing: widget.session.editingQso != null,
       workedBefore: _lookup.workedBefore,
     );
@@ -3846,6 +3847,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       lookups: _currentLookups,
       alertKeys: _lookup.currentAlertKeys,
       noticeKeys: _lookup.currentNoticeKeys,
+      scoreSources: _lookup.currentScoreSources,
       isEditing: widget.session.editingQso != null,
       workedBefore: _lookup.workedBefore,
     );
@@ -3862,7 +3864,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final sig = data == null
         ? null
         : '${data.call}|${_lookup.lookupFor}|${data.isEditing}|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
-              '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}';
+              '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}|${data.scoreSources}';
     if (sig == _lastCallInfoSig) return;
     _lastCallInfoSig = sig;
     widget.lookups.onCallInfoChanged!(data);

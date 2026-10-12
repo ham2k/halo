@@ -119,8 +119,9 @@ void main() {
     ];
 
     final merged = await scoreOperation(runtime!.host, operation: _operation, qsos: log);
-    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up')?['value'], 0);
-    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up')?['dupe'], isNull);
+    // A contact hunting no park is not POTA's to rule on at all, so its
+    // verdict is not kept, as in the app's stored log.
+    expect(_verdictFor(merged, 'ham2k-pota', 'packed-up'), isNull);
     expect(_alertsOf(_verdictFor(merged, 'core', 'packed-up')), contains('duplicate'));
   });
 
@@ -204,6 +205,54 @@ void main() {
     final merged = await scoreOperation(runtime!.host, operation: operation, qsos: log);
     expect(_alertsOf(_verdictFor(merged, 'k2hrc-cqww', 'warc-2')), contains('invalidBand'));
     expect(_alertsOf(_verdictFor(merged, 'core', 'warc-2')), contains('duplicate'), reason: 'CQ WW ruled on the band, not on whether this station was worked');
+  });
+
+  // The rule the app applies to its stored verdicts, so the CLI has to apply
+  // it too: a scorer selected only by the log's hunting, answering for a
+  // contact hunting none of its references, has its verdict dropped — and
+  // with it the ruling that would take core's duplicate off the contact.
+  test('a hunt-only scorer\'s verdict on a contact it has no stake in is dropped', () {
+    const scopes = {
+      'core': 'always',
+      'pota': {
+        'refTypes': ['potaActivation', 'pota'],
+        'huntingRefTypes': ['pota'],
+      },
+    };
+    final qsos = {
+      'park': _qso('park', at: _at, parks: ['US-0001']),
+      'bare': _qso('bare', at: _at + _day),
+    };
+    final merged = mergeScoredVerdicts(
+      [(key: 'pota', ref: null, fallback: false), (key: 'core', ref: null, fallback: true)],
+      {
+        'pota': {
+          'qsoScores': {
+            'park': {
+              'notices': ['newRef'],
+            },
+            'bare': {
+              'notices': ['newDay'],
+            },
+          },
+        },
+        'core': {
+          'qsoScores': {
+            'park': {
+              'alerts': ['duplicate'],
+            },
+            'bare': {
+              'alerts': ['duplicate'],
+            },
+          },
+        },
+      },
+      scopes: scopes,
+      qsoOf: (uuid) => qsos[uuid],
+    );
+    expect(_verdictFor(merged, 'pota', 'bare'), isNull);
+    expect(_alertsOf(_verdictFor(merged, 'core', 'bare')), ['duplicate']);
+    expect(_verdictFor(merged, 'core', 'park'), isNull, reason: 'POTA ruled on the park contact, so core yields there');
   });
 
   // A deleted `break` row opens no segment: the app never sees deleted rows at

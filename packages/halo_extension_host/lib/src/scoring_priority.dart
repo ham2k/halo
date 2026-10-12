@@ -165,18 +165,58 @@ List<Scorer> scorersFor(
     // A scorer the operation names is already selected, with the ref that named
     // it — this only reaches the ones it doesn't, so a hunt-only selection can
     // never displace an activation's own ref.
-    final huntingTypes = ((scope is Map ? scope['huntingRefTypes'] : null) as List?)?.whereType<String>() ?? const <String>[];
-    if (seen.isEmpty && huntingTypes.any(alsoRefTypes.contains)) {
+    if (seen.isEmpty && _huntingTypesOf(scope).any(alsoRefTypes.contains)) {
       selected.add((key: entry.key, ref: null, fallback: false));
     }
   }
   return [...selected, ...fallback];
 }
 
+/// Whether [scorer], whose scope is [scope], has any business judging
+/// [candidate] — a spot on the board, the QSO being typed, or a logged one.
+///
+/// Only a hunt-only selection is narrowed. [scorersFor] picks one from the ref
+/// types of the log and of EVERY candidate on a spots board, so a single park
+/// spot, or a park hunted earlier in the log, brings POTA in — and asked about
+/// a QSO Party contact, its per-day rule reads a station worked yesterday as
+/// `newDay` beside the party scorer's duplicate. It earns nothing on a
+/// candidate hunting none of its references, so it is not asked about one.
+///
+/// A scorer the operation names, and a fallback, judge every candidate: an
+/// activation credits every contact, reference or not.
+bool judgesCandidate(Scorer scorer, Object? scope, Map<String, dynamic> candidate) {
+  if (!_isHuntOnly(scorer)) return true;
+  return _huntingTypesOf(scope).any(refTypesOf(candidate).contains);
+}
+
+/// [verdicts] — one scorer's whole-log `qsoScores`, by uuid — less those on
+/// contacts [scorer] does not judge ([judgesCandidate]). A whole-log pass
+/// cannot be narrowed per contact the way the live paths are: the scorer folds
+/// the whole log and may answer for every contact in it, and an activity built
+/// against an SDK without the no-stake rule calls a bare QSO Party contact
+/// worked yesterday `newDay`, silencing the party's own duplicate.
+///
+/// [qsoOf] answers a contact's QSON by uuid, and is read only for a hunt-only
+/// scorer. Shared by `ScoringService` and `halo ext`, which must merge alike.
+Map<dynamic, dynamic> judgedVerdicts(Scorer scorer, Object? scope, Map<dynamic, dynamic> verdicts, Map<String, dynamic>? Function(String uuid) qsoOf) {
+  if (!_isHuntOnly(scorer)) return verdicts;
+  return {
+    for (final entry in verdicts.entries)
+      if (entry.key is String && judgesCandidate(scorer, scope, qsoOf(entry.key as String) ?? const {})) entry.key: entry.value,
+  };
+}
+
+bool _isHuntOnly(Scorer scorer) => !scorer.fallback && scorer.ref == null;
+
+Iterable<String> _huntingTypesOf(Object? scope) => ((scope is Map ? scope['huntingRefTypes'] : null) as List?)?.whereType<String>() ?? const <String>[];
+
 /// The reference types on one QSO-shaped map — a candidate being scored, which
-/// is not a logged QSO yet (the callsign being typed, a spot).
+/// is not a logged QSO yet (the callsign being typed, a spot), or a contact as
+/// `halo ext` reads it from a file. A `refs` that is not a list holds none,
+/// rather than a cast error that would take a whole merge down.
 Set<String> refTypesOf(Map<String, dynamic> qso) => {
-  for (final ref in (qso['refs'] as List?) ?? const [])
-    if (ref is Map)
-      if (ref['type'] case final String type) type,
+  if (qso['refs'] case final List<dynamic> refs)
+    for (final ref in refs)
+      if (ref is Map)
+        if (ref['type'] case final String type) type,
 };

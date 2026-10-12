@@ -146,16 +146,33 @@ Future<Map<String, Map<String, Object?>>> scoreOperation(
     }
   }
 
-  return mergeScoredVerdicts(scorers, results);
+  final byUuid = {
+    for (final qso in scorable)
+      if (qso['uuid'] case final String uuid) uuid: qso.cast<String, dynamic>(),
+  };
+  return mergeScoredVerdicts(scorers, results, scopes: scopes, qsoOf: (uuid) => byUuid[uuid]);
 }
 
-/// The priority merge over whole-operation results: which QSOs some scorer has
-/// ruled on, and each fallback scorer's verdicts reduced accordingly. Separate
-/// from the calls above so it can be exercised without a runtime.
-Map<String, Map<String, Object?>> mergeScoredVerdicts(List<Scorer> scorers, Map<String, Map<String, Object?>> results) {
+/// The priority merge over whole-operation results: a hunt-only scorer's
+/// verdicts kept only on the contacts it judges ([judgedVerdicts]), which QSOs
+/// some scorer has ruled on, and each fallback scorer's verdicts reduced
+/// accordingly. Separate from the calls above so it can be exercised without a
+/// runtime.
+Map<String, Map<String, Object?>> mergeScoredVerdicts(
+  List<Scorer> scorers,
+  Map<String, Map<String, Object?>> results, {
+  required Map<String, dynamic> scopes,
+  required Map<String, dynamic>? Function(String uuid) qsoOf,
+}) {
   final judged = <String>{};
   for (final scorer in scorers.where((s) => !s.fallback)) {
-    final verdicts = (results[scorer.key]?['qsoScores'] as Map?) ?? const {};
+    final result = results[scorer.key];
+    // Cast, not skipped: a scorer answering anything but a map here is broken,
+    // and the app's rescore stops on it the same way.
+    final scored = result?['qsoScores'] as Map?;
+    if (result == null || scored == null) continue;
+    final verdicts = judgedVerdicts(scorer, scopes[scorer.key], scored, qsoOf);
+    result['qsoScores'] = verdicts;
     for (final entry in verdicts.entries) {
       if (entry.key is String && entry.value is Map && judgesWorkedBefore(entry.value as Map)) {
         judged.add(entry.key as String);

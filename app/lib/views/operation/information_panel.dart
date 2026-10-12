@@ -60,6 +60,7 @@ class InformationPanel extends StatelessWidget {
           lookups: info.lookups,
           alertKeys: info.alertKeys,
           noticeKeys: info.noticeKeys,
+          scoreSources: info.scoreSources,
           ourEntityPrefix: ourEntityPrefix,
         ),
       );

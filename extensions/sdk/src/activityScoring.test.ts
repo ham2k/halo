@@ -247,9 +247,11 @@ test("a repeat contact that hunts a different park is a new reference", async ()
 
 test("a repeat contact with no reference yet is not called a new reference", async () => {
   // Dropping every candidate because this contact carries no ref is not news —
-  // it is a duplicate the operator has not finished typing.
-  const result = await score(POTA, { uuid: "op-1", refs: [] }, [qso("W1AW", { uuid: "q1" }), qso("W1AW", { uuid: "q2" })])
+  // it is a duplicate the operator has not finished typing. An activation, so
+  // the contact is one POTA has a stake in and rules on at all.
+  const result = await score(POTA, operationActivating("potaActivation", "US-0001"), [qso("W1AW", { uuid: "q1" }), qso("W1AW", { uuid: "q2" })])
   assert.deepEqual(result.qsoScores.q2.alerts, ["duplicate"])
+  assert.equal(result.qsoScores.q2.notices, undefined)
 })
 
 test("with no uniquePer axes at all, ANY repeat contact is a duplicate", async () => {
@@ -629,6 +631,35 @@ test("a contact this scorer credits nothing for makes no claim about it", async 
   const verdict = result.qsoScores["bare"]
   assert.equal(verdict.value, 0)
   assert.equal(verdict.dupe, undefined, "silence hands the question to the scorer holding the whole log")
+})
+
+// The same chaser in a QSO Party: a station worked yesterday with no park
+// reference is spotted again today. POTA reached the spots board only because
+// some OTHER spot carried a park, and a `newDay` from it un-strikes a spot the
+// party scorer calls a duplicate, coloured as if it were worth working.
+test("a contact this scorer credits nothing for gets no notice, and no duplicate either", async () => {
+  const result = await score(POTA, { refs: [] }, [
+    qso("W1AW"),
+    qso("W1AW", { at: DAY_1 + 3600_000, uuid: "sameDay" }),
+    qso("W1AW", { at: DAY_1 + DAY, uuid: "nextDay" }),
+    qso("W1AW", { at: DAY_1 + DAY, band: "40m", uuid: "newBand" }),
+  ])
+  for (const uuid of ["sameDay", "nextDay", "newBand"]) {
+    const verdict = result.qsoScores[uuid]
+    assert.equal(verdict.notices, undefined, `${uuid}: no worked-before news from a scorer with no stake`)
+    assert.equal(verdict.alerts, undefined, `${uuid}: nor a duplicate, which is core's call to make`)
+    assert.equal(verdict.dupe, undefined, uuid)
+  }
+})
+
+// The guard is the stake, not the operation: a chaser who HUNTS a park still
+// hears that the station is new today.
+test("a chaser hunting a reference still hears newDay", async () => {
+  const result = await score(POTA, { refs: [] }, [
+    qso("W1AW", { hunting: ["US-1234"] }),
+    qso("W1AW", { at: DAY_1 + DAY, hunting: ["US-1234"], uuid: "nextDay" }),
+  ])
+  assert.deepEqual(result.qsoScores["nextDay"].notices, ["newDay"])
 })
 
 // SiOTA and MOTA hold that a repeat contact does not advance an activation

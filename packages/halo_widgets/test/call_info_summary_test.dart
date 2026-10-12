@@ -85,6 +85,69 @@ void main() {
     expect(find.text('1 QSOs'), findsOneWidget);
   });
 
+  // Scorers that disagree: "DUPLICATE  NEWDAY" side by side says nothing an
+  // operator can act on, so each pill carries the name of the scorer whose
+  // rule it is.
+  testWidgets('a pill names its scorer when the scorers disagree', (tester) async {
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(
+          call: 'W3ABC',
+          alertKeys: ['duplicate'],
+          noticeKeys: ['newDay'],
+          scoreSources: {
+            'duplicate': ['PAQP'],
+            'newDay': ['POTA'],
+          },
+        ),
+      ),
+    );
+    expect(find.text('PAQP: DUPLICATE'), findsOneWidget);
+    expect(find.text('POTA: NEWDAY'), findsOneWidget);
+    expect(find.text('DUPLICATE'), findsNothing);
+  });
+
+  // Named pills are about twice the width of bare ones, so a few of them
+  // outrun a narrow line: laid out as a Row they overflow it instead of
+  // wrapping. The framework's own overflow error is the failure.
+  testWidgets('pills that do not fit the line wrap, with or without a note', (tester) async {
+    const sources = {
+      'duplicate': ['PAQP'],
+      'newDay': ['POTA'],
+      'newMult': ['CQWW', 'PAQP'],
+    };
+    for (final guess in [
+      null,
+      const {'name': 'Hiram Percy Maxim'},
+    ]) {
+      await tester.pumpWidget(
+        host(
+          data: CallInfoData(call: 'W3ABC', guess: guess, alertKeys: const ['duplicate'], noticeKeys: const ['newDay', 'newMult'], scoreSources: sources),
+        ),
+      );
+      for (final label in ['PAQP: DUPLICATE', 'POTA: NEWDAY', 'CQWW, PAQP: NEWMULT']) {
+        expect(find.text(label), findsOneWidget, reason: '$label with guess $guess');
+      }
+      final rows = {
+        for (final label in ['PAQP: DUPLICATE', 'CQWW, PAQP: NEWMULT']) tester.getTopLeft(find.text(label)).dy,
+      };
+      expect(rows.length, 2, reason: 'the last pill wrapped onto a line of its own');
+    }
+  });
+
+  // One pill per scorer would repeat the key's label once per scorer, and
+  // run the line out twice as fast as one naming them all.
+  test('a key two scorers said is one pill naming both; an unnamed key is one bare pill', () {
+    final labels = scorePillLabels(
+      ['newMult', 'newDXCC'],
+      const {
+        'newMult': ['CQWW', 'PAQP'],
+      },
+      (key) => key.toUpperCase(),
+    );
+    expect(labels, ['CQWW, PAQP: NEWMULT', 'NEWDXCC']);
+  });
+
   group('the note\'s marker run', () {
     testWidgets('paints last-emoji-first, split by grapheme, in the emoji font', (tester) async {
       // A ZWJ sequence first: a reversal by code point would tear it apart.

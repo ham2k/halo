@@ -104,6 +104,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   String? _scoreFor;
   List<String> _alertKeys = const [];
   List<String> _noticeKeys = const [];
+  Map<String, List<String>> _scoreSources = const {};
 
   // ---- What the panel reads ----
 
@@ -123,6 +124,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   bool get scoreIsCurrent => _scoreFor == activeCall();
   List<String> get currentAlertKeys => scoreIsCurrent ? _alertKeys : const [];
   List<String> get currentNoticeKeys => scoreIsCurrent ? _noticeKeys : const [];
+  Map<String, List<String>> get currentScoreSources => scoreIsCurrent ? _scoreSources : const {};
 
   /// What a worked-before answer is FOR: the call at the cursor AND the QSO
   /// left out of it. Both, because opening that same callsign's own QSO for
@@ -171,6 +173,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     _scoreFor = null;
     _alertKeys = const [];
     _noticeKeys = const [];
+    _scoreSources = const {};
   }
 
   /// Everything a compose session accumulated: the shown result, the
@@ -383,6 +386,10 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       _scoreFor = call;
       _alertKeys = ((result?['alerts'] as List?) ?? const []).whereType<String>().toList();
       _noticeKeys = ((result?['notices'] as List?) ?? const []).whereType<String>().toList();
+      _scoreSources = {
+        for (final MapEntry(:key, :value) in ((result?['sources'] as Map?) ?? const {}).entries)
+          if (key is String && value is List) key: value.whereType<String>().toList(),
+      };
       notify();
     });
   }

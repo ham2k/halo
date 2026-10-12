@@ -67,6 +67,104 @@ void main() {
     });
   });
 
+  group('judgesCandidate', () {
+    const partySpot = {
+      'refs': [
+        {'type': 'pa-qso-party', 'ref': 'CHE'},
+      ],
+    };
+    const parkSpot = {
+      'refs': [
+        {'type': 'pota', 'ref': 'US-0001'},
+      ],
+    };
+    const bareSpot = {'refs': <Map<String, dynamic>>[]};
+
+    // One park spot on the board selects POTA hunt-only. Asked about a QSO
+    // Party spot too, its per-day rule calls a station worked yesterday
+    // `newDay`, and that notice un-strikes what the party scorer called a
+    // duplicate.
+    test('a hunt-only scorer judges only candidates hunting its references', () {
+      final pota = scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'}).first;
+      expect(judgesCandidate(pota, _scopes['pota'], parkSpot), isTrue);
+      expect(judgesCandidate(pota, _scopes['pota'], partySpot), isFalse);
+      expect(judgesCandidate(pota, _scopes['pota'], bareSpot), isFalse);
+    });
+
+    // An activation credits every contact, park or not, so narrowing it would
+    // cost the activator their dupe marking on every non-park spot.
+    test('a scorer the operation names judges every candidate', () {
+      final pota = scorersFor({
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-0001'},
+        ],
+      }, _scopes).first;
+      expect(judgesCandidate(pota, _scopes['pota'], bareSpot), isTrue);
+      expect(judgesCandidate(pota, _scopes['pota'], partySpot), isTrue);
+    });
+
+    // `halo ext` reads contacts straight from a file. One hand-written `refs`
+    // that is not a list must read as hunting nothing, not throw out of the
+    // merge and cost every scorer's output.
+    test('a malformed refs value hunts nothing', () {
+      final pota = scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'}).first;
+      expect(judgesCandidate(pota, _scopes['pota'], const {'refs': 'US-0001'}), isFalse);
+      expect(
+        refTypesOf(const {
+          'refs': {'type': 'pota'},
+        }),
+        isEmpty,
+      );
+    });
+
+    test('the fallback judges every candidate', () {
+      final core = scorersFor(const {'refs': []}, _scopes).single;
+      expect(judgesCandidate(core, _scopes['core'], bareSpot), isTrue);
+    });
+  });
+
+  group('judgedVerdicts', () {
+    const verdicts = {
+      'park': {
+        'notices': ['newDay'],
+      },
+      'party': {
+        'notices': ['newDay'],
+      },
+    };
+    const qsos = {
+      'park': {
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      },
+      'party': {
+        'refs': [
+          {'type': 'pa-qso-party', 'ref': 'CHE'},
+        ],
+      },
+    };
+
+    // A whole-log pass hands the scorer every contact. Kept, POTA's `newDay` on
+    // a party contact takes the party's duplicate off it in the stored log.
+    test('a hunt-only scorer keeps its verdicts only on contacts hunting its references', () {
+      final pota = scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'}).first;
+      expect(judgedVerdicts(pota, _scopes['pota'], verdicts, (uuid) => qsos[uuid]).keys, ['park']);
+      expect(judgedVerdicts(pota, _scopes['pota'], verdicts, (uuid) => null), isEmpty, reason: 'an unknown contact hunts nothing');
+    });
+
+    test('every other scorer keeps all its verdicts, without reading a contact', () {
+      final scorers = scorersFor(const {
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-0001'},
+        ],
+      }, _scopes);
+      for (final scorer in scorers) {
+        expect(judgedVerdicts(scorer, _scopes[scorer.key], verdicts, (uuid) => fail('read $uuid for ${scorer.key}')), same(verdicts));
+      }
+    });
+  });
+
   group('judgesWorkedBefore', () {
     test('a dupe flag is a ruling, either way it reads', () {
       expect(judgesWorkedBefore(const {'dupe': true}), isTrue);

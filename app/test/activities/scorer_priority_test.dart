@@ -40,10 +40,12 @@ import 'package:ham2k_logger/services/scoring_service.dart';
 /// the live paths see a scorer that failed.
 class _StubHost implements ExtensionHost {
   final Map<String, Object?> answers;
+  final List<String> asked = [];
   _StubHost([this.answers = const {}]);
 
   @override
   Future<dynamic> invokeHook(String category, {String? key, required String method, Object? args, Duration timeout = const Duration(seconds: 10)}) async {
+    asked.add('$key:$method');
     final answer = answers['$key:$method'];
     if (answer is Exception) throw answer;
     return answer;
@@ -68,6 +70,17 @@ class _LiveExtensions extends ExtensionService {
 
   @override
   Future<void> start() async {}
+}
+
+/// [_LiveExtensions] with the two extensions whose short names a pill shows.
+class _NamedLiveExtensions extends _LiveExtensions {
+  _NamedLiveExtensions(super.stubHost, super.scopes);
+
+  @override
+  List<ExtensionInfo> get availableExtensions => const [
+    ExtensionInfo(key: 'ham2k-pota', file: 'pota.js', core: false, name: 'Parks on the Air', shortName: 'POTA'),
+    ExtensionInfo(key: 'ham2k-paqp', file: 'paqp.js', core: false, name: 'Pennsylvania QSO Party', shortName: 'PAQP'),
+  ];
 }
 
 const _potaAndCore = {
@@ -281,6 +294,66 @@ void main() {
         'dupe': true,
         'alerts': ['duplicate'],
       });
+    });
+
+    // A chaser's log: POTA is in only because one contact hunts a park. An
+    // activity that still answers for every contact it folds calls a bare one
+    // worked yesterday `newDay`; kept, it would silence core's duplicate on a
+    // contact POTA has no stake in.
+    test('a hunt-only scorer\'s verdict stands only on contacts hunting its references', () async {
+      final (operation, uuids) = await parkOperation(refs: const []);
+      final hunted = await qsos.add(operation.uuid, {
+        'their': {'call': 'K1PRK'},
+        'band': '20m',
+        'mode': 'SSB',
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0002'},
+        ],
+        'startAtMillis': DateTime.utc(2026, 7, 15, 18).millisecondsSinceEpoch,
+      });
+      final extensions = _FakeExtensions(
+        scopes: _potaAndCore,
+        answers: {
+          'core': _result({
+            uuids[0]: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
+            hunted.uuid: {
+              'value': 0,
+              'dupe': true,
+              'alerts': ['duplicate'],
+            },
+          }, tally: 'qsoCount'),
+          'pota': _result({
+            uuids[0]: {
+              'value': 0,
+              'notices': ['newDay'],
+            },
+            hunted.uuid: {
+              'value': 1,
+              'notices': ['newDay'],
+            },
+          }, tally: 'hunting'),
+        },
+      );
+
+      await ScoringService(extensions: extensions, qsos: qsos, operations: operations).rescoreOperation((await operations.get(operation.uuid))!);
+
+      expect(extensions.called, contains('pota'), reason: 'the hunted park selects POTA');
+      expect(await cachedScores(uuids[0]), {
+        'core': {
+          'value': 0,
+          'dupe': true,
+          'alerts': ['duplicate'],
+        },
+      });
+      expect((await cachedScores(hunted.uuid))?['pota'], {
+        'value': 1,
+        'notices': ['newDay'],
+      });
+      expect((await cachedScores(hunted.uuid))?['core'], {'value': 0});
     });
 
     // The same hole as on the live paths, in the stored verdict: a contest that
@@ -562,6 +635,181 @@ void main() {
         'pota:scoreQso': Exception('scorer blew up'),
       });
       expect(result?['alerts'], ['duplicate']);
+    });
+
+    // A park hunted earlier in the log selects POTA for every call typed. A bare
+    // call earns it nothing, and its per-day rule would set "New Day" beside the
+    // QSO Party's dupe for a station worked yesterday.
+    test('a scorer selected only by hunting is not asked about a contact hunting none of its references', () async {
+      final host = _StubHost({
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+      });
+      final result = await _LiveExtensions(host, _potaAndCore).scoreQso(
+        operation: const {'uuid': 'op-live', 'refs': []},
+        qso: {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+        },
+        huntedRefTypes: const {'pota'},
+      );
+      expect(host.asked, ['core:scoreQso']);
+      expect(result?['alerts'], ['duplicate']);
+
+      host.asked.clear();
+      await _LiveExtensions(host, _potaAndCore).scoreQso(
+        operation: const {'uuid': 'op-live', 'refs': []},
+        qso: {
+          'their': {'call': 'W1AW'},
+          'band': '20m',
+          'mode': 'SSB',
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+        },
+        huntedRefTypes: const {'pota'},
+      );
+      expect(host.asked, containsAll(['core:scoreQso', 'pota:scoreQso']), reason: 'hunting a park, it is asked');
+    });
+  });
+
+  // Two scorers that disagree about one QSO — a QSO Party calls it a dupe, the
+  // park being activated alongside calls it a new day — make a pill row that
+  // reads "Dupe!  New Day", which says nothing an operator can act on. Each
+  // pill then names its scorer; when they agree, nothing is named.
+  group('naming the scorers that disagree', () {
+    const scopes = {
+      'core': 'always',
+      'ham2k-pota': {
+        'refTypes': ['potaActivation', 'pota'],
+      },
+      'ham2k-paqp': {
+        'refTypes': ['pa-qso-party'],
+      },
+    };
+    const operation = {
+      'uuid': 'op-live',
+      'refs': [
+        {'type': 'potaActivation', 'ref': 'US-0001'},
+        {'type': 'pa-qso-party', 'location': 'NNJ'},
+      ],
+    };
+
+    Future<Map<String, dynamic>?> score(Map<String, Object?> answers) => _NamedLiveExtensions(_StubHost(answers), scopes).scoreQso(
+      operation: operation,
+      qso: {
+        'their': {'call': 'W3ABC'},
+        'band': '40m',
+        'mode': 'SSB',
+      },
+    );
+
+    test('a dupe beside another scorer\'s notice names both', () async {
+      final result = await score({
+        'core:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'ham2k-paqp:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+          'dupe': true,
+        },
+        'ham2k-pota:scoreQso': {
+          'notices': ['newDay'],
+          'alerts': <String>[],
+        },
+      });
+      expect(result?['sources'], {
+        'duplicate': ['PAQP'],
+        'newDay': ['POTA'],
+      });
+      // The plain keys stay as they were: the worked-before pill and the
+      // spots board read `duplicate` off them.
+      expect(result?['alerts'], ['duplicate']);
+      expect(result?['notices'], ['newDay']);
+    });
+
+    // Not only worked-before news: a new multiplier beside another scorer's
+    // dupe is the same contradiction.
+    test('any pill from a scorer that did not call it a dupe is a disagreement', () async {
+      final result = await score({
+        'ham2k-paqp:scoreQso': {
+          'notices': ['newMult'],
+          'alerts': <String>[],
+        },
+        'ham2k-pota:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+          'dupe': true,
+        },
+      });
+      expect(result?['sources'], {
+        'duplicate': ['POTA'],
+        'newMult': ['PAQP'],
+      });
+    });
+
+    // POTA crediting a contact it has seen before, with nothing to put on a
+    // pill, says so as `dupe: false` — still the opposite of PAQP's dupe.
+    test('an explicit not-a-duplicate with no pills is a disagreement', () async {
+      final result = await score({
+        'ham2k-paqp:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'ham2k-pota:scoreQso': {'notices': <String>[], 'alerts': <String>[], 'dupe': false},
+      });
+      expect(result?['sources'], {
+        'duplicate': ['PAQP'],
+      });
+    });
+
+    test('scorers that agree on a dupe are not named', () async {
+      final result = await score({
+        'ham2k-paqp:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'ham2k-pota:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+      });
+      expect(result?.containsKey('sources'), isFalse);
+    });
+
+    test('a lone scorer\'s dupe is not named', () async {
+      final result = await score({
+        'ham2k-paqp:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'ham2k-pota:scoreQso': {'notices': <String>[], 'alerts': <String>[]},
+      });
+      expect(result?.containsKey('sources'), isFalse);
+    });
+
+    // Core's own entity pills stand beside any verdict and contradict none.
+    test('the fallback is never named', () async {
+      final result = await score({
+        'core:scoreQso': {
+          'notices': ['newDXCC'],
+          'alerts': <String>[],
+        },
+        'ham2k-paqp:scoreQso': {
+          'notices': <String>[],
+          'alerts': ['duplicate'],
+        },
+        'ham2k-pota:scoreQso': {
+          'notices': ['newDay'],
+          'alerts': <String>[],
+        },
+      });
+      expect((result?['sources'] as Map).containsKey('newDXCC'), isFalse);
     });
   });
 

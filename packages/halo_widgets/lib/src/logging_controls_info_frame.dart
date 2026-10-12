@@ -17,8 +17,9 @@ import 'spacing.dart';
 ///
 /// A min-height container: at least the action button's own diameter so a
 /// one-line info area can't leave the button overflowing upward into the
-/// secondary control chips above, but free to grow taller for the call-info
-/// panel's up-to-three lines.
+/// secondary control chips above, but free to grow as tall as the call-info
+/// lines and their wrapped pills need. It grows away from the entry row,
+/// which never moves (docs/design/logging-fields.md, "The three parts").
 class LoggingInfoFrame extends StatefulWidget {
   const LoggingInfoFrame({
     super.key,

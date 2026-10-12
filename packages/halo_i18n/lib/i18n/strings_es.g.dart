@@ -1747,6 +1747,7 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String distanceAway({required Object distance}) => 'a ${distance}';
 	@override String distanceBearingAway({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)';
 	@override String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => 'a ${distance} (${bearing}° / ${reverse}°)';
+	@override String noticeFromScorer({required Object scorer, required Object notice}) => '${scorer}: ${notice}';
 	@override String get noticeDupe => '¡Dupe!';
 	@override String get noticeNewBand => 'Nueva Banda';
 	@override String get noticeNewMode => 'Nuevo Modo';
@@ -4397,6 +4398,7 @@ extension on TranslationsEs {
 			'loggingControls.info.distanceAway' => ({required Object distance}) => 'a ${distance}',
 			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
 			'loggingControls.info.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => 'a ${distance} (${bearing}° / ${reverse}°)',
+			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => '¡Dupe!',
 			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
 			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
@@ -4608,9 +4610,9 @@ extension on TranslationsEs {
 			'settings.radio.pttKey.transmitting' => 'Transmitiendo',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.',
-			'settings.radio.smartVfoSnap.descriptionOff' => 'Quedándose exactamente donde la sintonizaste.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.smartVfoSnap.descriptionOff' => 'Quedándose exactamente donde la sintonizaste.',
 			'settings.radio.snapDebounce.title' => 'Ajuste inteligente: retardo de reposo',
 			'settings.radio.snapDebounce.description' => 'Cuánto debe detenerse el dial antes de redondear la frecuencia. Menos se siente inmediato; más deja margen para un giro lento.',
 			'settings.radio.snapLongMove.title' => 'Ajuste inteligente: giro largo',
@@ -5122,9 +5124,9 @@ extension on TranslationsEs {
 			'settings.station.placeholderConnectFailure' => 'Se le indicó a la radio simulada que rechazara esta conexión',
 			'settings.station.placeholderFreq' => 'Frecuencia (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.',
-			'settings.station.placeholderMode' => 'Modo',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.placeholderMode' => 'Modo',
 			'settings.station.placeholderModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potencia (vatios)',
 			'settings.station.placeholderPurpose' => 'Usa esta radio para registrar con qué equipo estás operando',

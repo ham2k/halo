@@ -16,6 +16,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' as priority;
 
 import '../error_reporting_service.dart';
+import 'extension_info.dart';
 
 /// One scorer's cached end-of-log checkpoint, as `ScoringService` stores it:
 /// its scoresheet and the day the sheet ends on, which the harness needs back
@@ -101,6 +102,9 @@ mixin ExtensionScoring {
   /// Every registered scorer's scope, keyed by scorer — what
   /// `ExtensionService.scorersFor` selects from.
   Future<Map<String, dynamic>> getScoringScopes();
+
+  /// What names a scorer on a pill when scorers disagree (see [scoreQso]).
+  List<ExtensionInfo> get availableExtensions;
 
   /// Ticks whenever the runtime is replaced; see `ExtensionService`.
   ValueNotifier<int> get runtimeGeneration;
@@ -232,7 +236,11 @@ mixin ExtensionScoring {
     final host = this.host;
     if (host == null) return null;
 
-    final scorers = priority.scorersFor(operation, await getScoringScopes(), alsoRefTypes: {...huntedRefTypes, ...priority.refTypesOf(qso)});
+    final scopes = await getScoringScopes();
+    final scorers = [
+      for (final scorer in priority.scorersFor(operation, scopes, alsoRefTypes: {...huntedRefTypes, ...priority.refTypesOf(qso)}))
+        if (priority.judgesCandidate(scorer, scopes[scorer.key], qso)) scorer,
+    ];
     if (scorers.isEmpty) return null;
 
     // Sorted by scorer key so the merged notice/alert order is stable —
@@ -248,6 +256,9 @@ mixin ExtensionScoring {
     final fallbackNotices = SplayTreeSet<String>();
     final fallbackAlerts = SplayTreeSet<String>();
     var judgedByOther = false;
+    // Each non-fallback scorer's own keys, for naming them when they disagree —
+    // merged, since a scorer is invoked once per ref type that selected it.
+    final byScorer = <String, List<String>>{};
 
     await Future.wait(
       scorers.map((scorer) async {
@@ -271,8 +282,15 @@ mixin ExtensionScoring {
           any = true;
           ErrorReportingService.recordSuccess(_scorerFailureKey(scorer.key, Hooks.scoringScoreQso.method));
           if (!scorer.fallback && judgesWorkedBefore(result)) judgedByOther = true;
-          (scorer.fallback ? fallbackNotices : notices).addAll(((result['notices'] as List?) ?? const []).whereType<String>());
-          (scorer.fallback ? fallbackAlerts : alerts).addAll(((result['alerts'] as List?) ?? const []).whereType<String>());
+          final ownNotices = ((result['notices'] as List?) ?? const []).whereType<String>();
+          final ownAlerts = ((result['alerts'] as List?) ?? const []).whereType<String>();
+          (scorer.fallback ? fallbackNotices : notices).addAll(ownNotices);
+          (scorer.fallback ? fallbackAlerts : alerts).addAll(ownAlerts);
+          // `dupe: false` with no pills is a ruling too: "worked before, and this
+          // one counts" against another scorer's duplicate is a disagreement.
+          if (!scorer.fallback && (ownNotices.isNotEmpty || ownAlerts.isNotEmpty || result['dupe'] == false)) {
+            byScorer.putIfAbsent(scorer.key, () => []).addAll([...ownAlerts, ...ownNotices]);
+          }
         } catch (e, stackTrace) {
           // A scorer that FAILED judged nothing, so the fallback speaks for this
           // QSO after all rather than the row going bare.
@@ -289,8 +307,35 @@ mixin ExtensionScoring {
       notices.addAll(fallbackNotices);
       alerts.addAll(fallbackAlerts);
     }
-    return {'notices': notices.toList(), 'alerts': alerts.toList()};
+    final sources = _sourcesIfDisagreeing(byScorer);
+    return {'notices': notices.toList(), 'alerts': alerts.toList(), 'sources': ?sources};
   }
+
+  /// Which scorers said each key, by short name — only when they DISAGREE:
+  /// one calls the QSO a `duplicate` and another, with pills of its own, does
+  /// not. "Dupe!" beside "New Day" reads as nonsense until the pills say whose
+  /// rule each is ("PAQP: Dupe!", "POTA: New Day"); scorers that agree, or a
+  /// lone scorer, keep the bare pills. Null otherwise. The fallback scorer is
+  /// never named: whatever it says beside another scorer is not about a prior
+  /// contact (see [Scorer]).
+  Map<String, List<String>>? _sourcesIfDisagreeing(Map<String, List<String>> byScorer) {
+    final dupes = {
+      for (final entry in byScorer.entries)
+        if (entry.value.contains('duplicate')) entry.key,
+    };
+    if (dupes.isEmpty || byScorer.keys.every(dupes.contains)) return null;
+    final sources = SplayTreeMap<String, SplayTreeSet<String>>();
+    for (final MapEntry(key: scorer, value: keys) in byScorer.entries) {
+      for (final key in keys) {
+        sources.putIfAbsent(key, SplayTreeSet.new).add(_scorerLabel(scorer));
+      }
+    }
+    return {for (final entry in sources.entries) entry.key: entry.value.toList()};
+  }
+
+  /// A scorer's extension's short name ("PAQP", "POTA"): every scoring hook
+  /// registers under its extension's own key.
+  String _scorerLabel(String scorerKey) => availableExtensions.where((info) => info.key == scorerKey).firstOrNull?.effectiveShortName ?? scorerKey;
 
   /// The same live judgement as [scoreQso], for many not-yet-logged candidates
   /// at once — the Spots Panel annotating every spot on screen against the
@@ -332,16 +377,13 @@ mixin ExtensionScoring {
     // The candidates' own references count as well as the log's: a station
     // worked bare who is now spotted at a park is a NEW reference, and a
     // log-only rule would leave that spot struck as a plain duplicate.
+    final scopes = await getScoringScopes();
     final scorers = priority.scorersFor(
       withUuid,
-      await getScoringScopes(),
+      scopes,
       alsoRefTypes: {...huntedRefTypes, for (final candidate in candidates.values) ...priority.refTypesOf(candidate)},
     );
     if (scorers.isEmpty) return null;
-
-    final payload = [
-      for (final entry in candidates.entries) {'key': entry.key, 'qso': entry.value},
-    ];
 
     // Sorted like scoreQso's, so a candidate's merged notice order is stable
     // across refreshes and the panel's styling doesn't flicker between two
@@ -362,8 +404,29 @@ mixin ExtensionScoring {
     // doesn't — and the board must not keep showing the last one it had.
     var failed = false;
 
+    // A hunt-only scorer sees only the candidates hunting its references
+    // (see [priority.judgesCandidate]), and none means no call at all.
+    final everyCandidate = [
+      for (final entry in candidates.entries) {'key': entry.key, 'qso': entry.value},
+    ];
+    final batches = [
+      for (final scorer in scorers)
+        (
+          scorer: scorer,
+          payload: [
+            for (final item in everyCandidate)
+              if (priority.judgesCandidate(scorer, scopes[scorer.key], item['qso'] as Map<String, dynamic>)) item,
+          ],
+        ),
+    ].where((batch) => batch.payload.isNotEmpty).toList();
+    // Every selected scorer had nothing on this board to judge: a pass with
+    // nothing to report, which un-strikes the board. Null would keep verdicts
+    // no scorer computes any more.
+    if (batches.isEmpty) return const {};
+
     await Future.wait(
-      scorers.map((scorer) async {
+      batches.map((batch) async {
+        final (:scorer, :payload) = batch;
         try {
           final checkpoint = resume?.checkpoints[scorer.key];
           final tail = resume?.tail;

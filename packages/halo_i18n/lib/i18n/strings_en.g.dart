@@ -3739,6 +3739,9 @@ class Translations$loggingControls$info$en {
 	/// en: '${distance} (${bearing}° / ${reverse}°) away'
 	String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) away';
 
+	/// en: '${scorer}: ${notice}'
+	String noticeFromScorer({required Object scorer, required Object notice}) => '${scorer}: ${notice}';
+
 	/// en: 'Dupe!'
 	String get noticeDupe => 'Dupe!';
 
@@ -8521,6 +8524,7 @@ extension on Translations {
 			'loggingControls.info.distanceAway' => ({required Object distance}) => '${distance} away',
 			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
 			'loggingControls.info.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) away',
+			'loggingControls.info.noticeFromScorer' => ({required Object scorer, required Object notice}) => '${scorer}: ${notice}',
 			'loggingControls.info.noticeDupe' => 'Dupe!',
 			'loggingControls.info.noticeNewBand' => 'New Band',
 			'loggingControls.info.noticeNewMode' => 'New Mode',
@@ -8732,9 +8736,9 @@ extension on Translations {
 			'settings.radio.pttKey.transmitting' => 'Transmitting',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.',
-			'settings.radio.smartVfoSnap.descriptionOff' => 'Staying exactly where you tuned it.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.smartVfoSnap.descriptionOff' => 'Staying exactly where you tuned it.',
 			'settings.radio.snapDebounce.title' => 'Smart Snap: Settle delay',
 			'settings.radio.snapDebounce.description' => 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.',
 			'settings.radio.snapLongMove.title' => 'Smart Snap: Long move',
@@ -9246,9 +9250,9 @@ extension on Translations {
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
-			'settings.station.antennaTypes.dipole' => 'Dipole',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.antennaTypes.dipole' => 'Dipole',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
 			'settings.station.antennaTypes.loop' => 'Loop',

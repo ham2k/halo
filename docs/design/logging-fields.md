@@ -77,6 +77,15 @@ info, exactly what a day header opens. Either way the Info
 pane is revealed in place when the layout holds one, and a modal opens
 otherwise.
 
+**The main fields never move.** The information area is as tall as what it
+shows — a callsign's details take more lines than the statistics, and scoring
+pills that name their scorers wrap onto lines of their own — and it grows
+away from the fields: up into the QSO list when the panel sits below the log,
+down into it when the panel sits above it (the Chasing view). The panel is
+anchored at the fields' edge and the list gives up the height, so a pill
+arriving or leaving mid-typing never shifts a field under the operator's
+hands (`logging_controls_info_growth_test.dart`).
+
 ## How wide each main field is
 
 Every main field states a **minimum width** — the width it renders at whenever

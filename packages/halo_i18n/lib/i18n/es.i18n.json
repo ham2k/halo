@@ -976,6 +976,7 @@
       "distanceAway": "a ${distance}",
       "distanceBearingAway": "a ${distance} (${bearing}°)",
       "distanceBearingsAway": "a ${distance} (${bearing}° / ${reverse}°)",
+      "noticeFromScorer": "${scorer}: ${notice}",
       "noticeDupe": "¡Dupe!",
       "noticeNewBand": "Nueva Banda",
       "noticeNewMode": "Nuevo Modo",

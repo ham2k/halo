@@ -185,15 +185,17 @@ Widget host({
       // Matches the operation view: the Scaffold doesn't resize for the
       // keyboard (LoggingControls reserves its own bottom spacer), and the
       // panel is bottom-anchored with the rest of the height above it (the
-      // QsoList in the app). `trailing` stands in for that QSO list — a
-      // focusable sibling OUTSIDE the controls, so a Tab-trap test can prove
-      // focus never lands on it.
+      // QsoList in the app) — or, drawn above the log, top-anchored with the
+      // list below, as the Chasing view draws it. `trailing` stands in for
+      // that QSO list — a focusable sibling OUTSIDE the controls, so a
+      // Tab-trap test can prove focus never lands on it.
       resizeToAvoidBottomInset: false,
       body: Column(
         children: [
-          const Expanded(child: SizedBox.shrink()),
+          if (prefs?.aboveLog != true) const Expanded(child: SizedBox.shrink()),
           controls,
           ?trailing,
+          if (prefs?.aboveLog == true) const Expanded(child: SizedBox.shrink()),
           // The panel no longer draws the numbers row — it publishes it, and
           // the app's StatusBarOverlay draws it below the status footer and
           // directly on the keyboard. This stands in for that, so the tests

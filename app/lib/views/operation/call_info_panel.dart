@@ -66,6 +66,10 @@ class CallInfoPanel extends StatefulWidget {
   final List<String> alertKeys;
   final List<String> noticeKeys;
 
+  /// Whose rule each key is, when scorers disagree — see
+  /// [CallInfoData.scoreSources].
+  final Map<String, List<String>> scoreSources;
+
   /// The operation's own DXCC entity — the contact's country is a header line
   /// only for DX (never our own).
   final String? ourEntityPrefix;
@@ -84,6 +88,7 @@ class CallInfoPanel extends StatefulWidget {
     this.lookups = const [],
     this.alertKeys = const [],
     this.noticeKeys = const [],
+    this.scoreSources = const {},
     this.ourEntityPrefix,
     this.shrinkWrap = false,
   });
@@ -480,17 +485,21 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
 
   List<Widget> _pills(BuildContext context) {
     final theme = Theme.of(context);
-    Widget pill(String key, {required bool alert}) {
+    Widget pill(String label, {required bool alert}) {
       final bg = alert ? theme.colorScheme.error : const Color(0xFF2E7D32);
       final fg = alert ? theme.colorScheme.onError : Colors.white;
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
-        child: Text(scoreNoticeLabel(context, key), style: theme.textTheme.labelSmall?.copyWith(color: fg)),
+        child: Text(label, style: theme.textTheme.labelSmall?.copyWith(color: fg)),
       );
     }
 
-    return [for (final key in widget.alertKeys) pill(key, alert: true), for (final key in widget.noticeKeys) pill(key, alert: false)];
+    String labelOf(String key) => scoreNoticeLabel(context, key);
+    return [
+      for (final label in scorePillLabels(widget.alertKeys, widget.scoreSources, labelOf)) pill(label, alert: true),
+      for (final label in scorePillLabels(widget.noticeKeys, widget.scoreSources, labelOf)) pill(label, alert: false),
+    ];
   }
 
   /// One note: its marker glowed as its own glyph, like the logging panel's
