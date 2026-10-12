@@ -43,15 +43,20 @@ import 'voice_activity_tracker.dart';
 const _defaultPollInterval = Duration(seconds: 5);
 
 /// How long a command waits for its answer before the next one goes out
-/// anyway. An IC-7300 answers in about 10 ms at 19200 baud; this only has to
-/// outlast that on a slow link, and bound how long a command the radio never
-/// answers holds up the ones behind it.
-const _answerTimeout = Duration(milliseconds: 250);
-
-/// The same over the network pairing, whose answers cross WiFi: a timeout
-/// shorter than its jitter sends the next command over one still pending,
-/// which is the burst this wait exists to prevent.
-const _networkAnswerTimeout = Duration(seconds: 1);
+/// anyway, over a cable and over the network pairing alike.
+///
+/// Generous on purpose. An IC-7300 answers in about 10 ms at 19200 baud, but
+/// a radio that answers late is still answering: inside the radio CI-V is
+/// one half-duplex line, so a command sent before the wait runs out collides
+/// with the answer still going out, and the radio may read the wreckage as a
+/// command of its own. hamlib waits 700-1000 ms on the same radios.
+///
+/// The cost: a command the radio never answers holds up everything behind it
+/// this long, an unkey or a stop included (see [IcomCivSession._sendFirst]).
+/// A read the radio lacks stops costing it once [OptionalRead] gives up, but
+/// that counts only silences on receive; any other command the radio ignores
+/// costs it on every poll.
+const civAnswerTimeout = Duration(seconds: 1);
 
 /// The RF power level (0x14 0x0A) is a 0-255 value standing for 0-100% of
 /// the radio's OWN maximum — CI-V has no command that states what that
@@ -519,7 +524,10 @@ class IcomCivSession
   /// A stop, ahead of everything waiting, and taking with it the queued
   /// frames of [command] it stops — a CW chunk or a voice play still in the
   /// queue would otherwise key the radio after the operator stopped it. It
-  /// still waits for the one exchange on the wire.
+  /// still waits for the one exchange on the wire — up to [civAnswerTimeout]
+  /// if the radio never answers it. Deliberately: sent over an answer still
+  /// coming in, the stop is the frame most likely to be garbled, and a lost
+  /// unkey is worse than a late one.
   ///
   /// [droppingSub] narrows that to one sub-command, for a command byte
   /// shared by things a stop must not take with it.
@@ -534,7 +542,7 @@ class IcomCivSession
     final frame = _outbox.removeFirst();
     _awaiting = frame[4];
     _onWire = frame;
-    _answerTimer = Timer(_baudRate == null ? _networkAnswerTimeout : _answerTimeout, _unanswered);
+    _answerTimer = Timer(civAnswerTimeout, _unanswered);
     _sink.send(frame);
   }
 

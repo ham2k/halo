@@ -24,6 +24,9 @@ import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
+/// Just long enough for the radio's silence to count as no answer.
+final _pastAnswerTimeout = civAnswerTimeout + const Duration(milliseconds: 10);
+
 class _FakeSink implements EquipmentSink, TunerSink, PassbandSink {
   final problems = <String?>[];
   List<EquipmentChannel> channels = const [];
@@ -267,9 +270,7 @@ void main() {
       // Without the timeout one lost frame would stop the session talking.
       fakeAsync((async) {
         session.startUpdates();
-        async.elapse(const Duration(milliseconds: 240));
-        expect(commands(), [0x03]);
-        async.elapse(const Duration(milliseconds: 20));
+        async.elapse(_pastAnswerTimeout);
         expect(commands(), [0x03, 0x1A]);
         // Said, once: a command the radio ignores costs a timeout on every
         // poll, and nothing else would show it.
@@ -280,7 +281,23 @@ void main() {
       });
     });
 
-    test('the network pairing waits longer, since its answers cross WiFi', () {
+    test('a radio that answers slowly is not talked over', () {
+      // Inside the radio CI-V is one half-duplex line: a command sent while an
+      // answer is still going out collides with it, and the radio may take
+      // the wreckage for a command of its own — a tuning step, a frequency
+      // nobody asked for. hamlib waits 700-1000 ms on these radios.
+      fakeAsync((async) {
+        session.startUpdates();
+        async.elapse(const Duration(milliseconds: 900));
+        expect(commands(), [0x03]);
+        feed(_fromRadio([0x03, 0x00, 0x40, 0x07, 0x14, 0x00]));
+        expect(commands(), [0x03, 0x1A]);
+        expect(sink.diagnostics, isEmpty, reason: 'a slow answer is an answer');
+        session.teardown();
+      });
+    });
+
+    test('the network pairing waits as long, since its answers cross WiFi', () {
       // A timeout under the link's jitter sends the next command over one
       // still pending — the burst the wait exists to prevent.
       fakeAsync((async) {
@@ -297,7 +314,7 @@ void main() {
       // the next command over it.
       fakeAsync((async) {
         session.startUpdates();
-        async.elapse(const Duration(milliseconds: 260));
+        async.elapse(_pastAnswerTimeout);
         expect(commands(), [0x03, 0x1A]);
         feed(_fromRadio([0x03, 0x00, 0x40, 0x07, 0x14, 0x00]));
         expect(commands(), [0x03, 0x1A]);
@@ -601,7 +618,7 @@ void main() {
         if (reply != null) {
           feed(_fromRadio(reply));
         } else {
-          async.elapse(const Duration(milliseconds: 260));
+          async.elapse(_pastAnswerTimeout);
         }
         // The mode answer behind it: the radio answering, so a silence was the read's own.
         feed(_fromRadio([0x04, 0x01, 0x01]));
@@ -988,7 +1005,7 @@ void main() {
           for (var i = 0; i < 3; i++) {
             if (i > 0) async.elapse(const Duration(seconds: 5));
             ackUntilTunerRead();
-            async.elapse(const Duration(milliseconds: 260));
+            async.elapse(_pastAnswerTimeout);
             if (i == 2) expect(sink.tuners, isEmpty, reason: 'two lost answers are a busy link');
             // It answers the next command, so the silence was the read's own.
             feed(_fromRadio([0xFB]));
@@ -1016,7 +1033,7 @@ void main() {
             if (i.isEven) {
               feed(_fromRadio([0xFA]));
             } else {
-              async.elapse(const Duration(milliseconds: 260));
+              async.elapse(_pastAnswerTimeout);
             }
           }
           feed(_fromRadio([0xFB]));
@@ -1240,7 +1257,7 @@ void main() {
           feed(cw);
           for (final filter in [0x02, 0x03, 0x01]) {
             expect(sink.sent.last, readWidth);
-            async.elapse(const Duration(milliseconds: 260));
+            async.elapse(_pastAnswerTimeout);
             if (filter == 0x01) {
               expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty, reason: 'two lost answers are a busy link');
             }
@@ -1259,11 +1276,11 @@ void main() {
         // Silence followed by the answer is a slow radio, not a missing read.
         fakeAsync((async) {
           feed(cw);
-          async.elapse(const Duration(milliseconds: 260));
+          async.elapse(_pastAnswerTimeout);
           feed(_fromRadio([0x1A, 0x03, 0x10]));
           for (final filter in [0x02, 0x03]) {
             feed(_fromRadio([0x04, 0x03, filter]));
-            async.elapse(const Duration(milliseconds: 260));
+            async.elapse(_pastAnswerTimeout);
           }
           sink.sent.clear();
           feed(_fromRadio([0x04, 0x03, 0x01]));
@@ -1281,7 +1298,7 @@ void main() {
             feed(cw);
             expect(sink.sent.last, readWidth);
             session.setFrequency(14074);
-            async.elapse(const Duration(milliseconds: 600));
+            async.elapse(_pastAnswerTimeout * 2);
             feed(_fromRadio([0x04, 0x01, 0x01]));
           }
           expect(sink.diagnostics.where((d) => d!.contains('filter width')), isEmpty);

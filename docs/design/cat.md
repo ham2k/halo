@@ -229,14 +229,20 @@ LAST of several commands that arrive back to back: a DEVLOGCAT recording showed 
 answered once, and the frequency read — first in the burst — never, while the TX watch sent alone
 was answered every time. So `IcomCivSession` queues everything it sends and releases the next
 command when the radio answers the last — a data answer repeating its command byte, or an ACK or
-NAK, which name none — or after 250 ms (a second over the network pairing, whose answers cross
-WiFi). A transceive broadcast is not an answer, and neither is a data answer for a command that
-already timed out. The first unanswered command of a session is reported as a driver diagnostic.
+NAK, which name none — or after a second, over a cable and the network pairing alike. The wait is
+long on purpose: inside the radio CI-V is one half-duplex line, so a command sent while a slow
+answer is still going out collides with it, and the radio may read the wreckage as a command of its
+own. hamlib waits 700-1000 ms on the same radios. A transceive broadcast is not an answer, and
+neither is a data answer for a command that already timed out. The first unanswered command of a
+session is reported as a driver diagnostic.
 Only polls are merged — a read identical to one already waiting is not queued twice, so a radio that
 is switched off builds no backlog of stale questions; sets and read-backs always queue in order,
 because a band change restates its frequency after its mode. A stop (CW `0x17 0xFF`, voice
-`0x28 0x00 0x00`) goes ahead of everything waiting and drops the queued frames it stops. hamlib
-keeps the same one-at-a-time discipline.
+`0x28 0x00 0x00`) or a PTT set goes ahead of everything waiting and drops the queued frames it
+stops — but still waits out the one exchange on the wire, so behind a command the radio never
+answers it goes out up to a second late. That is deliberate: sent over an answer still coming in,
+the stop is the frame the collision garbles, and a lost unkey is worse than a late one. hamlib keeps
+the same one-at-a-time discipline.
 
 ## Persistence
 
@@ -2464,8 +2470,7 @@ WiFi:
   for the VFO, the TX watch and the keyer. The network pairing has no line to
   budget, and the registry hands a driver no baud rate its transport has no
   field for — a node switched from serial to WiFi keeps the one it had in its
-  config, and with it a 250 ms answer timeout and a meter cadence paced like a
-  19200 cable.
+  config, and with it a meter cadence paced like a 19200 cable.
 
 ### Flex: mirrored through DAX IQ
 
