@@ -28,6 +28,18 @@ ext = {
   description = "halo-ext CLI: run extension hooks outside the app — `mise run ext -- lookup KI2D`"
 }
 run-ios = { run = "open -a Simulator && cd app && sha=$(git rev-parse --short HEAD) && flutter run -d iphone --dart-define=HALO_GIT_SHA=\"$sha\"", description = "Boot iOS Simulator and run the app" }
+strings = {
+  run = "cd packages/halo_i18n && dart run tool/generate_hidden_locales.dart && dart run slang",
+  description = "Regenerate the app's strings after editing packages/halo_i18n/lib/i18n/en.i18n.json"
+}
+crowdin-push = {
+  run = "crowdin upload sources",
+  description = "Upload the English strings to Crowdin (needs CROWDIN_PROJECT_ID and CROWDIN_PERSONAL_TOKEN)"
+}
+crowdin-pull = {
+  run = "crowdin download --skip-untranslated-strings -l ca -l cs -l de -l es-ES -l fr -l it -l ja -l ko -l nb -l nl -l pt-BR -l pt-PT -l ro -l sk -l tr -l zh-CN && mise run strings",
+  description = "Download the bundled languages from Crowdin and regenerate the strings"
+}
 bundle = {
   run = "cd extensions && npm run build",
   description = "Build the JS/TS extensions"

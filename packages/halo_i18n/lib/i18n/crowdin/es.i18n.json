@@ -122,7 +122,7 @@
     "upgradeDoneBody": "Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.",
     "upgradeDoneUnserved": "No se actualizaron: ${names}.",
     "upgradeDoneRefused": "No pudieron ejecutarse: ${names}.",
-    "upgradeDoneRefusedHint": "Siguen instaladas y marcadas en Ajustes \u203a Extensiones \u2014 actualizarlas allí las recuperará.",
+    "upgradeDoneRefusedHint": "Siguen instaladas y marcadas en Ajustes › Extensiones — actualizarlas allí las recuperará.",
     "upgradeDoneUnservedHint": "El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.",
     "retiredQp": "Concursos Estatales",
     "retiredStateparks": "Eventos de Parques Estatales",
@@ -1117,6 +1117,7 @@
   "settings": {
     "title": "Configuración",
     "language": "Idioma",
+    "languageSystem": "Seguir la configuración del sistema (${language})",
     "theme": {
       "title": "Modo de Tema",
       "system": "Seguir la configuración del sistema",
@@ -1764,7 +1765,8 @@
         "antenna": "Antena",
         "key": "Manipulador",
         "winkeyer": "WinKeyer",
-        "antennaGenius": "4O3A Antenna Genius"
+        "antennaGenius": "4O3A Antenna Genius",
+        "sierraCoax": "Conmutador coaxial Sierra Radio CX-1"
       },
       "transports": {
         "network": "Red/WiFi",
@@ -1935,6 +1937,12 @@
       "switchAntennaFor": "Antena en el puerto $port",
       "switchAntennaForDescription": "Cuál de tus antenas está conectada a este puerto del conmutador.",
       "switchLayoutSides": "$antennas antenas, $radios radios",
+      "switchLayoutSidesOneRadio": "$antennas antenas, 1 radio",
+      "switchLayoutSidesOneAntenna": "1 antena, $radios radios",
+      "switchCommonPort": "Común",
+      "dcnAddress": "Dirección del dispositivo",
+      "dcnAddressDescription": "La dirección configurada en los interruptores DIP del módulo. Un módulo de relés coaxiales sale de fábrica con la 2.",
+      "dcnAddressRequired": "Debe ser una dirección de dispositivo del 1 al 99",
       "switchPortLabel": "Puerto $port",
       "switchPortAutoHint": "sigue los datos de banda",
       "switchPortTransmittingHint": "transmitiendo — no se puede cambiar ahora",
@@ -1942,6 +1950,7 @@
       "switchCurrentStateDescription": "En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.",
       "switchWiringHeader": "Cableado",
       "switchPortInhibitedHint": "transmisión inhibida",
+      "configUnreadable": "No se pudieron leer los ajustes guardados de esta radio. Abre sus ajustes y vuelve a introducirlos, o quítala y añádela de nuevo.",
       "autoConnectHeld": "HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.",
       "antennaTypes": {
         "dipole": "Dipolo",
@@ -2279,6 +2288,9 @@
     "emptyHistory": "Aún no hay avisos",
     "webStorageInMemory": "Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.",
     "webStorageUnreliable": "Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.",
+    "logFromNewerBuildTitle": "Este log necesita una versión más nueva",
+    "logFromNewerBuild": "Tu log lo escribió una versión más nueva de HaLo (versión de almacenamiento ${storage}; esta entiende la ${understood}), así que no se puede abrir y los contactos nuevos no se guardarán. Vuelve a instalar la versión más nueva o, si querías usar esta compilación, apúntala a otra carpeta de datos. El log está en ${location}",
+    "logFromNewerBuildNoLocation": "Tu log lo escribió una versión más nueva de HaLo (versión de almacenamiento ${storage}; esta entiende la ${understood}), así que no se puede abrir y los contactos nuevos no se guardarán. Ábrelo con esa versión más nueva.",
     "preferencesRestoredTitle": "Ajustes restaurados desde una copia",
     "preferencesRestored": "No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.",
     "preferencesResetTitle": "Ajustes reiniciados",

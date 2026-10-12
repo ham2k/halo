@@ -21,7 +21,7 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 - The extension system and hooks are defined under `docs/extensions/`.
 
-- User-facing strings live in `packages/halo_i18n` — edit **both** `en` and `es`, then regenerate there (its README says how); the gate fails on a stale output.
+- User-facing strings live in `packages/halo_i18n` — edit **only** `en`, then regenerate with `mise run strings`; every other language comes from Crowdin (the package README says how). The gate fails on a stale output.
 
 - We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference.
 

@@ -9,8 +9,6 @@
 
 import 'dart:async';
 
-import 'package:intl/intl.dart';
-
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kDebugMode, kIsWeb, visibleForTesting, TargetPlatform;
 // Prefixed separately from the AppExitResponse import above: some import in
@@ -159,8 +157,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // onboarding gets a chance to write a callsign.
   await settings.seedSyncEnabledDefault();
   await settings.seedExtensionsMigratedDefault();
-  unawaited(LocaleSettings.setLocaleRaw(settings.locale));
-  Intl.defaultLocale = settings.locale;
+  unawaited(applyLocaleSetting(settings.locale));
   await deviceIdentityResolved;
   final services = HaLoServices(
     db,

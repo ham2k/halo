@@ -29,8 +29,8 @@ void main() {
   testWidgets('pressing Cmd+Shift+L toggles the app language/locale', (tester) async {
     final services = await makeServices();
 
-    // Initial locale should be 'en'
-    expect(services.settings.locale, 'en');
+    // The setting follows the system, which reads as English under test.
+    expect(services.settings.locale, systemLocaleSetting);
 
     await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
     await tester.pumpAndSettle();

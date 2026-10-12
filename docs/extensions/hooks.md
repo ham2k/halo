@@ -1165,6 +1165,9 @@ action field — the hook parses "EXP <key-or-alias>" and resolves the token
 against `ctx.experiments` only for its preview ("Enable"/"Disable"); the app
 resolves it again when it flips the state and reports the outcome, since the
 stored per-experiment state lives app-side;
+LANG `<code>` switches the app's language — hidden locales (CW, QRP, QRO)
+included, "LANG SYSTEM" back to the device's — with a plain `updateSetting`
+on the `locale` field, which refuses a code the app has no strings for;
 DEVTT/DEVTIMETRAVEL move the app clock via the `devTimeTravel` action field —
 "DEVTT +3h", "DEVTT -1d", "DEVTT 2x", bare "DEVTT" to return to real time — so
 anything that turns on the date or on elapsed time can be tested without

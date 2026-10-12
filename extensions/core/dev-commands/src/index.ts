@@ -20,7 +20,7 @@
 // SEED fills the current log with generated QSOs for exercising list/
 // scoring/map UI against realistic data (ported from app-polo's
 // DebuggingCommands). EXP toggles experimental features from
-// app/experiments.yaml. All are just `command` hooks like radio-commands' —
+// app/experiments.yaml. LANG switches the language. All are just `command` hooks like radio-commands' —
 // see docs/extensions/hooks.md.
 
 import { defineExtension, hooks, host } from "@ham2k/extension-sdk"
@@ -546,6 +546,35 @@ const ExpCommand = {
   catalog: devCatalog("EXP", "Toggle an experimental feature", { params: "<name>", expectsParams: true }),
 }
 
+// LANG <code> switches the app's language, including the hidden locales the
+// Language setting never lists (CW, QRP, QRO — see packages/halo_i18n);
+// "LANG SYSTEM" goes back to following the device. A plain `updateSetting`
+// write: the app's Language field rejects a code it has no strings for, and
+// that rejection replaces the confirm below.
+const LANG_MATCH = /^LANG(?:\s+(.+))?$/i
+
+const LangCommand = {
+  async interpret({ input }: { input: string }): Promise<CommandInterpretation | null> {
+    const match = LANG_MATCH.exec(input.trim())
+    if (!match) return null
+    const token = match[1]?.trim()
+    if (!token) return { expectsParams: true }
+    if (/\s/.test(token)) return { error: "LANG takes a single language code" }
+    if (token.split(/[-_]/).length > 2) return { error: "LANG takes a language code and at most a region, like PT-BR" }
+
+    // The call field uppercases everything; the setting stores BCP 47 tags.
+    const [language, region] = token.split(/[-_]/)
+    const code = ["SYSTEM", "DEFAULT"].includes(token.toUpperCase()) ? "system" : [language.toLowerCase(), region?.toUpperCase()].filter(Boolean).join("-")
+    return {
+      describe: code === "system" ? "Follow the system language?" : `Switch the language to ${code}?`,
+      confirm: code === "system" ? "Following the system language" : `Language set to ${code}`,
+      commands: [{ updateSetting: { key: "locale", value: code } }],
+    }
+  },
+
+  catalog: devCatalog("LANG", "Switch the app's language", { params: "<code>", expectsParams: true }),
+}
+
 // DEVTT / DEVTIMETRAVEL move the app clock (docs/design/time.md): "DEVTT +3h",
 // "DEVTT -1d", "DEVTT 2x", "DEVTT +1d 10x", and bare "DEVTT" back to real time.
 // Offsets are cumulative, so the command steps.
@@ -610,6 +639,7 @@ defineExtension({
     registerHook("command", { key: "dev-commands-reload", hook: ReloadCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-seed", hook: SeedCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-exp", hook: ExpCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-lang", hook: LangCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devtimetravel", hook: DevTimeTravelCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devbench", hook: DevBenchCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devlogcat", hook: DevLogCatCommand, priority: 100 })

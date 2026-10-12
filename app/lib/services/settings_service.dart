@@ -12,7 +12,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
@@ -1022,12 +1021,12 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   Future<void> setHomeNavExpanded(bool value) => setSettingValue(generalGroup, _homeNavExpandedKey, value);
 
-  String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? 'en';
+  /// The Language setting: [systemLocaleSetting] or a language tag. What it
+  /// stands for is `resolveLocaleSetting`'s answer, and `applyLocaleSetting`
+  /// is what makes the app speak it.
+  String get locale => (settingValue(generalGroup, _localeKey) as String?) ?? systemLocaleSetting;
 
-  Future<void> setLocale(String localeCode) async {
-    await setSettingValue(generalGroup, _localeKey, localeCode);
-    Intl.defaultLocale = localeCode;
-  }
+  Future<void> setLocale(String setting) => setSettingValue(generalGroup, _localeKey, setting);
 
   FontScale get fontScale {
     final value = settingValue(generalGroup, _fontScaleKey);

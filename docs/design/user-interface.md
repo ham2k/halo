@@ -144,8 +144,9 @@ every extension of its kind has:
   family of many events gives no date.
 - **No leading "The"**, and no repeating the extension's name.
 
-Rewording an English string means checking its Spanish too — a translation
-often mirrors the word (`lleva` for "carries").
+Only the English is written here; every other language comes from Crowdin
+(`packages/halo_i18n/README.md`), where rewording an English string sends
+its translations back for review.
 
 ## Main views
 

@@ -101,7 +101,8 @@ class _ExtensionHostCalls {
       'developerMode': _service.settings?.developerMode ?? false,
       // So DEVMAPINFO can say which way it is about to flip it.
       'devMapInfo': _service.settings?.devMapInfo ?? false,
-      'locale': _service.settings?.locale ?? 'en',
+      // The language the app speaks, not the setting: never "system".
+      'locale': resolveLocaleSetting(_service.settings?.locale ?? 'en').languageTag,
       // Lets a hook whose effect must stay invisible until its own
       // experiment ships ungated check per-call, rather than hiding at
       // the whole-extension `manifest.experiments` grain (which would

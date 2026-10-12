@@ -704,6 +704,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	// Translations
 	@override String get title => 'Configuración';
 	@override String get language => 'Idioma';
+	@override String languageSystem({required Object language}) => 'Seguir la configuración del sistema (${language})';
 	@override late final _Translations$settings$theme$es theme = _Translations$settings$theme$es._(_root);
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
@@ -998,6 +999,9 @@ class _Translations$notices$es extends Translations$notices$en {
 	@override String get emptyHistory => 'Aún no hay avisos';
 	@override String get webStorageInMemory => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.';
 	@override String get webStorageUnreliable => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.';
+	@override String get logFromNewerBuildTitle => 'Este log necesita una versión más nueva';
+	@override String logFromNewerBuild({required Object storage, required Object understood, required Object location}) => 'Tu log lo escribió una versión más nueva de HaLo (versión de almacenamiento ${storage}; esta entiende la ${understood}), así que no se puede abrir y los contactos nuevos no se guardarán. Vuelve a instalar la versión más nueva o, si querías usar esta compilación, apúntala a otra carpeta de datos. El log está en ${location}';
+	@override String logFromNewerBuildNoLocation({required Object storage, required Object understood}) => 'Tu log lo escribió una versión más nueva de HaLo (versión de almacenamiento ${storage}; esta entiende la ${understood}), así que no se puede abrir y los contactos nuevos no se guardarán. Ábrelo con esa versión más nueva.';
 	@override String get preferencesRestoredTitle => 'Ajustes restaurados desde una copia';
 	@override String get preferencesRestored => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.';
 	@override String get preferencesResetTitle => 'Ajustes reiniciados';
@@ -2492,6 +2496,12 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String switchAntennaFor({required Object port}) => 'Antena en el puerto ${port}';
 	@override String get switchAntennaForDescription => 'Cuál de tus antenas está conectada a este puerto del conmutador.';
 	@override String switchLayoutSides({required Object antennas, required Object radios}) => '${antennas} antenas, ${radios} radios';
+	@override String switchLayoutSidesOneRadio({required Object antennas}) => '${antennas} antenas, 1 radio';
+	@override String switchLayoutSidesOneAntenna({required Object radios}) => '1 antena, ${radios} radios';
+	@override String get switchCommonPort => 'Común';
+	@override String get dcnAddress => 'Dirección del dispositivo';
+	@override String get dcnAddressDescription => 'La dirección configurada en los interruptores DIP del módulo. Un módulo de relés coaxiales sale de fábrica con la 2.';
+	@override String get dcnAddressRequired => 'Debe ser una dirección de dispositivo del 1 al 99';
 	@override String switchPortLabel({required Object port}) => 'Puerto ${port}';
 	@override String get switchPortAutoHint => 'sigue los datos de banda';
 	@override String get switchPortTransmittingHint => 'transmitiendo — no se puede cambiar ahora';
@@ -2499,6 +2509,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.';
 	@override String get switchWiringHeader => 'Cableado';
 	@override String get switchPortInhibitedHint => 'transmisión inhibida';
+	@override String get configUnreadable => 'No se pudieron leer los ajustes guardados de esta radio. Abre sus ajustes y vuelve a introducirlos, o quítala y añádela de nuevo.';
 	@override String get autoConnectHeld => 'HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.';
 	@override late final _Translations$settings$station$antennaTypes$es antennaTypes = _Translations$settings$station$antennaTypes$es._(_root);
 	@override late final _Translations$settings$station$keyTypes$es keyTypes = _Translations$settings$station$keyTypes$es._(_root);
@@ -3518,6 +3529,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get key => 'Manipulador';
 	@override String get winkeyer => 'WinKeyer';
 	@override String get antennaGenius => '4O3A Antenna Genius';
+	@override String get sierraCoax => 'Conmutador coaxial Sierra Radio CX-1';
 }
 
 // Path: settings.station.transports
@@ -4546,6 +4558,7 @@ extension on TranslationsEs {
 			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.title' => 'Configuración',
 			'settings.language' => 'Idioma',
+			'settings.languageSystem' => ({required Object language}) => 'Seguir la configuración del sistema (${language})',
 			'settings.theme.title' => 'Modo de Tema',
 			'settings.theme.system' => 'Seguir la configuración del sistema',
 			'settings.theme.light' => 'Claro',
@@ -4639,9 +4652,9 @@ extension on TranslationsEs {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
-			'settings.radio.title' => 'Control CAT',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Registro y CAT',
 			'settings.radio.tuningSection' => 'Sintonía',
 			'settings.radio.keyerSection' => 'Manipulador',
@@ -5087,6 +5100,7 @@ extension on TranslationsEs {
 			'settings.station.models.key' => 'Manipulador',
 			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
+			'settings.station.models.sierraCoax' => 'Conmutador coaxial Sierra Radio CX-1',
 			'settings.station.transports.network' => 'Red/WiFi',
 			'settings.station.transports.usbSerial' => 'Serie USB',
 			'settings.station.transports.wifi' => 'Red/WiFi',
@@ -5152,10 +5166,10 @@ extension on TranslationsEs {
 			'settings.station.commanderTroubleshooting' => 'Esto se conecta a **DXLab Commander, que se ejecuta en tu computadora**, no directamente a la radio — Commander habla con la radio.\n\n- **Commander ya debe estar corriendo** y conectado a la radio.\n- **Su servicio de red debe estar activado**: el botón **Net Serv** del panel Radio en la ventana de configuración de Commander.\n- **El puerto** es 52002, el tercero del bloque que empieza en el **Base Port** de Net Serv (52000 salvo que lo hayas cambiado).\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de los mensajes TCP publicados de Commander y no se ha probado contra Commander. Si funciona a medias, merece la pena avisar.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio.** La WLAN debe estar encendida, la radio en la misma red y su función de control remoto (Network) activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión atascada en la radio.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio. Si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
-			'settings.station.statusStale' => 'Sin respuesta',
-			'settings.station.statusDisconnected' => 'Sin conectar',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.statusStale' => 'Sin respuesta',
+			'settings.station.statusDisconnected' => 'Sin conectar',
 			'settings.station.statusConnecting' => 'Conectando…',
 			'settings.station.statusDisconnecting' => 'Desconectando…',
 			'settings.station.statusError' => 'Fallo de conexión',
@@ -5246,6 +5260,12 @@ extension on TranslationsEs {
 			'settings.station.switchAntennaFor' => ({required Object port}) => 'Antena en el puerto ${port}',
 			'settings.station.switchAntennaForDescription' => 'Cuál de tus antenas está conectada a este puerto del conmutador.',
 			'settings.station.switchLayoutSides' => ({required Object antennas, required Object radios}) => '${antennas} antenas, ${radios} radios',
+			'settings.station.switchLayoutSidesOneRadio' => ({required Object antennas}) => '${antennas} antenas, 1 radio',
+			'settings.station.switchLayoutSidesOneAntenna' => ({required Object radios}) => '1 antena, ${radios} radios',
+			'settings.station.switchCommonPort' => 'Común',
+			'settings.station.dcnAddress' => 'Dirección del dispositivo',
+			'settings.station.dcnAddressDescription' => 'La dirección configurada en los interruptores DIP del módulo. Un módulo de relés coaxiales sale de fábrica con la 2.',
+			'settings.station.dcnAddressRequired' => 'Debe ser una dirección de dispositivo del 1 al 99',
 			'settings.station.switchPortLabel' => ({required Object port}) => 'Puerto ${port}',
 			'settings.station.switchPortAutoHint' => 'sigue los datos de banda',
 			'settings.station.switchPortTransmittingHint' => 'transmitiendo — no se puede cambiar ahora',
@@ -5253,6 +5273,7 @@ extension on TranslationsEs {
 			'settings.station.switchCurrentStateDescription' => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.',
 			'settings.station.switchWiringHeader' => 'Cableado',
 			'settings.station.switchPortInhibitedHint' => 'transmisión inhibida',
+			'settings.station.configUnreadable' => 'No se pudieron leer los ajustes guardados de esta radio. Abre sus ajustes y vuelve a introducirlos, o quítala y añádela de nuevo.',
 			'settings.station.autoConnectHeld' => 'HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.',
 			'settings.station.antennaTypes.dipole' => 'Dipolo',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
@@ -5517,6 +5538,9 @@ extension on TranslationsEs {
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
+			'notices.logFromNewerBuildTitle' => 'Este log necesita una versión más nueva',
+			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Tu log lo escribió una versión más nueva de HaLo (versión de almacenamiento ${storage}; esta entiende la ${understood}), así que no se puede abrir y los contactos nuevos no se guardarán. Vuelve a instalar la versión más nueva o, si querías usar esta compilación, apúntala a otra carpeta de datos. El log está en ${location}',
+			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Tu log lo escribió una versión más nueva de HaLo (versión de almacenamiento ${storage}; esta entiende la ${understood}), así que no se puede abrir y los contactos nuevos no se guardarán. Ábrelo con esa versión más nueva.',
 			'notices.preferencesRestoredTitle' => 'Ajustes restaurados desde una copia',
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
@@ -5656,6 +5680,8 @@ extension on TranslationsEs {
 			'exportSettings.adifQslMessageTemplate' => 'Mensaje QSL ADIF',
 			'exportSettings.shared' => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.',
 			'exportSettings.defaultTemplates' => 'Activa Plantillas personalizadas para editar las plantillas de este tipo.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Vista previa:',
 			'templateEditor.reset' => 'Restablecer',
 			'templateEditor.docs' => 'Documentación de plantillas',

@@ -165,10 +165,10 @@ class GeneralSettingsGroup extends SettingsGroup {
         aliases: const ['language', 'lang'],
         label: t.settings.language,
         icon: 'translate',
-        // Just the current language's own name (its option label).
-        description: settings.locale == 'es' ? 'Español' : 'English',
+        // Just the current choice's option label.
+        description: _localeOptions().firstWhere((option) => option.value == settings.locale, orElse: () => _localeOptions().first).label,
         value: settings.locale,
-        options: const [(label: 'English', value: 'en'), (label: 'Español', value: 'es')],
+        options: _localeOptions(),
         common: true,
       ),
       _fontScaleSelect(),
@@ -219,6 +219,19 @@ class GeneralSettingsGroup extends SettingsGroup {
         description: settings.keepDeviceAwake ? t.settings.keepDeviceAwake.descriptionOn : t.settings.keepDeviceAwake.descriptionOff,
         value: settings.keepDeviceAwake,
       ),
+    ];
+  }
+
+  /// The Language picker's options: following the system (naming the
+  /// language that resolves to), then every selectable language by its own
+  /// name. A hidden locale (`LANG CW`) is listed only while it is the
+  /// setting, so the picker can show it and switch away from it.
+  List<({String label, String value})> _localeOptions() {
+    final current = settings.locale;
+    final hidden = current == systemLocaleSetting ? null : hiddenLocales.where((locale) => locale.languageTag == current).firstOrNull;
+    return [
+      (label: t.settings.languageSystem(language: resolveLocaleSetting(systemLocaleSetting).nativeName), value: systemLocaleSetting),
+      for (final locale in [...selectableLocales, ?hidden]) (label: locale.nativeName, value: locale.languageTag),
     ];
   }
 
@@ -291,8 +304,11 @@ class GeneralSettingsGroup extends SettingsGroup {
         final mode = _enumByNameOrNull(ThemeMode.values, value);
         if (mode != null) await settings.setThemeMode(mode);
       case 'locale':
+        // LANG writes whatever was typed; a code with no strings is dropped
+        // here, and the settings command reports it as not stored.
+        if (value != systemLocaleSetting && !AppLocale.values.any((locale) => locale.languageTag == value)) return;
         await settings.setLocale(value);
-        unawaited(LocaleSettings.setLocaleRaw(value));
+        unawaited(applyLocaleSetting(value));
       case 'fontScale':
         final scale = _enumByNameOrNull(FontScale.values, value);
         if (scale != null) await settings.setFontScale(scale);

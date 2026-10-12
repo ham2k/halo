@@ -250,7 +250,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     if (millis == null) return '';
     final dt = DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
     final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}z';
-    final date = DateFormat.MMMd(LocaleSettings.currentLocale.languageCode).format(dt);
+    final date = DateFormat.MMMd(LocaleSettings.currentLocale.formattingLocale.languageCode).format(dt);
     return '$time $date';
   }
 

@@ -220,9 +220,9 @@ class _HaLoAppState extends State<HaLoApp> {
 
   void _toggleLocale() {
     final settings = widget.services.settings;
-    final newLocale = settings.locale == 'es' ? 'en' : 'es';
+    final newLocale = LocaleSettings.currentLocale == AppLocale.es ? 'en' : 'es';
     settings.setLocale(newLocale);
-    LocaleSettings.setLocaleRaw(newLocale);
+    applyLocaleSetting(newLocale);
     widget.services.extensions.invalidateHookContext();
   }
 
@@ -318,8 +318,8 @@ class _HaLoAppState extends State<HaLoApp> {
         title: isWindowedPlatform ? 'Ham2K Logger' : 'HaLo',
         navigatorKey: navigatorKey,
         navigatorObservers: [_modalBarrierObserver, homeRouteObserver, homeRailRouteObserver],
-        locale: TranslationProvider.of(context).locale.flutterLocale,
-        supportedLocales: AppLocaleUtils.supportedLocales,
+        locale: TranslationProvider.of(context).locale.formattingLocale,
+        supportedLocales: formattingLocales,
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
         theme: buildHaLoTheme(Brightness.light),
         darkTheme: buildHaLoTheme(Brightness.dark),

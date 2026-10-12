@@ -1,0 +1,23 @@
+#
+# Crowdin CLI configuration: English is the source, every other bundled
+# language is Crowdin's output. See packages/halo_i18n/README.md.
+# https://crowdin.github.io/crowdin-cli/configuration
+#
+
+"project_id_env": "CROWDIN_PROJECT_ID"
+"api_token_env": "CROWDIN_PERSONAL_TOKEN"
+"base_path": "."
+"base_url": "https://api.crowdin.com"
+
+"preserve_hierarchy": true
+
+files:
+  [
+    {
+      "source": "packages/halo_i18n/lib/i18n/en.i18n.json",
+      "translation": "packages/halo_i18n/lib/i18n/crowdin/%two_letters_code%.i18n.json",
+      # Crowdin's two-letter code for Brazilian Portuguese is "pt", the same
+      # as Portugal's.
+      "languages_mapping": { "two_letters_code": { "pt-BR": "pt-BR" } },
+    },
+  ]

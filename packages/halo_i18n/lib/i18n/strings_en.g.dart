@@ -1550,6 +1550,9 @@ class Translations$settings$en {
 	/// en: 'Language'
 	String get language => 'Language';
 
+	/// en: 'Follow system settings (${language})'
+	String languageSystem({required Object language}) => 'Follow system settings (${language})';
+
 	late final Translations$settings$theme$en theme = Translations$settings$theme$en.internal(_root);
 	late final Translations$settings$themeDescription$en themeDescription = Translations$settings$themeDescription$en.internal(_root);
 
@@ -8706,6 +8709,7 @@ extension on Translations {
 			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.title' => 'Settings',
 			'settings.language' => 'Language',
+			'settings.languageSystem' => ({required Object language}) => 'Follow system settings (${language})',
 			'settings.theme.title' => 'Theme Mode',
 			'settings.theme.system' => 'Follow system settings',
 			'settings.theme.light' => 'Light',
@@ -8799,9 +8803,9 @@ extension on Translations {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: another program is using it, often ${protocol} itself. Close that program or choose another port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. Choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
-			'settings.radio.title' => 'CAT Control',
 			_ => null,
 		} ?? switch (path) {
+			'settings.radio.title' => 'CAT Control',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Tuning',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -9313,9 +9317,9 @@ extension on Translations {
 			'settings.station.hrdTroubleshooting' => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only talks to other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.n3fjpTroubleshooting' => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.',
-			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never responds',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.',
@@ -9827,9 +9831,9 @@ extension on Translations {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Message',
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
-			'templateEditor.previewLabel' => 'Preview:',
 			_ => null,
 		} ?? switch (path) {
+			'templateEditor.previewLabel' => 'Preview:',
 			'templateEditor.reset' => 'Reset',
 			'templateEditor.docs' => 'Templating Docs',
 			'templateEditor.preview' => 'Sample preview',

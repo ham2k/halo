@@ -9,6 +9,7 @@ upcoming:
     - "Improved operation location: new operations take your GPS fix, or the park's"
     - "Map tab follows the QSO you are logging or editing, dimming the rest"
     - "New Maps view: nearby references, search, layers and activity filters"
+    - "Added 15 languages; Language now follows your system (translation feedback welcome)"
 
 "178":
   changes:

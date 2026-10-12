@@ -214,7 +214,7 @@ void _mainBody({
         // One app_started per launch, with the UI preferences app-polo's
         // matching event carries (consent-gated inside track, like everything).
         services.track('app_started', {
-          'language': services.settings.locale,
+          'language': resolveLocaleSetting(services.settings.locale).languageTag,
           // The EFFECTIVE scheme, not the ThemeMode: the enum interpolates to
           // "ThemeMode.dark", and `system` describes the setting rather than what
           // the user is actually looking at. app-polo reports the same way.

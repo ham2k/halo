@@ -18,6 +18,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
@@ -148,5 +149,44 @@ void main() {
     await group.commit('numberFormat', 'comma');
     await group.commit('numberFormat', 'decimal-point-please');
     expect(settings.numberFormatStyle, NumberFormatStyle.comma);
+  });
+
+  group('Language', () {
+    Future<List<String>> offered(SettingsService settings) async {
+      final field = (await elementsOf(settings)).firstWhere((el) => el['key'] == 'locale');
+      return [for (final option in field['options'] as List) option['value'] as String];
+    }
+
+    tearDown(() => applyLocaleSetting('en'));
+
+    test('follows the system until a language is picked, and lists no joke locale', () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      expect(settings.locale, systemLocaleSetting);
+      final options = await offered(settings);
+      expect(options.first, systemLocaleSetting);
+      expect(options, containsAll(['en', 'es', 'pt-BR', 'ja']));
+      expect(options, isNot(contains('cw')));
+    });
+
+    test('LANG can pick a hidden locale, and the picker then shows it to switch away from', () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final group = await generalGroup(settings);
+      await group.commit('locale', 'cw');
+      expect(settings.locale, 'cw');
+      expect(await offered(settings), contains('cw'));
+    });
+
+    test('a code the app has no strings for is not stored', () async {
+      // LANG writes whatever was typed; storing "xx" would read as English
+      // while the settings command reported the change as made.
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final group = await generalGroup(settings);
+      await group.commit('locale', 'de');
+      await group.commit('locale', 'xx');
+      expect(settings.locale, 'de');
+    });
   });
 }

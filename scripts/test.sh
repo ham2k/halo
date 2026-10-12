@@ -369,32 +369,39 @@ ensure_bundles() {
   fi
 }
 
-# The generated strings must be what the sources say. `dart run slang` is
-# cheap, so every run that loads them regenerates first (ensure_i18n) — the
-# same stale-artifact trap ensure_bundles closes, one directory over — and
-# the gate additionally refuses a tree whose committed output was behind
-# (check_i18n_fresh). The comparison is against the generated files as they
+# The generated strings must be what the sources say: the hidden locales
+# (written from en.i18n.json) and the Dart slang builds from every locale.
+# Both steps are cheap, so every run that loads them regenerates first
+# (ensure_i18n) — the same stale-artifact trap ensure_bundles closes, one
+# directory over — and the gate additionally refuses a tree whose committed
+# output was behind (check_i18n_fresh). The comparison is against the generated files as they
 # were on disk, not git: the sources sit in the same directory, and an
 # uncommitted JSON edit that WAS regenerated is fresh, not stale. The
 # generated header carries no timestamp (slang.yaml), so identical sources
-# give identical files.
+# give identical files. Neither generator deletes anything, so the output is
+# cleared first: otherwise a language dropped from Crowdin, or from the hidden
+# set, lives on as a committed file that nothing regenerates.
 ensure_i18n() {
   ensure_pub packages/halo_i18n
   echo "▶ halo_i18n: regenerate the strings"
-  (cd "$ROOT_DIR/packages/halo_i18n" && dart run slang >/dev/null)
+  rm -f "$ROOT_DIR"/packages/halo_i18n/lib/i18n/strings*.g.dart "$ROOT_DIR"/packages/halo_i18n/lib/i18n/hidden/*.json
+  (cd "$ROOT_DIR/packages/halo_i18n" && dart run tool/generate_hidden_locales.dart && dart run slang >/dev/null)
 }
 
 check_i18n_fresh() {
   local dir="$ROOT_DIR/packages/halo_i18n/lib/i18n" before f stale=""
   before=$(mktemp -d)
-  cp "$dir"/*.g.dart "$before"/
+  cp "$dir"/*.g.dart "$dir"/hidden/*.json "$before"/
   ensure_i18n
-  for f in "$dir"/*.g.dart; do
+  for f in "$dir"/*.g.dart "$dir"/hidden/*.json; do
     if [[ ! -f "$before/${f##*/}" ]] || ! cmp -s "$f" "$before/${f##*/}"; then stale="$stale ${f##*/}"; fi
+  done
+  for f in "$before"/*; do
+    if [[ ! -f "$dir/${f##*/}" && ! -f "$dir/hidden/${f##*/}" ]]; then stale="$stale ${f##*/}(gone)"; fi
   done
   rm -rf "$before"
   if [[ -n "$stale" ]]; then
-    echo "❌ packages/halo_i18n/lib/i18n was behind its sources — the regenerated files (now on disk) need committing:$stale" >&2
+    echo "❌ packages/halo_i18n/lib/i18n was behind its sources — the regenerated files (now on disk, deletions included) need committing:$stale" >&2
     exit 1
   fi
 }

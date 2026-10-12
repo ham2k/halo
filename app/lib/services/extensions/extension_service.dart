@@ -262,7 +262,7 @@ class ExtensionService
     ErrorReportingService.report(ExtensionTimersSuspended(suspension.extensionKey, suspension.reason), StackTrace.current, context: 'extensions:timers');
     if (settings?.developerMode != true) return;
     final info = availableExtensions.where((info) => info.key == suspension.extensionKey).firstOrNull;
-    final name = info?.nameFor(settings?.locale ?? 'en') ?? suspension.extensionKey;
+    final name = info?.nameFor(LocaleSettings.currentLocale.languageCode) ?? suspension.extensionKey;
     final text = switch (suspension.reason) {
       'failures' => t.extensionService.timersSuspendedFailures(name: name),
       'interrupted' => t.extensionService.timersSuspendedInterrupted(name: name),
