@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Reporting a wrong outline from the credits under a map. The traps: a link
+// Reporting a wrong outline from the notice under a map. The traps: a link
 // offered where the report could never leave the device, or so far out that
 // the operator cannot see the outline they are reporting; a report filed
 // against a reference the operator did not pick; and a report that reaches
@@ -83,7 +83,7 @@ void main() {
     expect(body.trim().endsWith(explanation), isTrue);
   });
 
-  group('the credits', () {
+  group('the notice', () {
     final camera = ValueNotifier<MapCameraSettled?>(null);
     var opened = 0;
 
@@ -113,27 +113,8 @@ void main() {
 
         camera.value = _camera(outlineIssuesFromZoom);
         await tester.pump();
-        expect(find.textContaining('Source: OSM', findRichText: true), findsOneWidget, reason: 'after the credits, on their line');
         await tester.tap(find.text('Issues?'));
         expect(opened, 1);
-      });
-      ErrorReportingService.resetForTesting();
-    });
-
-    testWidgets('the link grows with the text around it, not twice over', (tester) async {
-      await withErrorHooks(backend: FakeErrorReportingBackend(), () async {
-        final credits = find.textContaining('Source: OSM', findRichText: true);
-        await pump(tester, textScaler: const TextScaler.linear(2));
-        camera.value = _camera(outlineIssuesFromZoom - 0.5);
-        await tester.pump();
-        final alone = tester.getSize(credits).height;
-
-        camera.value = _camera(outlineIssuesFromZoom);
-        await tester.pump();
-        // Scaled once by the span and again by its own Text, the link stands
-        // taller than the credits and pushes their line down.
-        expect(find.text('Issues?'), findsOneWidget);
-        expect(tester.getSize(credits).height, alone);
       });
       ErrorReportingService.resetForTesting();
     });

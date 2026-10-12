@@ -457,6 +457,32 @@ double mapZoomFadeOpacity(MapZoomFade? fade, double glZoom) {
   return ((glZoom - fade.from) / (fade.to - fade.from)).clamp(0.0, 1.0);
 }
 
+/// One marker brought forward: drawn over every other, while every marker
+/// outside [steady] steps back to [othersOpacity]. A map-wide setting rather
+/// than a change to each marker, so moving the focus costs the backends a few
+/// ids, not a resend of every marker and its pixels.
+@immutable
+class MapMarkerFocus {
+  final String id;
+
+  /// The markers that keep full strength — [id] among them.
+  final Set<String> steady;
+  final double othersOpacity;
+
+  const MapMarkerFocus({required this.id, required this.steady, required this.othersOpacity});
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is MapMarkerFocus && id == other.id && othersOpacity == other.othersOpacity && setEquals(steady, other.steady));
+
+  @override
+  int get hashCode => Object.hash(id, othersOpacity, Object.hashAllUnordered(steady));
+}
+
+/// [focus] as the GL script's `setFocus` takes it.
+Map<String, dynamic>? mapMarkerFocusPayload(MapMarkerFocus? focus) =>
+    focus == null ? null : {'id': focus.id, 'steady': focus.steady.toList(), 'othersOpacity': focus.othersOpacity};
+
 /// [fades] as the GL script's `setZoomFades` takes it.
 Map<String, dynamic> mapZoomFadesPayload(MapZoomFades? fades) => {
   if (fades?.markers case final m?) 'markers': {'from': m.from, 'to': m.to},
@@ -723,7 +749,8 @@ List<({MapShapeData shape, double size})> shapesAt(List<MapShapeData> shapes, Gr
 /// Fill and outline share one hex color and one alpha pair, the same way
 /// [mapLinesPayload] splits color from opacity — the GL layers take a flat
 /// paint color with opacity applied separately.
-Map<String, dynamic> mapShapesPayload(List<MapShapeData> shapes) => {
+Map<String, dynamic> mapShapesPayload(List<MapShapeData> shapes, {String? credit}) => {
+  'credit': ?credit,
   'features': [
     for (final shape in shapes)
       {

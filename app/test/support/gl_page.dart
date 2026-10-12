@@ -24,6 +24,8 @@ var timers = [];
 var nextTimer = 1;
 function setTimeout(fn, ms) { var id = nextTimer++; timers.push({ id: id, at: now + (ms || 0), fn: fn }); return id; }
 function clearTimeout(id) { timers = timers.filter(function (t) { return t.id !== id; }); }
+function requestAnimationFrame(fn) { return setTimeout(fn, 16); }
+function cancelAnimationFrame(id) { clearTimeout(id); }
 function advance(ms) {
   var until = now + ms;
   for (;;) {
@@ -41,7 +43,11 @@ function ResizeObserver() {}
 ResizeObserver.prototype.observe = function () {};
 ResizeObserver.prototype.disconnect = function () {};
 var document = {
-  createElement: function () { return { style: {}, children: [], appendChild: function (c) { this.children.push(c); } }; },
+  // No MapLibre control is ever in one: querySelector finds nothing, as a
+  // framed map's, which draws no attribution, finds no credits to tend.
+  createElement: function () {
+    return { style: {}, children: [], appendChild: function (c) { this.children.push(c); }, querySelector: function () { return null; } };
+  },
   createTextNode: function (text) { return { text: text }; },
 };
 function LngLatBounds() { this.n = 0; this.points = []; }
@@ -66,6 +72,7 @@ function FakeMap(options) {
   this.getLayer = function (id) { return layers[id]; };
   this.addLayer = function (layer) { layers[layer.id] = layer; };
   this.setPaintProperty = function (id, name, value) { layers[id].paint = Object.assign({}, layers[id].paint, { [name]: value }); };
+  this.setLayoutProperty = function (id, name, value) { layers[id].layout = Object.assign({}, layers[id].layout, { [name]: value }); };
   this.fitBounds = function (bounds, options) { calls.push('fitBounds'); window.lastFitOptions = options; window.lastFitPoints = bounds.points; };
   this.loaded = function () { return sourcesLoaded; };
   this.isStyleLoaded = function () { return true; };

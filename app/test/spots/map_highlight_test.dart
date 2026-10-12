@@ -16,6 +16,7 @@ import 'package:flutter_map/flutter_map.dart' show MarkerLayer, PolylineLayer;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation, gridToLocation;
 import 'package:halo_widgets/halo_widgets.dart' show CallInfoData;
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/map/map_gl_script.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
@@ -176,12 +177,14 @@ void main() {
     );
     final current = build(CallInfoData(call: 'K2ABC', guess: {'grid': 'FN20'}));
 
-    Widget host({required bool highlighted}) => MaterialApp(
-      home: Scaffold(
-        body: OsmMapView(
-          markers: [base.marker, base.qth, if (highlighted) ...current.markers],
-          lines: [base.line, if (highlighted) ...current.lines],
-          isDark: false,
+    Widget host({required bool highlighted}) => TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: OsmMapView(
+            markers: [base.marker, base.qth, if (highlighted) ...current.markers],
+            lines: [base.line, if (highlighted) ...current.lines],
+            isDark: false,
+          ),
         ),
       ),
     );

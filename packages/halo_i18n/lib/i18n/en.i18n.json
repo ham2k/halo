@@ -196,6 +196,7 @@
       "operations": "Operations",
       "chase": "Chasing",
       "logs": "Logs",
+      "maps": "Maps",
       "settings": "Settings"
     },
     "panels": {
@@ -804,7 +805,11 @@
       "notCopied": "Couldn't copy the report"
     },
     "outlinesDisclaimer": "Outlines are for reference only. Do your own research!",
-    "outlinesSource": "Source: ${sources}",
+    "outlinesCredit": "Outlines: ${sources}",
+    "boundariesCredit": "Boundaries: ${sources}",
+    "facilitiesCredit": "Facilities: ${sources}",
+    "fullCredits": "Full dataset credits",
+    "fewerCredits": "Fewer credits",
     "emptyState": "No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.",
     "unavailable": "The map isn't available right now.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -847,6 +852,23 @@
       "shareFailed": "Could not share the postcard. Try again.",
       "fileName": "postcard"
     }
+  },
+  "mapsView": {
+    "title": "Maps",
+    "searchHint": "Search parks, summits and more",
+    "activities": "Activities",
+    "layers": "Layers",
+    "baseMap": "Base map",
+    "satellite": "Satellite (Esri)",
+    "facilities": "Park facilities",
+    "boundaries": "Boundaries",
+    "currentLocation": "Current location",
+    "noMatches(text)": "Nothing matches “${text}”",
+    "picksAt": {
+      "one": "${count} Reference at ${where}",
+      "other": "${count} References at ${where}"
+    },
+    "startOperation": "Start an operation with these references"
   },
   "activitiesView": {
     "title": "Activities",

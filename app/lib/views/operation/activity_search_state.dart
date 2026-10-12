@@ -59,6 +59,38 @@ Future<Map<String, RefLink>> resolveRefLinks(HaLoServices services, List<Map<Str
   };
 }
 
+/// The scope words [controls] answer to, each mapped to the activity hook
+/// keys serving it (the control key's namespace, `ki2d-pota/activation` ->
+/// `ki2d-pota`) — what a leading word in the search box is checked against,
+/// and what tapping a row inserts. Two extensions serving one ref type share
+/// the word and are BOTH asked: the operator scoped to parks, not to one
+/// supplier of them.
+///
+/// Form controls count too: a contest lists no references, but its
+/// `suggest` still answers a scope (`cwt: 1300` narrows the sessions), so
+/// dropping it here would leave that hook's `scoped` branch unreachable.
+Map<String, List<String>> activityScopesOf(List<Map<String, dynamic>> controls) {
+  final scopes = <String, List<String>>{};
+  for (final control in controls) {
+    final word = controlScopeWord(control);
+    final hookKey = ((control['key'] as String?) ?? '').split('/').first;
+    if (word == null || hookKey.isEmpty) continue;
+    final keys = scopes.putIfAbsent(word, () => []);
+    if (!keys.contains(hookKey)) keys.add(hookKey);
+  }
+  return scopes;
+}
+
+/// [control]'s scope word, or null for a control declaring no ref type —
+/// which every activity control is required to (docs/extensions/hooks.md),
+/// so null is a malformed descriptor, not a kind of control.
+String? controlScopeWord(Map<String, dynamic> control) {
+  final refType = (control['input'] as Map?)?['refType'];
+  if (refType is! String || refType.isEmpty) return null;
+  final word = activityScopeWord(refType);
+  return word.isEmpty ? null : word;
+}
+
 /// One per Activities sheet. Notifies when anything the sheet's results list
 /// or results map reads changes.
 class ActivitySearchState extends ChangeNotifier {

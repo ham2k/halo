@@ -9,6 +9,7 @@ import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
 
 import 'map_marker_data.dart';
+import 'map_overlays.dart';
 import 'map_zoom_controller.dart';
 
 class MapboxWebMapView extends StatelessWidget {
@@ -25,6 +26,9 @@ class MapboxWebMapView extends StatelessWidget {
   final ValueChanged<GridLocation>? onMapTap;
   final MapZoomFades? zoomFades;
   final MapFrame? frame;
+  final MapOverlays? overlays;
+  final bool spreadOverlaps;
+  final MapMarkerFocus? focus;
 
   const MapboxWebMapView({
     super.key,
@@ -41,6 +45,9 @@ class MapboxWebMapView extends StatelessWidget {
     this.onMapTap,
     this.zoomFades,
     this.frame,
+    this.overlays,
+    this.spreadOverlaps = false,
+    this.focus,
   });
 
   @override

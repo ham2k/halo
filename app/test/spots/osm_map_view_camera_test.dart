@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
@@ -33,9 +34,11 @@ const _tokyo = [GridLocation(35.7, 139.7)];
 void main() {
   useTempMapTileCache();
 
-  Widget host(List<MapMarkerData> markers, MapZoomController controller) => MaterialApp(
-    home: Scaffold(
-      body: OsmMapView(markers: markers, isDark: false, zoomController: controller),
+  Widget host(List<MapMarkerData> markers, MapZoomController controller) => TranslationProvider(
+    child: MaterialApp(
+      home: Scaffold(
+        body: OsmMapView(markers: markers, isDark: false, zoomController: controller),
+      ),
     ),
   );
 

@@ -16,6 +16,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
@@ -24,6 +25,7 @@ import '../../services/connectivity_service.dart';
 import '../../services/error_policy.dart' show ErrorPolicy;
 import '../../services/map_error_reporter.dart';
 import 'map_marker_data.dart';
+import 'map_overlays.dart';
 import 'map_popup.dart';
 import 'map_zoom_controller.dart';
 
@@ -62,6 +64,14 @@ class OsmMapView extends StatefulWidget {
   /// Flutter map is Flutter's job. Read once, when the map is first built.
   final MapFrame? frame;
 
+  /// What this map lays over its basemap — of [MapOverlays], only the
+  /// imagery: the boundaries and facilities are drawn by the GL script alone.
+  final MapOverlays? overlays;
+
+  /// The marker brought forward over the rest, and what steps back behind
+  /// it — see [MapMarkerFocus].
+  final MapMarkerFocus? focus;
+
   const OsmMapView({
     super.key,
     required this.markers,
@@ -74,6 +84,8 @@ class OsmMapView extends StatefulWidget {
     this.onMapTap,
     this.zoomFades,
     this.frame,
+    this.overlays,
+    this.focus,
   });
 
   /// How long the online edge waits before tiles that failed are reset. Like
@@ -258,6 +270,14 @@ class _OsmMapViewState extends State<OsmMapView> {
     // Wrapped at full strength too, so the highlight coming and going does
     // not remount every base marker under it.
     final baseOpacity = widget.markers.any((m) => m.highlight) ? mapDimmedOpacity : 1.0;
+    final focus = widget.focus;
+    final focusId = focus?.id;
+    // While a focus is set, each of the two base layers below is split in
+    // two, the markers it dims under one Opacity of their own — one layer
+    // for them all, as the highlight's dimming does, and a focus moving
+    // rebuilds no marker.
+    bool dimmed(MapMarkerData m) => focus != null && !focus.steady.contains(m.id);
+    final othersOpacity = focus?.othersOpacity ?? 1.0;
 
     return FlutterMap(
       mapController: _mapController,
@@ -323,6 +343,18 @@ class _OsmMapViewState extends State<OsmMapView> {
             MapErrorReporter.report(backend: 'osm', kind: 'tile-load', message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'), stack: stackTrace);
           },
         ),
+        if (widget.overlays?.imagery ?? false)
+          TileLayer(
+            urlTemplate: esriImageryTiles,
+            maxNativeZoom: esriImageryMaxZoom,
+            userAgentPackageName: 'com.ham2k.poloNext',
+            errorTileCallback: (tile, error, stackTrace) => MapErrorReporter.report(
+              backend: 'osm',
+              kind: 'imagery-load',
+              message: '$error'.replaceAll(RegExp(r'https?://\S+'), '<tile url>'),
+              stack: stackTrace,
+            ),
+          ),
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in
         // order, so the highlight paints over every base line AND marker.
@@ -336,17 +368,39 @@ class _OsmMapViewState extends State<OsmMapView> {
               if (!l.highlight) l,
           ]),
         ),
+        if (focus != null)
+          Opacity(
+            opacity: baseOpacity * othersOpacity,
+            child: _markerLayer([
+              for (final m in widget.markers)
+                if (!m.highlight && m.dimsBehindHighlight && dimmed(m)) m,
+            ]),
+          ),
         Opacity(
           opacity: baseOpacity,
           child: _markerLayer([
             for (final m in widget.markers)
-              if (!m.highlight && m.dimsBehindHighlight) m,
+              if (!m.highlight && m.dimsBehindHighlight && !dimmed(m) && m.id != focusId) m,
           ]),
         ),
+        if (focus != null)
+          Opacity(
+            opacity: othersOpacity,
+            child: _markerLayer([
+              for (final m in widget.markers)
+                if (!m.highlight && !m.dimsBehindHighlight && dimmed(m)) m,
+            ]),
+          ),
         _markerLayer([
           for (final m in widget.markers)
-            if (!m.highlight && !m.dimsBehindHighlight) m,
+            if (!m.highlight && !m.dimsBehindHighlight && !dimmed(m) && m.id != focusId) m,
         ]),
+        // Over every other base marker, plain dot or glyph.
+        if (focusId != null)
+          _markerLayer([
+            for (final m in widget.markers)
+              if (!m.highlight && m.id == focusId) m,
+          ]),
         _lineLayer([
           for (final l in widget.lines)
             if (l.highlight) l,
@@ -376,7 +430,8 @@ class _OsmMapViewState extends State<OsmMapView> {
             ],
           ),
         // A picture carries its credit in its own layout (see [osmAttribution]).
-        if (widget.frame == null) _OsmAttribution(isDark: widget.isDark),
+        if (widget.frame == null)
+          _OsmAttribution(isDark: widget.isDark, imagery: widget.overlays?.imagery ?? false, outlines: mapOutlinesCredit(context.t, widget.shapes)),
       ],
     );
   }
@@ -543,22 +598,41 @@ class _OsmMapViewState extends State<OsmMapView> {
 /// one whose server actually served the tiles.
 String osmAttribution({required bool isDark}) => isDark ? '© OpenStreetMap contributors © CARTO' : '© OpenStreetMap contributors';
 
-/// The OSM credit the tile usage policy requires, in the map's bottom-right.
+/// The OSM credit the tile usage policy requires, in the map's bottom-right:
+/// the basemap's and the imagery's owners always in view, as their terms ask,
+/// and a link that opens every source's credit in full — wrapped, so none is
+/// cut off — as the GL maps' credits do (map_gl_script.dart).
 ///
 /// Ours rather than flutter_map's [SimpleAttributionWidget], which lays its
 /// prefix and source out in an unconstrained `Row(mainAxisSize: min)` and so
 /// overflows — visibly striped in debug, silently clipped in release — on any
 /// map pane narrower than the credit's natural width. The Map tab in the split
-/// layout is routinely that narrow. A lone [Text] has no flex to overflow: it
-/// ellipsizes into whatever width it is given.
-class _OsmAttribution extends StatelessWidget {
+/// layout is routinely that narrow. Text has no flex to overflow: the short
+/// line ellipsizes into whatever width it is given, the full one wraps.
+class _OsmAttribution extends StatefulWidget {
   final bool isDark;
+  final bool imagery;
 
-  const _OsmAttribution({required this.isDark});
+  /// The outlines' credit ([mapOutlinesCredit]), when any are drawn.
+  final String? outlines;
+
+  const _OsmAttribution({required this.isDark, required this.imagery, this.outlines});
+
+  @override
+  State<_OsmAttribution> createState() => _OsmAttributionState();
+}
+
+class _OsmAttributionState extends State<_OsmAttribution> {
+  bool _full = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final t = context.t.map;
+    final style = theme.textTheme.bodySmall;
+    final credits = _full
+        ? [osmAttribution(isDark: widget.isDark), if (widget.imagery) esriImageryAttribution, ?widget.outlines]
+        : [osmAttribution(isDark: widget.isDark), if (widget.imagery) esriImageryCredit];
     return SafeArea(
       child: Align(
         alignment: Alignment.bottomRight,
@@ -566,11 +640,23 @@ class _OsmAttribution extends StatelessWidget {
           color: theme.colorScheme.surface,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs),
-            child: Text(
-              osmAttribution(isDark: isDark),
-              style: theme.textTheme.bodySmall,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => setState(() => _full = !_full),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(text: '${credits.join(' · ')} · '),
+                    TextSpan(
+                      text: _full ? t.fewerCredits : t.fullCredits,
+                      style: const TextStyle(decoration: TextDecoration.underline),
+                    ),
+                  ],
+                ),
+                style: style,
+                maxLines: _full ? null : 1,
+                overflow: _full ? null : TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),

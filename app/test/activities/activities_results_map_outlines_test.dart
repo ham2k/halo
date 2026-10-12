@@ -107,6 +107,13 @@ void main() {
 
   OsmMapView map(WidgetTester tester) => tester.widget<OsmMapView>(find.byType(OsmMapView));
 
+  /// Opens the map's full credits, where the outlines' sources are named:
+  /// the short line keeps only the basemap's and the imagery's owners.
+  Future<void> openCredits(WidgetTester tester) async {
+    await tester.tap(find.textContaining('Full dataset credits'));
+    await tester.pumpAndSettle();
+  }
+
   /// Moves the real camera to GL [zoom] — flutter_map's own scale is one
   /// above. Not a faked camera report: flutter_map re-reports where it
   /// actually is whenever its markers change (a card opening restyles one),
@@ -126,7 +133,9 @@ void main() {
       expect(geoshapes.asked, ['US-0001']);
       expect(map(tester).shapes.map((s) => s.dashed), [false]);
       expect(find.text('Outlines are for reference only. Do your own research!'), findsOneWidget);
-      expect(find.text('Source: OSM'), findsOneWidget);
+      expect(find.textContaining('Outlines: OSM'), findsNothing, reason: 'folded away until asked for');
+      await openCredits(tester);
+      expect(find.textContaining('Outlines: OSM'), findsOneWidget);
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
@@ -147,7 +156,8 @@ void main() {
       expect(shapes.last.id, startsWith('ref-potaActivation/US-0001'));
       // Every source on screen, once each, dashed outlines included: they are
       // somebody's data too.
-      expect(find.text('Source: OSM, Survey'), findsOneWidget);
+      await openCredits(tester);
+      expect(find.textContaining('Outlines: OSM / Survey'), findsOneWidget);
 
       // Back out, and they go again: dashed outlines are for a close look.
       await zoomTo(tester, ActivitiesResultsMap.suggestionOutlinesFromZoom - 1);

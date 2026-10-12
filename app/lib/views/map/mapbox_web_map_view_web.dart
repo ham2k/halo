@@ -17,6 +17,7 @@ import 'dart:ui_web' as ui_web;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart' show PlatformViewCover;
 import 'package:web/web.dart' as web;
 
@@ -24,6 +25,7 @@ import '../../services/connectivity_service.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
 import 'map_marker_data.dart';
+import 'map_overlays.dart';
 import 'map_unavailable_state.dart';
 import 'map_zoom_controller.dart';
 
@@ -96,6 +98,15 @@ class MapboxWebMapView extends StatefulWidget {
   /// See MapboxWebviewMapView's field of the same name.
   final MapFrame? frame;
 
+  /// See MapboxWebviewMapView's field of the same name.
+  final MapOverlays? overlays;
+
+  /// See MapboxWebviewMapView's field of the same name.
+  final bool spreadOverlaps;
+
+  /// See MapboxWebviewMapView's field of the same name.
+  final MapMarkerFocus? focus;
+
   const MapboxWebMapView({
     super.key,
     required this.markers,
@@ -111,6 +122,9 @@ class MapboxWebMapView extends StatefulWidget {
     this.onMapTap,
     this.zoomFades,
     this.frame,
+    this.overlays,
+    this.spreadOverlaps = false,
+    this.focus,
   });
 
   @override
@@ -264,9 +278,13 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _applyZoomFades();
+      _applySpread();
+      _applyFocus();
+      _applyCreditLabels();
       _applyMarkers();
       _applyLines();
       _applyShapes();
+      _applyOverlays();
       _dataApplied = true;
       if (widget.zoomController?.lastFit case final points?) _fitTo(points);
     });
@@ -308,6 +326,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     }
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
     if (oldWidget.zoomFades != widget.zoomFades) _applyZoomFades();
+    if (oldWidget.overlays != widget.overlays || oldWidget.isDark != widget.isDark) _applyOverlays();
+    if (oldWidget.spreadOverlaps != widget.spreadOverlaps) _applySpread();
+    if (oldWidget.focus != widget.focus) _applyFocus();
   }
 
   void _applyProjection() {
@@ -338,7 +359,25 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   }
 
   void _applyShapes() {
-    _handle?.callMethod('setShapesJson'.toJS, jsonEncode(mapShapesPayload(widget.shapes)).toJS);
+    _handle?.callMethod('setShapesJson'.toJS, jsonEncode(mapShapesPayload(widget.shapes, credit: mapOutlinesCredit(context.t, widget.shapes))).toJS);
+  }
+
+  void _applyFocus() {
+    _handle?.callMethod('setFocusJson'.toJS, jsonEncode(mapMarkerFocusPayload(widget.focus)).toJS);
+  }
+
+  void _applyCreditLabels() {
+    _handle?.callMethod('setCreditLabelsJson'.toJS, jsonEncode(mapCreditLabels(context.t)).toJS);
+  }
+
+  void _applySpread() {
+    _handle?.callMethod('setSpread'.toJS, widget.spreadOverlaps.toJS);
+  }
+
+  void _applyOverlays() {
+    final overlays = widget.overlays;
+    if (overlays == null) return;
+    _handle?.callMethod('setOverlaysJson'.toJS, jsonEncode(mapOverlaysPayload(overlays, dark: widget.isDark, t: context.t)).toJS);
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);

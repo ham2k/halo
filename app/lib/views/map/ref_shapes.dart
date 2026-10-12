@@ -244,8 +244,10 @@ List<MapShapeData> refShapes(
   return shapes;
 }
 
-/// The line under a map showing reference outlines: they are no survey, and
-/// here is who drew them. Nothing at all while [shapes] is empty.
+/// The line under a map showing reference outlines: they are no survey.
+/// Nothing at all while [shapes] is empty. Who drew them is credited with
+/// the map's other sources, in the backend's own attribution
+/// ([mapOutlinesCredit]).
 ///
 /// Bottom-left, and at most 60% of the width it is given, so the backend's
 /// own credit in the bottom-right corner is never covered — flutter_map's
@@ -260,7 +262,7 @@ class MapOutlinesNotice extends StatelessWidget {
   final ValueListenable<MapCameraSettled?>? camera;
 
   /// Opens the outline-issue dialog (outline_issue_dialog.dart), from an
-  /// "Issues?" link after the credits. Offered only close in, and only where a
+  /// "Issues?" link under the disclaimer. Offered only close in, and only where a
   /// report can leave the device ([ErrorReportingService.reportingEnabled]):
   /// a form whose Send can never send is worse than no form.
   final VoidCallback? onReportIssue;
@@ -272,44 +274,23 @@ class MapOutlinesNotice extends StatelessWidget {
     final outlines = shapes.where((shape) => !shape.isActivationRadius);
     if (outlines.isEmpty) return const SizedBox.shrink();
     final theme = Theme.of(context);
-    final sources = {for (final shape in outlines) ?shape.sourceName}.toList()..sort();
     final style = theme.textTheme.bodySmall;
     final camera = this.camera;
     final onReportIssue = ErrorReportingService.reportingEnabled ? this.onReportIssue : null;
-    // One line of text, the link inline on the credits' baseline — a row of
-    // two widgets centres them instead, and the smaller bold link sits off it.
-    Widget credits(bool withLink) => Text.rich(
-      TextSpan(
-        children: [
-          if (sources.isNotEmpty) TextSpan(text: context.t.map.outlinesSource(sources: sources.join(', '))),
-          if (withLink) ...[
-            if (sources.isNotEmpty) const WidgetSpan(child: SizedBox(width: Space.lg)),
-            WidgetSpan(
-              alignment: PlaceholderAlignment.baseline,
-              baseline: TextBaseline.alphabetic,
-              child: Semantics(
-                button: true,
-                child: InkWell(
-                  onTap: onReportIssue,
-                  child: Text(
-                    context.t.map.outlineIssue.link,
-                    // The span it sits in is scaled already; scaling this
-                    // too would size it by the text scale squared.
-                    textScaler: TextScaler.noScaling,
-                    style: style?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                      decoration: TextDecoration.underline,
-                      decorationColor: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
+    final link = Semantics(
+      button: true,
+      child: InkWell(
+        onTap: onReportIssue,
+        child: Text(
+          context.t.map.outlineIssue.link,
+          style: style?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.primary,
+            decoration: TextDecoration.underline,
+            decorationColor: theme.colorScheme.primary,
+          ),
+        ),
       ),
-      style: style,
     );
     return LayoutBuilder(
       builder: (context, constraints) => Align(
@@ -330,15 +311,10 @@ class MapOutlinesNotice extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(context.t.map.outlinesDisclaimer, style: style?.copyWith(fontWeight: FontWeight.bold)),
-                    if (onReportIssue == null || camera == null)
-                      if (sources.isNotEmpty) credits(false) else const SizedBox.shrink()
-                    else
+                    if (onReportIssue != null && camera != null)
                       ValueListenableBuilder(
                         valueListenable: camera,
-                        builder: (context, settled, _) {
-                          final close = (settled?.camera.zoom ?? 0) >= outlineIssuesFromZoom;
-                          return sources.isEmpty && !close ? const SizedBox.shrink() : credits(close);
-                        },
+                        builder: (context, settled, _) => (settled?.camera.zoom ?? 0) >= outlineIssuesFromZoom ? link : const SizedBox.shrink(),
                       ),
                   ],
                 ),

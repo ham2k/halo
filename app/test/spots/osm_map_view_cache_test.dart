@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 
@@ -32,9 +33,11 @@ MapMarkerData _marker(String id, {String title = 'W1AW'}) => MapMarkerData(
 void main() {
   useTempMapTileCache();
 
-  Widget host(List<MapLineData> lines, List<MapMarkerData> markers) => MaterialApp(
-    home: Scaffold(
-      body: OsmMapView(markers: markers, lines: lines, isDark: false),
+  Widget host(List<MapLineData> lines, List<MapMarkerData> markers) => TranslationProvider(
+    child: MaterialApp(
+      home: Scaffold(
+        body: OsmMapView(markers: markers, lines: lines, isDark: false),
+      ),
     ),
   );
 

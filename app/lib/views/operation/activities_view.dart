@@ -411,38 +411,11 @@ class OperationSheetState extends State<OperationSheet>
     _searchFocusNode.requestFocus();
   }
 
-  /// The scope words the loaded controls answer to, each mapped to the
-  /// activity hook keys serving it (the control key's namespace,
-  /// `ki2d-pota/activation` -> `ki2d-pota`) — what a leading word in the
-  /// search box is checked against, and what tapping a row inserts. Two
-  /// extensions serving one ref type share the word and are BOTH asked: the
-  /// operator scoped to parks, not to one supplier of them.
-  ///
-  /// Form controls count too: a contest lists no references, but its
-  /// `suggest` still answers a scope (`cwt: 1300` narrows the sessions), so
-  /// dropping it here would leave that hook's `scoped` branch unreachable.
+  /// See [activityScopesOf].
   @override
-  Map<String, List<String>> get _activityScopes {
-    final scopes = <String, List<String>>{};
-    for (final control in _controls) {
-      final word = _scopeWordOf(control);
-      final hookKey = ((control['key'] as String?) ?? '').split('/').first;
-      if (word == null || hookKey.isEmpty) continue;
-      final keys = scopes.putIfAbsent(word, () => []);
-      if (!keys.contains(hookKey)) keys.add(hookKey);
-    }
-    return scopes;
-  }
+  Map<String, List<String>> get _activityScopes => activityScopesOf(_controls);
 
-  /// [control]'s scope word, or null for a control declaring no ref type —
-  /// which every activity control is required to (docs/extensions/hooks.md),
-  /// so null is a malformed descriptor, not a kind of control.
-  static String? _scopeWordOf(Map<String, dynamic> control) {
-    final refType = (control['input'] as Map?)?['refType'];
-    if (refType is! String || refType.isEmpty) return null;
-    final word = activityScopeWord(refType);
-    return word.isEmpty ? null : word;
-  }
+  static String? _scopeWordOf(Map<String, dynamic> control) => controlScopeWord(control);
 
   /// Opens the operation's location editor and folds whatever it returns back
   /// into the operation. Shared by the search band's location pill and the

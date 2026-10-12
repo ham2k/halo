@@ -32,7 +32,7 @@ final homeRouteObserver = RouteObserver<PageRoute<dynamic>>();
 /// only reaches the rail when the `logs` experiment is on, and
 /// [HomeDestination.chase] when `chase` is, but the state still carries them
 /// whether or not they're currently offered, same as the others.
-enum HomeDestination { operations, chase, logs, settings }
+enum HomeDestination { operations, chase, logs, maps, settings }
 
 class HomeRailState extends ChangeNotifier {
   int _covering = 0;
@@ -140,7 +140,7 @@ final homeRail = HomeRailState();
 bool homeDestinationOffered(HomeDestination destination, {required bool showLogs, required bool showChase}) => switch (destination) {
   HomeDestination.logs => showLogs,
   HomeDestination.chase => showChase,
-  HomeDestination.operations || HomeDestination.settings => true,
+  HomeDestination.operations || HomeDestination.maps || HomeDestination.settings => true,
 };
 
 /// Keeps [HomeRailState.covered] in sync with the navigator's route stack.

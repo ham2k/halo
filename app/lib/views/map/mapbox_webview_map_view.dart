@@ -25,9 +25,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:http/http.dart' as http;
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
+import 'package:halo_i18n/halo_i18n.dart';
 
+import '../../config/user_agent.dart';
 import '../../services/connectivity_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/windows_webview.dart';
@@ -36,6 +39,7 @@ import 'map_gl_script.dart';
 import 'map_ready_watchdog.dart';
 import 'map_unavailable_state.dart';
 import 'map_marker_data.dart';
+import 'map_overlays.dart';
 import 'map_zoom_controller.dart';
 
 class MapboxWebviewMapView extends StatefulWidget {
@@ -81,6 +85,20 @@ class MapboxWebviewMapView extends StatefulWidget {
   /// [MapFrame]. Read once, when the page is built.
   final MapFrame? frame;
 
+  /// What this map lays over its basemap — see [MapOverlays]. Null for a map
+  /// that offers no layers, which then never sends any.
+  final MapOverlays? overlays;
+
+  /// Whether markers that would overlap close in are moved apart, each with
+  /// a line back to a dot on its own point — see map_gl_script.dart's
+  /// `setSpread`. For a map of places, never one of contacts, where a
+  /// grid square's worth of stations on one point is the picture.
+  final bool spreadOverlaps;
+
+  /// The marker brought forward over the rest, and what steps back behind
+  /// it — see [MapMarkerFocus].
+  final MapMarkerFocus? focus;
+
   const MapboxWebviewMapView({
     super.key,
     required this.markers,
@@ -96,6 +114,9 @@ class MapboxWebviewMapView extends StatefulWidget {
     this.onMapTap,
     this.zoomFades,
     this.frame,
+    this.overlays,
+    this.spreadOverlaps = false,
+    this.focus,
   });
 
   @override
@@ -191,6 +212,17 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloPatchMarkers = handle.patchMarkers;
     window.poloPatchLines = handle.patchLines;
     window.poloSetShapes = handle.setShapes;
+    window.poloSetOverlays = handle.setOverlays;
+    window.poloSetSpread = handle.setSpread;
+    window.poloSetFocus = handle.setFocus;
+    window.poloSetCreditLabels = handle.setCreditLabels;
+    window.poloFetchText = function (url) {
+      return window.flutter_inappwebview.callHandler('poloFetchText', url).then(function (answer) {
+        if (answer && answer.missing) return null;
+        if (!answer || answer.error) throw new Error((answer && answer.error) || 'no answer');
+        return answer.body;
+      });
+    };
     window.poloSetZoomFades = handle.setZoomFades;
     window.poloSetProjection = handle.setProjection;
     window.poloMoveTo = handle.moveTo;
@@ -454,6 +486,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     }
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
     if (oldWidget.zoomFades != widget.zoomFades) _applyZoomFades();
+    if (oldWidget.overlays != widget.overlays || oldWidget.isDark != widget.isDark) _applyOverlays();
+    if (oldWidget.spreadOverlaps != widget.spreadOverlaps) _applySpread();
+    if (oldWidget.focus != widget.focus) _applyFocus();
   }
 
   Future<void> _applyProjection() async {
@@ -497,8 +532,43 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   }
 
   Future<void> _applyShapes() async {
-    final data = jsonEncode(mapShapesPayload(widget.shapes));
+    final data = jsonEncode(mapShapesPayload(widget.shapes, credit: mapOutlinesCredit(context.t, widget.shapes)));
     await _controller?.evaluateJavascript(source: 'window.poloSetShapes($data);');
+  }
+
+  Future<void> _applyFocus() async {
+    final data = jsonEncode(mapMarkerFocusPayload(widget.focus));
+    await _controller?.evaluateJavascript(source: 'window.poloSetFocus($data);');
+  }
+
+  Future<void> _applyCreditLabels() async {
+    await _controller?.evaluateJavascript(source: 'window.poloSetCreditLabels(${jsonEncode(mapCreditLabels(context.t))});');
+  }
+
+  Future<void> _applySpread() async {
+    await _controller?.evaluateJavascript(source: 'window.poloSetSpread(${widget.spreadOverlaps});');
+  }
+
+  Future<void> _applyOverlays() async {
+    final overlays = widget.overlays;
+    if (overlays == null) return;
+    final data = jsonEncode(mapOverlaysPayload(overlays, dark: widget.isDark, t: context.t));
+    await _controller?.evaluateJavascript(source: 'window.poloSetOverlays($data);');
+  }
+
+  /// A bundle the page's script asked for (see map_gl_script.dart's
+  /// `fetchText`), as `{body}` or `{error}` — the script reports the error
+  /// through its own channel, offline stamp and all.
+  static Future<Map<String, String>> _fetchText(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url), headers: {'User-Agent': await ham2kUserAgent()}).timeout(const Duration(seconds: 30));
+      // The script's fetchText answers a 4xx with null: no bundle for that cell.
+      if (response.statusCode >= 400 && response.statusCode < 500) return {'missing': '${response.statusCode}'};
+      if (response.statusCode != 200) return {'error': 'HTTP ${response.statusCode}'};
+      return {'body': response.body};
+    } catch (e) {
+      return {'error': '$e'};
+    }
   }
 
   @override
@@ -550,13 +620,18 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
               _applyDark();
             }
             _applyZoomFades();
+            _applySpread();
+            _applyFocus();
+            _applyCreditLabels();
             _applyMarkers();
             _applyLines();
             _applyShapes();
+            _applyOverlays();
             if (widget.zoomController?.lastFit case final points?) _fitTo(points);
             return null;
           },
         );
+        controller.addJavaScriptHandler(handlerName: 'poloFetchText', callback: (List<dynamic> args) => _fetchText('${args.firstOrNull}'));
         controller.addJavaScriptHandler(
           handlerName: 'poloMapEvent',
           callback: (List<dynamic> args) {

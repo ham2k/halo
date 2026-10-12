@@ -34,6 +34,7 @@ import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
 import '../map/map_highlight_camera.dart';
+import '../map/map_buttons.dart';
 import '../map/map_info_box.dart';
 import '../map/outline_issue_dialog.dart';
 import '../map/map_marker_icon.dart';
@@ -431,7 +432,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
                     onPressed: () => setState(() => _projection = _projection == MapProjection.mercator ? MapProjection.globe : MapProjection.mercator),
                   ),
                 if (widget.offersPostcard)
-                  _MapRoundButton(
+                  MapRoundButton(
                     icon: MdiIcons.camera,
                     semanticLabel: context.t.map.postcard.button,
                     onPressed: () => _openPostcard(backend: backend, shapes: shapes, appIsDark: theme.brightness == Brightness.dark),
@@ -454,7 +455,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
             crossAxisAlignment: CrossAxisAlignment.end,
             spacing: Space.sm,
             children: [
-              if (hasZoomButtons) _MapZoomButtons(controller: _zoomController),
+              if (hasZoomButtons) MapZoomButtons(controller: _zoomController),
               Expanded(
                 child: MapOutlinesNotice(
                   shapes: shapes,
@@ -825,68 +826,10 @@ class _MapProjectionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final toGlobe = projection == MapProjection.mercator;
-    return _MapRoundButton(
+    return MapRoundButton(
       icon: toGlobe ? MdiIcons.earth : MdiIcons.map,
       semanticLabel: toGlobe ? context.t.map.globe : context.t.map.flat,
       onPressed: onPressed,
-    );
-  }
-}
-
-/// One of the round buttons over the map's top-right corner.
-class _MapRoundButton extends StatelessWidget {
-  final IconData icon;
-  final String semanticLabel;
-  final VoidCallback onPressed;
-
-  const _MapRoundButton({required this.icon, required this.semanticLabel, required this.onPressed});
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Theme.of(context).colorScheme.surface,
-    shape: const CircleBorder(),
-    clipBehavior: Clip.antiAlias,
-    elevation: 2,
-    child: IconButton(
-      icon: Icon(icon, semanticLabel: semanticLabel),
-      onPressed: onPressed,
-    ),
-  );
-}
-
-/// The bottom-left +/- zoom cluster, non-mobile only (see hasZoomButtons in
-/// _MapPanelState._buildMap) — a mouse/trackpad has no pinch gesture, and
-/// scroll-to-zoom isn't discoverable without them. One pill rather than two
-/// separate cards, with a hairline between the two actions — clipped so
-/// each IconButton's own hover/ripple stays inside the pill instead of
-/// squaring off its corners.
-class _MapZoomButtons extends StatelessWidget {
-  final MapZoomController controller;
-
-  const _MapZoomButtons({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      shape: const StadiumBorder(),
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            icon: Icon(MdiIcons.plus, semanticLabel: context.t.map.zoomIn),
-            onPressed: controller.zoomIn,
-          ),
-          Divider(height: 1, thickness: 1, color: theme.dividerColor),
-          IconButton(
-            icon: Icon(MdiIcons.minus, semanticLabel: context.t.map.zoomOut),
-            onPressed: controller.zoomOut,
-          ),
-        ],
-      ),
     );
   }
 }

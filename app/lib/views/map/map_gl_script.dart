@@ -10,7 +10,7 @@
 //
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks, frame)` returning a handle with `setMarkersJson`,
-// `setLinesJson`, `setShapesJson`, `patchMarkersJson`, `patchLinesJson`,
+// `setLinesJson`, `setShapesJson`, `setOverlaysJson`, `setCreditLabelsJson`, `patchMarkersJson`, `patchLinesJson`,
 // `setProjection`, `moveTo`, `fitToJson`, `refit`, `camera`, `snapshot`, `reload`/`cancelReload`
 // (the host's word that the app is back online, or offline again), and
 // `remove`. Data crosses as JSON strings —
@@ -56,6 +56,8 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../services/settings_service.dart' show MapStyle;
+import 'map_gl_overlays_script.dart';
+import 'map_gl_spread_script.dart';
 import 'map_marker_data.dart' show mapDimmedOpacity, mapMarkerFullAtZoom, mapMarkerSmallAtZoom, mapMarkerSmallScale;
 import 'map_zoom_controller.dart' show MapZoomController, mapSnapshotRemovedMessage, mapSnapshotTimeoutMessage, mapSnapshotTimeoutMs;
 
@@ -252,6 +254,7 @@ window.poloMapGl = {
       style: initialDark ? styleDark : style,
       center: frame ? [frame.longitude, frame.latitude] : [0, 0],
       zoom: frame ? frame.zoom : 1,
+      attributionControl: { compact: true },
     };
     if (frame) {
       options.bearing = frame.bearing || 0;
@@ -266,6 +269,72 @@ window.poloMapGl = {
       options.canvasContextAttributes = { preserveDrawingBuffer: true };
     }
     const map = new maplibregl.Map(options);
+
+    // The credits: MapLibre's compact control, its ⓘ replaced by a line of
+    // our own — the basemap's and the imagery's owners, always in view as
+    // their terms ask ("© OpenStreetMap", "Powered by Esri"), and a link that
+    // opens every source's credit in full. The short line is read off the
+    // full one, so it names whatever the map is drawing.
+    let creditLabels = { more: 'Full dataset credits', less: 'Fewer credits' };
+    const attribution = host.querySelector('.maplibregl-ctrl-attrib');
+    const renderCredits = attribution ? (function () {
+      let css = document.getElementById('polo-credits-css');
+      if (!css) {
+        css = document.createElement('style');
+        css.id = 'polo-credits-css';
+        document.head.appendChild(css);
+      }
+      css.textContent =
+        '.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button { display: none; }' +
+        '.maplibregl-ctrl-attrib.maplibregl-compact, .maplibregl-ctrl-attrib.maplibregl-compact.maplibregl-compact-show { padding: 2px 8px; }' +
+        '.maplibregl-ctrl-attrib .polo-credits-toggle { text-decoration: underline; cursor: pointer; }';
+      const inner = attribution.querySelector('.maplibregl-ctrl-attrib-inner');
+      const line = document.createElement('div');
+      const short = document.createElement('span');
+      const toggle = document.createElement('a');
+      toggle.className = 'polo-credits-toggle';
+      toggle.href = '#';
+      toggle.addEventListener('click', function (e) {
+        e.preventDefault();
+        attribution.classList.toggle('maplibregl-compact-show');
+        attribution.setAttribute('open', '');
+      });
+      line.append(short, toggle);
+      attribution.appendChild(line);
+      function render() {
+        const open = attribution.classList.contains('maplibregl-compact-show');
+        const full = inner ? inner.textContent : '';
+        const owners = [
+          /OpenStreetMap/.test(full) && '© OpenStreetMap',
+          /CARTO/.test(full) && '© CARTO',
+          /Esri/.test(full) && 'Powered by Esri',
+        ].filter(Boolean);
+        short.textContent = open || !owners.length ? '' : owners.join(' · ') + ' · ';
+        toggle.textContent = open ? creditLabels.less : creditLabels.more;
+      }
+      if (inner) new MutationObserver(render).observe(inner, { childList: true, subtree: true, characterData: true });
+      // MapLibre opens a compact control once its first credit arrives, and
+      // keeps it open until the first drag; here it starts on the short line.
+      const opening = new MutationObserver(function () {
+        if (attribution.classList.contains('maplibregl-compact-show')) {
+          opening.disconnect();
+          attribution.classList.remove('maplibregl-compact-show');
+        }
+      });
+      if (attribution.classList.contains('maplibregl-compact-show')) {
+        attribution.classList.remove('maplibregl-compact-show');
+      } else {
+        opening.observe(attribution, { attributes: true, attributeFilter: ['class'] });
+      }
+      new MutationObserver(render).observe(attribution, { attributes: true, attributeFilter: ['class'] });
+      render();
+      return render;
+    })() : function () {};
+
+    function setCreditLabels(labels) {
+      creditLabels = labels;
+      renderCredits();
+    }
 
     // MapLibre's globe has no style-level fog property ('space-color'/
     // 'star-intensity') to paint what's beyond the sphere — its closest
@@ -496,6 +565,7 @@ window.poloMapGl = {
         if (lastMarkersData) setMarkers(lastMarkersData);
         if (lastLinesData) setLines(lastLinesData);
         if (lastShapesData) setShapes(lastShapesData);
+        applyOverlays();
       } catch (err) {
         report('deferred-update', what + ' could not put the map data back: ' + ((err && err.message) || err));
       }
@@ -521,6 +591,8 @@ window.poloMapGl = {
       styleFailed = false;
       failedTiles = {};
     });
+
+$mapGlOverlaysScript
     let reloadTimer = null;
 
     // Coming back online refetches what went unanswered, and nothing else.
@@ -696,6 +768,37 @@ window.poloMapGl = {
         $mapMarkerFullAtZoom, size];
     }
 
+    // A spread marker's true place (setSpread): a small dot there, and a line
+    // from it to the marker — shown as the markers part, from SPREAD_FROM_ZOOM.
+    function leaderLayers() {
+      const showing = ['interpolate', ['linear'], ['zoom'], SPREAD_FROM_ZOOM, 0, SPREAD_FROM_ZOOM + 0.5, 0.9];
+      return [
+        {
+          id: 'polo-leader-lines',
+          type: 'line',
+          source: 'polo-leaders',
+          filter: ['==', ['geometry-type'], 'LineString'],
+          layout: { 'line-cap': 'round' },
+          paint: { 'line-color': ['coalesce', ['get', 'color'], '#000000'], 'line-width': 3, 'line-opacity': showing },
+        },
+        {
+          id: 'polo-leader-dots',
+          type: 'circle',
+          source: 'polo-leaders',
+          filter: ['==', ['geometry-type'], 'Point'],
+          paint: {
+            // With the stroke, SPREAD_DOT across from the centre.
+            'circle-radius': 3.5,
+            'circle-color': ['coalesce', ['get', 'color'], '#000000'],
+            'circle-stroke-width': 1,
+            'circle-stroke-color': ['coalesce', ['get', 'strokeColor'], '#ffffff'],
+            'circle-opacity': showing,
+            'circle-stroke-opacity': showing,
+          },
+        },
+      ];
+    }
+
     function circleLayer(id, highlight) {
       return {
         id: id,
@@ -794,12 +897,15 @@ window.poloMapGl = {
         if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-marker-icons')) map.addSource('polo-marker-icons', { type: 'geojson', data: EMPTY });
+        if (!map.getSource('polo-leaders')) map.addSource('polo-leaders', { type: 'geojson', data: EMPTY });
       } catch (err) {
         return false;
       }
       // First, so an area never paints over the lines and dots inside it.
       shapeLayers().forEach(ensureLayer);
       ensureLayer(lineLayer('polo-lines', false, 1.5));
+      // Under every marker, so a spread marker covers the end of its own line.
+      leaderLayers().forEach(ensureLayer);
       ensureLayer(circleLayer('polo-markers', false));
       ensureLayer(lineLayer('polo-lines-highlight', true, 6));
       ensureLayer(circleLayer('polo-markers-highlight', true));
@@ -809,7 +915,10 @@ window.poloMapGl = {
       // every keystroke's data.
       const fresh = !map.getLayer('polo-marker-icons');
       ensureLayer(iconLayer());
-      if (fresh) applyOpacities();
+      if (fresh) {
+        applyOpacities();
+        applyFocusOrder();
+      }
       return true;
     }
 
@@ -837,21 +946,44 @@ window.poloMapGl = {
         return band ? ['interpolate', ['linear'], ['zoom'], band.from, 0, band.to, full] : full;
       }
       // A steady marker keeps full strength (MapMarkerData.dimsBehindHighlight).
-      const strength = highlighted ? ['case', ['==', ['get', 'steady'], true], 1, $mapDimmedOpacity] : 1;
+      const dimming = highlighted ? ['case', ['==', ['get', 'steady'], true], 1, $mapDimmedOpacity] : 1;
+      const strength = focus ? ['*', dimming, ['case', ['in', ['get', 'id'], ['literal', focus.steady]], 1, focus.othersOpacity]] : dimming;
       map.setPaintProperty('polo-lines', 'line-opacity', lineOpacity());
-      map.setPaintProperty('polo-marker-icons', 'icon-opacity', strength);
       // The strength goes inside the interpolate: a zoom expression has to be
       // the outermost one, so it cannot be multiplied from out here.
       const markers = zoomFades && zoomFades.markers;
       const markerOpacity = markers
         ? ['interpolate', ['linear'], ['zoom'], markers.from, ['case', ['==', ['get', 'fades'], true], 0, strength], markers.to, strength]
         : strength;
+      // A glyph marker fades like a dot: a map drawing every suggestion in
+      // its program's icon would otherwise be a carpet of them zoomed out.
+      map.setPaintProperty('polo-marker-icons', 'icon-opacity', markerOpacity);
       map.setPaintProperty('polo-markers', 'circle-opacity', markerOpacity);
       map.setPaintProperty('polo-markers', 'circle-stroke-opacity', markerOpacity);
       map.setPaintProperty('polo-shapes-dashed', 'line-opacity', fading(zoomFades && zoomFades.dashedShapes, DASHED_OPACITY));
       const solid = zoomFades && zoomFades.solidShapes;
       map.setPaintProperty('polo-shapes-fill', 'fill-opacity', fading(solid, FILL_OPACITY));
       map.setPaintProperty('polo-shapes-outline', 'line-opacity', fading(solid, EDGE_OPACITY));
+    }
+
+    // The marker brought forward (map_marker_data.dart's MapMarkerFocus): a
+    // paint and a sort key over the markers as they stand, so moving it
+    // touches neither source.
+    let focus = null;
+
+    // Sort keys rather than source order: the focused marker would otherwise
+    // have to move to the end of the data, and that is a whole new set.
+    function applyFocusOrder() {
+      if (!map.getLayer('polo-markers') || !map.getLayer('polo-marker-icons')) return;
+      const key = focus ? ['case', ['==', ['get', 'id'], focus.id], 1, 0] : undefined;
+      map.setLayoutProperty('polo-marker-icons', 'symbol-sort-key', key);
+      map.setLayoutProperty('polo-markers', 'circle-sort-key', key);
+    }
+
+    function setFocus(data) {
+      focus = data;
+      applyOpacities();
+      applyFocusOrder();
     }
 
     function setZoomFades(data) {
@@ -955,6 +1087,8 @@ window.poloMapGl = {
       setLines({ opacity: last.opacity, features: mergePatch(last.features, function (f) { return f.properties.id; }, patch) });
     }
 
+$mapGlSpreadScript
+
     function setMarkers(data) {
       lastMarkersData = data;
       if (styleSwapInFlight) return;
@@ -967,6 +1101,7 @@ window.poloMapGl = {
       let fitKey = null;
       const iconFeatures = [];
       const features = [];
+      const spreading = [];
       let anyHighlighted = false;
       data.forEach((m) => {
         markersById[m.id] = m;
@@ -991,12 +1126,20 @@ window.poloMapGl = {
           if (m.fitKey) fitKey = m.fitKey;
         }
         const geometry = { type: 'Point', coordinates: [m.longitude, m.latitude] };
+        if (spreadOn && !m.highlight && m.kind !== 'qth') {
+          const unit = toUnit(m.longitude, m.latitude);
+          const offset = spreadOffsets.get(m.id) || [0, 0];
+          spreading.push({
+            id: m.id, geometry: geometry, size: size, color: m.color, strokeColor: m.strokeColor,
+            lon: m.longitude, lat: m.latitude, ux: unit[0], uy: unit[1], ox: offset[0], oy: offset[1],
+          });
+        }
         // A marker whose image could not be registered falls back to the
         // plain circle: a dot in the right place beats no marker at all.
         if (m.image && ensureImage(m.image)) {
           iconFeatures.push({
             type: 'Feature',
-            properties: { id: m.id, steady: m.steady === true, image: m.image.id },
+            properties: { id: m.id, steady: m.steady === true, fades: m.fades === true, image: m.image.id },
             geometry: geometry,
           });
           return;
@@ -1016,6 +1159,28 @@ window.poloMapGl = {
           geometry: geometry,
         });
       });
+      spreadable = spreading;
+      spreadGroups = [];
+      spreadIdle = false;
+      if (spreadOn) {
+        spreadTargets(SPREAD_FULL_ZOOM);
+        // Each offset trimmed to what the full zoom itself needs: a ring is
+        // as big as its most crowded member needs, and past the full zoom
+        // each marker draws back to its own least (sharesAt) — untrimmed,
+        // the markers would all jump inward the moment the zoom passed it.
+        const fullScale = 512 * Math.pow(2, SPREAD_FULL_ZOOM);
+        spreadGroups.forEach(function (group) {
+          sharesAt(group, fullScale);
+          group.forEach(function (e) {
+            e.fx *= e.share;
+            e.fy *= e.share;
+          });
+        });
+        spreadOffsets = new Map();
+        if (positionSpread()) spreadSoon();
+      }
+      lastMarkerFeatures = features;
+      lastIconFeatures = iconFeatures;
       map.getSource('polo-markers').setData({ type: 'FeatureCollection', features: features });
       map.getSource('polo-marker-icons').setData({ type: 'FeatureCollection', features: iconFeatures });
       if (anyHighlighted !== highlighted) {
@@ -1051,6 +1216,7 @@ window.poloMapGl = {
       if (!ensureLayers()) { pendingShapes = data; flushWhenReady(); return; }
       clearTimeoutState();
       map.getSource('polo-shapes').setData({ type: 'FeatureCollection', features: data.features });
+      setCredit('polo-shapes', data.credit);
     }
 
     // Where the camera came to rest, for a host that fetches more as the map
@@ -1222,6 +1388,8 @@ window.poloMapGl = {
       setLines: setLines,
       setShapes: setShapes,
       setZoomFades: setZoomFades,
+      setFocus: setFocus,
+      setCreditLabels: setCreditLabels,
       // JSON-string variants for callers on the far side of an interop
       // boundary (Flutter web's js_interop), where a string is the cheapest
       // thing to pass.
@@ -1232,7 +1400,12 @@ window.poloMapGl = {
       patchMarkersJson: function (json) { patchMarkers(JSON.parse(json)); },
       patchLinesJson: function (json) { patchLines(JSON.parse(json)); },
       setShapesJson: function (json) { setShapes(JSON.parse(json)); },
+      setOverlays: setOverlays,
+      setSpread: setSpread,
+      setOverlaysJson: function (json) { setOverlays(JSON.parse(json)); },
       setZoomFadesJson: function (json) { setZoomFades(JSON.parse(json)); },
+      setFocusJson: function (json) { setFocus(JSON.parse(json)); },
+      setCreditLabelsJson: function (json) { setCreditLabels(JSON.parse(json)); },
       setProjection: function (name) {
         if (map.isStyleLoaded()) { applyProjection(name); return; }
         pendingProjection = name;
@@ -1281,6 +1454,7 @@ window.poloMapGl = {
         // one would go further and put markers back on a removed map.
         styleSwapId++;
         styleSwapInFlight = false;
+        cancelAnimationFrame(spreadFrame);
         clearTimeout(styleSwapTimer);
         pendingMarkers = null;
         pendingLines = null;

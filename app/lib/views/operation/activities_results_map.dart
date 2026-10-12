@@ -36,6 +36,7 @@ import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
 import '../map/map_marker_data.dart';
+import '../map/map_overlays.dart';
 import '../map/map_info_box.dart';
 import '../map/outline_issue_dialog.dart';
 import '../map/map_marker_icon.dart';
@@ -45,118 +46,25 @@ import '../map/mapbox_web_map_view.dart';
 import '../map/mapbox_webview_map_view.dart';
 import '../map/osm_map_view.dart';
 import '../map/webview_support_probe.dart';
+export 'activities_map_markers.dart';
+
+import 'activities_map_markers.dart';
 import 'activity_rows.dart' show ActivityRowChip, activityRowDetail, activityRowIsRetired, activityRowTitle;
 import 'operation_location_pin.dart';
 
-/// The entry's own coordinate when the activity's lookup table has one
-/// (tighter than decoding a 6-character grid square — see the SDK's `Ref.lat`
-/// / `Ref.lon`, extensions/sdk/src/types.ts), otherwise the center of its
-/// `grid`. Null when the entry has neither, same as a QSO with no
-/// resolvable location on the Map tab.
-GridLocation? locationForSuggestion(Map<String, dynamic> suggestion) =>
-    // Read, not cast: an extension's answer, and a malformed one must not take
-    // the map with it.
-    locationFromLatLon(suggestion['lat'], suggestion['lon']) ?? gridToLocation(suggestion['grid'] is String ? suggestion['grid'] as String : null);
+/// What lets a host open a reference's card on the map, or close whatever is
+/// open, from outside it — the Maps view's search list. Set up by the map
+/// while it is built with it, the way [MapZoomController] is by a backend.
+class ActivitiesMapSelection {
+  void Function(Map<String, dynamic> ref)? _onSelect;
+  VoidCallback? _onClear;
 
-/// One marker per [suggestions] entry that is NOT already on the operation
-/// and has a resolvable location (see [locationForSuggestion]) — entries
-/// without one are silently omitted, the same treatment a location-less QSO
-/// gets on the Map tab. The id is [selectedRefMarkerId], what the entry IS
-/// rather than where it sits in the list: suggestions arrive late (a pan,
-/// parks found by their outline) and are re-ranked, and an open card or a
-/// tap's pager has to keep naming the same reference through that. One
-/// marker per reference — the first of two that share one wins.
-///
-/// Unlike the list rows, this takes no "are these search results?" — the
-/// rows keep an already-added search hit and fade it (`suggestionHidesAsAlreadyAdded`),
-/// where the map has [activitySelectedRefMarkers] drawing that same point in
-/// the reference's own icon, and two dots on one point read as two
-/// references. Which is the whole justification for dropping it, so the drop
-/// is conditional on that other marker actually existing: a reference the
-/// operation stored WITHOUT a location gets none, and dropping its
-/// suggestion too would take the only dot that reference had off the map.
-List<MapMarkerData> activitySuggestionMarkers(
-  List<Map<String, dynamic>> suggestions, {
-  required List<Map<String, dynamic>> controls,
-  required List<Map<String, dynamic>> refs,
-  required Color defaultColor,
-  required Color strokeColor,
-}) {
-  final markers = <MapMarkerData>[];
-  final drawn = <String>{};
-  for (final suggestion in suggestions) {
-    final storedRef = refs.where((r) => r['type'] == suggestion['type'] && r['ref'] == suggestion['ref']).firstOrNull;
-    if (storedRef != null && locationForSuggestion(storedRef) != null) continue;
-    final location = locationForSuggestion(suggestion);
-    if (location == null || !drawn.add(selectedRefMarkerId(suggestion))) continue;
-    final control = controlForRefType(controls, suggestion['type'] as String?);
-    final baseColor = colorForRefType(controls, suggestion['type'] as String?) ?? defaultColor;
-    markers.add(
-      MapMarkerData(
-        id: selectedRefMarkerId(suggestion),
-        latitude: location.latitude,
-        longitude: location.longitude,
-        label: activityRowTitle(control, suggestion),
-        kind: MapMarkerKind.qso,
-        // Faded when the operation already has it: this dot only survives the
-        // drop above because the stored reference has no location of its own
-        // to draw, and at full strength it would be indistinguishable from a
-        // reference the operator can still add — which its card, offering no
-        // Add button, then contradicts.
-        color: storedRef == null ? baseColor : baseColor.withValues(alpha: 0.4),
-        strokeColor: strokeColor,
-      ),
-    );
-  }
-  return markers;
-}
+  /// Opens [ref]'s card, alone, as if it were the only thing tapped. It has
+  /// to be one of the map's suggestions or references to have a card.
+  void select(Map<String, dynamic> ref) => _onSelect?.call(ref);
 
-/// What a reference is named by on the map — its marker, its card, a tap's
-/// pager — whether it is on the operation or suggested.
-String selectedRefMarkerId(Map<String, dynamic> ref) => 'ref-${ref['type']}/${ref['ref']}';
-
-/// One marker per operation reference with a resolvable location, in the
-/// reference type's own icon and color — the same pair the Current
-/// Activities rows above the map use, so a dot and its row read as the same
-/// object. Ids are [selectedRefMarkerId], the same a suggestion of that
-/// reference carries: removed from the operation, a reference's card stays
-/// open on the suggestion it becomes, now offering Add — the undo for a
-/// removal made by mistake. Whether an id names one of the operation's own
-/// references is a question for the refs, not for the id.
-///
-/// [glyphFor] returns null while a marker's pixels are still being drawn;
-/// that reference falls back to a plain dot in its color for those frames
-/// rather than vanishing from the map.
-List<MapMarkerData> activitySelectedRefMarkers(
-  List<Map<String, dynamic>> refs, {
-  required List<Map<String, dynamic>> controls,
-  required Color defaultColor,
-  required Color strokeColor,
-  required MapMarkerGlyph? Function(IconData icon, Color background) glyphFor,
-}) {
-  final markers = <MapMarkerData>[];
-  for (final ref in refs) {
-    final location = locationForSuggestion(ref);
-    if (location == null) continue;
-    final control = controlForRef(controls, type: ref['type'] as String?, code: ref['ref'] is String ? ref['ref'] as String : null);
-    // With the code, like the control lookup above it: a reference answered
-    // under a legacy type would otherwise take the default colour while the
-    // row beside it wears its extension's.
-    final color = colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? defaultColor;
-    markers.add(
-      MapMarkerData(
-        id: selectedRefMarkerId(ref),
-        latitude: location.latitude,
-        longitude: location.longitude,
-        label: activityRowTitle(control, ref),
-        kind: MapMarkerKind.qso,
-        color: color,
-        strokeColor: strokeColor,
-        glyph: glyphFor(resolveIconName(control?['icon'] as String?), color),
-      ),
-    );
-  }
-  return markers;
+  /// Closes whatever the map has open.
+  void clear() => _onClear?.call();
 }
 
 class ActivitiesResultsMap extends StatefulWidget {
@@ -183,7 +91,9 @@ class ActivitiesResultsMap extends StatefulWidget {
   /// be out of their reach.
   final MapZoomController? camera;
 
-  final ValueChanged<Map<String, dynamic>> onAdd;
+  /// Adds a reference to the operation, from its card. Null for a map with
+  /// no operation behind it (the Maps view), whose cards only reveal.
+  final ValueChanged<Map<String, dynamic>>? onAdd;
 
   /// Takes an already-added reference back off the operation, from its card.
   final ValueChanged<Map<String, dynamic>>? onRemove;
@@ -236,6 +146,31 @@ class ActivitiesResultsMap extends StatefulWidget {
   /// negative on a filled button.
   final bool currentLocationIsGps;
 
+  /// What the map lays over its basemap — see [MapOverlays]. Null offers no
+  /// layers.
+  final MapOverlays? overlays;
+
+  /// The basemap, where the view picks its own rather than following the
+  /// operator's Map Style setting.
+  final MapStyle? mapStyle;
+
+  /// Whether, in a window wide enough, what a tap found is listed down the
+  /// map's left side — a summary of where, then a card for each — rather
+  /// than as one card to page through.
+  final bool picksColumn;
+
+  /// See [ActivitiesMapSelection].
+  final ActivitiesMapSelection? selection;
+
+  /// Starts an operation with the references the picks column lists — its
+  /// summary offers this when given.
+  final ValueChanged<List<Map<String, dynamic>>>? onStartOperation;
+
+  /// Whether a map with nothing to draw says so instead of showing. Off for
+  /// a map that is the whole view, where an empty map still has a world to
+  /// pan around.
+  final bool hintsWhenEmpty;
+
   const ActivitiesResultsMap({
     super.key,
     required this.suggestions,
@@ -245,7 +180,7 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.geoshapes,
     this.outlineGrid,
     this.camera,
-    required this.onAdd,
+    this.onAdd,
     this.onRemove,
     this.linkFor,
     this.exploredSuggestions = const [],
@@ -258,6 +193,12 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.currentLocationIcon,
     this.currentLocationIconColor,
     this.currentLocationIsGps = false,
+    this.overlays,
+    this.mapStyle,
+    this.picksColumn = false,
+    this.selection,
+    this.onStartOperation,
+    this.hintsWhenEmpty = true,
   });
 
   /// The zoom, on the GL scale, from which the suggestions nobody has picked
@@ -326,35 +267,55 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   /// so a card opened any other way never carries a stale count.
   List<String> _picks = const [];
 
-  /// How thick the chosen marker's ring is, against the 1.5–2 of the rest.
+  /// Where the last tap landed — the dot's own place for a tap on a marker —
+  /// for the picks column's summary.
+  GridLocation? _pickedAt;
+
+  /// How wide the picks column is.
+  static const _picksColumnWidth = 340.0;
+
+  /// How thick the chosen plain dot's ring is, against the 1.5–2 of the rest.
   static const _chosenRingWidth = 4.0;
 
-  /// The marker whose card is open, drawn black inside a thick ring of its
-  /// own colour — the colour moves to the ring, so it still says which
-  /// program it is, and the black says "this one" against every other dot.
-  /// A glyph marker gets its glyph redrawn the same way; until those pixels
-  /// land it keeps its own.
+  /// How much larger the chosen glyph marker is than the rest.
+  static const _chosenGlyphScale = 1.2;
+
+  /// How thick the ring is on the operation's own references.
+  static const _ownRingWidth = 3.0;
+
+  /// How strongly every other reference draws while one is chosen — except
+  /// the ones the same tap found, which the picks column lists beside it.
+  static const _unchosenOpacity = 0.4;
+
+  /// The marker whose card is open. A glyph marker keeps its own colours,
+  /// grows, and trades its ring for a black glow — the glyph already says
+  /// which program it is, so the size and the glow alone say "this one".
+  /// Until those pixels land it keeps its own. A plain dot has no glow to
+  /// give on the GL canvas, so it turns black inside a thick ring of its own
+  /// colour instead: the ring still says which program it is, and the black
+  /// says "this one" against every other dot.
   MapMarkerData _asChosen(MapMarkerData marker, {required Color glyphForeground, required double devicePixelRatio}) {
-    const fill = Colors.black;
-    final ring = marker.color;
     final glyph = marker.glyph;
-    return marker.asChosen(
-      fill: fill,
-      ring: ring,
-      ringWidth: _chosenRingWidth,
-      // A plain dot grows, or the ring would leave almost no black to see.
-      sizeFactor: glyph == null ? 1.4 : null,
-      glyph: glyph == null
-          ? null
-          : _glyphCache.glyphFor(
-              icon: glyph.icon,
-              background: fill,
-              foreground: glyphForeground,
-              strokeColor: ring,
-              devicePixelRatio: devicePixelRatio,
-              strokeWidth: _chosenRingWidth,
-            ),
-    );
+    if (glyph != null) {
+      final fill = marker.color;
+      return marker.asChosen(
+        fill: fill,
+        // In the fill's own colour: a ring that does not show.
+        ring: fill,
+        ringWidth: markerIconStrokeWidth,
+        glyph: _glyphCache.glyphFor(
+          icon: glyph.icon,
+          background: fill,
+          foreground: glyphForeground,
+          strokeColor: fill,
+          devicePixelRatio: devicePixelRatio,
+          glow: Colors.black,
+          diameter: markerIconDiameter * _chosenGlyphScale,
+        ),
+      );
+    }
+    // A plain dot grows, or the ring would leave almost no black to see.
+    return marker.asChosen(fill: Colors.black, ring: marker.color, ringWidth: _chosenRingWidth, sizeFactor: 1.4);
   }
 
   /// The views answered since the search changed, and the zoom each was
@@ -512,6 +473,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
 
   @override
   void dispose() {
+    _detachSelection(widget.selection);
     _exploreDebounce?.cancel();
     _gridDebounce?.cancel();
     _cameraReport.dispose();
@@ -573,6 +535,37 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   void initState() {
     super.initState();
     initWebviewSupportProbe();
+    _attachSelection(widget.selection);
+  }
+
+  void _attachSelection(ActivitiesMapSelection? selection) {
+    selection
+      ?.._onSelect = _select
+      .._onClear = _clearSelection;
+  }
+
+  void _detachSelection(ActivitiesMapSelection? selection) {
+    if (selection?._onSelect != _select) return;
+    selection
+      ?.._onSelect = null
+      .._onClear = null;
+  }
+
+  void _select(Map<String, dynamic> ref) {
+    if (!mounted) return;
+    setState(() {
+      _selectedMarkerId = selectedRefMarkerId(ref);
+      _picks = const [];
+      _pickedAt = locationForSuggestion(ref);
+    });
+  }
+
+  void _clearSelection() {
+    if (!mounted || (_selectedMarkerId == null && _picks.isEmpty)) return;
+    setState(() {
+      _selectedMarkerId = null;
+      _picks = const [];
+    });
   }
 
   @override
@@ -584,6 +577,10 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   @override
   void didUpdateWidget(ActivitiesResultsMap oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.selection != widget.selection) {
+      _detachSelection(oldWidget.selection);
+      _attachSelection(widget.selection);
+    }
     // An open card follows its reference through whatever the lists do —
     // a late addition, a re-ranking, a search re-run on a GPS fix — and
     // closes only once nothing listed is that reference any more. The pager
@@ -623,7 +620,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     final location = locationForSuggestion(entry);
     // The dot the operator aimed at leads, the rest in their usual order.
     final picks = [id, if (location != null) ..._pickAt(location).where((pick) => pick != id)];
-    _open(picks);
+    _open(picks, at: location);
     // Only a reference already on the operation, alone under the tap, not a
     // suggestion: a suggestion's card offers Add, and flying the map away
     // from the search results the operator is comparing would answer a
@@ -640,12 +637,13 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
   /// tapped something already in view.
   void _onMapTap(GridLocation point) {
     final picks = _pickAt(point);
-    if (picks.isNotEmpty) _open(picks);
+    if (picks.isNotEmpty) _open(picks, at: point);
   }
 
   /// Opens the first of [picks], or — when its card is already open —
   /// closes it: a second tap on the same thing.
-  void _open(List<String> picks) {
+  void _open(List<String> picks, {GridLocation? at}) {
+    _pickedAt = at;
     setState(() {
       if (picks.first == _selectedMarkerId) {
         _selectedMarkerId = null;
@@ -719,6 +717,12 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     return _link;
   }
 
+  /// Each listed card's link, asked for once per reference for as long as
+  /// the picks column shows it.
+  final Map<String, Future<RefLink?>?> _columnLinks = {};
+
+  Future<RefLink?>? _linkForListed(String id, Map<String, dynamic> entry) => _columnLinks.putIfAbsent(id, () => widget.linkFor?.call(entry));
+
   /// The entry a marker id stands for — the operation's own reference first,
   /// then a suggestion of it — or null when it stands for none: the
   /// current-location dot, or a reference no longer listed anywhere.
@@ -735,7 +739,8 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     final theme = Theme.of(context);
     // The BASEMAP's tone, not the app's — a pinned style keeps its own
     // whatever the app's theme is doing (see mapStyleIsDark).
-    final isDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: theme.brightness == Brightness.dark);
+    final mapStyle = widget.mapStyle ?? widget.settings.mapStyle;
+    final isDark = mapStyleIsDark(mapStyle, appIsDark: theme.brightness == Brightness.dark);
     // Same stroke treatment as the Map tab's QSO circles: a dark ring reads
     // as a hole in a light basemap, a light one does the same job on a dark
     // one.
@@ -753,25 +758,36 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         refs: widget.refs,
         defaultColor: theme.colorScheme.primary,
         strokeColor: strokeColor,
+        glyphFor: (icon, background) =>
+            _glyphCache.glyphFor(icon: icon, background: background, foreground: glyphForeground, strokeColor: strokeColor, devicePixelRatio: devicePixelRatio),
       ))
         // What panning found is never fitted: each batch would snap the map
         // back from where the operator had just dragged it.
         marker.withFit(fitsCamera: searched.contains(marker.id), fadesWithZoom: true),
     ];
+    // Ringed in the card's "already selected" green: every reference wears
+    // its program's icon, so the ring is what tells the operation's own
+    // from one it could add.
     final refMarkers = activitySelectedRefMarkers(
       widget.refs,
       controls: widget.controls,
       defaultColor: theme.colorScheme.primary,
-      strokeColor: strokeColor,
-      glyphFor: (icon, background) =>
-          _glyphCache.glyphFor(icon: icon, background: background, foreground: glyphForeground, strokeColor: strokeColor, devicePixelRatio: devicePixelRatio),
+      strokeColor: _selectedGreen,
+      glyphFor: (icon, background) => _glyphCache.glyphFor(
+        icon: icon,
+        background: background,
+        foreground: glyphForeground,
+        strokeColor: _selectedGreen,
+        strokeWidth: _ownRingWidth,
+        devicePixelRatio: devicePixelRatio,
+      ),
     );
 
     // The hint is about a search that found nothing, so it must not stand in
     // front of references the operation already has, nor of the "you are
     // here" the map opens on: it shows only when there is nothing at all to
     // draw.
-    if (markers.isEmpty && refMarkers.isEmpty && widget.currentLocation == null) {
+    if (widget.hintsWhenEmpty && markers.isEmpty && refMarkers.isEmpty && widget.currentLocation == null) {
       final t = context.t.activitiesView;
       return Center(
         child: Padding(
@@ -855,6 +871,17 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
           fitsCamera: opensOnHere ? marker.id == 'current-location' : null,
         ),
     ];
+    // While a reference is chosen it draws over the rest, and every other one
+    // steps back — but for the rest of what the same tap found, still listed
+    // beside it, the operation's own, and "you are here".
+    final focus = switch (_selectedMarkerId) {
+      final id? when _markerEntry(id) != null => MapMarkerFocus(
+        id: id,
+        steady: {id, ..._picks, for (final ref in widget.refs) selectedRefMarkerId(ref), 'current-location'},
+        othersOpacity: _unchosenOpacity,
+      ),
+      _ => null,
+    };
 
     // The operation's own references, plus the one whose reveal card is open
     // — the summit an operator is looking at is as worth an outline as one
@@ -914,7 +941,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
       ..._gridShapes(revealedFromGrid, areas: false, dashed: false, fallbackColor: fallbackColor),
     ];
 
-    final pinnedStyle = widget.settings.mapStyle;
+    final pinnedStyle = mapStyle;
     final glStyleUrl = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrl;
     final glStyleUrlDark = pinnedStyle != MapStyle.automatic ? mapLibreStyleUrl(pinnedStyle) : mapDefaultStyleUrlDark;
 
@@ -931,7 +958,10 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         onMarkerTap: _onMarkerTap,
         onCameraChanged: _onCameraChanged,
         zoomFades: ActivitiesResultsMap.zoomFades,
+        focus: focus,
         onMapTap: _onMapTap,
+        overlays: widget.overlays,
+        spreadOverlaps: true,
       );
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
       map = MapboxWebviewMapView(
@@ -945,7 +975,10 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         onMarkerTap: _onMarkerTap,
         onCameraChanged: _onCameraChanged,
         zoomFades: ActivitiesResultsMap.zoomFades,
+        focus: focus,
         onMapTap: _onMapTap,
+        overlays: widget.overlays,
+        spreadOverlaps: true,
       );
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) {
       map = MapboxWebviewMapView(
@@ -959,7 +992,10 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         onMarkerTap: _onMarkerTap,
         onCameraChanged: _onCameraChanged,
         zoomFades: ActivitiesResultsMap.zoomFades,
+        focus: focus,
         onMapTap: _onMapTap,
+        overlays: widget.overlays,
+        spreadOverlaps: true,
       );
     } else {
       // Linux, or Windows without a usable WebView2 environment — see
@@ -972,7 +1008,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         onMarkerTap: _onMarkerTap,
         onCameraChanged: _onCameraChanged,
         zoomFades: ActivitiesResultsMap.zoomFades,
+        focus: focus,
         onMapTap: _onMapTap,
+        overlays: widget.overlays,
       );
     }
 
@@ -1025,9 +1063,20 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
           bottom: MapInfoBox.bottom,
           child: MapInfoBox(settings: widget.settings, camera: _cameraReport),
         ),
+        if (selected != null && widget.picksColumn && ShirtSize.of(context).isTwoPane)
+          Positioned(
+            left: Space.md,
+            top: Space.md,
+            bottom: Space.md,
+            width: _picksColumnWidth,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: PlatformViewShield(child: _picksColumn(context)),
+            ),
+          )
         // At the top, clear of the outline notice and the map's credit along
         // the bottom edge.
-        if (selected != null)
+        else if (selected != null)
           Positioned(
             left: Space.md,
             right: Space.md,
@@ -1044,9 +1093,12 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
                 pickIndex: _picks.indexOf(_selectedMarkerId!),
                 pickCount: _picks.length,
                 onPick: (index) => setState(() => _selectedMarkerId = _picks[index]),
-                onAdd: () {
-                  widget.onAdd(selected);
-                  setState(() => _selectedMarkerId = null);
+                onAdd: switch (widget.onAdd) {
+                  final onAdd? => () {
+                    onAdd(selected);
+                    setState(() => _selectedMarkerId = null);
+                  },
+                  null => null,
                 },
                 // The card stays open, offering Add again — see didUpdateWidget.
                 onRemove: widget.onRemove == null ? null : () => widget.onRemove!(selected),
@@ -1055,6 +1107,84 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
             ),
           ),
       ],
+    );
+  }
+
+  /// Everything the last tap found, under a card saying how many and where —
+  /// the open one marked, and any one tapped becoming the open one, its
+  /// outline drawn and its dot chosen on the map.
+  Widget _picksColumn(BuildContext context) {
+    final theme = Theme.of(context);
+    final ids = _picks.isNotEmpty ? _picks : [?_selectedMarkerId];
+    _columnLinks.removeWhere((id, _) => !ids.contains(id));
+    final at = _pickedAt;
+    void close() => setState(() {
+      _selectedMarkerId = null;
+      _picks = const [];
+    });
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Material(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(Space.md, Space.xs, Space.xs, Space.xs),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      context.t.mapsView.picksAt(
+                        count: ids.length,
+                        where: at == null ? '' : '${at.latitude.toStringAsFixed(3)}, ${at.longitude.toStringAsFixed(3)}',
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  if (widget.onStartOperation case final onStartOperation?)
+                    IconButton(
+                      icon: Icon(MdiIcons.bookPlus, semanticLabel: context.t.mapsView.startOperation),
+                      onPressed: () => onStartOperation([for (final id in ids) ?_markerEntry(id)]),
+                    ),
+                  IconButton(
+                    icon: Icon(MdiIcons.close, semanticLabel: context.t.common.close),
+                    onPressed: close,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          for (final id in ids)
+            if (_markerEntry(id) case final entry?) ...[
+              const SizedBox(height: Space.sm),
+              _RevealCard(
+                key: ValueKey(id),
+                suggestion: entry,
+                control: controlForRefType(widget.controls, entry['type'] as String?),
+                controls: widget.controls,
+                alreadyAdded: widget.refs.any((r) => r['type'] == entry['type'] && r['ref'] == entry['ref']),
+                miles: widget.settings.distanceUnits == DistanceUnits.miles,
+                link: _linkForListed(id, entry),
+                pickIndex: -1,
+                pickCount: 0,
+                onPick: (_) {},
+                onAdd: switch (widget.onAdd) {
+                  final onAdd? => () {
+                    onAdd(entry);
+                    close();
+                  },
+                  null => null,
+                },
+                onRemove: widget.onRemove == null ? null : () => widget.onRemove!(entry),
+                selected: id == _selectedMarkerId,
+                onTap: () => setState(() => _selectedMarkerId = id),
+              ),
+            ],
+        ],
+      ),
     );
   }
 }
@@ -1119,11 +1249,19 @@ class _RevealCard extends StatelessWidget {
   final int pickIndex;
   final int pickCount;
   final ValueChanged<int> onPick;
-  final VoidCallback onAdd;
+  final VoidCallback? onAdd;
   final VoidCallback? onRemove;
-  final VoidCallback onDismiss;
+
+  /// Null for a card in the picks column, which closes with the column.
+  final VoidCallback? onDismiss;
+
+  /// Whether this is the open one of several listed — see
+  /// [_ActivitiesResultsMapState._picksColumn].
+  final bool selected;
+  final VoidCallback? onTap;
 
   const _RevealCard({
+    super.key,
     required this.suggestion,
     required this.control,
     required this.controls,
@@ -1135,7 +1273,9 @@ class _RevealCard extends StatelessWidget {
     required this.onPick,
     required this.onAdd,
     required this.onRemove,
-    required this.onDismiss,
+    this.onDismiss,
+    this.selected = false,
+    this.onTap,
   });
 
   @override
@@ -1149,114 +1289,123 @@ class _RevealCard extends StatelessWidget {
 
     return Material(
       color: theme.colorScheme.surface,
-      borderRadius: BorderRadius.circular(12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: selected ? BorderSide(color: theme.colorScheme.primary, width: 2) : BorderSide.none,
+      ),
       clipBehavior: Clip.antiAlias,
       elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.sm, Space.sm),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Row(
-              children: [
-                activityRefIcon(controls, suggestion['type'] as String?),
-                const SizedBox(width: Space.md),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              title,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (activityRowIsRetired(suggestion))
-                            Padding(
-                              padding: const EdgeInsets.only(left: Space.md),
-                              child: ActivityRowChip(label: t.retiredReference, unavailable: true),
-                            ),
-                        ],
-                      ),
-                      if (detail != null || distance != null)
-                        Text(
-                          [?detail, ?distance].join(' • '),
-                          style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
-                // The same web button the list rows end with.
-                FutureBuilder<RefLink?>(
-                  // Keyed, or a card paged to the next reference keeps
-                  // offering the last one's link until the new one answers.
-                  key: ValueKey(selectedRefMarkerId(suggestion)),
-                  future: link,
-                  builder: (context, snapshot) => switch (snapshot.data) {
-                    final link? => IconButton(
-                      icon: Icon(MdiIcons.web, semanticLabel: t.openReferenceLink(name: link.label ?? title)),
-                      onPressed: () => openExternalUrl(link.url),
-                    ),
-                    null => const SizedBox.shrink(),
-                  },
-                ),
-                IconButton(
-                  icon: Icon(MdiIcons.close, semanticLabel: context.t.common.close),
-                  onPressed: onDismiss,
-                ),
-              ],
-            ),
-            Row(
-              // The pager on the left, the action on the right: Add stays where
-              // a lone card has it, whether or not the tap found more.
-              children: [
-                if (pickIndex >= 0 && pickCount > 1) ...[
-                  IconButton(
-                    icon: Icon(MdiIcons.arrowLeft, semanticLabel: t.previousPick),
-                    onPressed: pickIndex > 0 ? () => onPick(pickIndex - 1) : null,
-                  ),
-                  Text(
-                    t.pickPosition(index: pickIndex + 1, count: pickCount),
-                    style: theme.textTheme.labelLarge,
-                  ),
-                  IconButton(
-                    icon: Icon(MdiIcons.arrowRight, semanticLabel: t.nextPick),
-                    onPressed: pickIndex < pickCount - 1 ? () => onPick(pickIndex + 1) : null,
-                  ),
-                ],
-                const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(top: Space.xs, right: Space.xs),
-                  child: alreadyAdded
-                      ? Row(
-                          mainAxisSize: MainAxisSize.min,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Space.md, Space.sm, Space.sm, Space.sm),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                children: [
+                  activityRefIcon(controls, suggestion['type'] as String?),
+                  const SizedBox(width: Space.md),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            const Icon(MdiIcons.checkCircle, color: _selectedGreen),
-                            const SizedBox(width: Space.xs),
-                            Text(
-                              t.selected,
-                              style: theme.textTheme.labelLarge?.copyWith(color: _selectedGreen, fontWeight: FontWeight.bold),
+                            Flexible(
+                              child: Text(
+                                title,
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            if (onRemove != null)
-                              IconButton(
-                                icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
-                                onPressed: onRemove,
+                            if (activityRowIsRetired(suggestion))
+                              Padding(
+                                padding: const EdgeInsets.only(left: Space.md),
+                                child: ActivityRowChip(label: t.retiredReference, unavailable: true),
                               ),
                           ],
-                        )
-                      : FilledButton.tonal(onPressed: onAdd, child: Text(narrow ? t.addToOperationShort : t.addToOperation)),
+                        ),
+                        if (detail != null || distance != null)
+                          Text(
+                            [?detail, ?distance].join(' • '),
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                    ),
+                  ),
+                  // The same web button the list rows end with.
+                  FutureBuilder<RefLink?>(
+                    // Keyed, or a card paged to the next reference keeps
+                    // offering the last one's link until the new one answers.
+                    key: ValueKey(selectedRefMarkerId(suggestion)),
+                    future: link,
+                    builder: (context, snapshot) => switch (snapshot.data) {
+                      final link? => IconButton(
+                        icon: Icon(MdiIcons.web, semanticLabel: t.openReferenceLink(name: link.label ?? title)),
+                        onPressed: () => openExternalUrl(link.url),
+                      ),
+                      null => const SizedBox.shrink(),
+                    },
+                  ),
+                  if (onDismiss != null)
+                    IconButton(
+                      icon: Icon(MdiIcons.close, semanticLabel: context.t.common.close),
+                      onPressed: onDismiss,
+                    ),
+                ],
+              ),
+              if ((pickIndex >= 0 && pickCount > 1) || alreadyAdded || onAdd != null)
+                Row(
+                  // The pager on the left, the action on the right: Add stays where
+                  // a lone card has it, whether or not the tap found more.
+                  children: [
+                    if (pickIndex >= 0 && pickCount > 1) ...[
+                      IconButton(
+                        icon: Icon(MdiIcons.arrowLeft, semanticLabel: t.previousPick),
+                        onPressed: pickIndex > 0 ? () => onPick(pickIndex - 1) : null,
+                      ),
+                      Text(
+                        t.pickPosition(index: pickIndex + 1, count: pickCount),
+                        style: theme.textTheme.labelLarge,
+                      ),
+                      IconButton(
+                        icon: Icon(MdiIcons.arrowRight, semanticLabel: t.nextPick),
+                        onPressed: pickIndex < pickCount - 1 ? () => onPick(pickIndex + 1) : null,
+                      ),
+                    ],
+                    const Spacer(),
+                    if (alreadyAdded || onAdd != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: Space.xs, right: Space.xs),
+                        child: alreadyAdded
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(MdiIcons.checkCircle, color: _selectedGreen),
+                                  const SizedBox(width: Space.xs),
+                                  Text(
+                                    t.selected,
+                                    style: theme.textTheme.labelLarge?.copyWith(color: _selectedGreen, fontWeight: FontWeight.bold),
+                                  ),
+                                  if (onRemove != null)
+                                    IconButton(
+                                      icon: Icon(MdiIcons.delete, semanticLabel: t.removeActivity),
+                                      onPressed: onRemove,
+                                    ),
+                                ],
+                              )
+                            : FilledButton.tonal(onPressed: onAdd, child: Text(narrow ? t.addToOperationShort : t.addToOperation)),
+                      ),
+                  ],
                 ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -19,6 +19,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_quickjs/halo_quickjs.dart';
 import 'package:http/http.dart' as http;
 import 'package:ham2k_logger/services/connectivity_service.dart';
@@ -42,6 +43,7 @@ var timers = [];
 var nextTimer = 1;
 function setTimeout(fn, ms) { var id = nextTimer++; timers.push({ id: id, at: now + (ms || 0), fn: fn }); return id; }
 function clearTimeout(id) { timers = timers.filter(function (t) { return t.id !== id; }); }
+function cancelAnimationFrame(id) { clearTimeout(id); }
 function advance(ms) {
   var until = now + ms;
   for (;;) {
@@ -105,7 +107,8 @@ class _GlPage {
   _GlPage({bool dark = false}) {
     run(_fakeBrowser);
     run(mapGlScript);
-    run("var handle = window.poloMapGl.create({}, 'light-style', 'dark-style', $dark, function () {}, false);");
+    // A container holding no MapLibre control, so no credits to tend.
+    run("var handle = window.poloMapGl.create({ querySelector: function () { return null; } }, 'light-style', 'dark-style', $dark, function () {}, false);");
   }
 
   String run(String code) {
@@ -266,8 +269,10 @@ void main() {
         ..clearLiveImages();
     });
 
-    Widget host() => MaterialApp(
-      home: Scaffold(body: OsmMapView(markers: [_marker], isDark: false)),
+    Widget host() => TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(body: OsmMapView(markers: [_marker], isDark: false)),
+      ),
     );
 
     /// Every tile request fails to connect, the way it does with no network.

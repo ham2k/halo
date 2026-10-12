@@ -25,6 +25,7 @@ import 'home_branding_pane.dart';
 import 'home_navigation_rail.dart';
 import 'chase_view.dart';
 import 'logs_view.dart';
+import 'maps_view.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation_dialogs.dart';
@@ -499,6 +500,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     _settingsSlide.dispose();
     _logsSlide.dispose();
     _chaseSlide.dispose();
+    _mapsSlide.dispose();
     homeRail.removeListener(_onRailChanged);
     widget.services.settings.removeListener(_onSettingsChanged);
     homeRouteObserver.unsubscribe(this);
@@ -597,6 +599,13 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   /// away.
   bool _chaseMounted = false;
 
+  /// Same as [_showingSettings], for the Maps destination.
+  bool _showingMaps = false;
+
+  /// Same as [_chaseMounted], for Maps: a map torn down and rebuilt on every
+  /// visit reloads its style and loses where the operator had taken it.
+  bool _mapsMounted = false;
+
   /// Drives Settings on and off OVER Home. An explicit controller rather than
   /// an AnimatedSwitcher: a switcher animates both children, and coming back
   /// has to leave Home exactly where it is so that it is REVEALED rather than
@@ -623,6 +632,14 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     begin: const Offset(-1, 0),
     end: Offset.zero,
   ).animate(CurvedAnimation(parent: _chaseSlide, curve: layoutAnimationCurve));
+
+  /// Same as [_settingsSlide], for the Maps destination.
+  late final AnimationController _mapsSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
+
+  late final Animation<Offset> _mapsOffset = Tween<Offset>(
+    begin: const Offset(-1, 0),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _mapsSlide, curve: layoutAnimationCurve));
 
   void _showSettings(bool showing) {
     if (_showingSettings == showing) return;
@@ -662,6 +679,16 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     showing ? _chaseSlide.forward() : _chaseSlide.reverse();
   }
 
+  /// Same as [_showChaseView], for the Maps destination.
+  void _showMapsView(bool showing) {
+    if (_showingMaps == showing) return;
+    setState(() {
+      _showingMaps = showing;
+      if (showing) _mapsMounted = true;
+    });
+    showing ? _mapsSlide.forward() : _mapsSlide.reverse();
+  }
+
   /// Which destination [_onRailChanged] last tracked a visit for — set to
   /// [HomeDestination.operations] in [initState] to match its own explicit
   /// [_startHomeVisit] call, so the rail's very first change (e.g. straight
@@ -677,6 +704,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     _showSettings(destination == HomeDestination.settings);
     _showLogsView(destination == HomeDestination.logs);
     _showChaseView(destination == HomeDestination.chase);
+    _showMapsView(destination == HomeDestination.maps);
     // Settings/Logs shown IN PLACE is navigation without a route, so
     // `didPopNext` never fires for it. Settings and Logs track their own
     // `screen_viewed` in `initState` (embedded panes get freshly remounted
@@ -729,7 +757,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
         // clicks, so a click on an empty stretch of Logs or Settings would
         // open the operation card beneath it, and a screen reader would read
         // a list nobody can see.
-        ExcludeSemantics(excluding: _showingSettings || _showingLogs || _showingChase, child: besideRail(_homeScaffold(context, theme, isTwoPane))),
+        ExcludeSemantics(
+          excluding: _showingSettings || _showingLogs || _showingChase || _showingMaps,
+          child: besideRail(_homeScaffold(context, theme, isTwoPane)),
+        ),
         // Listening to the controller, not just to `setState`: the slide OUT
         // ends without any rebuild of its own, and a Settings left mounted
         // off-screen keeps laying itself out against a pane it no longer has —
@@ -813,6 +844,31 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
             );
           },
           child: besideRail(ChaseView(services: widget.services, visible: _showingChase)),
+        ),
+        // Same arrangement as Chasing, for the Maps destination.
+        ListenableBuilder(
+          listenable: _mapsSlide,
+          builder: (context, child) {
+            if (!_mapsMounted) return const SizedBox.shrink();
+            final hidden = _mapsSlide.isDismissed;
+            return Offstage(
+              offstage: hidden,
+              child: TickerMode(
+                enabled: !hidden,
+                child: ExcludeFocus(
+                  excluding: hidden,
+                  child: PopScope(
+                    canPop: !_showingMaps,
+                    onPopInvokedWithResult: (didPop, _) {
+                      if (!didPop && _showingMaps) unawaited(homeRail.leaveTo(HomeDestination.operations));
+                    },
+                    child: SlideTransition(position: _mapsOffset, child: child!),
+                  ),
+                ),
+              ),
+            );
+          },
+          child: besideRail(MapsView(services: widget.services, visible: _showingMaps)),
         ),
       ],
     );

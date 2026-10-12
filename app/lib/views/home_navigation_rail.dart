@@ -244,6 +244,19 @@ class HomeNavigationRail extends StatelessWidget {
                                         onTap: destination == HomeDestination.logs ? null : () => onDestination(HomeDestination.logs),
                                       ),
                                     ],
+                                    const SizedBox(height: Space.lg),
+                                    _RailDestination(
+                                      solid: MdiIcons.map,
+                                      // `map-outline` exists, but the two-tone
+                                      // glyph reads darker than the muted solid
+                                      // every destination above it falls back
+                                      // to, and the column must read as one tone.
+                                      outline: null,
+                                      label: t.maps,
+                                      expanded: expanded,
+                                      selected: destination == HomeDestination.maps,
+                                      onTap: destination == HomeDestination.maps ? null : () => onDestination(HomeDestination.maps),
+                                    ),
                                     const Spacer(),
                                   ],
                                 ),

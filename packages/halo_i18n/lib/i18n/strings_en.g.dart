@@ -51,6 +51,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$dialogs$en dialogs = Translations$dialogs$en.internal(_root);
 	late final Translations$operation$en operation = Translations$operation$en.internal(_root);
 	late final Translations$map$en map = Translations$map$en.internal(_root);
+	late final Translations$mapsView$en mapsView = Translations$mapsView$en.internal(_root);
 	late final Translations$activitiesView$en activitiesView = Translations$activitiesView$en.internal(_root);
 	late final Translations$loggingControls$en loggingControls = Translations$loggingControls$en.internal(_root);
 	late final Translations$formChrome$en formChrome = Translations$formChrome$en.internal(_root);
@@ -829,8 +830,20 @@ class Translations$map$en {
 	/// en: 'Outlines are for reference only. Do your own research!'
 	String get outlinesDisclaimer => 'Outlines are for reference only. Do your own research!';
 
-	/// en: 'Source: ${sources}'
-	String outlinesSource({required Object sources}) => 'Source: ${sources}';
+	/// en: 'Outlines: ${sources}'
+	String outlinesCredit({required Object sources}) => 'Outlines: ${sources}';
+
+	/// en: 'Boundaries: ${sources}'
+	String boundariesCredit({required Object sources}) => 'Boundaries: ${sources}';
+
+	/// en: 'Facilities: ${sources}'
+	String facilitiesCredit({required Object sources}) => 'Facilities: ${sources}';
+
+	/// en: 'Full dataset credits'
+	String get fullCredits => 'Full dataset credits';
+
+	/// en: 'Fewer credits'
+	String get fewerCredits => 'Fewer credits';
 
 	/// en: 'No QSO locations yet. QSOs with a grid square, state, or country will show up here.'
 	String get emptyState => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.';
@@ -860,6 +873,54 @@ class Translations$map$en {
 	String get zoomOut => 'Zoom out';
 
 	late final Translations$map$postcard$en postcard = Translations$map$postcard$en.internal(_root);
+}
+
+// Path: mapsView
+class Translations$mapsView$en {
+	Translations$mapsView$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Maps'
+	String get title => 'Maps';
+
+	/// en: 'Search parks, summits and more'
+	String get searchHint => 'Search parks, summits and more';
+
+	/// en: 'Activities'
+	String get activities => 'Activities';
+
+	/// en: 'Layers'
+	String get layers => 'Layers';
+
+	/// en: 'Base map'
+	String get baseMap => 'Base map';
+
+	/// en: 'Satellite (Esri)'
+	String get satellite => 'Satellite (Esri)';
+
+	/// en: 'Park facilities'
+	String get facilities => 'Park facilities';
+
+	/// en: 'Boundaries'
+	String get boundaries => 'Boundaries';
+
+	/// en: 'Current location'
+	String get currentLocation => 'Current location';
+
+	/// en: 'Nothing matches “${text}”'
+	String noMatches({required Object text}) => 'Nothing matches “${text}”';
+
+	/// en: '(one) {${count} Reference at ${where}} (other) {${count} References at ${where}}'
+	String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} Reference at ${where}',
+		other: '${count} References at ${where}',
+	);
+
+	/// en: 'Start an operation with these references'
+	String get startOperation => 'Start an operation with these references';
 }
 
 // Path: activitiesView
@@ -2678,6 +2739,9 @@ class Translations$home$nav$en {
 
 	/// en: 'Logs'
 	String get logs => 'Logs';
+
+	/// en: 'Maps'
+	String get maps => 'Maps';
 
 	/// en: 'Settings'
 	String get settings => 'Settings';
@@ -7886,6 +7950,7 @@ extension on Translations {
 			'home.nav.operations' => 'Operations',
 			'home.nav.chase' => 'Chasing',
 			'home.nav.logs' => 'Logs',
+			'home.nav.maps' => 'Maps',
 			'home.nav.settings' => 'Settings',
 			'home.panels.operations' => 'Operation List',
 			'home.panels.operationsDescription' => 'Your operations, most recent first.',
@@ -8221,9 +8286,9 @@ extension on Translations {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Share combined ${count} file', other: 'Share combined ${count} files', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export combined ${count} file', other: 'Export combined ${count} files', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download combined ${count} file', other: 'Download combined ${count} files', ), 
-			'operation.export.saveOne' => ({required Object name}) => 'Save ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => 'Save ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Export ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Download ${name}',
@@ -8359,7 +8424,11 @@ extension on Translations {
 			'map.outlineIssue.copied' => 'Report copied',
 			'map.outlineIssue.notCopied' => 'Couldn\'t copy the report',
 			'map.outlinesDisclaimer' => 'Outlines are for reference only. Do your own research!',
-			'map.outlinesSource' => ({required Object sources}) => 'Source: ${sources}',
+			'map.outlinesCredit' => ({required Object sources}) => 'Outlines: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Boundaries: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Facilities: ${sources}',
+			'map.fullCredits' => 'Full dataset credits',
+			'map.fewerCredits' => 'Fewer credits',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.unavailable' => 'The map isn\'t available right now.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -8400,6 +8469,18 @@ extension on Translations {
 			'map.postcard.copyFailed' => 'The clipboard didn\'t take the image. Try again.',
 			'map.postcard.shareFailed' => 'Could not share the postcard. Try again.',
 			'map.postcard.fileName' => 'postcard',
+			'mapsView.title' => 'Maps',
+			'mapsView.searchHint' => 'Search parks, summits and more',
+			'mapsView.activities' => 'Activities',
+			'mapsView.layers' => 'Layers',
+			'mapsView.baseMap' => 'Base map',
+			'mapsView.satellite' => 'Satellite (Esri)',
+			'mapsView.facilities' => 'Park facilities',
+			'mapsView.boundaries' => 'Boundaries',
+			'mapsView.currentLocation' => 'Current location',
+			'mapsView.noMatches' => ({required Object text}) => 'Nothing matches “${text}”',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Reference at ${where}', other: '${count} References at ${where}', ), 
+			'mapsView.startOperation' => 'Start an operation with these references',
 			'activitiesView.title' => 'Activities',
 			'activitiesView.activitiesCountZero' => 'No Activities Selected',
 			'activitiesView.activitiesCountOne' => '1 Activity',
@@ -8719,6 +8800,8 @@ extension on Translations {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. Choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
 			'settings.radio.title' => 'CAT Control',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Tuning',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -8736,8 +8819,6 @@ extension on Translations {
 			'settings.radio.pttKey.transmitting' => 'Transmitting',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Staying exactly where you tuned it.',
 			'settings.radio.snapDebounce.title' => 'Smart Snap: Settle delay',
 			'settings.radio.snapDebounce.description' => 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.',
@@ -9233,6 +9314,8 @@ extension on Translations {
 			'settings.station.n3fjpTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.n3fjpTroubleshooting' => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.',
 			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never responds',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.',
@@ -9250,8 +9333,6 @@ extension on Translations {
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipole',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
@@ -9747,6 +9828,8 @@ extension on Translations {
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
 			'templateEditor.previewLabel' => 'Preview:',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.reset' => 'Reset',
 			'templateEditor.docs' => 'Templating Docs',
 			'templateEditor.preview' => 'Sample preview',

@@ -49,6 +49,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$es dialogs = _Translations$dialogs$es._(_root);
 	@override late final _Translations$operation$es operation = _Translations$operation$es._(_root);
 	@override late final _Translations$map$es map = _Translations$map$es._(_root);
+	@override late final _Translations$mapsView$es mapsView = _Translations$mapsView$es._(_root);
 	@override late final _Translations$activitiesView$es activitiesView = _Translations$activitiesView$es._(_root);
 	@override late final _Translations$loggingControls$es loggingControls = _Translations$loggingControls$es._(_root);
 	@override late final _Translations$formChrome$es formChrome = _Translations$formChrome$es._(_root);
@@ -406,7 +407,11 @@ class _Translations$map$es extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$es outlineIssue = _Translations$map$outlineIssue$es._(_root);
 	@override String get outlinesDisclaimer => 'Los contornos son solo orientativos. ¡Investiga por tu cuenta!';
-	@override String outlinesSource({required Object sources}) => 'Fuente: ${sources}';
+	@override String outlinesCredit({required Object sources}) => 'Contornos: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Límites: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Instalaciones: ${sources}';
+	@override String get fullCredits => 'Créditos completos de los datos';
+	@override String get fewerCredits => 'Menos créditos';
 	@override String get emptyState => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.';
 	@override String get unavailable => 'El mapa no está disponible en este momento.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -417,6 +422,30 @@ class _Translations$map$es extends Translations$map$en {
 	@override String get zoomIn => 'Acercar';
 	@override String get zoomOut => 'Alejar';
 	@override late final _Translations$map$postcard$es postcard = _Translations$map$postcard$es._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$es extends Translations$mapsView$en {
+	_Translations$mapsView$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mapas';
+	@override String get searchHint => 'Buscar parques, cumbres y más';
+	@override String get activities => 'Actividades';
+	@override String get layers => 'Capas';
+	@override String get baseMap => 'Mapa base';
+	@override String get satellite => 'Satélite (Esri)';
+	@override String get facilities => 'Instalaciones de parques';
+	@override String get boundaries => 'Límites';
+	@override String get currentLocation => 'Ubicación actual';
+	@override String noMatches({required Object text}) => 'Nada coincide con «${text}»';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} referencia en ${where}',
+		other: '${count} referencias en ${where}',
+	);
+	@override String get startOperation => 'Iniciar una operación con estas referencias';
 }
 
 // Path: activitiesView
@@ -1241,6 +1270,7 @@ class _Translations$home$nav$es extends Translations$home$nav$en {
 	@override String get operations => 'Operaciones';
 	@override String get chase => 'Cacería';
 	@override String get logs => 'Registros';
+	@override String get maps => 'Mapas';
 	@override String get settings => 'Ajustes';
 }
 
@@ -3760,6 +3790,7 @@ extension on TranslationsEs {
 			'home.nav.operations' => 'Operaciones',
 			'home.nav.chase' => 'Cacería',
 			'home.nav.logs' => 'Registros',
+			'home.nav.maps' => 'Mapas',
 			'home.nav.settings' => 'Ajustes',
 			'home.panels.operations' => 'Lista de Operaciones',
 			'home.panels.operationsDescription' => 'Tus operaciones, la más reciente primero.',
@@ -4095,9 +4126,9 @@ extension on TranslationsEs {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Exportar ${count} archivo combinado', other: 'Exportar ${count} archivos combinados', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo combinado', other: 'Descargar ${count} archivos combinados', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Guardar ${name}',
-			'operation.export.shareOne' => ({required Object name}) => 'Compartir ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.shareOne' => ({required Object name}) => 'Compartir ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descargar ${name}',
 			'operation.export.stashFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo en el Stash', other: 'Guardar ${count} archivos en el Stash', ), 
@@ -4233,7 +4264,11 @@ extension on TranslationsEs {
 			'map.outlineIssue.copied' => 'Informe copiado',
 			'map.outlineIssue.notCopied' => 'No se pudo copiar el informe',
 			'map.outlinesDisclaimer' => 'Los contornos son solo orientativos. ¡Investiga por tu cuenta!',
-			'map.outlinesSource' => ({required Object sources}) => 'Fuente: ${sources}',
+			'map.outlinesCredit' => ({required Object sources}) => 'Contornos: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Límites: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Instalaciones: ${sources}',
+			'map.fullCredits' => 'Créditos completos de los datos',
+			'map.fewerCredits' => 'Menos créditos',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.unavailable' => 'El mapa no está disponible en este momento.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4274,6 +4309,18 @@ extension on TranslationsEs {
 			'map.postcard.copyFailed' => 'El portapapeles no aceptó la imagen. Vuelve a intentarlo.',
 			'map.postcard.shareFailed' => 'No se pudo compartir la postal. Vuelve a intentarlo.',
 			'map.postcard.fileName' => 'postal',
+			'mapsView.title' => 'Mapas',
+			'mapsView.searchHint' => 'Buscar parques, cumbres y más',
+			'mapsView.activities' => 'Actividades',
+			'mapsView.layers' => 'Capas',
+			'mapsView.baseMap' => 'Mapa base',
+			'mapsView.satellite' => 'Satélite (Esri)',
+			'mapsView.facilities' => 'Instalaciones de parques',
+			'mapsView.boundaries' => 'Límites',
+			'mapsView.currentLocation' => 'Ubicación actual',
+			'mapsView.noMatches' => ({required Object text}) => 'Nada coincide con «${text}»',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} referencia en ${where}', other: '${count} referencias en ${where}', ), 
+			'mapsView.startOperation' => 'Iniciar una operación con estas referencias',
 			'activitiesView.title' => 'Actividades',
 			'activitiesView.activitiesCountZero' => 'Sin actividades seleccionadas',
 			'activitiesView.activitiesCountOne' => '1 actividad',
@@ -4593,6 +4640,8 @@ extension on TranslationsEs {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
 			'settings.radio.title' => 'Control CAT',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.loggingAndCat' => 'Registro y CAT',
 			'settings.radio.tuningSection' => 'Sintonía',
 			'settings.radio.keyerSection' => 'Manipulador',
@@ -4610,8 +4659,6 @@ extension on TranslationsEs {
 			'settings.radio.pttKey.transmitting' => 'Transmitiendo',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Quedándose exactamente donde la sintonizaste.',
 			'settings.radio.snapDebounce.title' => 'Ajuste inteligente: retardo de reposo',
 			'settings.radio.snapDebounce.description' => 'Cuánto debe detenerse el dial antes de redondear la frecuencia. Menos se siente inmediato; más deja margen para un giro lento.',
@@ -5107,6 +5154,8 @@ extension on TranslationsEs {
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio.** La WLAN debe estar encendida, la radio en la misma red y su función de control remoto (Network) activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión atascada en la radio.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio. Si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.statusDisconnected' => 'Sin conectar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.statusConnecting' => 'Conectando…',
 			'settings.station.statusDisconnecting' => 'Desconectando…',
 			'settings.station.statusError' => 'Fallo de conexión',
@@ -5124,8 +5173,6 @@ extension on TranslationsEs {
 			'settings.station.placeholderConnectFailure' => 'Se le indicó a la radio simulada que rechazara esta conexión',
 			'settings.station.placeholderFreq' => 'Frecuencia (kHz)',
 			'settings.station.placeholderFreqDescription' => 'Dónde arranca la radio simulada. Después informa de la frecuencia a la que la app la sintonice.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.placeholderMode' => 'Modo',
 			'settings.station.placeholderModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potencia (vatios)',
