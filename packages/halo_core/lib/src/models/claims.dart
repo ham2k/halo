@@ -38,7 +38,15 @@ enum ChasingEditions {
 
 /// A program, as its hook's `program` member describes it.
 class ChasingProgram {
-  const ChasingProgram({required this.key, required this.label, required this.version, required this.editions, this.icon, this.color});
+  const ChasingProgram({
+    required this.key,
+    required this.label,
+    required this.version,
+    required this.editions,
+    this.icon,
+    this.color,
+    this.supersedes = const {},
+  });
 
   final String key;
   final String label;
@@ -46,6 +54,9 @@ class ChasingProgram {
   final ChasingEditions editions;
   final String? icon;
   final String? color;
+
+  /// The scoring notice keys this program's verdicts stand in for.
+  final Set<String> supersedes;
 
   /// Null for anything that is not a usable description: an extension
   /// answering a malformed `program` has registered no program.
@@ -57,6 +68,7 @@ class ChasingProgram {
     if (label is! String || label.isEmpty || version is! int || editions == null) return null;
     final icon = json['icon'];
     final color = json['color'];
+    final supersedes = json['supersedes'];
     return ChasingProgram(
       key: key,
       label: label,
@@ -64,6 +76,7 @@ class ChasingProgram {
       editions: editions,
       icon: icon is String ? icon : null,
       color: color is String ? color : null,
+      supersedes: {if (supersedes is List) ...supersedes.whereType<String>()},
     );
   }
 }

@@ -16,8 +16,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/cat/zero_beat.dart';
+import '../services/chase_service.dart';
 import '../services/command_actions.dart';
-import '../services/extensions/extension_service.dart' show controlExtensionKey;
 import '../services/halo_services.dart';
 import '../services/panel_service.dart';
 import '../services/logging_scope.dart';
@@ -88,76 +88,22 @@ enum ChasePeriod {
   };
 }
 
-/// One activity the operator can chase — an extension offering a hunting
-/// reference control on the logging panel.
-class ChaseGoal {
-  /// The key of the extension that supplied the control (`ham2k-pota`,
-  /// whatever its control key says) — what the stored goals are keyed on.
-  final String key;
-  final String label;
-  final String? icon;
-
-  /// The activity's accent, as its control declares it (`#rrggbb`).
-  final String? color;
-  final bool on;
-
-  const ChaseGoal({required this.key, required this.label, this.icon, this.color, required this.on});
-
-  ChaseGoal withOn(bool on) => ChaseGoal(key: key, label: label, icon: icon, color: color, on: on);
-}
-
 /// Whether [control] hunts a reference — a `refList` carrying a ref type.
 bool _isHuntingControl(Map<String, dynamic> control) {
   final input = control['input'];
   return input is Map && input['kind'] == 'refList' && (input['refType'] as String? ?? '').isNotEmpty;
 }
 
-/// The goals [controls] offer, in the operator's [stored] order — `{key, on}`
-/// maps as `LayoutKeys.chaseOptions` keeps them. An activity [stored] does
-/// not mention yet joins at the end, OFF: enabling an extension says the
-/// operator wants it available, not that every contact from now on chases it
-/// — they add it from the sheet's extensions band.
-List<ChaseGoal> resolveChaseGoals(List<Map<String, dynamic>> controls, List<Object?> stored) {
-  final offered = <String, Map<String, dynamic>>{};
-  for (final control in controls) {
-    if (!_isHuntingControl(control)) continue;
-    offered.putIfAbsent(controlExtensionKey(control), () => control);
-  }
-  ChaseGoal goal(String key, bool on) {
-    final control = offered[key]!;
-    return ChaseGoal(key: key, label: (control['label'] as String?) ?? key, icon: control['icon'] as String?, color: control['color'] as String?, on: on);
-  }
-
-  final goals = <ChaseGoal>[];
-  for (final entry in stored.whereType<Map<dynamic, dynamic>>()) {
-    final key = entry['key'];
-    if (key is! String || !offered.containsKey(key) || goals.any((g) => g.key == key)) continue;
-    goals.add(goal(key, entry['on'] != false));
-  }
-  for (final key in offered.keys) {
-    if (!goals.any((g) => g.key == key)) goals.add(goal(key, false));
-  }
-  return goals;
-}
-
-/// [controls] as the Chasing view's logging panel shows them: an activity's
-/// hunting control only while its goal is on, and those in goal order, ahead
-/// of everything else.
-List<Map<String, dynamic>> chaseLoggingControls(List<Map<String, dynamic>> controls, List<ChaseGoal> goals) {
-  final onKeys = [
-    for (final g in goals)
-      if (g.on) g.key,
-  ];
-  final hunting = [
-    for (final control in controls)
-      if (_isHuntingControl(control) && onKeys.contains(controlExtensionKey(control))) control,
-  ]..sort((a, b) => onKeys.indexOf(controlExtensionKey(a)).compareTo(onKeys.indexOf(controlExtensionKey(b))));
-  return [
-    ...hunting,
-    for (final control in controls)
-      if (!_isHuntingControl(control)) control,
-  ];
-}
+/// [controls] as the Chasing view's logging panel shows them: every
+/// hunting control, ahead of everything else. Whether a program is a goal
+/// says what the view judges spots and calls against, not which references
+/// the operator can log.
+List<Map<String, dynamic>> chaseLoggingControls(List<Map<String, dynamic>> controls) => [
+  for (final control in controls)
+    if (_isHuntingControl(control)) control,
+  for (final control in controls)
+    if (!_isHuntingControl(control)) control,
+];
 
 /// The location keys the Chasing view keeps, in the shape the location
 /// editor returns and an operation stores. The first four are one statement
@@ -455,15 +401,34 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
 
   ChasePeriod get _period => ChasePeriod.values.asNameMap()[_options['period']] ?? ChasePeriod.today;
 
-  List<ChaseGoal> get _goals => resolveChaseGoals(_runtime.loggingControls, (_options['goals'] as List?) ?? const []);
+  List<ChaseGoal> get _goals => widget.services.chase.goals;
 
   Future<void> _setOptions(Map<String, dynamic> changes) => widget.services.settings.setLayoutData(LayoutKeys.chaseOptions, {..._options, ...changes});
 
-  Future<void> _setGoals(List<ChaseGoal> goals) => _setOptions({
-    'goals': [
-      for (final g in goals) {'key': g.key, 'on': g.on},
-    ],
-  });
+  Future<void> _setGoals(List<ChaseGoal> goals) => widget.services.chase.setGoals(goals);
+
+  /// The goals as last built, to tell a change to them from the many
+  /// [ChaseService] notifications that only move a checklist.
+  String _goalsKey = '';
+
+  String get _goalsKeyNow => [for (final g in _goals) '${g.key}:${g.label}:${g.on}'].join(',');
+
+  /// Each goal's checklist, for the Info panel — see [ChaseService.summaries].
+  List<ChaseSummary> _summaries = const [];
+  int _summariesRequest = 0;
+
+  Future<void> _loadSummaries() async {
+    final request = ++_summariesRequest;
+    final summaries = await widget.services.chase.summaries({'call': _operation.stationCall});
+    if (mounted && request == _summariesRequest) setState(() => _summaries = summaries);
+  }
+
+  void _onChaseChanged() {
+    if (!mounted) return;
+    final goals = _goalsKeyNow;
+    if (goals != _goalsKey) setState(() => _goalsKey = goals);
+    unawaited(_loadSummaries());
+  }
 
   @override
   void initState() {
@@ -471,6 +436,9 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     _inputs = _inputsNow();
     widget.services.settings.addListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.addListener(_onRuntimeGenerationChanged);
+    widget.services.chase.addListener(_onChaseChanged);
+    _goalsKey = _goalsKeyNow;
+    unawaited(_loadSummaries());
     if (widget.visible) _shown();
     unawaited(_startRuntime());
   }
@@ -551,7 +519,10 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     // (OperationRuntimeState.operationChanged): the entity the station call
     // resolves to, and the controls, which may key off where it is.
     final after = _operation;
-    if (before.stationCall != after.stationCall) unawaited(_runtime.resolveOurEntity(after));
+    if (before.stationCall != after.stationCall) {
+      unawaited(_runtime.resolveOurEntity(after));
+      unawaited(_loadSummaries());
+    }
     if (before.stationCall != after.stationCall || jsonEncode(before.data) != jsonEncode(after.data)) {
       unawaited(_runtime.refreshControls(after));
     }
@@ -567,6 +538,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   void dispose() {
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);
+    widget.services.chase.removeListener(_onChaseChanged);
     if (widget.visible) _hidden();
     _runtime.dispose();
     _spotsVisible.dispose();
@@ -621,8 +593,8 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     final isTwoPane = ShirtSize.of(context).isTwoPane;
     dockLayoutClass = isTwoPane ? DockLayoutClass.wide : DockLayoutClass.narrow;
     final goals = _goals;
-    final loggingControls = chaseLoggingControls(_runtime.loggingControls, goals);
-    _spotBoardView?.show(operation, qsos, logRevision: logRevision);
+    final loggingControls = chaseLoggingControls(_runtime.loggingControls);
+    _spotBoardView?.show(operation, qsos, logRevision: logRevision, chasing: true);
 
     final loggingPanel = LoggingPanel(
       operation: operation,
@@ -667,6 +639,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       qsos: qsos,
       callInfo: _callInfo,
       visible: _spotsVisible,
+      chasing: true,
     );
     final infoPanel = InformationPanel(
       operation: operation,
@@ -676,6 +649,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       ourEntityPrefix: _runtime.ourEntityPrefix,
       activityControls: loggingControls,
       statsTitle: _period.statsTitle(context),
+      chaseSummaries: _summaries,
     );
     final mapPanel = MapPanel(
       operation: operation,
@@ -930,9 +904,11 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
               operation: _operation,
               deviceGrid: widget.services.location.grid,
               period: _period,
+              alerting: widget.services.chase.alerting,
               onEditStation: () => _editStation(context),
               onEditLocation: () => _editLocation(context),
               onPeriod: (period) => unawaited(_setOptions({'period': period.name})),
+              onAlerting: (alerting) => unawaited(widget.services.chase.setAlerting(alerting)),
             ),
             Expanded(
               child: _ChaseGoalsEditor(
@@ -961,17 +937,23 @@ class _ChaseStationBand extends StatelessWidget {
   final Operation operation;
   final String? deviceGrid;
   final ChasePeriod period;
+
+  /// The verdicts that alert — see [ChaseService.alerting].
+  final Set<ChaseVerdict> alerting;
   final VoidCallback onEditStation;
   final VoidCallback onEditLocation;
   final ValueChanged<ChasePeriod> onPeriod;
+  final ValueChanged<Set<ChaseVerdict>> onAlerting;
 
   const _ChaseStationBand({
     required this.operation,
     required this.deviceGrid,
     required this.period,
+    required this.alerting,
     required this.onEditStation,
     required this.onEditLocation,
     required this.onPeriod,
+    required this.onAlerting,
   });
 
   @override
@@ -1069,6 +1051,28 @@ class _ChaseStationBand extends StatelessWidget {
                         ),
                       ),
                     ),
+                    // Each pick toggles one verdict; worked, which nothing
+                    // new comes of, is not one to alert on.
+                    PopupMenuButton<ChaseVerdict>(
+                      onSelected: (verdict) => onAlerting(alerting.contains(verdict) ? ({...alerting}..remove(verdict)) : {...alerting, verdict}),
+                      itemBuilder: (context) => [
+                        for (final verdict in ChaseVerdict.values.reversed)
+                          if (verdict != ChaseVerdict.worked)
+                            CheckedPopupMenuItem(value: verdict, checked: alerting.contains(verdict), child: Text(_alertLabel(context, verdict))),
+                      ],
+                      child: pill(
+                        color: chipColor,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(alerting.isEmpty ? MdiIcons.bellOffOutline : MdiIcons.bellRingOutline, size: 16, color: Colors.white),
+                            const SizedBox(width: Space.xs),
+                            Text(context.t.chase.alerts.title),
+                            const Icon(MdiIcons.menuDown, size: 18, color: Colors.white),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1080,7 +1084,14 @@ class _ChaseStationBand extends StatelessWidget {
   }
 }
 
-/// The goals sheet's body: the activities being chased, in order — each
+String _alertLabel(BuildContext context, ChaseVerdict verdict) => switch (verdict) {
+  ChaseVerdict.newRef => context.t.chase.alerts.newRef,
+  ChaseVerdict.newBand => context.t.chase.alerts.newBand,
+  ChaseVerdict.newMode => context.t.chase.alerts.newMode,
+  ChaseVerdict.unconfirmed || ChaseVerdict.worked => context.t.chase.alerts.unconfirmed,
+};
+
+/// The goals sheet's body: the programs being chased, in order — each
 /// dragged by its icon and dropped with its trash button — and, below them,
 /// a band offering the rest, the way an operation's sheet offers its
 /// activity types.

@@ -337,6 +337,9 @@ class _Translations$chase$qro extends Translations$chase$en {
 	@override late final _Translations$chase$goals$qro goals = _Translations$chase$goals$qro._(_root);
 	@override late final _Translations$chase$panels$qro panels = _Translations$chase$panels$qro._(_root);
 	@override late final _Translations$chase$claims$qro claims = _Translations$chase$claims$qro._(_root);
+	@override late final _Translations$chase$notice$qro notice = _Translations$chase$notice$qro._(_root);
+	@override late final _Translations$chase$alerts$qro alerts = _Translations$chase$alerts$qro._(_root);
+	@override String get checklists => 'CHASING PROGRESS';
 }
 
 // Path: dialogs
@@ -1387,7 +1390,7 @@ class _Translations$chase$goals$qro extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'CHASING GOALS';
 	@override String remove({required Object name}) => 'STOP CHASING ${name}';
-	@override String get extensionsTitle => 'EXTENSIONS THAT INCLUDE CHASING';
+	@override String get extensionsTitle => 'MORE CHASING PROGRAMS';
 }
 
 // Path: chase.panels
@@ -1417,6 +1420,36 @@ class _Translations$chase$claims$qro extends Translations$chase$claims$en {
 	@override String get checking => 'CHECKING QSOS FOR CHASING';
 	@override String rebuilding({required Object program}) => 'CHECKING THE LOG FOR ${program}';
 	@override String progress({required Object done, required Object total}) => '${done} OF ${total} QSOS';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$qro extends Translations$chase$notice$en {
+	_Translations$chase$notice$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'NEW ${program}';
+	@override String newRefGuess({required Object program}) => 'PROBABLY NEW ${program}';
+	@override String newBand({required Object program}) => 'NEW ${program} BAND';
+	@override String newBandGuess({required Object program}) => 'PROBABLY NEW ${program} BAND';
+	@override String newMode({required Object program}) => 'NEW ${program} MODE';
+	@override String newModeGuess({required Object program}) => 'PROBABLY NEW ${program} MODE';
+	@override String unconfirmed({required Object program}) => '${program} UNCONFIRMED';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$qro extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'ALERTS';
+	@override String get newRef => 'NEW REFERENCE';
+	@override String get newBand => 'NEW BAND';
+	@override String get newMode => 'NEW MODE';
+	@override String get unconfirmed => 'UNCONFIRMED';
 }
 
 // Path: dialogs.callChange
@@ -3102,8 +3135,10 @@ class _Translations$operation$spots$filters$qro extends Translations$operation$s
 	@override String get sorting => 'SORTING';
 	@override String get sortByTime => 'BY SPOT TIME';
 	@override String get sortByFrequency => 'BY FREQUENCY';
+	@override String get sortByWanted => 'MOST WANTED';
 	@override String get groupByBand => 'GROUP BY BAND';
 	@override String get groupCallsWithNotes => 'GROUP CALLS WITH NOTES';
+	@override String get alertingOnly => 'ONLY SPOTS WITH ALERTS';
 	@override String get sourceNoReply => 'NO REPLY';
 	@override String get sourceError => 'ERROR';
 }
@@ -4006,7 +4041,7 @@ extension on TranslationsQro {
 			'chase.period.thisMonth' => 'THIS MONTH',
 			'chase.goals.title' => 'CHASING GOALS',
 			'chase.goals.remove' => ({required Object name}) => 'STOP CHASING ${name}',
-			'chase.goals.extensionsTitle' => 'EXTENSIONS THAT INCLUDE CHASING',
+			'chase.goals.extensionsTitle' => 'MORE CHASING PROGRAMS',
 			'chase.panels.logging' => 'QSOS',
 			'chase.panels.loggingDescription' => 'LOGGING CONTROLS ABOVE THE QSOS CHASED IN THE PERIOD.',
 			'chase.panels.info' => 'INFO',
@@ -4018,6 +4053,19 @@ extension on TranslationsQro {
 			'chase.claims.checking' => 'CHECKING QSOS FOR CHASING',
 			'chase.claims.rebuilding' => ({required Object program}) => 'CHECKING THE LOG FOR ${program}',
 			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} OF ${total} QSOS',
+			'chase.notice.newRef' => ({required Object program}) => 'NEW ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'PROBABLY NEW ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'NEW ${program} BAND',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'PROBABLY NEW ${program} BAND',
+			'chase.notice.newMode' => ({required Object program}) => 'NEW ${program} MODE',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'PROBABLY NEW ${program} MODE',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} UNCONFIRMED',
+			'chase.alerts.title' => 'ALERTS',
+			'chase.alerts.newRef' => 'NEW REFERENCE',
+			'chase.alerts.newBand' => 'NEW BAND',
+			'chase.alerts.newMode' => 'NEW MODE',
+			'chase.alerts.unconfirmed' => 'UNCONFIRMED',
+			'chase.checklists' => 'CHASING PROGRESS',
 			'dialogs.operationDetails' => 'OPERATION DETAILS',
 			'dialogs.activities' => 'ACTIVITIES',
 			'dialogs.stationCallsign' => 'STATION CALLSIGN',
@@ -4239,6 +4287,8 @@ extension on TranslationsQro {
 			'operation.layout.panels.radioNoRadio' => 'NO RADIO TO SHOW. PICK ONE IN THIS PANEL\'S SETTINGS, OR ADD ONE UNDER STATION CONFIGURATION.',
 			'operation.layout.panels.radioNotConfigured' => 'THIS RADIO IS NOT CONFIGURED YET. CHOOSE ITS PORT OR ADDRESS UNDER STATION CONFIGURATION.',
 			'operation.layout.panels.radioNoFrequency' => '—',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.radioOff' => 'RADIO NOT CONNECTED',
 			'operation.layout.panels.radioWatts' => 'W',
 			'operation.layout.panels.radioConnect' => 'CONNECT THIS RADIO',
@@ -4252,8 +4302,6 @@ extension on TranslationsQro {
 			'operation.layout.htmlPanelUnsupported' => 'THIS PANEL NEEDS A WEB VIEW, WHICH THIS PLATFORM DOES NOT PROVIDE',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'THIS PANEL NEEDS A SANDBOX THE WEB VERSION CANNOT PROVIDE',
 			'operation.export.title' => 'OPERATION EXPORTS',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.syncedOperation' => 'OPERATION IS SYNCED',
 			'operation.export.unsyncedOperation' => 'OPERATION HAS UNSYNCED CHANGES',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO IN THIS OPERATION', other: '${count} QSOS IN THIS OPERATION', ), 
@@ -4346,8 +4394,10 @@ extension on TranslationsQro {
 			'operation.spots.filters.sorting' => 'SORTING',
 			'operation.spots.filters.sortByTime' => 'BY SPOT TIME',
 			'operation.spots.filters.sortByFrequency' => 'BY FREQUENCY',
+			'operation.spots.filters.sortByWanted' => 'MOST WANTED',
 			'operation.spots.filters.groupByBand' => 'GROUP BY BAND',
 			'operation.spots.filters.groupCallsWithNotes' => 'GROUP CALLS WITH NOTES',
+			'operation.spots.filters.alertingOnly' => 'ONLY SPOTS WITH ALERTS',
 			'operation.spots.filters.sourceNoReply' => 'NO REPLY',
 			'operation.spots.filters.sourceError' => 'ERROR',
 			'operation.spots.unavailableTitle' => 'SPOTS UNAVAILABLE',
@@ -4751,6 +4801,8 @@ extension on TranslationsQro {
 			'settings.logging.showReverseBearing.descriptionOn' => 'SHOWING THE BEARING FROM THE STATION TOO, AS "45° / 225°"',
 			'settings.logging.showReverseBearing.descriptionOff' => 'ONLY SHOWING THE BEARING TO THE STATION',
 			'settings.logging.switchSentRcvd.title' => 'SWITCH SIGNAL REPORT ORDER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.switchSentRcvd.sentFirst' => 'SENT FIRST, RCVD SECOND',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'RCVD FIRST, SENT SECOND',
 			'settings.logging.jumpAfterRST.title' => 'JUMP TO NEXT FIELD ON RST ENTRY',
@@ -4766,8 +4818,6 @@ extension on TranslationsQro {
 			'settings.logging.numbersRow.description' => 'SHOW A ROW OF NUMBER KEYS ABOVE THE KEYBOARD WHILE LOGGING',
 			'settings.logging.numbersRowExtra.title' => 'SLASH AND PERIOD KEY',
 			'settings.logging.numbersRowExtra.description' => 'ADDS A CONTEXTUAL KEY: “/” FOR CALLSIGNS, “.” FOR NUMBERS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'VIBRATE ON KEY PRESS',
 			'settings.logging.numbersRowVibrate.description' => 'HAPTIC FEEDBACK WHEN YOU TAP A NUMBER KEY',
 			'settings.logging.bands' => 'PREFERRED BANDS',
@@ -5265,6 +5315,8 @@ extension on TranslationsQro {
 			'settings.station.models.placeholderRadioNodeName' => 'MY RADIO',
 			'settings.station.models.antennaGenius' => '4O3A ANTENNA GENIUS',
 			'settings.station.models.sierraCoax' => 'SIERRA RADIO CX-1 COAX SWITCH',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'NOOELEC NESDR',
 			'settings.station.models.sdrplay' => 'SDRPLAY RSP',
@@ -5280,8 +5332,6 @@ extension on TranslationsQro {
 			'settings.station.guohetecTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.guohetecTroubleshooting' => 'THE Q900 HAS TWO CAT PROTOCOLS, AND THIS ENTRY USES ITS NATIVE ONE RATHER THAN THE FT-817 IMITATION. PICK **GUOHETEC Q900** HERE, NOT AN FT-817 — THE IMITATION SUPPORTS FEWER COMMANDS, AND THE RADIO DOES NOT SAY WHICH ONE IT IS USING.\n\n- **THE USB-C CABLE IS THE CAT LINK**, AND IT CONNECTS THE SOUND CARD TOO. SPEED DOES NOT MATTER ON IT; THE PORT IGNORES WHATEVER IT IS SET TO.\n- **NEVER LET ANYTHING RAISE RTS OR DTR ON THIS PORT.** ON A SERIAL CABLE THOSE LINES ARE PTT AND KEYING.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **A SECOND-GENERATION RADIO BEHAVES DIFFERENTLY** FROM A FIRST. LONG PRESS MENU, THEN ABOUT: HW 2.0 IS THE SECOND GENERATION.\n\nTHIS DRIVER WAS WRITTEN FROM THE MANUFACTURER\'S PUBLISHED PROTOCOL AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.yaesuTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuTroubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW. ON A DIGIRIG, SIGNALINK OR MOST HOME-BREW CABLES THAT SAME LINE IS PTT, SO RAISING IT WOULD KEY YOUR TRANSMITTER. ON THE RADIO\'S OWN USB PORT, **HOLD RTS HIGH** UNDER ADVANCED SETTINGS IS THE ALTERNATIVE. WHERE THAT SETTING LIVES DIFFERS BY MODEL (MENU **05-08** ON AN FT-891).\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n- **MODES FOLLOW THE FT-891\'S TABLE.** MOST OF THE YAESU LINE MATCHES IT, BUT A RADIO THAT NUMBERS ITS MODES DIFFERENTLY WILL SHOW AND SET THE WRONG ONE FOR THOSE. THE FREQUENCY IS UNAFFECTED.',
 			'settings.station.yaesuRs232Troubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **THE CAT JACK IS RS-232.** IT NEEDS A USB-TO-SERIAL ADAPTER AND A STRAIGHT-THROUGH DB-9 CABLE — A NULL-MODEM CABLE SWAPS THE LINES, AND THE RADIO NEVER HEARS A THING.\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW UNLESS **HOLD RTS HIGH** IS ON UNDER ADVANCED SETTINGS.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\nTHIS ENTRY WAS WRITTEN FROM PUBLISHED CAT DOCUMENTATION AND HAS NOT BEEN RUN AGAINST ONE OF THESE RADIOS. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.yaesuUsbTroubleshooting' => 'THE RADIO IS RECEIVING COMMANDS BUT NOT RESPONDING. ALMOST ALWAYS ONE OF:\n\n- **USE THE FIRST OF THE RADIO\'S TWO USB PORTS.** CAT IS NORMALLY ON THE FIRST (THE **ENHANCED** COM PORT ON WINDOWS); THE SECOND (**STANDARD**) IS FOR PTT AND KEYING. THE PICKER POINTS AT THE FIRST WHEREVER IT CAN TELL THE TWO APART.\n- **CAT RTS MUST BE OFF AT THE RADIO.** WITH IT ON, THE RADIO WAITS FOR A HANDSHAKE LINE THE APP KEEPS LOW UNLESS **HOLD RTS HIGH** IS ON UNDER ADVANCED SETTINGS.\n- **SPEED MUST MATCH** THE RADIO\'S CAT RATE MENU. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.',
@@ -5779,6 +5829,8 @@ extension on TranslationsQro {
 			'switchAccounts.switchNotAccepted' => 'THAT ACCOUNT DID NOT ACCEPT THE SWITCH. TRY LINKING IT WITH AN EMAIL ADDRESS INSTEAD.',
 			'switchAccounts.requestFailed' => 'SOMETHING WENT WRONG TALKING TO THE SYNC SERVER. TRY AGAIN LATER.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO', other: '${count} QSOS', ), 
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} OPERATION', other: '${count} OPERATIONS', ), 
 			'adifImport.title' => 'IMPORT QSOS FROM ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'READING ${filename}…',
@@ -5794,8 +5846,6 @@ extension on TranslationsQro {
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${count} CONTACT', other: '${programs} REFERENCES MAY BE INCOMPLETE FOR ${formatted} CONTACTS', ), 
 			'adifImport.stackingTypesUnknown' => 'COMBINED CONTACTS MAY LOSE A REFERENCE — THE ACTIVITIES COULD NOT SAY WHICH TYPES STACK. CANCEL AND RETRY TO AVOID THIS.',
 			'adifImport.nothingToImport' => 'NOTHING IN THIS FILE CAN BE IMPORTED',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.confirm' => 'IMPORT',
 			'adifImport.importing' => ({required Object filename}) => 'IMPORTING ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} CONTACT FROM ${filename}', other: 'IMPORTED ${formatted} CONTACTS FROM ${filename}', ), 

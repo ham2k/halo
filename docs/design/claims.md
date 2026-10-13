@@ -3,8 +3,8 @@
 *Status: partial. The hook (§2) is built, with DXCC as its first program.
 The `claims` table and the service keeping it current (§5–§7) are built, and
 run only under `EXP CHASE`. They sync through LoFi once the server
-advertises them. The Chasing view's goals
-(`app/lib/views/chase_view.dart`) are still activities' hunter controls.*
+advertises them. Verdicts, goals and alerts (§8) are built
+(`app/lib/services/chase_service.dart`). Imports (§9) are not.*
 
 Chasing is about programs that ask for contacts with references: a POTA
 park, a DXCC entity, a US state for WAS, a US county, a Spanish municipio.
@@ -309,7 +309,44 @@ marked `guess` reads "probably new": a county or state inferred from a
 callsign is wrong for a station operating away from home.
 
 Verdicts are cached per spot and recomputed when the spot changes or when a
-slot it touched does.
+slot it touched does. What a candidate claims is asked of the program once
+per candidate, whatever the time, and kept until the runtime restarts; the
+checklist it is compared against is reread whenever the table changes.
+
+**Goals** are programs. The Chasing sheet orders them and turns them on and
+off. A program not chosen yet joins the goals, on: an extension enabled with
+a program in it is one the operator means to chase. A program turned off
+stays off, even when its extension is removed and added again. Only the goals
+that are on are judged. Every hunting control shows on the Chasing view's
+logging panel whatever the goals say: a goal decides what is judged, not
+which references can be logged.
+
+**Notices.** A verdict travels as a notice key beside the scorers' own
+(`chase:<program>:<verdict>`, with `:guess` and `:alert` flags), so the spot
+rows and the pills by the call field carry both through one mechanism. In
+the Chasing view the verdicts replace scoring's notices, and scoring keeps
+only its `duplicate`: a station worked this period. A duplicate gets no
+verdict notice, so its row stays struck. Under `EXP CHASE`, an operation's
+spots and calls also carry the verdicts the operator alerts on, beside the
+operation's own scoring. A program names the scoring notices its verdicts
+stand in for (`supersedes`; DXCC's is core scoring's `newDXCC`), and where it
+judges a call those are dropped: the scorer keeps them for everyone chasing
+does not reach yet, and a feature leaves core scoring only once chasing
+ships without the experiment.
+
+**Alerts.** The operator picks which verdicts alert; new ref, new band and
+new mode until they do. An alerting spot's callsign takes the multiplier
+accent, and its band or mode the new-band or new-mode one. The Chasing view
+can show only alerting spots. Sound and notifications are not built.
+
+**Most wanted** is the Chasing view's own spot sort, and its default: by
+verdict, then goal order, then newest. Spots no goal judges follow, and
+spots worked this period come last.
+
+The Info panel shows each goal's checklist through `summarizeClaims`, for
+the station's first holder in the current edition: empty for a lifetime
+program, the UTC year for an annual one. An event program has no current
+edition the app can tell from the date, and shows none.
 
 ## 9. Imports
 
@@ -343,6 +380,3 @@ derived one can both stand; the slot is the better of the two.
   whole log need the server to hold every contact and run the hooks.
   Later.
 - **The LoFi record type** for `claims`, and the web-lofi reader.
-- **Moving the Chasing goals onto programs**: today a goal is an
-  activity's hunter control; with this, a goal is a program, and its
-  controls follow from the extension that registers it.

@@ -9,6 +9,7 @@ mixin _SpotsList on State<SpotsPanel> {
   Map<String, SpotCallInfo> get _callNotes;
   List<Map<String, dynamic>> get _activityControls;
   SpotsFilterState get _filterState;
+  String get _sortBy;
   Set<String> get _ourBaseCalls;
   ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot);
   String? _noteEmojiOf(Map<String, dynamic> spot);
@@ -223,7 +224,7 @@ mixin _SpotsList on State<SpotsPanel> {
                                       noteEmoji: _noteEmojiOf(spot),
                                       hzDigits: hzDigits,
                                       leftWidth: leftWidth,
-                                      sortByAge: _filterState.sortBy == 'time',
+                                      sortByAge: _sortBy == 'time',
                                       activityControls: _activityControls,
                                       // A spot set aside by a slide dims like one scoring
                                       // calls worked, and a slide can equally put a scored

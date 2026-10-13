@@ -316,7 +316,7 @@
     "goals": {
       "title": "CHASING GOALS",
       "remove": "STOP CHASING ${name}",
-      "extensionsTitle": "EXTENSIONS THAT INCLUDE CHASING"
+      "extensionsTitle": "MORE CHASING PROGRAMS"
     },
     "panels": {
       "logging": "QSOS",
@@ -332,7 +332,24 @@
       "checking": "CHECKING QSOS FOR CHASING",
       "rebuilding": "CHECKING THE LOG FOR ${program}",
       "progress": "${done} OF ${total} QSOS"
-    }
+    },
+    "notice": {
+      "newRef": "NEW ${program}",
+      "newRefGuess": "PROBABLY NEW ${program}",
+      "newBand": "NEW ${program} BAND",
+      "newBandGuess": "PROBABLY NEW ${program} BAND",
+      "newMode": "NEW ${program} MODE",
+      "newModeGuess": "PROBABLY NEW ${program} MODE",
+      "unconfirmed": "${program} UNCONFIRMED"
+    },
+    "alerts": {
+      "title": "ALERTS",
+      "newRef": "NEW REFERENCE",
+      "newBand": "NEW BAND",
+      "newMode": "NEW MODE",
+      "unconfirmed": "UNCONFIRMED"
+    },
+    "checklists": "CHASING PROGRESS"
   },
   "dialogs": {
     "operationDetails": "OPERATION DETAILS",
@@ -761,8 +778,10 @@
         "sorting": "SORTING",
         "sortByTime": "BY SPOT TIME",
         "sortByFrequency": "BY FREQUENCY",
+        "sortByWanted": "MOST WANTED",
         "groupByBand": "GROUP BY BAND",
         "groupCallsWithNotes": "GROUP CALLS WITH NOTES",
+        "alertingOnly": "ONLY SPOTS WITH ALERTS",
         "sourceNoReply": "NO REPLY",
         "sourceError": "ERROR"
       },

@@ -96,6 +96,10 @@ class _SpotTile extends StatelessWidget {
   /// `newDXCC`/`newState`/`newProvince` arrive here too and are deliberately
   /// ignored: they belong to the call you are typing, and on a whole board they
   /// would accent most rows most of the time.
+  ///
+  /// Of the chasing notices ([ChaseNotice]), only those the operator alerts on
+  /// are drawn: the call as a multiplier's is, and a new band or mode on its
+  /// field. The rest only order the Chasing view's list.
   final Set<String> notices;
 
   /// Fill for the row of the QSO being logged right now
@@ -160,9 +164,13 @@ class _SpotTile extends StatelessWidget {
     // the frequency and lets it imply the band, where app-polo's shows both.
     final important = faded(haloColors.important);
     final multiplier = faded(haloColors.spotMultiplier);
-    final freqAccent = notices.contains('newBand') ? important : null;
-    final modeAccent = notices.contains('newMode') ? important : null;
-    final callAccent = notices.contains('newMult') ? multiplier : null;
+    final alerts = {
+      for (final key in notices)
+        if (ChaseNotice.tryParse(key) case final chase? when chase.alerting) chase.verdict,
+    };
+    final freqAccent = notices.contains('newBand') || alerts.contains(ChaseVerdict.newBand) ? important : null;
+    final modeAccent = notices.contains('newMode') || alerts.contains(ChaseVerdict.newMode) ? important : null;
+    final callAccent = notices.contains('newMult') || alerts.isNotEmpty ? multiplier : null;
     final refAccent = notices.contains('newMult') ? multiplier : (notices.contains('newDay') || notices.contains('newRef') ? important : null);
     // An accented field is bold as well as colored — color alone is not a
     // signal an operator can rely on (docs/design/user-interface.md), and at

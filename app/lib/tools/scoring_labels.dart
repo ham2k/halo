@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 
 import 'package:flutter/widgets.dart';
+import 'package:halo_core/halo_core.dart' show ChaseNotice, ChaseVerdict, ChasingProgram;
 
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -12,7 +13,11 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// The vocabulary is open — a contest may emit its own keys — but every notice
 /// a shipped scorer produces belongs here: an unlabelled key reaches the
 /// operator as raw camelCase, which is worse than useless mid-contest.
-String scoreNoticeLabel(BuildContext context, String key) {
+///
+/// A chasing verdict ([ChaseNotice]) reads with its program's name, from
+/// [programs]; a program no longer registered reads by its key.
+String scoreNoticeLabel(BuildContext context, String key, {Map<String, ChasingProgram> programs = const {}}) {
+  if (ChaseNotice.tryParse(key) case final chase?) return _chaseNoticeLabel(context, chase, programs[chase.program]?.label ?? chase.program);
   final t = context.t.loggingControls.info;
   return switch (key) {
     'duplicate' => t.noticeDupe,
@@ -65,5 +70,16 @@ String scoreNoticeLabel(BuildContext context, String key) {
     // which no scorer is shown (`isIncompleteCall`).
     'incompleteCall' => t.noticeIncompleteCall,
     _ => key,
+  };
+}
+
+String _chaseNoticeLabel(BuildContext context, ChaseNotice notice, String program) {
+  final t = context.t.chase.notice;
+  return switch (notice.verdict) {
+    ChaseVerdict.newRef => notice.guess ? t.newRefGuess(program: program) : t.newRef(program: program),
+    ChaseVerdict.newBand => notice.guess ? t.newBandGuess(program: program) : t.newBand(program: program),
+    ChaseVerdict.newMode => notice.guess ? t.newModeGuess(program: program) : t.newMode(program: program),
+    ChaseVerdict.unconfirmed => t.unconfirmed(program: program),
+    ChaseVerdict.worked => program,
   };
 }

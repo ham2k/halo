@@ -316,7 +316,7 @@
     "goals": {
       "title": "Chasing Goals",
       "remove": "Stop chasing ${name}",
-      "extensionsTitle": "Extensions that include chasing"
+      "extensionsTitle": "More chasing programs"
     },
     "panels": {
       "logging": "QSOs",
@@ -332,7 +332,24 @@
       "checking": "Checking QSOs for chasing",
       "rebuilding": "Checking the log for ${program}",
       "progress": "${done} of ${total} QSOs"
-    }
+    },
+    "notice": {
+      "newRef": "New ${program}",
+      "newRefGuess": "Probably new ${program}",
+      "newBand": "New ${program} band",
+      "newBandGuess": "Probably new ${program} band",
+      "newMode": "New ${program} mode",
+      "newModeGuess": "Probably new ${program} mode",
+      "unconfirmed": "${program} unconfirmed"
+    },
+    "alerts": {
+      "title": "Alerts",
+      "newRef": "New reference",
+      "newBand": "New band",
+      "newMode": "New mode",
+      "unconfirmed": "Unconfirmed"
+    },
+    "checklists": "Chasing Progress"
   },
   "dialogs": {
     "operationDetails": "Operation details",
@@ -761,8 +778,10 @@
         "sorting": "Sorting",
         "sortByTime": "By Spot Time",
         "sortByFrequency": "By Frequency",
+        "sortByWanted": "Most Wanted",
         "groupByBand": "Group by Band",
         "groupCallsWithNotes": "Group Calls with Notes",
+        "alertingOnly": "Only Spots with Alerts",
         "sourceNoReply": "No reply",
         "sourceError": "Error"
       },

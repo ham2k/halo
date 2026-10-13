@@ -24,7 +24,7 @@ async function claims(...qsos: Record<string, JSONValue>[]): Promise<Record<stri
 test("the program describes itself as data, without being invoked", () => {
   const { hook, key } = extension.hooks.find((h) => h.category === "chasing")!
   assert.equal(key, "dxcc")
-  assert.deepEqual(hook.program, { label: "DXCC", icon: "earth", version: 1, editions: "lifetime" })
+  assert.deepEqual(hook.program, { label: "DXCC", icon: "earth", version: 1, editions: "lifetime", supersedes: ["newDXCC"] })
 })
 
 // Mixed, band and mode are three checklists: working Germany on 40m after
@@ -110,6 +110,7 @@ test("the entity a contact records outranks the one its callsign resolves to, on
     qso("hawaii", { our: { call: "KI2D", dxccCode: 110 } }),
     qso("ddr", { their: { call: "DL1ABC", dxccCode: 229 } }),
     qso("looked-up", { their: { call: "DL1ABC", guess: { dxccCode: 81 } } }),
+    qso("agreed", { their: { call: "DL1ABC", guess: { dxccCode: 230 } } }),
   )
   assert.equal(answer.hawaii[0].holder, "KI2D@110")
   assert.deepEqual(
@@ -121,6 +122,7 @@ test("the entity a contact records outranks the one its callsign resolves to, on
   assert.equal(answer.ddr[0].guess, undefined, "a recorded entity is not a guess")
   assert.equal(answer["looked-up"][0].ref, "81")
   assert.equal(answer["looked-up"][0].guess, true, "a lookup's entity is inferred, not reported")
+  assert.equal(answer.agreed[0].guess, undefined, "a lookup repeating the callsign's entity infers nothing the callsign does not settle")
 })
 
 // A marker's calls are placeholders — `EVENT` worked `START` — and resolve

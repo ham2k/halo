@@ -6,7 +6,7 @@
 // keeps, and how one reads (docs/design/claims.md). A mixin rather than an
 // extension so a test double can still override one call.
 
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
 import 'package:halo_core/halo_core.dart' show ChasingProgram, Hooks, QsoClaim;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
@@ -49,6 +49,25 @@ const kClaimsForQsosTimeout = Duration(seconds: 20);
 
 mixin ExtensionChasing {
   ExtensionHost? get host;
+  ValueNotifier<int> get runtimeGeneration;
+
+  Map<String, ChasingProgram>? _programs;
+  int? _programsGeneration;
+
+  /// [getChasingPrograms], asked once per runtime: only a new one can bring
+  /// or take away a program, and asking per contact logged or per spot
+  /// refresh is a crossing into every extension each time. A null answer is
+  /// not kept.
+  Future<Map<String, ChasingProgram>?> chasingPrograms() async {
+    final generation = runtimeGeneration.value;
+    if (_programs == null || _programsGeneration != generation) {
+      final programs = await getChasingPrograms();
+      if (programs == null) return null;
+      _programs = programs;
+      _programsGeneration = generation;
+    }
+    return _programs;
+  }
 
   /// Every registered program, keyed by its hook key. A program whose
   /// `program` member is malformed is left out and reported; the others are

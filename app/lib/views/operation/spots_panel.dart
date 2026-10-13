@@ -19,6 +19,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../../services/chase_service.dart';
 import '../../services/hook_payloads.dart';
 import '../../services/radio_service.dart';
 import '../../services/settings_service.dart';
@@ -463,6 +464,11 @@ class SpotsPanel extends StatefulWidget {
   /// while the reveal silently never fired again.
   final ValueListenable<bool> visible;
 
+  /// The Chasing view's panel: spots read chasing verdicts rather than the
+  /// operation's scoring, and sort and filter by them as `ChaseService`'s
+  /// options say.
+  final bool chasing;
+
   const SpotsPanel({
     super.key,
     required this.operation,
@@ -476,6 +482,7 @@ class SpotsPanel extends StatefulWidget {
     this.onLogQso,
     this.qsos = const [],
     this.callInfo,
+    this.chasing = false,
   });
 
   @override
@@ -590,7 +597,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     // board from the view in front.
     _boardView = _board.subscribe(follower: true);
     _board.addListener(_onBoardChanged);
-    _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision);
+    _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision, chasing: widget.chasing);
     // Not on the 2-min spots refresh timer — a hook's `sourceName` is static —
     // but on every runtime start: these keys decide which sources the filter
     // lists, and an install, removal or late activation changes the set.
@@ -681,7 +688,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   void didUpdateWidget(SpotsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.logRevision != oldWidget.logRevision || !identical(widget.operation, oldWidget.operation)) {
-      _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision);
+      _boardView.show(widget.operation, widget.qsos, logRevision: widget.logRevision, chasing: widget.chasing);
     }
     if (widget.closeSlidesSerial != oldWidget.closeSlidesSerial) {
       // After the frame: this runs during a build, and closing a row rebuilds
@@ -720,6 +727,34 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   @override
   ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) =>
       spotDisplayFlags(spot, scores: _spotScores, ourBaseCalls: _ourBaseCalls);
+
+  /// The sort the list follows: the Chasing view keeps its own.
+  @override
+  String get _sortBy => widget.chasing ? widget.services.chase.spotsSortBy : _filterState.sortBy;
+
+  /// [spots] as the Chasing view shows them: only those alerting when the
+  /// operator asked for that, in its own sort. Elsewhere they are already as
+  /// the board's filters left them.
+  List<Map<String, dynamic>> _chaseOrder(List<Map<String, dynamic>> spots) {
+    if (!widget.chasing) return spots;
+    final chase = widget.services.chase;
+    final shown = chase.alertingOnly
+        ? spots.where((spot) => _flagsFor(spot).notices.any((key) => ChaseNotice.tryParse(key)?.alerting ?? false)).toList()
+        : spots;
+    if (_sortBy != kChaseSortWanted) return sortSpots(shown, _sortBy);
+    return sortSpotsByWanted(shown, rankOf: _rankOf, worked: (spot) => _flagsFor(spot).worked);
+  }
+
+  /// The best rank among [spot]'s operators ([ChaseService.rankOf]).
+  ChaseRank? _rankOf(Map<String, dynamic> spot) {
+    final chase = widget.services.chase;
+    ChaseRank? best;
+    for (final call in spotOperatorCalls(spot)) {
+      final rank = chase.rankOf(_board.judgements[spotCandidateKey(call, spot)] ?? const []);
+      if (rank != null && (best == null || rank.rank > best.rank || (rank.rank == best.rank && rank.goal < best.goal))) best = rank;
+    }
+    return best;
+  }
 
   /// The filter-row refresh button's handler: drives a fetch while showing a
   /// spinner in place of the button's icon. Pull-to-refresh calls the cache
@@ -776,7 +811,10 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
         bandSpotCounts: spotBandCounts(merged),
         modeSpotCounts: spotModeCounts(onEnabledBands),
         ageSpotCounts: spotAgeCounts(onEnabledBands),
-        sortBy: filters.sortBy,
+        sortBy: _sortBy,
+        offersWanted: widget.chasing,
+        alertingOnly: widget.chasing ? widget.services.chase.alertingOnly : null,
+        onAlertingOnlyChanged: widget.chasing ? widget.services.chase.setAlertingOnly : null,
         groupByBand: filters.groupByBand,
         groupCallsWithNotes: filters.groupCallsWithNotes,
         sources: spotsFilterSourceList(
@@ -795,7 +833,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
         onBandChanged: filters.setBandFilter,
         onModeChanged: filters.setModeFilter,
         onAgeChanged: filters.setAgeMinutes,
-        onSortByChanged: filters.setSortBy,
+        onSortByChanged: widget.chasing ? widget.services.chase.setSpotsSortBy : filters.setSortBy,
         onGroupByBandChanged: filters.setGroupByBand,
         onGroupCallsWithNotesChanged: filters.setGroupCallsWithNotes,
         onToggleSource: filters.toggleSource,
@@ -819,6 +857,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     }
 
     final summary = _filterState.summarize(_filterState.mergedSpots(_spotsBySource), ourBaseCalls: _ourBaseCalls, continentOf: (c) => _callNotes[c]?.continent);
+    final filtered = _chaseOrder(summary.filtered);
 
     return Column(
       children: [
@@ -826,7 +865,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
           bandLabel: spotsFilterBandPillLabel(t, _filterState.bandFilter, vfo.band),
           modeLabel: spotsFilterModePillLabel(t, _filterState.modeFilter, superModeForMode(vfo.mode)),
           ageMinutes: _filterState.ageMinutes,
-          filteredCount: summary.filtered.length,
+          filteredCount: filtered.length,
           totalCount: summary.total,
           onTap: _openFilterDialog,
           onRefresh: _refresh,
@@ -835,7 +874,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
         ),
         // Clears the bottom safe area (home indicator) itself — the status
         // footer doesn't reserve it globally; the panel fills behind.
-        Expanded(child: SafeArea(top: false, left: false, right: false, child: _buildSpotsList(context, summary.filtered, summary.selfSpots))),
+        Expanded(child: SafeArea(top: false, left: false, right: false, child: _buildSpotsList(context, filtered, summary.selfSpots))),
       ],
     );
   }

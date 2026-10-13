@@ -740,6 +740,39 @@ class _LoggingPanelState extends State<LoggingPanel> {
     ourEntityPrefix: widget.ourEntityPrefix,
   );
 
+  /// The typed call's chasing verdicts: what working it from this station
+  /// would claim. Null where chasing does not show, or when judging fails —
+  /// the pills then carry scoring's notices alone rather than none.
+  Future<List<ChaseJudgement>?> _judgeTypedCall(Map<String, dynamic> qso) async {
+    final chase = widget.services.chase;
+    if (widget.scope != LoggingScope.chase && !chase.enabled) return null;
+    try {
+      final judged = await chase.judge({
+        'call': {
+          ...qso,
+          'our': {...?asQsonMap(qso['our']), 'call': widget.operation.stationCall},
+        },
+      });
+      return judged['call'] ?? const [];
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'chase:judgeCall');
+      return null;
+    }
+  }
+
+  /// [scored] with [judgements] folded in, as a spot's are on the board
+  /// ([ChaseService.withNotices]).
+  Map<String, dynamic>? _withChaseNotices(Map<String, dynamic>? scored, List<ChaseJudgement>? judgements) {
+    if (judgements == null) return scored;
+    List<String> keys(String side) => ((scored?[side] as List?) ?? const []).whereType<String>().toList();
+    final merged = widget.services.chase.withNotices(
+      scored == null ? null : (notices: keys('notices'), alerts: keys('alerts')),
+      judgements,
+      chasing: widget.scope == LoggingScope.chase,
+    );
+    return {...?scored, 'notices': merged.notices, 'alerts': merged.alerts};
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_selectedQso?.uuid != _reportedSelection) {
@@ -897,13 +930,16 @@ class _LoggingPanelState extends State<LoggingPanel> {
         // no activity on its own refs, so without this the pills fall back
         // to the core dupe rule and call a station worked at another park a
         // plain duplicate (docs/design/activities.md §4).
-        scoreQso: ({required operation, required qso, excludeUuid, segments}) {
+        scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
           // The last rescore's checkpoints, when the log this panel holds
           // is exactly what they folded plus appended contacts — so the
           // pills resume from a cached sheet instead of re-folding a
           // long log on every keystroke (liveResumeFor says when).
           final resume = widget.services.scoring.liveResumeFor(widget.operation, widget.qsos, excludeUuid: excludeUuid);
-          return widget.services.extensions.scoreQso(
+          // Judged alongside the scoring, not after it: each is a crossing
+          // into the runtime, and the pills wait for both.
+          final judging = _judgeTypedCall(qso);
+          final scored = await widget.services.extensions.scoreQso(
             operation: operation,
             qso: qso,
             excludeUuid: excludeUuid,
@@ -911,8 +947,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
             huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
             resume: resume,
           );
+          return _withChaseNotices(scored, await judging);
         },
-        scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
+        scoreNoticeLabel: (key) => scoreNoticeLabel(context, key, programs: widget.services.chase.programs),
         workedBefore: (call, {excludingQsoUuid}) => widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
         workedBeforeLabel: (times) => workedBeforeLabel(context, times),
         onCallInfoChanged: widget.onCallInfoChanged,

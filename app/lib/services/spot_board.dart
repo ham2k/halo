@@ -7,6 +7,7 @@
 // rules, so an extension's panel and the operator's own can never disagree
 // about which spots the operator's filters admit or which are worked.
 
+import 'package:collection/collection.dart' show mergeSort;
 import 'package:halo_core/halo_core.dart';
 
 import 'settings_service.dart';
@@ -191,6 +192,32 @@ List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> sp
     }
   }
   return merged;
+}
+
+typedef _Wanted = ({Map<String, dynamic> spot, bool worked, ({int rank, int goal})? rank});
+
+/// (A copy of) [spots], most wanted first: by the rank [rankOf] gives each
+/// — the better verdict, then the earlier goal giving it — and the newest
+/// first among equals. [rankOf] answers null for a spot no goal judges,
+/// which follows every judged one, and [worked] spots come last of all: a
+/// station already worked this period is a duplicate, whatever the checklist
+/// would still take from it.
+List<Map<String, dynamic>> sortSpotsByWanted(
+  List<Map<String, dynamic>> spots, {
+  required ({int rank, int goal})? Function(Map<String, dynamic> spot) rankOf,
+  required bool Function(Map<String, dynamic> spot) worked,
+}) {
+  final keyed = <_Wanted>[for (final spot in sortSpots(spots, 'time')) (spot: spot, worked: worked(spot), rank: rankOf(spot))];
+  int compare(_Wanted a, _Wanted b) {
+    if (a.worked != b.worked) return a.worked ? 1 : -1;
+    final ar = a.rank, br = b.rank;
+    if (ar == null || br == null) return ar == br ? 0 : (ar == null ? 1 : -1);
+    if (ar.rank != br.rank) return br.rank.compareTo(ar.rank);
+    return ar.goal.compareTo(br.goal);
+  }
+
+  mergeSort(keyed, compare: compare);
+  return [for (final entry in keyed) entry.spot];
 }
 
 /// Sorts (a copy of) `spots` per `sortBy`: `'time'` most-recent-first,

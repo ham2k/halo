@@ -337,6 +337,9 @@ class _Translations$chase$es extends Translations$chase$en {
 	@override late final _Translations$chase$goals$es goals = _Translations$chase$goals$es._(_root);
 	@override late final _Translations$chase$panels$es panels = _Translations$chase$panels$es._(_root);
 	@override late final _Translations$chase$claims$es claims = _Translations$chase$claims$es._(_root);
+	@override late final _Translations$chase$notice$es notice = _Translations$chase$notice$es._(_root);
+	@override late final _Translations$chase$alerts$es alerts = _Translations$chase$alerts$es._(_root);
+	@override String get checklists => 'Progreso de cacería';
 }
 
 // Path: dialogs
@@ -1380,7 +1383,7 @@ class _Translations$chase$goals$es extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'Objetivos de cacería';
 	@override String remove({required Object name}) => 'Dejar de cazar ${name}';
-	@override String get extensionsTitle => 'Extensiones que incluyen cacería';
+	@override String get extensionsTitle => 'Más programas de cacería';
 }
 
 // Path: chase.panels
@@ -1410,6 +1413,36 @@ class _Translations$chase$claims$es extends Translations$chase$claims$en {
 	@override String get checking => 'Revisando QSOs para cacería';
 	@override String rebuilding({required Object program}) => 'Revisando el registro para ${program}';
 	@override String progress({required Object done, required Object total}) => '${done} de ${total} QSOs';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$es extends Translations$chase$notice$en {
+	_Translations$chase$notice$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => '${program} nuevo';
+	@override String newRefGuess({required Object program}) => '${program} probablemente nuevo';
+	@override String newBand({required Object program}) => '${program}: banda nueva';
+	@override String newBandGuess({required Object program}) => '${program}: banda probablemente nueva';
+	@override String newMode({required Object program}) => '${program}: modo nuevo';
+	@override String newModeGuess({required Object program}) => '${program}: modo probablemente nuevo';
+	@override String unconfirmed({required Object program}) => '${program} sin confirmar';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$es extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Alertas';
+	@override String get newRef => 'Referencia nueva';
+	@override String get newBand => 'Banda nueva';
+	@override String get newMode => 'Modo nuevo';
+	@override String get unconfirmed => 'Sin confirmar';
 }
 
 // Path: dialogs.callChange
@@ -3003,8 +3036,10 @@ class _Translations$operation$spots$filters$es extends Translations$operation$sp
 	@override String get sorting => 'Orden';
 	@override String get sortByTime => 'Por hora del spot';
 	@override String get sortByFrequency => 'Por frecuencia';
+	@override String get sortByWanted => 'Más buscados';
 	@override String get groupByBand => 'Agrupar por banda';
 	@override String get groupCallsWithNotes => 'Agrupar indicativos destacados';
+	@override String get alertingOnly => 'Solo spots con alerta';
 	@override String get sourceNoReply => 'Sin respuesta';
 	@override String get sourceError => 'Error';
 }
@@ -3887,7 +3922,7 @@ extension on TranslationsEs {
 			'chase.period.thisMonth' => 'Este mes',
 			'chase.goals.title' => 'Objetivos de cacería',
 			'chase.goals.remove' => ({required Object name}) => 'Dejar de cazar ${name}',
-			'chase.goals.extensionsTitle' => 'Extensiones que incluyen cacería',
+			'chase.goals.extensionsTitle' => 'Más programas de cacería',
 			'chase.panels.logging' => 'QSOs',
 			'chase.panels.loggingDescription' => 'Controles de registro sobre los QSOs cazados en el período.',
 			'chase.panels.info' => 'Info',
@@ -3899,6 +3934,19 @@ extension on TranslationsEs {
 			'chase.claims.checking' => 'Revisando QSOs para cacería',
 			'chase.claims.rebuilding' => ({required Object program}) => 'Revisando el registro para ${program}',
 			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} de ${total} QSOs',
+			'chase.notice.newRef' => ({required Object program}) => '${program} nuevo',
+			'chase.notice.newRefGuess' => ({required Object program}) => '${program} probablemente nuevo',
+			'chase.notice.newBand' => ({required Object program}) => '${program}: banda nueva',
+			'chase.notice.newBandGuess' => ({required Object program}) => '${program}: banda probablemente nueva',
+			'chase.notice.newMode' => ({required Object program}) => '${program}: modo nuevo',
+			'chase.notice.newModeGuess' => ({required Object program}) => '${program}: modo probablemente nuevo',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} sin confirmar',
+			'chase.alerts.title' => 'Alertas',
+			'chase.alerts.newRef' => 'Referencia nueva',
+			'chase.alerts.newBand' => 'Banda nueva',
+			'chase.alerts.newMode' => 'Modo nuevo',
+			'chase.alerts.unconfirmed' => 'Sin confirmar',
+			'chase.checklists' => 'Progreso de cacería',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -4137,6 +4185,8 @@ extension on TranslationsEs {
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en esta operación', other: '${count} QSOs en esta operación', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Los ${total} QSOs están sincronizados',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendientes de sincronizar',
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} marcadores de evento sincronizados',
 			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes',
 			'operation.export.loading' => 'Cargando opciones de exportación…',
@@ -4150,8 +4200,6 @@ extension on TranslationsEs {
 			'operation.export.downloadFiles' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo', other: 'Descargar ${count} archivos', ), 
 			'operation.export.saveCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Guardar ${count} archivo combinado', other: 'Guardar ${count} archivos combinados', ), 
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Compartir ${count} archivo combinado', other: 'Compartir ${count} archivos combinados', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Exportar ${count} archivo combinado', other: 'Exportar ${count} archivos combinados', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Descargar ${count} archivo combinado', other: 'Descargar ${count} archivos combinados', ), 
 			'operation.export.saveOne' => ({required Object name}) => 'Guardar ${name}',
@@ -4226,8 +4274,10 @@ extension on TranslationsEs {
 			'operation.spots.filters.sorting' => 'Orden',
 			'operation.spots.filters.sortByTime' => 'Por hora del spot',
 			'operation.spots.filters.sortByFrequency' => 'Por frecuencia',
+			'operation.spots.filters.sortByWanted' => 'Más buscados',
 			'operation.spots.filters.groupByBand' => 'Agrupar por banda',
 			'operation.spots.filters.groupCallsWithNotes' => 'Agrupar indicativos destacados',
+			'operation.spots.filters.alertingOnly' => 'Solo spots con alerta',
 			'operation.spots.filters.sourceNoReply' => 'Sin respuesta',
 			'operation.spots.filters.sourceError' => 'Error',
 			'operation.spots.unavailableTitle' => 'Spots no disponibles',
@@ -4649,6 +4699,8 @@ extension on TranslationsEs {
 			'settings.catServer.title' => 'Servidor CAT',
 			'settings.catServer.description' => 'Permite que otras aplicaciones (WSJT-X, registros, etc.) controlen la radio a través de Ham2K Logger.',
 			'settings.catServer.protocol' => 'Protocolo',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.protocolOpts.off' => 'Desactivado',
 			'settings.catServer.protocolOpts.rigctld' => 'Hamlib rigctld',
 			'settings.catServer.protocolOpts.flrig' => 'flrig',
@@ -4664,8 +4716,6 @@ extension on TranslationsEs {
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} en el puerto ${port}, pero no hay una radio del VFO principal conectada.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} no puede escuchar en el puerto ${port}: ${error}',
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
 			'settings.radio.title' => 'Control CAT',
@@ -5163,6 +5213,8 @@ extension on TranslationsEs {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom, entre ellas la IC-705, presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso: el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador, y cuando esta app puede distinguir los dos puertos marca ese como sugerido. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio (por USB, CI-V USB Baud Rate). Pon en la radio el mismo número que aquí, **no Auto**. En Auto algunas radios, entre ellas la IC-7300, conectan y dejan de responder al cabo de un minuto o así.\n- **Otra aplicación puede tener el puerto abierto**: WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
 			'settings.station.ic705PortNote' => '\n- El **IC-705** presenta dos puertos serie USB, ambos con el nombre de la radio. CI-V está en el **primero**, que el selector señala cuando puede distinguirlos.',
@@ -5178,8 +5230,6 @@ extension on TranslationsEs {
 			'settings.station.n3fjpTroubleshooting' => 'Esto se conecta a **un programa de registro de N3FJP que se ejecuta en tu computadora**, no directamente a la radio — N3FJP habla con la radio.\n\n- **La API del programa debe estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El puerto** es 1100 salvo que lo hayas cambiado ahí.\n- **N3FJP debe tener configurada una interfaz de radio** para seguir o sintonizar la radio. Sin ella, solo informa lo que se escribe en su ventana de entrada.\n- N3FJP informa solo banda, modo y frecuencia: ni potencia ni estado de transmisión.\n\nEsta entrada se escribió a partir de la API publicada de N3FJP y no se ha probado contra N3FJP. Si funciona a medias, merece la pena avisar.',
 			'settings.station.commanderTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.commanderTroubleshooting' => 'Esto se conecta a **DXLab Commander, que se ejecuta en tu computadora**, no directamente a la radio — Commander habla con la radio.\n\n- **Commander ya debe estar corriendo** y conectado a la radio.\n- **Su servicio de red debe estar activado**: el botón **Net Serv** del panel Radio en la ventana de configuración de Commander.\n- **El puerto** es 52002, el tercero del bloque que empieza en el **Base Port** de Net Serv (52000 salvo que lo hayas cambiado).\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de los mensajes TCP publicados de Commander y no se ha probado contra Commander. Si funciona a medias, merece la pena avisar.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio.** La WLAN debe estar encendida, la radio en la misma red y su función de control remoto (Network) activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión atascada en la radio.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio. Si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
@@ -5677,6 +5727,8 @@ extension on TranslationsEs {
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
 			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.',
@@ -5692,8 +5744,6 @@ extension on TranslationsEs {
 			'exportSettings.adifNotesTemplate' => 'Notas de QSO ADIF',
 			'exportSettings.adifCommentTemplate' => 'Comentarios de QSO ADIF',
 			'exportSettings.adifQslMessageTemplate' => 'Mensaje QSL ADIF',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.shared' => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.',
 			'exportSettings.defaultTemplates' => 'Activa Plantillas personalizadas para editar las plantillas de este tipo.',
 			'templateEditor.previewLabel' => 'Vista previa:',

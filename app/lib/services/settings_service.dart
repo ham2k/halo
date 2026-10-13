@@ -1782,8 +1782,8 @@ abstract final class LayoutKeys {
   static const chaseNarrowPaneOptions = 'chase.narrowPaneOptions';
   static const chaseNarrowViewOptions = 'chase.narrowViewOptions';
 
-  /// The Chasing view's own options: `period`, `goals` (`{key, on}` in the
-  /// operator's order), `stations` (by profile id), `location` and
-  /// `extensionsHidden` — see `ChaseView`.
+  /// The Chasing view's own options: `period`, `stations` (by profile id),
+  /// `location` and `extensionsHidden` (see `ChaseView`), and the goals,
+  /// alerts and spots sort `ChaseService` reads.
   static const chaseOptions = 'chase.options';
 }

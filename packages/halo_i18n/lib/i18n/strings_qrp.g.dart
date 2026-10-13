@@ -337,6 +337,9 @@ class _Translations$chase$qrp extends Translations$chase$en {
 	@override late final _Translations$chase$goals$qrp goals = _Translations$chase$goals$qrp._(_root);
 	@override late final _Translations$chase$panels$qrp panels = _Translations$chase$panels$qrp._(_root);
 	@override late final _Translations$chase$claims$qrp claims = _Translations$chase$claims$qrp._(_root);
+	@override late final _Translations$chase$notice$qrp notice = _Translations$chase$notice$qrp._(_root);
+	@override late final _Translations$chase$alerts$qrp alerts = _Translations$chase$alerts$qrp._(_root);
+	@override String get checklists => 'chasing progress';
 }
 
 // Path: dialogs
@@ -1387,7 +1390,7 @@ class _Translations$chase$goals$qrp extends Translations$chase$goals$en {
 	// Translations
 	@override String get title => 'chasing goals';
 	@override String remove({required Object name}) => 'stop chasing ${name}';
-	@override String get extensionsTitle => 'extensions that include chasing';
+	@override String get extensionsTitle => 'more chasing programs';
 }
 
 // Path: chase.panels
@@ -1417,6 +1420,36 @@ class _Translations$chase$claims$qrp extends Translations$chase$claims$en {
 	@override String get checking => 'checking qsos for chasing';
 	@override String rebuilding({required Object program}) => 'checking the log for ${program}';
 	@override String progress({required Object done, required Object total}) => '${done} of ${total} qsos';
+}
+
+// Path: chase.notice
+class _Translations$chase$notice$qrp extends Translations$chase$notice$en {
+	_Translations$chase$notice$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String newRef({required Object program}) => 'new ${program}';
+	@override String newRefGuess({required Object program}) => 'probably new ${program}';
+	@override String newBand({required Object program}) => 'new ${program} band';
+	@override String newBandGuess({required Object program}) => 'probably new ${program} band';
+	@override String newMode({required Object program}) => 'new ${program} mode';
+	@override String newModeGuess({required Object program}) => 'probably new ${program} mode';
+	@override String unconfirmed({required Object program}) => '${program} unconfirmed';
+}
+
+// Path: chase.alerts
+class _Translations$chase$alerts$qrp extends Translations$chase$alerts$en {
+	_Translations$chase$alerts$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'alerts';
+	@override String get newRef => 'new reference';
+	@override String get newBand => 'new band';
+	@override String get newMode => 'new mode';
+	@override String get unconfirmed => 'unconfirmed';
 }
 
 // Path: dialogs.callChange
@@ -3102,8 +3135,10 @@ class _Translations$operation$spots$filters$qrp extends Translations$operation$s
 	@override String get sorting => 'sorting';
 	@override String get sortByTime => 'by spot time';
 	@override String get sortByFrequency => 'by frequency';
+	@override String get sortByWanted => 'most wanted';
 	@override String get groupByBand => 'group by band';
 	@override String get groupCallsWithNotes => 'group calls with notes';
+	@override String get alertingOnly => 'only spots with alerts';
 	@override String get sourceNoReply => 'no reply';
 	@override String get sourceError => 'error';
 }
@@ -4006,7 +4041,7 @@ extension on TranslationsQrp {
 			'chase.period.thisMonth' => 'this month',
 			'chase.goals.title' => 'chasing goals',
 			'chase.goals.remove' => ({required Object name}) => 'stop chasing ${name}',
-			'chase.goals.extensionsTitle' => 'extensions that include chasing',
+			'chase.goals.extensionsTitle' => 'more chasing programs',
 			'chase.panels.logging' => 'qsos',
 			'chase.panels.loggingDescription' => 'logging controls above the qsos chased in the period.',
 			'chase.panels.info' => 'info',
@@ -4018,6 +4053,19 @@ extension on TranslationsQrp {
 			'chase.claims.checking' => 'checking qsos for chasing',
 			'chase.claims.rebuilding' => ({required Object program}) => 'checking the log for ${program}',
 			'chase.claims.progress' => ({required Object done, required Object total}) => '${done} of ${total} qsos',
+			'chase.notice.newRef' => ({required Object program}) => 'new ${program}',
+			'chase.notice.newRefGuess' => ({required Object program}) => 'probably new ${program}',
+			'chase.notice.newBand' => ({required Object program}) => 'new ${program} band',
+			'chase.notice.newBandGuess' => ({required Object program}) => 'probably new ${program} band',
+			'chase.notice.newMode' => ({required Object program}) => 'new ${program} mode',
+			'chase.notice.newModeGuess' => ({required Object program}) => 'probably new ${program} mode',
+			'chase.notice.unconfirmed' => ({required Object program}) => '${program} unconfirmed',
+			'chase.alerts.title' => 'alerts',
+			'chase.alerts.newRef' => 'new reference',
+			'chase.alerts.newBand' => 'new band',
+			'chase.alerts.newMode' => 'new mode',
+			'chase.alerts.unconfirmed' => 'unconfirmed',
+			'chase.checklists' => 'chasing progress',
 			'dialogs.operationDetails' => 'operation details',
 			'dialogs.activities' => 'activities',
 			'dialogs.stationCallsign' => 'station callsign',
@@ -4239,6 +4287,8 @@ extension on TranslationsQrp {
 			'operation.layout.panels.radioNoRadio' => 'no radio to show. pick one in this panel\'s settings, or add one under station configuration.',
 			'operation.layout.panels.radioNotConfigured' => 'this radio is not configured yet. choose its port or address under station configuration.',
 			'operation.layout.panels.radioNoFrequency' => '—',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.radioOff' => 'radio not connected',
 			'operation.layout.panels.radioWatts' => 'w',
 			'operation.layout.panels.radioConnect' => 'connect this radio',
@@ -4252,8 +4302,6 @@ extension on TranslationsQrp {
 			'operation.layout.htmlPanelUnsupported' => 'this panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'this panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'operation exports',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.syncedOperation' => 'operation is synced',
 			'operation.export.unsyncedOperation' => 'operation has unsynced changes',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso in this operation', other: '${count} qsos in this operation', ), 
@@ -4346,8 +4394,10 @@ extension on TranslationsQrp {
 			'operation.spots.filters.sorting' => 'sorting',
 			'operation.spots.filters.sortByTime' => 'by spot time',
 			'operation.spots.filters.sortByFrequency' => 'by frequency',
+			'operation.spots.filters.sortByWanted' => 'most wanted',
 			'operation.spots.filters.groupByBand' => 'group by band',
 			'operation.spots.filters.groupCallsWithNotes' => 'group calls with notes',
+			'operation.spots.filters.alertingOnly' => 'only spots with alerts',
 			'operation.spots.filters.sourceNoReply' => 'no reply',
 			'operation.spots.filters.sourceError' => 'error',
 			'operation.spots.unavailableTitle' => 'spots unavailable',
@@ -4751,6 +4801,8 @@ extension on TranslationsQrp {
 			'settings.logging.showReverseBearing.descriptionOn' => 'showing the bearing from the station too, as "45° / 225°"',
 			'settings.logging.showReverseBearing.descriptionOff' => 'only showing the bearing to the station',
 			'settings.logging.switchSentRcvd.title' => 'switch signal report order',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.switchSentRcvd.sentFirst' => 'sent first, rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'rcvd first, sent second',
 			'settings.logging.jumpAfterRST.title' => 'jump to next field on rst entry',
@@ -4766,8 +4818,6 @@ extension on TranslationsQrp {
 			'settings.logging.numbersRow.description' => 'show a row of number keys above the keyboard while logging',
 			'settings.logging.numbersRowExtra.title' => 'slash and period key',
 			'settings.logging.numbersRowExtra.description' => 'adds a contextual key: “/” for callsigns, “.” for numbers',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.numbersRowVibrate.title' => 'vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'preferred bands',
@@ -5265,6 +5315,8 @@ extension on TranslationsQrp {
 			'settings.station.models.placeholderRadioNodeName' => 'my radio',
 			'settings.station.models.antennaGenius' => '4o3a antenna genius',
 			'settings.station.models.sierraCoax' => 'sierra radio cx-1 coax switch',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.rtlSdr' => 'rtl-sdr',
 			'settings.station.models.nesdr' => 'nooelec nesdr',
 			'settings.station.models.sdrplay' => 'sdrplay rsp',
@@ -5280,8 +5332,6 @@ extension on TranslationsQrp {
 			'settings.station.guohetecTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'the q900 has two cat protocols, and this entry uses its native one rather than the ft-817 imitation. pick **guohetec q900** here, not an ft-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **the usb-c cable is the cat link**, and it connects the sound card too. speed does not matter on it; the port ignores whatever it is set to.\n- **never let anything raise rts or dtr on this port.** on a serial cable those lines are ptt and keying.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **a second-generation radio behaves differently** from a first. long press menu, then about: hw 2.0 is the second generation.\n\nthis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'if the radio connects but shows no frequency',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.yaesuTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low. on a digirig, signalink or most home-brew cables that same line is ptt, so raising it would key your transmitter. on the radio\'s own usb port, **hold rts high** under advanced settings is the alternative. where that setting lives differs by model (menu **05-08** on an ft-891).\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **modes follow the ft-891\'s table.** most of the yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. the frequency is unaffected.',
 			'settings.station.yaesuRs232Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **the cat jack is rs-232.** it needs a usb-to-serial adapter and a straight-through db-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis entry was written from published cat documentation and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **use the first of the radio\'s two usb ports.** cat is normally on the first (the **enhanced** com port on windows); the second (**standard**) is for ptt and keying. the picker points at the first wherever it can tell the two apart.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
@@ -5779,6 +5829,8 @@ extension on TranslationsQrp {
 			'switchAccounts.switchNotAccepted' => 'that account did not accept the switch. try linking it with an email address instead.',
 			'switchAccounts.requestFailed' => 'something went wrong talking to the sync server. try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso', other: '${count} qsos', ), 
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} operation', other: '${count} operations', ), 
 			'adifImport.title' => 'import qsos from adif',
 			'adifImport.reading' => ({required Object filename}) => 'reading ${filename}…',
@@ -5794,8 +5846,6 @@ extension on TranslationsQrp {
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 
 			'adifImport.stackingTypesUnknown' => 'combined contacts may lose a reference — the activities could not say which types stack. cancel and retry to avoid this.',
 			'adifImport.nothingToImport' => 'nothing in this file can be imported',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.confirm' => 'import',
 			'adifImport.importing' => ({required Object filename}) => 'importing ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} contact from ${filename}', other: 'imported ${formatted} contacts from ${filename}', ), 

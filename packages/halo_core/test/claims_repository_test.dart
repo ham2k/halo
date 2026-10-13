@@ -6,6 +6,7 @@
 // seeing the whole log, or a merge that two devices settle differently,
 // makes checklists that disagree across devices and never converge.
 
+import 'package:clock/clock.dart';
 import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
@@ -354,14 +355,21 @@ void main() {
     });
 
     // An upgrade landing while the push is on the network is a newer
-    // revision the server has not seen.
-    test('a row rewritten while its push was in flight stays dirty', () async {
-      await claims.applyUpgrades([_claim(qso: 'worked')]);
-      final sent = await claims.unsyncedBatch(10);
-      await claims.applyUpgrades([_claim(qso: 'confirmed', level: ClaimLevel.confirmed)]);
+    // revision the server has not seen. On a clock pinned to one millisecond
+    // the rewrite carries the same reading as the revision that went out, and
+    // a stamp taken from the clock alone would mark it synced.
+    test('a row rewritten while its push was in flight stays dirty, within the same millisecond too', () async {
+      final followed = AppClock.followZoneClock;
+      AppClock.followZoneClock = true;
+      addTearDown(() => AppClock.followZoneClock = followed);
+      await withClock(Clock.fixed(DateTime.utc(2026, 10, 13)), () async {
+        await claims.applyUpgrades([_claim(qso: 'worked')]);
+        final sent = await claims.unsyncedBatch(10);
+        await claims.applyUpgrades([_claim(qso: 'confirmed', level: ClaimLevel.confirmed)]);
 
-      await claims.markSynced(sent);
-      expect((await row(_claim())).synced, isFalse);
+        await claims.markSynced(sent);
+        expect((await row(_claim())).synced, isFalse);
+      });
     });
 
     test('clearing empties the table and says so', () async {
@@ -373,6 +381,18 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(await db.select(db.claims).get(), isEmpty);
       expect(cleared, 1);
+    });
+
+    // A pass that read the log before a clear — a device switching accounts
+    // mid-rescan — would write the old log's rows into the emptied table,
+    // naming contacts that are gone and that no later rescan here withdraws.
+    test('a pass that began before a clear writes nothing after it', () async {
+      final before = claims.generation;
+      await claims.clearAll();
+      expect(await claims.applyUpgrades([_claim()], generation: before), 0);
+      expect(await claims.writeRescan(_program, 1, {_claim().uuid: _claim()}, generation: before), 0);
+      expect(await db.select(db.claims).get(), isEmpty);
+      expect(await claims.applyUpgrades([_claim()], generation: claims.generation), 1, reason: 'a pass begun since writes as usual');
     });
   });
 }

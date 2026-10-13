@@ -8,6 +8,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../../services/chase_service.dart' show ChaseSummary;
 import '../../services/halo_services.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
@@ -35,6 +36,10 @@ class InformationPanel extends StatelessWidget {
   /// view's names its period. Null reads "Operation Stats".
   final String? statsTitle;
 
+  /// Each chasing goal's checklist, the Chasing view's — shown above the
+  /// period's own scoring.
+  final List<ChaseSummary> chaseSummaries;
+
   const InformationPanel({
     super.key,
     required this.operation,
@@ -44,6 +49,7 @@ class InformationPanel extends StatelessWidget {
     this.ourEntityPrefix,
     this.activityControls = const [],
     this.statsTitle,
+    this.chaseSummaries = const [],
   });
 
   @override
@@ -104,6 +110,12 @@ class InformationPanel extends StatelessWidget {
             children: [for (final line in operationStatsLines(context, qsos)) Text(line, style: theme.textTheme.bodyMedium)],
           ),
         ),
+        if (chaseSummaries.isNotEmpty) ...[
+          const SizedBox(height: Space.xl),
+          Text(context.t.chase.checklists, style: theme.textTheme.titleSmall),
+          for (final summary in chaseSummaries)
+            ..._tallyRows(context, summary.tallies, resolveExtensionColor(summary.program.color) ?? theme.colorScheme.onSurfaceVariant),
+        ],
         if (daySections.length > 1) ..._daySummaries(context, daySections),
         if (scoringWidgets.isNotEmpty) ...[
           const SizedBox(height: Space.xl),

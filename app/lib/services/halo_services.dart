@@ -78,7 +78,9 @@ import 'panel_service.dart';
 import 'purchase_service.dart';
 import 'pusher_service.dart';
 import 'radio_service.dart';
+import 'operation_command_context.dart';
 import 'operation_title_service.dart';
+import 'chase_service.dart';
 import 'claims_service.dart';
 import 'scoring_service.dart';
 import 'settings_service.dart';
@@ -104,34 +106,7 @@ import 'status_bar_hammer.dart';
 import 'wake_lock_service.dart';
 import 'sibling_apps_service.dart';
 
-/// One open Operation View's contribution to the ⌘K dialog's context — see
-/// [HaLoServices.openOperationContext].
-class OperationCommandContext {
-  OperationCommandContext(this.uuid);
-
-  final String uuid;
-
-  /// The operation QSON with `uuid` folded in, once it has loaded.
-  Map<String, dynamic>? operation;
-
-  /// This operation's logging panel dispatcher, while one is mounted.
-  CommandActionsDispatcher? dispatch;
-
-  /// Puts a QSON-shaped suggestion into this operation's logging fields — the
-  /// same prefill a tapped spot performs (`OperationView`'s `_suggestQso`).
-  ///
-  /// Here rather than as a [CommandActionsDispatcher] action because a
-  /// suggestion is not a command: it arrives from outside the operation
-  /// entirely (a `/qso` deep link), carries refs and radio state together, and
-  /// must reach the view even when no logging panel is mounted to dispatch
-  /// through — which is exactly when [dispatch] is null.
-  void Function(Map<String, dynamic> qso)? suggestQso;
-
-  /// Whether this operation is the route the operator is actually looking at.
-  /// False with Settings, or a nested operation, pushed over it — where a
-  /// suggestion still lands correctly but nothing on screen shows it.
-  bool Function()? isVisible;
-}
+export 'operation_command_context.dart';
 
 /// The core services bundle passed down to screens.
 class HaLoServices {
@@ -557,7 +532,18 @@ class HaLoServices {
 
   /// The open operation's verdicts and the spotted calls' info, shared by the
   /// Spots Panel and `getSpots` (see SpotBoardService).
-  late final SpotBoardService spotBoard = SpotBoardService(extensions: extensions, spots: spots, settings: settings, radio: radio, scoring: scoring);
+  late final SpotBoardService spotBoard = SpotBoardService(
+    extensions: extensions,
+    spots: spots,
+    settings: settings,
+    radio: radio,
+    scoring: scoring,
+    chase: chase,
+  );
+
+  /// What the operator chases, and every candidate's verdicts against the
+  /// claims (docs/design/claims.md §8).
+  late final ChaseService chase = ChaseService(extensions: extensions, claims: claims, settings: settings);
 
   final LookupQueueService? _lookupQueueOverride;
   late final LookupQueueService lookupQueue =

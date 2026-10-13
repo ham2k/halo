@@ -18,6 +18,7 @@ import 'package:ham2k_logger/services/extensions/extension_scoring.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/spot_board.dart' show spotCandidateKey;
 import 'package:ham2k_logger/services/spot_board_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -34,6 +35,12 @@ class _FakeExtensions extends ExtensionService {
 
   /// Calls whose lookup answers null, as a runtime still booting does.
   final Set<String> unanswered = {};
+
+  /// The calls scoring answers as duplicates; null for every one.
+  Set<String>? duplicates;
+
+  /// The chasing programs registered: none, unless a test registers some.
+  Map<String, ChasingProgram> programs = const {};
 
   @override
   ExtensionHost? get host => _host;
@@ -62,13 +69,23 @@ class _FakeExtensions extends ExtensionService {
     passes.add(candidates);
     await hold?.future;
     return {
-      for (final key in candidates.keys)
+      for (final MapEntry(:key, :value) in candidates.entries)
         key: {
           'notices': const <String>[],
-          'alerts': const ['duplicate'],
+          'alerts': [if (duplicates?.contains((value['their'] as Map)['call']) ?? true) 'duplicate'],
         },
     };
   }
+
+  @override
+  Future<Map<String, ChasingProgram>?> getChasingPrograms() async => programs;
+
+  /// Every program's checklist is the calls worked, on any band and mode.
+  @override
+  Future<Map<String, List<QsoClaim>>?> claimsForQsos(String programKey, List<Map<String, dynamic>> qsos) async => {
+    for (final qso in qsos)
+      qso['uuid'] as String: [QsoClaim(holder: 'ME', ref: (qso['their'] as Map)['call'] as String, band: null, mode: null, level: ClaimLevel.worked)],
+  };
 
   @override
   Future<Map<String, dynamic>?> lookupCall(
@@ -304,4 +321,130 @@ void main() {
       expect(extensions.lookedUp..sort(), ['K1ABC', 'W1AW']);
     }),
   );
+
+  group('chasing', () {
+    final callsProgram = {'calls': const ChasingProgram(key: 'calls', label: 'Calls', version: 1, editions: ChasingEditions.lifetime)};
+    String keyOf(String call) => spotCandidateKey(call, _spot(call, hookKey: 'pota'));
+    List<ChaseVerdict> verdictsOf(SpotScore? score) => [for (final key in score?.notices ?? const <String>[]) ?ChaseNotice.tryParse(key)?.verdict];
+
+    /// The Chasing view's board: its stand-in operation, shown as chasing.
+    Future<void> chase() async {
+      await openBoard();
+      extensions.programs = callsProgram;
+      // Programs are asked for once per runtime: registering one is a new one.
+      extensions.runtimeGeneration.value++;
+      extensions.duplicates = {'W1AW'};
+      view.show(
+        Operation(uuid: '', data: const {'stationCall': 'ME'}),
+        const [],
+        logRevision: 'r0',
+        chasing: true,
+      );
+      await Future<void>.delayed(_debounce);
+      await pumpEventQueue();
+    }
+
+    // The Chasing view ranks by what the checklist lacks; the period's own
+    // scoring only says what was already worked today.
+    test(
+      'a station the checklist lacks carries its verdict, and one worked this period stays struck with none',
+      () => runOnFakeClock((_) async {
+        await chase();
+        final scores = services.spotBoard.scoresFor('')!;
+        expect(verdictsOf(scores[keyOf('K1ABC')]), [ChaseVerdict.newRef]);
+        expect(scores[keyOf('K1ABC')]!.alerts, isEmpty);
+        expect(scores[keyOf('W1AW')]!.notices, isEmpty, reason: 'a notice beside the dupe would un-strike it');
+        expect(scores[keyOf('W1AW')]!.alerts, ['duplicate']);
+      }),
+    );
+
+    // Logging the station fills its slot; the spot must stop reading "new"
+    // then, not at the next spots refresh or scoring pass.
+    test(
+      'a slot filled re-judges the board, without a scoring pass',
+      () => runOnFakeClock((_) async {
+        await chase();
+        final passes = extensions.passes.length;
+        await services.claims.applyUpgrades([
+          StoredClaim.fromQso(
+            program: 'calls',
+            version: 1,
+            claim: const QsoClaim(holder: 'ME', ref: 'K1ABC', band: null, mode: null, level: ClaimLevel.worked),
+            qso: 'q1',
+            atMillis: 1,
+          ),
+        ]);
+        await Future<void>.delayed(const Duration(seconds: 1));
+        await pumpEventQueue();
+        expect(verdictsOf(services.spotBoard.scoresFor('')![keyOf('K1ABC')]), [ChaseVerdict.unconfirmed]);
+        expect(extensions.passes, hasLength(passes));
+      }),
+    );
+
+    test(
+      'an operation reads its own scoring, with chasing notices only under EXP CHASE and only those alerting',
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.programs = callsProgram;
+        extensions.runtimeGeneration.value++;
+        extensions.duplicates = const {};
+        final operation = await show();
+        expect(verdictsOf(services.spotBoard.scoresFor(operation.uuid)![keyOf('K1ABC')]), isEmpty);
+        await settings.setExperimentEnabled('chase', true);
+        view.show(operation, const [], logRevision: 'r1');
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(verdictsOf(services.spotBoard.scoresFor(operation.uuid)![keyOf('K1ABC')]), [ChaseVerdict.newRef]);
+      }),
+    );
+
+    // The new operation's scores land before its judging does. Merged with
+    // the verdicts judged for the Chasing view's station, its spots would
+    // read new to a checklist the operation is not chasing, if only briefly.
+    test(
+      'an operation shown after the Chasing view never carries the Chasing view\'s verdicts',
+      () => runOnFakeClock((_) async {
+        await chase();
+        expect(verdictsOf(services.spotBoard.scoresFor('')![keyOf('K1ABC')]), [ChaseVerdict.newRef]);
+        final operation = await services.operations.create(stationCall: 'N0DEV');
+        final seen = <List<ChaseVerdict>>[];
+        void record() => seen.add(verdictsOf(services.spotBoard.scoresFor(operation.uuid)?[keyOf('K1ABC')]));
+        services.spotBoard.addListener(record);
+        addTearDown(() => services.spotBoard.removeListener(record));
+        view.show(operation, const [], logRevision: 'r0');
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(seen, isNotEmpty);
+        expect(seen.expand((verdicts) => verdicts), isEmpty);
+      }),
+    );
+
+    // Claims sync with chasing off too, and every write tells the chase
+    // service. A board with nothing judged has nothing to rebuild for it.
+    test(
+      'with chasing off, a write to the checklists leaves the board alone',
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.programs = callsProgram;
+        extensions.runtimeGeneration.value++;
+        await show();
+        var told = 0;
+        void count() => told++;
+        services.spotBoard.addListener(count);
+        addTearDown(() => services.spotBoard.removeListener(count));
+        await services.claims.applyUpgrades([
+          StoredClaim.fromQso(
+            program: 'calls',
+            version: 1,
+            claim: const QsoClaim(holder: 'ME', ref: 'K1ABC', band: null, mode: null, level: ClaimLevel.worked),
+            qso: 'q1',
+            atMillis: 1,
+          ),
+        ]);
+        await Future<void>.delayed(const Duration(seconds: 1));
+        await pumpEventQueue();
+        expect(told, 0);
+      }),
+    );
+  });
 }

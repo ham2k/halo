@@ -39,6 +39,18 @@ class ClaimsRepository {
   /// rows stops vouching.
   Stream<void> get cleared => _cleared.stream;
 
+  /// Fires after any write to the table, from this device or from sync —
+  /// sync's own bookkeeping included, so a reader of [checklist] reloads more
+  /// often than a slot changes, never less.
+  Stream<void> get changes => db.tableUpdates(TableUpdateQuery.onTable(db.claims)).map((_) {});
+
+  /// Moves with every [clearAll]. A pass reads it before it reads the log and
+  /// hands it to [applyUpgrades] or [writeRescan], which then write nothing
+  /// if the table was emptied meanwhile: rows from the log the device left
+  /// behind would otherwise outlive the clear, naming contacts that are gone.
+  int get generation => _generation;
+  int _generation = 0;
+
   /// The live `log` rows held by any of [qsoUuids]: the slots those contacts
   /// fill today, which an edit or a deletion may take from them.
   Future<List<StoredClaim>> heldBy(Iterable<String> qsoUuids) async {
@@ -80,7 +92,7 @@ class ClaimsRepository {
   /// leaves those alone.
   ///
   /// Returns the rows written.
-  Future<int> applyUpgrades(Iterable<StoredClaim> candidates) async {
+  Future<int> applyUpgrades(Iterable<StoredClaim> candidates, {int? generation}) async {
     final best = <String, StoredClaim>{};
     for (final candidate in candidates) {
       final held = best[candidate.uuid];
@@ -88,6 +100,7 @@ class ClaimsRepository {
     }
     if (best.isEmpty) return 0;
     final written = await db.transaction(() async {
+      if (generation != null && generation != _generation) return 0;
       final existing = await _byUuid(best.keys);
       final now = realNowMillis();
       var written = 0;
@@ -106,7 +119,7 @@ class ClaimsRepository {
         } else {
           continue;
         }
-        await _write(next.copyWith(updatedAtMillis: now), synced: false);
+        await _write(next.copyWith(updatedAtMillis: _stampOver(held, now)), synced: false);
         written++;
       }
       return written;
@@ -141,8 +154,10 @@ class ClaimsRepository {
     Map<String, StoredClaim> best, {
     Set<String> unanswered = const {},
     Future<Set<String>> Function(Iterable<String> qsoUuids)? knownContacts,
+    int? generation,
   }) async {
     final written = await db.transaction(() async {
+      if (generation != null && generation != _generation) return 0;
       final rows = await (db.select(db.claims)..where((c) => c.program.equals(program) & c.source.equals(kClaimSourceLog))).get();
       final existing = {for (final row in rows) row.uuid: _fromRow(row)};
       final named = {
@@ -162,12 +177,12 @@ class ClaimsRepository {
       for (final claim in best.values) {
         final held = existing[claim.uuid];
         if (held != null && (held.version > version || held.sameContentAs(claim))) continue;
-        await _write(claim.copyWith(epoch: epoch, updatedAtMillis: now), synced: false);
+        await _write(claim.copyWith(epoch: epoch, updatedAtMillis: _stampOver(held, now)), synced: false);
         written++;
       }
       for (final held in existing.values) {
         if (held.deleted || held.version > version || best.containsKey(held.uuid)) continue;
-        await _write(held.copyWith(epoch: epoch, deleted: true, updatedAtMillis: now), synced: false);
+        await _write(held.copyWith(epoch: epoch, deleted: true, updatedAtMillis: _stampOver(held, now)), synced: false);
         written++;
       }
       return written;
@@ -260,6 +275,7 @@ class ClaimsRepository {
   /// ranks rows that share one history, so a device joining or leaving an
   /// account starts from none.
   Future<void> clearAll() async {
+    _generation++;
     await db.delete(db.claims).go();
     _cleared.add(null);
   }
@@ -275,6 +291,12 @@ class ClaimsRepository {
     }
     return found;
   }
+
+  /// The stamp for a local write replacing [held]: [now], or one past
+  /// [held]'s when that is not older. [markSynced] tells a revision by its
+  /// stamp, so a rewrite in the same millisecond as the push that read the
+  /// row would otherwise be marked synced and never sent.
+  static int _stampOver(StoredClaim? held, int now) => math.max(now, (held?.updatedAtMillis ?? -1) + 1);
 
   Future<void> _write(StoredClaim claim, {required bool synced}) => db
       .into(db.claims)

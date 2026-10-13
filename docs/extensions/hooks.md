@@ -1500,6 +1500,9 @@ registerHook("chasing", { key: "dxcc", hook: {
 - **`program`** is plain data, read across every extension in one call
   without invoking anything. Raise `version` whenever the same contacts would
   claim something different: the app keeps no claim from an older version.
+  `supersedes` names the scoring notices the program's verdicts stand in for
+  (DXCC: `newDXCC`): wherever the program judges a call or a spot, the
+  scorer's notice is dropped in favor of the verdict.
 - **`claimsForQsos`** answers every contact in the batch, by `uuid` — a
   caller asking about something that is not a stored contact (a spot, the
   call being typed) gives it a `uuid` of its own, and a contact without one
@@ -1517,7 +1520,9 @@ registerHook("chasing", { key: "dxcc", hook: {
   (`band: 'event'`), whose placeholder calls are not stations.
 - **`holdersFor`** lists the holders a station claims as — the opaque
   strings the program puts on its claims — so the app knows whose checklist
-  to show.
+  to show: the first, in the current edition. An `annual` program names its
+  editions by UTC year (`'2026'`), which is how the app tells the current
+  one; an `event` program's checklist has no current edition to show.
 - **`summarizeClaims`** reads one holder's filled slots (`{ref, band, mode,
   level, label?}` each) into tallies, a `ScoreTally` without its `for`.
 

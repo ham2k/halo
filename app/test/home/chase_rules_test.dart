@@ -1,20 +1,19 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Chasing view's rules that need no view around them: which activities
-// are being chased and in what order, which controls the logging panel gets
-// for them, what a new contact carries of the chasing location, and where
-// each period begins.
+// The Chasing view's rules that need no view around them: which programs
+// are being chased and in what order, which controls the logging panel gets,
+// what a new contact carries of the chasing location, and where each period
+// begins.
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:ham2k_logger/services/extensions/extension_service.dart' show controlExtensionKeyField;
+import 'package:halo_core/halo_core.dart';
+import 'package:ham2k_logger/services/chase_service.dart';
 import 'package:ham2k_logger/views/chase_view.dart';
 
-/// As the fan-out hands it over, with the answering extension stamped on.
 Map<String, dynamic> _hunting(String extension, {String label = ''}) => {
   'key': '$extension/hunter',
-  controlExtensionKeyField: extension,
   'label': label.isEmpty ? extension.toUpperCase() : label,
   'icon': 'pine-tree',
   'color': '#2e7d32',
@@ -27,65 +26,54 @@ const Map<String, dynamic> _exchange = {
   'input': {'kind': 'text'},
 };
 
+ChasingProgram _program(String key) => ChasingProgram(key: key, label: key.toUpperCase(), version: 1, editions: ChasingEditions.lifetime);
+
 void main() {
   group('resolveChaseGoals', () {
-    test('keeps the stored order and on/off, and drops activities no longer offered', () {
+    test('keeps the stored order and on/off, and leaves out programs no longer registered', () {
       final goals = resolveChaseGoals(
-        [_hunting('pota'), _hunting('sota')],
+        {'pota': _program('pota'), 'dxcc': _program('dxcc')},
         [
-          {'key': 'sota', 'on': true},
+          {'key': 'dxcc', 'on': true},
           {'key': 'gone', 'on': true},
           {'key': 'pota', 'on': false},
         ],
       );
-      expect([for (final g in goals) (g.key, g.on)], [('sota', true), ('pota', false)]);
+      expect([for (final g in goals) (g.key, g.on)], [('dxcc', true), ('pota', false)]);
+      expect(goals.first.label, 'DXCC', reason: 'the label is the program\'s own');
     });
 
-    // Enabling an extension makes an activity AVAILABLE. Chasing it on every
-    // contact from then on is the operator's call, made in the sheet — not a
-    // side effect of a toggle in Manage Extensions.
-    test('an activity offered for the first time is not chased until it is added', () {
+    // An extension enabled with a program in it is one the operator means to
+    // chase; making them add it again in the sheet is a step nobody asked for.
+    test('a program registered for the first time joins at the end, chased', () {
       final goals = resolveChaseGoals(
-        [_hunting('pota'), _hunting('wwff')],
+        {'pota': _program('pota'), 'dxcc': _program('dxcc')},
         [
-          {'key': 'pota', 'on': true},
+          {'key': 'pota', 'on': false},
         ],
       );
-      expect(goals.singleWhere((g) => g.key == 'wwff').on, isFalse);
-      expect(resolveChaseGoals([_hunting('pota')], const []).single.on, isFalse, reason: 'nothing stored yet: nothing chased');
+      expect([for (final g in goals) (g.key, g.on)], [('pota', false), ('dxcc', true)]);
     });
 
-    test('only hunting reference controls are goals, one per extension', () {
-      final goals = resolveChaseGoals([
-        _hunting('pota'),
-        _exchange,
-        {..._hunting('pota'), 'key': 'pota/second'},
-      ], const []);
-      expect(goals.map((g) => g.key), ['pota']);
-      expect(goals.single.color, '#2e7d32', reason: 'the accent travels with the goal, for its icon');
-    });
-
-    test('a goal is the extension that answered, not its control key\'s namespace', () {
-      // The catalog's POTA is `ham2k-pota` and keys its controls `pota/…`;
-      // a second supplier keying its controls the same way must still be a
-      // goal of its own.
-      final goals = resolveChaseGoals([
-        {..._hunting('pota'), controlExtensionKeyField: 'ham2k-pota'},
-        {..._hunting('pota'), controlExtensionKeyField: 'ki2d-pota'},
-      ], const []);
-      expect(goals.map((g) => g.key), ['ham2k-pota', 'ki2d-pota']);
+    // Removing an extension takes its program out of the list; adding it back
+    // must not undo the operator's choice to stop chasing it. Without the
+    // entries kept for programs not registered, the round trip turns it on.
+    test('a program turned off stays off across its extension being removed and added again', () {
+      var stored = <Object?>[
+        {'key': 'pota', 'on': true},
+        {'key': 'dxcc', 'on': false},
+      ];
+      final withoutDxcc = resolveChaseGoals({'pota': _program('pota')}, stored);
+      stored = storedChaseGoals([for (final g in withoutDxcc) g.withOn(true)], stored);
+      final back = resolveChaseGoals({'pota': _program('pota'), 'dxcc': _program('dxcc')}, stored);
+      expect(back.singleWhere((g) => g.key == 'dxcc').on, isFalse);
     });
   });
 
   group('chaseLoggingControls', () {
-    test("a goal's control shows only while chased, in goal order, ahead of the rest", () {
-      final controls = [_exchange, _hunting('pota'), _hunting('sota'), _hunting('wwff')];
-      final goals = resolveChaseGoals(controls, [
-        {'key': 'sota', 'on': true},
-        {'key': 'wwff', 'on': false},
-        {'key': 'pota', 'on': true},
-      ]);
-      expect(chaseLoggingControls(controls, goals).map((c) => c['key']), ['sota/hunter', 'pota/hunter', 'cwt/exchange']);
+    test('every hunting control shows, ahead of the rest, whatever the goals', () {
+      final controls = [_exchange, _hunting('pota'), _hunting('sota')];
+      expect(chaseLoggingControls(controls).map((c) => c['key']), ['pota/hunter', 'sota/hunter', 'cwt/exchange']);
     });
   });
 

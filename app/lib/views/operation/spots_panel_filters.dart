@@ -238,6 +238,15 @@ class _SpotsFilterDialog extends StatefulWidget {
   final Map<String, int> modeSpotCounts;
   final Map<int, int> ageSpotCounts;
   final String sortBy;
+
+  /// Whether the Chasing view's sort by verdict is offered — see
+  /// `ChaseService.spotsSortBy`.
+  final bool offersWanted;
+
+  /// The Chasing view's "only spots with alerts", null where it is not
+  /// offered.
+  final bool? alertingOnly;
+  final ValueChanged<bool>? onAlertingOnlyChanged;
   final bool groupByBand;
   final bool groupCallsWithNotes;
   final List<String> sources;
@@ -273,6 +282,9 @@ class _SpotsFilterDialog extends StatefulWidget {
     required this.modeSpotCounts,
     required this.ageSpotCounts,
     required this.sortBy,
+    this.offersWanted = false,
+    this.alertingOnly,
+    this.onAlertingOnlyChanged,
     required this.groupByBand,
     required this.groupCallsWithNotes,
     required this.sources,
@@ -302,6 +314,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
   late String _modeFilter = widget.modeFilter;
   late int _ageMinutes = widget.ageMinutes;
   late String _sortBy = widget.sortBy;
+  late bool? _alertingOnly = widget.alertingOnly;
   late bool _groupByBand = widget.groupByBand;
   late bool _groupCallsWithNotes = widget.groupCallsWithNotes;
   late final Set<String> _disabledSources = {...widget.disabledSources};
@@ -403,6 +416,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                   // selected segment (same as settings_view).
                   showSelectedIcon: false,
                   segments: [
+                    if (widget.offersWanted) ButtonSegment(value: kChaseSortWanted, label: Text(t.operation.spots.filters.sortByWanted)),
                     ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
                     ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
                   ],
@@ -434,6 +448,15 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
                   widget.onGroupCallsWithNotesChanged(value);
                 },
               ),
+              if (_alertingOnly case final alertingOnly?)
+                _toggleRow(
+                  title: t.operation.spots.filters.alertingOnly,
+                  value: alertingOnly,
+                  onChanged: (value) {
+                    setState(() => _alertingOnly = value);
+                    widget.onAlertingOnlyChanged?.call(value);
+                  },
+                ),
             ],
           ),
           if (widget.sources.isNotEmpty)

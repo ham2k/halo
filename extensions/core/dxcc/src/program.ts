@@ -49,13 +49,16 @@ function storedCode(side: Record<string, JSONValue>): number | undefined {
 /// under a mainland call says 110 where the callsign says 291 — the same rule
 /// the ADIF export follows (core/adif). A lookup's guess comes next; the
 /// callsign is the fallback, and it settles an entity outright, so a claim
-/// resolved from it is not a guess. One resolved from a lookup is.
+/// resolved from it is not a guess. One resolved from a lookup is, unless
+/// the callsign says the same: nearly every lookup only repeats it, and a
+/// guess there would read "probably new" on every call typed.
 function theirEntity(their: Record<string, JSONValue>, call: string): { dxccCode?: number; entityName?: string; guess?: boolean } {
   const stored = storedCode(their)
   const code = stored ?? storedCode(obj(their.guess))
   if (code == null) return entityForCall(call)
   const name = typeof their.entityName === "string" && their.entityName ? their.entityName : DXCC_BY_CODE[code]?.name
-  return { dxccCode: code, ...(name ? { entityName: name } : {}), ...(stored == null ? { guess: true } : {}) }
+  const guess = stored == null && code !== entityForCall(call).dxccCode
+  return { dxccCode: code, ...(name ? { entityName: name } : {}), ...(guess ? { guess } : {}) }
 }
 
 /// The ADIF award DXCC credits each kind of slot under: Mixed, a band, a mode.
@@ -134,7 +137,7 @@ function summarizeClaims({ slots }: { holder: string; slots: ClaimSlot[] }, ctx:
 }
 
 export const dxccProgram: ChasingHook = {
-  program: { label: "DXCC", icon: "earth", version: 1, editions: "lifetime" },
+  program: { label: "DXCC", icon: "earth", version: 1, editions: "lifetime", supersedes: ["newDXCC"] },
   claimsForQsos,
   holdersFor: ({ station }) => (typeof station.call === "string" && station.call ? [holderFor(station.call, storedCode(station))] : []),
   summarizeClaims,

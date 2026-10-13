@@ -1467,8 +1467,15 @@ export interface ChasingProgram {
   /// from an older version.
   version: number
   /// `annual` and `event` programs put an `edition` on every claim; a
-  /// `lifetime` program leaves it out.
+  /// `lifetime` program leaves it out. An `annual` program names each
+  /// edition by the contact's UTC year (`'2026'`): the year is how the app
+  /// tells which checklist is the current one.
   editions: "lifetime" | "annual" | "event"
+  /// Scoring notices this program's verdicts stand in for (`newDXCC` for
+  /// DXCC): wherever the program judges a call or a spot, the app shows its
+  /// verdict and drops the scorer's notice, rather than two pills saying
+  /// "new" about different checklists.
+  supersedes?: string[]
 }
 
 /// worked: a contact counts toward the slot. confirmed: that contact has a QSL

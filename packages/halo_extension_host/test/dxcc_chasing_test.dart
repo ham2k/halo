@@ -19,7 +19,13 @@ void main() {
     final entries = await host.invokeHookAll('chasing', method: 'program', timeout: const Duration(seconds: 20));
     final dxcc = entries.singleWhere((entry) => entry['key'] == 'dxcc');
     expect(dxcc['ok'], isTrue);
-    expect(dxcc['value'], {'label': 'DXCC', 'icon': 'earth', 'version': 1, 'editions': 'lifetime'});
+    expect(dxcc['value'], {
+      'label': 'DXCC',
+      'icon': 'earth',
+      'version': 1,
+      'editions': 'lifetime',
+      'supersedes': ['newDXCC'],
+    });
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a contact comes back as its Mixed, band and mode claims', () async {

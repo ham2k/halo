@@ -78,7 +78,7 @@ void main() {
 
     await openSheet();
     expect(tester.widget<CollapsibleSection>(band()).expanded, isTrue, reason: 'open the first time');
-    await tester.tap(find.text('Extensions that include chasing'));
+    await tester.tap(find.text('More chasing programs'));
     await settleFrames(tester);
     expect(tester.widget<CollapsibleSection>(band()).expanded, isFalse);
 

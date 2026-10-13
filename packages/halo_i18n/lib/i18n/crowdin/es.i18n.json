@@ -291,7 +291,7 @@
     "goals": {
       "title": "Objetivos de cacería",
       "remove": "Dejar de cazar ${name}",
-      "extensionsTitle": "Extensiones que incluyen cacería"
+      "extensionsTitle": "Más programas de cacería"
     },
     "panels": {
       "logging": "QSOs",
@@ -307,7 +307,24 @@
       "checking": "Revisando QSOs para cacería",
       "rebuilding": "Revisando el registro para ${program}",
       "progress": "${done} de ${total} QSOs"
-    }
+    },
+    "notice": {
+      "newRef": "${program} nuevo",
+      "newRefGuess": "${program} probablemente nuevo",
+      "newBand": "${program}: banda nueva",
+      "newBandGuess": "${program}: banda probablemente nueva",
+      "newMode": "${program}: modo nuevo",
+      "newModeGuess": "${program}: modo probablemente nuevo",
+      "unconfirmed": "${program} sin confirmar"
+    },
+    "alerts": {
+      "title": "Alertas",
+      "newRef": "Referencia nueva",
+      "newBand": "Banda nueva",
+      "newMode": "Modo nuevo",
+      "unconfirmed": "Sin confirmar"
+    },
+    "checklists": "Progreso de cacería"
   },
   "dialogs": {
     "operationDetails": "Detalles de la operación",
@@ -735,8 +752,10 @@
         "sorting": "Orden",
         "sortByTime": "Por hora del spot",
         "sortByFrequency": "Por frecuencia",
+        "sortByWanted": "Más buscados",
         "groupByBand": "Agrupar por banda",
         "groupCallsWithNotes": "Agrupar indicativos destacados",
+        "alertingOnly": "Solo spots con alerta",
         "sourceNoReply": "Sin respuesta",
         "sourceError": "Error"
       },

@@ -495,7 +495,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       );
     }
 
-    String labelOf(String key) => scoreNoticeLabel(context, key);
+    String labelOf(String key) => scoreNoticeLabel(context, key, programs: widget.services.chase.programs);
     return [
       for (final label in scorePillLabels(widget.alertKeys, widget.scoreSources, labelOf)) pill(label, alert: true),
       for (final label in scorePillLabels(widget.noticeKeys, widget.scoreSources, labelOf)) pill(label, alert: false),

@@ -225,9 +225,12 @@ class ClaimsService {
     if (wake) _enqueue(_refresh);
   }
 
-  /// A new runtime may carry new programs, or new versions of them.
+  /// A new runtime may carry new programs, or new versions of them, and may
+  /// answer for the changes a pass held because the last one could not.
   void _onRuntime() {
-    if (_active) _enqueue(_refresh);
+    if (!_active) return;
+    _enqueue(_refresh);
+    if (_pending.isNotEmpty || _pendingAll) _schedule();
   }
 
   void _onChanges(Set<String>? uuids) {
@@ -241,10 +244,12 @@ class ClaimsService {
     if (_started) _schedule();
   }
 
-  Future<void> _onOperationDeletion(String operation) async {
+  /// Queued like a pass, so [idle] covers the lookup: until it answers,
+  /// nothing says which contacts the deletion took out of the log.
+  void _onOperationDeletion(String operation) => _enqueue(() async {
     final contacts = await qsos.uuidsInOperation(operation);
     if (contacts.isNotEmpty) _onChanges(contacts.toSet());
-  }
+  }, evenIfIdle: true);
 
   /// Rows sync merged before [start]: the check needs the programs, which
   /// the runtime answers for only once it is up.
@@ -321,6 +326,7 @@ class ClaimsService {
   /// Asks every program about the contacts that changed since the last pass,
   /// a page at a time: an import or a sync backlog names tens of thousands.
   Future<void> _drain() async {
+    final generation = claims.generation;
     final uuids = [..._pending];
     final all = _pendingAll;
     _pending.clear();
@@ -374,7 +380,7 @@ class ClaimsService {
             await _forget(program.key);
             continue;
           }
-          await claims.applyUpgrades(answer.values.expand((claims) => claims));
+          await claims.applyUpgrades(answer.values.expand((claims) => claims), generation: generation);
 
           final dropped = held.any((row) {
             if (row.program != program.key) return false;
@@ -395,11 +401,14 @@ class ClaimsService {
       statusBar?.clear(_progressKey);
     }
 
-    _settled();
-    if (!holdsWholeLog()) return;
-    for (final program in programs.values) {
-      if (lowered.contains(program.key) && !missed.contains(program.key)) await _rescan(program);
+    // Settled only once the rescans that lower slots are done: a quit before
+    // then leaves the marker set, and the next launch rebuilds.
+    if (holdsWholeLog()) {
+      for (final program in programs.values) {
+        if (lowered.contains(program.key) && !missed.contains(program.key)) await _rescan(program);
+      }
     }
+    _settled();
     // One more try for a program that failed here, rather than leaving its
     // checklist behind until the next launch or runtime. It is not repeated:
     // a program that fails every time would otherwise rescan in a loop.
@@ -412,23 +421,10 @@ class ClaimsService {
     if (_pending.isEmpty && !_pendingAll) _markPending(false);
   }
 
-  Map<String, ChasingProgram>? _programs;
-  int? _programsGeneration;
-
-  /// The registered programs, asked for once per runtime: only a new one
-  /// can bring or take away a program, and asking on every pass is a
-  /// crossing into every extension for each contact logged. Null, and not
-  /// kept, when the runtime could not be asked.
-  Future<Map<String, ChasingProgram>?> _chasingPrograms() async {
-    final generation = extensions.runtimeGeneration.value;
-    if (_programs == null || _programsGeneration != generation) {
-      final programs = await extensions.getChasingPrograms();
-      if (programs == null) return null;
-      _programs = programs;
-      _programsGeneration = generation;
-    }
-    return _programs;
-  }
+  /// The registered programs, once per runtime
+  /// ([ExtensionChasing.chasingPrograms]); null when the runtime could not be
+  /// asked.
+  Future<Map<String, ChasingProgram>?> _chasingPrograms() => extensions.chasingPrograms();
 
   /// What each of [batch] — at most [kClaimsBatchSize] contacts, one crossing
   /// into the runtime — claims under [program] as stored rows, keyed by
@@ -458,6 +454,7 @@ class ClaimsService {
   /// withdraw every slot the rest of it holds. A contact it leaves out of
   /// an answer keeps the slots it holds, for the same reason.
   Future<void> _rescan(ChasingProgram program) async {
+    final generation = claims.generation;
     final title = t.chase.claims.rebuilding(program: program.label);
     final total = await qsos.liveCount();
     final best = <String, StoredClaim>{};
@@ -488,7 +485,7 @@ class ClaimsService {
       // the rows are written so a row sync merges meanwhile is judged too: a
       // contact the program left out, and one that has not reached this
       // device yet, may each beat everything here.
-      await claims.writeRescan(program.key, program.version, best, unanswered: unanswered.toSet(), knownContacts: qsos.knownAmong);
+      await claims.writeRescan(program.key, program.version, best, unanswered: unanswered.toSet(), knownContacts: qsos.knownAmong, generation: generation);
     } finally {
       statusBar?.clear(_progressKey);
     }

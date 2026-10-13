@@ -19,6 +19,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+import 'chase_service.dart';
 import 'extensions/extension_service.dart';
 import 'radio_service.dart';
 import 'scoring_service.dart';
@@ -28,7 +29,7 @@ import 'spots_service.dart';
 
 typedef SpotCallInfo = ({bool hasNote, String? emoji, String? continent});
 typedef SpotScore = ({List<String> notices, List<String> alerts});
-typedef _Shown = ({Operation operation, List<Qso> qsos, String logRevision});
+typedef _Shown = ({Operation operation, List<Qso> qsos, String logRevision, bool chasing});
 
 /// One viewer's hold on the board: an Operation View, a Spots Panel.
 class SpotBoardSubscription {
@@ -43,11 +44,13 @@ class SpotBoardSubscription {
   bool _cancelled = false;
 
   /// This viewer now shows [operation], whose log is [qsos] and
-  /// [logRevision] its fingerprint. Callable from a build or an update. A
-  /// viewer covered by another records it without taking the board.
-  void show(Operation operation, List<Qso> qsos, {required String logRevision}) {
+  /// [logRevision] its fingerprint — [chasing] for the Chasing view, whose
+  /// spots read chasing verdicts where an operation's read its scoring.
+  /// Callable from a build or an update. A viewer covered by another records
+  /// it without taking the board.
+  void show(Operation operation, List<Qso> qsos, {required String logRevision, bool chasing = false}) {
     if (_cancelled) return;
-    _shown = (operation: operation, qsos: qsos, logRevision: logRevision);
+    _shown = (operation: operation, qsos: qsos, logRevision: logRevision, chasing: chasing);
     _board._reconcile();
   }
 
@@ -61,13 +64,17 @@ class SpotBoardSubscription {
 }
 
 class SpotBoardService extends ChangeNotifier {
-  SpotBoardService({required this.extensions, required this.spots, required this.settings, required this.radio, required this.scoring});
+  SpotBoardService({required this.extensions, required this.spots, required this.settings, required this.radio, required this.scoring, this.chase});
 
   final ExtensionService extensions;
   final SpotsService spots;
   final SettingsService settings;
   final RadioService radio;
   final ScoringService scoring;
+
+  /// Where the chasing verdicts come from; none, and spots carry scoring
+  /// alone.
+  final ChaseService? chase;
 
   /// Bumped whenever what a board reader would show may have changed: a spot
   /// refresh, new verdicts or call info, an edit to the operator's spot
@@ -88,9 +95,20 @@ class SpotBoardService extends ChangeNotifier {
   /// [operationUuid], or null until a pass has landed for it (it is not the
   /// operation shown, or its first pass has not answered). Within a landed
   /// pass, an absent key means "nothing to report".
-  Map<String, SpotScore>? scoresFor(String operationUuid) => _scoredUuid != null && _scoredUuid == operationUuid ? _scores : null;
+  ///
+  /// The chasing notices ([ChaseNotice]) ride along, folded in by
+  /// [ChaseService.withNotices]: in place of scoring's for the Chasing view,
+  /// beside them elsewhere.
+  Map<String, SpotScore>? scoresFor(String operationUuid) => _scoredUuid != null && _scoredUuid == operationUuid ? _withChase : null;
   Map<String, SpotScore> _scores = {};
   String? _scoredUuid;
+
+  /// Each candidate's chasing verdicts, per goal in goal order, by
+  /// [spotCandidateKey]; empty until judged, and for a candidate no goal
+  /// applies to.
+  Map<String, List<ChaseJudgement>> get judgements => _judgements;
+  Map<String, List<ChaseJudgement>> _judgements = {};
+  Map<String, SpotScore> _withChase = {};
 
   /// The operation the board is judged against: the one shown by the most
   /// recent subscription that is still open and has shown one, followers
@@ -110,6 +128,7 @@ class SpotBoardService extends ChangeNotifier {
   /// a moved log.
   String? _judgedUuid;
   String? _judgedRevision;
+  bool? _judgedChasing;
 
   VoidCallback? _unsubscribeSpots;
 
@@ -130,6 +149,7 @@ class SpotBoardService extends ChangeNotifier {
       spots.addListener(_onSpotsChanged);
       settings.addListener(_onSettingsChanged);
       radio.addListener(_onRadioChanged);
+      chase?.addListener(_onChaseChanged);
       _filtersKey = _currentFiltersKey;
       _disabledSources = settings.disabledSpotSources;
       _vfoKey = _currentVfoKey;
@@ -147,6 +167,7 @@ class SpotBoardService extends ChangeNotifier {
     spots.removeListener(_onSpotsChanged);
     settings.removeListener(_onSettingsChanged);
     radio.removeListener(_onRadioChanged);
+    chase?.removeListener(_onChaseChanged);
     _unsubscribeSpots?.call();
     _unsubscribeSpots = null;
     _scoreDebounce?.cancel();
@@ -154,6 +175,8 @@ class SpotBoardService extends ChangeNotifier {
     _judgedRevision = null;
     _scores = {};
     _scoredUuid = null;
+    _judgements = {};
+    _withChase = {};
     _callInfo.clear();
   }
 
@@ -166,13 +189,20 @@ class SpotBoardService extends ChangeNotifier {
   void _reconcile() {
     final shown = _shown;
     if (shown == null) return;
-    final switched = shown.operation.uuid != _judgedUuid;
+    final switched = shown.operation.uuid != _judgedUuid || shown.chasing != _judgedChasing;
     final moved = shown.logRevision != _judgedRevision;
     _judgedUuid = shown.operation.uuid;
     _judgedRevision = shown.logRevision;
+    _judgedChasing = shown.chasing;
     if (switched) {
       _scores = {};
       _scoredUuid = null;
+      // Judged from the station and view switched away from: merged into the
+      // new scores, they would show its verdicts until the next judging.
+      _judgements = {};
+      _chaseCandidates = {};
+      _judgeSerial++;
+      _mergeChase();
       // The pass made now answers whatever a pending debounce was waiting to.
       _scoreDebounce?.cancel();
       if (spots.loaded) scheduleMicrotask(() => unawaited(refreshScores()));
@@ -322,7 +352,7 @@ class SpotBoardService extends ChangeNotifier {
         _scoresStale = false;
         final shown = _shown;
         if (shown == null) return;
-        final (:operation, :qsos, logRevision: _) = shown;
+        final (:operation, :qsos, logRevision: _, chasing: _) = shown;
         final now = nowMillis();
         final candidates = <String, Map<String, dynamic>>{};
         void ask(Map<String, dynamic> spot) {
@@ -335,11 +365,20 @@ class SpotBoardService extends ChangeNotifier {
         for (final list in spots.spotsBySource.values) {
           list.forEach(ask);
         }
+        _chaseCandidates = {
+          for (final MapEntry(:key, :value) in candidates.entries)
+            key: {
+              ...value,
+              'our': {'call': operation.stationCall},
+            },
+        };
         if (candidates.isEmpty) {
           // Already judged empty: nothing a reader shows has moved.
-          if (_scores.isNotEmpty || _scoredUuid != operation.uuid) {
+          if (_scores.isNotEmpty || _judgements.isNotEmpty || _scoredUuid != operation.uuid) {
             _scores = {};
+            _judgements = {};
             _scoredUuid = operation.uuid;
+            _mergeChase();
             _bump();
           }
           continue;
@@ -373,12 +412,53 @@ class SpotBoardService extends ChangeNotifier {
         if (scored != null) {
           _scores = {for (final entry in scored.entries) entry.key: (notices: entry.value['notices'] ?? const [], alerts: entry.value['alerts'] ?? const [])};
           _scoredUuid = operation.uuid;
+          _mergeChase();
           _bump();
         }
+        await _judge();
       } while (_scoresStale && _subscribers > 0);
     } finally {
       _scoring = false;
     }
+  }
+
+  /// The last pass's candidates, worked from the shown station: what a change
+  /// to the goals or a checklist judges again, without a scoring pass.
+  Map<String, Map<String, dynamic>> _chaseCandidates = {};
+  int _judgeSerial = 0;
+
+  void _onChaseChanged() => unawaited(_judge());
+
+  /// Judges [_chaseCandidates] under every goal that is on. Asks the programs
+  /// only about candidates they have not seen ([ChaseService.judge] keeps
+  /// their claims), so a checklist changing costs a reread of the table, not
+  /// a crossing into the runtime per spot.
+  Future<void> _judge() async {
+    final chase = this.chase;
+    final shown = _shown;
+    if (chase == null || shown == null || _subscribers == 0) return;
+    final serial = ++_judgeSerial;
+    final judged = shown.chasing || chase.enabled ? await chase.judge(_chaseCandidates) : const <String, List<ChaseJudgement>>{};
+    if (serial != _judgeSerial || _subscribers == 0) return;
+    // Nothing judged before or now, as on every pass with chasing off: no
+    // reader has anything to rebuild.
+    if (judged.isEmpty && _judgements.isEmpty) return;
+    _judgements = judged;
+    _mergeChase();
+    _bump();
+  }
+
+  /// Folds [_judgements] into [_scores] ([ChaseService.withNotices]).
+  void _mergeChase() {
+    final chase = this.chase;
+    final chasing = _shown?.chasing ?? false;
+    if (chase == null || _judgements.isEmpty && !chasing) {
+      _withChase = _scores;
+      return;
+    }
+    _withChase = {
+      for (final key in {..._scores.keys, ..._judgements.keys}) key: chase.withNotices(_scores[key], _judgements[key] ?? const [], chasing: chasing),
+    };
   }
 
   /// The activity types this operation has hunted, cached by `ScoringService`.
@@ -393,6 +473,7 @@ class SpotBoardService extends ChangeNotifier {
       spots.removeListener(_onSpotsChanged);
       settings.removeListener(_onSettingsChanged);
       radio.removeListener(_onRadioChanged);
+      chase?.removeListener(_onChaseChanged);
       _unsubscribeSpots?.call();
     }
     super.dispose();

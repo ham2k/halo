@@ -129,10 +129,13 @@ void main() {
   });
 
   /// Lets the change stream deliver, the debounce fire, and every queued
-  /// pass finish.
+  /// pass finish — twice, since a queued step (an operation deletion's
+  /// lookup) can itself schedule a pass, after the first wait was over.
   Future<void> settle() async {
-    await Future<void>.delayed(const Duration(milliseconds: 1));
-    await service.idle;
+    for (var round = 0; round < 2; round++) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+      await service.idle;
+    }
   }
 
   Future<Qso> log(String call, {int at = 1000, bool lotw = false}) => qsos.add('', {
@@ -615,6 +618,47 @@ void main() {
     final second = await log('N0CALL');
     await settle();
     expect(await checklist(), {'K1ABC': (ClaimLevel.worked, first.uuid), 'N0CALL': (ClaimLevel.worked, second.uuid)});
+  });
+
+  // The next runtime only refreshes programs whose version moved; nothing
+  // else drains what the failed pass held. The contact would wait for an
+  // unrelated write, and the Chasing view call its entity new meanwhile.
+  test('changes held for a runtime that could not list the programs pass when the next runtime arrives', () async {
+    service.start();
+    await settle();
+    listingFails = true;
+    extensions.runtimeGeneration.value++;
+    final logged = await log('K1ABC');
+    await settle();
+    expect(await checklist(), isEmpty);
+
+    listingFails = false;
+    extensions.runtimeGeneration.value++;
+    await settle();
+    expect(await checklist(), {'K1ABC': (ClaimLevel.worked, logged.uuid)});
+    expect(settings.pending, isFalse);
+  });
+
+  // Deleting a slot's only holder is undone by the rescan that follows. A
+  // quit during it, with the marker already cleared and the built version
+  // still matching, leaves the slot to a deleted contact for good.
+  test('the pending marker stays set until the rescan that lowers a slot is done', () async {
+    final gone = await log('W1AW');
+    await log('K1ABC');
+    service.start();
+    await settle();
+    final pendingWhileAsked = <bool>[];
+    final answer = stubs['chasing:calls:claimsForQsos']! as Object? Function(Object?);
+    stubs['chasing:calls:claimsForQsos'] = (Object? args) {
+      pendingWhileAsked.add(settings.pending);
+      return answer(args);
+    };
+
+    await qsos.softDelete(gone);
+    await settle();
+    expect(pendingWhileAsked, isNotEmpty);
+    expect(pendingWhileAsked.last, isTrue);
+    expect(settings.pending, isFalse);
   });
 
   // A rebuild keeps rows it cannot judge, at whatever version they carry; a
