@@ -85,6 +85,46 @@ void main() {
       expect(types['sota']?.huntingType, 'sota');
     });
 
+    test('a catalog extension resolves by the activity\'s word and by its own key', () async {
+      // The catalog's POTA registers as `ham2k-pota` and keys its controls
+      // `pota/…`. A deep link says `pota:` (app-polo's activity key), and
+      // neither name may be read off the control key: that is the
+      // extension's to choose.
+      final extensions = _Extensions(
+        _MockHost({
+          'activity:*:operationControls': [
+            _ok('ham2k-pota', [_refControl('pota/activation', 'potaActivation')]),
+          ],
+          'activity:*:loggingControls': [
+            _ok('ham2k-pota', [_refControl('pota/hunter', 'pota')]),
+          ],
+        }),
+      );
+
+      final types = (await extensions.activityRefTypes()).byKey;
+      expect(types['pota']?.activationType, 'potaActivation');
+      expect(types['pota']?.huntingType, 'pota');
+      expect(types['ham2k-pota']?.activationType, 'potaActivation');
+    });
+
+    test('a collected control names the extension that answered, whatever it claims', () async {
+      // Everything that asks or names "the extension behind this control"
+      // reads this field, so an extension writing someone else's key into it
+      // would have that one asked in its place.
+      final extensions = _Extensions(
+        _MockHost({
+          'activity:*:operationControls': [
+            _ok('ham2k-pota', [
+              {..._refControl('pota/activation', 'potaActivation'), controlExtensionKeyField: 'ham2k-sota'},
+            ]),
+          ],
+        }),
+      );
+
+      final controls = (await extensions.operationControls(const {})).controls;
+      expect(controls.map(controlExtensionKey), ['ham2k-pota']);
+    });
+
     test('reports an activation-only program with no hunting type', () async {
       // Castles, mills and the like have no hunting side at all, so a
       // `their.refs=bca:…` must resolve to nothing rather than to the

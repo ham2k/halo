@@ -64,7 +64,7 @@ class _MapsViewState extends State<MapsView> {
   late final ActivitySearchState _search = ActivitySearchState(
     services: widget.services,
     currentOperation: () => _operation,
-    scopes: () => activityScopesOf(_controls),
+    scopes: () => activityScopesOf(_controls, widget.services.extensions.availableExtensions),
     controlsLoaded: () => _controlsLoaded,
     onAnswered: (_, _) {},
   )..addListener(_onSearchChanged);
@@ -185,7 +185,7 @@ class _MapsViewState extends State<MapsView> {
     for (final ref in [..._search.suggestions, ..._search.exploredSuggestions]) {
       if (locationForSuggestion(ref) == null) continue;
       final control = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
-      if (control != null) _mappedActivities.add(_activityKeyOf(control));
+      if (control != null) _mappedActivities.add(controlExtensionKey(control));
     }
   }
 
@@ -300,7 +300,7 @@ class _MapsViewState extends State<MapsView> {
     return [
       for (final control in _controls)
         if (controlScopeWord(control) != null)
-          if (_activityKeyOf(control) case final key when (_mappedActivities.contains(key) || _hiddenActivities.contains(key)) && seen.add(key))
+          if (controlExtensionKey(control) case final key when (_mappedActivities.contains(key) || _hiddenActivities.contains(key)) && seen.add(key))
             (
               key: key,
               name: extensions.where((info) => info.key == key).firstOrNull?.nameFor(locale) ?? (control['label'] as String?) ?? key,
@@ -309,14 +309,12 @@ class _MapsViewState extends State<MapsView> {
     ];
   }
 
-  static String _activityKeyOf(Map<String, dynamic> control) => ((control['key'] as String?) ?? '').split('/').first;
-
   /// Whether [ref] is of an activity the operator has not hidden. One that no
   /// running activity handles is shown, as the map would show it.
   bool _shows(Map<String, dynamic> ref) {
     if (_hiddenActivities.isEmpty) return true;
     final control = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
-    return control == null || !_hiddenActivities.contains(_activityKeyOf(control));
+    return control == null || !_hiddenActivities.contains(controlExtensionKey(control));
   }
 
   void _setActivityShown(String key, bool shown) {

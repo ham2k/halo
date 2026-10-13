@@ -32,8 +32,11 @@ const _operationPark = {'type': 'potaActivation', 'ref': 'US-0009', 'lat': 40.5,
 
 const MapViewBounds _view = (south: 40.5, west: -76.5, north: 41.5, east: -75.5);
 
+/// As the fan-out hands it over: a catalog POTA keys its controls `pota/…`
+/// and is registered as `ham2k-pota`, which the host stamps on.
 const _potaControl = <String, dynamic>{
   'key': 'pota/activation',
+  controlExtensionKeyField: 'ham2k-pota',
   'label': 'Parks',
   'input': {'kind': 'refList', 'refType': 'potaActivation'},
 };
@@ -214,7 +217,7 @@ void main() {
         await type(tester, 'pota:');
         await pan(tester, _view);
         // The map also fills its own first view; this pan is the one sent.
-        expect(extensions.pans.where((p) => p.view == _view).single.keys, ['pota']);
+        expect(extensions.pans.where((p) => p.view == _view).single.keys, ['ham2k-pota']);
 
         // A typed search is answered by what it names, not by where the map is.
         await type(tester, 'bear mountain');

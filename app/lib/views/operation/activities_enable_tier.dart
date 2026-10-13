@@ -22,8 +22,9 @@ import '../../services/extensions/extension_service.dart';
 
 /// How [input] should be matched against an extension the operator has NOT
 /// switched on: [search] is the whole box, matched loosely against names,
-/// descriptions and keywords; [key] is its first word, which must equal an
-/// extension's key exactly. A lone trailing colon is dropped from both.
+/// descriptions and keywords; [key] is its first word, which must equal one
+/// of an extension's scope words exactly — a `ref:` type it declares, or its
+/// key. A lone trailing colon is dropped from both.
 ///
 /// The first word is the part that matters here. An extension that is off
 /// contributes no controls, so `ActivitySearchQuery.parse` can't recognize its
@@ -49,15 +50,19 @@ import '../../services/extensions/extension_service.dart';
 /// prefix that matches nothing.
 bool _offered(ExtensionService extensions, ExtensionInfo info) => !info.core && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info);
 
-/// Extensions the tier offers that match [input] — by their exact key alone
-/// when [keyOnly], else by the loose search as well.
+/// Extensions the tier offers that match [input] — by a scope word alone
+/// (a `ref:` type they declare, or their key: [activityScopeWordsOf]) when
+/// [keyOnly], else by the loose search as well.
 List<ExtensionInfo> notRunningExtensionsMatching(ExtensionService extensions, String input, {bool keyOnly = false}) {
   final candidates = extensionSearchCandidates(input);
   if (candidates.search.isEmpty) return const [];
   final locale = LocaleSettings.currentLocale.languageCode;
   return [
     for (final info in extensions.availableExtensions)
-      if (_offered(extensions, info) && (info.key.toLowerCase() == candidates.key || (!keyOnly && info.matchesSearch(candidates.search, locale: locale)))) info,
+      if (_offered(extensions, info) &&
+          (activityScopeWordsOf(key: info.key, hooks: info.hooks).contains(candidates.key) ||
+              (!keyOnly && info.matchesSearch(candidates.search, locale: locale))))
+        info,
   ];
 }
 

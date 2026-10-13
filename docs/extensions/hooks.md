@@ -733,9 +733,11 @@ suggested the nearer of its point's and its outline's distance — so `pota`'s
 still reaches an operator standing on it. Called with no
 `searchTerm` for nearby suggestions, or with one for name/code search — an
 extension may honor either, both, or neither (returning `[]`). `scoped` is
-true when THIS extension alone was asked — the operator tapped its "Activity
-Types" row or typed its key as a scope — which a bare scope otherwise cannot be
-told from the nearby list, since neither carries a `searchTerm`. An extension
+true when THIS extension's own list was asked for — the operator tapped its
+"Activity Types" row or typed one of its words, with or without the colon
+(below) — which otherwise cannot be told from the nearby list, since neither
+carries a `searchTerm`. Without the colon the other extensions are asked too,
+for the word as text. An extension
 that keeps itself out of the nearby list (`cwt`, offered only around a session)
 answers a scoped call anyway: it is the one being asked. The core fans out to
 every `activity` hook via `invokeHookAll`; a scoped search asks only its own
@@ -768,19 +770,38 @@ The row is marked, and the reference is stored, logged and exported as typed —
 the same rule ADIF import follows for a malformed `*_REF` (below).
 
 The activity search box also treats a leading scope word as a scope — typing
-`pota:` (or tapping a row under "Activity Types") asks the extension serving
-that reference type alone, via a key-scoped `invokeHook` rather than the usual
-fan-out. The word is the **reference type's base name**, lowercased —
-`potaActivation` and `pota` both scope as `pota:` — never the extension key: a
-user-published `ki2d-pota` serving `potaActivation` is still scoped as
-`pota:`, since the operator is adding POTA parks whichever extension supplies
-them. Two enabled extensions serving one type share the word, and the scoped
-search asks both. For the hook call to reach the extension, its `activity`
-hook must be registered under its own **extension key**, and its control
-descriptors keyed `<extensionKey>/<name>` (`pota/activation`) — the core
-derives the hook key from the part before the slash. An extension that
-deviates simply never gets scoped: its rows still add references, but the
-scope would ask a hook that doesn't exist and come back empty.
+`pota:` (or tapping a row under "Activity Types") asks only the extensions
+serving that reference type, via a key-scoped `invokeHook` rather than the
+usual fan-out. An extension answers to two kinds of word:
+
+- **Each reference type its manifest declares**, as a plain `ref:<type>` in
+  `hooks`, by the type's base name lowercased — `ref:potaActivation` and
+  `ref:pota` are both `pota:`. A user-published `ki2d-pota` declaring
+  `ref:potaActivation` is scoped as `pota:` too, since the operator is adding
+  POTA parks whichever extension supplies them: two running extensions
+  declaring one type share the word, and the scoped search asks both. A
+  qualified claim (`ref:qp/ny`) makes no word.
+- **Its own extension key** — `ham2k-pota:` asks that extension alone, which
+  is how an operator picks one supplier over another.
+
+The same word without its colon gives precedence instead of scoping. `pota`
+on its own asks the extensions serving the type for their own list (as a
+scope, `scoped: true` with no `searchTerm`) and every other extension to
+search for the text "pota", with the first answers leading. `pota bear mtn`
+asks the extensions serving the type for "bear mtn" and every other one for
+the whole text — a `suggest` matching codes and names against one string
+finds nothing for the word it was named by.
+
+The scoped call reaches the extension under the key it registered its
+`activity` hook with, which has to be its manifest key. The search reads which
+extension supplied a control from the fan-out that returned it, never from
+the descriptor's `key`, so a catalog `ham2k-pota` keying its controls
+`pota/activation` is reached as `ham2k-pota`. (A logging control's serial
+counter is still namespaced by the `key`'s prefix: two extensions keying
+controls under one prefix share a counter.) A
+switched-off or not-yet-installed extension is offered from the same words:
+typing a type it declares, or its key, puts its enable or install row under
+the search.
 
 `editable` declares whether a reference of this type has anything to edit
 once it's on the operation. It defaults to **false**: a plain reference

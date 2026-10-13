@@ -158,8 +158,7 @@ mixin _ActivitiesSections on State<OperationSheet>, _ActivitiesRefs, _Activities
     final refListControls = _controls.where((c) => (c['input'] as Map?)?['kind'] == 'refList' || (c['input'] as Map?)?['kind'] == 'form').toList();
     final labels = <String>[];
     for (final control in refListControls) {
-      final controlKey = control['key'] as String? ?? '';
-      final extensionKey = controlKey.split('/').first;
+      final extensionKey = controlExtensionKey(control);
       final extension = widget.services.extensions.availableExtensions.cast<ExtensionInfo?>().firstWhere(
         (info) => info?.key == extensionKey,
         orElse: () => null,

@@ -79,6 +79,16 @@ const _refusedSotaInfo = ExtensionInfo(
   hooks: ['activity', 'ref:sotaActivation'],
 );
 
+/// SOTA as the catalog keys it: its controls are `sota/…` all the same.
+const _catalogSotaInfo = ExtensionInfo(
+  key: 'ham2k-sota',
+  file: 'ham2k-sota.js',
+  core: false,
+  name: 'Summits on the Air',
+  enabledByDefault: false,
+  hooks: ['activity', 'ref:sota', 'ref:sotaActivation'],
+);
+
 const _sotaActivationRef = {'type': 'sotaActivation', 'ref': 'W7A/MN-001', 'name': 'Mount Example'};
 const _secondSotaActivationRef = {'type': 'sotaActivation', 'ref': 'W7A/MN-002', 'name': 'Other Summit'};
 
@@ -108,7 +118,11 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
   Future<void> setExtensionEnabled(String key, bool enabled) async {
     this.enabled.add(key);
     await settings!.setExtensionOverrides({...settings!.extensionOverrides, key: enabled});
-    if (key == 'sota' && enabled) controls = const [_sotaControl];
+    if (key.endsWith('sota') && enabled) {
+      controls = [
+        {..._sotaControl, controlExtensionKeyField: key},
+      ];
+    }
   }
 }
 
@@ -200,6 +214,23 @@ void main() {
     // typed, and must not start a search for more summits.
     expect(_searchText(tester), isEmpty);
     expect(find.byType(CircularProgressIndicator), findsNothing, reason: 'the results spinner must settle');
+  });
+
+  testWidgets('enabling a catalog extension from the search scopes the box by its type, keeping the reference', (tester) async {
+    // The box takes the type's word, never the extension's key, and the
+    // reference typed after the word the extension was found by survives —
+    // whichever of its words that was.
+    final (services, operation) = await _harness(available: const [_catalogSotaInfo], refs: const []);
+    await _pump(tester, services, operation);
+    await tester.enterText(find.byType(TextField).first, 'sota w7a/mn-001');
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Enable Summits on the Air').hitTestable());
+    await tester.pumpAndSettle();
+
+    expect((services.extensions as _NoActivityExtensions).enabled, ['ham2k-sota']);
+    expect(_searchText(tester), 'sota: w7a/mn-001');
   });
 
   testWidgets('the section opens once per extension, not on every controls reload', (tester) async {

@@ -17,6 +17,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/cat/zero_beat.dart';
 import '../services/command_actions.dart';
+import '../services/extensions/extension_service.dart' show controlExtensionKey;
 import '../services/halo_services.dart';
 import '../services/panel_service.dart';
 import '../services/logging_scope.dart';
@@ -90,8 +91,8 @@ enum ChasePeriod {
 /// One activity the operator can chase — an extension offering a hunting
 /// reference control on the logging panel.
 class ChaseGoal {
-  /// The extension key the control is namespaced by (`pota` for
-  /// `pota/hunter`) — what the stored goals are keyed on.
+  /// The key of the extension that supplied the control (`ham2k-pota`,
+  /// whatever its control key says) — what the stored goals are keyed on.
   final String key;
   final String label;
   final String? icon;
@@ -104,9 +105,6 @@ class ChaseGoal {
 
   ChaseGoal withOn(bool on) => ChaseGoal(key: key, label: label, icon: icon, color: color, on: on);
 }
-
-/// The extension key a logging control is namespaced by.
-String _controlExtensionKey(Map<String, dynamic> control) => ((control['key'] as String?) ?? '').split('/').first;
 
 /// Whether [control] hunts a reference — a `refList` carrying a ref type.
 bool _isHuntingControl(Map<String, dynamic> control) {
@@ -123,7 +121,7 @@ List<ChaseGoal> resolveChaseGoals(List<Map<String, dynamic>> controls, List<Obje
   final offered = <String, Map<String, dynamic>>{};
   for (final control in controls) {
     if (!_isHuntingControl(control)) continue;
-    offered.putIfAbsent(_controlExtensionKey(control), () => control);
+    offered.putIfAbsent(controlExtensionKey(control), () => control);
   }
   ChaseGoal goal(String key, bool on) {
     final control = offered[key]!;
@@ -152,8 +150,8 @@ List<Map<String, dynamic>> chaseLoggingControls(List<Map<String, dynamic>> contr
   ];
   final hunting = [
     for (final control in controls)
-      if (_isHuntingControl(control) && onKeys.contains(_controlExtensionKey(control))) control,
-  ]..sort((a, b) => onKeys.indexOf(_controlExtensionKey(a)).compareTo(onKeys.indexOf(_controlExtensionKey(b))));
+      if (_isHuntingControl(control) && onKeys.contains(controlExtensionKey(control))) control,
+  ]..sort((a, b) => onKeys.indexOf(controlExtensionKey(a)).compareTo(onKeys.indexOf(controlExtensionKey(b))));
   return [
     ...hunting,
     for (final control in controls)

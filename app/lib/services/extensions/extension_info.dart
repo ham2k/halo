@@ -103,6 +103,42 @@ mixin ExtensionSearchable {
   return (type: type, code: code.toLowerCase());
 }
 
+/// The word the activity search scopes a reference type by: the type's base
+/// name, lowercased — `potaActivation` and `pota` are both `pota`.
+///
+/// A ref TYPE, not the extension's key, on purpose: a user-published
+/// extension is keyed by its author's callsign (`ki2d-pota`), and the
+/// operator adding parks from it is still adding POTA parks. The word names
+/// what is being searched for, and two extensions serving the same type
+/// share it.
+///
+/// `<base>Activation` / `<base>` is the convention every activity's pair of
+/// ref types follows (see `activityRefTypes`), which is what makes the base
+/// name derivable at all.
+String activityScopeWord(String refType) => refType.replaceFirst(_activationSuffix, '').toLowerCase();
+
+final _activationSuffix = RegExp(r'Activation$');
+
+/// The words the activity search box scopes the extension [key] by, lowercased:
+/// the [activityScopeWord] of every plain `ref:<type>` its manifest [hooks]
+/// declare, then [key] itself. Typing a type's word reaches every extension
+/// declaring that type; typing the key reaches this one alone, which is how
+/// an operator picks between two suppliers of the same references.
+///
+/// The type words come first, so `.first` is the word to put in the box for
+/// this extension whenever it declares a type.
+///
+/// Qualified claims (`ref:qp/ny`) make no word: they reach back for
+/// references an older extension wrote, and say nothing about what this one
+/// searches.
+List<String> activityScopeWordsOf({required String key, required List<String> hooks}) {
+  final words = <String>[
+    for (final hook in hooks)
+      if (refClaimOf(hook) case (type: final type, code: null)) activityScopeWord(type),
+  ];
+  return {...words, key.toLowerCase()}.toList();
+}
+
 /// How strongly [hooks] claims the reference [type]/[code], or null for no
 /// claim at all.
 ///

@@ -8,10 +8,13 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:ham2k_logger/services/extensions/extension_service.dart' show controlExtensionKeyField;
 import 'package:ham2k_logger/views/chase_view.dart';
 
+/// As the fan-out hands it over, with the answering extension stamped on.
 Map<String, dynamic> _hunting(String extension, {String label = ''}) => {
   'key': '$extension/hunter',
+  controlExtensionKeyField: extension,
   'label': label.isEmpty ? extension.toUpperCase() : label,
   'icon': 'pine-tree',
   'color': '#2e7d32',
@@ -60,6 +63,17 @@ void main() {
       ], const []);
       expect(goals.map((g) => g.key), ['pota']);
       expect(goals.single.color, '#2e7d32', reason: 'the accent travels with the goal, for its icon');
+    });
+
+    test('a goal is the extension that answered, not its control key\'s namespace', () {
+      // The catalog's POTA is `ham2k-pota` and keys its controls `pota/…`;
+      // a second supplier keying its controls the same way must still be a
+      // goal of its own.
+      final goals = resolveChaseGoals([
+        {..._hunting('pota'), controlExtensionKeyField: 'ham2k-pota'},
+        {..._hunting('pota'), controlExtensionKeyField: 'ki2d-pota'},
+      ], const []);
+      expect(goals.map((g) => g.key), ['ham2k-pota', 'ki2d-pota']);
     });
   });
 

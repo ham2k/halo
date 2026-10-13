@@ -22,6 +22,17 @@ typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, boo
 /// `isUnknownRefType` says exactly that to the operator.
 typedef ControlsResult = ({List<Map<String, dynamic>> controls, bool loadFailed});
 
+/// The descriptor field naming the extension that supplied a control. The
+/// host writes it as the fan-out answers, over anything the extension put
+/// there: the control's own `key` is the extension's to choose, and a
+/// catalog `ham2k-pota` keys its controls `pota/…`, so the key cannot say
+/// which extension to ask or to name.
+const controlExtensionKeyField = 'extensionKey';
+
+/// The extension that supplied [control], or empty for a descriptor that did
+/// not come through the fan-out.
+String controlExtensionKey(Map<String, dynamic> control) => control[controlExtensionKeyField] as String? ?? '';
+
 /// How far a screen's [ControlsResult] fetch has got. A bool cannot express
 /// [failed] — it only says "not loaded yet" — so a fetch that threw leaves a
 /// two-state screen showing its loading placeholder forever, with the
@@ -757,18 +768,16 @@ mixin _ExtensionHookApi {
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
       _collectControls(Hooks.activityOperationControls, operationData, qso: qso);
 
-  /// The activity reference TYPES each installed extension registers, keyed by
-  /// extension key: `pota` -> `(activationType: 'potaActivation',
-  /// huntingType: 'pota')`. A deep link, and anything else naming an activity
-  /// by its key, needs this to turn `pota:US-1234` into a real ref.
+  /// The activity reference TYPES each running extension publishes, keyed by
+  /// the activity's word and by the extension's key: `pota` and `ham2k-pota`
+  /// -> `(activationType: 'potaActivation', huntingType: 'pota')`. A deep
+  /// link, and anything else naming an activity, needs this to turn
+  /// `pota:US-1234` into a real ref.
   ///
   /// Read off the `refList` control descriptors an activity ALREADY publishes
   /// rather than from a hook of its own: those descriptors are where an
-  /// activity names its types, the control key is already namespaced by
-  /// extension key (the same namespace the activity search's scope resolves
-  /// to a hook through — the scope WORD itself comes from the type, see
-  /// `activityScopeWord`), and a second declaration would be a second thing
-  /// to keep in step. An operation control is an activation, a logging
+  /// activity names its types, and a second declaration would be a second
+  /// thing to keep in step. An operation control is an activation, a logging
   /// control is a hunt.
   ///
   /// Only extensions that are switched ON answer, because only they publish
@@ -795,8 +804,8 @@ mixin _ExtensionHookApi {
   }) async {
     await start();
     final results = await Future.wait([operationControls(operationData), loggingControls(operationData)]);
-    final activation = _refTypesByExtensionKey(results[0].controls);
-    final hunting = _refTypesByExtensionKey(results[1].controls);
+    final activation = _refTypesByActivityKey(results[0].controls);
+    final hunting = _refTypesByActivityKey(results[1].controls);
     return (
       byKey: {
         for (final key in {...activation.keys, ...hunting.keys}) key: (activationType: activation[key], huntingType: hunting[key]),
@@ -806,23 +815,26 @@ mixin _ExtensionHookApi {
   }
 
   /// The `refList` ref type each control descriptor carries, keyed by the
-  /// extension key its control key is namespaced with (`pota/activation` ->
-  /// `pota`). Controls that are not reference lists carry no type and are
-  /// skipped.
+  /// extension that supplied it (`ham2k-pota`) and by the type's
+  /// [activityScopeWord] (`pota`) — the word a deep link names an activity
+  /// by, which is app-polo's activity key and not any extension's. Controls
+  /// that are not reference lists carry no type and are skipped.
   ///
   /// The first descriptor for a key wins. Every activity publishes exactly one
-  /// `refList` per surface, so which one that is never comes up — if that ever
-  /// stops being true, the tie needs a real rule rather than fan-out order.
-  static Map<String, String> _refTypesByExtensionKey(List<Map<String, dynamic>> controls) {
+  /// `refList` per surface, so an extension's own key never ties — if that
+  /// ever stops being true, the tie needs a real rule rather than fan-out
+  /// order. A word does tie when two extensions serve one type, and the first
+  /// of them answers a deep link naming it.
+  static Map<String, String> _refTypesByActivityKey(List<Map<String, dynamic>> controls) {
     final types = <String, String>{};
     for (final control in controls) {
-      final controlKey = (control['key'] as String?) ?? '';
-      final extensionKey = controlKey.split('/').first;
-      if (extensionKey.isEmpty || types.containsKey(extensionKey)) continue;
       final input = control['input'];
       if (input is! Map) continue;
       final refType = input['refType'];
-      if (refType is String && refType.isNotEmpty) types[extensionKey] = refType;
+      if (refType is! String || refType.isEmpty) continue;
+      for (final key in [controlExtensionKey(control), activityScopeWord(refType)]) {
+        if (key.isNotEmpty) types.putIfAbsent(key, () => refType);
+      }
     }
     return types;
   }
@@ -926,7 +938,7 @@ mixin _ExtensionHookApi {
             debugPrint('[extensions] ${hook.method}: hook ${entry['key']} returned a ${control.runtimeType} control');
             continue;
           }
-          controls.add(control.cast<String, dynamic>());
+          controls.add({...control.cast<String, dynamic>(), controlExtensionKeyField: entry['key']});
         }
       }
       // Read, don't cast: `as num?` throws on `{'order': '1'}` — a string an
@@ -960,14 +972,14 @@ mixin _ExtensionHookApi {
   /// operator's global default.
   /// [activityKeys] scopes the fan-out to the activity extensions serving one
   /// ref type (the search field's `pota:` prefix — usually one hook, two when
-  /// a user-published extension serves the same type as a stock one) — those
-  /// hooks alone are asked, rather than every hook's results being merged and
-  /// then filtered, so an unrelated extension's slow search can't hold up a
-  /// scoped one.
-  /// [preferredKeys] is the softer form (a `pota ` prefix, no colon): everyone
+  /// a user-published extension serves the same type as a stock one) or to
+  /// one extension by its key (`ham2k-pota:`) — those hooks alone are asked,
+  /// rather than every hook's results being merged and then filtered, so an
+  /// unrelated extension's slow search can't hold up a scoped one.
+  /// [preferredKeys] is the softer form (a `pota` word, no colon): everyone
   /// is still asked, but those hooks' results lead the list and they search
-  /// for [preferredSearchTerm] — the box's text with the word stripped — while
-  /// the others get [searchTerm] verbatim.
+  /// for [preferredSearchTerm] — or, with none, are asked as a scope for
+  /// their own list — while the others get [searchTerm].
   /// Answers whether every source failed as well as the suggestions
   /// themselves: "nothing matched" and "every extension broke" are the same
   /// empty list, and only the second is worth telling the operator about.
@@ -1044,24 +1056,33 @@ mixin _ExtensionHookApi {
         return (suggestions: measured(mergeActivitySuggestions(entries)), allSourcesFailed: allActivitySourcesFailed(entries));
       }
 
-      // The preferred hooks are asked SEPARATELY because they search for
-      // something else — the word stripped off the front — so their answers
-      // to the everyone-else question are discarded below rather than merged.
+      // The preferred hooks are asked SEPARATELY because they may search for
+      // something else — for nothing at all, as a scope, when the word stood
+      // alone — so their answers to the everyone-else question are discarded
+      // below rather than merged.
       // A fan-out that never returned an entry is a failure with nothing to
       // count, so it contributes one — the caller has to be able to tell
       // "nobody could answer" from "nobody had anything".
       var fanOutFailed = false;
-      final preferred = _activityBatch(host, preferredKeys ?? const [], argsSearchingFor(preferredSearchTerm), 'preferred')
-          // Precedence is only an ordering: when a preferred hook fails, what
-          // the other extensions found is still the right answer.
-          .then(
-            (entries) => [
+      // A word standing alone asked the preferred hooks for their own list,
+      // as a scope does, so every one of them failing fails the search the
+      // way a failed scope would — what the others found for the word as
+      // text is not the list that was asked for.
+      final ownList = preferredSearchTerm == null && (preferredKeys?.isNotEmpty ?? false);
+      var ownListFailed = false;
+      final preferred = _activityBatch(host, preferredKeys ?? const [], argsSearchingFor(preferredSearchTerm, scoped: ownList), 'preferred')
+          // Precedence is otherwise only an ordering: when a preferred hook
+          // fails, what the other extensions found is still the right answer.
+          .then((entries) {
+            ownListFailed = ownList && allActivitySourcesFailed(entries);
+            return [
               for (final entry in entries)
                 if (entry['ok'] == true) entry,
-            ],
-          )
+            ];
+          })
           .onError<ExtensionHostException>((e, _) {
             debugPrint('[extensions] preferred activity hooks failed: $e');
+            ownListFailed = ownList;
             return const <Map<String, dynamic>>[];
           });
 
@@ -1086,7 +1107,7 @@ mixin _ExtensionHookApi {
       ];
       return (
         suggestions: measured(mergeActivitySuggestions(entries, preferredKeys: preferredSet)),
-        allSourcesFailed: (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
+        allSourcesFailed: ownListFailed || (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
       );
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] suggestActivities failed: $e');

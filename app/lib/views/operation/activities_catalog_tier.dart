@@ -23,7 +23,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../services/extensions/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_relevance.dart';
-import '../../services/extensions/extension_info.dart' show hooksClaimRef;
+import '../../services/extensions/extension_info.dart' show activityScopeWordsOf, hooksClaimRef;
 import '../../services/halo_services.dart';
 import '../extension_install_flow.dart';
 import '../extensions_panel.dart' show extensionCategoryIcon;
@@ -103,7 +103,8 @@ class CatalogTier {
 }
 
 /// Catalog entries matching [input] that the app does not already have — by
-/// exact [key] alone when [keyOnly], else by the loose [search] as well. The
+/// [key] alone when [keyOnly], matched against the entry's
+/// [activityScopeWordsOf], else by the loose [search] as well. The
 /// two are what `extensionSearchCandidates` read off the box, so this tier
 /// answers the same text the two above it do.
 ///
@@ -127,7 +128,9 @@ List<CatalogEntry> catalogExtensionsMatching(
   if (search.isEmpty) return const [];
   final matched = [
     for (final entry in entries)
-      if (!availableKeys.contains(entry.key) && (entry.key.toLowerCase() == key || (!keyOnly && entry.matchesSearch(search, locale: locale)))) entry,
+      if (!availableKeys.contains(entry.key) &&
+          (activityScopeWordsOf(key: entry.key, hooks: entry.hooks).contains(key) || (!keyOnly && entry.matchesSearch(search, locale: locale))))
+        entry,
   ];
   return orderedCatalogEntries(matched, operatorGeo, locale);
 }

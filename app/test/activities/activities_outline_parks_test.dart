@@ -19,8 +19,12 @@ import 'package:ham2k_logger/views/operation/activities_view.dart';
 
 import '../support/halo_test_support.dart';
 
+/// As the fan-out hands it over: the catalog's POTA, keyed `ham2k-pota`.
+/// Without the stamp no control serves POTA once the controls load, and the
+/// sheet only asks for outlines because its first search beats them.
 const _potaControl = {
   'key': 'pota/activation',
+  controlExtensionKeyField: 'ham2k-pota',
   'label': 'Parks on the Air',
   'input': {'kind': 'refList', 'refType': 'potaActivation'},
 };
@@ -31,7 +35,7 @@ class _PotaExtensions extends ExtensionServiceWithFakeHost {
     : super(
         FakeExtensionHost({
           'activity:*:suggest': [
-            {'key': 'pota', 'ok': true, 'value': <Object>[]},
+            {'key': 'ham2k-pota', 'ok': true, 'value': <Object>[]},
           ],
         }),
       );

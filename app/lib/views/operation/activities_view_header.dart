@@ -77,8 +77,7 @@ mixin _ActivitiesHeader on State<OperationSheet> {
   String _shortNameForType(String type) {
     final control = controlForRefType(_controls, type);
     if (control != null) {
-      final controlKey = control['key'] as String? ?? '';
-      final extensionKey = controlKey.split('/').first;
+      final extensionKey = controlExtensionKey(control);
       final extension = widget.services.extensions.availableExtensions.cast<ExtensionInfo?>().firstWhere(
         (info) => info?.key == extensionKey,
         orElse: () => null,

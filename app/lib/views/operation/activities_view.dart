@@ -413,7 +413,7 @@ class OperationSheetState extends State<OperationSheet>
 
   /// See [activityScopesOf].
   @override
-  Map<String, List<String>> get _activityScopes => activityScopesOf(_controls);
+  Map<String, List<String>> get _activityScopes => activityScopesOf(_controls, widget.services.extensions.availableExtensions);
 
   static String? _scopeWordOf(Map<String, dynamic> control) => controlScopeWord(control);
 

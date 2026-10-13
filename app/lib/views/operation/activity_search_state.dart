@@ -11,6 +11,7 @@ import 'package:halo_core/halo_core.dart';
 
 import '../../services/error_reporting_service.dart';
 import '../../services/extensions/extension_ref_results.dart' show RefLink;
+import '../../services/extensions/extension_service.dart' show ExtensionInfo, activityScopeWordsOf, activityScopeWord, controlExtensionKey;
 import '../../services/halo_services.dart';
 import '../../services/outline_grid_service.dart';
 import '../map/map_zoom_controller.dart' show MapViewBounds;
@@ -59,24 +60,38 @@ Future<Map<String, RefLink>> resolveRefLinks(HaLoServices services, List<Map<Str
   };
 }
 
-/// The scope words [controls] answer to, each mapped to the activity hook
-/// keys serving it (the control key's namespace, `ki2d-pota/activation` ->
-/// `ki2d-pota`) — what a leading word in the search box is checked against,
-/// and what tapping a row inserts. Two extensions serving one ref type share
-/// the word and are BOTH asked: the operator scoped to parks, not to one
-/// supplier of them.
+/// The scope words the extensions behind [controls] answer to, each mapped to
+/// the activity hook keys of those extensions — what a leading word in the
+/// search box is checked against. An extension's words are its manifest's
+/// ([activityScopeWordsOf], looked up in [available]: every plain `ref:` type
+/// it declares, and its own key) plus the type each of its controls lists,
+/// which is the word tapping its row inserts and so has to scope. Two
+/// extensions declaring one type share the word and are BOTH asked: the
+/// operator scoped to parks, not to one supplier of them. The key reaches
+/// one supplier alone.
+///
+/// Only the extensions that supplied a control are here, which is what makes
+/// them the running ones: the not-running tier is matched on the manifests
+/// separately, and asking a hook that is not registered fails the search.
 ///
 /// Form controls count too: a contest lists no references, but its
 /// `suggest` still answers a scope (`cwt: 1300` narrows the sessions), so
 /// dropping it here would leave that hook's `scoped` branch unreachable.
-Map<String, List<String>> activityScopesOf(List<Map<String, dynamic>> controls) {
+Map<String, List<String>> activityScopesOf(List<Map<String, dynamic>> controls, Iterable<ExtensionInfo> available) {
   final scopes = <String, List<String>>{};
-  for (final control in controls) {
-    final word = controlScopeWord(control);
-    final hookKey = ((control['key'] as String?) ?? '').split('/').first;
-    if (word == null || hookKey.isEmpty) continue;
+  void add(String word, String hookKey) {
     final keys = scopes.putIfAbsent(word, () => []);
     if (!keys.contains(hookKey)) keys.add(hookKey);
+  }
+
+  final manifests = {for (final info in available) info.key: info};
+  for (final control in controls) {
+    final hookKey = controlExtensionKey(control);
+    if (hookKey.isEmpty) continue;
+    if (controlScopeWord(control) case final word?) add(word, hookKey);
+    for (final word in activityScopeWordsOf(key: hookKey, hooks: manifests[hookKey]?.hooks ?? const [])) {
+      add(word, hookKey);
+    }
   }
   return scopes;
 }
@@ -211,9 +226,10 @@ class ActivitySearchState extends ChangeNotifier {
       preferredSearchTerm: trimmed.isEmpty ? null : trimmed,
       fallbackLocation: fallback,
     );
-    // The nearby list only: a typed search is answered by what it names.
+    // The nearby list only — or a scope's own list, which a bare `pota` asks
+    // for too: a typed search is answered by what it names.
     final here = currentOperation().location ?? fallback;
-    final outlineParksToCome = query.otherTerm.isEmpty && here != null;
+    final outlineParksToCome = query.term.isEmpty && here != null;
     // A newer search may have fired (and even resolved) while this one was
     // in flight — only the still-current request gets to apply its results.
     if (_disposed || requestId != _searchRequestId) return;
@@ -234,7 +250,7 @@ class ActivitySearchState extends ChangeNotifier {
     // Parks found by their outline join the nearby list as their bundle is
     // read — merged into the list as it is then, and re-ranked: the map
     // names a suggestion by what it is, so an open card stays on its park.
-    if (outlineParksToCome) unawaited(_addOutlineParks(requestId, query.activityKeys, here));
+    if (outlineParksToCome) unawaited(_addOutlineParks(requestId, query.activityKeys ?? query.preferredKeys, here));
   }
 
   /// The references in [bounds], the view the operator took the results

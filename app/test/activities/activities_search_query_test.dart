@@ -2,15 +2,16 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The activity search box doubles as a scope selector: a leading `pota:` asks
-// only the extension serving that reference type, and a bare `pota ` merely
-// puts its answers first. The risk is over-eager parsing — references and
+// only the extensions serving that reference type, and a bare `pota` merely
+// puts their answers first. The risk is over-eager parsing — references and
 // park names contain colons AND lead with words too, and treating one as a
 // scope would silently search the wrong extension (or none) while looking
 // like it worked. These tests pin what counts as a scope, what counts as a
-// preference, and what stays plain search text — and that the scope is the
-// ref type's word, not the extension's key.
+// preference, and what stays plain search text — and which words an
+// extension answers to: its declared ref types' words and its own key.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/operation/activities_enable_tier.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
@@ -69,19 +70,33 @@ void main() {
       expect(query.preferredKeys, ['sota']);
     });
 
-    test('only the preferred extension gets the key stripped', () {
-      // Handing the leftover "bear" to every extension is what this exists to
-      // avoid: it buries the SOTA summits under every park named Bear.
+    test('only the preferred extension gets the word stripped', () {
+      // SOTA matches its search against codes and names as one string, so
+      // handed `sota w7a/mn-001` it finds nothing. Handing the leftover to
+      // everyone else instead buries the summits under every park named
+      // whatever followed.
       final query = ActivitySearchQuery.parse('sota bear', _knownKeys);
       expect(query.term, 'bear');
       expect(query.otherTerm, 'sota bear');
+    });
+
+    test('a word alone asks its extensions for their own list, and everyone for the word', () {
+      // `llota` is what a search for the program's name types, so the others
+      // must still search for it — scoping to LLOTA alone would hide every
+      // other extension's answer to "llota". An empty term is what asks the
+      // preferred ones as a scope.
+      final query = ActivitySearchQuery.parse('pota', _knownKeys);
+      expect(query.activityKeys, isNull, reason: 'a word without its colon never scopes');
+      expect(query.preferredKeys, ['pota']);
+      expect(query.term, isEmpty);
+      expect(query.otherTerm, 'pota');
     });
 
     test('the key is lowercased, so typing SOTA still matches the hook', () {
       expect(ActivitySearchQuery.parse('SOTA W2', _knownKeys).preferredKeys, ['sota']);
     });
 
-    test('extra whitespace after the key is not part of the term', () {
+    test('extra whitespace after the word is not part of the term', () {
       final query = ActivitySearchQuery.parse('  pota   bear mtn  ', _knownKeys);
       expect(query.preferredKeys, ['pota']);
       expect(query.term, 'bear mtn');
@@ -93,15 +108,6 @@ void main() {
     test('a bare key means "this extension\'s nearby suggestions"', () {
       final query = ActivitySearchQuery.parse('pota:', _knownKeys);
       expect(query.activityKeys, ['pota']);
-      expect(query.term, isEmpty);
-    });
-
-    test('a key alone, no colon, scopes just the same', () {
-      // Nothing else is in the box for the other extensions to answer, so the
-      // soft form has nothing to be soft about.
-      final query = ActivitySearchQuery.parse('pota', _knownKeys);
-      expect(query.activityKeys, ['pota']);
-      expect(query.preferredKeys, isNull);
       expect(query.term, isEmpty);
     });
 
@@ -156,29 +162,33 @@ void main() {
 
   group('text carried into a newly enabled extension\'s scope', () {
     // Tapping "enable SOTA" must not cost the operator the reference they had
-    // already typed after the key.
-    test('the reference after the key survives', () {
-      expect(searchTextAfterKey('sota w7a/mn-001', 'sota'), 'w7a/mn-001');
-      expect(searchTextAfterKey('sota: w7a/mn-001', 'sota'), 'w7a/mn-001');
+    // already typed after the word.
+    const sotaWords = ['sota', 'ham2k-sota'];
+
+    test('the reference after any of the extension\'s words survives', () {
+      expect(searchTextAfterScopeWord('sota w7a/mn-001', sotaWords), 'w7a/mn-001');
+      expect(searchTextAfterScopeWord('sota: w7a/mn-001', sotaWords), 'w7a/mn-001');
+      // A catalog SOTA is `ham2k-sota`, and the operator typed its type's
+      // word: matching the key alone would drop the reference.
+      expect(searchTextAfterScopeWord('ham2k-sota w7a/mn-001', sotaWords), 'w7a/mn-001');
     });
 
     test('a box that merely NAMED the extension carries nothing', () {
-      // Matched by name or keyword rather than by its key — "summits on the
+      // Matched by name or keyword rather than by a word — "summits on the
       // air" is not a reference to search for once SOTA is on.
-      expect(searchTextAfterKey('summits on the air', 'sota'), isEmpty);
+      expect(searchTextAfterScopeWord('summits on the air', sotaWords), isEmpty);
     });
 
-    test('the key alone leaves nothing to carry', () {
-      expect(searchTextAfterKey('sota', 'sota'), isEmpty);
-      expect(searchTextAfterKey('  SOTA:  ', 'sota'), isEmpty);
+    test('the word alone leaves nothing to carry', () {
+      expect(searchTextAfterScopeWord('sota', sotaWords), isEmpty);
+      expect(searchTextAfterScopeWord('  SOTA:  ', sotaWords), isEmpty);
     });
   });
 
   group('a user-published extension serving a stock reference type', () {
     // Keyed by its author's callsign, but the parks it adds are POTA parks:
     // the operator scopes with the type's word, and the query carries the
-    // hook key that actually answers. Typing the extension key is NOT a
-    // scope — the key is the runtime's, the word is the operator's.
+    // hook key that actually answers.
     const scopes = {
       'pota': ['ki2d-pota'],
     };
@@ -200,11 +210,41 @@ void main() {
       expect(ActivitySearchQuery.parse('pota bear', shared).preferredKeys, ['pota', 'ki2d-pota']);
     });
 
-    test('the extension key itself is plain text', () {
-      final query = ActivitySearchQuery.parse('ki2d-pota: bear', scopes);
-      expect(query.activityKeys, isNull);
-      expect(query.preferredKeys, isNull);
-      expect(query.term, 'ki2d-pota: bear');
+    test('an extension\'s key scopes to that extension alone', () {
+      // How an operator picks one supplier of parks over another: the type's
+      // word asks both, the key asks one.
+      const both = {
+        'pota': ['ham2k-pota', 'ki2d-pota'],
+        'ham2k-pota': ['ham2k-pota'],
+        'ki2d-pota': ['ki2d-pota'],
+      };
+      expect(ActivitySearchQuery.parse('ki2d-pota: bear', both).activityKeys, ['ki2d-pota']);
+      expect(ActivitySearchQuery.parse('ham2k-pota:', both).activityKeys, ['ham2k-pota']);
+      expect(ActivitySearchQuery.parse('pota:', both).activityKeys, ['ham2k-pota', 'ki2d-pota']);
+    });
+  });
+
+  group('activityScopeWordsOf', () {
+    // The words come from the manifest, under the extension's own key —
+    // which is the key its hooks are registered under. A catalog `ham2k-pota`
+    // keys its controls `pota/…`, so a word read off a control key would ask
+    // a hook nobody registered and fail every scoped search.
+    test('a declared type\'s word, then the extension\'s own key', () {
+      expect(activityScopeWordsOf(key: 'ham2k-pota', hooks: const ['activity', 'ref:pota', 'ref:potaActivation', 'spots']), ['pota', 'ham2k-pota']);
+    });
+
+    test('a contest with one type answers to it and to its key', () {
+      expect(activityScopeWordsOf(key: 'ham2k-cwt', hooks: const ['activity', 'ref:cwt']), ['cwt', 'ham2k-cwt']);
+    });
+
+    test('a qualified claim makes no word', () {
+      // `ref:qp/ny` reaches back for old `{type: qp, ref: NY}` refs; `qp:`
+      // asking every party that claims one would scope to fifty extensions.
+      expect(activityScopeWordsOf(key: 'ham2k-ny-qso-party', hooks: const ['ref:ny-qso-party', 'ref:qp/ny']), ['ny-qso-party', 'ham2k-ny-qso-party']);
+    });
+
+    test('an extension declaring no type still answers to its key', () {
+      expect(activityScopeWordsOf(key: 'Ham2K-Custom', hooks: const ['activity']), ['ham2k-custom']);
     });
   });
 

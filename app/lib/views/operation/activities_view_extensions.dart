@@ -105,16 +105,18 @@ mixin _ActivitiesExtensions on State<OperationSheet>, _ActivitiesRefs {
   /// The enable and install rows for a search just answered, settled in the
   /// same rebuild as its results (see [ActivitySearchState.onAnswered]).
   void _onSearchAnswered(String term, ActivitySearchQuery query) {
-    // A recognized scope (`query.activityKeys` set) already names KNOWN,
-    // enabled extensions — the box's fuzzy search text still reaches
-    // `notRunningExtensionsMatching` otherwise, and an unrelated disabled
-    // extension whose keywords happen to mention this one's name (`pota:`
-    // matching State Parks' "similar to POTA" blurb, say) would offer to
-    // enable it above the very extension the operator just scoped to.
-    // The exact key still counts inside a scope: the word is shared by
-    // every extension serving the type, so `pota` parses as a scope while
-    // stock POTA is off and a user-published one serves parks — and
-    // typing its key is how stock POTA gets switched back on from here.
+    // A recognized scope (`query.activityKeys` set: a word WITH its colon)
+    // already names KNOWN, enabled extensions — the box's fuzzy search text
+    // still reaches `notRunningExtensionsMatching` otherwise, and an
+    // unrelated disabled extension whose keywords happen to mention this
+    // one's name (`pota:` matching State Parks' "similar to POTA" blurb, say)
+    // would offer to enable it above the very extension the operator just
+    // scoped to. A word without its colon is a text search too, so there the
+    // loose match stands.
+    // The declared words still count inside a scope: the word is shared by
+    // every extension serving the type, so `pota:` parses as a scope while
+    // stock POTA is off and a user-published one serves parks — and stock
+    // POTA, declaring `ref:pota`, is offered to switch back on from here.
     _disabledMatches = notRunningExtensionsMatching(widget.services.extensions, term, keyOnly: query.activityKeys != null);
     _refreshCatalogMatches();
     // These rows live in the Activity Types section, which the operator
@@ -229,12 +231,12 @@ mixin _ActivitiesExtensions on State<OperationSheet>, _ActivitiesRefs {
     // years ago is the operation they keep.
     await _loadControls();
     if (!mounted) return;
-    final scopeWord = scopeSearch ? _scopeWordServedBy(key) : null;
-    if (scopeWord == null) {
+    final words = scopeSearch ? _scopeWordsServedBy(key) : const <String>[];
+    if (words.isEmpty) {
       await _searchState.search(_searchController.text);
       return;
     }
-    final scoped = ActivitySearchQuery.scopePrefixFor(scopeWord) + searchTextAfterKey(_searchController.text, key);
+    final scoped = ActivitySearchQuery.scopePrefixFor(words.first) + searchTextAfterScopeWord(_searchController.text, words);
     _putInSearchBox(scoped);
     await _searchState.search(scoped);
   }
@@ -246,14 +248,22 @@ mixin _ActivitiesExtensions on State<OperationSheet>, _ActivitiesRefs {
     selection: TextSelection.collapsed(offset: text.length),
   );
 
-  /// The scope word any of [hookKey]'s loaded controls answers to, or null
-  /// when none declares a ref type. A word shared with another extension
-  /// still counts: the scope asks every hook serving it.
-  String? _scopeWordServedBy(String hookKey) {
-    for (final entry in _activityScopes.entries) {
-      if (entry.value.contains(hookKey)) return entry.key;
-    }
-    return null;
+  /// The scope words [hookKey] answers to, every type's word ahead of its own
+  /// key — `.first` is what goes in the box — or none while it supplies no
+  /// control. A word shared with another extension still counts: the scope
+  /// asks every hook serving it.
+  List<String> _scopeWordsServedBy(String hookKey) {
+    final info = widget.services.extensions.availableExtensions.where((info) => info.key == hookKey).firstOrNull;
+    final words = {
+      for (final control in _controls)
+        if (controlExtensionKey(control) == hookKey) ?controlScopeWord(control),
+      ...activityScopeWordsOf(key: hookKey, hooks: info?.hooks ?? const []),
+    };
+    final scopes = _activityScopes;
+    return [
+      for (final word in words)
+        if (scopes[word]?.contains(hookKey) ?? false) word,
+    ];
   }
 
   /// A row of the Activity Types section for an extension the search matched

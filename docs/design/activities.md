@@ -458,12 +458,14 @@ Two details worth knowing before adding the seventh program:
 - The config takes the extension's own `tFor`, and the factory looks up a fixed
   vocabulary — `invalidReference`, `unknownReference`, `activationControl`. A
   program that omits one gets the raw key in its UI.
-- Control keys are `<extensionKey>/activation`, which is what makes `wca:`
-  scoping — and the softer `wca <ref>`, which merely puts that extension's hits
-  first — reach the extension in the activity search. The scope WORD comes from
-  the control's ref type (`wcaActivation` -> `wca`), and the hook key it asks
-  from the part before the slash, so a control keyed anything else silently
-  never gets scoped.
+- `wca:` scoping — and the softer `wca <ref>`, which merely puts that
+  extension's hits first — reaches the extension in the activity search through
+  its manifest: the scope WORD comes from each `ref:` type it declares
+  (`ref:wcaActivation` -> `wca`) and from its own key, and the hook asked is
+  the extension that returned the control, never the control key's prefix
+  ([hooks.md](../extensions/hooks.md)). A program that leaves its type out of
+  `hooks` is still scoped by the type its control lists, but is not offered
+  from the search while switched off.
 
 `huntingType` became optional on `activityScorer` for these: several of the
 castle and lighthouse awards only recognise activations, and app-polo says so by
