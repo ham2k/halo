@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$de extends Translations$map$postcard$en {
 	@override String get previousPage => 'Vorherige Seite';
 	@override String get nextPage => 'Nächste Seite';
 	@override String pageOf({required Object page, required Object count}) => 'Seite ${page} von ${count}';
-	@override String get sections => 'Zusammenfassungsabschnitte';
 	@override String get sectionDays => 'Jeder Tag';
 	@override String get reset => 'Zurücksetzen';
 	@override String failed({required Object error}) => 'Postkarte konnte nicht erstellt werden: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsDe {
 			'map.postcard.previousPage' => 'Vorherige Seite',
 			'map.postcard.nextPage' => 'Nächste Seite',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Seite ${page} von ${count}',
-			'map.postcard.sections' => 'Zusammenfassungsabschnitte',
 			'map.postcard.sectionDays' => 'Jeder Tag',
 			'map.postcard.reset' => 'Zurücksetzen',
 			'map.postcard.failed' => ({required Object error}) => 'Postkarte konnte nicht erstellt werden: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsDe {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kann nicht auf Port ${port} lauschen: ein anderes Programm nutzt ihn, oft ${protocol} selbst. Schließe dieses Programm oder wähle einen anderen Port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kann nicht auf Port ${port} lauschen: dieser Computer erlaubt es nicht. Wähle einen Port über 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} lauscht nicht mehr auf Port ${port}. Neuer Versuch…',
+			'settings.radio.title' => 'CAT-Steuerung',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT-Steuerung',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Abstimmung',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -5166,9 +5164,9 @@ extension on TranslationsDe {
 			'settings.station.hrdTroubleshooting' => 'Dies verbindet sich mit **Rig Control von Ham Radio Deluxe auf deinem Computer**, nicht direkt mit dem Funkgerät — HRD spricht mit dem Funkgerät.\n\n- **Rig Control muss bereits laufen** und mit dem Funkgerät verbunden sein.\n- **Sein IP-Server muss aktiviert sein.** Nur darüber spricht Rig Control mit anderen Programmen.\n- **Port** ist 7809, außer du hast ihn in den Einstellungen des IP-Servers geändert.\n- **Von einem anderen Rechner aus** stelle sicher, dass deine Firewall die Verbindung durchlässt.\n\nDieser Eintrag wurde anhand veröffentlichter Beschreibungen des HRD-Protokolls geschrieben und noch nicht mit HRD getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Wenn die App sich nicht verbinden kann',
 			'settings.station.n3fjpTroubleshooting' => 'Dies verbindet sich mit **einem N3FJP-Logprogramm auf deinem Computer**, nicht direkt mit dem Funkgerät — N3FJP spricht mit dem Funkgerät.\n\n- **Die API des Programms muss eingeschaltet sein**: Settings → Application Program Interface, **TCP API Enabled** aktivieren.\n- **Port** ist 1100, außer du hast ihn dort geändert.\n- **In N3FJP muss eine Funkgeräteschnittstelle eingerichtet sein**, um dem Funkgerät zu folgen oder es abzustimmen. Ohne sie meldet es nur, was in sein Eingabefenster getippt wird.\n- N3FJP meldet nur Band, Modus und Frequenz: keine Leistung, keinen Sendezustand.\n\nDieser Eintrag wurde anhand der veröffentlichten API von N3FJP geschrieben und noch nicht mit N3FJP getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
+			'settings.station.commanderTroubleshootingTitle' => 'Wenn die App sich nicht verbinden kann',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Wenn die App sich nicht verbinden kann',
 			'settings.station.commanderTroubleshooting' => 'Dies verbindet sich mit **DXLab Commander auf deinem Computer**, nicht direkt mit dem Funkgerät — Commander spricht mit dem Funkgerät.\n\n- **Commander muss bereits laufen** und mit dem Funkgerät verbunden sein.\n- **Sein Netzwerkdienst muss eingeschaltet sein**: der Button **Net Serv** im Radio-Bereich des Configuration-Fensters von Commander.\n- **Port** ist 52002, der dritte Port des Blocks ab dem **Base Port** von Net Serv (52000, außer du hast ihn geändert).\n- **Von einem anderen Rechner aus** stelle sicher, dass deine Firewall die Verbindung durchlässt.\n\nDieser Eintrag wurde anhand der veröffentlichten TCP-Nachrichten von Commander geschrieben und noch nicht mit Commander getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
 			'settings.station.ic705TroubleshootingTitle' => 'Wenn das Funkgerät nie reagiert',
 			'settings.station.ic705Troubleshooting' => 'Das Funkgerät hat eine **einzige** Fernsteuerungssitzung. Wird die Anmeldung ignoriert, nutzt fast immer etwas anderes sie.\n\n- **Schließe alle anderen Clients.** wfview oder RS-BA1, mit demselben Funkgerät verbunden, belegen diese eine Sitzung, und die Anmeldung hier wird solange einfach ignoriert.\n- **Prüfe die Netzwerkeinstellungen des Funkgeräts.** WLAN muss an sein, das Funkgerät muss im selben Netzwerk sein und seine Fernsteuerungsfunktion (Network) muss aktiviert sein.\n- **Schalte das WLAN des Funkgeräts aus und wieder ein**, wenn es hängen bleibt. Das löst zuverlässig eine auf dem Funkgerät hängende Sitzung.\n\nEin **falsches Passwort wird ausdrücklich abgelehnt**, nicht mit Schweigen beantwortet. Wenn du hier gelandet bist statt bei einer Meldung „abgelehnt“, ist das Passwort nicht das Problem.',
@@ -5680,9 +5678,9 @@ extension on TranslationsDe {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Nachricht',
 			'exportSettings.shared' => 'Die Einstellungen gelten für jede Erweiterung, die diese Exportart verwendet.',
 			'exportSettings.defaultTemplates' => 'Schalte „Eigene Vorlagen“ ein, um die Vorlagen dieser Art zu bearbeiten.',
+			'templateEditor.previewLabel' => 'Vorschau:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Vorschau:',
 			'templateEditor.reset' => 'Zurücksetzen',
 			'templateEditor.docs' => 'Vorlagen-Doku',
 			'templateEditor.preview' => 'Beispielvorschau',

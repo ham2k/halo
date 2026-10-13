@@ -842,7 +842,13 @@
       "previousPage": "PREVIOUS PAGE",
       "nextPage": "NEXT PAGE",
       "pageOf": "PAGE ${page} OF ${count}",
-      "sections": "SUMMARY SECTIONS",
+      "bandQsos": {
+        "one": "${count} Q",
+        "other": "${count} QS"
+      },
+      "options": "POSTCARD OPTIONS",
+      "bandLegend": "SHOW BAND LEGEND",
+      "sectionsAndOrder": "SUMMARY SECTIONS AND ORDERING",
       "sectionDays": "EACH DAY",
       "reset": "RESET",
       "failed": "COULD NOT MAKE THE POSTCARD: ${error}",

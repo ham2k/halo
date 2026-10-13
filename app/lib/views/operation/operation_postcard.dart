@@ -38,12 +38,12 @@ import '../../services/settings_service.dart';
 import '../../services/web_download.dart';
 import '../../tools/operation_title.dart';
 import '../map/map_gl_script.dart' show mapGlAttribution, mapLibreStyleUrls, mapStyleIsDark, paintMapSpaceBackground;
-import '../map/map_marker_data.dart' show MapMarkerData;
+import '../map/map_marker_data.dart' show MapMarkerData, mapUnknownBandColor;
 import '../map/map_zoom_controller.dart';
 import '../map/osm_map_view.dart' show osmAttribution;
 import 'postcard_framing.dart';
 import 'postcard_overlay.dart';
-import 'postcard_sections_dialog.dart';
+import 'postcard_options_dialog.dart';
 import 'postcard_summary.dart';
 
 export 'postcard_framing.dart';
@@ -87,6 +87,12 @@ const _styleShare = 0.8;
 /// renderer the operator framed it in.
 typedef PostcardMapBuilder = Widget Function(MapFrame frame, MapZoomController controller, MapStyle style);
 
+/// One row of the map postcard's band legend: a band, in its markers'
+/// colour, and how many contacts were made on it.
+typedef PostcardBand = ({String band, Color color, String count});
+
+final _bandOrder = {for (final (index, band) in extendedBands.indexed) band: index};
+
 /// What the overlay says, worked out once when the pane opens.
 class PostcardText {
   final String title;
@@ -94,11 +100,17 @@ class PostcardText {
   final String stats;
   final String date;
 
-  const PostcardText({required this.title, required this.subtitle, required this.stats, required this.date});
+  /// The band legend's rows, lowest band first — empty where no contact names
+  /// a band, and no legend is drawn.
+  final List<PostcardBand> bands;
+
+  const PostcardText({required this.title, required this.subtitle, required this.stats, required this.date, this.bands = const []});
 
   /// The station call and the operation's title on the left, as the Operation
   /// View's header leads with them; the contact count, the span they took and
-  /// when the first was made on the right.
+  /// when the first was made on the right. The legend counts the same
+  /// contacts the header does, each band coloured as the Map tab colours its
+  /// markers.
   factory PostcardText.of(BuildContext context, Operation operation, List<Qso> qsos) {
     final t = context.t.loggingControls.info;
     final contacts = [
@@ -110,11 +122,23 @@ class PostcardText {
     final count = contacts.length == 1 ? t.qsoCountOne : t.qsoCountOther(count: contacts.length);
     final start = firstMs == null ? null : DateTime.fromMillisecondsSinceEpoch(firstMs, isUtc: true);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final perBand = <String, int>{};
+    for (final q in contacts) {
+      if (q.band case final band?) perBand[band] = (perBand[band] ?? 0) + 1;
+    }
+    final colors = HaLoColors.of(context);
+    // Bands the app doesn't know go last, rather than first.
+    int rank(String band) => _bandOrder[band] ?? _bandOrder.length;
+    final legend = [
+      for (final band in perBand.keys.toList()..sort((a, b) => rank(a).compareTo(rank(b))))
+        (band: band, color: colors.bands[band] ?? mapUnknownBandColor, count: context.t.map.postcard.bandQsos(count: perBand[band]!)),
+    ];
     return PostcardText(
       title: '${operation.stationCall} ${displayTitleFor(context, operation)}'.trim(),
       subtitle: displaySubtitleFor(operation),
       stats: firstMs != null && lastMs != null ? t.qsosInTime(count: count, time: fmtTimeBetween(firstMs, lastMs)) : count,
       date: start == null ? '' : '${DateFormat('HH:mm').format(start)}z ${DateFormat.yMMMd(locale).format(start)}',
+      bands: legend,
     );
   }
 }
@@ -260,6 +284,9 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
   /// The sections the operator picked, and their order — kept across
   /// operations, so it names sections this one may not have.
   late var _picks = widget.settings.postcardSections;
+
+  /// Whether the map page carries the band legend, as last picked.
+  late var _legend = widget.settings.postcardBandLegend;
 
   /// The summary's pages in [shape], once its header has been measured.
   PostcardSummaryLayout? _layout(PostcardShape shape) {
@@ -760,10 +787,11 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     }
   }
 
-  Future<void> _pickSections() async {
+  Future<void> _pickOptions() async {
     final here = {for (final section in widget.sections) section.key};
-    final picked = await showPostcardSectionsDialog(
+    final picked = await showPostcardOptionsDialog(
       context,
+      legend: _legend,
       choices: postcardSectionChoices(postcardSectionsPicked(widget.sections, order: _picks.order), daysLabel: context.t.map.postcard.sectionDays),
       hidden: _picks.hidden,
       custom: _custom,
@@ -782,6 +810,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
               ...{for (final section in widget.sections) section.key},
             ]));
     setState(() {
+      _legend = picked.legend;
       _picks = plain ? (order: const [], hidden: const {}) : (order: order, hidden: hidden);
       _layouts.clear();
       _generation++;
@@ -791,10 +820,12 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     });
     if (_pages?.hasClients ?? false) _pages!.jumpToPage(_page);
     unawaited(plain ? widget.settings.clearPostcardSections() : widget.settings.setPostcardSections(order, hidden));
+    unawaited(widget.settings.setPostcardBandLegend(picked.legend));
   }
 
-  /// Whether picks are remembered, which the sections button says in teal.
-  bool get _custom => _picks.order.isNotEmpty || _picks.hidden.isNotEmpty;
+  /// Whether anything differs from how a postcard comes, which the options
+  /// button says in teal.
+  bool get _custom => !_legend || _picks.order.isNotEmpty || _picks.hidden.isNotEmpty;
 
   /// Bright enough to be seen as a mark, on a light pane and a dark one.
   static const _customColor = Color(0xFF00BFA5);
@@ -865,11 +896,11 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
                   },
           );
 
-    final sections = MergeSemantics(
+    final options = MergeSemantics(
       child: Semantics(
-        label: t.sections,
+        label: t.options,
         child: IconButton(
-          onPressed: _busy || widget.sections.isEmpty ? null : _pickSections,
+          onPressed: _busy || (widget.sections.isEmpty && widget.text.bands.isEmpty) ? null : _pickOptions,
           icon: Icon(MdiIcons.formatListBulleted, color: _custom ? _customColor : null),
         ),
       ),
@@ -895,7 +926,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
                           const SizedBox(width: Space.lg),
                           SizedBox(width: _styleWidth, child: style),
                           const SizedBox(width: Space.md),
-                          sections,
+                          options,
                         ],
                       ),
                     )
@@ -912,7 +943,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
                               children: [
                                 Expanded(child: shapes),
                                 const SizedBox(width: Space.md),
-                                sections,
+                                options,
                               ],
                             )
                           else ...[
@@ -924,7 +955,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
                                   child: FractionallySizedBox(alignment: Alignment.centerLeft, widthFactor: _styleShare, child: style),
                                 ),
                                 const SizedBox(width: Space.md),
-                                sections,
+                                options,
                               ],
                             ),
                           ],
@@ -1251,6 +1282,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
           attribution: _attribution,
           isDark: _isDark,
           headerKey: _headerKey,
+          legend: _legend,
           callout: callout,
           calloutAt: calloutAt,
           calloutKey: _calloutKey,

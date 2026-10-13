@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$es extends Translations$map$postcard$en {
 	@override String get previousPage => 'Página anterior';
 	@override String get nextPage => 'Página siguiente';
 	@override String pageOf({required Object page, required Object count}) => 'Página ${page} de ${count}';
-	@override String get sections => 'Secciones del resumen';
 	@override String get sectionDays => 'Cada día';
 	@override String get reset => 'Restablecer';
 	@override String failed({required Object error}) => 'No se pudo crear la postal: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsEs {
 			'map.postcard.previousPage' => 'Página anterior',
 			'map.postcard.nextPage' => 'Página siguiente',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Página ${page} de ${count}',
-			'map.postcard.sections' => 'Secciones del resumen',
 			'map.postcard.sectionDays' => 'Cada día',
 			'map.postcard.reset' => 'Restablecer',
 			'map.postcard.failed' => ({required Object error}) => 'No se pudo crear la postal: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsEs {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: otro programa lo está usando, a menudo el propio ${protocol}. Cierra ese programa o elige otro puerto.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no puede escuchar en el puerto ${port}: esta computadora no lo permite. Elige un puerto por encima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} dejó de escuchar en el puerto ${port}. Reintentando…',
+			'settings.radio.title' => 'Control CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Registro y CAT',
 			'settings.radio.tuningSection' => 'Sintonía',
 			'settings.radio.keyerSection' => 'Manipulador',
@@ -5166,9 +5164,9 @@ extension on TranslationsEs {
 			'settings.station.commanderTroubleshooting' => 'Esto se conecta a **DXLab Commander, que se ejecuta en tu computadora**, no directamente a la radio — Commander habla con la radio.\n\n- **Commander ya debe estar corriendo** y conectado a la radio.\n- **Su servicio de red debe estar activado**: el botón **Net Serv** del panel Radio en la ventana de configuración de Commander.\n- **El puerto** es 52002, el tercero del bloque que empieza en el **Base Port** de Net Serv (52000 salvo que lo hayas cambiado).\n- **Desde otra máquina**, asegúrate de que tu firewall deje pasar la conexión.\n\nEsta entrada se escribió a partir de los mensajes TCP publicados de Commander y no se ha probado contra Commander. Si funciona a medias, merece la pena avisar.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio.** La WLAN debe estar encendida, la radio en la misma red y su función de control remoto (Network) activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión atascada en la radio.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio. Si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
+			'settings.station.statusStale' => 'Sin respuesta',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.statusStale' => 'Sin respuesta',
 			'settings.station.statusDisconnected' => 'Sin conectar',
 			'settings.station.statusConnecting' => 'Conectando…',
 			'settings.station.statusDisconnecting' => 'Desconectando…',
@@ -5680,9 +5678,9 @@ extension on TranslationsEs {
 			'exportSettings.adifQslMessageTemplate' => 'Mensaje QSL ADIF',
 			'exportSettings.shared' => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.',
 			'exportSettings.defaultTemplates' => 'Activa Plantillas personalizadas para editar las plantillas de este tipo.',
+			'templateEditor.previewLabel' => 'Vista previa:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Vista previa:',
 			'templateEditor.reset' => 'Restablecer',
 			'templateEditor.docs' => 'Documentación de plantillas',
 			'templateEditor.preview' => 'Vista previa de ejemplo',

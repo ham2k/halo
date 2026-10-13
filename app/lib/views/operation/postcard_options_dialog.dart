@@ -1,8 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Which of the Operation Postcard's summary sections go on its pages, and in
-// what order: the logging panel's own show/hide-and-reorder dialog
+// The Operation Postcard's options: whether the map page carries its band
+// legend, then which of the summary sections go on the pages after it, and
+// in what order — the logging panel's own show/hide-and-reorder dialog
 // (showControlSettingsDialog) over the summary's sections instead.
 
 import 'package:flutter/material.dart';
@@ -31,15 +32,18 @@ List<PostcardSectionChoice> postcardSectionChoices(List<PostcardSummarySection> 
   return [...choices.values];
 }
 
-/// What the picker resolved to: the order and the hidden keys to keep — or,
-/// with [reset], none of either, and every pick ever made forgotten.
-typedef PostcardSectionsPick = ({List<String> order, Set<String> hidden, bool reset});
+/// What the dialog resolved to: whether to draw the legend, and the order and
+/// the hidden keys to keep — or, with [reset], the legend back on, none of
+/// either, and every pick ever made forgotten.
+typedef PostcardOptionsPick = ({bool legend, List<String> order, Set<String> hidden, bool reset});
 
-/// The picker over [choices], listed in their order with those in [hidden]
-/// unticked, offering to reset the picks where there are [custom] ones.
-/// Resolves to what to keep, or null when cancelled.
-Future<PostcardSectionsPick?> showPostcardSectionsDialog(
+/// The legend's switch, then the picker over [choices], listed in their order
+/// with those in [hidden] unticked — the picker left out where there are no
+/// sections. Offers a reset where there are [custom] picks. Resolves to what
+/// to keep, or null when cancelled.
+Future<PostcardOptionsPick?> showPostcardOptionsDialog(
   BuildContext context, {
+  required bool legend,
   required List<PostcardSectionChoice> choices,
   required Set<String> hidden,
   bool custom = false,
@@ -47,23 +51,41 @@ Future<PostcardSectionsPick?> showPostcardSectionsDialog(
   final byKey = {for (final choice in choices) choice.key: choice};
   var order = [for (final choice in choices) choice.key];
   var unticked = {...hidden.where(byKey.containsKey)};
+  var showLegend = legend;
 
-  return showHaloDialog<PostcardSectionsPick>(
+  return showHaloDialog<PostcardOptionsPick>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setDialogState) {
         final t = context.t.map.postcard;
         return HaloDialog(
-          title: Text(t.sections),
+          title: Text(t.options),
           // The ReorderableListView scrolls itself, so the shell must not —
           // see showControlSettingsDialog.
           scrollable: false,
           wide: true,
+          list: true,
           content: SizedBox(
             width: 360,
             child: ReorderableListView(
               shrinkWrap: true,
               buildDefaultDragHandles: false,
+              header: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListTile(
+                    leading: Icon(MdiIcons.mapLegend),
+                    title: Text(t.bandLegend),
+                    trailing: Checkbox(value: showLegend, onChanged: (checked) => setDialogState(() => showLegend = checked == true)),
+                    onTap: () => setDialogState(() => showLegend = !showLegend),
+                  ),
+                  if (choices.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: Space.lg),
+                      child: SectionHeader(t.sectionsAndOrder),
+                    ),
+                ],
+              ),
               onReorderItem: (oldIndex, newIndex) => setDialogState(() {
                 final reordered = List<String>.from(order);
                 final key = reordered.removeAt(oldIndex);
@@ -98,13 +120,16 @@ Future<PostcardSectionsPick?> showPostcardSectionsDialog(
           tools: Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: custom ? () => Navigator.of(dialogContext).pop((order: const <String>[], hidden: const <String>{}, reset: true)) : null,
+              onPressed: custom ? () => Navigator.of(dialogContext).pop((legend: true, order: const <String>[], hidden: const <String>{}, reset: true)) : null,
               child: Text(t.reset),
             ),
           ),
           cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.cancel)),
           actions: [
-            FilledButton(onPressed: () => Navigator.of(dialogContext).pop((order: order, hidden: unticked, reset: false)), child: Text(context.t.common.save)),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop((legend: showLegend, order: order, hidden: unticked, reset: false)),
+              child: Text(context.t.common.save),
+            ),
           ],
         );
       },

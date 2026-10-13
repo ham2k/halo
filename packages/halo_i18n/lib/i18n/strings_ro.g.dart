@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$ro extends Translations$map$postcard$en {
 	@override String get previousPage => 'Pagina anterioară';
 	@override String get nextPage => 'Pagina următoare';
 	@override String pageOf({required Object page, required Object count}) => 'Pagina ${page} din ${count}';
-	@override String get sections => 'Secțiuni de rezumat';
 	@override String get sectionDays => 'Fiecare zi';
 	@override String get reset => 'Resetează';
 	@override String failed({required Object error}) => 'Cartea poștală nu a putut fi creată: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsRo {
 			'map.postcard.previousPage' => 'Pagina anterioară',
 			'map.postcard.nextPage' => 'Pagina următoare',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Pagina ${page} din ${count}',
-			'map.postcard.sections' => 'Secțiuni de rezumat',
 			'map.postcard.sectionDays' => 'Fiecare zi',
 			'map.postcard.reset' => 'Resetează',
 			'map.postcard.failed' => ({required Object error}) => 'Cartea poștală nu a putut fi creată: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsRo {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} nu poate asculta pe portul ${port}: un alt program îl folosește, adesea chiar ${protocol}. Închideți acel program sau alegeți alt port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nu poate asculta pe portul ${port}: acest calculator nu permite. Alegeți un port peste 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} a oprit ascultarea pe portul ${port}. Se reîncearcă…',
+			'settings.radio.title' => 'Control CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Înregistrare și CAT',
 			'settings.radio.tuningSection' => 'Acord',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -5166,9 +5164,9 @@ extension on TranslationsRo {
 			'settings.station.hrdTroubleshooting' => 'Aceasta se conectează la **Rig Control din Ham Radio Deluxe, care rulează pe calculatorul dvs.**, nu direct la stația radio — HRD comunică cu stația.\n\n- **Rig Control trebuie să ruleze deja** și să fie conectat la stație.\n- **Serverul IP al acestuia trebuie să fie activat.** Rig Control comunică cu alte programe doar prin el.\n- **Portul** este 7809, dacă nu l-ați schimbat în setările serverului IP.\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după descrieri publicate ale protocolului HRD și nu a fost testată cu HRD. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			'settings.station.n3fjpTroubleshooting' => 'Aceasta se conectează la **un program de log N3FJP care rulează pe calculatorul dvs.**, nu direct la stația radio — N3FJP comunică cu stația.\n\n- **API-ul programului trebuie să fie activ**: Settings → Application Program Interface, bifați **TCP API Enabled**.\n- **Portul** este 1100, dacă nu l-ați schimbat acolo.\n- **N3FJP trebuie să aibă configurată o interfață radio** pentru a urmări sau acorda stația. Fără una, raportează doar ce se tastează în fereastra de introducere.\n- N3FJP raportează doar banda, modul și frecvența: fără putere, fără starea de emisie.\n\nAceastă intrare a fost scrisă după API-ul publicat de N3FJP și nu a fost testată cu N3FJP. Dacă funcționează pe jumătate, merită raportat.',
+			'settings.station.commanderTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			'settings.station.commanderTroubleshooting' => 'Aceasta se conectează la **DXLab Commander, care rulează pe calculatorul dvs.**, nu direct la stația radio — Commander comunică cu stația.\n\n- **Commander trebuie să ruleze deja** și să fie conectat la stație.\n- **Serviciul de rețea trebuie să fie activ**: butonul **Net Serv** din panoul Radio al ferestrei Configuration din Commander.\n- **Portul** este 52002, al treilea port din blocul care începe la **Base Port** din Net Serv (52000, dacă nu l-ați schimbat).\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după mesajele TCP publicate de Commander și nu a fost testată cu Commander. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.ic705TroubleshootingTitle' => 'Dacă stația radio nu răspunde niciodată',
 			'settings.station.ic705Troubleshooting' => 'Stația are o **singură** sesiune de control la distanță. Când autentificarea este ignorată, aproape întotdeauna altceva o folosește.\n\n- **Închideți orice alt client.** wfview sau RS-BA1 conectat la aceeași stație ocupă acea sesiune, iar autentificarea de aici este pur și simplu ignorată cât timp o face.\n- **Verificați setările de rețea ale stației.** WLAN trebuie să fie activ, stația trebuie să fie în aceeași rețea, iar funcția de control la distanță (Network) trebuie să fie activată.\n- **Reporniți WLAN-ul stației** dacă rămâne blocată. Aceasta eliberează sigur o sesiune blocată pe stație.\n\nO **parolă greșită este refuzată explicit**, nu întâmpinată cu tăcere. Dacă ați ajuns aici în loc de un mesaj "respins", parola nu este problema.',
@@ -5680,9 +5678,9 @@ extension on TranslationsRo {
 			'exportSettings.adifQslMessageTemplate' => 'Mesaj QSL ADIF',
 			'exportSettings.shared' => 'Setările se aplică fiecărei extensii care folosește acest tip de export.',
 			'exportSettings.defaultTemplates' => 'Activați Șabloane personalizate pentru a edita șabloanele acestui tip.',
+			'templateEditor.previewLabel' => 'Previzualizare:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Previzualizare:',
 			'templateEditor.reset' => 'Resetează',
 			'templateEditor.docs' => 'Documentație șabloane',
 			'templateEditor.preview' => 'Previzualizare exemplu',

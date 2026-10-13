@@ -190,12 +190,6 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   static const _qsoStrokeDark = Color(0xFFF2F2F2);
   static const _qthStroke = Colors.white;
 
-  // Fill for a QSO whose band isn't in the theme's band table — app-polo's
-  // '#FF0000' fallback. Deliberately NOT bandColor's own 'other' fallback
-  // (black): that's the QTH circle's color, and an unknown-band QSO must
-  // not be mistakable for the station itself.
-  static const _unknownBandColor = Color(0xFFFF0000);
-
   /// One contact's share of the map, kept across emissions: derived once per
   /// stamp and reused until the contact is edited, so an emission — four per
   /// logged contact on a long log — re-derives the contacts that changed and
@@ -763,7 +757,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       longitude: location.longitude,
       label: qso.theirCall,
       kind: MapMarkerKind.qso,
-      color: poloColors.bands[qso.band] ?? _unknownBandColor,
+      color: poloColors.bands[qso.band] ?? mapUnknownBandColor,
       strokeColor: strokeColor,
       sizeFactor: _sizeFactorForQso(qso),
       popupTitle: distanceStr == null ? qso.theirCall : '${qso.theirCall} • $distanceStr',

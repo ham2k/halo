@@ -842,7 +842,6 @@
       "previousPage": "Página anterior",
       "nextPage": "Página seguinte",
       "pageOf": "Página ${page} de ${count}",
-      "sections": "Secções do resumo",
       "sectionDays": "Cada dia",
       "reset": "Repor",
       "failed": "Não foi possível criar o postal: ${error}",

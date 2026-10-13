@@ -842,7 +842,6 @@
       "previousPage": "Pagina anterioară",
       "nextPage": "Pagina următoare",
       "pageOf": "Pagina ${page} din ${count}",
-      "sections": "Secțiuni de rezumat",
       "sectionDays": "Fiecare zi",
       "reset": "Resetează",
       "failed": "Cartea poștală nu a putut fi creată: ${error}",

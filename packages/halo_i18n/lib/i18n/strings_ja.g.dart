@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$ja extends Translations$map$postcard$en {
 	@override String get previousPage => '前のページ';
 	@override String get nextPage => '次のページ';
 	@override String pageOf({required Object page, required Object count}) => '${page} / ${count}ページ';
-	@override String get sections => '概要セクション';
 	@override String get sectionDays => '日ごと';
 	@override String get reset => 'リセット';
 	@override String failed({required Object error}) => 'ポストカードを作成できませんでした：${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsJa {
 			'map.postcard.previousPage' => '前のページ',
 			'map.postcard.nextPage' => '次のページ',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => '${page} / ${count}ページ',
-			'map.postcard.sections' => '概要セクション',
 			'map.postcard.sectionDays' => '日ごと',
 			'map.postcard.reset' => 'リセット',
 			'map.postcard.failed' => ({required Object error}) => 'ポストカードを作成できませんでした：${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsJa {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：別のプログラム（多くの場合${protocol}自体）が使用中です。そのプログラムを閉じるか、別のポートを選んでください。',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：このコンピューターが許可していません。1024より大きいポートを選んでください。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}での待ち受けを停止しました。再試行中…',
+			'settings.radio.title' => 'CAT制御',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT制御',
 			'settings.radio.loggingAndCat' => 'ロギングとCAT',
 			'settings.radio.tuningSection' => 'チューニング',
 			'settings.radio.keyerSection' => 'キーヤー',
@@ -5166,9 +5164,9 @@ extension on TranslationsJa {
 			'settings.station.hrdTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のHam Radio DeluxeのRig Control**に接続します。HRDが無線機と通信します。\n\n- **Rig Controlがすでに実行中で**、無線機に接続されている必要があります。\n- **IPサーバーを有効にする必要があります。** Rig Controlは他のプログラムとはそれを通じてのみ通信します。\n- **ポート** は、IPサーバーの設定で変更していない限り7809です。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているHRDのプロトコル説明をもとに作成されており、HRDの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.n3fjpTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.n3fjpTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のN3FJPロギングプログラム**に接続します。N3FJPが無線機と通信します。\n\n- **プログラムのAPIをオンにする必要があります**：Settings → Application Program Interface で **TCP API Enabled** にチェックします。\n- **ポート** は、そこで変更していない限り1100です。\n- 無線機に追従またはチューニングするには、**N3FJPに無線機インターフェースが設定されている必要があります**。設定がない場合、入力ウィンドウに入力された内容のみを報告します。\n- N3FJPが報告するのはバンド、モード、周波数のみで、出力や送信状態は報告しません。\n\nこのエントリーは公開されているN3FJPのAPIをもとに作成されており、N3FJPの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
+			'settings.station.commanderTroubleshootingTitle' => 'アプリが接続できない場合',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.commanderTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.ic705TroubleshootingTitle' => '無線機がまったく応答しない場合',
 			'settings.station.ic705Troubleshooting' => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。',
@@ -5680,9 +5678,9 @@ extension on TranslationsJa {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSLメッセージ',
 			'exportSettings.shared' => 'この設定は、このエクスポート種別を使用するすべての拡張機能に適用されます。',
 			'exportSettings.defaultTemplates' => 'この種別のテンプレートを編集するには、カスタムテンプレートをオンにしてください。',
+			'templateEditor.previewLabel' => 'プレビュー：',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'プレビュー：',
 			'templateEditor.reset' => 'リセット',
 			'templateEditor.docs' => 'テンプレートのドキュメント',
 			'templateEditor.preview' => 'サンプルプレビュー',

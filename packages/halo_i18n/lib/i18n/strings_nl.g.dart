@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$nl extends Translations$map$postcard$en {
 	@override String get previousPage => 'Vorige pagina';
 	@override String get nextPage => 'Volgende pagina';
 	@override String pageOf({required Object page, required Object count}) => 'Pagina ${page} van ${count}';
-	@override String get sections => 'Samenvattingssecties';
 	@override String get sectionDays => 'Elke dag';
 	@override String get reset => 'Resetten';
 	@override String failed({required Object error}) => 'Kon de ansichtkaart niet maken: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsNl {
 			'map.postcard.previousPage' => 'Vorige pagina',
 			'map.postcard.nextPage' => 'Volgende pagina',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Pagina ${page} van ${count}',
-			'map.postcard.sections' => 'Samenvattingssecties',
 			'map.postcard.sectionDays' => 'Elke dag',
 			'map.postcard.reset' => 'Resetten',
 			'map.postcard.failed' => ({required Object error}) => 'Kon de ansichtkaart niet maken: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsNl {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: een ander programma gebruikt die, vaak ${protocol} zelf. Sluit dat programma of kies een andere poort.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: deze computer staat dat niet toe. Kies een poort boven 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} is gestopt met luisteren op poort ${port}. Nieuwe poging…',
+			'settings.radio.title' => 'CAT-besturing',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT-besturing',
 			'settings.radio.loggingAndCat' => 'Loggen & CAT',
 			'settings.radio.tuningSection' => 'Afstemmen',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -5166,9 +5164,9 @@ extension on TranslationsNl {
 			'settings.station.hrdTroubleshooting' => 'Dit verbindt met **Rig Control van Ham Radio Deluxe, draaiend op je computer**, niet direct met de radio — HRD praat met de radio.\n\n- **Rig Control moet al draaien** en met de radio verbonden zijn.\n- **De IP-server ervan moet ingeschakeld zijn.** Rig Control praat alleen via die server met andere programma\'s.\n- **Poort** is 7809, tenzij je die in de instellingen van de IP-server hebt gewijzigd.\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van gepubliceerde beschrijvingen van het HRD-protocol en is nog niet met HRD getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			'settings.station.n3fjpTroubleshooting' => 'Dit verbindt met **een N3FJP-logprogramma dat op je computer draait**, niet direct met de radio — N3FJP praat met de radio.\n\n- **De API van het programma moet aan staan**: Settings → Application Program Interface, vink **TCP API Enabled** aan.\n- **Poort** is 1100, tenzij je die daar hebt gewijzigd.\n- **N3FJP moet een radio-interface ingesteld hebben** om de radio te volgen of af te stemmen. Zonder interface meldt het alleen wat in het invoervenster wordt getypt.\n- N3FJP meldt alleen band, mode en frequentie: geen vermogen, geen zendstatus.\n\nDeze optie is geschreven op basis van de gepubliceerde API van N3FJP en is nog niet met N3FJP getest. Als hij half werkt, is dat het melden waard.',
+			'settings.station.commanderTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			'settings.station.commanderTroubleshooting' => 'Dit verbindt met **DXLab Commander, draaiend op je computer**, niet direct met de radio — Commander praat met de radio.\n\n- **Commander moet al draaien** en met de radio verbonden zijn.\n- **De netwerkdienst moet aan staan**: de knop **Net Serv** in het Radio-paneel van het Configuration-venster van Commander.\n- **Poort** is 52002, de derde poort van het blok dat begint bij de **Base Port** van Net Serv (52000, tenzij je die hebt gewijzigd).\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van de gepubliceerde TCP-berichten van Commander en is nog niet met Commander getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.ic705TroubleshootingTitle' => 'Als de radio nooit reageert',
 			'settings.station.ic705Troubleshooting' => 'De radio heeft **één enkele** sessie voor bediening op afstand. Als de login wordt genegeerd, gebruikt bijna altijd iets anders die sessie.\n\n- **Sluit elke andere client.** wfview of RS-BA1 verbonden met dezelfde radio houdt die ene sessie bezet, en de login hier wordt zolang gewoon genegeerd.\n- **Controleer de netwerkinstellingen van de radio.** WLAN moet aan staan, de radio moet op hetzelfde netwerk zitten, en de functie voor bediening op afstand (Network) moet ingeschakeld zijn.\n- **Zet de WLAN van de radio uit en weer aan** als hij vast blijft zitten. Dat ruimt een vastgelopen sessie op de radio betrouwbaar op.\n\nEen **verkeerd wachtwoord wordt expliciet geweigerd**, niet met stilte beantwoord. Als je hier terechtkwam in plaats van bij een melding "geweigerd", is het wachtwoord niet het probleem.',
@@ -5680,9 +5678,9 @@ extension on TranslationsNl {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Bericht',
 			'exportSettings.shared' => 'Instellingen gelden voor elke extensie die dit exporttype gebruikt.',
 			'exportSettings.defaultTemplates' => 'Zet Aangepaste sjablonen aan om de sjablonen van dit type te bewerken.',
+			'templateEditor.previewLabel' => 'Voorbeeld:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Voorbeeld:',
 			'templateEditor.reset' => 'Resetten',
 			'templateEditor.docs' => 'Sjabloondocumentatie',
 			'templateEditor.preview' => 'Voorbeeldweergave',

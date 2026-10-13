@@ -842,7 +842,6 @@
       "previousPage": "Forrige side",
       "nextPage": "Neste side",
       "pageOf": "Side ${page} av ${count}",
-      "sections": "Oppsummeringsdeler",
       "sectionDays": "Hver dag",
       "reset": "Tilbakestill",
       "failed": "Kunne ikke lage postkortet: ${error}",

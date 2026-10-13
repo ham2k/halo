@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$nb extends Translations$map$postcard$en {
 	@override String get previousPage => 'Forrige side';
 	@override String get nextPage => 'Neste side';
 	@override String pageOf({required Object page, required Object count}) => 'Side ${page} av ${count}';
-	@override String get sections => 'Oppsummeringsdeler';
 	@override String get sectionDays => 'Hver dag';
 	@override String get reset => 'Tilbakestill';
 	@override String failed({required Object error}) => 'Kunne ikke lage postkortet: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsNb {
 			'map.postcard.previousPage' => 'Forrige side',
 			'map.postcard.nextPage' => 'Neste side',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Side ${page} av ${count}',
-			'map.postcard.sections' => 'Oppsummeringsdeler',
 			'map.postcard.sectionDays' => 'Hver dag',
 			'map.postcard.reset' => 'Tilbakestill',
 			'map.postcard.failed' => ({required Object error}) => 'Kunne ikke lage postkortet: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsNb {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: et annet program bruker den, ofte ${protocol} selv. Lukk det programmet eller velg en annen port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: denne datamaskinen tillater det ikke. Velg en port over 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} sluttet å lytte på port ${port}. Prøver igjen…',
+			'settings.radio.title' => 'CAT-styring',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT-styring',
 			'settings.radio.loggingAndCat' => 'Logging og CAT',
 			'settings.radio.tuningSection' => 'Avstemming',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -5166,9 +5164,9 @@ extension on TranslationsNb {
 			'settings.station.hrdTroubleshooting' => 'Dette kobler til **Ham Radio Deluxes Rig Control, som kjører på datamaskinen din**, ikke direkte til radioen — HRD snakker med radioen.\n\n- **Rig Control må allerede kjøre** og være koblet til radioen.\n- **IP-serveren må være aktivert.** Rig Control snakker bare med andre programmer gjennom den.\n- **Porten** er 7809 med mindre du har endret den i innstillingene for IP-serveren.\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter publiserte beskrivelser av HRDs protokoll og har ikke blitt kjørt mot HRD. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.n3fjpTroubleshooting' => 'Dette kobler til **et N3FJP-loggeprogram som kjører på datamaskinen din**, ikke direkte til radioen — N3FJP snakker med radioen.\n\n- **Programmets API må være på**: Settings → Application Program Interface, kryss av for **TCP API Enabled**.\n- **Porten** er 1100 med mindre du har endret den der.\n- **N3FJP må ha et radiogrensesnitt satt opp** for å følge eller stille inn radioen. Uten det rapporterer den bare det som skrives inn i registreringsvinduet.\n- N3FJP rapporterer bare bånd, modus og frekvens: ingen effekt, ingen sendestatus.\n\nDenne oppføringen er skrevet etter N3FJPs publiserte API og har ikke blitt kjørt mot N3FJP. Hvis den halvveis virker, er det verdt å rapportere.',
+			'settings.station.commanderTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.commanderTroubleshooting' => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.ic705TroubleshootingTitle' => 'Hvis radioen aldri svarer',
 			'settings.station.ic705Troubleshooting' => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.',
@@ -5680,9 +5678,9 @@ extension on TranslationsNb {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL-melding',
 			'exportSettings.shared' => 'Innstillingene gjelder for alle utvidelser som bruker denne eksporttypen.',
 			'exportSettings.defaultTemplates' => 'Slå på Egendefinerte maler for å redigere malene for denne typen.',
+			'templateEditor.previewLabel' => 'Forhåndsvisning:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Forhåndsvisning:',
 			'templateEditor.reset' => 'Tilbakestill',
 			'templateEditor.docs' => 'Dokumentasjon for maler',
 			'templateEditor.preview' => 'Eksempelvisning',

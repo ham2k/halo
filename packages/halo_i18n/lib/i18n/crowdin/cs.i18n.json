@@ -842,7 +842,6 @@
       "previousPage": "Předchozí strana",
       "nextPage": "Další strana",
       "pageOf": "Strana ${page} z ${count}",
-      "sections": "Sekce souhrnu",
       "sectionDays": "Každý den",
       "reset": "Obnovit",
       "failed": "Pohlednici nelze vytvořit: ${error}",

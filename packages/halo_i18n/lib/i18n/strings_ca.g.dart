@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$ca extends Translations$map$postcard$en {
 	@override String get previousPage => 'Pàgina anterior';
 	@override String get nextPage => 'Pàgina següent';
 	@override String pageOf({required Object page, required Object count}) => 'Pàgina ${page} de ${count}';
-	@override String get sections => 'Seccions del resum';
 	@override String get sectionDays => 'Cada dia';
 	@override String get reset => 'Restableix';
 	@override String failed({required Object error}) => 'No s\'ha pogut fer la postal: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsCa {
 			'map.postcard.previousPage' => 'Pàgina anterior',
 			'map.postcard.nextPage' => 'Pàgina següent',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Pàgina ${page} de ${count}',
-			'map.postcard.sections' => 'Seccions del resum',
 			'map.postcard.sectionDays' => 'Cada dia',
 			'map.postcard.reset' => 'Restableix',
 			'map.postcard.failed' => ({required Object error}) => 'No s\'ha pogut fer la postal: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsCa {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no pot escoltar al port ${port}: un altre programa l\'està fent servir, sovint el mateix ${protocol}. Tanca aquest programa o tria un altre port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no pot escoltar al port ${port}: aquest ordinador no ho permet. Tria un port per sobre de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} ha deixat d\'escoltar al port ${port}. Tornant-ho a provar…',
+			'settings.radio.title' => 'Control CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Registre i CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Manipulador',
@@ -5166,9 +5164,9 @@ extension on TranslationsCa {
 			'settings.station.hrdTroubleshooting' => 'Això es connecta al **Rig Control de Ham Radio Deluxe, que s\'executa al teu ordinador**, no directament a la ràdio: HRD parla amb la ràdio.\n\n- **Rig Control ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servidor IP ha d\'estar activat.** Rig Control només parla amb altres programes a través d\'ell.\n- **El port** és el 7809, tret que l\'hagis canviat a la configuració del servidor IP.\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir de descripcions publicades del protocol d\'HRD i no s\'ha provat amb HRD. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			'settings.station.n3fjpTroubleshooting' => 'Això es connecta a **un programa de registre N3FJP que s\'executa al teu ordinador**, no directament a la ràdio: N3FJP parla amb la ràdio.\n\n- **L\'API del programa ha d\'estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El port** és el 1100, tret que l\'hagis canviat allà.\n- **N3FJP ha de tenir configurada una interfície de ràdio** per seguir o sintonitzar la ràdio. Sense, només informa del que s\'escriu a la seva finestra d\'entrada.\n- N3FJP només informa de banda, mode i freqüència: ni potència ni estat de transmissió.\n\nAquesta entrada s\'ha escrit a partir de l\'API publicada d\'N3FJP i no s\'ha provat amb N3FJP. Si funciona a mitges, val la pena informar-ne.',
+			'settings.station.commanderTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			'settings.station.commanderTroubleshooting' => 'Això es connecta a **DXLab Commander, que s\'executa al teu ordinador**, no directament a la ràdio: Commander parla amb la ràdio.\n\n- **Commander ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servei de xarxa ha d\'estar activat**: el botó **Net Serv** al panell Radio de la finestra Configuration de Commander.\n- **El port** és el 52002, el tercer port del bloc que comença al **Base Port** de Net Serv (52000 tret que l\'hagis canviat).\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir dels missatges TCP publicats de Commander i no s\'ha provat amb Commander. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la ràdio no respon mai',
 			'settings.station.ic705Troubleshooting' => 'La ràdio té una **única** sessió de control remot. Quan s\'ignora l\'inici de sessió, gairebé sempre és perquè alguna altra cosa l\'està fent servir.\n\n- **Tanca qualsevol altre client.** wfview o RS-BA1 connectats a la mateixa ràdio ocupen aquesta única sessió, i mentrestant l\'inici de sessió d\'aquí simplement s\'ignora.\n- **Comprova la configuració de xarxa de la ràdio.** La WLAN ha d\'estar activada, la ràdio ha de ser a la mateixa xarxa i la seva funció de control remot (Network) ha d\'estar activada.\n- **Apaga i torna a encendre la WLAN de la ràdio** si continua bloquejada. Això allibera de manera fiable una sessió encallada a la ràdio.\n\nUna **contrasenya incorrecta es rebutja explícitament**, no amb silenci. Si has arribat aquí en lloc de rebre un missatge de "rebutjat", el problema no és la contrasenya.',
@@ -5680,9 +5678,9 @@ extension on TranslationsCa {
 			'exportSettings.adifQslMessageTemplate' => 'Missatge ADIF QSL',
 			'exportSettings.shared' => 'La configuració s\'aplica a totes les extensions que utilitzen aquest tipus d\'exportació.',
 			'exportSettings.defaultTemplates' => 'Activa Plantilles personalitzades per editar les plantilles d\'aquest tipus.',
+			'templateEditor.previewLabel' => 'Previsualització:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Previsualització:',
 			'templateEditor.reset' => 'Restableix',
 			'templateEditor.docs' => 'Documentació de plantilles',
 			'templateEditor.preview' => 'Previsualització d\'exemple',

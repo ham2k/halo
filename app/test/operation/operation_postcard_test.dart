@@ -188,6 +188,62 @@ void main() {
       expect(text.date, '22:14z Aug 22, 2026');
       expect(text.title, startsWith('AE4XO '));
     });
+
+    Future<PostcardText> textFor(WidgetTester tester, List<Qso> qsos) async {
+      late PostcardText text;
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                text = PostcardText.of(context, const Operation(uuid: 'op', data: {'stationCall': 'AE4XO'}), qsos);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      return text;
+    }
+
+    testWidgets('a legend lists every band, lowest first, in their markers\' colours', (tester) async {
+      final text = await textFor(tester, [
+        // Logged highest band first: the legend's order is the bands', not the log's.
+        for (var i = 0; i < 7; i++) contact('six$i', i, band: '6m'),
+        for (var i = 0; i < 2; i++) contact('twenty$i', i),
+        contact('forty', 0, band: '40m'),
+        // Not a contact, so neither a count nor a band of its own.
+        contact('e', 0, band: 'event'),
+      ]);
+      expect([for (final b in text.bands) (b.band, b.count)], [('40m', '1 Q'), ('20m', '2 Qs'), ('6m', '7 Qs')]);
+      final colors = HaLoColors.light;
+      expect([for (final b in text.bands) b.color], [colors.bands['40m'], colors.bands['20m'], colors.bands['6m']]);
+    });
+
+    testWidgets('a single band still gets its legend; contacts naming none get no row', (tester) async {
+      final text = await textFor(tester, [
+        contact('a', 0),
+        Qso(uuid: 'n', operationUuid: 'op', data: const {'uuid': 'n', 'startAtMillis': 0}),
+        contact('e', 0, band: 'event'),
+      ]);
+      expect([for (final b in text.bands) (b.band, b.count)], [('20m', '1 Q')]);
+    });
+
+    testWidgets('every band the app knows takes its place by frequency; a band without a colour is red, like its markers', (tester) async {
+      // Logged out of order, and 11m and the microwave bands are missing from
+      // halo_core's frequency table: ordering by that table puts them last,
+      // in the order they were logged.
+      final text = await textFor(tester, [
+        contact('a', 0, band: '3cm'),
+        contact('b', 0, band: 'weird'),
+        contact('c', 0, band: '13cm'),
+        contact('d', 0, band: '11m'),
+        contact('e', 0, band: '40m'),
+        contact('f', 0),
+      ]);
+      expect([for (final b in text.bands) b.band], ['40m', '20m', '11m', '13cm', '3cm', 'weird']);
+      expect({for (final b in text.bands.skip(2)) b.color}, {mapUnknownBandColor});
+    });
   });
 
   group('the pane', () {
@@ -214,6 +270,7 @@ void main() {
       MapMarkerData? callout,
       void Function(MapZoomController controller)? attach,
       List<PostcardSummarySection> sections = const [],
+      PostcardText text = text,
     }) async {
       await tester.pumpWidget(
         TranslationProvider(
@@ -715,7 +772,7 @@ void main() {
         isA<PostcardHeading>().having((h) => h.title, 'title', 'Bands'),
       );
 
-      await tester.tap(find.bySemanticsLabel('Summary sections'));
+      await tester.tap(find.bySemanticsLabel('Postcard Options'));
       await tester.pumpAndSettle();
       await tester.tap(
         find.descendant(
@@ -736,7 +793,7 @@ void main() {
     testWidgets('marks the sections button while picks are remembered, until they are reset', (tester) async {
       Color? mark() => tester.widget<Icon>(find.byIcon(MdiIcons.formatListBulleted)).color;
       Future<void> inDialog(Future<void> Function() steps) async {
-        await tester.tap(find.bySemanticsLabel('Summary sections'));
+        await tester.tap(find.bySemanticsLabel('Postcard Options'));
         await tester.pumpAndSettle();
         await steps();
         await tester.pumpAndSettle();
@@ -768,6 +825,60 @@ void main() {
       expect(mark(), isNull);
       expect(settings.postcardSections, (order: const <String>[], hidden: const <String>{}), reason: "every pick forgotten, another operation's too");
       expect(find.bySemanticsLabel(RegExp(r'^Page \d of 3$')), findsOneWidget, reason: 'every section back');
+    });
+
+    final banded = PostcardText(
+      title: text.title,
+      subtitle: text.subtitle,
+      stats: text.stats,
+      date: text.date,
+      bands: [
+        for (final band in ['40m', '20m', '6m']) (band: band, color: HaLoColors.light.bands[band]!, count: '4 Qs'),
+      ],
+    );
+
+    Future<void> toggleLegend(WidgetTester tester) async {
+      await tester.tap(find.bySemanticsLabel('Postcard Options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show band legend'));
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a Copy after the legend is turned off takes a new picture, not the one it took before', (tester) async {
+      final copies = <Object?>[];
+      mockClipboard(tester, (call) async => copies.add(call.arguments));
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true, text: banded, attach: (c) => c.onSettled ??= () async {});
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await until(tester, () => copies.length == 1, 'copied with the legend');
+      await toggleLegend(tester);
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await until(tester, () => copies.length == 2, 'copied without it');
+      expect(copies.last, isNot(equals(copies.first)), reason: 'a picture kept from before shares the legend it no longer has');
+    });
+
+    testWidgets('leaves the band legend off the map once it is turned off, and remembers that', (tester) async {
+      Color? mark() => tester.widget<Icon>(find.byIcon(MdiIcons.formatListBulleted)).color;
+      final settings = await freshSettings();
+      // No summary sections: the legend alone is reason enough for the button.
+      await pumpPanel(tester, settings, mapIsFlutter: false, text: banded);
+      expect(find.text('40m'), findsOneWidget);
+
+      await toggleLegend(tester);
+
+      expect(find.text('40m'), findsNothing);
+      expect(settings.postcardBandLegend, isFalse);
+      expect(mark(), const Color(0xFF00BFA5), reason: 'a postcard that differs from how it comes');
+
+      await pumpPanel(tester, settings, mapIsFlutter: false, text: banded);
+      expect(find.text('40m'), findsNothing, reason: 'the next postcard starts as the last was left');
+
+      await toggleLegend(tester);
+      expect(find.text('40m'), findsOneWidget);
+      expect(mark(), isNull);
+      // Back on is how a postcard comes: nothing stored, so it keeps following that.
+      expect(settings.settingValue(SettingsService.generalGroup, 'postcardBandLegend'), isNull);
     });
 
     testWidgets("takes the map's picture only while its page is drawn, bringing it back on show for one", (tester) async {

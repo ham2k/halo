@@ -3731,8 +3731,20 @@ class Translations$map$postcard$en {
 	/// en: 'Page ${page} of ${count}'
 	String pageOf({required Object page, required Object count}) => 'Page ${page} of ${count}';
 
-	/// en: 'Summary sections'
-	String get sections => 'Summary sections';
+	/// en: '(one) {${count} Q} (other) {${count} Qs}'
+	String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} Q',
+		other: '${count} Qs',
+	);
+
+	/// en: 'Postcard Options'
+	String get options => 'Postcard Options';
+
+	/// en: 'Show band legend'
+	String get bandLegend => 'Show band legend';
+
+	/// en: 'Summary Sections and Ordering'
+	String get sectionsAndOrder => 'Summary Sections and Ordering';
 
 	/// en: 'Each day'
 	String get sectionDays => 'Each day';
@@ -8463,7 +8475,10 @@ extension on Translations {
 			'map.postcard.previousPage' => 'Previous page',
 			'map.postcard.nextPage' => 'Next page',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Page ${page} of ${count}',
-			'map.postcard.sections' => 'Summary sections',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Q', other: '${count} Qs', ), 
+			'map.postcard.options' => 'Postcard Options',
+			'map.postcard.bandLegend' => 'Show band legend',
+			'map.postcard.sectionsAndOrder' => 'Summary Sections and Ordering',
 			'map.postcard.sectionDays' => 'Each day',
 			'map.postcard.reset' => 'Reset',
 			'map.postcard.failed' => ({required Object error}) => 'Could not make the postcard: ${error}',
@@ -8800,11 +8815,11 @@ extension on Translations {
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} on port ${port}. Clients connected: ${clients}.',
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} on port ${port}, but no Main VFO radio is connected.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} cannot listen on port ${port}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: another program is using it, often ${protocol} itself. Close that program or choose another port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. Choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.title' => 'CAT Control',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Tuning',
@@ -9314,11 +9329,11 @@ extension on Translations {
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable. It listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio. Check that flrig\'s display is following the dial.',
 			'settings.station.hrdTroubleshootingTitle' => 'If the app cannot connect',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.hrdTroubleshooting' => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only talks to other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.n3fjpTroubleshooting' => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never responds',
@@ -9828,11 +9843,11 @@ extension on Translations {
 			'exportSettings.titleTemplate' => 'Title template',
 			'exportSettings.adifNotesTemplate' => 'ADIF QSO Notes',
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO Comments',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Message',
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Preview:',
 			'templateEditor.reset' => 'Reset',
 			'templateEditor.docs' => 'Templating Docs',

@@ -842,7 +842,6 @@
       "previousPage": "Predchádzajúca strana",
       "nextPage": "Ďalšia strana",
       "pageOf": "Strana ${page} z ${count}",
-      "sections": "Sekcie súhrnu",
       "sectionDays": "Každý deň",
       "reset": "Obnoviť",
       "failed": "Pohľadnicu sa nepodarilo vytvoriť: ${error}",

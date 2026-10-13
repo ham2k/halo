@@ -1750,7 +1750,6 @@ class Translations$map$postcard$pt extends Translations$map$postcard$en {
 	@override String get previousPage => 'Página anterior';
 	@override String get nextPage => 'Página seguinte';
 	@override String pageOf({required Object page, required Object count}) => 'Página ${page} de ${count}';
-	@override String get sections => 'Secções do resumo';
 	@override String get sectionDays => 'Cada dia';
 	@override String get reset => 'Repor';
 	@override String failed({required Object error}) => 'Não foi possível criar o postal: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsPt {
 			'map.postcard.previousPage' => 'Página anterior',
 			'map.postcard.nextPage' => 'Página seguinte',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Página ${page} de ${count}',
-			'map.postcard.sections' => 'Secções do resumo',
 			'map.postcard.sectionDays' => 'Cada dia',
 			'map.postcard.reset' => 'Repor',
 			'map.postcard.failed' => ({required Object error}) => 'Não foi possível criar o postal: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsPt {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: outro programa está a usá-la, muitas vezes o próprio ${protocol}. Feche esse programa ou escolha outra porta.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: este computador não o permite. Escolha uma porta acima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} deixou de escutar na porta ${port}. A tentar novamente…',
+			'settings.radio.title' => 'Controlo CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'Controlo CAT',
 			'settings.radio.loggingAndCat' => 'Registo e CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Manipulador',
@@ -5166,9 +5164,9 @@ extension on TranslationsPt {
 			'settings.station.hrdTroubleshooting' => 'Isto liga ao **Rig Control do Ham Radio Deluxe, a correr no seu computador**, não diretamente ao rádio — é o HRD que fala com o rádio.\n\n- **O Rig Control já tem de estar a correr** e ligado ao rádio.\n- **O servidor IP dele tem de estar ativado.** O Rig Control só comunica com outros programas através dele.\n- **A porta** é 7809, a menos que a tenha alterado nas configurações do servidor IP.\n- **A partir de outra máquina**, garanta que a firewall deixa passar a ligação.\n\nEsta entrada foi escrita a partir de descrições publicadas do protocolo do HRD e ainda não foi testada com o HRD. Se funcionar só em parte, vale a pena reportar.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Se a app não conseguir ligar',
 			'settings.station.n3fjpTroubleshooting' => 'Isto liga a **um programa de registo N3FJP a correr no seu computador**, não diretamente ao rádio — é o N3FJP que fala com o rádio.\n\n- **A API do programa tem de estar ligada**: Settings → Application Program Interface, assinale **TCP API Enabled**.\n- **A porta** é 1100, a menos que a tenha alterado aí.\n- **O N3FJP tem de ter uma interface de rádio configurada** para seguir ou sintonizar o rádio. Sem ela, só reporta o que é escrito na sua janela de entrada.\n- O N3FJP só reporta banda, modo e frequência: nem potência, nem estado de transmissão.\n\nEsta entrada foi escrita a partir da API publicada do N3FJP e ainda não foi testada com o N3FJP. Se funcionar só em parte, vale a pena reportar.',
+			'settings.station.commanderTroubleshootingTitle' => 'Se a app não conseguir ligar',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Se a app não conseguir ligar',
 			'settings.station.commanderTroubleshooting' => 'Isto liga ao **DXLab Commander, a correr no seu computador**, não diretamente ao rádio — é o Commander que fala com o rádio.\n\n- **O Commander já tem de estar a correr** e ligado ao rádio.\n- **O serviço de rede dele tem de estar ligado**: o botão **Net Serv** no painel Radio da janela Configuration do Commander.\n- **A porta** é 52002, a terceira porta do bloco que começa na **Base Port** do Net Serv (52000, a menos que a tenha alterado).\n- **A partir de outra máquina**, garanta que a firewall deixa passar a ligação.\n\nEsta entrada foi escrita a partir das mensagens TCP publicadas do Commander e ainda não foi testada com o Commander. Se funcionar só em parte, vale a pena reportar.',
 			'settings.station.ic705TroubleshootingTitle' => 'Se o rádio nunca responder',
 			'settings.station.ic705Troubleshooting' => 'O rádio tem uma **única** sessão de controlo remoto. Quando o login é ignorado, quase sempre há outra coisa a usá-la.\n\n- **Feche qualquer outro cliente.** Um wfview ou RS-BA1 ligado ao mesmo rádio ocupa essa única sessão, e o login aqui é simplesmente ignorado enquanto isso acontecer.\n- **Verifique as configurações de rede do rádio.** O WLAN tem de estar ligado, o rádio tem de estar na mesma rede, e a função de controlo remoto (Network) tem de estar ativada.\n- **Desligue e volte a ligar o WLAN do rádio** se continuar bloqueado. Isso limpa de forma fiável uma sessão presa no rádio.\n\nUma **palavra-passe errada é recusada explicitamente**, não recebe silêncio. Se chegou aqui em vez de receber uma mensagem de "rejeitado", o problema não é a palavra-passe.',
@@ -5680,9 +5678,9 @@ extension on TranslationsPt {
 			'exportSettings.adifQslMessageTemplate' => 'Mensagem de QSL ADIF',
 			'exportSettings.shared' => 'As configurações aplicam-se a todas as extensões que usam este tipo de exportação.',
 			'exportSettings.defaultTemplates' => 'Ative Modelos personalizados para editar os modelos deste tipo.',
+			'templateEditor.previewLabel' => 'Pré-visualização:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Pré-visualização:',
 			'templateEditor.reset' => 'Repor',
 			'templateEditor.docs' => 'Documentação de Modelos',
 			'templateEditor.preview' => 'Pré-visualização de exemplo',

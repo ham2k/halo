@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$tr extends Translations$map$postcard$en {
 	@override String get previousPage => 'Önceki sayfa';
 	@override String get nextPage => 'Sonraki sayfa';
 	@override String pageOf({required Object page, required Object count}) => 'Sayfa ${page} / ${count}';
-	@override String get sections => 'Özet bölümleri';
 	@override String get sectionDays => 'Her gün';
 	@override String get reset => 'Sıfırla';
 	@override String failed({required Object error}) => 'Kartpostal oluşturulamadı: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsTr {
 			'map.postcard.previousPage' => 'Önceki sayfa',
 			'map.postcard.nextPage' => 'Sonraki sayfa',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Sayfa ${page} / ${count}',
-			'map.postcard.sections' => 'Özet bölümleri',
 			'map.postcard.sectionDays' => 'Her gün',
 			'map.postcard.reset' => 'Sıfırla',
 			'map.postcard.failed' => ({required Object error}) => 'Kartpostal oluşturulamadı: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsTr {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: başka bir program onu kullanıyor, çoğu zaman ${protocol} programının kendisi. O programı kapatın veya başka bir port seçin.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: bu bilgisayar buna izin vermiyor. 1024\'ün üzerinde bir port seçin.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinlemeyi bıraktı. Tekrar deneniyor…',
+			'settings.radio.title' => 'CAT Kontrolü',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT Kontrolü',
 			'settings.radio.loggingAndCat' => 'Kayıt ve CAT',
 			'settings.radio.tuningSection' => 'Ayar',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -5166,9 +5164,9 @@ extension on TranslationsTr {
 			'settings.station.hrdTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan Ham Radio Deluxe Rig Control\'e** bağlanır — HRD radyoyla konuşur.\n\n- **Rig Control zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **IP sunucusu etkin olmalı.** Rig Control diğer programlarla yalnızca onun üzerinden konuşur.\n- IP sunucusunun ayarlarında değiştirmediyseniz **port** 7809\'dur.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş HRD protokolünün yayımlanmış açıklamalarından yazıldı ve HRD üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.n3fjpTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan bir N3FJP kayıt programına** bağlanır — N3FJP radyoyla konuşur.\n\n- **Programın API\'si açık olmalı**: Settings → Application Program Interface, **TCP API Enabled** seçeneğini işaretleyin.\n- Orada değiştirmediyseniz **port** 1100\'dür.\n- Radyoyu izlemek veya ayarlamak için **N3FJP\'de bir radyo arayüzü kurulu olmalı**. Arayüz olmadan yalnızca giriş penceresine yazılanları bildirir.\n- N3FJP yalnızca bant, mod ve frekans bildirir: güç ve yayın durumu yok.\n\nBu giriş N3FJP\'nin yayımlanmış API\'sinden yazıldı ve N3FJP üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
+			'settings.station.commanderTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.commanderTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.ic705TroubleshootingTitle' => 'Radyo hiç yanıt vermiyorsa',
 			'settings.station.ic705Troubleshooting' => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.',
@@ -5680,9 +5678,9 @@ extension on TranslationsTr {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Mesajı',
 			'exportSettings.shared' => 'Ayarlar, bu dışa aktarma türünü kullanan her uzantıya uygulanır.',
 			'exportSettings.defaultTemplates' => 'Bu türün şablonlarını düzenlemek için Özel şablonlar\'ı açın.',
+			'templateEditor.previewLabel' => 'Önizleme:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Önizleme:',
 			'templateEditor.reset' => 'Sıfırla',
 			'templateEditor.docs' => 'Şablon Belgeleri',
 			'templateEditor.preview' => 'Örnek önizleme',

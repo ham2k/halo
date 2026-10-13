@@ -842,7 +842,6 @@
       "previousPage": "Vorherige Seite",
       "nextPage": "Nächste Seite",
       "pageOf": "Seite ${page} von ${count}",
-      "sections": "Zusammenfassungsabschnitte",
       "sectionDays": "Jeder Tag",
       "reset": "Zurücksetzen",
       "failed": "Postkarte konnte nicht erstellt werden: ${error}",

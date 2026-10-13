@@ -842,7 +842,6 @@
       "previousPage": "이전 페이지",
       "nextPage": "다음 페이지",
       "pageOf": "${page} / ${count} 페이지",
-      "sections": "요약 섹션",
       "sectionDays": "일별",
       "reset": "초기화",
       "failed": "엽서를 만들 수 없습니다: ${error}",

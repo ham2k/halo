@@ -842,7 +842,6 @@
       "previousPage": "Page précédente",
       "nextPage": "Page suivante",
       "pageOf": "Page ${page} sur ${count}",
-      "sections": "Sections du résumé",
       "sectionDays": "Chaque jour",
       "reset": "Réinitialiser",
       "failed": "Impossible de créer la carte postale : ${error}",

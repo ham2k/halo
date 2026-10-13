@@ -842,7 +842,6 @@
       "previousPage": "Önceki sayfa",
       "nextPage": "Sonraki sayfa",
       "pageOf": "Sayfa ${page} / ${count}",
-      "sections": "Özet bölümleri",
       "sectionDays": "Her gün",
       "reset": "Sıfırla",
       "failed": "Kartpostal oluşturulamadı: ${error}",

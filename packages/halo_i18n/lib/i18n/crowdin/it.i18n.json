@@ -842,7 +842,6 @@
       "previousPage": "Pagina precedente",
       "nextPage": "Pagina successiva",
       "pageOf": "Pagina ${page} di ${count}",
-      "sections": "Sezioni del riepilogo",
       "sectionDays": "Ogni giorno",
       "reset": "Ripristina",
       "failed": "Impossibile creare la cartolina: ${error}",

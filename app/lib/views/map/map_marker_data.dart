@@ -423,6 +423,12 @@ const mapMarkerSmallAtZoom = 3.0;
 const mapMarkerFullAtZoom = 8.0;
 const mapMarkerSmallScale = 0.5;
 
+/// Fill for a QSO whose band isn't in the theme's band table — app-polo's
+/// '#FF0000' fallback. Deliberately NOT bandColor's own 'other' fallback
+/// (black): that's the QTH circle's color, and an unknown-band QSO must not
+/// be mistakable for the station itself.
+const mapUnknownBandColor = Color(0xFFFF0000);
+
 /// The strength every other marker and line is drawn at while a map shows a
 /// highlighted marker ([MapMarkerData.highlight] — a highlighted line never
 /// comes without one), so

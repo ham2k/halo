@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$it extends Translations$map$postcard$en {
 	@override String get previousPage => 'Pagina precedente';
 	@override String get nextPage => 'Pagina successiva';
 	@override String pageOf({required Object page, required Object count}) => 'Pagina ${page} di ${count}';
-	@override String get sections => 'Sezioni del riepilogo';
 	@override String get sectionDays => 'Ogni giorno';
 	@override String get reset => 'Ripristina';
 	@override String failed({required Object error}) => 'Impossibile creare la cartolina: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsIt {
 			'map.postcard.previousPage' => 'Pagina precedente',
 			'map.postcard.nextPage' => 'Pagina successiva',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Pagina ${page} di ${count}',
-			'map.postcard.sections' => 'Sezioni del riepilogo',
 			'map.postcard.sectionDays' => 'Ogni giorno',
 			'map.postcard.reset' => 'Ripristina',
 			'map.postcard.failed' => ({required Object error}) => 'Impossibile creare la cartolina: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsIt {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} non può ascoltare sulla porta ${port}: un altro programma la sta usando, spesso ${protocol} stesso. Chiudi quel programma o scegli un\'altra porta.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} non può ascoltare sulla porta ${port}: questo computer non lo consente. Scegli una porta superiore a 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} ha smesso di ascoltare sulla porta ${port}. Nuovo tentativo…',
+			'settings.radio.title' => 'Controllo CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'Controllo CAT',
 			'settings.radio.loggingAndCat' => 'Logging e CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Keyer',
@@ -5166,9 +5164,9 @@ extension on TranslationsIt {
 			'settings.station.hrdTroubleshooting' => 'Questa voce si connette a **Rig Control di Ham Radio Deluxe, in esecuzione sul tuo computer**, non direttamente alla radio — HRD comunica con la radio.\n\n- **Rig Control deve essere già in esecuzione** e connesso alla radio.\n- **Il suo IP server deve essere abilitato.** Rig Control comunica con gli altri programmi solo tramite questo.\n- **La porta** è 7809 a meno che tu non l\'abbia cambiata nelle impostazioni dell\'IP server.\n- **Da un\'altra macchina**, assicurati che il firewall lasci passare la connessione.\n\nQuesta voce è stata scritta a partire dalle descrizioni pubblicate del protocollo di HRD e non è stata provata con HRD. Se funziona solo in parte, vale la pena segnalarlo.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Se l\'app non riesce a connettersi',
 			'settings.station.n3fjpTroubleshooting' => 'Questa voce si connette a **un programma di logging N3FJP in esecuzione sul tuo computer**, non direttamente alla radio — N3FJP comunica con la radio.\n\n- **L\'API del programma deve essere attiva**: Settings → Application Program Interface, seleziona **TCP API Enabled**.\n- **La porta** è 1100 a meno che tu non l\'abbia cambiata lì.\n- **N3FJP deve avere un\'interfaccia radio configurata** per seguire o sintonizzare la radio. Senza, segnala solo ciò che viene digitato nella sua finestra di inserimento.\n- N3FJP segnala solo banda, modo e frequenza: niente potenza, niente stato di trasmissione.\n\nQuesta voce è stata scritta a partire dall\'API pubblicata di N3FJP e non è stata provata con N3FJP. Se funziona solo in parte, vale la pena segnalarlo.',
+			'settings.station.commanderTroubleshootingTitle' => 'Se l\'app non riesce a connettersi',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Se l\'app non riesce a connettersi',
 			'settings.station.commanderTroubleshooting' => 'Questa voce si connette a **DXLab Commander, in esecuzione sul tuo computer**, non direttamente alla radio — Commander comunica con la radio.\n\n- **Commander deve essere già in esecuzione** e connesso alla radio.\n- **Il suo servizio di rete deve essere attivo**: il pulsante **Net Serv** nel pannello Radio della finestra Configuration di Commander.\n- **La porta** è 52002, la terza porta del blocco che inizia dalla **Base Port** di Net Serv (52000 a meno che tu non l\'abbia cambiata).\n- **Da un\'altra macchina**, assicurati che il firewall lasci passare la connessione.\n\nQuesta voce è stata scritta a partire dai messaggi TCP pubblicati di Commander e non è stata provata con Commander. Se funziona solo in parte, vale la pena segnalarlo.',
 			'settings.station.ic705TroubleshootingTitle' => 'Se la radio non risponde mai',
 			'settings.station.ic705Troubleshooting' => 'La radio ha una **sola** sessione di controllo remoto. Quando l\'accesso viene ignorato, quasi sempre qualcos\'altro la sta usando.\n\n- **Chiudi qualsiasi altro client.** wfview o RS-BA1 connessi alla stessa radio occupano quell\'unica sessione, e nel frattempo l\'accesso da qui viene semplicemente ignorato.\n- **Controlla le impostazioni di rete della radio.** La WLAN deve essere attiva, la radio deve essere sulla stessa rete e la sua funzione di controllo remoto (Network) deve essere abilitata.\n- **Spegni e riaccendi la WLAN della radio** se resta bloccata. Questo libera in modo affidabile una sessione bloccata sulla radio.\n\nUna **password errata viene rifiutata esplicitamente**, non accolta dal silenzio. Se sei arrivato qui invece di vedere un messaggio di "rifiuto", il problema non è la password.',
@@ -5680,9 +5678,9 @@ extension on TranslationsIt {
 			'exportSettings.adifQslMessageTemplate' => 'Messaggio QSL ADIF',
 			'exportSettings.shared' => 'Le impostazioni si applicano a ogni estensione che usa questo tipo di esportazione.',
 			'exportSettings.defaultTemplates' => 'Attiva Modelli personalizzati per modificare i modelli di questo tipo.',
+			'templateEditor.previewLabel' => 'Anteprima:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Anteprima:',
 			'templateEditor.reset' => 'Ripristina',
 			'templateEditor.docs' => 'Documentazione dei modelli',
 			'templateEditor.preview' => 'Anteprima di esempio',

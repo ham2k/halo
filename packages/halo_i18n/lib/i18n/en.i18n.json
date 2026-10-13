@@ -842,7 +842,13 @@
       "previousPage": "Previous page",
       "nextPage": "Next page",
       "pageOf": "Page ${page} of ${count}",
-      "sections": "Summary sections",
+      "bandQsos": {
+        "one": "${count} Q",
+        "other": "${count} Qs"
+      },
+      "options": "Postcard Options",
+      "bandLegend": "Show band legend",
+      "sectionsAndOrder": "Summary Sections and Ordering",
       "sectionDays": "Each day",
       "reset": "Reset",
       "failed": "Could not make the postcard: ${error}",

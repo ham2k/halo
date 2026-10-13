@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$sk extends Translations$map$postcard$en {
 	@override String get previousPage => 'Predchádzajúca strana';
 	@override String get nextPage => 'Ďalšia strana';
 	@override String pageOf({required Object page, required Object count}) => 'Strana ${page} z ${count}';
-	@override String get sections => 'Sekcie súhrnu';
 	@override String get sectionDays => 'Každý deň';
 	@override String get reset => 'Obnoviť';
 	@override String failed({required Object error}) => 'Pohľadnicu sa nepodarilo vytvoriť: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsSk {
 			'map.postcard.previousPage' => 'Predchádzajúca strana',
 			'map.postcard.nextPage' => 'Ďalšia strana',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'Strana ${page} z ${count}',
-			'map.postcard.sections' => 'Sekcie súhrnu',
 			'map.postcard.sectionDays' => 'Každý deň',
 			'map.postcard.reset' => 'Obnoviť',
 			'map.postcard.failed' => ({required Object error}) => 'Pohľadnicu sa nepodarilo vytvoriť: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsSk {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: používa ho iný program, často samotný ${protocol}. Zatvorte tento program alebo vyberte iný port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: tento počítač to nepovoľuje. Vyberte port nad 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} prestal počúvať na porte ${port}. Skúša sa znova…',
+			'settings.radio.title' => 'Ovládanie CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'Ovládanie CAT',
 			'settings.radio.loggingAndCat' => 'Logovanie a CAT',
 			'settings.radio.tuningSection' => 'Ladenie',
 			'settings.radio.keyerSection' => 'Kľúčovač',
@@ -5166,9 +5164,9 @@ extension on TranslationsSk {
 			'settings.station.hrdTroubleshooting' => 'Toto sa pripája k **Rig Control z Ham Radio Deluxe, ktorý beží na vašom počítači**, nie priamo k rádiostanici — HRD komunikuje s rádiostanicou.\n\n- **Rig Control už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho IP server musí byť povolený.** Rig Control komunikuje s inými programami iba cez neho.\n- **Port** je 7809, pokiaľ ste ho nezmenili v nastaveniach IP servera.\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených popisov protokolu HRD a s HRD ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			'settings.station.n3fjpTroubleshooting' => 'Toto sa pripája k **logovaciemu programu N3FJP, ktorý beží na vašom počítači**, nie priamo k rádiostanici — N3FJP komunikuje s rádiostanicou.\n\n- **API programu musí byť zapnuté**: Settings → Application Program Interface, zaškrtnite **TCP API Enabled**.\n- **Port** je 1100, pokiaľ ste ho tam nezmenili.\n- **N3FJP musí mať nastavené rozhranie rádiostanice**, aby mohol sledovať alebo ladiť rádiostanicu. Bez neho hlási iba to, čo sa zadá do jeho vstupného okna.\n- N3FJP hlási iba pásmo, mód a frekvenciu: žiadny výkon, žiadny stav vysielania.\n\nTáto položka bola napísaná podľa zverejneného API N3FJP a s N3FJP ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
+			'settings.station.commanderTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			'settings.station.commanderTroubleshooting' => 'Toto sa pripája k **DXLab Commander, ktorý beží na vašom počítači**, nie priamo k rádiostanici — Commander komunikuje s rádiostanicou.\n\n- **Commander už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho sieťová služba musí byť zapnutá**: tlačidlo **Net Serv** na paneli Radio v okne Configuration programu Commander.\n- **Port** je 52002, tretí port bloku začínajúceho na **Base Port** v Net Serv (52000, pokiaľ ste ho nezmenili).\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených TCP správ programu Commander a s Commanderom ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.ic705TroubleshootingTitle' => 'Ak rádiostanica nikdy neodpovie',
 			'settings.station.ic705Troubleshooting' => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview alebo RS-BA1 pripojený k tej istej rádiostanici drží túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** WLAN musí byť zapnutá, rádiostanica musí byť v tej istej sieti a jej funkcia diaľkového ovládania (Network) musí byť povolená.\n- **Vypnite a zapnite WLAN rádiostanice**, ak zostane zaseknutá. Spoľahlivo to uvoľní reláciu zaseknutú na rádiostanici.\n\n**Nesprávne heslo je výslovne odmietnuté**, nie prijaté mlčaním. Ak ste sa dostali sem a nie k správe „odmietnuté“, problém nie je v hesle.',
@@ -5680,9 +5678,9 @@ extension on TranslationsSk {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL správa',
 			'exportSettings.shared' => 'Nastavenia platia pre každé rozšírenie, ktoré používa tento typ exportu.',
 			'exportSettings.defaultTemplates' => 'Ak chcete upraviť šablóny tohto typu, zapnite Vlastné šablóny.',
+			'templateEditor.previewLabel' => 'Náhľad:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => 'Náhľad:',
 			'templateEditor.reset' => 'Obnoviť',
 			'templateEditor.docs' => 'Dokumentácia šablón',
 			'templateEditor.preview' => 'Ukážkový náhľad',

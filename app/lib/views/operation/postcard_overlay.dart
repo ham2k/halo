@@ -2,22 +2,25 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // What the Operation Postcard draws over its map: the operation's title and
-// numbers in a band across the top, the app's name at the foot, the map's
-// attribution, and the Map tab's open popup where it showed one.
+// numbers in a band across the top, the app's name at the foot, the bands'
+// legend in the corner beside it, the map's attribution, and the Map tab's
+// open popup where it showed one.
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../map/map_marker_data.dart' show MapMarkerData;
 import '../map/map_popup.dart' show MapPopupCard;
-import 'operation_postcard.dart' show PostcardShape, PostcardText, postcardCalloutGap;
+import 'operation_postcard.dart' show PostcardBand, PostcardShape, PostcardText, postcardCalloutGap;
 
 const _footerBottom = 24.0;
 const _footerPadding = Space.sm;
 
-/// The foot of a postcard that its footer takes, and a gap above it: the
-/// pill's margin, its padding and its line, the brand's 20 at 1.25.
-const postcardFooterRoom = _footerBottom + 2 * _footerPadding + 20 * 1.25 + Space.xl;
+/// The footer pill's height: its padding and its line, the brand's 20 at 1.25.
+const _footerHeight = 2 * _footerPadding + 20 * 1.25;
+
+/// The foot of a postcard that its footer takes, and a gap above it.
+const postcardFooterRoom = _footerBottom + _footerHeight + Space.xl;
 
 /// Everything the postcard draws over the map, at its logical size. Its
 /// colours are the picture's own, not the app theme's: the band follows the
@@ -30,6 +33,10 @@ class PostcardOverlay extends StatelessWidget {
 
   /// On the header band, for the pane to measure it by.
   final Key? headerKey;
+
+  /// Whether [text]'s band legend is drawn: the map page's alone, since a
+  /// summary page's text runs into the corner it takes.
+  final bool legend;
 
   /// The Map tab's open popup, drawn with its tip on [calloutAt] — or laid out
   /// unseen, for [calloutKey] to be measured by, until the pane knows where.
@@ -44,6 +51,7 @@ class PostcardOverlay extends StatelessWidget {
     required this.attribution,
     required this.isDark,
     this.headerKey,
+    this.legend = false,
     this.callout,
     this.calloutAt,
     this.calloutKey,
@@ -158,11 +166,72 @@ class PostcardOverlay extends StatelessWidget {
                 ),
               ),
             ),
+            if (legend && text.bands.isNotEmpty)
+              Positioned(
+                left: Space.xl,
+                // A portrait's corner is too narrow to hold the legend beside
+                // the footer, so it stands on top of it there.
+                bottom: shape == PostcardShape.portrait ? _footerBottom + _footerHeight + Space.md : _footerBottom,
+                child: _PostcardLegend(bands: text.bands, band: band, style: body.copyWith(fontSize: 16)),
+              ),
             Positioned(
               right: 6,
               bottom: 4,
               child: Text(attribution, style: body.copyWith(fontSize: 9, color: ink.withValues(alpha: 0.8))),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Each band, a dot in its markers' colour and its count, in three columns:
+/// the names and the counts flush right. The names are in the overlay's ink,
+/// which every band colour from navy to yellow would not read against.
+class _PostcardLegend extends StatelessWidget {
+  final List<PostcardBand> bands;
+  final Color band;
+  final TextStyle style;
+
+  const _PostcardLegend({required this.bands, required this.band, required this.style});
+
+  static const _dot = 12.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final figures = style.copyWith(fontFeatures: const [FontFeature.tabularFigures()]);
+    return DecoratedBox(
+      decoration: BoxDecoration(color: band, borderRadius: BorderRadius.circular(Space.lg)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg, vertical: Space.sm),
+        child: Table(
+          defaultColumnWidth: const IntrinsicColumnWidth(),
+          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+          children: [
+            for (final row in bands)
+              TableRow(
+                children: [
+                  Text(
+                    row.band,
+                    style: figures.copyWith(fontWeight: FontWeight.w900),
+                    textAlign: TextAlign.right,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: Space.sm),
+                    // Ringed in the ink, as a contact's marker is ringed against its basemap.
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: row.color,
+                        border: Border.all(color: figures.color!, width: 1.5),
+                      ),
+                      child: const SizedBox.square(dimension: _dot),
+                    ),
+                  ),
+                  Text(row.count, style: figures, textAlign: TextAlign.right),
+                ],
+              ),
           ],
         ),
       ),

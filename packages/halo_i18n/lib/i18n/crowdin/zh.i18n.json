@@ -842,7 +842,6 @@
       "previousPage": "上一页",
       "nextPage": "下一页",
       "pageOf": "第 ${page} / ${count} 页",
-      "sections": "摘要部分",
       "sectionDays": "每天",
       "reset": "重置",
       "failed": "无法制作明信片：${error}",

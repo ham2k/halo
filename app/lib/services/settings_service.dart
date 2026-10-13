@@ -66,6 +66,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _postcardShapeKey = 'postcardShape';
   static const _postcardMapStyleKey = 'postcardMapStyle';
   static const _postcardSectionsKey = 'postcardSections';
+  static const _postcardBandLegendKey = 'postcardBandLegend';
   static const _secondaryControlsOrderKey = 'secondaryControlsOrder';
   static const _hiddenSecondaryControlsKey = 'hiddenSecondaryControls';
   static const _showRSTFieldsKey = 'showRSTFields';
@@ -1577,6 +1578,13 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   /// Forgets every pick, this operation's and every other's.
   Future<void> clearPostcardSections() => setSettingValue(generalGroup, _postcardSectionsKey, null);
+
+  /// Whether the Operation Postcard's map page carries its band legend.
+  bool get postcardBandLegend => (settingValue(generalGroup, _postcardBandLegendKey) as bool?) ?? true;
+
+  /// Stores only a legend turned off: one left on is how a postcard comes,
+  /// and keeps following that, as [postcardSections] does.
+  Future<void> setPostcardBandLegend(bool show) => setSettingValue(generalGroup, _postcardBandLegendKey, show ? null : false);
 }
 
 /// One callsign profile from [SettingsService.activeProfile] — an id plus a

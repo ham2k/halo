@@ -1750,7 +1750,13 @@ class _Translations$map$postcard$qro extends Translations$map$postcard$en {
 	@override String get previousPage => 'PREVIOUS PAGE';
 	@override String get nextPage => 'NEXT PAGE';
 	@override String pageOf({required Object page, required Object count}) => 'PAGE ${page} OF ${count}';
-	@override String get sections => 'SUMMARY SECTIONS';
+	@override String bandQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} Q',
+		other: '${count} QS',
+	);
+	@override String get options => 'POSTCARD OPTIONS';
+	@override String get bandLegend => 'SHOW BAND LEGEND';
+	@override String get sectionsAndOrder => 'SUMMARY SECTIONS AND ORDERING';
 	@override String get sectionDays => 'EACH DAY';
 	@override String get reset => 'RESET';
 	@override String failed({required Object error}) => 'COULD NOT MAKE THE POSTCARD: ${error}';
@@ -4312,7 +4318,10 @@ extension on TranslationsQro {
 			'map.postcard.previousPage' => 'PREVIOUS PAGE',
 			'map.postcard.nextPage' => 'NEXT PAGE',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => 'PAGE ${page} OF ${count}',
-			'map.postcard.sections' => 'SUMMARY SECTIONS',
+			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} Q', other: '${count} QS', ), 
+			'map.postcard.options' => 'POSTCARD OPTIONS',
+			'map.postcard.bandLegend' => 'SHOW BAND LEGEND',
+			'map.postcard.sectionsAndOrder' => 'SUMMARY SECTIONS AND ORDERING',
 			'map.postcard.sectionDays' => 'EACH DAY',
 			'map.postcard.reset' => 'RESET',
 			'map.postcard.failed' => ({required Object error}) => 'COULD NOT MAKE THE POSTCARD: ${error}',
@@ -4649,11 +4658,11 @@ extension on TranslationsQro {
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} ON PORT ${port}. CLIENTS CONNECTED: ${clients}.',
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} ON PORT ${port}, BUT NO MAIN VFO RADIO IS CONNECTED.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} CANNOT LISTEN ON PORT ${port}: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} CANNOT LISTEN ON PORT ${port}: ANOTHER PROGRAM IS USING IT, OFTEN ${protocol} ITSELF. CLOSE THAT PROGRAM OR CHOOSE ANOTHER PORT.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} CANNOT LISTEN ON PORT ${port}: THIS COMPUTER DOES NOT ALLOW IT. CHOOSE A PORT ABOVE 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} STOPPED LISTENING ON PORT ${port}. TRYING AGAIN…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.title' => 'CAT CONTROL',
 			'settings.radio.loggingAndCat' => 'LOGGING & CAT',
 			'settings.radio.tuningSection' => 'TUNING',
@@ -5163,11 +5172,11 @@ extension on TranslationsQro {
 			'settings.station.flrigTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
 			'settings.station.flrigTroubleshooting' => 'THIS CONNECTS TO AN **FLRIG PROGRAM YOU RUN YOURSELF**, NOT TO THE RADIO DIRECTLY — FLRIG TALKS TO THE RADIO AND SUPPORTS MOST MAKES AND MODELS.\n\n- **FLRIG MUST ALREADY BE RUNNING**, WITH ITS TRANSCEIVER CONFIGURED AND CONNECTED.\n- **PORT** IS 12345 UNLESS YOU CHANGED IT IN FLRIG\'S CONFIGURATION (CONFIG → SETUP → SERVER).\n- **FROM ANOTHER MACHINE**, MAKE SURE FLRIG\'S SERVER IS REACHABLE. IT LISTENS ON ALL INTERFACES, BUT YOUR FIREWALL MAY NOT AGREE.\n- ONCE CONNECTED, A MISSING FREQUENCY USUALLY MEANS FLRIG ITSELF CANNOT REACH THE RADIO. CHECK THAT FLRIG\'S DISPLAY IS FOLLOWING THE DIAL.',
 			'settings.station.hrdTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.hrdTroubleshooting' => 'THIS CONNECTS TO **HAM RADIO DELUXE\'S RIG CONTROL, RUNNING ON YOUR COMPUTER**, NOT TO THE RADIO DIRECTLY — HRD TALKS TO THE RADIO.\n\n- **RIG CONTROL MUST ALREADY BE RUNNING** AND CONNECTED TO THE RADIO.\n- **ITS IP SERVER MUST BE ENABLED.** RIG CONTROL ONLY TALKS TO OTHER PROGRAMS THROUGH IT.\n- **PORT** IS 7809 UNLESS YOU CHANGED IT IN THE IP SERVER\'S SETTINGS.\n- **FROM ANOTHER MACHINE**, MAKE SURE YOUR FIREWALL LETS THE CONNECTION THROUGH.\n\nTHIS ENTRY WAS WRITTEN FROM PUBLISHED DESCRIPTIONS OF HRD\'S PROTOCOL AND HAS NOT BEEN RUN AGAINST HRD. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
 			'settings.station.n3fjpTroubleshooting' => 'THIS CONNECTS TO **AN N3FJP LOGGING PROGRAM RUNNING ON YOUR COMPUTER**, NOT TO THE RADIO DIRECTLY — N3FJP TALKS TO THE RADIO.\n\n- **THE PROGRAM\'S API MUST BE ON**: SETTINGS → APPLICATION PROGRAM INTERFACE, CHECK **TCP API ENABLED**.\n- **PORT** IS 1100 UNLESS YOU CHANGED IT THERE.\n- **N3FJP MUST HAVE A RADIO INTERFACE SET UP** TO FOLLOW OR TUNE THE RADIO. WITHOUT ONE, IT REPORTS ONLY WHAT IS TYPED INTO ITS ENTRY WINDOW.\n- N3FJP REPORTS BAND, MODE AND FREQUENCY ONLY: NO POWER, NO TRANSMIT STATE.\n\nTHIS ENTRY WAS WRITTEN FROM N3FJP\'S PUBLISHED API AND HAS NOT BEEN RUN AGAINST N3FJP. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'IF THE APP CANNOT CONNECT',
 			'settings.station.commanderTroubleshooting' => 'THIS CONNECTS TO **DXLAB COMMANDER, RUNNING ON YOUR COMPUTER**, NOT TO THE RADIO DIRECTLY — COMMANDER TALKS TO THE RADIO.\n\n- **COMMANDER MUST ALREADY BE RUNNING** AND CONNECTED TO THE RADIO.\n- **ITS NETWORK SERVICE MUST BE ON**: THE **NET SERV** BUTTON IN THE RADIO PANEL OF COMMANDER\'S CONFIGURATION WINDOW.\n- **PORT** IS 52002, THE THIRD PORT OF THE BLOCK STARTING AT NET SERV\'S **BASE PORT** (52000 UNLESS YOU CHANGED IT).\n- **FROM ANOTHER MACHINE**, MAKE SURE YOUR FIREWALL LETS THE CONNECTION THROUGH.\n\nTHIS ENTRY WAS WRITTEN FROM COMMANDER\'S PUBLISHED TCP MESSAGES AND HAS NOT BEEN RUN AGAINST COMMANDER. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.ic705TroubleshootingTitle' => 'IF THE RADIO NEVER RESPONDS',
@@ -5677,11 +5686,11 @@ extension on TranslationsQro {
 			'exportSettings.titleTemplate' => 'TITLE TEMPLATE',
 			'exportSettings.adifNotesTemplate' => 'ADIF QSO NOTES',
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO COMMENTS',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL MESSAGE',
 			'exportSettings.shared' => 'SETTINGS APPLY TO EVERY EXTENSION USING THIS EXPORT TYPE.',
 			'exportSettings.defaultTemplates' => 'TURN ON CUSTOM TEMPLATES TO EDIT THIS TYPE’S TEMPLATES.',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'PREVIEW:',
 			'templateEditor.reset' => 'RESET',
 			'templateEditor.docs' => 'TEMPLATING DOCS',

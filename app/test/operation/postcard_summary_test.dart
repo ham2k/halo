@@ -15,7 +15,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/views/operation/operation_postcard.dart';
-import 'package:ham2k_logger/views/operation/postcard_sections_dialog.dart';
+import 'package:ham2k_logger/views/operation/postcard_options_dialog.dart';
 import 'package:ham2k_logger/views/operation/postcard_summary.dart';
 
 void main() {
@@ -213,23 +213,27 @@ void main() {
     });
   });
 
-  group('the sections dialog', () {
-    Future<PostcardSectionsPick?> pick(WidgetTester tester, Future<void> Function() steps) async {
-      PostcardSectionsPick? result;
+  group('the options dialog', () {
+    const choices = <PostcardSectionChoice>[
+      (key: 'stats', label: 'Operation Stats', icon: null, iconColor: null),
+      (key: 'days', label: 'Each day', icon: null, iconColor: null),
+      (key: 'core.dxcc', label: '6 DXCC Entities', icon: 'earth', iconColor: null),
+    ];
+
+    Future<PostcardOptionsPick?> pick(
+      WidgetTester tester,
+      Future<void> Function() steps, {
+      bool legend = true,
+      List<PostcardSectionChoice> choices = choices,
+      bool custom = false,
+    }) async {
+      PostcardOptionsPick? result;
       await tester.pumpWidget(
         TranslationProvider(
           child: MaterialApp(
             home: Builder(
               builder: (context) => TextButton(
-                onPressed: () async => result = await showPostcardSectionsDialog(
-                  context,
-                  choices: [
-                    (key: 'stats', label: 'Operation Stats', icon: null, iconColor: null),
-                    (key: 'days', label: 'Each day', icon: null, iconColor: null),
-                    (key: 'core.dxcc', label: '6 DXCC Entities', icon: 'earth', iconColor: null),
-                  ],
-                  hidden: {'days'},
-                ),
+                onPressed: () async => result = await showPostcardOptionsDialog(context, legend: legend, choices: choices, hidden: {'days'}, custom: custom),
                 child: const Text('open'),
               ),
             ),
@@ -279,6 +283,44 @@ void main() {
       expect(result?.order, ['core.dxcc', 'stats', 'days']);
       expect(result?.hidden, {'stats'});
       expect(result?.reset, isFalse);
+      expect(result?.legend, isTrue, reason: 'left on as it was');
+    });
+
+    testWidgets('turns the band legend off from its own row, above the sections and their heading', (tester) async {
+      final result = await pick(tester, () async {
+        expect(find.text('Postcard Options'), findsOneWidget);
+        expect(tester.getTopLeft(find.text('Show band legend')).dy, lessThan(tester.getTopLeft(find.text('Summary Sections and Ordering')).dy));
+        expect(tester.getTopLeft(find.text('Summary Sections and Ordering')).dy, lessThan(tester.getTopLeft(find.text('Operation Stats')).dy));
+        await tester.tap(find.text('Show band legend'));
+        await tester.pump();
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+      });
+      expect(result?.legend, isFalse);
+      expect(result?.hidden, {'days'}, reason: 'the sections as they were');
+    });
+
+    testWidgets('with no sections to pick, offers the legend alone', (tester) async {
+      await pick(tester, () async {
+        expect(find.text('Show band legend'), findsOneWidget);
+        expect(find.text('Summary Sections and Ordering'), findsNothing, reason: 'a heading over nothing');
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+      }, choices: const []);
+    });
+
+    testWidgets('a reset turns the legend back on with the sections', (tester) async {
+      final result = await pick(
+        tester,
+        () async {
+          await tester.tap(find.text('Reset'));
+          await tester.pumpAndSettle();
+        },
+        legend: false,
+        custom: true,
+      );
+      expect(result?.reset, isTrue);
+      expect(result?.legend, isTrue);
     });
 
     testWidgets('changes nothing when cancelled', (tester) async {
@@ -403,5 +445,45 @@ void main() {
     final origin = tester.getTopLeft(find.byType(PostcardSummaryPage));
     final line = layout.pages.single.last;
     expect(tester.getTopLeft(find.text('12 QSOs', findRichText: true)) - origin, layout.content.topLeft + Offset(0, line.top));
+  });
+
+  testWidgets("a summary page draws no band legend: its text runs into the legend's corner", (tester) async {
+    final layout = postcardSummaryLayout(
+      [
+        PostcardSummarySection(const PostcardHeading('Stats'), [PostcardParagraph.plain('12 QSOs')]),
+      ],
+      page: PostcardShape.portrait.logicalSize,
+      header: 100,
+      continued: (t) => t,
+    );
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: PostcardSummaryPage(
+              shape: PostcardShape.portrait,
+              text: const PostcardText(
+                title: 'N0CALL',
+                subtitle: '',
+                stats: '3 QSOs',
+                date: '',
+                bands: [
+                  (band: '40m', color: Color(0xFF1686F0), count: '1 Q'),
+                  (band: '20m', color: Color(0xFF49C215), count: '1 Q'),
+                  (band: '6m', color: Color(0xFFEB1018), count: '1 Q'),
+                ],
+              ),
+              attribution: '© OSM',
+              isDark: false,
+              layout: layout,
+              page: 0,
+            ),
+          ),
+        ),
+      ),
+    );
+    expect(find.text('40m'), findsNothing);
   });
 }

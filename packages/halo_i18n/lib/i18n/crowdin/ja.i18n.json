@@ -842,7 +842,6 @@
       "previousPage": "前のページ",
       "nextPage": "次のページ",
       "pageOf": "${page} / ${count}ページ",
-      "sections": "概要セクション",
       "sectionDays": "日ごと",
       "reset": "リセット",
       "failed": "ポストカードを作成できませんでした：${error}",

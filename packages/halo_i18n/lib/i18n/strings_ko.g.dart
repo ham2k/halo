@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$ko extends Translations$map$postcard$en {
 	@override String get previousPage => '이전 페이지';
 	@override String get nextPage => '다음 페이지';
 	@override String pageOf({required Object page, required Object count}) => '${page} / ${count} 페이지';
-	@override String get sections => '요약 섹션';
 	@override String get sectionDays => '일별';
 	@override String get reset => '초기화';
 	@override String failed({required Object error}) => '엽서를 만들 수 없습니다: ${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsKo {
 			'map.postcard.previousPage' => '이전 페이지',
 			'map.postcard.nextPage' => '다음 페이지',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => '${page} / ${count} 페이지',
-			'map.postcard.sections' => '요약 섹션',
 			'map.postcard.sectionDays' => '일별',
 			'map.postcard.reset' => '초기화',
 			'map.postcard.failed' => ({required Object error}) => '엽서를 만들 수 없습니다: ${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsKo {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기할 수 없습니다: 다른 프로그램(주로 ${protocol} 자체)이 사용 중입니다. 해당 프로그램을 닫거나 다른 포트를 선택하세요.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기할 수 없습니다: 이 컴퓨터가 허용하지 않습니다. 1024보다 큰 포트를 선택하세요.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기를 중지했습니다. 다시 시도 중…',
+			'settings.radio.title' => 'CAT 제어',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT 제어',
 			'settings.radio.loggingAndCat' => '로깅 및 CAT',
 			'settings.radio.tuningSection' => '튜닝',
 			'settings.radio.keyerSection' => '키어',
@@ -5166,9 +5164,9 @@ extension on TranslationsKo {
 			'settings.station.hrdTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 Ham Radio Deluxe의 Rig Control**에 연결합니다. HRD가 무전기와 통신합니다.\n\n- **Rig Control이 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **IP 서버가 활성화되어 있어야 합니다.** Rig Control은 이를 통해서만 다른 프로그램과 통신합니다.\n- **포트**는 IP 서버 설정에서 변경하지 않았다면 7809입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 HRD 프로토콜에 대한 공개 설명을 바탕으로 작성되었으며 실제 HRD에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.n3fjpTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			'settings.station.n3fjpTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 N3FJP 로깅 프로그램**에 연결합니다. N3FJP가 무전기와 통신합니다.\n\n- **프로그램의 API가 켜져 있어야 합니다**: Settings → Application Program Interface에서 **TCP API Enabled**를 체크하세요.\n- **포트**는 그곳에서 변경하지 않았다면 1100입니다.\n- 무전기를 따라가거나 튜닝하려면 **N3FJP에 무전기 인터페이스가 설정되어 있어야 합니다.** 없으면 입력 창에 입력된 값만 보고합니다.\n- N3FJP는 밴드, 모드, 주파수만 보고합니다. 출력과 송신 상태는 보고하지 않습니다.\n\n이 항목은 N3FJP가 공개한 API를 바탕으로 작성되었으며 실제 N3FJP에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
+			'settings.station.commanderTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			'settings.station.commanderTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 DXLab Commander**에 연결합니다. Commander가 무전기와 통신합니다.\n\n- **Commander가 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **네트워크 서비스가 켜져 있어야 합니다**: Commander 구성 창의 Radio 패널에 있는 **Net Serv** 버튼.\n- **포트**는 52002이며, Net Serv의 **Base Port**(변경하지 않았다면 52000)부터 시작하는 블록의 세 번째 포트입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 Commander가 공개한 TCP 메시지를 바탕으로 작성되었으며 실제 Commander에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.ic705TroubleshootingTitle' => '무전기가 전혀 응답하지 않는 경우',
 			'settings.station.ic705Troubleshooting' => '무전기는 원격 제어 세션을 **하나만** 지원합니다. 로그인이 무시된다면 거의 항상 다른 무언가가 세션을 사용 중입니다.\n\n- **다른 클라이언트를 모두 닫으세요.** 같은 무전기에 연결된 wfview나 RS-BA1이 그 세션을 점유하며, 그동안 여기서의 로그인은 그냥 무시됩니다.\n- **무전기의 네트워크 설정을 확인하세요.** WLAN이 켜져 있고, 무전기가 같은 네트워크에 있으며, 원격 제어(Network) 기능이 활성화되어 있어야 합니다.\n- 계속 멈춰 있다면 **무전기의 WLAN을 껐다 켜세요.** 무전기에 멈춰 있는 세션이 확실히 해제됩니다.\n\n**비밀번호가 틀리면 명시적으로 거부**되며, 응답이 없는 것이 아닙니다. "거부됨" 메시지 대신 이 화면이 나왔다면 비밀번호 문제가 아닙니다.',
@@ -5680,9 +5678,9 @@ extension on TranslationsKo {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL 메시지',
 			'exportSettings.shared' => '이 설정은 이 내보내기 유형을 사용하는 모든 확장 기능에 적용됩니다.',
 			'exportSettings.defaultTemplates' => '이 유형의 템플릿을 편집하려면 맞춤 템플릿을 켜세요.',
+			'templateEditor.previewLabel' => '미리보기:',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => '미리보기:',
 			'templateEditor.reset' => '초기화',
 			'templateEditor.docs' => '템플릿 문서',
 			'templateEditor.preview' => '샘플 미리보기',

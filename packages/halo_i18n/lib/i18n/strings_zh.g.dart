@@ -1750,7 +1750,6 @@ class _Translations$map$postcard$zh extends Translations$map$postcard$en {
 	@override String get previousPage => '上一页';
 	@override String get nextPage => '下一页';
 	@override String pageOf({required Object page, required Object count}) => '第 ${page} / ${count} 页';
-	@override String get sections => '摘要部分';
 	@override String get sectionDays => '每天';
 	@override String get reset => '重置';
 	@override String failed({required Object error}) => '无法制作明信片：${error}';
@@ -4312,7 +4311,6 @@ extension on TranslationsZh {
 			'map.postcard.previousPage' => '上一页',
 			'map.postcard.nextPage' => '下一页',
 			'map.postcard.pageOf' => ({required Object page, required Object count}) => '第 ${page} / ${count} 页',
-			'map.postcard.sections' => '摘要部分',
 			'map.postcard.sectionDays' => '每天',
 			'map.postcard.reset' => '重置',
 			'map.postcard.failed' => ({required Object error}) => '无法制作明信片：${error}',
@@ -4652,9 +4650,9 @@ extension on TranslationsZh {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：另一个程序正在使用它，通常是 ${protocol} 本身。请关闭该程序或选择其他端口。',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：此计算机不允许。请选择 1024 以上的端口。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} 已停止在端口 ${port} 上监听。正在重试…',
+			'settings.radio.title' => 'CAT 控制',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.title' => 'CAT 控制',
 			'settings.radio.loggingAndCat' => '记录与 CAT',
 			'settings.radio.tuningSection' => '调谐',
 			'settings.radio.keyerSection' => '电键',
@@ -5166,9 +5164,9 @@ extension on TranslationsZh {
 			'settings.station.hrdTroubleshooting' => '这会连接到**在您计算机上运行的 Ham Radio Deluxe 的 Rig Control**，而不是直接连接电台——由 HRD 与电台通信。\n\n- **Rig Control 必须已在运行**并已连接到电台。\n- **必须启用其 IP 服务器。** Rig Control 只通过它与其他程序通信。\n- **端口**为 7809，除非您在 IP 服务器设置中更改过。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据公开的 HRD 协议说明编写，尚未与 HRD 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.n3fjpTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.n3fjpTroubleshooting' => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际运行过。如果它只部分可用，非常值得报告。',
+			'settings.station.commanderTroubleshootingTitle' => '如果应用无法连接',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.ic705TroubleshootingTitle' => '如果电台始终没有响应',
 			'settings.station.ic705Troubleshooting' => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。',
@@ -5680,9 +5678,9 @@ extension on TranslationsZh {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL 消息',
 			'exportSettings.shared' => '设置适用于使用此导出类型的所有扩展。',
 			'exportSettings.defaultTemplates' => '开启“自定义模板”即可编辑此类型的模板。',
+			'templateEditor.previewLabel' => '预览：',
 			_ => null,
 		} ?? switch (path) {
-			'templateEditor.previewLabel' => '预览：',
 			'templateEditor.reset' => '重置',
 			'templateEditor.docs' => '模板文档',
 			'templateEditor.preview' => '示例预览',

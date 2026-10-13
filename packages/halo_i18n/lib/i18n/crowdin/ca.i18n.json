@@ -842,7 +842,6 @@
       "previousPage": "Pàgina anterior",
       "nextPage": "Pàgina següent",
       "pageOf": "Pàgina ${page} de ${count}",
-      "sections": "Seccions del resum",
       "sectionDays": "Cada dia",
       "reset": "Restableix",
       "failed": "No s'ha pogut fer la postal: ${error}",

@@ -842,7 +842,6 @@
       "previousPage": "Vorige pagina",
       "nextPage": "Volgende pagina",
       "pageOf": "Pagina ${page} van ${count}",
-      "sections": "Samenvattingssecties",
       "sectionDays": "Elke dag",
       "reset": "Resetten",
       "failed": "Kon de ansichtkaart niet maken: ${error}",
