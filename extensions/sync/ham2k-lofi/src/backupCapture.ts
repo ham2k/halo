@@ -25,6 +25,42 @@ export class LoFiRequestError extends Error {
   }
 }
 
+/// A reply that arrived but can't be used: a 2xx proxy or captive-portal page
+/// instead of JSON, a 2xx that isn't a sync reply, a token LoFi keeps
+/// refusing. Not a LoFiRequestError, so sync's backup capture still fires;
+/// its own class so the capture says something answered rather than calling
+/// it a network failure. `status` is 0 where the throw site doesn't have it.
+export class LoFiUnusableResponseError extends Error {
+  status: number
+  constructor(message: string, status = 0) {
+    super(message)
+    this.status = status
+  }
+}
+
+/// What the backup service is told about why LoFi failed this payload —
+/// `failure: {reason, status}` on `/v1/capture`, stored and tagged on its
+/// Sentry report (api-lofi `backup-service/README.md`). `status` is the HTTP
+/// status actually received, 0 when nothing answered.
+export interface BackupCaptureFailure {
+  reason: "server_error" | "bad_response" | "timeout" | "network"
+  status: number
+}
+
+/// Sorts an error sync() is about to capture for. A host.fetch failure
+/// reaches the extension as a plain Error carrying the Dart exception's
+/// toString (halo_extension_host.dart's host-call catch, kernel.ts
+/// hostResponse): a timeout is dart:async's `TimeoutException after ...`, and
+/// everything else from host.fetch — package:http's `ClientException`, a TLS
+/// `HandshakeException` — is a request that never got an answer.
+export function backupCaptureFailure(error: unknown): BackupCaptureFailure {
+  if (error instanceof LoFiRequestError) return { reason: "server_error", status: error.status }
+  if (error instanceof LoFiUnusableResponseError) return { reason: "bad_response", status: error.status }
+  const message = error instanceof Error ? error.message : String(error)
+  if (message.startsWith("TimeoutException")) return { reason: "timeout", status: 0 }
+  return { reason: "network", status: 0 }
+}
+
 /// Whether a LoFi sync failure means LoFi can't be trusted with this payload
 /// right now (host.fetch itself threw, or LoFi answered but failed
 /// server-side) versus a status LoFi actually and deliberately returned

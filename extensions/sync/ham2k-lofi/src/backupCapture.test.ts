@@ -4,7 +4,7 @@
 import assert from "node:assert/strict"
 import { describe, it } from "node:test"
 
-import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
+import { LoFiRequestError, LoFiUnusableResponseError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage, backupCaptureFailure } from "./backupCapture.ts"
 
 describe("shouldCaptureToBackup", () => {
   it("captures when host.fetch itself threw (not a LoFiRequestError at all)", () => {
@@ -53,5 +53,48 @@ describe("backupCaptureAlsoFailedMessage", () => {
     const message = backupCaptureAlsoFailedMessage("a plain string throw", 42)
     assert.match(message, /a plain string throw/)
     assert.match(message, /42/)
+  })
+})
+
+// Without a failure block every HaLo capture reaches the backup service as
+// `failure_reason: unknown`, and telling an outage from a phone in a dead spot
+// means reconstructing it from Cloudflare's analytics after the fact.
+describe("backupCaptureFailure", () => {
+  it("reports a LoFi 5xx with the status LoFi actually returned", () => {
+    assert.deepEqual(backupCaptureFailure(new LoFiRequestError("LoFi request failed: HTTP 503", 503)), { reason: "server_error", status: 503 })
+  })
+
+  it("tells a timeout from a connection that never opened, with no status for either", () => {
+    // These are the strings host.fetch's failures reach the extension as: the
+    // Dart exception's toString, forwarded by the host-call catch. A timeout is
+    // a slow link; a ClientException is no link at all. Neither saw a reply, so
+    // neither may carry a status -- a 504 here would read as a gateway failing.
+    assert.deepEqual(backupCaptureFailure(new Error("TimeoutException after 0:00:15.000000: Future not completed")), { reason: "timeout", status: 0 })
+    assert.deepEqual(
+      backupCaptureFailure(
+        new Error("ClientException with SocketException: Connection refused (OS Error: Connection refused, errno = 61), uri=https://lofi.ham2k.net/v1/sync"),
+      ),
+      { reason: "network", status: 0 },
+    )
+    assert.deepEqual(backupCaptureFailure(new Error("HandshakeException: Connection terminated during handshake")), { reason: "network", status: 0 })
+  })
+
+  it("does not call a reply it could not use a network failure", () => {
+    // A captive portal answering 200 with HTML is the device's network, not
+    // LoFi and not a dead link -- labelling it `network` would hide exactly
+    // the case this block exists to diagnose.
+    assert.deepEqual(backupCaptureFailure(new LoFiUnusableResponseError("LoFi returned HTTP 200 with an unparseable body", 200)), {
+      reason: "bad_response",
+      status: 200,
+    })
+    assert.deepEqual(backupCaptureFailure(new LoFiUnusableResponseError("LoFi sync returned an unrecognizable response (not a sync reply)")), {
+      reason: "bad_response",
+      status: 0,
+    })
+  })
+
+  it("still captures an unusable reply", () => {
+    // Giving it its own class must not take it out of the fallback.
+    assert.equal(shouldCaptureToBackup(new LoFiUnusableResponseError("LoFi authentication failed", 401)), true)
   })
 })

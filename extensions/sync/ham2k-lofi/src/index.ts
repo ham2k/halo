@@ -22,7 +22,8 @@
 import { defineExtension, host } from "@ham2k/extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue, SyncPayload, SyncResponse } from "@ham2k/extension-sdk"
 
-import { LoFiRequestError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage } from "./backupCapture.ts"
+import { LoFiRequestError, LoFiUnusableResponseError, shouldCaptureToBackup, backupCaptureAlsoFailedMessage, backupCaptureFailure } from "./backupCapture.ts"
+import type { BackupCaptureFailure } from "./backupCapture.ts"
 import { clientIdentityFrom, requireWebhookIdentity } from "./clientIdentity.ts"
 import { isRecognizableSyncResponse, isUnparseableBody, loFiErrorMessage, normalizedEmail, REPORTS_PATH, reportFailureMessage } from "./errors.ts"
 import { tFor } from "./i18n.ts"
@@ -423,14 +424,14 @@ async function request(
     }
     // A 2xx whose body isn't JSON is a proxy or error page, not the server
     // — parseJson folded it into `{}` above, and callers persist what this
-    // returns (getAccountData's snapshot lands in settings). A plain Error,
-    // not LoFiRequestError, so sync's backup capture still fires.
+    // returns (getAccountData's snapshot lands in settings). Not a
+    // LoFiRequestError, so sync's backup capture still fires.
     if (isUnparseableBody(response.body)) {
-      throw new Error(`LoFi returned HTTP ${response.status} with an unparseable body`)
+      throw new LoFiUnusableResponseError(`LoFi returned HTTP ${response.status} with an unparseable body`, response.status)
     }
     return json
   }
-  throw new Error("LoFi authentication failed")
+  throw new LoFiUnusableResponseError("LoFi authentication failed", 401)
 }
 
 function parseJson(body: string): Record<string, JSONValue> {
@@ -459,10 +460,10 @@ async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncRespon
     // A 2xx whose body isn't a recognizable sync reply is a FAILURE, not a
     // success — see isRecognizableSyncResponse for the trap (a proxy's
     // 200-with-HTML would otherwise mark the pushed batch synced forever).
-    // Thrown as a plain Error, not LoFiRequestError, so shouldCaptureToBackup
-    // also spools the payload to the backup service.
+    // Not a LoFiRequestError, so shouldCaptureToBackup also spools the
+    // payload to the backup service.
     if (!isRecognizableSyncResponse(response)) {
-      throw new Error("LoFi sync returned an unrecognizable response (not a sync reply)")
+      throw new LoFiUnusableResponseError("LoFi sync returned an unrecognizable response (not a sync reply)")
     }
     return response
   } catch (e) {
@@ -474,7 +475,7 @@ async function sync(payload: SyncPayload, _ctx: HookContext): Promise<SyncRespon
     // worth preserving for manual recovery either way.
     if (shouldCaptureToBackup(e)) {
       try {
-        await captureToBackupService(payload)
+        await captureToBackupService(payload, backupCaptureFailure(e))
       } catch (captureError) {
         // Neither LoFi nor the backup service could take this payload -- it
         // has nowhere safe to live but this device.
@@ -498,7 +499,7 @@ async function backupServiceUrl(): Promise<string> {
 /// so this gets the same generous host.fetch defaults (15s headers/30s body)
 /// as every other request in this file rather than a tighter one of its own
 /// that would turn a slow connection into a false double-failure.
-async function captureToBackupService(payload: SyncPayload): Promise<void> {
+async function captureToBackupService(payload: SyncPayload, failure: BackupCaptureFailure): Promise<void> {
   const token = await host.kvGet("backupToken")
   if (typeof token !== "string" || !token) return // not configured on this build, skip silently
 
@@ -513,6 +514,7 @@ async function captureToBackupService(payload: SyncPayload): Promise<void> {
       client_jwt: cachedToken ?? "",
       sync_body: payload,
       client_timestamp: new Date().toISOString(),
+      failure,
     }),
   })
   if (response.status < 200 || response.status >= 300) {
