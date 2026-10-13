@@ -2824,6 +2824,10 @@ class Translations$home$logs$en {
 	/// en: 'Discard'
 	String get discard => 'Discard';
 
+	late final Translations$home$logs$sheet$en sheet = Translations$home$logs$sheet$en.internal(_root);
+	late final Translations$home$logs$groupBy$en groupBy = Translations$home$logs$groupBy$en.internal(_root);
+	late final Translations$home$logs$period$en period = Translations$home$logs$period$en.internal(_root);
+	late final Translations$home$logs$periodTitle$en periodTitle = Translations$home$logs$periodTitle$en.internal(_root);
 	late final Translations$home$logs$columns$en columns = Translations$home$logs$columns$en.internal(_root);
 	late final Translations$home$logs$panels$en panels = Translations$home$logs$panels$en.internal(_root);
 	late final Translations$home$logs$import$en import = Translations$home$logs$import$en.internal(_root);
@@ -5991,6 +5995,93 @@ class Translations$settings$gridPrecisionDescription$en {
 	String get eight => '8 digits';
 }
 
+// Path: home.logs.sheet
+class Translations$home$logs$sheet$en {
+	Translations$home$logs$sheet$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Station Callsigns'
+	String get callsigns => 'Station Callsigns';
+
+	/// en: 'Group By'
+	String get groupBy => 'Group By';
+
+	/// en: 'Time Period'
+	String get period => 'Time Period';
+}
+
+// Path: home.logs.groupBy
+class Translations$home$logs$groupBy$en {
+	Translations$home$logs$groupBy$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Not grouped'
+	String get none => 'Not grouped';
+
+	/// en: 'Date'
+	String get date => 'Date';
+
+	/// en: 'DX'
+	String get dx => 'DX';
+
+	/// en: 'Unknown continent'
+	String get unknownContinent => 'Unknown continent';
+
+	/// en: 'Unknown entity'
+	String get unknownEntity => 'Unknown entity';
+
+	/// en: 'No date'
+	String get unknownDate => 'No date';
+}
+
+// Path: home.logs.period
+class Translations$home$logs$period$en {
+	Translations$home$logs$period$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'This month'
+	String get thisMonth => 'This month';
+
+	/// en: 'Last 3 months'
+	String get last3Months => 'Last 3 months';
+
+	/// en: 'This year'
+	String get thisYear => 'This year';
+
+	/// en: 'Last year'
+	String get lastYear => 'Last year';
+
+	/// en: 'All time'
+	String get allTime => 'All time';
+
+	/// en: 'Custom range'
+	String get custom => 'Custom range';
+}
+
+// Path: home.logs.periodTitle
+class Translations$home$logs$periodTitle$en {
+	Translations$home$logs$periodTitle$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'in ${span}'
+	String inSpan({required Object span}) => 'in ${span}';
+
+	/// en: 'Custom Range'
+	String get custom => 'Custom Range';
+}
+
 // Path: home.logs.columns
 class Translations$home$logs$columns$en {
 	Translations$home$logs$columns$en.internal(this._root);
@@ -7987,6 +8078,23 @@ extension on Translations {
 			'home.logs.pendingDeleteBody' => 'This QSO is marked for deletion.',
 			'home.logs.editGone' => 'Not saved: that QSO is no longer in this log.',
 			'home.logs.discard' => 'Discard',
+			'home.logs.sheet.callsigns' => 'Station Callsigns',
+			'home.logs.sheet.groupBy' => 'Group By',
+			'home.logs.sheet.period' => 'Time Period',
+			'home.logs.groupBy.none' => 'Not grouped',
+			'home.logs.groupBy.date' => 'Date',
+			'home.logs.groupBy.dx' => 'DX',
+			'home.logs.groupBy.unknownContinent' => 'Unknown continent',
+			'home.logs.groupBy.unknownEntity' => 'Unknown entity',
+			'home.logs.groupBy.unknownDate' => 'No date',
+			'home.logs.period.thisMonth' => 'This month',
+			'home.logs.period.last3Months' => 'Last 3 months',
+			'home.logs.period.thisYear' => 'This year',
+			'home.logs.period.lastYear' => 'Last year',
+			'home.logs.period.allTime' => 'All time',
+			'home.logs.period.custom' => 'Custom range',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => 'in ${span}',
+			'home.logs.periodTitle.custom' => 'Custom Range',
 			'home.logs.columns.date' => 'Date',
 			'home.logs.columns.time' => 'Time',
 			'home.logs.columns.freq' => 'Frequency',
@@ -8284,6 +8392,8 @@ extension on Translations {
 			'operation.export.syncedOperation' => 'Operation is synced',
 			'operation.export.unsyncedOperation' => 'Operation has unsynced changes',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO in this operation', other: '${count} QSOs in this operation', ), 
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.qsosSynced' => ({required Object total}) => 'All ${total} QSOs are synced',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} QSOs pending sync',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} event markers synced',
@@ -8301,8 +8411,6 @@ extension on Translations {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Share combined ${count} file', other: 'Share combined ${count} files', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Export combined ${count} file', other: 'Export combined ${count} files', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Download combined ${count} file', other: 'Download combined ${count} files', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.saveOne' => ({required Object name}) => 'Save ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Export ${name}',
@@ -8798,6 +8906,8 @@ extension on Translations {
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Preferred Bands',
 			'settings.logging.modes' => 'Preferred Modes',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.title' => 'CAT Server',
 			'settings.catServer.description' => 'Allow other apps (WSJT-X, loggers, etc) to control the radio through Ham2K Logger.',
 			'settings.catServer.protocol' => 'Protocol',
@@ -8815,8 +8925,6 @@ extension on Translations {
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} on port ${port}. Clients connected: ${clients}.',
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} on port ${port}, but no Main VFO radio is connected.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} cannot listen on port ${port}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: another program is using it, often ${protocol} itself. Close that program or choose another port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. Choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
@@ -9312,6 +9420,8 @@ extension on Translations {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
 			'settings.station.noneSelected' => 'None',
@@ -9329,8 +9439,6 @@ extension on Translations {
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.flrigTroubleshooting' => 'This connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **Port** is 12345 unless you changed it in flrig\'s configuration (Config → Setup → Server).\n- **From another machine**, make sure flrig\'s server is reachable. It listens on all interfaces, but your firewall may not agree.\n- Once connected, a missing frequency usually means flrig itself cannot reach the radio. Check that flrig\'s display is following the dial.',
 			'settings.station.hrdTroubleshootingTitle' => 'If the app cannot connect',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hrdTroubleshooting' => 'This connects to **Ham Radio Deluxe\'s Rig Control, running on your computer**, not to the radio directly — HRD talks to the radio.\n\n- **Rig Control must already be running** and connected to the radio.\n- **Its IP server must be enabled.** Rig Control only talks to other programs through it.\n- **Port** is 7809 unless you changed it in the IP server\'s settings.\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from published descriptions of HRD\'s protocol and has not been run against HRD. If it half-works, that is worth reporting.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.n3fjpTroubleshooting' => 'This connects to **an N3FJP logging program running on your computer**, not to the radio directly — N3FJP talks to the radio.\n\n- **The program\'s API must be on**: Settings → Application Program Interface, check **TCP API Enabled**.\n- **Port** is 1100 unless you changed it there.\n- **N3FJP must have a radio interface set up** to follow or tune the radio. Without one, it reports only what is typed into its entry window.\n- N3FJP reports band, mode and frequency only: no power, no transmit state.\n\nThis entry was written from N3FJP\'s published API and has not been run against N3FJP. If it half-works, that is worth reporting.',
@@ -9826,6 +9934,8 @@ extension on Translations {
 			'exportSettings.adifFields' => 'ADIF Fields',
 			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
 			'exportSettings.retry' => 'Retry',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.',
 			'exportSettings.includePrivateDataDescriptionOn' => 'Including names, addresses, emails, notes and precise locations in ADIF files.',
@@ -9843,8 +9953,6 @@ extension on Translations {
 			'exportSettings.titleTemplate' => 'Title template',
 			'exportSettings.adifNotesTemplate' => 'ADIF QSO Notes',
 			'exportSettings.adifCommentTemplate' => 'ADIF QSO Comments',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Message',
 			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',

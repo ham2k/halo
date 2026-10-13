@@ -12,7 +12,6 @@ import 'dart:convert';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -153,6 +152,9 @@ void main() {
   group('the table', () {
     testWidgets('opens newest first, re-sorts from a header, and keeps that sort for the next visit', (tester) async {
       final h = await _harness();
+      // Ungrouped, so a sort runs across the whole table rather than within
+      // each day.
+      await h.settings.setLayoutData(LayoutKeys.logsFilter, {'group': 'none'});
       await _seed(h.services);
       await _pumpLogs(tester, h);
       const calls = ['K2AA', 'W1AW', 'N3BB'];
@@ -196,18 +198,137 @@ void main() {
       await _unmount(tester);
     });
 
-    testWidgets('splits the log into days while it runs by the clock, and only then', (tester) async {
+    testWidgets('groups by year, month and day, each counted, and a sort reorders within them', (tester) async {
+      final h = await _harness();
+      await _seed(h.services);
+      await _pumpLogs(tester, h);
+      const calls = ['K2AA', 'W1AW', 'N3BB'];
+
+      expect(_row('2026'), findsOneWidget);
+      expect(_row('September'), findsOneWidget);
+      expect(
+        find.descendant(of: _table, matching: find.text('3 QSOs')),
+        findsNWidgets(2),
+        reason: 'the year and the month hold all three',
+      );
+      expect(
+        find.descendant(of: _table, matching: find.text('2 QSOs')),
+        findsOneWidget,
+        reason: 'the 21st',
+      );
+
+      // By callsign, W1AW would lead the list; grouped, it stays under the
+      // 20th, after the 21st's two.
+      await tester.tap(find.descendant(of: find.byType(Row), matching: find.text('Call')).first);
+      await settleFrames(tester, frames: 3);
+      expect(_order(tester, calls), ['K2AA', 'N3BB', 'W1AW']);
+
+      // A header folds its group away, and opens it again.
+      await tester.tap(_row('September'));
+      await settleFrames(tester, frames: 3);
+      expect(_row('K2AA'), findsNothing);
+      expect(_row('September'), findsOneWidget);
+      await tester.tap(_row('September'));
+      await settleFrames(tester, frames: 3);
+      expect(_row('K2AA'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('not grouped, it is one list with no headers at all', (tester) async {
+      final h = await _harness();
+      await h.settings.setLayoutData(LayoutKeys.logsFilter, {'group': 'none'});
+      await _seed(h.services);
+      await _pumpLogs(tester, h);
+
+      expect(_row('2026'), findsNothing);
+      expect(_row('September'), findsNothing);
+      expect(_order(tester, ['K2AA', 'W1AW', 'N3BB']), ['N3BB', 'K2AA', 'W1AW']);
+      await _unmount(tester);
+    });
+
+    testWidgets('DX starts collapsed, keeps what is opened, and a modifier-click folds the siblings and everything in them', (tester) async {
+      final h = await _harness();
+      await h.settings.setLayoutData(LayoutKeys.logsFilter, {'group': 'dx'});
+      final operation = await h.services.operations.create(stationCall: 'K1ABC');
+      final dx = [('NA', 'United States'), ('NA', 'Canada'), ('EU', 'Germany'), ('AS', 'Japan')];
+      for (final (i, (continent, entity)) in dx.indexed) {
+        await _log(h.services, operation, 'K${i}AA', _utc(20 + i, 9), theirExtra: {'continent': continent, 'entityName': entity});
+      }
+      await _pumpLogs(tester, h);
+
+      // Continents and entities are many: an index to open from, not a
+      // wall of every QSO.
+      expect(_row('North America'), findsOneWidget);
+      expect(_row('Canada'), findsNothing);
+
+      await tester.tap(_row('North America'));
+      await settleFrames(tester, frames: 3);
+      expect(_row('Canada'), findsOneWidget);
+      expect(_row('K1AA'), findsNothing, reason: 'the entity inside stays as it was');
+
+      await _unmount(tester);
+      await _pumpLogs(tester, h);
+      expect(_row('Canada'), findsOneWidget, reason: 'what was opened outlives the visit');
+
+      // Alt on a closed continent opens every continent and every entity in
+      // them; Ctrl on an open one closes them all again.
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+      await tester.tap(_row('Europe'));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
+      await settleFrames(tester, frames: 3);
+      expect(_row('Japan'), findsOneWidget);
+      expect(_row('K2AA'), findsOneWidget);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+      await tester.tap(_row('Asia'));
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+      await settleFrames(tester, frames: 3);
+      expect(_row('Canada'), findsNothing);
+      expect(_row('Germany'), findsNothing);
+      await _unmount(tester);
+    });
+
+    testWidgets('pins the headers of the groups scrolled through over the top of the table', (tester) async {
+      final h = await _harness();
+      final operation = await h.services.operations.create(stationCall: 'K1ABC');
+      for (var day = 1; day <= 20; day++) {
+        await _log(h.services, operation, 'K${day}AA', _utc(day, 9));
+        await _log(h.services, operation, 'W${day}BB', _utc(day, 15));
+      }
+      await _pumpLogs(tester, h);
+
+      tester.widget<ListView>(_table).controller!.jumpTo(800);
+      await settleFrames(tester, frames: 3);
+
+      // Far below the year's and the month's own rows, both still name the
+      // rows under them, stacked at the table's top edge.
+      final top = tester.getTopLeft(_table).dy;
+      final extent = tester.getSize(find.ancestor(of: find.text('2026').first, matching: find.byType(InkWell)).first).height;
+      double? pinnedAt(String text) {
+        for (final element in find.descendant(of: find.byType(Stack), matching: find.text(text)).evaluate()) {
+          final dy = tester.getTopLeft(find.byElementPredicate((e) => e == element)).dy - top;
+          if (dy >= 0 && dy < extent * 3) return (dy / extent).floorToDouble();
+        }
+        return null;
+      }
+
+      expect(pinnedAt('2026'), 0);
+      expect(pinnedAt('September'), 1);
+      await _unmount(tester);
+    });
+
+    testWidgets('crossing the two-pane boundary does not trip the pinned headers', (tester) async {
       final h = await _harness();
       await _seed(h.services);
       await _pumpLogs(tester, h);
 
-      expect(find.descendant(of: _table, matching: find.byType(DayHeaderRow)), findsNWidgets(2));
-
-      // Sorted by callsign the days interleave; a header per run of them
-      // would be a header per row.
-      await tester.tap(find.text('Call').first);
-      await settleFrames(tester, frames: 3);
-      expect(find.byType(DayHeaderRow), findsNothing);
+      // The compact list and the wide one share the scroll controller, and
+      // for the frame of the swap both are attached: read then, the offset
+      // asserts.
+      for (final width in [500.0, 1400.0]) {
+        tester.view.physicalSize = Size(width, 900);
+        await settleFrames(tester, frames: 3);
+        expect(tester.takeException(), isNull, reason: 'at $width');
+      }
       await _unmount(tester);
     });
 
@@ -340,35 +461,56 @@ void main() {
     });
   });
 
-  group('the callsign picker', () {
-    testWidgets('is not there with one station callsign: the title just names it', (tester) async {
-      final semantics = tester.ensureSemantics();
+  group('the sheet', () {
+    testWidgets('opens from the title even with one callsign, and a second one widens the view to All', (tester) async {
       final h = await _harness();
       await _seed(h.services);
       await _pumpLogs(tester, h);
 
-      // A menu of one is no choice, and "All Logs" over one callsign's log
-      // says less than its name does.
-      expect(find.bySemanticsLabel('Logs for K1ABC'), findsOneWidget);
-      expect(find.byIcon(MdiIcons.menuDown), findsNothing);
-      await tester.tap(find.text('K1ABC'));
-      await settleFrames(tester, frames: 4);
-      expect(find.byType(PopupMenuItem<LogFilter>), findsNothing);
+      // One callsign leaves nothing to pick there, but the grouping and the
+      // period are still the sheet's: the title opens it regardless.
+      expect(find.text('Logs for K1ABC'), findsOneWidget);
+      await tester.tap(find.text('Logs for K1ABC'));
+      await settleFrames(tester, frames: 6);
+      expect(find.widgetWithText(ListTile, 'Not grouped'), findsOneWidget);
+      await tester.tap(find.text('OK'));
+      await settleFrames(tester, frames: 6);
 
-      // A second callsign makes it a choice again, and since the view chose
-      // K1ABC by itself, it widens to All — pinned, the new callsign's QSOs
-      // would stay hidden. An open editor rides along: its QSO is in All.
+      // The view chose K1ABC by itself, so a second callsign widens it to
+      // All — pinned, the new callsign's QSOs would stay hidden. An open
+      // editor rides along: its QSO is in All.
       await _tapRow(tester, 'W1AW');
       await tester.enterText(_field('Name'), 'Hiram');
       final other = await h.services.operations.create(stationCall: 'W2XYZ');
       await _log(h.services, other, 'VE3CC', _utc(22, 8));
       await settleFrames(tester, frames: 4);
-      expect(find.byIcon(MdiIcons.menuDown), findsOneWidget);
-      expect(find.bySemanticsLabel('All Logs'), findsOneWidget);
+      expect(find.text('All Logs'), findsOneWidget);
       expect(_row('VE3CC'), findsOneWidget);
       expect(tester.widget<TextField>(_field('Name')).controller!.text, 'Hiram');
       await _unmount(tester);
-      semantics.dispose();
+    });
+
+    testWidgets('an open sheet follows what the log does on its own', (tester) async {
+      final h = await _harness();
+      await _seed(h.services);
+      final second = await h.services.operations.create(stationCall: 'W2XYZ');
+      await _log(h.services, second, 'VE3CC', _utc(22, 8));
+      await _pumpLogs(tester, h);
+      await tester.tap(find.text('All Logs'));
+      await settleFrames(tester, frames: 6);
+      expect(find.widgetWithText(ListTile, 'N4QQ'), findsNothing);
+
+      // A third station callsign arrives while the sheet is up, on All
+      // already: the filter stays as it is, so the new callsign reaches the
+      // sheet only because the callsigns themselves changed — nothing the
+      // operator did wrote a setting that would have told it so.
+      final third = await h.services.operations.create(stationCall: 'N4QQ');
+      await _log(h.services, third, 'VE3DD', _utc(22, 9));
+      await settleFrames(tester, frames: 6);
+      expect(find.widgetWithText(ListTile, 'N4QQ'), findsOneWidget);
+      await tester.tap(find.text('OK'));
+      await settleFrames(tester, frames: 6);
+      await _unmount(tester);
     });
 
     testWidgets('opens on every callsign at once, and on the last pick after that', (tester) async {
@@ -382,31 +524,93 @@ void main() {
       expect(_order(tester, ['VE3CC', 'N3BB']), ['VE3CC', 'N3BB'], reason: 'both stations, one table');
 
       await tester.tap(find.text('All Logs'));
+      await settleFrames(tester, frames: 6);
+      await tester.tap(find.widgetWithText(ListTile, 'W2XYZ'));
       await settleFrames(tester, frames: 4);
-      await tester.tap(find.text('W2XYZ').last);
-      await settleFrames(tester, frames: 4);
+      await tester.tap(find.text('OK'));
+      await settleFrames(tester, frames: 6);
       expect(_row('N3BB'), findsNothing);
       expect(_row('VE3CC'), findsOneWidget);
 
       await _unmount(tester);
       await _pumpLogs(tester, h);
-      expect(find.text('W2XYZ'), findsOneWidget, reason: 'the title names the remembered pick');
+      expect(find.text('Logs for W2XYZ'), findsOneWidget, reason: 'the title names the remembered pick');
       expect(_row('N3BB'), findsNothing);
       expect(_row('VE3CC'), findsOneWidget);
       await _unmount(tester);
     });
   });
 
+  group('the time period', () {
+    testWidgets('a custom range shows its days alone, and the period picked in the sheet outlives the visit', (tester) async {
+      final h = await _harness();
+      await h.settings.setLayoutData(LayoutKeys.logsFilter, {'period': 'custom', 'from': '2026-09-21', 'to': '2026-09-21'});
+      await _seed(h.services);
+      await _pumpLogs(tester, h);
+
+      expect(_row('K2AA'), findsOneWidget);
+      expect(_row('W1AW'), findsNothing, reason: 'the 20th is outside the range');
+      expect(find.text('Logs for K1ABC in Custom Range'), findsOneWidget);
+
+      await tester.tap(find.text('Logs for K1ABC in Custom Range'));
+      await settleFrames(tester, frames: 6);
+      await tester.tap(find.widgetWithText(ListTile, 'All time'));
+      await settleFrames(tester, frames: 4);
+      await tester.tap(find.text('OK'));
+      await settleFrames(tester, frames: 6);
+      expect(_row('W1AW'), findsOneWidget);
+
+      await _unmount(tester);
+      await _pumpLogs(tester, h);
+      expect(_row('W1AW'), findsOneWidget, reason: 'All time is remembered');
+      expect(find.text('Logs for K1ABC'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    testWidgets('a stored Custom with no days to span opens on All time', (tester) async {
+      final h = await _harness();
+      await h.settings.setLayoutData(LayoutKeys.logsFilter, {'period': 'custom', 'from': 'garbage'});
+      await _seed(h.services);
+      await _pumpLogs(tester, h);
+
+      // Showing every QSO under a title naming a range would say one thing
+      // and show another.
+      expect(find.text('Logs for K1ABC'), findsOneWidget);
+      expect(_row('W1AW'), findsOneWidget);
+      await _unmount(tester);
+    });
+
+    // At 13 Oct 2026. Every span is whole calendar months or years — a
+    // rolling "3 months back from today" starts mid-July and splits a
+    // month's log across the boundary.
+    final now = DateTime.utc(2026, 10, 13, 15);
+    DateTime? at(int? millis) => millis == null ? null : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
+
+    test('runs over calendar months and years', () {
+      expect(at(LogsPeriod.thisMonth.bounds(now).start), DateTime.utc(2026, 10));
+      expect(at(LogsPeriod.last3Months.bounds(now).start), DateTime.utc(2026, 8), reason: 'this month and the two before it');
+      expect(at(LogsPeriod.thisYear.bounds(now).start), DateTime.utc(2026));
+      final lastYear = LogsPeriod.lastYear.bounds(now);
+      expect((at(lastYear.start), at(lastYear.end)), (DateTime.utc(2025), DateTime.utc(2026)), reason: 'all of 2025, and nothing of 2026');
+      expect(LogsPeriod.allTime.bounds(now), (start: null, end: null));
+    });
+
+    test('a custom range includes its last day', () {
+      final range = DateTimeRange(start: DateTime(2026, 3, 1), end: DateTime(2026, 3, 31));
+      final bounds = LogsPeriod.custom.bounds(now, range: range);
+      expect((at(bounds.start), at(bounds.end)), (DateTime.utc(2026, 3), DateTime.utc(2026, 4)));
+    });
+  });
+
   group('the header', () {
-    testWidgets('shows the whole date span', (tester) async {
+    testWidgets('carries the count and the whole date span under the title', (tester) async {
       final h = await _harness();
       await _seed(h.services);
       await _pumpLogs(tester, h);
 
-      // Its box is sized for the widest span there can be; one sized by eye
-      // cuts a span across years short of its end date.
-      final span = tester.renderObject<RenderParagraph>(find.text('2026-09-20 – 2026-09-21'));
-      expect(span.size.width, greaterThanOrEqualTo(span.getMaxIntrinsicWidth(double.infinity)));
+      // Over all time the period has no days of its own: the span is the
+      // QSOs' own.
+      expect(find.text('3 QSOs · 2026-09-20 – 2026-09-21'), findsOneWidget);
       await _unmount(tester);
     });
 
@@ -899,7 +1103,7 @@ void main() {
   // into DOM elements that receive the clicks themselves. So a node that
   // overlaps something it doesn't paint takes that thing's clicks.
   group('the semantics a click can land on', () {
-    testWidgets('the callsign picker is named by its title alone', (tester) async {
+    testWidgets('the title is named by its own two lines alone', (tester) async {
       final semantics = tester.ensureSemantics();
       final h = await _harness();
       await _seed(h.services);
@@ -907,13 +1111,13 @@ void main() {
       await _log(h.services, other, 'VE3CC', _utc(22, 8));
       await _pumpLogs(tester, h);
 
-      // Web lays the name out as DOM text in the picker's own box, overflow
-      // showing. A name long enough to wrap — the title run together with a
-      // label for the arrow — runs below the AppBar, and clicks on the table
-      // header under it open the picker.
+      // Web lays the name out as DOM text in the title's own box, overflow
+      // showing. A name longer than what the title shows — run together
+      // with a label for the sheet's dots — wraps below the AppBar, and
+      // clicks on the table header under it open the sheet.
       expect(
         tester.getSemantics(find.ancestor(of: find.text('All Logs'), matching: find.byType(InkWell)).first),
-        isSemantics(label: 'All Logs', hasTapAction: true),
+        isSemantics(label: 'All Logs, 4 QSOs · 2026-09-20 – 2026-09-22', hasTapAction: true),
       );
       await _unmount(tester);
       semantics.dispose();

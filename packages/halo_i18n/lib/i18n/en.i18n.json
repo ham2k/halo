@@ -222,6 +222,31 @@
       "pendingDeleteBody": "This QSO is marked for deletion.",
       "editGone": "Not saved: that QSO is no longer in this log.",
       "discard": "Discard",
+      "sheet": {
+        "callsigns": "Station Callsigns",
+        "groupBy": "Group By",
+        "period": "Time Period"
+      },
+      "groupBy": {
+        "none": "Not grouped",
+        "date": "Date",
+        "dx": "DX",
+        "unknownContinent": "Unknown continent",
+        "unknownEntity": "Unknown entity",
+        "unknownDate": "No date"
+      },
+      "period": {
+        "thisMonth": "This month",
+        "last3Months": "Last 3 months",
+        "thisYear": "This year",
+        "lastYear": "Last year",
+        "allTime": "All time",
+        "custom": "Custom range"
+      },
+      "periodTitle": {
+        "inSpan": "in ${span}",
+        "custom": "Custom Range"
+      },
       "columns": {
         "date": "Date",
         "time": "Time",

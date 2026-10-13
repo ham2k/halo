@@ -1313,6 +1313,10 @@ class _Translations$home$logs$cw extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => '— ···· ·· ··· / ——·— ··· ——— / ·· ··· / —— ·— ·—· —·— · —·· / ··—· ——— ·—· / —·· · ·—·· · — ·· ——— —· ·—·—·—';
 	@override String get editGone => '—· ——— — / ··· ·— ···— · —·· ———··· / — ···· ·— — / ——·— ··· ——— / ·· ··· / —· ——— / ·—·· ——— —· ——· · ·—· / ·· —· / — ···· ·· ··· / ·—·· ——— ——· ·—·—·—';
 	@override String get discard => '—·· ·· ··· —·—· ·— ·—· —··';
+	@override late final _Translations$home$logs$sheet$cw sheet = _Translations$home$logs$sheet$cw._(_root);
+	@override late final _Translations$home$logs$groupBy$cw groupBy = _Translations$home$logs$groupBy$cw._(_root);
+	@override late final _Translations$home$logs$period$cw period = _Translations$home$logs$period$cw._(_root);
+	@override late final _Translations$home$logs$periodTitle$cw periodTitle = _Translations$home$logs$periodTitle$cw._(_root);
 	@override late final _Translations$home$logs$columns$cw columns = _Translations$home$logs$columns$cw._(_root);
 	@override late final _Translations$home$logs$panels$cw panels = _Translations$home$logs$panels$cw._(_root);
 	@override late final _Translations$home$logs$import$cw import = _Translations$home$logs$import$cw._(_root);
@@ -2735,6 +2739,59 @@ class _Translations$settings$gridPrecisionDescription$cw extends Translations$se
 	@override String get eight => '———·· / —·· ·· ——· ·· — ···';
 }
 
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$cw extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => '··· — ·— — ·· ——— —· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···';
+	@override String get groupBy => '——· ·—· ——— ··— ·——· / —··· —·——';
+	@override String get period => '— ·· —— · / ·——· · ·—· ·· ——— —··';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$cw extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => '—· ——— — / ——· ·—· ——— ··— ·——· · —··';
+	@override String get date => '—·· ·— — ·';
+	@override String get dx => '—·· —··—';
+	@override String get unknownContinent => '··— —· —·— —· ——— ·—— —· / —·—· ——— —· — ·· —· · —· —';
+	@override String get unknownEntity => '··— —· —·— —· ——— ·—— —· / · —· — ·· — —·——';
+	@override String get unknownDate => '—· ——— / —·· ·— — ·';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$cw extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => '— ···· ·· ··· / —— ——— —· — ····';
+	@override String get last3Months => '·—·· ·— ··· — / ···—— / —— ——— —· — ···· ···';
+	@override String get thisYear => '— ···· ·· ··· / —·—— · ·— ·—·';
+	@override String get lastYear => '·—·· ·— ··· — / —·—— · ·— ·—·';
+	@override String get allTime => '·— ·—·· ·—·· / — ·· —— ·';
+	@override String get custom => '—·—· ··— ··· — ——— —— / ·—· ·— —· ——· ·';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$cw extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => '·· —· / ${span}';
+	@override String get custom => '—·—· ··— ··· — ——— —— / ·—· ·— —· ——· ·';
+}
+
 // Path: home.logs.columns
 class _Translations$home$logs$columns$cw extends Translations$home$logs$columns$en {
 	_Translations$home$logs$columns$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -3830,6 +3887,23 @@ extension on TranslationsCw {
 			'home.logs.pendingDeleteBody' => '— ···· ·· ··· / ——·— ··· ——— / ·· ··· / —— ·— ·—· —·— · —·· / ··—· ——— ·—· / —·· · ·—·· · — ·· ——— —· ·—·—·—',
 			'home.logs.editGone' => '—· ——— — / ··· ·— ···— · —·· ———··· / — ···· ·— — / ——·— ··· ——— / ·· ··· / —· ——— / ·—·· ——— —· ——· · ·—· / ·· —· / — ···· ·· ··· / ·—·· ——— ——· ·—·—·—',
 			'home.logs.discard' => '—·· ·· ··· —·—· ·— ·—· —··',
+			'home.logs.sheet.callsigns' => '··· — ·— — ·· ——— —· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
+			'home.logs.sheet.groupBy' => '——· ·—· ——— ··— ·——· / —··· —·——',
+			'home.logs.sheet.period' => '— ·· —— · / ·——· · ·—· ·· ——— —··',
+			'home.logs.groupBy.none' => '—· ——— — / ——· ·—· ——— ··— ·——· · —··',
+			'home.logs.groupBy.date' => '—·· ·— — ·',
+			'home.logs.groupBy.dx' => '—·· —··—',
+			'home.logs.groupBy.unknownContinent' => '··— —· —·— —· ——— ·—— —· / —·—· ——— —· — ·· —· · —· —',
+			'home.logs.groupBy.unknownEntity' => '··— —· —·— —· ——— ·—— —· / · —· — ·· — —·——',
+			'home.logs.groupBy.unknownDate' => '—· ——— / —·· ·— — ·',
+			'home.logs.period.thisMonth' => '— ···· ·· ··· / —— ——— —· — ····',
+			'home.logs.period.last3Months' => '·—·· ·— ··· — / ···—— / —— ——— —· — ···· ···',
+			'home.logs.period.thisYear' => '— ···· ·· ··· / —·—— · ·— ·—·',
+			'home.logs.period.lastYear' => '·—·· ·— ··· — / —·—— · ·— ·—·',
+			'home.logs.period.allTime' => '·— ·—·· ·—·· / — ·· —— ·',
+			'home.logs.period.custom' => '—·—· ··— ··· — ——— —— / ·—· ·— —· ——· ·',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => '·· —· / ${span}',
+			'home.logs.periodTitle.custom' => '—·—· ··— ··· — ——— —— / ·—· ·— —· ——· ·',
 			'home.logs.columns.date' => '—·· ·— — ·',
 			'home.logs.columns.time' => '— ·· —— ·',
 			'home.logs.columns.freq' => '··—· ·—· · ——·— ··— · —· —·—· —·——',
@@ -4127,6 +4201,8 @@ extension on TranslationsCw {
 			'operation.export.syncedOperation' => '——— ·——· · ·—· ·— — ·· ——— —· / ·· ··· / ··· —·—— —· —·—· · —··',
 			'operation.export.unsyncedOperation' => '——— ·——· · ·—· ·— — ·· ——— —· / ···· ·— ··· / ··— —· ··· —·—— —· —·—· · —·· / —·—· ···· ·— —· ——· · ···',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ——— / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·', other: '${count} / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·', ), 
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.qsosSynced' => ({required Object total}) => '·— ·—·· ·—·· / ${total} / ——·— ··· ——— ··· / ·— ·—· · / ··· —·—— —· —·—· · —··',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} / ——— ··—· / ${total} / ——·— ··· ——— ··· / ·——· · —· —·· ·· —· ——· / ··· —·—— —· —·—·',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} / · ···— · —· — / —— ·— ·—· —·— · ·—· ··· / ··· —·—— —· —·—· · —··',
@@ -4144,8 +4220,6 @@ extension on TranslationsCw {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· ···· ·— ·—· · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '··· ···· ·— ·—· · / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '· —··— ·——· ——— ·—· — / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '· —··— ·——· ——— ·—· — / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· ·', other: '—·· ——— ·—— —· ·—·· ——— ·— —·· / —·—· ——— —— —··· ·· —· · —·· / ${count} / ··—· ·· ·—·· · ···', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.saveOne' => ({required Object name}) => '··· ·— ···— · / ${name}',
 			'operation.export.shareOne' => ({required Object name}) => '··· ···· ·— ·—· · / ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '· —··— ·——· ——— ·—· — / ${name}',
@@ -4641,6 +4715,8 @@ extension on TranslationsCw {
 			'settings.logging.numbersRowVibrate.description' => '···· ·— ·——· — ·· —·—· / ··—· · · —·· —··· ·— —·—· —·— / ·—— ···· · —· / —·—— ——— ··— / — ·— ·——· / ·— / —· ··— —— —··· · ·—· / —·— · —·——',
 			'settings.logging.bands' => '·——· ·—· · ··—· · ·—· ·—· · —·· / —··· ·— —· —·· ···',
 			'settings.logging.modes' => '·——· ·—· · ··—· · ·—· ·—· · —·· / —— ——— —·· · ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.title' => '—·—· ·— — / ··· · ·—· ···— · ·—·',
 			'settings.catServer.description' => '·— ·—·· ·—·· ——— ·—— / ——— — ···· · ·—· / ·— ·——· ·——· ··· / —·——· ·—— ··· ·——— — —····— —··— ——··—— / ·—·· ——— ——· ——· · ·—· ··· ——··—— / · — —·—· —·——·— / — ——— / —·—· ——— —· — ·—· ——— ·—·· / — ···· · / ·—· ·— —·· ·· ——— / — ···· ·—· ——— ··— ——· ···· / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ·—·—·—',
 			'settings.catServer.protocol' => '·——· ·—· ——— — ——— —·—· ——— ·—··',
@@ -4658,8 +4734,6 @@ extension on TranslationsCw {
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / —·—· ·—·· ·· · —· — ··· / —·—· ——— —· —· · —·—· — · —·· ———··· / ${clients} ·—·—·—',
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} / ——— —· / ·——· ——— ·—· — / ${port} ——··—— / —··· ··— — / —· ——— / —— ·— ·· —· / ···— ··—· ——— / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ·· ··· / ··— ··· ·· —· ——· / ·· — ——··—— / ——— ··—· — · —· / ${protocol} / ·· — ··· · ·—·· ··—· ·—·—·— / —·—· ·—·· ——— ··· · / — ···· ·— — / ·——· ·—· ——— ——· ·—· ·— —— / ——— ·—· / —·—· ···· ——— ——— ··· · / ·— —· ——— — ···· · ·—· / ·——· ——— ·—· — ·—·—·—',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· / —·· ——— · ··· / —· ——— — / ·— ·—·· ·—·· ——— ·—— / ·· — ·—·—·— / —·—· ···· ——— ——— ··· · / ·— / ·——· ——— ·—· — / ·— —··· ——— ···— · / ·———— ————— ··——— ····— ·—·—·—',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} / ··· — ——— ·——· ·——· · —·· / ·—·· ·· ··· — · —· ·· —· ——· / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / — ·—· —·—— ·· —· ——· / ·— ——· ·— ·· —· …',
@@ -5155,6 +5229,8 @@ extension on TranslationsCw {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => '——— —· / ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} / ·· ··· / ——— —· / ·— —· ——— — ···· · ·—· / —·· · ···— ·· —·—· ·',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => '— ···· ·· ··· / ·—· ·— —·· ·· ——— / ·· ··· / —·—· ——— —· —· · —·—· — · —·· / — ——— / ${device} ·—·—·— / ·· — ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / ··· · — — ·· —· ——· ··· / ·— ·—· · / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ——— —· / — ···· ·— — / —·· · ···— ·· —·—· · ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaInUse' => '·— —· — · —· —· ·— / ·· —· / ··— ··· ·',
 			'settings.station.keyInUse' => '—·— · —·—— / ·· —· / ··— ··· ·',
 			'settings.station.noneSelected' => '—· ——— —· ·',
@@ -5172,8 +5248,6 @@ extension on TranslationsCw {
 			'settings.station.flrigTroubleshootingTitle' => '·· ··—· / — ···· · / ·— ·——· ·——· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· —',
 			'settings.station.flrigTroubleshooting' => '— ···· ·· ··· / —·—· ——— —· —· · —·—· — ··· / — ——— / ·— —· / ** ··—· ·—·· ·—· ·· ——· / ·——· ·—· ——— ——· ·—· ·— —— / —·—— ——— ··— / ·—· ··— —· / —·—— ——— ··— ·—· ··· · ·—·· ··—· ** ——··—— / —· ——— — / — ——— / — ···· · / ·—· ·— —·· ·· ——— / —·· ·· ·—· · —·—· — ·—·· —·—— / — / ··—· ·—·· ·—· ·· ——· / — ·— ·—·· —·— ··· / — ——— / — ···· · / ·—· ·— —·· ·· ——— / ·— —· —·· / ··· ··— ·——· ·——· ——— ·—· — ··· / —— ——— ··· — / —— ·— —·— · ··· / ·— —· —·· / —— ——— —·· · ·—·· ··· ·—·—·—\n\n—····— / ** ··—· ·—·· ·—· ·· ——· / —— ··— ··· — / ·— ·—·· ·—· · ·— —·· —·—— / —··· · / ·—· ··— —· —· ·· —· ——· ** ——··—— / ·—— ·· — ···· / ·· — ··· / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· / —·—· ——— —· ··—· ·· ——· ··— ·—· · —·· / ·— —· —·· / —·—· ——— —· —· · —·—· — · —·· ·—·—·—\n—····— / ** ·——· ——— ·—· — ** / ·· ··· / ·———— ··——— ···—— ····— ····· / ··— —· ·—·· · ··· ··· / —·—— ——— ··— / —·—· ···· ·— —· ——· · —·· / ·· — / ·· —· / ··—· ·—·· ·—· ·· ——· ·————· ··· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / —·——· —·—· ——— —· ··—· ·· ——· / → / ··· · — ··— ·——· / → / ··· · ·—· ···— · ·—· —·——·— ·—·—·—\n—····— / ** ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / —— ·— —·—· ···· ·· —· · ** ——··—— / —— ·— —·— · / ··· ··— ·—· · / ··—· ·—·· ·—· ·· ——· ·————· ··· / ··· · ·—· ···— · ·—· / ·· ··· / ·—· · ·— —·—· ···· ·— —··· ·—·· · ·—·—·— / ·· — / ·—·· ·· ··· — · —· ··· / ——— —· / ·— ·—·· ·—·· / ·· —· — · ·—· ··—· ·— —·—· · ··· ——··—— / —··· ··— — / —·—— ——— ··— ·—· / ··—· ·· ·—· · ·—— ·— ·—·· ·—·· / —— ·— —·—— / —· ——— — / ·— ——· ·—· · · ·—·—·—\n—····— / ——— —· —·—· · / —·—· ——— —· —· · —·—· — · —·· ——··—— / ·— / —— ·· ··· ··· ·· —· ——· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··— ··· ··— ·— ·—·· ·—·· —·—— / —— · ·— —· ··· / ··—· ·—·· ·—· ·· ——· / ·· — ··· · ·—·· ··—· / —·—· ·— —· —· ——— — / ·—· · ·— —·—· ···· / — ···· · / ·—· ·— —·· ·· ——— ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / ··—· ·—·· ·—· ·· ——· ·————· ··· / —·· ·· ··· ·——· ·—·· ·— —·—— / ·· ··· / ··—· ——— ·—·· ·—·· ——— ·—— ·· —· ——· / — ···· · / —·· ·· ·— ·—·· ·—·—·—',
 			'settings.station.hrdTroubleshootingTitle' => '·· ··—· / — ···· · / ·— ·——· ·——· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hrdTroubleshooting' => '— ···· ·· ··· / —·—· ——— —· —· · —·—· — ··· / — ——— / ** ···· ·— —— / ·—· ·— —·· ·· ——— / —·· · ·—·· ··— —··— · ·————· ··· / ·—· ·· ——· / —·—· ——— —· — ·—· ——— ·—·· ——··—— / ·—· ··— —· —· ·· —· ——· / ——— —· / —·—— ——— ··— ·—· / —·—· ——— —— ·——· ··— — · ·—· ** ——··—— / —· ——— — / — ——— / — ···· · / ·—· ·— —·· ·· ——— / —·· ·· ·—· · —·—· — ·—·· —·—— / — / ···· ·—· —·· / — ·— ·—·· —·— ··· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—\n\n—····— / ** ·—· ·· ——· / —·—· ——— —· — ·—· ——— ·—·· / —— ··— ··· — / ·— ·—·· ·—· · ·— —·· —·—— / —··· · / ·—· ··— —· —· ·· —· ——· ** / ·— —· —·· / —·—· ——— —· —· · —·—· — · —·· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—\n—····— / ** ·· — ··· / ·· ·——· / ··· · ·—· ···— · ·—· / —— ··— ··· — / —··· · / · —· ·— —··· ·—·· · —·· ·—·—·— ** / ·—· ·· ——· / —·—· ——— —· — ·—· ——— ·—·· / ——— —· ·—·· —·—— / — ·— ·—·· —·— ··· / — ——— / ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— ··· / — ···· ·—· ——— ··— ——· ···· / ·· — ·—·—·—\n—····— / ** ·——· ——— ·—· — ** / ·· ··· / ——··· ———·· ————— ————· / ··— —· ·—·· · ··· ··· / —·—— ——— ··— / —·—· ···· ·— —· ——· · —·· / ·· — / ·· —· / — ···· · / ·· ·——· / ··· · ·—· ···— · ·—· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·—\n—····— / ** ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / —— ·— —·—· ···· ·· —· · ** ——··—— / —— ·— —·— · / ··· ··— ·—· · / —·—— ——— ··— ·—· / ··—· ·· ·—· · ·—— ·— ·—·· ·—·· / ·—·· · — ··· / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —· / — ···· ·—· ——— ··— ——· ···· ·—·—·—\n\n— ···· ·· ··· / · —· — ·—· —·—— / ·—— ·— ··· / ·—— ·—· ·· — — · —· / ··—· ·—· ——— —— / ·——· ··— —··· ·—·· ·· ··· ···· · —·· / —·· · ··· —·—· ·—· ·· ·——· — ·· ——— —· ··· / ——— ··—· / ···· ·—· —·· ·————· ··· / ·——· ·—· ——— — ——— —·—· ——— ·—·· / ·— —· —·· / ···· ·— ··· / —· ——— — / —··· · · —· / ·—· ··— —· / ·— ——· ·— ·· —· ··· — / ···· ·—· —·· ·—·—·— / ·· ··—· / ·· — / ···· ·— ·—·· ··—· —····— ·—— ——— ·—· —·— ··· ——··—— / — ···· ·— — / ·· ··· / ·—— ——— ·—· — ···· / ·—· · ·——· ——— ·—· — ·· —· ——· ·—·—·—',
 			'settings.station.n3fjpTroubleshootingTitle' => '·· ··—· / — ···· · / ·— ·——· ·——· / —·—· ·— —· —· ——— — / —·—· ——— —· —· · —·—· —',
 			'settings.station.n3fjpTroubleshooting' => '— ···· ·· ··· / —·—· ——— —· —· · —·—· — ··· / — ——— / ** ·— —· / —· ···—— ··—· ·——— ·——· / ·—·· ——— ——· ——· ·· —· ——· / ·——· ·—· ——— ——· ·—· ·— —— / ·—· ··— —· —· ·· —· ——· / ——— —· / —·—— ——— ··— ·—· / —·—· ——— —— ·——· ··— — · ·—· ** ——··—— / —· ——— — / — ——— / — ···· · / ·—· ·— —·· ·· ——— / —·· ·· ·—· · —·—· — ·—·· —·—— / — / —· ···—— ··—· ·——— ·——· / — ·— ·—·· —·— ··· / — ——— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·—\n\n—····— / ** — ···· · / ·——· ·—· ——— ——· ·—· ·— —— ·————· ··· / ·— ·——· ·· / —— ··— ··· — / —··· · / ——— —· ** ———··· / ··· · — — ·· —· ——· ··· / → / ·— ·——· ·——· ·—·· ·· —·—· ·— — ·· ——— —· / ·——· ·—· ——— ——· ·—· ·— —— / ·· —· — · ·—· ··—· ·— —·—· · ——··—— / —·—· ···· · —·—· —·— / ** — —·—· ·——· / ·— ·——· ·· / · —· ·— —··· ·—·· · —·· ** ·—·—·—\n—····— / ** ·——· ——— ·—· — ** / ·· ··· / ·———— ·———— ————— ————— / ··— —· ·—·· · ··· ··· / —·—— ——— ··— / —·—· ···· ·— —· ——· · —·· / ·· — / — ···· · ·—· · ·—·—·—\n—····— / ** —· ···—— ··—· ·——— ·——· / —— ··— ··· — / ···· ·— ···— · / ·— / ·—· ·— —·· ·· ——— / ·· —· — · ·—· ··—· ·— —·—· · / ··· · — / ··— ·——· ** / — ——— / ··—· ——— ·—·· ·—·· ——— ·—— / ——— ·—· / — ··— —· · / — ···· · / ·—· ·— —·· ·· ——— ·—·—·— / ·—— ·· — ···· ——— ··— — / ——— —· · ——··—— / ·· — / ·—· · ·——· ——— ·—· — ··· / ——— —· ·—·· —·—— / ·—— ···· ·— — / ·· ··· / — —·—— ·——· · —·· / ·· —· — ——— / ·· — ··· / · —· — ·—· —·—— / ·—— ·· —· —·· ——— ·—— ·—·—·—\n—····— / —· ···—— ··—· ·——— ·——· / ·—· · ·——· ——— ·—· — ··· / —··· ·— —· —·· ——··—— / —— ——— —·· · / ·— —· —·· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— —· ·—·· —·—— ———··· / —· ——— / ·——· ——— ·—— · ·—· ——··—— / —· ——— / — ·—· ·— —· ··· —— ·· — / ··· — ·— — · ·—·—·—\n\n— ···· ·· ··· / · —· — ·—· —·—— / ·—— ·— ··· / ·—— ·—· ·· — — · —· / ··—· ·—· ——— —— / —· ···—— ··—· ·——— ·——· ·————· ··· / ·——· ··— —··· ·—·· ·· ··· ···· · —·· / ·— ·——· ·· / ·— —· —·· / ···· ·— ··· / —· ——— — / —··· · · —· / ·—· ··— —· / ·— ——· ·— ·· —· ··· — / —· ···—— ··—· ·——— ·——· ·—·—·— / ·· ··—· / ·· — / ···· ·— ·—·· ··—· —····— ·—— ——— ·—· —·— ··· ——··—— / — ···· ·— — / ·· ··· / ·—— ——— ·—· — ···· / ·—· · ·——· ——— ·—· — ·· —· ——· ·—·—·—',
@@ -5669,6 +5743,8 @@ extension on TranslationsCw {
 			'exportSettings.adifFields' => '·— —·· ·· ··—· / ··—· ·· · ·—·· —·· ···',
 			'exportSettings.loadFailed' => '· —··— ·——· ——— ·—· — / ··· · — — ·· —· ——· ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—·· ——— ·— —·· · —·· ·—·—·—',
 			'exportSettings.retry' => '·—· · — ·—· —·——',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.compactFileNamesDescriptionOn' => '—·—· ——— —— ·——· ·— —·—· — / ··—· ·· ·—·· · —· ·— —— · ··· ——··—— / ··· ··— —·—· ···· / ·— ··· / —· ————— —·—· ·— ·—·· ·—·· ·——·—· ··— ··· —····— ·———— ··——— ···—— ····— —····— ··——— ————— ··——— —···· ————— ——··· ·———— ····· ·—·—·— ·— —·· ·· ·—·—·—',
 			'exportSettings.compactFileNamesDescriptionOff' => '—·· · ··· —·—· ·—· ·· ·——· — ·· ···— · / ··—· ·· ·—·· · —· ·— —— · ··· ——··—— / ··· ··— —·—· ···· / ·— ··· / ··——— ————— ··——— —···· —····— ————— ——··· —····— ·———— ····· / —· ————— —·—· ·— ·—·· ·—·· / ·— — / ··— ··· —····— ·———— ··——— ···—— ····— ·—·—·— ·— —·· ·· ·—·—·—',
 			'exportSettings.includePrivateDataDescriptionOn' => '·· —· —·—· ·—·· ··— —·· ·· —· ——· / —· ·— —— · ··· ——··—— / ·— —·· —·· ·—· · ··· ··· · ··· ——··—— / · —— ·— ·· ·—·· ··· ——··—— / —· ——— — · ··· / ·— —· —·· / ·——· ·—· · —·—· ·· ··· · / ·—·· ——— —·—· ·— — ·· ——— —· ··· / ·· —· / ·— —·· ·· ··—· / ··—· ·· ·—·· · ··· ·—·—·—',
@@ -5686,8 +5762,6 @@ extension on TranslationsCw {
 			'exportSettings.titleTemplate' => '— ·· — ·—·· · / — · —— ·——· ·—·· ·— — ·',
 			'exportSettings.adifNotesTemplate' => '·— —·· ·· ··—· / ——·— ··· ——— / —· ——— — · ···',
 			'exportSettings.adifCommentTemplate' => '·— —·· ·· ··—· / ——·— ··· ——— / —·—· ——— —— —— · —· — ···',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.adifQslMessageTemplate' => '·— —·· ·· ··—· / ——·— ··· ·—·· / —— · ··· ··· ·— ——· ·',
 			'exportSettings.shared' => '··· · — — ·· —· ——· ··· / ·— ·——· ·——· ·—·· —·—— / — ——— / · ···— · ·—· —·—— / · —··— — · —· ··· ·· ——— —· / ··— ··· ·· —· ——· / — ···· ·· ··· / · —··— ·——· ——— ·—· — / — —·—— ·——· · ·—·—·—',
 			'exportSettings.defaultTemplates' => '— ··— ·—· —· / ——— —· / —·—· ··— ··· — ——— —— / — · —— ·——· ·—·· ·— — · ··· / — ——— / · —·· ·· — / — ···· ·· ··· / — —·—— ·——· · ’ ··· / — · —— ·——· ·—·· ·— — · ··· ·—·—·—',

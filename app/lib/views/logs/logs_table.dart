@@ -261,63 +261,8 @@ List<Qso> _sortedQsos(List<Qso> qsos, _LogsSort sort) {
   return [for (final entry in keyed) entry.qso];
 }
 
-/// A day's divider among the table's rows.
-class _LogsDayDivider {
-  final int dayMillis;
-  final int count;
-
-  const _LogsDayDivider(this.dayMillis, this.count);
-}
-
 /// One UTC day in milliseconds — the same boundary [DayHeaderRow] labels.
 const _logsDayMillis = 1000 * 60 * 60 * 24;
-
-/// What the table draws, in order: the searched, sorted QSOs, and — while the
-/// sort is chronological — a [_LogsDayDivider] ahead of each UTC day. A
-/// divider is one row tall like everything else in the list (see
-/// [_QsoListPanel]), so any item's scroll offset is still its index times
-/// the row height, which is what lets the keyboard bring a row into view
-/// without measuring anything.
-class _LogsTableRows {
-  /// Only QSOs — what ↑/↓ step through.
-  final List<Qso> qsos;
-
-  /// Each element a [Qso] or a [_LogsDayDivider].
-  final List<Object> items;
-
-  final Map<String, int> _qsoIndex;
-  final Map<String, int> _itemIndex;
-
-  _LogsTableRows._(this.qsos, this.items, this._qsoIndex, this._itemIndex);
-
-  factory _LogsTableRows(List<Qso> sorted, {required bool dayDividers}) {
-    final items = <Object>[];
-    final qsoIndex = <String, int>{};
-    final itemIndex = <String, int>{};
-    int? dayOf(Qso qso) => qso.startAtMillis == null ? null : qso.startAtMillis! - qso.startAtMillis! % _logsDayMillis;
-    for (var i = 0; i < sorted.length; i++) {
-      final qso = sorted[i];
-      final day = dayOf(qso);
-      // Chronological order keeps each day's QSOs together, so the count is
-      // the run of them from here.
-      if (dayDividers && day != null && (i == 0 || dayOf(sorted[i - 1]) != day)) {
-        var count = 1;
-        while (i + count < sorted.length && dayOf(sorted[i + count]) == day) {
-          count++;
-        }
-        items.add(_LogsDayDivider(day, count));
-      }
-      qsoIndex[qso.uuid] = i;
-      itemIndex[qso.uuid] = items.length;
-      items.add(qso);
-    }
-    return _LogsTableRows._(sorted, items, qsoIndex, itemIndex);
-  }
-
-  int? qsoIndexOf(String uuid) => _qsoIndex[uuid];
-
-  int? itemIndexOf(String uuid) => _itemIndex[uuid];
-}
 
 /// The middle pane: every QSO the filter and search match, in [sort]'s order
 /// — the callsign picker, count/date-span and search field live in the view's
@@ -391,6 +336,10 @@ class _QsoListPanel extends StatelessWidget {
   final _LogsSort sort;
   final ValueChanged<String> onSort;
 
+  /// A tap on a group's header, pinned or in the list — collapsing or
+  /// expanding it. The index is the header's own in [_LogsTableRows.items].
+  final void Function(_LogsGroupHeader header, int itemIndex) onToggleGroup;
+
   /// See [_maxFreqMhzDigits] — computed once by `_LogsViewState` over [rows],
   /// not per row.
   final int freqMhzDigits;
@@ -422,6 +371,7 @@ class _QsoListPanel extends StatelessWidget {
     required this.onReorderColumn,
     required this.sort,
     required this.onSort,
+    required this.onToggleGroup,
     required this.freqMhzDigits,
     required this.scrollController,
     required this.listFocusNode,
@@ -441,7 +391,7 @@ class _QsoListPanel extends StatelessWidget {
     // In the table's place, not the pane's: a search that matches nothing
     // hides the selected row too, and the editor above has to outlive it —
     // replaced with the pane, it would take an edit in progress with it.
-    final empty = tableRows.qsos.isEmpty
+    final empty = tableRows.all.isEmpty
         ? Center(child: Text(searching ? context.t.home.logs.noSearchMatches : context.t.home.logs.emptyQsos(call: label)))
         : null;
     final rowExtent = LayoutDensity.metricsOf(context).qsoRowHeight;
@@ -515,7 +465,7 @@ class _QsoListPanel extends StatelessWidget {
                                     onResizeEnd: onResizeColumnEnd,
                                     onAutoFit: (column) => onAutoFitColumn(
                                       column,
-                                      _autoFitColumnWidth(column, context, tableRows.qsos, freqMhzDigits, sorted: column == sort.column),
+                                      _autoFitColumnWidth(column, context, tableRows.all, freqMhzDigits, sorted: column == sort.column),
                                     ),
                                     onShowMenu: onShowColumnMenu,
                                     onReorder: onReorderColumn,
@@ -540,21 +490,22 @@ class _QsoListPanel extends StatelessWidget {
 
   Widget _buildRows(BuildContext context, _LogsTableRows tableRows, double rowExtent, {required bool compact, required _LogsTableWidth tableWidth}) {
     final items = tableRows.items;
-    return ListView.builder(
+    Widget header(_LogsGroupHeader header, int index) => _LogsGroupHeaderRow(header: header, onTap: () => onToggleGroup(header, index));
+    final list = ListView.builder(
       controller: scrollController,
       itemCount: items.length,
       itemExtent: rowExtent,
       itemBuilder: (context, index) => switch (items[index]) {
-        final _LogsDayDivider divider => DayHeaderRow(dayMillis: divider.dayMillis, count: divider.count),
+        final _LogsGroupHeader group => header(group, index),
         final Qso qso => _LogQsoSummaryRow(
           qso: qso,
           selected: qso.uuid == selectedUuid,
           // The selected row's own accent border already marks its bottom
           // edge (see [_LogQsoSummaryRow]); a divider under it too would
           // paint over that border, foreground decorations painting
-          // child-to-ancestor. Nor does a row ahead of a day header need one:
-          // the header's own background is the break. The very last row has
-          // nothing below it to divide from either way.
+          // child-to-ancestor. Nor does a row ahead of a group header need
+          // one: the header's own background is the break. The very last row
+          // has nothing below it to divide from either way.
           drawDivider: index < items.length - 1 && qso.uuid != selectedUuid && items[index + 1] is Qso,
           compact: compact,
           widths: columnWidths,
@@ -566,6 +517,29 @@ class _QsoListPanel extends StatelessWidget {
         ),
         _ => const SizedBox.shrink(),
       },
+    );
+    // The headers of the groups scrolled through, pinned over the top of the
+    // list, outermost first. Worked out from the offset alone — every item is
+    // one row tall — so a scroll never measures anything.
+    final pinned = ListenableBuilder(
+      listenable: scrollController,
+      builder: (context, _) {
+        // Exactly one position: crossing the two-pane boundary swaps the
+        // compact list for the wide one, and for that frame both are
+        // attached, where `offset` asserts.
+        if (scrollController.positions.length != 1 || scrollController.offset <= 0) return const SizedBox.shrink();
+        final indexes = tableRows.pinnedAt((scrollController.offset / rowExtent).floor());
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [for (final index in indexes) SizedBox(height: rowExtent, child: header(items[index] as _LogsGroupHeader, index))],
+        );
+      },
+    );
+    return Stack(
+      children: [
+        list,
+        Positioned(top: 0, left: 0, right: 0, child: pinned),
+      ],
     );
   }
 }

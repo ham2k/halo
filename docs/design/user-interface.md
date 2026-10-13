@@ -157,6 +157,7 @@ The app's main views:
   controls, and related information.
 - **Maps View** — the references around the operator, on a map of the whole
   window.
+- **Logs View** — every QSO across operations, by station callsign.
 - **Settings View** — app configuration.
 
 ### Home View
@@ -220,6 +221,37 @@ operation, which opens on its Activities pane for the operator to check.
   outline, boundary and facility datasets'. Every interactive map in the app
   does the same, the GL script and the flutter_map backend alike; a framed
   picture (the Operation Postcard) carries its credit in its own layout.
+
+### Logs View
+
+A rail destination (`logs_view.dart`, behind the `logs` experiment): a table
+of every QSO the station callsigns have logged, across operations.
+
+- **The title** reads like an operation's: "Logs for **KI2D** in Aug–Oct"
+  above the QSO count and the exact days ("1,234 QSOs · 2026-08-01 –
+  2026-10-13"), with the three dots that open its sheet. The period is named
+  in months or years only; the second line carries the days. Over all time
+  the title names no period and the days are the QSOs' own span.
+- **The sheet** is split in two: the station callsigns on the left, and on
+  the right how the table groups and which period it shows. Every pick
+  applies as it is made and is remembered. The periods are whole calendar
+  spans in UTC — "Last 3 months" is this month and the two before it, "Last
+  year" the calendar year before this one — so a month's log is never split
+  at a boundary set by today's date.
+- **Grouping** puts collapsible headers over the rows — year, month and day,
+  or continent and DXCC entity — each with its QSO count, pinned at the top
+  while its rows scroll by. The groups run in their own order (dates newest
+  first unless the table is sorted oldest first, DX alphabetically) and a
+  column sort orders the QSOs within them; "Not grouped" is the one flat list
+  a sort runs across. DX starts with every group closed, an index to open
+  from; Date starts open. What the operator opens or closes is remembered per
+  grouping. Ctrl, ⌘ or Alt on a header gives its siblings, and every group
+  inside them, the state it takes.
+- **The search** sits centred in the header, as the Maps View's does.
+
+The table stays fixed-extent — a header is one row tall like every QSO — so
+a scroll, the keyboard's reveal and the pinned headers all work from an
+index times the row height and never measure a row.
 
 ### Operation View
 
@@ -386,10 +418,10 @@ clicks itself, and lays the node's name out inside it as DOM text with its
 overflow showing. A name longer than the box wraps out of it, and every line
 that lands on a neighbour takes that neighbour's clicks. So a button with a
 visible label is named by that label alone: don't run it together with an
-icon's `semanticLabel`, and don't add a hint. The Logs view's callsign picker
-and its editor's operation button are both built this way; with the arrow's
-label run in, the picker's name wraps onto the table header below it and opens
-on every click there.
+icon's `semanticLabel`, and don't add a hint. The Logs view's title and its
+editor's operation button are both built this way; with a label for the
+title's dots run in, its name wraps onto the table header below it and opens
+the sheet on every click there.
 
 **A covered pane leaves the semantics tree.** Painted over, a widget still
 answers to its semantics, and on web its tappable nodes go on taking clicks

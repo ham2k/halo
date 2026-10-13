@@ -32,11 +32,14 @@ import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation_view.dart';
+import 'sheet_header_dots.dart';
 
 part 'logs/logs_table.dart';
 part 'logs/logs_side_panes.dart';
 part 'logs/logs_edit_panel.dart';
 part 'logs/logs_adif_drop.dart';
+part 'logs/logs_sheet.dart';
+part 'logs/logs_groups.dart';
 
 /// The Logs destination's active filter (docs card HALO-273) — one station
 /// callsign, or all of them at once, with room to grow into other filter
@@ -204,14 +207,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   void didChangeDependencies() {
     super.didChangeDependencies();
     _registerNativePanels();
-    _countAndDatesWidth = _measureCountAndDates(context);
   }
-
-  /// See [_measureCountAndDates] — taken here, where a change to the theme,
-  /// the language or the text scale it depends on comes through, rather than
-  /// in every build of the header for a width none of the header's own
-  /// changes can move.
-  double _countAndDatesWidth = 0;
 
   @override
   LogFilter _filter = const LogFilter();
@@ -277,7 +273,66 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   /// nothing to watch before then.
   Stream<List<Qso>>? _qsosStream;
 
-  final _pickerKey = GlobalKey();
+  LogsGrouping _grouping = LogsGrouping.date;
+
+  /// Per grouping, the groups the operator has turned from how they start
+  /// ([LogsGrouping.startsCollapsed]), by [LogsGrouping.pathOf] path: closed
+  /// ones under Date, opened ones under DX. Stored with the filter, and each
+  /// set replaced rather than changed, so the row cache can tell by identity.
+  Map<LogsGrouping, Set<String>> _toggled = const {};
+
+  bool _isCollapsed(LogsGrouping grouping, String path) => grouping.startsCollapsed != (_toggled[grouping]?.contains(path) ?? false);
+
+  /// The span of the log on screen, applied to the stream's QSOs before the
+  /// search and the sort (see [_inPeriod]).
+  LogsPeriod _period = LogsPeriod.allTime;
+
+  /// The days [LogsPeriod.custom] spans, end day included — kept while
+  /// another period is picked, so going back to Custom finds it again.
+  DateTimeRange? _customRange;
+
+  final _headerTitleKey = GlobalKey();
+
+  /// Ticks whenever anything the open sheet shows changes — the callsigns
+  /// and their counts, the filter, the grouping, the period. The sheet's
+  /// route is not under this view, so this view's own rebuilds never reach
+  /// it, and changes the view makes on its own (a callsign falling back to
+  /// All) write nothing a settings listener would hear.
+  final _sheetRevision = ValueNotifier(0);
+
+  /// The sheet's slide while it is up or going away — what the header's dots
+  /// and the leading gap behind the OK button follow. Cleared once the slide
+  /// has finished closing, so the dots don't snap back while the sheet is
+  /// still on its way out.
+  Animation<double>? _sheetAnimation;
+
+  /// The sheet's OK button, measured so the title's leading gap can open to
+  /// its width — it draws over this corner of the header, not inside it.
+  final _sheetOkButtonKey = GlobalKey();
+
+  double get _sheetProgress => _sheetAnimation?.value ?? 0.0;
+
+  /// The OK button's laid-out width, or null when it cannot be read — see
+  /// ChaseView's own copy of this read for why it is guarded.
+  double? get _sheetOkButtonWidth {
+    final element = _sheetOkButtonKey.currentContext;
+    if (element == null || !element.mounted) return null;
+    try {
+      final box = element.findRenderObject() as RenderBox?;
+      return box != null && box.attached && box.hasSize ? box.size.width : null;
+    } on FlutterError {
+      return null;
+    }
+  }
+
+  /// The title control's left edge in the overlay the sheet is drawn in,
+  /// which spans the whole navigator rather than this view beside the rail.
+  double? get _headerTitleLeftInset {
+    final box = _headerTitleKey.currentContext?.findRenderObject() as RenderBox?;
+    final overlay = Overlay.maybeOf(context)?.context.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || overlay == null || !overlay.attached) return null;
+    return box.localToGlobal(Offset.zero, ancestor: overlay).dx;
+  }
 
   // The search, the sort and the date-range scan are each at least O(n)
   // over the whole log, which the QSO scale this view targets (see
@@ -287,9 +342,13 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   // identity of the source list (unchanged across an unrelated rebuild,
   // since it's the same snapshot from the stream) rather than deep-equality,
   // and on the identity of [_sort], which is replaced rather than mutated.
+  // Two levels: the grouped order, then the rows over it — a header tap
+  // changes only what is collapsed, and must not re-sort the whole log.
   List<Qso>? _cachedRowsSource;
   String? _cachedRowsQuery;
   _LogsSort? _cachedRowsSort;
+  _LogsGrouped? _cachedGrouped;
+  Set<String>? _cachedRowsToggled;
 
   /// Also what the keyboard steps through: it is exactly what is on screen.
   _LogsTableRows? _cachedRows;
@@ -298,14 +357,47 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   List<Qso>? _cachedFreqDigitsSource;
   int? _cachedFreqDigits;
 
+  List<Qso>? _cachedPeriodSource;
+  ({int? start, int? end})? _cachedPeriodBounds;
+  List<Qso>? _cachedPeriodQsos;
+
+  /// [qsos] cut down to [_period] — the same list instance while neither the
+  /// source nor the bounds move, so the row cache below keeps hitting. A QSO
+  /// with no start time falls in no period but All time, where Date grouping
+  /// gives it a group of its own.
+  List<Qso> _inPeriod(List<Qso> qsos) {
+    final bounds = _period.bounds(nowUtc(), range: _customRange);
+    if (bounds.start == null && bounds.end == null) return qsos;
+    if (identical(qsos, _cachedPeriodSource) && bounds == _cachedPeriodBounds) return _cachedPeriodQsos!;
+    final start = bounds.start;
+    final end = bounds.end;
+    final list = [
+      for (final qso in qsos)
+        if (qso.startAtMillis case final at? when (start == null || at >= start) && (end == null || at < end)) qso,
+    ];
+    _cachedPeriodSource = qsos;
+    _cachedPeriodBounds = bounds;
+    _cachedPeriodQsos = list;
+    return list;
+  }
+
   _LogsTableRows _tableRowsFor(List<Qso> qsos) {
-    if (identical(qsos, _cachedRowsSource) && _searchQuery == _cachedRowsQuery && identical(_sort, _cachedRowsSort)) {
-      return _cachedRows!;
+    var grouped = _cachedGrouped;
+    if (grouped == null ||
+        !identical(qsos, _cachedRowsSource) ||
+        _searchQuery != _cachedRowsQuery ||
+        !identical(_sort, _cachedRowsSort) ||
+        grouped.grouping != _grouping) {
+      grouped = _LogsGrouped(_sortedQsos(_applySearch(qsos), _sort), grouping: _grouping, sort: _sort);
+      _cachedRowsSource = qsos;
+      _cachedRowsQuery = _searchQuery;
+      _cachedRowsSort = _sort;
+      _cachedGrouped = grouped;
     }
-    final rows = _LogsTableRows(_sortedQsos(_applySearch(qsos), _sort), dayDividers: _sort.chronological);
-    _cachedRowsSource = qsos;
-    _cachedRowsQuery = _searchQuery;
-    _cachedRowsSort = _sort;
+    final cached = _cachedRows;
+    if (cached != null && identical(cached.grouped, grouped) && identical(_toggled[_grouping], _cachedRowsToggled)) return cached;
+    final rows = _LogsTableRows(grouped, collapsed: (path) => _isCollapsed(_grouping, path));
+    _cachedRowsToggled = _toggled[_grouping];
     _cachedRows = rows;
     return rows;
   }
@@ -367,6 +459,21 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
       _ => const [],
     });
     _sort = _LogsSort.fromMap(settings.layoutData(LayoutKeys.logsQsoSort));
+    final storedFilter = settings.layoutData(LayoutKeys.logsFilter);
+    _period = LogsPeriod.values.asNameMap()[storedFilter?['period']] ?? LogsPeriod.allTime;
+    _grouping = LogsGrouping.values.asNameMap()[storedFilter?['group']] ?? LogsGrouping.date;
+    if (storedFilter?['toggled'] case final Map<String, dynamic> toggled) {
+      _toggled = {
+        for (final MapEntry(:key, :value) in toggled.entries)
+          if ((LogsGrouping.values.asNameMap()[key], value) case (final grouping?, final List<dynamic> paths)) grouping: paths.whereType<String>().toSet(),
+      };
+    }
+    if ((DateTime.tryParse('${storedFilter?['from']}'), DateTime.tryParse('${storedFilter?['to']}')) case (final from?, final to?) when !to.isBefore(from)) {
+      _customRange = DateTimeRange(start: from, end: to);
+    }
+    // Custom with no days to span would show all time under a title that
+    // says otherwise.
+    if (_period == LogsPeriod.custom && _customRange == null) _period = LogsPeriod.allTime;
     homeRail.setLeaveGuard(HomeDestination.logs, _settleAndClose);
     _subscribeCallsigns();
   }
@@ -395,6 +502,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     _listScroll.dispose();
     _searchTimer?.cancel();
     _searchController.dispose();
+    _sheetRevision.dispose();
     super.dispose();
   }
 
@@ -408,6 +516,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         _callsignsLoaded = true;
         _callsigns = calls;
       });
+      _sheetRevision.value++;
       if (calls.isEmpty) return;
       if (calls.length == 1) {
         // One station callsign is all there is to show, so the view is its
@@ -474,9 +583,53 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         _searchQuery = '';
       }
     });
-    if (remember) {
-      unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsFilter, {'call': filter.allCalls ? null : filter.stationCall}));
+    _sheetRevision.value++;
+    if (remember) _rememberFilter(call: true);
+  }
+
+  /// The grouping and the period, and with [call] the callsign as the
+  /// operator just picked it — one stored map, so writing any keeps the rest. A callsign the view
+  /// fell back to on its own is never written over the operator's pick.
+  void _rememberFilter({bool call = false}) {
+    final settings = widget.services.settings;
+    final range = _customRange;
+    unawaited(
+      settings.setLayoutData(LayoutKeys.logsFilter, {
+        ...?settings.layoutData(LayoutKeys.logsFilter),
+        if (call) 'call': _filter.allCalls ? null : _filter.stationCall,
+        'group': _grouping.name,
+        'toggled': {for (final MapEntry(:key, :value) in _toggled.entries) key.name: value.toList()},
+        'period': _period.name,
+        'from': range == null ? null : _dateFormat.format(range.start),
+        'to': range == null ? null : _dateFormat.format(range.end),
+      }),
+    );
+  }
+
+  /// [LogsPeriod.custom] asks for its days first, and is not taken without
+  /// them.
+  Future<void> _pickPeriod(LogsPeriod period) async {
+    var range = _customRange;
+    if (period == LogsPeriod.custom) {
+      final now = nowUtc();
+      final today = DateTime(now.year, now.month, now.day);
+      range = await showDateRangePicker(
+        context: context,
+        firstDate: DateTime(1900),
+        lastDate: today,
+        initialDateRange: range == null || range.end.isAfter(today) ? null : range,
+      );
+      if (range == null || !mounted) return;
+    } else if (period == _period) {
+      return;
     }
+    if (!await _settleAndClose() || !mounted) return;
+    setState(() {
+      _period = period;
+      _customRange = range;
+    });
+    _sheetRevision.value++;
+    _rememberFilter();
   }
 
   @override
@@ -645,8 +798,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
       final extent = LayoutDensity.metricsOf(listContext).qsoRowHeight;
       final position = _listScroll.position;
       final top = index * extent;
-      if (top < position.pixels) {
-        _listScroll.jumpTo(top);
+      // Under the group headers pinned over the top, not behind them.
+      final pinned = (_cachedRows?.grouping.levels ?? 0) * extent;
+      if (top < position.pixels + pinned) {
+        _listScroll.jumpTo(math.max(0, top - pinned));
       } else if (top + extent > position.pixels + position.viewportDimension) {
         _listScroll.jumpTo(math.min(position.maxScrollExtent, top + extent - position.viewportDimension));
       }
@@ -670,6 +825,46 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     setState(() => _sort = _sort.tapped(column));
     unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsQsoSort, _sort.toMap()));
     if (_selectedUuid case final uuid?) _revealRow(uuid);
+  }
+
+  /// Folds [header]'s group shut or opens it — and with Ctrl, ⌘ or Alt held,
+  /// its siblings and every group inside any of them the same way. A header
+  /// tapped where it was pinned is brought back to its pinned place, rather
+  /// than the list staying put somewhere past the group it just folded.
+  void _toggleGroup(_LogsGroupHeader header, int itemIndex) {
+    final keyboard = HardwareKeyboard.instance;
+    final all = keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed;
+    final grouping = header.grouping;
+    final collapse = !header.collapsed;
+    final targets = all ? (_cachedRows?.siblingsAndDescendants(header) ?? [header.path]) : [header.path];
+    final next = {...?_toggled[grouping]};
+    for (final path in targets) {
+      if (collapse != grouping.startsCollapsed) {
+        next.add(path);
+      } else {
+        next.remove(path);
+      }
+    }
+    final listContext = _listFocus.context;
+    final extent = listContext == null ? null : LayoutDensity.metricsOf(listContext).qsoRowHeight;
+    final wasPinned = extent != null && _listScroll.positions.length == 1 && _listScroll.offset > (itemIndex - header.level) * extent;
+    setState(() => _toggled = {..._toggled, grouping: next});
+    _rememberFilter();
+    if (!wasPinned) return;
+    // Siblings above it can fold too, so the header's place is looked up
+    // again in the rows this toggle rebuilt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final index = _cachedRows?.headerIndexOf(header.path);
+      if (!mounted || index == null || _listScroll.positions.length != 1) return;
+      _listScroll.jumpTo(math.min((index - header.level) * extent, _listScroll.position.maxScrollExtent));
+    });
+  }
+
+  void _pickGrouping(LogsGrouping grouping) {
+    if (grouping == _grouping || !mounted) return;
+    setState(() => _grouping = grouping);
+    _sheetRevision.value++;
+    _rememberFilter();
   }
 
   /// Live-updates the dragged column as the pointer moves; the drag itself
@@ -707,8 +902,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   }
 
   /// The right-click "manage columns" menu — a single tap toggles one column
-  /// and closes, the same one-shot `showMenu` [_openCallsignPicker] uses for
-  /// its own menu, rather than staying open for several toggles in a row.
+  /// and closes, a one-shot `showMenu` rather than staying open for several
+  /// toggles in a row.
   Future<void> _openColumnMenu(Offset globalPosition) async {
     final selection = await showMenu<String>(
       context: context,
@@ -718,8 +913,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
           CheckedPopupMenuItem(value: column, checked: _visibleColumns.contains(column), child: Text(_logsColumnLabel(context, column))),
       ],
     );
-    // Same guard [_openCallsignPicker] uses for its own awaited `showMenu` —
-    // the menu can still resolve after this state is disposed (navigate away
+    // The menu can still resolve after this state is disposed (navigate away
     // mid-pick), and `_toggleColumnVisible`'s `setState` would throw.
     if (selection != null && mounted) _toggleColumnVisible(selection);
   }
@@ -747,48 +941,55 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     ];
   }
 
-  Future<void> _openCallsignPicker() async {
-    final box = _pickerKey.currentContext?.findRenderObject() as RenderBox?;
-    final overlayBox = Overlay.of(context).context.findRenderObject() as RenderBox?;
-    if (box == null || overlayBox == null) return;
-    final topLeft = box.localToGlobal(Offset(0, box.size.height), ancestor: overlayBox);
-    final position = RelativeRect.fromLTRB(topLeft.dx, topLeft.dy, overlayBox.size.width - topLeft.dx, 0);
-    final theme = Theme.of(context);
-    final sortedCalls = _callsigns.keys.toList()..sort();
-    PopupMenuItem<LogFilter> item(LogFilter value, Widget label, int count) => PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Expanded(child: label),
-          const SizedBox(width: Space.md),
-          // Same count-pill treatment the operation list uses for its own
-          // QSO count.
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xxs),
-            decoration: BoxDecoration(color: theme.colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
-            child: Text(formatNumber(count), style: theme.textTheme.labelLarge),
+  /// The view's sheet — the station callsigns and the time period — dropping
+  /// from the title the way the Chasing view's and an operation's do, with an
+  /// OK button grown out of the title's dots.
+  Future<void> _openSheet(BuildContext context) async {
+    await showTopModalPane<void>(
+      context,
+      onAnimation: (animation) {
+        setState(() => _sheetAnimation = animation);
+        void status(AnimationStatus value) {
+          if (value != AnimationStatus.dismissed) return;
+          animation.removeStatusListener(status);
+          if (mounted && identical(_sheetAnimation, animation)) setState(() => _sheetAnimation = null);
+        }
+
+        animation.addStatusListener(status);
+      },
+      leftInset: _headerTitleLeftInset,
+      scrollable: false,
+      barrierDismissible: true,
+      keepHeaderVisible: true,
+      showHeader: false,
+      headerLeading: Builder(
+        builder: (context) => SheetAcceptHandoff(
+          animation: _sheetAnimation,
+          child: KeyedSubtree(
+            key: _sheetOkButtonKey,
+            child: FilledButton.icon(
+              icon: const Icon(MdiIcons.check),
+              label: Text(context.t.common.ok),
+              style: FilledButton.styleFrom(backgroundColor: fabAccentColor, foregroundColor: Theme.of(context).colorScheme.onPrimary),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
           ),
-        ],
+        ),
+      ),
+      builder: (context) => ListenableBuilder(
+        listenable: _sheetRevision,
+        builder: (context, _) => _LogsSheet(
+          callsigns: _callsigns,
+          filter: _filter,
+          grouping: _grouping,
+          period: _period,
+          customRange: _customRange,
+          onGrouping: _pickGrouping,
+          onFilter: (filter) => unawaited(_pickFilter(filter)),
+          onPeriod: (period) => unawaited(_pickPeriod(period)),
+        ),
       ),
     );
-    final picked = await showMenu<LogFilter>(
-      context: context,
-      position: position,
-      items: [
-        item(const LogFilter.all(), Text(context.t.home.logs.allCallsigns), _callsigns.values.fold(0, (sum, count) => sum + count)),
-        const PopupMenuDivider(),
-        for (final call in sortedCalls)
-          item(
-            LogFilter(stationCall: call),
-            Text(
-              call,
-              style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w700),
-            ),
-            _callsigns[call] ?? 0,
-          ),
-      ],
-    );
-    if (picked != null && mounted) await _pickFilter(picked);
   }
 
   @override
@@ -805,9 +1006,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     return StreamBuilder<List<Qso>>(stream: stream, builder: (context, snapshot) => _buildScaffold(context, snapshot.data));
   }
 
-  Widget _buildScaffold(BuildContext context, List<Qso>? qsos) {
+  Widget _buildScaffold(BuildContext context, List<Qso>? streamed) {
+    final qsos = streamed == null ? null : _inPeriod(streamed);
     final rows = qsos == null ? null : _tableRowsFor(qsos);
-    final filtered = rows?.qsos;
+    final filtered = rows?.all;
     Qso? selected;
     if (qsos != null) {
       for (final qso in qsos) {
@@ -846,6 +1048,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         onReorderColumn: _moveColumn,
         sort: _sort,
         onSort: _sortBy,
+        onToggleGroup: _toggleGroup,
         freqMhzDigits: filtered == null ? 1 : _cachedMaxFreqMhzDigits(filtered),
         scrollController: _listScroll,
         listFocusNode: _listFocus,
@@ -858,7 +1061,12 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         leadingWidth: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: homeRail.expanded)),
         leading: const SizedBox.shrink(),
         titleSpacing: Space.xl,
-        title: _buildTitle(context, filtered, includeSearch: isTwoPane),
+        // Rebuilt with the sheet's slide on its own — the dots and the gap
+        // follow it frame by frame.
+        title: AnimatedBuilder(
+          animation: _sheetAnimation ?? kAlwaysDismissedAnimation,
+          builder: (context, _) => _buildTitle(context, filtered, includeSearch: isTwoPane),
+        ),
         actions: [
           ?viewOptionsButton(context, editing: layoutEditing),
           ...layoutHeaderControls(context),
@@ -908,101 +1116,122 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     );
   }
 
-  /// The callsign picker, count/date-span and search field, all in the
+  /// The title that opens the sheet, then the search field, all in the
   /// view's own AppBar rather than the QSO table pane's header — the pane
   /// stays genuinely headerless (see [defaultHeaderlessModules]) so it reads
-  /// as one continuous list. "Logs" carries the AppBar's usual Roboto Slab,
-  /// but at regular weight rather than the app-wide Black — the callsign
-  /// next to it is what's meant to read as the emphasized part, in mono to
-  /// match every other callsign display in the app. The count/date-span and
-  /// search field both get a FIXED width rather than sizing to content, so
-  /// switching callsigns (a shorter count, a wider date span) doesn't
-  /// reflow the rest of the bar.
+  /// as one continuous list. Two lines, like an operation's: what is shown,
+  /// then how many QSOs and over what span. "Logs" carries the AppBar's usual
+  /// Roboto Slab, but at regular weight rather than the app-wide Black — the
+  /// callsign next to it is what's meant to read as the emphasized part, in
+  /// mono to match every other callsign display in the app.
   Widget _buildTitle(BuildContext context, List<Qso>? filtered, {required bool includeSearch}) {
     final theme = Theme.of(context);
     final t = context.t;
     final baseStyle = (theme.appBarTheme.titleTextStyle ?? const TextStyle()).copyWith(fontWeight: FontWeight.w400);
-    final foreground = theme.appBarTheme.foregroundColor;
+    final foreground = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
     final call = _filter.stationCall;
-    // A picker with one entry is no choice at all: the title just names it.
-    final picking = _callsigns.length > 1;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        InkWell(
-          key: _pickerKey,
-          onTap: picking ? _openCallsignPicker : null,
-          // The visible title alone names the button, not run together with
-          // a label for the arrow: Flutter web lays the name out as DOM text
-          // inside this box with its overflow showing, and a name long enough
-          // to wrap spills below the AppBar, where its lines take the clicks
-          // meant for the table header underneath.
-          // A node of its own when there is nothing to pick and the InkWell
-          // makes none — and only then: with a picker, a separate node would
-          // hang the label under the button's instead of naming it.
-          child: Semantics(
-            container: !picking,
-            label: call != null
-                ? '${t.home.logs.titleFor} $call'
-                : _filter.allCalls
-                ? t.home.logs.titleAll
-                : t.home.logs.title,
-            excludeSemantics: true,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  call != null
-                      ? '${t.home.logs.titleFor} '
-                      : _filter.allCalls
-                      ? t.home.logs.titleAll
-                      : t.home.logs.title,
-                  style: baseStyle,
+    final lead = call != null
+        ? '${t.home.logs.titleFor} '
+        : _filter.allCalls
+        ? t.home.logs.titleAll
+        : t.home.logs.title;
+    // Blank while the callsign list is still loading — the list pane itself
+    // carries the loading spinner (see [_QsoListPanel]), so this stays quiet
+    // rather than doubling it up in the header.
+    final periodTitle = _period.titleLabel(context, nowUtc());
+    final inPeriod = periodTitle == null ? null : t.home.logs.periodTitle.inSpan(span: periodTitle);
+    final subtitle = (_callsignsLoaded && !_filter.isEmpty && filtered != null) ? _countAndSpan(context, filtered) : '';
+    final titleControl = InkWell(
+      key: _headerTitleKey,
+      onTap: _sheetProgress > 0 ? null : () => _openSheet(context),
+      mouseCursor: SystemMouseCursors.click,
+      borderRadius: BorderRadius.circular(8),
+      // The operation header's own bump: M3's default overlays barely
+      // show on the teal bar.
+      overlayColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.pressed) || states.contains(WidgetState.focused)) return foreground.withValues(alpha: 0.20);
+        if (states.contains(WidgetState.hovered)) return foreground.withValues(alpha: 0.16);
+        return null;
+      }),
+      // The visible title alone names the button: Flutter web lays the
+      // name out as DOM text inside this box with its overflow showing,
+      // and a name long enough to wrap spills below the AppBar, where
+      // its lines take the clicks meant for the table header underneath.
+      child: Semantics(
+        label: [
+          [if (call != null) '$lead$call' else lead, ?inPeriod].join(' '),
+          if (subtitle.isNotEmpty) subtitle,
+        ].join(', '),
+        excludeSemantics: true,
+        child: Padding(
+          padding: const EdgeInsets.only(left: Space.xs, right: Space.lg, top: Space.xxs, bottom: Space.xxs),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: sheetLeadingGapWidth(_sheetProgress, _sheetOkButtonWidth),
+                height: 32,
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: SheetHeaderDots(progress: _sheetProgress),
                 ),
-                if (call != null)
-                  Text(
-                    call,
-                    style: baseStyle.copyWith(fontFamily: 'RobotoMono', fontWeight: FontWeight.w800),
-                  ),
-                if (picking) ...[const SizedBox(width: Space.xs), Icon(MdiIcons.menuDown, color: foreground)],
-              ],
-            ),
+              ),
+              const SizedBox(width: Space.xs),
+              // The operation header's two lines. The first ellipsizes rather
+              // than going through shrinkToFitText, which paints plain text
+              // and would drop the callsign's own style.
+              Flexible(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(text: lead),
+                          if (call != null)
+                            TextSpan(
+                              text: call,
+                              style: const TextStyle(fontFamily: 'RobotoMono', fontWeight: FontWeight.w800),
+                            ),
+                          if (inPeriod != null) TextSpan(text: ' $inPeriod'),
+                        ],
+                      ),
+                      style: baseStyle.copyWith(color: foreground),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (subtitle.isNotEmpty)
+                      shrinkToFitText(Text(subtitle, style: theme.textTheme.labelMedium?.copyWith(color: foreground.withValues(alpha: 0.85))), condensed: true),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(width: Space.xxl),
-        // Flexible for the same reason as the search field below — on a
-        // narrow AppBar the picker text plus this fixed-width box can
-        // already fill the available room, and a box that can't shrink
-        // turns that into a RenderFlex overflow instead of just clipping.
-        Flexible(
-          child: SizedBox(
-            width: _countAndDatesWidth,
-            // Blank while the callsign list is still loading — the list pane
-            // itself carries the loading spinner (see [_QsoListPanel]), so
-            // this stays quiet rather than doubling it up in the header.
-            child: (_callsignsLoaded && !_filter.isEmpty && filtered != null) ? _countAndDates(context, filtered, foreground) : null,
+      ),
+    );
+    if (!includeSearch) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [Flexible(child: titleControl)],
+      );
+    }
+    // The search field at the middle of the title slot, between two equal
+    // sides: the title takes the left one and ellipsizes there rather than
+    // pushing the field off center.
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        children: [
+          Expanded(
+            child: Align(alignment: AlignmentDirectional.centerStart, child: titleControl),
           ),
-        ),
-        // Dropped below the two-pane boundary rather than shrunk — see
-        // [_narrowSearchRow], which puts the same field on its own row
-        // instead.
-        if (includeSearch) ...[
           const SizedBox(width: Space.xxl),
-          // Flexible with a floor, not a bare fixed SizedBox: the AppBar
-          // gives this title a bounded width, and the picker text plus the
-          // two fixed-width boxes ahead of it can already fill most of a
-          // narrow window (docs/design/ui-scaling.md's tightest case) — a
-          // search box that can't shrink at all turns that into a
-          // RenderFlex overflow instead of just a narrower field.
-          Flexible(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: _searchFieldWidth, minWidth: 80),
-              child: SizedBox(height: 36, child: _searchField(context)),
-            ),
-          ),
+          SizedBox(width: math.min(_searchFieldWidth, constraints.maxWidth / 3), height: 36, child: _searchField(context)),
+          const SizedBox(width: Space.xxl),
+          const Spacer(),
         ],
-      ],
+      ),
     );
   }
 
@@ -1052,38 +1281,15 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     );
   }
 
-  TextStyle _countStyle(ThemeData theme) => (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(fontWeight: FontWeight.w700);
-
-  TextStyle _datesStyle(ThemeData theme) => theme.textTheme.bodySmall ?? const TextStyle();
-
-  /// Room for the widest count and date span the header can show, measured
-  /// rather than fixed: neither ellipsizes, and since it doesn't follow the
-  /// numbers on screen, switching callsigns never shifts the search field.
-  double _measureCountAndDates(BuildContext context) {
-    final theme = Theme.of(context);
+  /// The count and the exact days of the period the title names in months
+  /// or years: "1,234 QSOs · 2026-08-01 – 2026-10-13". Over all time, which
+  /// has no days of its own, the span the QSOs themselves cover.
+  String _countAndSpan(BuildContext context, List<Qso> list) {
     final info = context.t.loggingControls.info;
-    // A span of dates is as wide as any other in this fixed format.
-    final span = _dateRangeLabel(0, 400 * _logsDayMillis);
-    return math.max(textWidth(context, info.qsoCountOther(count: formatNumber(888888)), _countStyle(theme)), textWidth(context, span, _datesStyle(theme)));
-  }
-
-  /// The QSO count and, when at least one QSO has a date, the earliest-to-
-  /// latest span, painted in the AppBar's own foreground color so it reads
-  /// against the primary-colored bar.
-  Widget _countAndDates(BuildContext context, List<Qso> list, Color? color) {
-    final info = context.t.loggingControls.info;
-    final theme = Theme.of(context);
-    final countLabel = list.length == 1 ? info.qsoCountOne : info.qsoCountOther(count: formatNumber(list.length));
+    final count = list.length == 1 ? info.qsoCountOne : info.qsoCountOther(count: formatNumber(list.length));
+    if (_period.dateSpan(nowUtc(), range: _customRange) case final span?) return '$count · $span';
     final range = _cachedMillisRange(list);
-    final rangeLabel = range == null ? null : _dateRangeLabel(range.$1, range.$2);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(countLabel, style: _countStyle(theme).copyWith(color: color)),
-        if (rangeLabel != null) Text(rangeLabel, style: _datesStyle(theme).copyWith(color: color)),
-      ],
-    );
+    return range == null ? count : '$count · ${_dateRangeLabel(range.$1, range.$2)}';
   }
 }
 

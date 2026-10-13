@@ -321,6 +321,12 @@ class Qso {
   String? get theirEntityPrefix => asQsonString(_their['entityPrefix']) ?? asQsonString(_theirGuess['entityPrefix']);
   String? get theirFlag => asQsonString(_their['flag']) ?? asQsonString(_theirGuess['flag']);
 
+  /// The DXCC entity's name and two-letter continent code (`NA`, `EU`…), from
+  /// the same callsign annotation — or, for an ADIF import, its COUNTRY and
+  /// CONT fields.
+  String? get theirEntityName => asQsonString(_their['entityName']) ?? asQsonString(_theirGuess['entityName']);
+  String? get theirContinent => asQsonString(_their['continent']) ?? asQsonString(_theirGuess['continent']);
+
   /// The marker emoji the Callsign Notes lookup reported for this station,
   /// as looked up at logging time — only ever a guess (nothing enters one),
   /// and the FIRST note's marker alone, even when the call appears in

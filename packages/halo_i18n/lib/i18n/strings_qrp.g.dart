@@ -1313,6 +1313,10 @@ class _Translations$home$logs$qrp extends Translations$home$logs$en {
 	@override String get pendingDeleteBody => 'this qso is marked for deletion.';
 	@override String get editGone => 'not saved: that qso is no longer in this log.';
 	@override String get discard => 'discard';
+	@override late final _Translations$home$logs$sheet$qrp sheet = _Translations$home$logs$sheet$qrp._(_root);
+	@override late final _Translations$home$logs$groupBy$qrp groupBy = _Translations$home$logs$groupBy$qrp._(_root);
+	@override late final _Translations$home$logs$period$qrp period = _Translations$home$logs$period$qrp._(_root);
+	@override late final _Translations$home$logs$periodTitle$qrp periodTitle = _Translations$home$logs$periodTitle$qrp._(_root);
 	@override late final _Translations$home$logs$columns$qrp columns = _Translations$home$logs$columns$qrp._(_root);
 	@override late final _Translations$home$logs$panels$qrp panels = _Translations$home$logs$panels$qrp._(_root);
 	@override late final _Translations$home$logs$import$qrp import = _Translations$home$logs$import$qrp._(_root);
@@ -2735,6 +2739,59 @@ class _Translations$settings$gridPrecisionDescription$qrp extends Translations$s
 	@override String get eight => '8 digits';
 }
 
+// Path: home.logs.sheet
+class _Translations$home$logs$sheet$qrp extends Translations$home$logs$sheet$en {
+	_Translations$home$logs$sheet$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsigns => 'station callsigns';
+	@override String get groupBy => 'group by';
+	@override String get period => 'time period';
+}
+
+// Path: home.logs.groupBy
+class _Translations$home$logs$groupBy$qrp extends Translations$home$logs$groupBy$en {
+	_Translations$home$logs$groupBy$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get none => 'not grouped';
+	@override String get date => 'date';
+	@override String get dx => 'dx';
+	@override String get unknownContinent => 'unknown continent';
+	@override String get unknownEntity => 'unknown entity';
+	@override String get unknownDate => 'no date';
+}
+
+// Path: home.logs.period
+class _Translations$home$logs$period$qrp extends Translations$home$logs$period$en {
+	_Translations$home$logs$period$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get thisMonth => 'this month';
+	@override String get last3Months => 'last 3 months';
+	@override String get thisYear => 'this year';
+	@override String get lastYear => 'last year';
+	@override String get allTime => 'all time';
+	@override String get custom => 'custom range';
+}
+
+// Path: home.logs.periodTitle
+class _Translations$home$logs$periodTitle$qrp extends Translations$home$logs$periodTitle$en {
+	_Translations$home$logs$periodTitle$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String inSpan({required Object span}) => 'in ${span}';
+	@override String get custom => 'custom range';
+}
+
 // Path: home.logs.columns
 class _Translations$home$logs$columns$qrp extends Translations$home$logs$columns$en {
 	_Translations$home$logs$columns$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -3830,6 +3887,23 @@ extension on TranslationsQrp {
 			'home.logs.pendingDeleteBody' => 'this qso is marked for deletion.',
 			'home.logs.editGone' => 'not saved: that qso is no longer in this log.',
 			'home.logs.discard' => 'discard',
+			'home.logs.sheet.callsigns' => 'station callsigns',
+			'home.logs.sheet.groupBy' => 'group by',
+			'home.logs.sheet.period' => 'time period',
+			'home.logs.groupBy.none' => 'not grouped',
+			'home.logs.groupBy.date' => 'date',
+			'home.logs.groupBy.dx' => 'dx',
+			'home.logs.groupBy.unknownContinent' => 'unknown continent',
+			'home.logs.groupBy.unknownEntity' => 'unknown entity',
+			'home.logs.groupBy.unknownDate' => 'no date',
+			'home.logs.period.thisMonth' => 'this month',
+			'home.logs.period.last3Months' => 'last 3 months',
+			'home.logs.period.thisYear' => 'this year',
+			'home.logs.period.lastYear' => 'last year',
+			'home.logs.period.allTime' => 'all time',
+			'home.logs.period.custom' => 'custom range',
+			'home.logs.periodTitle.inSpan' => ({required Object span}) => 'in ${span}',
+			'home.logs.periodTitle.custom' => 'custom range',
 			'home.logs.columns.date' => 'date',
 			'home.logs.columns.time' => 'time',
 			'home.logs.columns.freq' => 'frequency',
@@ -4127,6 +4201,8 @@ extension on TranslationsQrp {
 			'operation.export.syncedOperation' => 'operation is synced',
 			'operation.export.unsyncedOperation' => 'operation has unsynced changes',
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} qso in this operation', other: '${count} qsos in this operation', ), 
+			_ => null,
+		} ?? switch (path) {
 			'operation.export.qsosSynced' => ({required Object total}) => 'all ${total} qsos are synced',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} of ${total} qsos pending sync',
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} event markers synced',
@@ -4144,8 +4220,6 @@ extension on TranslationsQrp {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'share combined ${count} file', other: 'share combined ${count} files', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'export combined ${count} file', other: 'export combined ${count} files', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'download combined ${count} file', other: 'download combined ${count} files', ), 
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.saveOne' => ({required Object name}) => 'save ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'share ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'export ${name}',
@@ -4641,6 +4715,8 @@ extension on TranslationsQrp {
 			'settings.logging.numbersRowVibrate.description' => 'haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'preferred bands',
 			'settings.logging.modes' => 'preferred modes',
+			_ => null,
+		} ?? switch (path) {
 			'settings.catServer.title' => 'cat server',
 			'settings.catServer.description' => 'allow other apps (wsjt-x, loggers, etc) to control the radio through ham2k logger.',
 			'settings.catServer.protocol' => 'protocol',
@@ -4658,8 +4734,6 @@ extension on TranslationsQrp {
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} on port ${port}. clients connected: ${clients}.',
 			'settings.catServer.listeningNoRadio' => ({required Object protocol, required Object port}) => '${protocol} on port ${port}, but no main vfo radio is connected.',
 			'settings.catServer.failed' => ({required Object protocol, required Object port, required Object error}) => '${protocol} cannot listen on port ${port}: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: another program is using it, often ${protocol} itself. close that program or choose another port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. trying again…',
@@ -5155,6 +5229,8 @@ extension on TranslationsQrp {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'on ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'this radio is connected to ${device}. its connection and settings are configured on that device.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaInUse' => 'antenna in use',
 			'settings.station.keyInUse' => 'key in use',
 			'settings.station.noneSelected' => 'none',
@@ -5172,8 +5248,6 @@ extension on TranslationsQrp {
 			'settings.station.flrigTroubleshootingTitle' => 'if the app cannot connect',
 			'settings.station.flrigTroubleshooting' => 'this connects to an **flrig program you run yourself**, not to the radio directly — flrig talks to the radio and supports most makes and models.\n\n- **flrig must already be running**, with its transceiver configured and connected.\n- **port** is 12345 unless you changed it in flrig\'s configuration (config → setup → server).\n- **from another machine**, make sure flrig\'s server is reachable. it listens on all interfaces, but your firewall may not agree.\n- once connected, a missing frequency usually means flrig itself cannot reach the radio. check that flrig\'s display is following the dial.',
 			'settings.station.hrdTroubleshootingTitle' => 'if the app cannot connect',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hrdTroubleshooting' => 'this connects to **ham radio deluxe\'s rig control, running on your computer**, not to the radio directly — hrd talks to the radio.\n\n- **rig control must already be running** and connected to the radio.\n- **its ip server must be enabled.** rig control only talks to other programs through it.\n- **port** is 7809 unless you changed it in the ip server\'s settings.\n- **from another machine**, make sure your firewall lets the connection through.\n\nthis entry was written from published descriptions of hrd\'s protocol and has not been run against hrd. if it half-works, that is worth reporting.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'if the app cannot connect',
 			'settings.station.n3fjpTroubleshooting' => 'this connects to **an n3fjp logging program running on your computer**, not to the radio directly — n3fjp talks to the radio.\n\n- **the program\'s api must be on**: settings → application program interface, check **tcp api enabled**.\n- **port** is 1100 unless you changed it there.\n- **n3fjp must have a radio interface set up** to follow or tune the radio. without one, it reports only what is typed into its entry window.\n- n3fjp reports band, mode and frequency only: no power, no transmit state.\n\nthis entry was written from n3fjp\'s published api and has not been run against n3fjp. if it half-works, that is worth reporting.',
@@ -5669,6 +5743,8 @@ extension on TranslationsQrp {
 			'exportSettings.adifFields' => 'adif fields',
 			'exportSettings.loadFailed' => 'export settings could not be loaded.',
 			'exportSettings.retry' => 'retry',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.compactFileNamesDescriptionOn' => 'compact filenames, such as n0call@us-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'descriptive filenames, such as 2026-07-15 n0call at us-1234.adi.',
 			'exportSettings.includePrivateDataDescriptionOn' => 'including names, addresses, emails, notes and precise locations in adif files.',
@@ -5686,8 +5762,6 @@ extension on TranslationsQrp {
 			'exportSettings.titleTemplate' => 'title template',
 			'exportSettings.adifNotesTemplate' => 'adif qso notes',
 			'exportSettings.adifCommentTemplate' => 'adif qso comments',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.adifQslMessageTemplate' => 'adif qsl message',
 			'exportSettings.shared' => 'settings apply to every extension using this export type.',
 			'exportSettings.defaultTemplates' => 'turn on custom templates to edit this type’s templates.',
