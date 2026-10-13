@@ -150,11 +150,13 @@ its translations back for review.
 
 ## Main views
 
-The app has three main views:
+The app's main views:
 
 - **Home View** — a list of all operations, plus a button to start a new one.
 - **Operation View** — the main view for an operation: its QSOs, logging
   controls, and related information.
+- **Maps View** — the references around the operator, on a map of the whole
+  window.
 - **Settings View** — app configuration.
 
 ### Home View
@@ -184,6 +186,40 @@ Enter empties the field either way, as it always has, and **Escape** empties it
 too. That ordering is a constraint, not a detail: clearing the field resets the
 lookup on its way through the engine's text handler, so the call-info the panel
 is built from has to be read *before* the submit that clears it.
+
+### Maps View
+
+A rail destination (`maps_view.dart`): a map of the whole window, centred on
+the device's location, with every nearby reference and its outline drawn the
+way the Activities sheet's results map draws them — that map, given no
+operation, is what this view shows. A tap lists what lies under it, the same
+card as the sheet's, and the references picked there can start a new
+operation, which opens on its Activities pane for the operator to check.
+
+- **Search** sits centred in the header. Its matches hang under the field
+  while it has focus and something typed; picking one takes the map there,
+  opens its card, and puts the list away with the text left in the field for
+  coming back to. Leaving the search gives focus to the map rather than
+  dropping it, and the list's rows take no focus of their own: on the web,
+  with the accessibility DOM on, a row that took focus and then vanished with
+  the list would leave the page's focus on its body, and the view's recovery
+  hands it back to its first field — the search, its text selected and the
+  list open again.
+- **The buttons down the right edge**: zoom, the activities, the layers, and
+  back to where the operator is. The activities button wears the icon of the
+  highest-priority activity still shown, and lists, with a box each, the
+  activities that have put references on this map — one that never has (a
+  contest) earns no row. Hiding one takes its references off the map and out
+  of the search's list. The layers pick the basemap — Esri's satellite
+  imagery among them, here and only here, leaving the operator's Map Style
+  setting as it was — and lay boundaries and park facilities over it, as
+  maps.ham2k.net does. Both remember their choices.
+- **The credits** are a short line in the corner naming the basemap's and the
+  imagery's owners, whose terms ask to stay in view, and a link that opens
+  every source's credit in full: the basemap's, the imagery's, and the
+  outline, boundary and facility datasets'. Every interactive map in the app
+  does the same, the GL script and the flutter_map backend alike; a framed
+  picture (the Operation Postcard) carries its credit in its own layout.
 
 ### Operation View
 

@@ -148,25 +148,36 @@ the rail short — shorter than its own contents on a landscape phone at a large
 font scale — so it scrolls rather than overflows, while staying exactly as it
 was wherever there is room.
 
-Its destinations are **Operations** (`notebook-multiple`) at the top and
-**Settings** (`cog`) pinned to the bottom. Operations names the screen the
-operator is already on: it renders selected and announces itself, but it is
-not a control and navigates nowhere. It is there because a rail holding only
-Settings does not read as navigation, and because it is what a second
-destination will be added beside. Settings, unlike it, is a **toggle** —
-whoever opened it from the rail reaches for the same control to put it away.
+Its destinations are **Operations** (`notebook-multiple`) at the top, then
+**Chasing** (`binoculars`) and **Logs** (`file-cabinet`) while their
+experiments (`chase`, `logs`) are on, then **Maps** (`map`), with **Settings**
+(`cog`) pinned to the bottom. Each of the column's destinations is inert while
+it names the screen the operator is already on — it renders selected and
+announces itself, but a control that reloads the screen you are on is a
+control that does nothing — and takes them there from anywhere else. They all
+draw the muted solid glyph: MDI has no outline for most of them, and the
+column must read as one tone, so Maps passes over the `map-outline` it does
+have. Settings, unlike them, is a **toggle** — whoever opened it from the rail
+reaches for the same control to put it away, and comes back to the
+destination they left, or to Operations if that one has gone behind its
+experiment meanwhile.
 
 ### Navigation around the rail
 
 The rail never hides, narrows, or animates for navigation. What changes is
 which side of the routes it is painted on:
 
-- **Home and Settings sit beside it**, each holding its own column open by the
-  rail's width, and the rail is painted *over* them. That is forced rather than
-  chosen: the overlay a route lives in takes every pointer that lands in it, so
-  a rail painted underneath is a rail nothing can press. Settings slides in
-  from the window's edge, passing *under* the rail, and comes to rest beside
-  it; the same will hold for alternate home layouts.
+- **Home and the other destinations sit beside it**, each holding its own
+  column open by the rail's width, and the rail is painted *over* them. That
+  is forced rather than chosen: the overlay a route lives in takes every
+  pointer that lands in it, so a rail painted underneath is a rail nothing can
+  press. Settings, Chasing, Logs and Maps each slide in from the window's
+  edge, passing *under* the rail, and come to rest beside it in Home's place;
+  the same will hold for alternate home layouts. Chasing and Maps stay mounted
+  once first shown, offstage while another destination is up, so coming back
+  finds them as they were left, the map's camera and what it had loaded
+  included — Maps keeps the device's location fix running only while it is the one on
+  screen.
 - **The operation view owns the whole window**, so the rail is painted *under*
   that one and the view simply covers it on the way in. Losing the rail's taps
   while it is buried costs nothing, which is what makes the flip safe. It

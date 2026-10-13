@@ -253,8 +253,8 @@ this app-usage channel).
 
 ### Outline issue reports
 
-The one report an operator writes themselves. The credits under a map's
-reference outlines offer "Issues?" from GL zoom 8.5 in
+The one report an operator writes themselves. The notice under a map's
+reference outlines (`MapOutlinesNotice`) offers "Issues?" from GL zoom 8.5 in
 (`outlineIssuesFromZoom`, `ref_shapes.dart`), and only where a report can
 leave the device — a build with no reporting backend shows no link. The
 dialog (`outline_issue_dialog.dart`) asks which outline, how bad, and what is
