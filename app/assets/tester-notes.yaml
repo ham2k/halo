@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"179":
   changes:
     - "Improved operation location: new operations take your GPS fix, or the park's"
     - "Map tab follows the QSO you are logging or editing, dimming the rest"
