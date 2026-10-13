@@ -49,6 +49,7 @@ class TranslationsKo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$ko dialogs = _Translations$dialogs$ko._(_root);
 	@override late final _Translations$operation$ko operation = _Translations$operation$ko._(_root);
 	@override late final _Translations$map$ko map = _Translations$map$ko._(_root);
+	@override late final _Translations$mapsView$ko mapsView = _Translations$mapsView$ko._(_root);
 	@override late final _Translations$activitiesView$ko activitiesView = _Translations$activitiesView$ko._(_root);
 	@override late final _Translations$loggingControls$ko loggingControls = _Translations$loggingControls$ko._(_root);
 	@override late final _Translations$formChrome$ko formChrome = _Translations$formChrome$ko._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$ko extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$ko outlineIssue = _Translations$map$outlineIssue$ko._(_root);
 	@override String get outlinesDisclaimer => '경계선은 참고용입니다. 직접 확인하세요!';
+	@override String outlinesCredit({required Object sources}) => '경계선: ${sources}';
+	@override String boundariesCredit({required Object sources}) => '행정 경계: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => '시설: ${sources}';
+	@override String get fullCredits => '전체 데이터 출처';
+	@override String get fewerCredits => '출처 줄이기';
 	@override String get emptyState => '아직 QSO 위치가 없습니다.\n그리드 스퀘어, 주 또는 국가가 있는 QSO가 여기에 표시됩니다.';
 	@override String get unavailable => '지금은 지도를 사용할 수 없습니다.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$ko extends Translations$map$en {
 	@override String get zoomIn => '확대';
 	@override String get zoomOut => '축소';
 	@override late final _Translations$map$postcard$ko postcard = _Translations$map$postcard$ko._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$ko extends Translations$mapsView$en {
+	_Translations$mapsView$ko._(TranslationsKo root) : this._root = root, super.internal(root);
+
+	final TranslationsKo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '지도';
+	@override String get searchHint => '공원, 산 정상 등 검색';
+	@override String get activities => '활동';
+	@override String get layers => '레이어';
+	@override String get baseMap => '기본 지도';
+	@override String get satellite => '위성 (Esri)';
+	@override String get facilities => '공원 시설';
+	@override String get boundaries => '행정 경계';
+	@override String get currentLocation => '현재 위치';
+	@override String noMatches({required Object text}) => '“${text}”과(와) 일치하는 항목이 없습니다';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count,
+		one: '${where}의 레퍼런스 ${count}개',
+		other: '${where}의 레퍼런스 ${count}개',
+	);
+	@override String get startOperation => '이 레퍼런스로 운용 시작';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$ko extends Translations$home$nav$en {
 	@override String get operations => '운용';
 	@override String get chase => '추적';
 	@override String get logs => '로그';
+	@override String get maps => '지도';
 	@override String get settings => '설정';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsKo {
 			'home.nav.operations' => '운용',
 			'home.nav.chase' => '추적',
 			'home.nav.logs' => '로그',
+			'home.nav.maps' => '지도',
 			'home.nav.settings' => '설정',
 			'home.panels.operations' => '운용 목록',
 			'home.panels.operationsDescription' => '최근 운용부터 표시합니다.',
@@ -4106,9 +4138,9 @@ extension on TranslationsKo {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 공유', other: '통합 파일 ${count}개 공유', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 내보내기', other: '통합 파일 ${count}개 내보내기', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 다운로드', other: '통합 파일 ${count}개 다운로드', ), 
-			'operation.export.saveOne' => ({required Object name}) => '${name} 저장',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => '${name} 저장',
 			'operation.export.shareOne' => ({required Object name}) => '${name} 공유',
 			'operation.export.exportOne' => ({required Object name}) => '${name} 내보내기',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} 다운로드',
@@ -4244,6 +4276,11 @@ extension on TranslationsKo {
 			'map.outlineIssue.copied' => '신고 내용이 복사되었습니다',
 			'map.outlineIssue.notCopied' => '신고 내용을 복사할 수 없습니다',
 			'map.outlinesDisclaimer' => '경계선은 참고용입니다. 직접 확인하세요!',
+			'map.outlinesCredit' => ({required Object sources}) => '경계선: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => '행정 경계: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => '시설: ${sources}',
+			'map.fullCredits' => '전체 데이터 출처',
+			'map.fewerCredits' => '출처 줄이기',
 			'map.emptyState' => '아직 QSO 위치가 없습니다.\n그리드 스퀘어, 주 또는 국가가 있는 QSO가 여기에 표시됩니다.',
 			'map.unavailable' => '지금은 지도를 사용할 수 없습니다.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsKo {
 			'map.postcard.copyFailed' => '클립보드에 이미지를 복사하지 못했습니다. 다시 시도하세요.',
 			'map.postcard.shareFailed' => '엽서를 공유할 수 없습니다. 다시 시도하세요.',
 			'map.postcard.fileName' => '엽서',
+			'mapsView.title' => '지도',
+			'mapsView.searchHint' => '공원, 산 정상 등 검색',
+			'mapsView.activities' => '활동',
+			'mapsView.layers' => '레이어',
+			'mapsView.baseMap' => '기본 지도',
+			'mapsView.satellite' => '위성 (Esri)',
+			'mapsView.facilities' => '공원 시설',
+			'mapsView.boundaries' => '행정 경계',
+			'mapsView.currentLocation' => '현재 위치',
+			'mapsView.noMatches' => ({required Object text}) => '“${text}”과(와) 일치하는 항목이 없습니다',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '${where}의 레퍼런스 ${count}개', other: '${where}의 레퍼런스 ${count}개', ), 
+			'mapsView.startOperation' => '이 레퍼런스로 운용 시작',
 			'activitiesView.title' => '활동',
 			'activitiesView.activitiesCountZero' => '선택된 활동 없음',
 			'activitiesView.activitiesCountOne' => '활동 1개',
@@ -4603,6 +4652,8 @@ extension on TranslationsKo {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기할 수 없습니다: 다른 프로그램(주로 ${protocol} 자체)이 사용 중입니다. 해당 프로그램을 닫거나 다른 포트를 선택하세요.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기할 수 없습니다: 이 컴퓨터가 허용하지 않습니다. 1024보다 큰 포트를 선택하세요.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기를 중지했습니다. 다시 시도 중…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT 제어',
 			'settings.radio.loggingAndCat' => '로깅 및 CAT',
 			'settings.radio.tuningSection' => '튜닝',
@@ -4621,8 +4672,6 @@ extension on TranslationsKo {
 			'settings.radio.pttKey.transmitting' => '송신 중',
 			'settings.radio.smartVfoSnap.title' => '스마트 VFO 스냅',
 			'settings.radio.smartVfoSnap.descriptionOn' => '다이얼을 멈추면 주파수를 적절한 단위로 반올림합니다. 보이스 모드에만 적용됩니다.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => '튜닝한 주파수를 그대로 유지합니다.',
 			'settings.radio.snapDebounce.title' => '스마트 스냅: 안정 지연',
 			'settings.radio.snapDebounce.description' => '주파수를 반올림하기 전에 다이얼이 멈춰 있어야 하는 시간. 짧으면 즉시 반응하고, 길면 천천히 돌릴 여유가 생깁니다.',
@@ -5117,6 +5166,8 @@ extension on TranslationsKo {
 			'settings.station.hrdTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 Ham Radio Deluxe의 Rig Control**에 연결합니다. HRD가 무전기와 통신합니다.\n\n- **Rig Control이 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **IP 서버가 활성화되어 있어야 합니다.** Rig Control은 이를 통해서만 다른 프로그램과 통신합니다.\n- **포트**는 IP 서버 설정에서 변경하지 않았다면 7809입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 HRD 프로토콜에 대한 공개 설명을 바탕으로 작성되었으며 실제 HRD에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.n3fjpTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			'settings.station.n3fjpTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 N3FJP 로깅 프로그램**에 연결합니다. N3FJP가 무전기와 통신합니다.\n\n- **프로그램의 API가 켜져 있어야 합니다**: Settings → Application Program Interface에서 **TCP API Enabled**를 체크하세요.\n- **포트**는 그곳에서 변경하지 않았다면 1100입니다.\n- 무전기를 따라가거나 튜닝하려면 **N3FJP에 무전기 인터페이스가 설정되어 있어야 합니다.** 없으면 입력 창에 입력된 값만 보고합니다.\n- N3FJP는 밴드, 모드, 주파수만 보고합니다. 출력과 송신 상태는 보고하지 않습니다.\n\n이 항목은 N3FJP가 공개한 API를 바탕으로 작성되었으며 실제 N3FJP에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			'settings.station.commanderTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 DXLab Commander**에 연결합니다. Commander가 무전기와 통신합니다.\n\n- **Commander가 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **네트워크 서비스가 켜져 있어야 합니다**: Commander 구성 창의 Radio 패널에 있는 **Net Serv** 버튼.\n- **포트**는 52002이며, Net Serv의 **Base Port**(변경하지 않았다면 52000)부터 시작하는 블록의 세 번째 포트입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 Commander가 공개한 TCP 메시지를 바탕으로 작성되었으며 실제 Commander에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.ic705TroubleshootingTitle' => '무전기가 전혀 응답하지 않는 경우',
@@ -5135,8 +5186,6 @@ extension on TranslationsKo {
 			'settings.station.antennaBands' => '밴드',
 			'settings.station.antennaType' => '안테나 유형',
 			'settings.station.antennaTypeRequired' => '안테나 유형을 선택하세요',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => '다이폴',
 			'settings.station.antennaTypes.vertical' => '버티컬',
 			'settings.station.antennaTypes.yagiBeam' => '야기 / 빔',
@@ -5631,6 +5680,8 @@ extension on TranslationsKo {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL 메시지',
 			'exportSettings.shared' => '이 설정은 이 내보내기 유형을 사용하는 모든 확장 기능에 적용됩니다.',
 			'exportSettings.defaultTemplates' => '이 유형의 템플릿을 편집하려면 맞춤 템플릿을 켜세요.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => '미리보기:',
 			'templateEditor.reset' => '초기화',
 			'templateEditor.docs' => '템플릿 문서',

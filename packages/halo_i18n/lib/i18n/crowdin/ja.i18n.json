@@ -196,6 +196,7 @@
       "operations": "オペレーション",
       "chase": "チェイス",
       "logs": "ログ",
+      "maps": "地図",
       "settings": "設定"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "報告をコピーできませんでした"
     },
     "outlinesDisclaimer": "境界線は参考用です。ご自身でも確認してください！",
+    "outlinesCredit": "境界線: ${sources}",
+    "boundariesCredit": "行政境界: ${sources}",
+    "facilitiesCredit": "施設: ${sources}",
+    "fullCredits": "データの全クレジット",
+    "fewerCredits": "クレジットを減らす",
     "emptyState": "QSOの位置はまだありません。\nグリッドスクエア、州、国のあるQSOがここに表示されます。",
     "unavailable": "現在、地図を利用できません。",
     "qthPopupTitle": "QTH：${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "ポストカードを共有できませんでした。再試行してください。",
       "fileName": "postcard"
     }
+  },
+  "mapsView": {
+    "title": "地図",
+    "searchHint": "公園、山頂などを検索",
+    "activities": "アクティビティ",
+    "layers": "レイヤー",
+    "baseMap": "ベースマップ",
+    "satellite": "衛星写真 (Esri)",
+    "facilities": "公園の施設",
+    "boundaries": "行政境界",
+    "currentLocation": "現在地",
+    "noMatches(text)": "「${text}」に一致するものはありません",
+    "picksAt": {
+      "one": "${where} の参照コード ${count} 件",
+      "other": "${where} の参照コード ${count} 件"
+    },
+    "startOperation": "これらの参照コードでオペレーションを開始"
   },
   "activitiesView": {
     "title": "アクティビティ",

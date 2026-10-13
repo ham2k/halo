@@ -196,6 +196,7 @@
       "operations": "Operațiuni",
       "chase": "Vânătoare",
       "logs": "Jurnale",
+      "maps": "Hărți",
       "settings": "Setări"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Raportul nu a putut fi copiat"
     },
     "outlinesDisclaimer": "Contururile sunt doar orientative. Verificați și singuri!",
+    "outlinesCredit": "Contururi: ${sources}",
+    "boundariesCredit": "Limite: ${sources}",
+    "facilitiesCredit": "Facilități: ${sources}",
+    "fullCredits": "Toate sursele datelor",
+    "fewerCredits": "Mai puține surse",
     "emptyState": "Nicio locație de QSO încă.\nQSO-urile cu pătrat de grilă, stat sau țară vor apărea aici.",
     "unavailable": "Harta nu este disponibilă acum.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Cartea poștală nu a putut fi partajată. Încercați din nou.",
       "fileName": "carte-postala"
     }
+  },
+  "mapsView": {
+    "title": "Hărți",
+    "searchHint": "Căutați parcuri, vârfuri și altele",
+    "activities": "Activități",
+    "layers": "Straturi",
+    "baseMap": "Hartă de bază",
+    "satellite": "Satelit (Esri)",
+    "facilities": "Facilitățile parcurilor",
+    "boundaries": "Limite",
+    "currentLocation": "Locația actuală",
+    "noMatches(text)": "Nimic nu corespunde cu „${text}”",
+    "picksAt": {
+      "one": "${count} referință la ${where}",
+      "other": "${count} referințe la ${where}"
+    },
+    "startOperation": "Porniți o operațiune cu aceste referințe"
   },
   "activitiesView": {
     "title": "Activități",

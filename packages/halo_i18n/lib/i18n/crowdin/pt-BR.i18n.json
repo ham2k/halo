@@ -196,6 +196,7 @@
       "operations": "Operações",
       "chase": "Caça",
       "logs": "Logs",
+      "maps": "Mapas",
       "settings": "Configurações"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Não foi possível copiar o relato"
     },
     "outlinesDisclaimer": "Os contornos são apenas para referência. Faça sua própria pesquisa!",
+    "outlinesCredit": "Contornos: ${sources}",
+    "boundariesCredit": "Limites: ${sources}",
+    "facilitiesCredit": "Instalações: ${sources}",
+    "fullCredits": "Créditos completos dos dados",
+    "fewerCredits": "Menos créditos",
     "emptyState": "Ainda não há localizações de QSOs.\nQSOs com grid square, estado ou país aparecerão aqui.",
     "unavailable": "O mapa não está disponível agora.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Não foi possível compartilhar o cartão-postal. Tente novamente.",
       "fileName": "cartao-postal"
     }
+  },
+  "mapsView": {
+    "title": "Mapas",
+    "searchHint": "Buscar parques, cumes e mais",
+    "activities": "Atividades",
+    "layers": "Camadas",
+    "baseMap": "Mapa base",
+    "satellite": "Satélite (Esri)",
+    "facilities": "Instalações dos parques",
+    "boundaries": "Limites",
+    "currentLocation": "Localização atual",
+    "noMatches(text)": "Nada corresponde a “${text}”",
+    "picksAt": {
+      "one": "${count} referência em ${where}",
+      "other": "${count} referências em ${where}"
+    },
+    "startOperation": "Iniciar uma operação com estas referências"
   },
   "activitiesView": {
     "title": "Atividades",

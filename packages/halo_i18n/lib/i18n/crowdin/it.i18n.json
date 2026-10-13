@@ -196,6 +196,7 @@
       "operations": "Operazioni",
       "chase": "Caccia",
       "logs": "Log",
+      "maps": "Mappe",
       "settings": "Impostazioni"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Impossibile copiare la segnalazione"
     },
     "outlinesDisclaimer": "I contorni sono solo indicativi. Verifica sempre per conto tuo!",
+    "outlinesCredit": "Contorni: ${sources}",
+    "boundariesCredit": "Confini: ${sources}",
+    "facilitiesCredit": "Strutture: ${sources}",
+    "fullCredits": "Crediti completi dei dati",
+    "fewerCredits": "Meno crediti",
     "emptyState": "Ancora nessuna posizione dei QSO.\nI QSO con locatore, stato o paese appariranno qui.",
     "unavailable": "La mappa non è disponibile al momento.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Impossibile condividere la cartolina. Riprova.",
       "fileName": "cartolina"
     }
+  },
+  "mapsView": {
+    "title": "Mappe",
+    "searchHint": "Cerca parchi, vette e altro",
+    "activities": "Attività",
+    "layers": "Livelli",
+    "baseMap": "Mappa di base",
+    "satellite": "Satellite (Esri)",
+    "facilities": "Strutture dei parchi",
+    "boundaries": "Confini",
+    "currentLocation": "Posizione attuale",
+    "noMatches(text)": "Nessun risultato per “${text}”",
+    "picksAt": {
+      "one": "${count} referenza a ${where}",
+      "other": "${count} referenze a ${where}"
+    },
+    "startOperation": "Avvia un'operazione con queste referenze"
   },
   "activitiesView": {
     "title": "Attività",

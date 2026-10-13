@@ -196,6 +196,7 @@
       "operations": "Operasyonlar",
       "chase": "Avlama",
       "logs": "Günlükler",
+      "maps": "Haritalar",
       "settings": "Ayarlar"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Rapor kopyalanamadı"
     },
     "outlinesDisclaimer": "Sınırlar yalnızca referans amaçlıdır. Kendi araştırmanızı yapın!",
+    "outlinesCredit": "Sınır çizgileri: ${sources}",
+    "boundariesCredit": "İdari sınırlar: ${sources}",
+    "facilitiesCredit": "Tesisler: ${sources}",
+    "fullCredits": "Tüm veri kaynakları",
+    "fewerCredits": "Daha az kaynak",
     "emptyState": "Henüz QSO konumu yok.\nGrid karesi, eyalet veya ülke bilgisi olan QSO'lar burada görünür.",
     "unavailable": "Harita şu anda kullanılamıyor.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Kartpostal paylaşılamadı. Tekrar deneyin.",
       "fileName": "kartpostal"
     }
+  },
+  "mapsView": {
+    "title": "Haritalar",
+    "searchHint": "Park, zirve ve daha fazlasını ara",
+    "activities": "Aktiviteler",
+    "layers": "Katmanlar",
+    "baseMap": "Temel harita",
+    "satellite": "Uydu (Esri)",
+    "facilities": "Park tesisleri",
+    "boundaries": "İdari sınırlar",
+    "currentLocation": "Mevcut konum",
+    "noMatches(text)": "“${text}” ile eşleşen bir şey yok",
+    "picksAt": {
+      "one": "${where} konumunda ${count} referans",
+      "other": "${where} konumunda ${count} referans"
+    },
+    "startOperation": "Bu referanslarla bir operasyon başlat"
   },
   "activitiesView": {
     "title": "Aktiviteler",

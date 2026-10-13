@@ -49,6 +49,7 @@ class TranslationsJa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$ja dialogs = _Translations$dialogs$ja._(_root);
 	@override late final _Translations$operation$ja operation = _Translations$operation$ja._(_root);
 	@override late final _Translations$map$ja map = _Translations$map$ja._(_root);
+	@override late final _Translations$mapsView$ja mapsView = _Translations$mapsView$ja._(_root);
 	@override late final _Translations$activitiesView$ja activitiesView = _Translations$activitiesView$ja._(_root);
 	@override late final _Translations$loggingControls$ja loggingControls = _Translations$loggingControls$ja._(_root);
 	@override late final _Translations$formChrome$ja formChrome = _Translations$formChrome$ja._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$ja extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$ja outlineIssue = _Translations$map$outlineIssue$ja._(_root);
 	@override String get outlinesDisclaimer => '境界線は参考用です。ご自身でも確認してください！';
+	@override String outlinesCredit({required Object sources}) => '境界線: ${sources}';
+	@override String boundariesCredit({required Object sources}) => '行政境界: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => '施設: ${sources}';
+	@override String get fullCredits => 'データの全クレジット';
+	@override String get fewerCredits => 'クレジットを減らす';
 	@override String get emptyState => 'QSOの位置はまだありません。\nグリッドスクエア、州、国のあるQSOがここに表示されます。';
 	@override String get unavailable => '現在、地図を利用できません。';
 	@override String qthPopupTitle({required Object grid}) => 'QTH：${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$ja extends Translations$map$en {
 	@override String get zoomIn => '拡大';
 	@override String get zoomOut => '縮小';
 	@override late final _Translations$map$postcard$ja postcard = _Translations$map$postcard$ja._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$ja extends Translations$mapsView$en {
+	_Translations$mapsView$ja._(TranslationsJa root) : this._root = root, super.internal(root);
+
+	final TranslationsJa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '地図';
+	@override String get searchHint => '公園、山頂などを検索';
+	@override String get activities => 'アクティビティ';
+	@override String get layers => 'レイヤー';
+	@override String get baseMap => 'ベースマップ';
+	@override String get satellite => '衛星写真 (Esri)';
+	@override String get facilities => '公園の施設';
+	@override String get boundaries => '行政境界';
+	@override String get currentLocation => '現在地';
+	@override String noMatches({required Object text}) => '「${text}」に一致するものはありません';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count,
+		one: '${where} の参照コード ${count} 件',
+		other: '${where} の参照コード ${count} 件',
+	);
+	@override String get startOperation => 'これらの参照コードでオペレーションを開始';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$ja extends Translations$home$nav$en {
 	@override String get operations => 'オペレーション';
 	@override String get chase => 'チェイス';
 	@override String get logs => 'ログ';
+	@override String get maps => '地図';
 	@override String get settings => '設定';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsJa {
 			'home.nav.operations' => 'オペレーション',
 			'home.nav.chase' => 'チェイス',
 			'home.nav.logs' => 'ログ',
+			'home.nav.maps' => '地図',
 			'home.nav.settings' => '設定',
 			'home.panels.operations' => 'オペレーションリスト',
 			'home.panels.operationsDescription' => 'あなたのオペレーション（新しい順）。',
@@ -4106,9 +4138,9 @@ extension on TranslationsJa {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルを共有', other: '${count}件の結合ファイルを共有', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをエクスポート', other: '${count}件の結合ファイルをエクスポート', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをダウンロード', other: '${count}件の結合ファイルをダウンロード', ), 
-			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
 			'operation.export.shareOne' => ({required Object name}) => '${name}を共有',
 			'operation.export.exportOne' => ({required Object name}) => '${name}をエクスポート',
 			'operation.export.downloadOne' => ({required Object name}) => '${name}をダウンロード',
@@ -4244,6 +4276,11 @@ extension on TranslationsJa {
 			'map.outlineIssue.copied' => '報告をコピーしました',
 			'map.outlineIssue.notCopied' => '報告をコピーできませんでした',
 			'map.outlinesDisclaimer' => '境界線は参考用です。ご自身でも確認してください！',
+			'map.outlinesCredit' => ({required Object sources}) => '境界線: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => '行政境界: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => '施設: ${sources}',
+			'map.fullCredits' => 'データの全クレジット',
+			'map.fewerCredits' => 'クレジットを減らす',
 			'map.emptyState' => 'QSOの位置はまだありません。\nグリッドスクエア、州、国のあるQSOがここに表示されます。',
 			'map.unavailable' => '現在、地図を利用できません。',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH：${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsJa {
 			'map.postcard.copyFailed' => 'クリップボードに画像をコピーできませんでした。再試行してください。',
 			'map.postcard.shareFailed' => 'ポストカードを共有できませんでした。再試行してください。',
 			'map.postcard.fileName' => 'postcard',
+			'mapsView.title' => '地図',
+			'mapsView.searchHint' => '公園、山頂などを検索',
+			'mapsView.activities' => 'アクティビティ',
+			'mapsView.layers' => 'レイヤー',
+			'mapsView.baseMap' => 'ベースマップ',
+			'mapsView.satellite' => '衛星写真 (Esri)',
+			'mapsView.facilities' => '公園の施設',
+			'mapsView.boundaries' => '行政境界',
+			'mapsView.currentLocation' => '現在地',
+			'mapsView.noMatches' => ({required Object text}) => '「${text}」に一致するものはありません',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${where} の参照コード ${count} 件', other: '${where} の参照コード ${count} 件', ), 
+			'mapsView.startOperation' => 'これらの参照コードでオペレーションを開始',
 			'activitiesView.title' => 'アクティビティ',
 			'activitiesView.activitiesCountZero' => 'アクティビティが選択されていません',
 			'activitiesView.activitiesCountOne' => '1件のアクティビティ',
@@ -4603,6 +4652,8 @@ extension on TranslationsJa {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：別のプログラム（多くの場合${protocol}自体）が使用中です。そのプログラムを閉じるか、別のポートを選んでください。',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：このコンピューターが許可していません。1024より大きいポートを選んでください。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}での待ち受けを停止しました。再試行中…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT制御',
 			'settings.radio.loggingAndCat' => 'ロギングとCAT',
 			'settings.radio.tuningSection' => 'チューニング',
@@ -4621,8 +4672,6 @@ extension on TranslationsJa {
 			'settings.radio.pttKey.transmitting' => '送信中',
 			'settings.radio.smartVfoSnap.title' => 'スマートVFOスナップ',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'ダイヤルを止めた後、周波数を適切なステップに丸めます。音声モードのみ。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'チューニングした周波数をそのまま保ちます。',
 			'settings.radio.snapDebounce.title' => 'スマートスナップ：待機時間',
 			'settings.radio.snapDebounce.description' => '周波数を丸めるまでにダイヤルが止まっている必要がある時間。短いと即座に、長いとゆっくりした操作にも余裕ができます。',
@@ -5117,6 +5166,8 @@ extension on TranslationsJa {
 			'settings.station.hrdTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のHam Radio DeluxeのRig Control**に接続します。HRDが無線機と通信します。\n\n- **Rig Controlがすでに実行中で**、無線機に接続されている必要があります。\n- **IPサーバーを有効にする必要があります。** Rig Controlは他のプログラムとはそれを通じてのみ通信します。\n- **ポート** は、IPサーバーの設定で変更していない限り7809です。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているHRDのプロトコル説明をもとに作成されており、HRDの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.n3fjpTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.n3fjpTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のN3FJPロギングプログラム**に接続します。N3FJPが無線機と通信します。\n\n- **プログラムのAPIをオンにする必要があります**：Settings → Application Program Interface で **TCP API Enabled** にチェックします。\n- **ポート** は、そこで変更していない限り1100です。\n- 無線機に追従またはチューニングするには、**N3FJPに無線機インターフェースが設定されている必要があります**。設定がない場合、入力ウィンドウに入力された内容のみを報告します。\n- N3FJPが報告するのはバンド、モード、周波数のみで、出力や送信状態は報告しません。\n\nこのエントリーは公開されているN3FJPのAPIをもとに作成されており、N3FJPの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.commanderTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.ic705TroubleshootingTitle' => '無線機がまったく応答しない場合',
@@ -5135,8 +5186,6 @@ extension on TranslationsJa {
 			'settings.station.antennaBands' => 'バンド',
 			'settings.station.antennaType' => 'アンテナの種類',
 			'settings.station.antennaTypeRequired' => 'アンテナの種類を選択してください',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'ダイポール',
 			'settings.station.antennaTypes.vertical' => 'バーチカル',
 			'settings.station.antennaTypes.yagiBeam' => '八木 / ビーム',
@@ -5631,6 +5680,8 @@ extension on TranslationsJa {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSLメッセージ',
 			'exportSettings.shared' => 'この設定は、このエクスポート種別を使用するすべての拡張機能に適用されます。',
 			'exportSettings.defaultTemplates' => 'この種別のテンプレートを編集するには、カスタムテンプレートをオンにしてください。',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'プレビュー：',
 			'templateEditor.reset' => 'リセット',
 			'templateEditor.docs' => 'テンプレートのドキュメント',

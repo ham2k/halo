@@ -196,6 +196,7 @@
       "operations": "Operasjoner",
       "chase": "Jakt",
       "logs": "Logger",
+      "maps": "Kart",
       "settings": "Innstillinger"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Kunne ikke kopiere rapporten"
     },
     "outlinesDisclaimer": "Omrissene er bare til veiledning. Gjør dine egne undersøkelser!",
+    "outlinesCredit": "Omriss: ${sources}",
+    "boundariesCredit": "Grenser: ${sources}",
+    "facilitiesCredit": "Fasiliteter: ${sources}",
+    "fullCredits": "Fullstendige datakilder",
+    "fewerCredits": "Færre kilder",
     "emptyState": "Ingen QSO-posisjoner ennå.\nQSOer med grid-rute, stat eller land vises her.",
     "unavailable": "Kartet er ikke tilgjengelig akkurat nå.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Kunne ikke dele postkortet. Prøv igjen.",
       "fileName": "postkort"
     }
+  },
+  "mapsView": {
+    "title": "Kart",
+    "searchHint": "Søk etter parker, toppunkter og mer",
+    "activities": "Aktiviteter",
+    "layers": "Lag",
+    "baseMap": "Grunnkart",
+    "satellite": "Satellitt (Esri)",
+    "facilities": "Parkfasiliteter",
+    "boundaries": "Grenser",
+    "currentLocation": "Nåværende posisjon",
+    "noMatches(text)": "Ingenting samsvarer med «${text}»",
+    "picksAt": {
+      "one": "${count} referanse ved ${where}",
+      "other": "${count} referanser ved ${where}"
+    },
+    "startOperation": "Start en operasjon med disse referansene"
   },
   "activitiesView": {
     "title": "Aktiviteter",

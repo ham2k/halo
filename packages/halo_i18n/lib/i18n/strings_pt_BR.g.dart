@@ -50,6 +50,7 @@ class TranslationsPtBr extends TranslationsPt with BaseTranslations<AppLocale, T
 	@override late final _Translations$dialogs$pt_BR dialogs = _Translations$dialogs$pt_BR._(_root);
 	@override late final _Translations$operation$pt_BR operation = _Translations$operation$pt_BR._(_root);
 	@override late final _Translations$map$pt_BR map = _Translations$map$pt_BR._(_root);
+	@override late final _Translations$mapsView$pt_BR mapsView = _Translations$mapsView$pt_BR._(_root);
 	@override late final _Translations$activitiesView$pt_BR activitiesView = _Translations$activitiesView$pt_BR._(_root);
 	@override late final _Translations$loggingControls$pt_BR loggingControls = _Translations$loggingControls$pt_BR._(_root);
 	@override late final _Translations$formChrome$pt_BR formChrome = _Translations$formChrome$pt_BR._(_root);
@@ -407,6 +408,11 @@ class _Translations$map$pt_BR extends Translations$map$pt {
 	// Translations
 	@override late final _Translations$map$outlineIssue$pt_BR outlineIssue = _Translations$map$outlineIssue$pt_BR._(_root);
 	@override String get outlinesDisclaimer => 'Os contornos são apenas para referência. Faça sua própria pesquisa!';
+	@override String outlinesCredit({required Object sources}) => 'Contornos: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Limites: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Instalações: ${sources}';
+	@override String get fullCredits => 'Créditos completos dos dados';
+	@override String get fewerCredits => 'Menos créditos';
 	@override String get emptyState => 'Ainda não há localizações de QSOs.\nQSOs com grid square, estado ou país aparecerão aqui.';
 	@override String get unavailable => 'O mapa não está disponível agora.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -417,6 +423,30 @@ class _Translations$map$pt_BR extends Translations$map$pt {
 	@override String get zoomIn => 'Aproximar';
 	@override String get zoomOut => 'Afastar';
 	@override late final _Translations$map$postcard$pt_BR postcard = _Translations$map$postcard$pt_BR._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$pt_BR extends Translations$mapsView$pt {
+	_Translations$mapsView$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
+
+	final TranslationsPtBr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mapas';
+	@override String get searchHint => 'Buscar parques, cumes e mais';
+	@override String get activities => 'Atividades';
+	@override String get layers => 'Camadas';
+	@override String get baseMap => 'Mapa base';
+	@override String get satellite => 'Satélite (Esri)';
+	@override String get facilities => 'Instalações dos parques';
+	@override String get boundaries => 'Limites';
+	@override String get currentLocation => 'Localização atual';
+	@override String noMatches({required Object text}) => 'Nada corresponde a “${text}”';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count,
+		one: '${count} referência em ${where}',
+		other: '${count} referências em ${where}',
+	);
+	@override String get startOperation => 'Iniciar uma operação com estas referências';
 }
 
 // Path: activitiesView
@@ -1245,6 +1275,7 @@ class _Translations$home$nav$pt_BR extends Translations$home$nav$pt {
 	@override String get operations => 'Operações';
 	@override String get chase => 'Caça';
 	@override String get logs => 'Logs';
+	@override String get maps => 'Mapas';
 	@override String get settings => 'Configurações';
 }
 
@@ -3772,6 +3803,7 @@ extension on TranslationsPtBr {
 			'home.nav.operations' => 'Operações',
 			'home.nav.chase' => 'Caça',
 			'home.nav.logs' => 'Logs',
+			'home.nav.maps' => 'Mapas',
 			'home.nav.settings' => 'Configurações',
 			'home.panels.operations' => 'Lista de operações',
 			'home.panels.operationsDescription' => 'Suas operações, as mais recentes primeiro.',
@@ -4107,9 +4139,9 @@ extension on TranslationsPtBr {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Compartilhar ${count} arquivo combinado', other: 'Compartilhar ${count} arquivos combinados', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Exportar ${count} arquivo combinado', other: 'Exportar ${count} arquivos combinados', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: 'Baixar ${count} arquivo combinado', other: 'Baixar ${count} arquivos combinados', ), 
-			'operation.export.saveOne' => ({required Object name}) => 'Salvar ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => 'Salvar ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Compartilhar ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportar ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Baixar ${name}',
@@ -4245,6 +4277,11 @@ extension on TranslationsPtBr {
 			'map.outlineIssue.copied' => 'Relato copiado',
 			'map.outlineIssue.notCopied' => 'Não foi possível copiar o relato',
 			'map.outlinesDisclaimer' => 'Os contornos são apenas para referência. Faça sua própria pesquisa!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Contornos: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Limites: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Instalações: ${sources}',
+			'map.fullCredits' => 'Créditos completos dos dados',
+			'map.fewerCredits' => 'Menos créditos',
 			'map.emptyState' => 'Ainda não há localizações de QSOs.\nQSOs com grid square, estado ou país aparecerão aqui.',
 			'map.unavailable' => 'O mapa não está disponível agora.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4285,6 +4322,18 @@ extension on TranslationsPtBr {
 			'map.postcard.copyFailed' => 'A área de transferência não aceitou a imagem. Tente novamente.',
 			'map.postcard.shareFailed' => 'Não foi possível compartilhar o cartão-postal. Tente novamente.',
 			'map.postcard.fileName' => 'cartao-postal',
+			'mapsView.title' => 'Mapas',
+			'mapsView.searchHint' => 'Buscar parques, cumes e mais',
+			'mapsView.activities' => 'Atividades',
+			'mapsView.layers' => 'Camadas',
+			'mapsView.baseMap' => 'Mapa base',
+			'mapsView.satellite' => 'Satélite (Esri)',
+			'mapsView.facilities' => 'Instalações dos parques',
+			'mapsView.boundaries' => 'Limites',
+			'mapsView.currentLocation' => 'Localização atual',
+			'mapsView.noMatches' => ({required Object text}) => 'Nada corresponde a “${text}”',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('pt'))(count, one: '${count} referência em ${where}', other: '${count} referências em ${where}', ), 
+			'mapsView.startOperation' => 'Iniciar uma operação com estas referências',
 			'activitiesView.title' => 'Atividades',
 			'activitiesView.activitiesCountZero' => 'Nenhuma atividade selecionada',
 			'activitiesView.activitiesCountOne' => '1 atividade',
@@ -4604,6 +4653,8 @@ extension on TranslationsPtBr {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: outro programa a está usando, muitas vezes o próprio ${protocol}. Feche esse programa ou escolha outra porta.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} não consegue escutar na porta ${port}: este computador não permite. Escolha uma porta acima de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} parou de escutar na porta ${port}. Tentando novamente…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'Controle CAT',
 			'settings.radio.loggingAndCat' => 'Registro e CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
@@ -4622,8 +4673,6 @@ extension on TranslationsPtBr {
 			'settings.radio.pttKey.transmitting' => 'Transmitindo',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente do VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Quando você para de girar o dial, a frequência é arredondada para um passo razoável. Apenas modos de voz.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Fica exatamente onde você sintonizou.',
 			'settings.radio.snapDebounce.title' => 'Ajuste inteligente: Tempo de espera',
 			'settings.radio.snapDebounce.description' => 'Quanto tempo o dial precisa ficar parado antes de a frequência ser arredondada. Mais curto parece imediato; mais longo dá espaço para um movimento lento.',
@@ -5118,6 +5167,8 @@ extension on TranslationsPtBr {
 			'settings.station.hrdTroubleshooting' => 'Isto conecta ao **Rig Control do Ham Radio Deluxe, rodando no seu computador**, não diretamente ao rádio — o HRD conversa com o rádio.\n\n- **O Rig Control já deve estar rodando** e conectado ao rádio.\n- **O servidor IP dele deve estar ativado.** O Rig Control só conversa com outros programas por meio dele.\n- **A porta** é 7809, a menos que você a tenha alterado nas configurações do servidor IP.\n- **De outra máquina**, verifique se seu firewall deixa a conexão passar.\n\nEsta entrada foi escrita a partir de descrições publicadas do protocolo do HRD e ainda não foi testada com o HRD. Se funcionar só em parte, vale a pena relatar.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Se o app não consegue conectar',
 			'settings.station.n3fjpTroubleshooting' => 'Isto conecta a **um programa de log N3FJP rodando no seu computador**, não diretamente ao rádio — o N3FJP conversa com o rádio.\n\n- **A API do programa deve estar ativada**: em Settings → Application Program Interface, marque **TCP API Enabled**.\n- **A porta** é 1100, a menos que você a tenha alterado lá.\n- **O N3FJP precisa ter uma interface de rádio configurada** para acompanhar ou sintonizar o rádio. Sem ela, ele informa apenas o que é digitado na janela de entrada.\n- O N3FJP informa apenas banda, modo e frequência: sem potência, sem estado de transmissão.\n\nEsta entrada foi escrita a partir da API publicada do N3FJP e ainda não foi testada com o N3FJP. Se funcionar só em parte, vale a pena relatar.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Se o app não consegue conectar',
 			'settings.station.commanderTroubleshooting' => 'Isto conecta ao **DXLab Commander, rodando no seu computador**, não diretamente ao rádio — o Commander conversa com o rádio.\n\n- **O Commander já deve estar rodando** e conectado ao rádio.\n- **O serviço de rede dele deve estar ativado**: o botão **Net Serv** no painel Radio da janela Configuration do Commander.\n- **A porta** é 52002, a terceira porta do bloco que começa na **Base Port** do Net Serv (52000, a menos que você a tenha alterado).\n- **De outra máquina**, verifique se seu firewall deixa a conexão passar.\n\nEsta entrada foi escrita a partir das mensagens TCP publicadas do Commander e ainda não foi testada com o Commander. Se funcionar só em parte, vale a pena relatar.',
 			'settings.station.ic705TroubleshootingTitle' => 'Se o rádio nunca responde',
@@ -5136,8 +5187,6 @@ extension on TranslationsPtBr {
 			'settings.station.antennaBands' => 'Bandas',
 			'settings.station.antennaType' => 'Tipo de antena',
 			'settings.station.antennaTypeRequired' => 'Escolha um tipo de antena',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipolo',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Direcional',
@@ -5632,6 +5681,8 @@ extension on TranslationsPtBr {
 			'exportSettings.adifQslMessageTemplate' => 'Mensagem QSL ADIF',
 			'exportSettings.shared' => 'As configurações valem para todas as extensões que usam este tipo de exportação.',
 			'exportSettings.defaultTemplates' => 'Ative Modelos personalizados para editar os modelos deste tipo.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Pré-visualização:',
 			'templateEditor.reset' => 'Redefinir',
 			'templateEditor.docs' => 'Documentação de modelos',

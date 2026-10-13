@@ -196,6 +196,7 @@
       "operations": "Betrieb",
       "chase": "Jagd",
       "logs": "Logs",
+      "maps": "Karten",
       "settings": "Einstellungen"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Meldung konnte nicht kopiert werden"
     },
     "outlinesDisclaimer": "Umrisse dienen nur zur Orientierung. Recherchiere selbst!",
+    "outlinesCredit": "Umrisse: ${sources}",
+    "boundariesCredit": "Grenzen: ${sources}",
+    "facilitiesCredit": "Einrichtungen: ${sources}",
+    "fullCredits": "Vollständige Datenquellen",
+    "fewerCredits": "Weniger Quellen",
     "emptyState": "Noch keine QSO-Standorte.\nQSOs mit Grid, Staat oder Land werden hier angezeigt.",
     "unavailable": "Die Karte ist gerade nicht verfügbar.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Postkarte konnte nicht geteilt werden. Versuche es erneut.",
       "fileName": "postkarte"
     }
+  },
+  "mapsView": {
+    "title": "Karten",
+    "searchHint": "Parks, Gipfel und mehr suchen",
+    "activities": "Aktivitäten",
+    "layers": "Ebenen",
+    "baseMap": "Basiskarte",
+    "satellite": "Satellit (Esri)",
+    "facilities": "Park-Einrichtungen",
+    "boundaries": "Grenzen",
+    "currentLocation": "Aktueller Standort",
+    "noMatches(text)": "Nichts passt zu „${text}“",
+    "picksAt": {
+      "one": "${count} Referenz bei ${where}",
+      "other": "${count} Referenzen bei ${where}"
+    },
+    "startOperation": "Betrieb mit diesen Referenzen starten"
   },
   "activitiesView": {
     "title": "Aktivitäten",

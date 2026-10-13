@@ -49,6 +49,7 @@ class TranslationsTr extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$tr dialogs = _Translations$dialogs$tr._(_root);
 	@override late final _Translations$operation$tr operation = _Translations$operation$tr._(_root);
 	@override late final _Translations$map$tr map = _Translations$map$tr._(_root);
+	@override late final _Translations$mapsView$tr mapsView = _Translations$mapsView$tr._(_root);
 	@override late final _Translations$activitiesView$tr activitiesView = _Translations$activitiesView$tr._(_root);
 	@override late final _Translations$loggingControls$tr loggingControls = _Translations$loggingControls$tr._(_root);
 	@override late final _Translations$formChrome$tr formChrome = _Translations$formChrome$tr._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$tr extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$tr outlineIssue = _Translations$map$outlineIssue$tr._(_root);
 	@override String get outlinesDisclaimer => 'Sınırlar yalnızca referans amaçlıdır. Kendi araştırmanızı yapın!';
+	@override String outlinesCredit({required Object sources}) => 'Sınır çizgileri: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'İdari sınırlar: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Tesisler: ${sources}';
+	@override String get fullCredits => 'Tüm veri kaynakları';
+	@override String get fewerCredits => 'Daha az kaynak';
 	@override String get emptyState => 'Henüz QSO konumu yok.\nGrid karesi, eyalet veya ülke bilgisi olan QSO\'lar burada görünür.';
 	@override String get unavailable => 'Harita şu anda kullanılamıyor.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$tr extends Translations$map$en {
 	@override String get zoomIn => 'Yakınlaştır';
 	@override String get zoomOut => 'Uzaklaştır';
 	@override late final _Translations$map$postcard$tr postcard = _Translations$map$postcard$tr._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$tr extends Translations$mapsView$en {
+	_Translations$mapsView$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Haritalar';
+	@override String get searchHint => 'Park, zirve ve daha fazlasını ara';
+	@override String get activities => 'Aktiviteler';
+	@override String get layers => 'Katmanlar';
+	@override String get baseMap => 'Temel harita';
+	@override String get satellite => 'Uydu (Esri)';
+	@override String get facilities => 'Park tesisleri';
+	@override String get boundaries => 'İdari sınırlar';
+	@override String get currentLocation => 'Mevcut konum';
+	@override String noMatches({required Object text}) => '“${text}” ile eşleşen bir şey yok';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count,
+		one: '${where} konumunda ${count} referans',
+		other: '${where} konumunda ${count} referans',
+	);
+	@override String get startOperation => 'Bu referanslarla bir operasyon başlat';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$tr extends Translations$home$nav$en {
 	@override String get operations => 'Operasyonlar';
 	@override String get chase => 'Avlama';
 	@override String get logs => 'Günlükler';
+	@override String get maps => 'Haritalar';
 	@override String get settings => 'Ayarlar';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsTr {
 			'home.nav.operations' => 'Operasyonlar',
 			'home.nav.chase' => 'Avlama',
 			'home.nav.logs' => 'Günlükler',
+			'home.nav.maps' => 'Haritalar',
 			'home.nav.settings' => 'Ayarlar',
 			'home.panels.operations' => 'Operasyon Listesi',
 			'home.panels.operationsDescription' => 'Operasyonlarınız, en yenisi önce.',
@@ -4106,9 +4138,9 @@ extension on TranslationsTr {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı paylaş', other: 'Birleştirilmiş ${count} dosyayı paylaş', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı dışa aktar', other: 'Birleştirilmiş ${count} dosyayı dışa aktar', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı indir', other: 'Birleştirilmiş ${count} dosyayı indir', ), 
-			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
 			'operation.export.shareOne' => ({required Object name}) => '${name} dosyasını paylaş',
 			'operation.export.exportOne' => ({required Object name}) => '${name} dosyasını dışa aktar',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} dosyasını indir',
@@ -4244,6 +4276,11 @@ extension on TranslationsTr {
 			'map.outlineIssue.copied' => 'Rapor kopyalandı',
 			'map.outlineIssue.notCopied' => 'Rapor kopyalanamadı',
 			'map.outlinesDisclaimer' => 'Sınırlar yalnızca referans amaçlıdır. Kendi araştırmanızı yapın!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Sınır çizgileri: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'İdari sınırlar: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Tesisler: ${sources}',
+			'map.fullCredits' => 'Tüm veri kaynakları',
+			'map.fewerCredits' => 'Daha az kaynak',
 			'map.emptyState' => 'Henüz QSO konumu yok.\nGrid karesi, eyalet veya ülke bilgisi olan QSO\'lar burada görünür.',
 			'map.unavailable' => 'Harita şu anda kullanılamıyor.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsTr {
 			'map.postcard.copyFailed' => 'Pano görüntüyü almadı. Tekrar deneyin.',
 			'map.postcard.shareFailed' => 'Kartpostal paylaşılamadı. Tekrar deneyin.',
 			'map.postcard.fileName' => 'kartpostal',
+			'mapsView.title' => 'Haritalar',
+			'mapsView.searchHint' => 'Park, zirve ve daha fazlasını ara',
+			'mapsView.activities' => 'Aktiviteler',
+			'mapsView.layers' => 'Katmanlar',
+			'mapsView.baseMap' => 'Temel harita',
+			'mapsView.satellite' => 'Uydu (Esri)',
+			'mapsView.facilities' => 'Park tesisleri',
+			'mapsView.boundaries' => 'İdari sınırlar',
+			'mapsView.currentLocation' => 'Mevcut konum',
+			'mapsView.noMatches' => ({required Object text}) => '“${text}” ile eşleşen bir şey yok',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: '${where} konumunda ${count} referans', other: '${where} konumunda ${count} referans', ), 
+			'mapsView.startOperation' => 'Bu referanslarla bir operasyon başlat',
 			'activitiesView.title' => 'Aktiviteler',
 			'activitiesView.activitiesCountZero' => 'Seçili Aktivite Yok',
 			'activitiesView.activitiesCountOne' => '1 Aktivite',
@@ -4603,6 +4652,8 @@ extension on TranslationsTr {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: başka bir program onu kullanıyor, çoğu zaman ${protocol} programının kendisi. O programı kapatın veya başka bir port seçin.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: bu bilgisayar buna izin vermiyor. 1024\'ün üzerinde bir port seçin.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinlemeyi bıraktı. Tekrar deneniyor…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT Kontrolü',
 			'settings.radio.loggingAndCat' => 'Kayıt ve CAT',
 			'settings.radio.tuningSection' => 'Ayar',
@@ -4621,8 +4672,6 @@ extension on TranslationsTr {
 			'settings.radio.pttKey.transmitting' => 'Yayında',
 			'settings.radio.smartVfoSnap.title' => 'Akıllı VFO Yuvarlama',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Düğmeyi çevirmeyi bıraktığınızda frekans makul bir adıma yuvarlanıyor. Yalnızca ses modlarında.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Tam olarak ayarladığınız yerde kalınıyor.',
 			'settings.radio.snapDebounce.title' => 'Akıllı Yuvarlama: Bekleme süresi',
 			'settings.radio.snapDebounce.description' => 'Frekans yuvarlanmadan önce düğmenin ne kadar süre durması gerektiği. Kısa olursa anında hissedilir; uzun olursa yavaş bir harekete yer bırakır.',
@@ -5117,6 +5166,8 @@ extension on TranslationsTr {
 			'settings.station.hrdTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan Ham Radio Deluxe Rig Control\'e** bağlanır — HRD radyoyla konuşur.\n\n- **Rig Control zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **IP sunucusu etkin olmalı.** Rig Control diğer programlarla yalnızca onun üzerinden konuşur.\n- IP sunucusunun ayarlarında değiştirmediyseniz **port** 7809\'dur.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş HRD protokolünün yayımlanmış açıklamalarından yazıldı ve HRD üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.n3fjpTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan bir N3FJP kayıt programına** bağlanır — N3FJP radyoyla konuşur.\n\n- **Programın API\'si açık olmalı**: Settings → Application Program Interface, **TCP API Enabled** seçeneğini işaretleyin.\n- Orada değiştirmediyseniz **port** 1100\'dür.\n- Radyoyu izlemek veya ayarlamak için **N3FJP\'de bir radyo arayüzü kurulu olmalı**. Arayüz olmadan yalnızca giriş penceresine yazılanları bildirir.\n- N3FJP yalnızca bant, mod ve frekans bildirir: güç ve yayın durumu yok.\n\nBu giriş N3FJP\'nin yayımlanmış API\'sinden yazıldı ve N3FJP üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.commanderTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.ic705TroubleshootingTitle' => 'Radyo hiç yanıt vermiyorsa',
@@ -5135,8 +5186,6 @@ extension on TranslationsTr {
 			'settings.station.antennaBands' => 'Bantlar',
 			'settings.station.antennaType' => 'Anten türü',
 			'settings.station.antennaTypeRequired' => 'Bir anten türü seçin',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipol',
 			'settings.station.antennaTypes.vertical' => 'Dikey',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
@@ -5631,6 +5680,8 @@ extension on TranslationsTr {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Mesajı',
 			'exportSettings.shared' => 'Ayarlar, bu dışa aktarma türünü kullanan her uzantıya uygulanır.',
 			'exportSettings.defaultTemplates' => 'Bu türün şablonlarını düzenlemek için Özel şablonlar\'ı açın.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Önizleme:',
 			'templateEditor.reset' => 'Sıfırla',
 			'templateEditor.docs' => 'Şablon Belgeleri',

@@ -49,6 +49,7 @@ class TranslationsZh extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$zh dialogs = _Translations$dialogs$zh._(_root);
 	@override late final _Translations$operation$zh operation = _Translations$operation$zh._(_root);
 	@override late final _Translations$map$zh map = _Translations$map$zh._(_root);
+	@override late final _Translations$mapsView$zh mapsView = _Translations$mapsView$zh._(_root);
 	@override late final _Translations$activitiesView$zh activitiesView = _Translations$activitiesView$zh._(_root);
 	@override late final _Translations$loggingControls$zh loggingControls = _Translations$loggingControls$zh._(_root);
 	@override late final _Translations$formChrome$zh formChrome = _Translations$formChrome$zh._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$zh extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$zh outlineIssue = _Translations$map$outlineIssue$zh._(_root);
 	@override String get outlinesDisclaimer => '轮廓仅供参考，请自行核实！';
+	@override String outlinesCredit({required Object sources}) => '轮廓：${sources}';
+	@override String boundariesCredit({required Object sources}) => '行政边界：${sources}';
+	@override String facilitiesCredit({required Object sources}) => '设施：${sources}';
+	@override String get fullCredits => '完整数据来源';
+	@override String get fewerCredits => '更少来源';
 	@override String get emptyState => '还没有 QSO 位置。\n带有网格、州或国家的 QSO 会显示在这里。';
 	@override String get unavailable => '地图目前不可用。';
 	@override String qthPopupTitle({required Object grid}) => 'QTH：${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$zh extends Translations$map$en {
 	@override String get zoomIn => '放大';
 	@override String get zoomOut => '缩小';
 	@override late final _Translations$map$postcard$zh postcard = _Translations$map$postcard$zh._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$zh extends Translations$mapsView$en {
+	_Translations$mapsView$zh._(TranslationsZh root) : this._root = root, super.internal(root);
+
+	final TranslationsZh _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '地图';
+	@override String get searchHint => '搜索公园、山峰等';
+	@override String get activities => '活动';
+	@override String get layers => '图层';
+	@override String get baseMap => '底图';
+	@override String get satellite => '卫星影像 (Esri)';
+	@override String get facilities => '公园设施';
+	@override String get boundaries => '行政边界';
+	@override String get currentLocation => '当前位置';
+	@override String noMatches({required Object text}) => '没有与“${text}”匹配的内容';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count,
+		one: '${where} 处的 ${count} 个参考',
+		other: '${where} 处的 ${count} 个参考',
+	);
+	@override String get startOperation => '用这些参考开始操作';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$zh extends Translations$home$nav$en {
 	@override String get operations => '操作';
 	@override String get chase => '追逐';
 	@override String get logs => '日志';
+	@override String get maps => '地图';
 	@override String get settings => '设置';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsZh {
 			'home.nav.operations' => '操作',
 			'home.nav.chase' => '追逐',
 			'home.nav.logs' => '日志',
+			'home.nav.maps' => '地图',
 			'home.nav.settings' => '设置',
 			'home.panels.operations' => '操作列表',
 			'home.panels.operationsDescription' => '您的操作，最新的在前。',
@@ -4106,9 +4138,9 @@ extension on TranslationsZh {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '分享合并的 ${count} 个文件', other: '分享合并的 ${count} 个文件', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出合并的 ${count} 个文件', other: '导出合并的 ${count} 个文件', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载合并的 ${count} 个文件', other: '下载合并的 ${count} 个文件', ), 
-			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
 			'operation.export.shareOne' => ({required Object name}) => '分享 ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '导出 ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => '下载 ${name}',
@@ -4244,6 +4276,11 @@ extension on TranslationsZh {
 			'map.outlineIssue.copied' => '报告已复制',
 			'map.outlineIssue.notCopied' => '无法复制报告',
 			'map.outlinesDisclaimer' => '轮廓仅供参考，请自行核实！',
+			'map.outlinesCredit' => ({required Object sources}) => '轮廓：${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => '行政边界：${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => '设施：${sources}',
+			'map.fullCredits' => '完整数据来源',
+			'map.fewerCredits' => '更少来源',
 			'map.emptyState' => '还没有 QSO 位置。\n带有网格、州或国家的 QSO 会显示在这里。',
 			'map.unavailable' => '地图目前不可用。',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH：${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsZh {
 			'map.postcard.copyFailed' => '剪贴板未接收图片，请重试。',
 			'map.postcard.shareFailed' => '无法分享明信片，请重试。',
 			'map.postcard.fileName' => 'postcard',
+			'mapsView.title' => '地图',
+			'mapsView.searchHint' => '搜索公园、山峰等',
+			'mapsView.activities' => '活动',
+			'mapsView.layers' => '图层',
+			'mapsView.baseMap' => '底图',
+			'mapsView.satellite' => '卫星影像 (Esri)',
+			'mapsView.facilities' => '公园设施',
+			'mapsView.boundaries' => '行政边界',
+			'mapsView.currentLocation' => '当前位置',
+			'mapsView.noMatches' => ({required Object text}) => '没有与“${text}”匹配的内容',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '${where} 处的 ${count} 个参考', other: '${where} 处的 ${count} 个参考', ), 
+			'mapsView.startOperation' => '用这些参考开始操作',
 			'activitiesView.title' => '活动',
 			'activitiesView.activitiesCountZero' => '未选择活动',
 			'activitiesView.activitiesCountOne' => '1 个活动',
@@ -4603,6 +4652,8 @@ extension on TranslationsZh {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：另一个程序正在使用它，通常是 ${protocol} 本身。请关闭该程序或选择其他端口。',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：此计算机不允许。请选择 1024 以上的端口。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} 已停止在端口 ${port} 上监听。正在重试…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT 控制',
 			'settings.radio.loggingAndCat' => '记录与 CAT',
 			'settings.radio.tuningSection' => '调谐',
@@ -4621,8 +4672,6 @@ extension on TranslationsZh {
 			'settings.radio.pttKey.transmitting' => '正在发射',
 			'settings.radio.smartVfoSnap.title' => '智能 VFO 吸附',
 			'settings.radio.smartVfoSnap.descriptionOn' => '停止转动旋钮后，将频率取整到合理步进。仅限话音模式。',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => '精确保持在您调谐的位置。',
 			'settings.radio.snapDebounce.title' => '智能吸附：稳定延迟',
 			'settings.radio.snapDebounce.description' => '旋钮需停止多久后才取整频率。越短越即时；越长越能容纳慢速调谐。',
@@ -5117,6 +5166,8 @@ extension on TranslationsZh {
 			'settings.station.hrdTroubleshooting' => '这会连接到**在您计算机上运行的 Ham Radio Deluxe 的 Rig Control**，而不是直接连接电台——由 HRD 与电台通信。\n\n- **Rig Control 必须已在运行**并已连接到电台。\n- **必须启用其 IP 服务器。** Rig Control 只通过它与其他程序通信。\n- **端口**为 7809，除非您在 IP 服务器设置中更改过。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据公开的 HRD 协议说明编写，尚未与 HRD 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.n3fjpTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.n3fjpTroubleshooting' => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际运行过。如果它只部分可用，非常值得报告。',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.ic705TroubleshootingTitle' => '如果电台始终没有响应',
@@ -5135,8 +5186,6 @@ extension on TranslationsZh {
 			'settings.station.antennaBands' => '频段',
 			'settings.station.antennaType' => '天线类型',
 			'settings.station.antennaTypeRequired' => '请选择天线类型',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => '偶极天线',
 			'settings.station.antennaTypes.vertical' => '垂直天线',
 			'settings.station.antennaTypes.yagiBeam' => '八木 / 定向天线',
@@ -5631,6 +5680,8 @@ extension on TranslationsZh {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL 消息',
 			'exportSettings.shared' => '设置适用于使用此导出类型的所有扩展。',
 			'exportSettings.defaultTemplates' => '开启“自定义模板”即可编辑此类型的模板。',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => '预览：',
 			'templateEditor.reset' => '重置',
 			'templateEditor.docs' => '模板文档',

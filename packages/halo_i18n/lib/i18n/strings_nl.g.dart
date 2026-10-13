@@ -49,6 +49,7 @@ class TranslationsNl extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$nl dialogs = _Translations$dialogs$nl._(_root);
 	@override late final _Translations$operation$nl operation = _Translations$operation$nl._(_root);
 	@override late final _Translations$map$nl map = _Translations$map$nl._(_root);
+	@override late final _Translations$mapsView$nl mapsView = _Translations$mapsView$nl._(_root);
 	@override late final _Translations$activitiesView$nl activitiesView = _Translations$activitiesView$nl._(_root);
 	@override late final _Translations$loggingControls$nl loggingControls = _Translations$loggingControls$nl._(_root);
 	@override late final _Translations$formChrome$nl formChrome = _Translations$formChrome$nl._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$nl extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$nl outlineIssue = _Translations$map$outlineIssue$nl._(_root);
 	@override String get outlinesDisclaimer => 'Omtrekken zijn alleen ter referentie. Doe je eigen onderzoek!';
+	@override String outlinesCredit({required Object sources}) => 'Omtrekken: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Grenzen: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Voorzieningen: ${sources}';
+	@override String get fullCredits => 'Volledige bronvermelding';
+	@override String get fewerCredits => 'Minder bronnen';
 	@override String get emptyState => 'Nog geen QSO-locaties.\nQSO\'s met een grid square, staat of land verschijnen hier.';
 	@override String get unavailable => 'De kaart is nu niet beschikbaar.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$nl extends Translations$map$en {
 	@override String get zoomIn => 'Inzoomen';
 	@override String get zoomOut => 'Uitzoomen';
 	@override late final _Translations$map$postcard$nl postcard = _Translations$map$postcard$nl._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$nl extends Translations$mapsView$en {
+	_Translations$mapsView$nl._(TranslationsNl root) : this._root = root, super.internal(root);
+
+	final TranslationsNl _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Kaarten';
+	@override String get searchHint => 'Zoek parken, toppen en meer';
+	@override String get activities => 'Activiteiten';
+	@override String get layers => 'Lagen';
+	@override String get baseMap => 'Basiskaart';
+	@override String get satellite => 'Satelliet (Esri)';
+	@override String get facilities => 'Parkvoorzieningen';
+	@override String get boundaries => 'Grenzen';
+	@override String get currentLocation => 'Huidige locatie';
+	@override String noMatches({required Object text}) => 'Niets gevonden voor “${text}”';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count,
+		one: '${count} referentie bij ${where}',
+		other: '${count} referenties bij ${where}',
+	);
+	@override String get startOperation => 'Start een activatie met deze referenties';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$nl extends Translations$home$nav$en {
 	@override String get operations => 'Activaties';
 	@override String get chase => 'Jagen';
 	@override String get logs => 'Logboeken';
+	@override String get maps => 'Kaarten';
 	@override String get settings => 'Instellingen';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsNl {
 			'home.nav.operations' => 'Activaties',
 			'home.nav.chase' => 'Jagen',
 			'home.nav.logs' => 'Logboeken',
+			'home.nav.maps' => 'Kaarten',
 			'home.nav.settings' => 'Instellingen',
 			'home.panels.operations' => 'Activatielijst',
 			'home.panels.operationsDescription' => 'Je activaties, meest recente eerst.',
@@ -4106,9 +4138,9 @@ extension on TranslationsNl {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand delen', other: '${count} gecombineerde bestanden delen', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand exporteren', other: '${count} gecombineerde bestanden exporteren', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} gecombineerd bestand downloaden', other: '${count} gecombineerde bestanden downloaden', ), 
-			'operation.export.saveOne' => ({required Object name}) => '${name} opslaan',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => '${name} opslaan',
 			'operation.export.shareOne' => ({required Object name}) => '${name} delen',
 			'operation.export.exportOne' => ({required Object name}) => '${name} exporteren',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} downloaden',
@@ -4244,6 +4276,11 @@ extension on TranslationsNl {
 			'map.outlineIssue.copied' => 'Melding gekopieerd',
 			'map.outlineIssue.notCopied' => 'Kon de melding niet kopiëren',
 			'map.outlinesDisclaimer' => 'Omtrekken zijn alleen ter referentie. Doe je eigen onderzoek!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Omtrekken: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Grenzen: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Voorzieningen: ${sources}',
+			'map.fullCredits' => 'Volledige bronvermelding',
+			'map.fewerCredits' => 'Minder bronnen',
 			'map.emptyState' => 'Nog geen QSO-locaties.\nQSO\'s met een grid square, staat of land verschijnen hier.',
 			'map.unavailable' => 'De kaart is nu niet beschikbaar.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsNl {
 			'map.postcard.copyFailed' => 'Het klembord nam de afbeelding niet aan. Probeer het opnieuw.',
 			'map.postcard.shareFailed' => 'Kon de ansichtkaart niet delen. Probeer het opnieuw.',
 			'map.postcard.fileName' => 'ansichtkaart',
+			'mapsView.title' => 'Kaarten',
+			'mapsView.searchHint' => 'Zoek parken, toppen en meer',
+			'mapsView.activities' => 'Activiteiten',
+			'mapsView.layers' => 'Lagen',
+			'mapsView.baseMap' => 'Basiskaart',
+			'mapsView.satellite' => 'Satelliet (Esri)',
+			'mapsView.facilities' => 'Parkvoorzieningen',
+			'mapsView.boundaries' => 'Grenzen',
+			'mapsView.currentLocation' => 'Huidige locatie',
+			'mapsView.noMatches' => ({required Object text}) => 'Niets gevonden voor “${text}”',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nl'))(count, one: '${count} referentie bij ${where}', other: '${count} referenties bij ${where}', ), 
+			'mapsView.startOperation' => 'Start een activatie met deze referenties',
 			'activitiesView.title' => 'Activiteiten',
 			'activitiesView.activitiesCountZero' => 'Geen activiteiten geselecteerd',
 			'activitiesView.activitiesCountOne' => '1 activiteit',
@@ -4603,6 +4652,8 @@ extension on TranslationsNl {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: een ander programma gebruikt die, vaak ${protocol} zelf. Sluit dat programma of kies een andere poort.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan niet luisteren op poort ${port}: deze computer staat dat niet toe. Kies een poort boven 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} is gestopt met luisteren op poort ${port}. Nieuwe poging…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT-besturing',
 			'settings.radio.loggingAndCat' => 'Loggen & CAT',
 			'settings.radio.tuningSection' => 'Afstemmen',
@@ -4621,8 +4672,6 @@ extension on TranslationsNl {
 			'settings.radio.pttKey.transmitting' => 'Zenden',
 			'settings.radio.smartVfoSnap.title' => 'Slimme VFO-afronding',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Als je stopt met draaien, wordt de frequentie afgerond op een zinnige stap. Alleen spraakmodes.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Blijft precies waar je hebt afgestemd.',
 			'settings.radio.snapDebounce.title' => 'Slimme afronding: wachttijd',
 			'settings.radio.snapDebounce.description' => 'Hoe lang de knop stil moet staan voordat de frequentie wordt afgerond. Korter voelt direct; langer laat ruimte voor een trage beweging.',
@@ -5117,6 +5166,8 @@ extension on TranslationsNl {
 			'settings.station.hrdTroubleshooting' => 'Dit verbindt met **Rig Control van Ham Radio Deluxe, draaiend op je computer**, niet direct met de radio — HRD praat met de radio.\n\n- **Rig Control moet al draaien** en met de radio verbonden zijn.\n- **De IP-server ervan moet ingeschakeld zijn.** Rig Control praat alleen via die server met andere programma\'s.\n- **Poort** is 7809, tenzij je die in de instellingen van de IP-server hebt gewijzigd.\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van gepubliceerde beschrijvingen van het HRD-protocol en is nog niet met HRD getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			'settings.station.n3fjpTroubleshooting' => 'Dit verbindt met **een N3FJP-logprogramma dat op je computer draait**, niet direct met de radio — N3FJP praat met de radio.\n\n- **De API van het programma moet aan staan**: Settings → Application Program Interface, vink **TCP API Enabled** aan.\n- **Poort** is 1100, tenzij je die daar hebt gewijzigd.\n- **N3FJP moet een radio-interface ingesteld hebben** om de radio te volgen of af te stemmen. Zonder interface meldt het alleen wat in het invoervenster wordt getypt.\n- N3FJP meldt alleen band, mode en frequentie: geen vermogen, geen zendstatus.\n\nDeze optie is geschreven op basis van de gepubliceerde API van N3FJP en is nog niet met N3FJP getest. Als hij half werkt, is dat het melden waard.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Als de app geen verbinding kan maken',
 			'settings.station.commanderTroubleshooting' => 'Dit verbindt met **DXLab Commander, draaiend op je computer**, niet direct met de radio — Commander praat met de radio.\n\n- **Commander moet al draaien** en met de radio verbonden zijn.\n- **De netwerkdienst moet aan staan**: de knop **Net Serv** in het Radio-paneel van het Configuration-venster van Commander.\n- **Poort** is 52002, de derde poort van het blok dat begint bij de **Base Port** van Net Serv (52000, tenzij je die hebt gewijzigd).\n- **Vanaf een andere machine**: zorg dat je firewall de verbinding doorlaat.\n\nDeze optie is geschreven op basis van de gepubliceerde TCP-berichten van Commander en is nog niet met Commander getest. Als hij half werkt, is dat het melden waard.',
 			'settings.station.ic705TroubleshootingTitle' => 'Als de radio nooit reageert',
@@ -5135,8 +5186,6 @@ extension on TranslationsNl {
 			'settings.station.antennaBands' => 'Banden',
 			'settings.station.antennaType' => 'Antennetype',
 			'settings.station.antennaTypeRequired' => 'Kies een antennetype',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipool',
 			'settings.station.antennaTypes.vertical' => 'Verticaal',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
@@ -5631,6 +5680,8 @@ extension on TranslationsNl {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Bericht',
 			'exportSettings.shared' => 'Instellingen gelden voor elke extensie die dit exporttype gebruikt.',
 			'exportSettings.defaultTemplates' => 'Zet Aangepaste sjablonen aan om de sjablonen van dit type te bewerken.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Voorbeeld:',
 			'templateEditor.reset' => 'Resetten',
 			'templateEditor.docs' => 'Sjabloondocumentatie',

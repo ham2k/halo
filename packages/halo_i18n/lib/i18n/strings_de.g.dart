@@ -49,6 +49,7 @@ class TranslationsDe extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$de dialogs = _Translations$dialogs$de._(_root);
 	@override late final _Translations$operation$de operation = _Translations$operation$de._(_root);
 	@override late final _Translations$map$de map = _Translations$map$de._(_root);
+	@override late final _Translations$mapsView$de mapsView = _Translations$mapsView$de._(_root);
 	@override late final _Translations$activitiesView$de activitiesView = _Translations$activitiesView$de._(_root);
 	@override late final _Translations$loggingControls$de loggingControls = _Translations$loggingControls$de._(_root);
 	@override late final _Translations$formChrome$de formChrome = _Translations$formChrome$de._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$de extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$de outlineIssue = _Translations$map$outlineIssue$de._(_root);
 	@override String get outlinesDisclaimer => 'Umrisse dienen nur zur Orientierung. Recherchiere selbst!';
+	@override String outlinesCredit({required Object sources}) => 'Umrisse: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Grenzen: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Einrichtungen: ${sources}';
+	@override String get fullCredits => 'Vollständige Datenquellen';
+	@override String get fewerCredits => 'Weniger Quellen';
 	@override String get emptyState => 'Noch keine QSO-Standorte.\nQSOs mit Grid, Staat oder Land werden hier angezeigt.';
 	@override String get unavailable => 'Die Karte ist gerade nicht verfügbar.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$de extends Translations$map$en {
 	@override String get zoomIn => 'Vergrößern';
 	@override String get zoomOut => 'Verkleinern';
 	@override late final _Translations$map$postcard$de postcard = _Translations$map$postcard$de._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$de extends Translations$mapsView$en {
+	_Translations$mapsView$de._(TranslationsDe root) : this._root = root, super.internal(root);
+
+	final TranslationsDe _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Karten';
+	@override String get searchHint => 'Parks, Gipfel und mehr suchen';
+	@override String get activities => 'Aktivitäten';
+	@override String get layers => 'Ebenen';
+	@override String get baseMap => 'Basiskarte';
+	@override String get satellite => 'Satellit (Esri)';
+	@override String get facilities => 'Park-Einrichtungen';
+	@override String get boundaries => 'Grenzen';
+	@override String get currentLocation => 'Aktueller Standort';
+	@override String noMatches({required Object text}) => 'Nichts passt zu „${text}“';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count,
+		one: '${count} Referenz bei ${where}',
+		other: '${count} Referenzen bei ${where}',
+	);
+	@override String get startOperation => 'Betrieb mit diesen Referenzen starten';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$de extends Translations$home$nav$en {
 	@override String get operations => 'Betrieb';
 	@override String get chase => 'Jagd';
 	@override String get logs => 'Logs';
+	@override String get maps => 'Karten';
 	@override String get settings => 'Einstellungen';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsDe {
 			'home.nav.operations' => 'Betrieb',
 			'home.nav.chase' => 'Jagd',
 			'home.nav.logs' => 'Logs',
+			'home.nav.maps' => 'Karten',
 			'home.nav.settings' => 'Einstellungen',
 			'home.panels.operations' => 'Betriebsliste',
 			'home.panels.operationsDescription' => 'Dein Funkbetrieb, der neueste zuerst.',
@@ -4106,9 +4138,9 @@ extension on TranslationsDe {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} kombinierte Datei teilen', other: '${count} kombinierte Dateien teilen', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} kombinierte Datei exportieren', other: '${count} kombinierte Dateien exportieren', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} kombinierte Datei herunterladen', other: '${count} kombinierte Dateien herunterladen', ), 
-			'operation.export.saveOne' => ({required Object name}) => '${name} speichern',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => '${name} speichern',
 			'operation.export.shareOne' => ({required Object name}) => '${name} teilen',
 			'operation.export.exportOne' => ({required Object name}) => '${name} exportieren',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} herunterladen',
@@ -4244,6 +4276,11 @@ extension on TranslationsDe {
 			'map.outlineIssue.copied' => 'Meldung kopiert',
 			'map.outlineIssue.notCopied' => 'Meldung konnte nicht kopiert werden',
 			'map.outlinesDisclaimer' => 'Umrisse dienen nur zur Orientierung. Recherchiere selbst!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Umrisse: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Grenzen: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Einrichtungen: ${sources}',
+			'map.fullCredits' => 'Vollständige Datenquellen',
+			'map.fewerCredits' => 'Weniger Quellen',
 			'map.emptyState' => 'Noch keine QSO-Standorte.\nQSOs mit Grid, Staat oder Land werden hier angezeigt.',
 			'map.unavailable' => 'Die Karte ist gerade nicht verfügbar.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsDe {
 			'map.postcard.copyFailed' => 'Die Zwischenablage hat das Bild nicht übernommen. Versuche es erneut.',
 			'map.postcard.shareFailed' => 'Postkarte konnte nicht geteilt werden. Versuche es erneut.',
 			'map.postcard.fileName' => 'postkarte',
+			'mapsView.title' => 'Karten',
+			'mapsView.searchHint' => 'Parks, Gipfel und mehr suchen',
+			'mapsView.activities' => 'Aktivitäten',
+			'mapsView.layers' => 'Ebenen',
+			'mapsView.baseMap' => 'Basiskarte',
+			'mapsView.satellite' => 'Satellit (Esri)',
+			'mapsView.facilities' => 'Park-Einrichtungen',
+			'mapsView.boundaries' => 'Grenzen',
+			'mapsView.currentLocation' => 'Aktueller Standort',
+			'mapsView.noMatches' => ({required Object text}) => 'Nichts passt zu „${text}“',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('de'))(count, one: '${count} Referenz bei ${where}', other: '${count} Referenzen bei ${where}', ), 
+			'mapsView.startOperation' => 'Betrieb mit diesen Referenzen starten',
 			'activitiesView.title' => 'Aktivitäten',
 			'activitiesView.activitiesCountZero' => 'Keine Aktivitäten ausgewählt',
 			'activitiesView.activitiesCountOne' => '1 Aktivität',
@@ -4603,6 +4652,8 @@ extension on TranslationsDe {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kann nicht auf Port ${port} lauschen: ein anderes Programm nutzt ihn, oft ${protocol} selbst. Schließe dieses Programm oder wähle einen anderen Port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kann nicht auf Port ${port} lauschen: dieser Computer erlaubt es nicht. Wähle einen Port über 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} lauscht nicht mehr auf Port ${port}. Neuer Versuch…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT-Steuerung',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Abstimmung',
@@ -4621,8 +4672,6 @@ extension on TranslationsDe {
 			'settings.radio.pttKey.transmitting' => 'Sende',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Wenn du aufhörst, am Knopf zu drehen, wird die Frequenz auf einen sinnvollen Schritt gerundet. Nur Sprachmodi.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Bleibt genau dort, wo du abgestimmt hast.',
 			'settings.radio.snapDebounce.title' => 'Smart Snap: Wartezeit',
 			'settings.radio.snapDebounce.description' => 'Wie lange der Knopf stillstehen muss, bevor die Frequenz gerundet wird. Kürzer wirkt sofort; länger lässt Raum für eine langsame Bewegung.',
@@ -5117,6 +5166,8 @@ extension on TranslationsDe {
 			'settings.station.hrdTroubleshooting' => 'Dies verbindet sich mit **Rig Control von Ham Radio Deluxe auf deinem Computer**, nicht direkt mit dem Funkgerät — HRD spricht mit dem Funkgerät.\n\n- **Rig Control muss bereits laufen** und mit dem Funkgerät verbunden sein.\n- **Sein IP-Server muss aktiviert sein.** Nur darüber spricht Rig Control mit anderen Programmen.\n- **Port** ist 7809, außer du hast ihn in den Einstellungen des IP-Servers geändert.\n- **Von einem anderen Rechner aus** stelle sicher, dass deine Firewall die Verbindung durchlässt.\n\nDieser Eintrag wurde anhand veröffentlichter Beschreibungen des HRD-Protokolls geschrieben und noch nicht mit HRD getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Wenn die App sich nicht verbinden kann',
 			'settings.station.n3fjpTroubleshooting' => 'Dies verbindet sich mit **einem N3FJP-Logprogramm auf deinem Computer**, nicht direkt mit dem Funkgerät — N3FJP spricht mit dem Funkgerät.\n\n- **Die API des Programms muss eingeschaltet sein**: Settings → Application Program Interface, **TCP API Enabled** aktivieren.\n- **Port** ist 1100, außer du hast ihn dort geändert.\n- **In N3FJP muss eine Funkgeräteschnittstelle eingerichtet sein**, um dem Funkgerät zu folgen oder es abzustimmen. Ohne sie meldet es nur, was in sein Eingabefenster getippt wird.\n- N3FJP meldet nur Band, Modus und Frequenz: keine Leistung, keinen Sendezustand.\n\nDieser Eintrag wurde anhand der veröffentlichten API von N3FJP geschrieben und noch nicht mit N3FJP getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Wenn die App sich nicht verbinden kann',
 			'settings.station.commanderTroubleshooting' => 'Dies verbindet sich mit **DXLab Commander auf deinem Computer**, nicht direkt mit dem Funkgerät — Commander spricht mit dem Funkgerät.\n\n- **Commander muss bereits laufen** und mit dem Funkgerät verbunden sein.\n- **Sein Netzwerkdienst muss eingeschaltet sein**: der Button **Net Serv** im Radio-Bereich des Configuration-Fensters von Commander.\n- **Port** ist 52002, der dritte Port des Blocks ab dem **Base Port** von Net Serv (52000, außer du hast ihn geändert).\n- **Von einem anderen Rechner aus** stelle sicher, dass deine Firewall die Verbindung durchlässt.\n\nDieser Eintrag wurde anhand der veröffentlichten TCP-Nachrichten von Commander geschrieben und noch nicht mit Commander getestet. Wenn er halb funktioniert, ist das eine Meldung wert.',
 			'settings.station.ic705TroubleshootingTitle' => 'Wenn das Funkgerät nie reagiert',
@@ -5135,8 +5186,6 @@ extension on TranslationsDe {
 			'settings.station.antennaBands' => 'Bänder',
 			'settings.station.antennaType' => 'Antennentyp',
 			'settings.station.antennaTypeRequired' => 'Wähle einen Antennentyp',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipol',
 			'settings.station.antennaTypes.vertical' => 'Vertikal',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
@@ -5631,6 +5680,8 @@ extension on TranslationsDe {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Nachricht',
 			'exportSettings.shared' => 'Die Einstellungen gelten für jede Erweiterung, die diese Exportart verwendet.',
 			'exportSettings.defaultTemplates' => 'Schalte „Eigene Vorlagen“ ein, um die Vorlagen dieser Art zu bearbeiten.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Vorschau:',
 			'templateEditor.reset' => 'Zurücksetzen',
 			'templateEditor.docs' => 'Vorlagen-Doku',

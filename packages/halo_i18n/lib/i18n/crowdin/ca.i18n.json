@@ -196,6 +196,7 @@
       "operations": "Operacions",
       "chase": "Caça",
       "logs": "Registres",
+      "maps": "Mapes",
       "settings": "Configuració"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "No s'ha pogut copiar l'informe"
     },
     "outlinesDisclaimer": "Els contorns són només de referència. Fes la teva pròpia recerca!",
+    "outlinesCredit": "Contorns: ${sources}",
+    "boundariesCredit": "Límits: ${sources}",
+    "facilitiesCredit": "Instal·lacions: ${sources}",
+    "fullCredits": "Crèdits complets de les dades",
+    "fewerCredits": "Menys crèdits",
     "emptyState": "Encara no hi ha ubicacions de QSOs.\nEls QSOs amb quadrícula, estat o país apareixeran aquí.",
     "unavailable": "El mapa no està disponible ara mateix.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "No s'ha pogut compartir la postal. Torna-ho a provar.",
       "fileName": "postal"
     }
+  },
+  "mapsView": {
+    "title": "Mapes",
+    "searchHint": "Cerca parcs, cims i més",
+    "activities": "Activitats",
+    "layers": "Capes",
+    "baseMap": "Mapa base",
+    "satellite": "Satèl·lit (Esri)",
+    "facilities": "Instal·lacions dels parcs",
+    "boundaries": "Límits",
+    "currentLocation": "Ubicació actual",
+    "noMatches(text)": "Res coincideix amb “${text}”",
+    "picksAt": {
+      "one": "${count} referència a ${where}",
+      "other": "${count} referències a ${where}"
+    },
+    "startOperation": "Inicia una operació amb aquestes referències"
   },
   "activitiesView": {
     "title": "Activitats",

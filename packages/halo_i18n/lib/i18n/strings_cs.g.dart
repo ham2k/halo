@@ -49,6 +49,7 @@ class TranslationsCs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$cs dialogs = _Translations$dialogs$cs._(_root);
 	@override late final _Translations$operation$cs operation = _Translations$operation$cs._(_root);
 	@override late final _Translations$map$cs map = _Translations$map$cs._(_root);
+	@override late final _Translations$mapsView$cs mapsView = _Translations$mapsView$cs._(_root);
 	@override late final _Translations$activitiesView$cs activitiesView = _Translations$activitiesView$cs._(_root);
 	@override late final _Translations$loggingControls$cs loggingControls = _Translations$loggingControls$cs._(_root);
 	@override late final _Translations$formChrome$cs formChrome = _Translations$formChrome$cs._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$cs extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$cs outlineIssue = _Translations$map$outlineIssue$cs._(_root);
 	@override String get outlinesDisclaimer => 'Obrysy jsou pouze orientační. Ověřte si vše sami!';
+	@override String outlinesCredit({required Object sources}) => 'Obrysy: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Hranice: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Zařízení: ${sources}';
+	@override String get fullCredits => 'Úplné zdroje dat';
+	@override String get fewerCredits => 'Méně zdrojů';
 	@override String get emptyState => 'Zatím žádné polohy QSO.\nZde se zobrazí QSO s lokátorem, státem nebo zemí.';
 	@override String get unavailable => 'Mapa teď není k dispozici.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$cs extends Translations$map$en {
 	@override String get zoomIn => 'Přiblížit';
 	@override String get zoomOut => 'Oddálit';
 	@override late final _Translations$map$postcard$cs postcard = _Translations$map$postcard$cs._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$cs extends Translations$mapsView$en {
+	_Translations$mapsView$cs._(TranslationsCs root) : this._root = root, super.internal(root);
+
+	final TranslationsCs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mapy';
+	@override String get searchHint => 'Hledat parky, vrcholy a další';
+	@override String get activities => 'Aktivity';
+	@override String get layers => 'Vrstvy';
+	@override String get baseMap => 'Podkladová mapa';
+	@override String get satellite => 'Satelit (Esri)';
+	@override String get facilities => 'Zařízení parků';
+	@override String get boundaries => 'Hranice';
+	@override String get currentLocation => 'Aktuální poloha';
+	@override String noMatches({required Object text}) => 'Výrazu „${text}“ nic neodpovídá';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count,
+		one: '${count} reference na ${where}',
+		other: '${count} referencí na ${where}',
+	);
+	@override String get startOperation => 'Zahájit aktivitu s těmito referencemi';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$cs extends Translations$home$nav$en {
 	@override String get operations => 'Aktivity';
 	@override String get chase => 'Lovení';
 	@override String get logs => 'Logy';
+	@override String get maps => 'Mapy';
 	@override String get settings => 'Nastavení';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsCs {
 			'home.nav.operations' => 'Aktivity',
 			'home.nav.chase' => 'Lovení',
 			'home.nav.logs' => 'Logy',
+			'home.nav.maps' => 'Mapy',
 			'home.nav.settings' => 'Nastavení',
 			'home.panels.operations' => 'Seznam aktivit',
 			'home.panels.operationsDescription' => 'Vaše aktivity, nejnovější první.',
@@ -4106,9 +4138,9 @@ extension on TranslationsCs {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Sdílet ${count} sloučený soubor', other: 'Sdílet ${count} sloučených souborů', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Exportovat ${count} sloučený soubor', other: 'Exportovat ${count} sloučených souborů', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: 'Stáhnout ${count} sloučený soubor', other: 'Stáhnout ${count} sloučených souborů', ), 
-			'operation.export.saveOne' => ({required Object name}) => 'Uložit ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => 'Uložit ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Sdílet ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportovat ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Stáhnout ${name}',
@@ -4244,6 +4276,11 @@ extension on TranslationsCs {
 			'map.outlineIssue.copied' => 'Hlášení zkopírováno',
 			'map.outlineIssue.notCopied' => 'Hlášení se nepodařilo zkopírovat',
 			'map.outlinesDisclaimer' => 'Obrysy jsou pouze orientační. Ověřte si vše sami!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Obrysy: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Hranice: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Zařízení: ${sources}',
+			'map.fullCredits' => 'Úplné zdroje dat',
+			'map.fewerCredits' => 'Méně zdrojů',
 			'map.emptyState' => 'Zatím žádné polohy QSO.\nZde se zobrazí QSO s lokátorem, státem nebo zemí.',
 			'map.unavailable' => 'Mapa teď není k dispozici.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsCs {
 			'map.postcard.copyFailed' => 'Schránka obrázek nepřijala. Zkuste to znovu.',
 			'map.postcard.shareFailed' => 'Pohlednici nelze sdílet. Zkuste to znovu.',
 			'map.postcard.fileName' => 'pohlednice',
+			'mapsView.title' => 'Mapy',
+			'mapsView.searchHint' => 'Hledat parky, vrcholy a další',
+			'mapsView.activities' => 'Aktivity',
+			'mapsView.layers' => 'Vrstvy',
+			'mapsView.baseMap' => 'Podkladová mapa',
+			'mapsView.satellite' => 'Satelit (Esri)',
+			'mapsView.facilities' => 'Zařízení parků',
+			'mapsView.boundaries' => 'Hranice',
+			'mapsView.currentLocation' => 'Aktuální poloha',
+			'mapsView.noMatches' => ({required Object text}) => 'Výrazu „${text}“ nic neodpovídá',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cs'))(count, one: '${count} reference na ${where}', other: '${count} referencí na ${where}', ), 
+			'mapsView.startOperation' => 'Zahájit aktivitu s těmito referencemi',
 			'activitiesView.title' => 'Aktivity',
 			'activitiesView.activitiesCountZero' => 'Nevybrány žádné aktivity',
 			'activitiesView.activitiesCountOne' => '1 aktivita',
@@ -4603,6 +4652,8 @@ extension on TranslationsCs {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} nemůže naslouchat na portu ${port}: používá ho jiný program, často samotný ${protocol}. Zavřete ten program nebo zvolte jiný port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nemůže naslouchat na portu ${port}: tento počítač to nepovoluje. Zvolte port nad 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} přestal naslouchat na portu ${port}. Zkouší se znovu…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'Ovládání CAT',
 			'settings.radio.loggingAndCat' => 'Logování a CAT',
 			'settings.radio.tuningSection' => 'Ladění',
@@ -4621,8 +4672,6 @@ extension on TranslationsCs {
 			'settings.radio.pttKey.transmitting' => 'Vysílání',
 			'settings.radio.smartVfoSnap.title' => 'Chytré zaokrouhlení VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Když přestanete otáčet knoflíkem, frekvence se zaokrouhlí na rozumný krok. Pouze hlasové módy.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Zůstává přesně tam, kam jste naladili.',
 			'settings.radio.snapDebounce.title' => 'Chytré zaokrouhlení: Prodleva ustálení',
 			'settings.radio.snapDebounce.description' => 'Jak dlouho musí knoflík stát, než se frekvence zaokrouhlí. Kratší působí okamžitě, delší nechává prostor pro pomalý pohyb.',
@@ -5117,6 +5166,8 @@ extension on TranslationsCs {
 			'settings.station.hrdTroubleshooting' => 'Toto se připojuje k **Rig Control z Ham Radio Deluxe, běžícímu na vašem počítači**, ne přímo k rádiu — s rádiem komunikuje HRD.\n\n- **Rig Control už musí běžet** a být připojený k rádiu.\n- **Jeho IP server musí být zapnutý.** Rig Control komunikuje s jinými programy jen přes něj.\n- **Port** je 7809, pokud jste ho nezměnili v nastavení IP serveru.\n- **Z jiného počítače** se ujistěte, že váš firewall spojení propustí.\n\nTato položka byla napsána podle publikovaných popisů protokolu HRD a s HRD zatím nebyla vyzkoušena. Pokud funguje jen napůl, stojí za to to nahlásit.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Pokud se aplikace nemůže připojit',
 			'settings.station.n3fjpTroubleshooting' => 'Toto se připojuje k **logovacímu programu N3FJP běžícímu na vašem počítači**, ne přímo k rádiu — s rádiem komunikuje N3FJP.\n\n- **API programu musí být zapnuté**: Settings → Application Program Interface, zaškrtněte **TCP API Enabled**.\n- **Port** je 1100, pokud jste ho tam nezměnili.\n- **N3FJP musí mít nastavené rozhraní rádia**, aby mohl rádio sledovat nebo ladit. Bez něj hlásí jen to, co je zadáno v jeho vstupním okně.\n- N3FJP hlásí pouze pásmo, mód a frekvenci: žádný výkon, žádný stav vysílání.\n\nTato položka byla napsána podle publikovaného API N3FJP a s N3FJP zatím nebyla vyzkoušena. Pokud funguje jen napůl, stojí za to to nahlásit.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Pokud se aplikace nemůže připojit',
 			'settings.station.commanderTroubleshooting' => 'Toto se připojuje k **DXLab Commander, běžícímu na vašem počítači**, ne přímo k rádiu — s rádiem komunikuje Commander.\n\n- **Commander už musí běžet** a být připojený k rádiu.\n- **Jeho síťová služba musí být zapnutá**: tlačítko **Net Serv** v panelu Radio v okně Configuration programu Commander.\n- **Port** je 52002, třetí port bloku začínajícího na **Base Port** v Net Serv (52000, pokud jste ho nezměnili).\n- **Z jiného počítače** se ujistěte, že váš firewall spojení propustí.\n\nTato položka byla napsána podle publikovaných TCP zpráv Commanderu a s Commanderem zatím nebyla vyzkoušena. Pokud funguje jen napůl, stojí za to to nahlásit.',
 			'settings.station.ic705TroubleshootingTitle' => 'Pokud rádio nikdy neodpoví',
@@ -5135,8 +5186,6 @@ extension on TranslationsCs {
 			'settings.station.antennaBands' => 'Pásma',
 			'settings.station.antennaType' => 'Typ antény',
 			'settings.station.antennaTypeRequired' => 'Vyberte typ antény',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipól',
 			'settings.station.antennaTypes.vertical' => 'Vertikál',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / směrovka',
@@ -5631,6 +5680,8 @@ extension on TranslationsCs {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL zpráva',
 			'exportSettings.shared' => 'Nastavení platí pro všechna rozšíření, která používají tento typ exportu.',
 			'exportSettings.defaultTemplates' => 'Pro úpravu šablon tohoto typu zapněte Vlastní šablony.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Náhled:',
 			'templateEditor.reset' => 'Obnovit',
 			'templateEditor.docs' => 'Dokumentace šablon',

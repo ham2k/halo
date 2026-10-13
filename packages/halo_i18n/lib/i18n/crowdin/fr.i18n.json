@@ -196,6 +196,7 @@
       "operations": "Opérations",
       "chase": "Chasse",
       "logs": "Journaux",
+      "maps": "Cartes",
       "settings": "Paramètres"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Impossible de copier le signalement"
     },
     "outlinesDisclaimer": "Les contours sont donnés à titre indicatif. Faites vos propres recherches !",
+    "outlinesCredit": "Contours : ${sources}",
+    "boundariesCredit": "Limites : ${sources}",
+    "facilitiesCredit": "Équipements : ${sources}",
+    "fullCredits": "Crédits complets des données",
+    "fewerCredits": "Moins de crédits",
     "emptyState": "Aucune position de QSO pour l'instant.\nLes QSOs avec un locator, un état ou un pays apparaîtront ici.",
     "unavailable": "La carte n'est pas disponible pour le moment.",
     "qthPopupTitle": "QTH : ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Impossible de partager la carte postale. Réessayez.",
       "fileName": "carte-postale"
     }
+  },
+  "mapsView": {
+    "title": "Cartes",
+    "searchHint": "Rechercher des parcs, des sommets et plus",
+    "activities": "Activités",
+    "layers": "Calques",
+    "baseMap": "Fond de carte",
+    "satellite": "Satellite (Esri)",
+    "facilities": "Équipements des parcs",
+    "boundaries": "Limites",
+    "currentLocation": "Position actuelle",
+    "noMatches(text)": "Rien ne correspond à « ${text} »",
+    "picksAt": {
+      "one": "${count} référence à ${where}",
+      "other": "${count} références à ${where}"
+    },
+    "startOperation": "Commencer une opération avec ces références"
   },
   "activitiesView": {
     "title": "Activités",

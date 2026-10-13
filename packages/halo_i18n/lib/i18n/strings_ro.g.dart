@@ -49,6 +49,7 @@ class TranslationsRo extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$ro dialogs = _Translations$dialogs$ro._(_root);
 	@override late final _Translations$operation$ro operation = _Translations$operation$ro._(_root);
 	@override late final _Translations$map$ro map = _Translations$map$ro._(_root);
+	@override late final _Translations$mapsView$ro mapsView = _Translations$mapsView$ro._(_root);
 	@override late final _Translations$activitiesView$ro activitiesView = _Translations$activitiesView$ro._(_root);
 	@override late final _Translations$loggingControls$ro loggingControls = _Translations$loggingControls$ro._(_root);
 	@override late final _Translations$formChrome$ro formChrome = _Translations$formChrome$ro._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$ro extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$ro outlineIssue = _Translations$map$outlineIssue$ro._(_root);
 	@override String get outlinesDisclaimer => 'Contururile sunt doar orientative. Verificați și singuri!';
+	@override String outlinesCredit({required Object sources}) => 'Contururi: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Limite: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Facilități: ${sources}';
+	@override String get fullCredits => 'Toate sursele datelor';
+	@override String get fewerCredits => 'Mai puține surse';
 	@override String get emptyState => 'Nicio locație de QSO încă.\nQSO-urile cu pătrat de grilă, stat sau țară vor apărea aici.';
 	@override String get unavailable => 'Harta nu este disponibilă acum.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$ro extends Translations$map$en {
 	@override String get zoomIn => 'Mărire';
 	@override String get zoomOut => 'Micșorare';
 	@override late final _Translations$map$postcard$ro postcard = _Translations$map$postcard$ro._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$ro extends Translations$mapsView$en {
+	_Translations$mapsView$ro._(TranslationsRo root) : this._root = root, super.internal(root);
+
+	final TranslationsRo _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Hărți';
+	@override String get searchHint => 'Căutați parcuri, vârfuri și altele';
+	@override String get activities => 'Activități';
+	@override String get layers => 'Straturi';
+	@override String get baseMap => 'Hartă de bază';
+	@override String get satellite => 'Satelit (Esri)';
+	@override String get facilities => 'Facilitățile parcurilor';
+	@override String get boundaries => 'Limite';
+	@override String get currentLocation => 'Locația actuală';
+	@override String noMatches({required Object text}) => 'Nimic nu corespunde cu „${text}”';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count,
+		one: '${count} referință la ${where}',
+		other: '${count} referințe la ${where}',
+	);
+	@override String get startOperation => 'Porniți o operațiune cu aceste referințe';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$ro extends Translations$home$nav$en {
 	@override String get operations => 'Operațiuni';
 	@override String get chase => 'Vânătoare';
 	@override String get logs => 'Jurnale';
+	@override String get maps => 'Hărți';
 	@override String get settings => 'Setări';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsRo {
 			'home.nav.operations' => 'Operațiuni',
 			'home.nav.chase' => 'Vânătoare',
 			'home.nav.logs' => 'Jurnale',
+			'home.nav.maps' => 'Hărți',
 			'home.nav.settings' => 'Setări',
 			'home.panels.operations' => 'Listă de operațiuni',
 			'home.panels.operationsDescription' => 'Operațiunile dvs., cele mai recente primele.',
@@ -4106,9 +4138,9 @@ extension on TranslationsRo {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Partajează ${count} fișier combinat', other: 'Partajează ${count} fișiere combinate', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${count} fișier combinat', other: 'Exportă ${count} fișiere combinate', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${count} fișier combinat', other: 'Descarcă ${count} fișiere combinate', ), 
-			'operation.export.saveOne' => ({required Object name}) => 'Salvează ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => 'Salvează ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Partajează ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportă ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarcă ${name}',
@@ -4244,6 +4276,11 @@ extension on TranslationsRo {
 			'map.outlineIssue.copied' => 'Raport copiat',
 			'map.outlineIssue.notCopied' => 'Raportul nu a putut fi copiat',
 			'map.outlinesDisclaimer' => 'Contururile sunt doar orientative. Verificați și singuri!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Contururi: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Limite: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Facilități: ${sources}',
+			'map.fullCredits' => 'Toate sursele datelor',
+			'map.fewerCredits' => 'Mai puține surse',
 			'map.emptyState' => 'Nicio locație de QSO încă.\nQSO-urile cu pătrat de grilă, stat sau țară vor apărea aici.',
 			'map.unavailable' => 'Harta nu este disponibilă acum.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsRo {
 			'map.postcard.copyFailed' => 'Clipboardul nu a acceptat imaginea. Încercați din nou.',
 			'map.postcard.shareFailed' => 'Cartea poștală nu a putut fi partajată. Încercați din nou.',
 			'map.postcard.fileName' => 'carte-postala',
+			'mapsView.title' => 'Hărți',
+			'mapsView.searchHint' => 'Căutați parcuri, vârfuri și altele',
+			'mapsView.activities' => 'Activități',
+			'mapsView.layers' => 'Straturi',
+			'mapsView.baseMap' => 'Hartă de bază',
+			'mapsView.satellite' => 'Satelit (Esri)',
+			'mapsView.facilities' => 'Facilitățile parcurilor',
+			'mapsView.boundaries' => 'Limite',
+			'mapsView.currentLocation' => 'Locația actuală',
+			'mapsView.noMatches' => ({required Object text}) => 'Nimic nu corespunde cu „${text}”',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: '${count} referință la ${where}', other: '${count} referințe la ${where}', ), 
+			'mapsView.startOperation' => 'Porniți o operațiune cu aceste referințe',
 			'activitiesView.title' => 'Activități',
 			'activitiesView.activitiesCountZero' => 'Nicio activitate selectată',
 			'activitiesView.activitiesCountOne' => '1 activitate',
@@ -4603,6 +4652,8 @@ extension on TranslationsRo {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} nu poate asculta pe portul ${port}: un alt program îl folosește, adesea chiar ${protocol}. Închideți acel program sau alegeți alt port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nu poate asculta pe portul ${port}: acest calculator nu permite. Alegeți un port peste 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} a oprit ascultarea pe portul ${port}. Se reîncearcă…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Înregistrare și CAT',
 			'settings.radio.tuningSection' => 'Acord',
@@ -4621,8 +4672,6 @@ extension on TranslationsRo {
 			'settings.radio.pttKey.transmitting' => 'Emisie',
 			'settings.radio.smartVfoSnap.title' => 'Rotunjire inteligentă VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'După ce opriți rotirea butonului, frecvența se rotunjește la un pas rezonabil. Doar în modurile de voce.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Rămâne exact unde ați acordat.',
 			'settings.radio.snapDebounce.title' => 'Rotunjire inteligentă: întârziere de stabilizare',
 			'settings.radio.snapDebounce.description' => 'Cât timp trebuie să stea butonul nemișcat înainte de rotunjirea frecvenței. Mai scurt pare imediat; mai lung lasă loc unei mișcări lente.',
@@ -5117,6 +5166,8 @@ extension on TranslationsRo {
 			'settings.station.hrdTroubleshooting' => 'Aceasta se conectează la **Rig Control din Ham Radio Deluxe, care rulează pe calculatorul dvs.**, nu direct la stația radio — HRD comunică cu stația.\n\n- **Rig Control trebuie să ruleze deja** și să fie conectat la stație.\n- **Serverul IP al acestuia trebuie să fie activat.** Rig Control comunică cu alte programe doar prin el.\n- **Portul** este 7809, dacă nu l-ați schimbat în setările serverului IP.\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după descrieri publicate ale protocolului HRD și nu a fost testată cu HRD. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			'settings.station.n3fjpTroubleshooting' => 'Aceasta se conectează la **un program de log N3FJP care rulează pe calculatorul dvs.**, nu direct la stația radio — N3FJP comunică cu stația.\n\n- **API-ul programului trebuie să fie activ**: Settings → Application Program Interface, bifați **TCP API Enabled**.\n- **Portul** este 1100, dacă nu l-ați schimbat acolo.\n- **N3FJP trebuie să aibă configurată o interfață radio** pentru a urmări sau acorda stația. Fără una, raportează doar ce se tastează în fereastra de introducere.\n- N3FJP raportează doar banda, modul și frecvența: fără putere, fără starea de emisie.\n\nAceastă intrare a fost scrisă după API-ul publicat de N3FJP și nu a fost testată cu N3FJP. Dacă funcționează pe jumătate, merită raportat.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			'settings.station.commanderTroubleshooting' => 'Aceasta se conectează la **DXLab Commander, care rulează pe calculatorul dvs.**, nu direct la stația radio — Commander comunică cu stația.\n\n- **Commander trebuie să ruleze deja** și să fie conectat la stație.\n- **Serviciul de rețea trebuie să fie activ**: butonul **Net Serv** din panoul Radio al ferestrei Configuration din Commander.\n- **Portul** este 52002, al treilea port din blocul care începe la **Base Port** din Net Serv (52000, dacă nu l-ați schimbat).\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după mesajele TCP publicate de Commander și nu a fost testată cu Commander. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.ic705TroubleshootingTitle' => 'Dacă stația radio nu răspunde niciodată',
@@ -5135,8 +5186,6 @@ extension on TranslationsRo {
 			'settings.station.antennaBands' => 'Benzi',
 			'settings.station.antennaType' => 'Tip de antenă',
 			'settings.station.antennaTypeRequired' => 'Alegeți un tip de antenă',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipol',
 			'settings.station.antennaTypes.vertical' => 'Verticală',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
@@ -5631,6 +5680,8 @@ extension on TranslationsRo {
 			'exportSettings.adifQslMessageTemplate' => 'Mesaj QSL ADIF',
 			'exportSettings.shared' => 'Setările se aplică fiecărei extensii care folosește acest tip de export.',
 			'exportSettings.defaultTemplates' => 'Activați Șabloane personalizate pentru a edita șabloanele acestui tip.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Previzualizare:',
 			'templateEditor.reset' => 'Resetează',
 			'templateEditor.docs' => 'Documentație șabloane',

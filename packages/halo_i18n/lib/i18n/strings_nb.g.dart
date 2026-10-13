@@ -49,6 +49,7 @@ class TranslationsNb extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$nb dialogs = _Translations$dialogs$nb._(_root);
 	@override late final _Translations$operation$nb operation = _Translations$operation$nb._(_root);
 	@override late final _Translations$map$nb map = _Translations$map$nb._(_root);
+	@override late final _Translations$mapsView$nb mapsView = _Translations$mapsView$nb._(_root);
 	@override late final _Translations$activitiesView$nb activitiesView = _Translations$activitiesView$nb._(_root);
 	@override late final _Translations$loggingControls$nb loggingControls = _Translations$loggingControls$nb._(_root);
 	@override late final _Translations$formChrome$nb formChrome = _Translations$formChrome$nb._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$nb extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$nb outlineIssue = _Translations$map$outlineIssue$nb._(_root);
 	@override String get outlinesDisclaimer => 'Omrissene er bare til veiledning. Gjør dine egne undersøkelser!';
+	@override String outlinesCredit({required Object sources}) => 'Omriss: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Grenser: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Fasiliteter: ${sources}';
+	@override String get fullCredits => 'Fullstendige datakilder';
+	@override String get fewerCredits => 'Færre kilder';
 	@override String get emptyState => 'Ingen QSO-posisjoner ennå.\nQSOer med grid-rute, stat eller land vises her.';
 	@override String get unavailable => 'Kartet er ikke tilgjengelig akkurat nå.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$nb extends Translations$map$en {
 	@override String get zoomIn => 'Zoom inn';
 	@override String get zoomOut => 'Zoom ut';
 	@override late final _Translations$map$postcard$nb postcard = _Translations$map$postcard$nb._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$nb extends Translations$mapsView$en {
+	_Translations$mapsView$nb._(TranslationsNb root) : this._root = root, super.internal(root);
+
+	final TranslationsNb _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Kart';
+	@override String get searchHint => 'Søk etter parker, toppunkter og mer';
+	@override String get activities => 'Aktiviteter';
+	@override String get layers => 'Lag';
+	@override String get baseMap => 'Grunnkart';
+	@override String get satellite => 'Satellitt (Esri)';
+	@override String get facilities => 'Parkfasiliteter';
+	@override String get boundaries => 'Grenser';
+	@override String get currentLocation => 'Nåværende posisjon';
+	@override String noMatches({required Object text}) => 'Ingenting samsvarer med «${text}»';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count,
+		one: '${count} referanse ved ${where}',
+		other: '${count} referanser ved ${where}',
+	);
+	@override String get startOperation => 'Start en operasjon med disse referansene';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$nb extends Translations$home$nav$en {
 	@override String get operations => 'Operasjoner';
 	@override String get chase => 'Jakt';
 	@override String get logs => 'Logger';
+	@override String get maps => 'Kart';
 	@override String get settings => 'Innstillinger';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsNb {
 			'home.nav.operations' => 'Operasjoner',
 			'home.nav.chase' => 'Jakt',
 			'home.nav.logs' => 'Logger',
+			'home.nav.maps' => 'Kart',
 			'home.nav.settings' => 'Innstillinger',
 			'home.panels.operations' => 'Operasjonsliste',
 			'home.panels.operationsDescription' => 'Operasjonene dine, nyeste først.',
@@ -4106,9 +4138,9 @@ extension on TranslationsNb {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Del ${count} samlet fil', other: 'Del ${count} samlede filer', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${count} samlet fil', other: 'Eksporter ${count} samlede filer', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${count} samlet fil', other: 'Last ned ${count} samlede filer', ), 
-			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Del ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Eksporter ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Last ned ${name}',
@@ -4244,6 +4276,11 @@ extension on TranslationsNb {
 			'map.outlineIssue.copied' => 'Rapporten er kopiert',
 			'map.outlineIssue.notCopied' => 'Kunne ikke kopiere rapporten',
 			'map.outlinesDisclaimer' => 'Omrissene er bare til veiledning. Gjør dine egne undersøkelser!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Omriss: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Grenser: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Fasiliteter: ${sources}',
+			'map.fullCredits' => 'Fullstendige datakilder',
+			'map.fewerCredits' => 'Færre kilder',
 			'map.emptyState' => 'Ingen QSO-posisjoner ennå.\nQSOer med grid-rute, stat eller land vises her.',
 			'map.unavailable' => 'Kartet er ikke tilgjengelig akkurat nå.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsNb {
 			'map.postcard.copyFailed' => 'Utklippstavlen tok ikke imot bildet. Prøv igjen.',
 			'map.postcard.shareFailed' => 'Kunne ikke dele postkortet. Prøv igjen.',
 			'map.postcard.fileName' => 'postkort',
+			'mapsView.title' => 'Kart',
+			'mapsView.searchHint' => 'Søk etter parker, toppunkter og mer',
+			'mapsView.activities' => 'Aktiviteter',
+			'mapsView.layers' => 'Lag',
+			'mapsView.baseMap' => 'Grunnkart',
+			'mapsView.satellite' => 'Satellitt (Esri)',
+			'mapsView.facilities' => 'Parkfasiliteter',
+			'mapsView.boundaries' => 'Grenser',
+			'mapsView.currentLocation' => 'Nåværende posisjon',
+			'mapsView.noMatches' => ({required Object text}) => 'Ingenting samsvarer med «${text}»',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: '${count} referanse ved ${where}', other: '${count} referanser ved ${where}', ), 
+			'mapsView.startOperation' => 'Start en operasjon med disse referansene',
 			'activitiesView.title' => 'Aktiviteter',
 			'activitiesView.activitiesCountZero' => 'Ingen aktiviteter valgt',
 			'activitiesView.activitiesCountOne' => '1 aktivitet',
@@ -4603,6 +4652,8 @@ extension on TranslationsNb {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: et annet program bruker den, ofte ${protocol} selv. Lukk det programmet eller velg en annen port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: denne datamaskinen tillater det ikke. Velg en port over 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} sluttet å lytte på port ${port}. Prøver igjen…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'CAT-styring',
 			'settings.radio.loggingAndCat' => 'Logging og CAT',
 			'settings.radio.tuningSection' => 'Avstemming',
@@ -4621,8 +4672,6 @@ extension on TranslationsNb {
 			'settings.radio.pttKey.transmitting' => 'Sender',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO-avrunding',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Når du slutter å vri på hjulet, rundes frekvensen av til et fornuftig steg. Bare talemoduser.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Blir stående nøyaktig der du stilte inn.',
 			'settings.radio.snapDebounce.title' => 'Smart avrunding: Ventetid',
 			'settings.radio.snapDebounce.description' => 'Hvor lenge hjulet må stå stille før frekvensen rundes av. Kortere føles umiddelbart; lengre gir rom for en langsom bevegelse.',
@@ -5117,6 +5166,8 @@ extension on TranslationsNb {
 			'settings.station.hrdTroubleshooting' => 'Dette kobler til **Ham Radio Deluxes Rig Control, som kjører på datamaskinen din**, ikke direkte til radioen — HRD snakker med radioen.\n\n- **Rig Control må allerede kjøre** og være koblet til radioen.\n- **IP-serveren må være aktivert.** Rig Control snakker bare med andre programmer gjennom den.\n- **Porten** er 7809 med mindre du har endret den i innstillingene for IP-serveren.\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter publiserte beskrivelser av HRDs protokoll og har ikke blitt kjørt mot HRD. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.n3fjpTroubleshooting' => 'Dette kobler til **et N3FJP-loggeprogram som kjører på datamaskinen din**, ikke direkte til radioen — N3FJP snakker med radioen.\n\n- **Programmets API må være på**: Settings → Application Program Interface, kryss av for **TCP API Enabled**.\n- **Porten** er 1100 med mindre du har endret den der.\n- **N3FJP må ha et radiogrensesnitt satt opp** for å følge eller stille inn radioen. Uten det rapporterer den bare det som skrives inn i registreringsvinduet.\n- N3FJP rapporterer bare bånd, modus og frekvens: ingen effekt, ingen sendestatus.\n\nDenne oppføringen er skrevet etter N3FJPs publiserte API og har ikke blitt kjørt mot N3FJP. Hvis den halvveis virker, er det verdt å rapportere.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.commanderTroubleshooting' => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.ic705TroubleshootingTitle' => 'Hvis radioen aldri svarer',
@@ -5135,8 +5186,6 @@ extension on TranslationsNb {
 			'settings.station.antennaBands' => 'Bånd',
 			'settings.station.antennaType' => 'Antennetype',
 			'settings.station.antennaTypeRequired' => 'Velg en antennetype',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipol',
 			'settings.station.antennaTypes.vertical' => 'Vertikal',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / beam',
@@ -5631,6 +5680,8 @@ extension on TranslationsNb {
 			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL-melding',
 			'exportSettings.shared' => 'Innstillingene gjelder for alle utvidelser som bruker denne eksporttypen.',
 			'exportSettings.defaultTemplates' => 'Slå på Egendefinerte maler for å redigere malene for denne typen.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Forhåndsvisning:',
 			'templateEditor.reset' => 'Tilbakestill',
 			'templateEditor.docs' => 'Dokumentasjon for maler',

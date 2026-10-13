@@ -196,6 +196,7 @@
       "operations": "운용",
       "chase": "추적",
       "logs": "로그",
+      "maps": "지도",
       "settings": "설정"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "신고 내용을 복사할 수 없습니다"
     },
     "outlinesDisclaimer": "경계선은 참고용입니다. 직접 확인하세요!",
+    "outlinesCredit": "경계선: ${sources}",
+    "boundariesCredit": "행정 경계: ${sources}",
+    "facilitiesCredit": "시설: ${sources}",
+    "fullCredits": "전체 데이터 출처",
+    "fewerCredits": "출처 줄이기",
     "emptyState": "아직 QSO 위치가 없습니다.\n그리드 스퀘어, 주 또는 국가가 있는 QSO가 여기에 표시됩니다.",
     "unavailable": "지금은 지도를 사용할 수 없습니다.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "엽서를 공유할 수 없습니다. 다시 시도하세요.",
       "fileName": "엽서"
     }
+  },
+  "mapsView": {
+    "title": "지도",
+    "searchHint": "공원, 산 정상 등 검색",
+    "activities": "활동",
+    "layers": "레이어",
+    "baseMap": "기본 지도",
+    "satellite": "위성 (Esri)",
+    "facilities": "공원 시설",
+    "boundaries": "행정 경계",
+    "currentLocation": "현재 위치",
+    "noMatches(text)": "“${text}”과(와) 일치하는 항목이 없습니다",
+    "picksAt": {
+      "one": "${where}의 레퍼런스 ${count}개",
+      "other": "${where}의 레퍼런스 ${count}개"
+    },
+    "startOperation": "이 레퍼런스로 운용 시작"
   },
   "activitiesView": {
     "title": "활동",

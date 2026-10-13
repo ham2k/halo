@@ -49,6 +49,7 @@ class TranslationsCa extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$dialogs$ca dialogs = _Translations$dialogs$ca._(_root);
 	@override late final _Translations$operation$ca operation = _Translations$operation$ca._(_root);
 	@override late final _Translations$map$ca map = _Translations$map$ca._(_root);
+	@override late final _Translations$mapsView$ca mapsView = _Translations$mapsView$ca._(_root);
 	@override late final _Translations$activitiesView$ca activitiesView = _Translations$activitiesView$ca._(_root);
 	@override late final _Translations$loggingControls$ca loggingControls = _Translations$loggingControls$ca._(_root);
 	@override late final _Translations$formChrome$ca formChrome = _Translations$formChrome$ca._(_root);
@@ -406,6 +407,11 @@ class _Translations$map$ca extends Translations$map$en {
 	// Translations
 	@override late final _Translations$map$outlineIssue$ca outlineIssue = _Translations$map$outlineIssue$ca._(_root);
 	@override String get outlinesDisclaimer => 'Els contorns són només de referència. Fes la teva pròpia recerca!';
+	@override String outlinesCredit({required Object sources}) => 'Contorns: ${sources}';
+	@override String boundariesCredit({required Object sources}) => 'Límits: ${sources}';
+	@override String facilitiesCredit({required Object sources}) => 'Instal·lacions: ${sources}';
+	@override String get fullCredits => 'Crèdits complets de les dades';
+	@override String get fewerCredits => 'Menys crèdits';
 	@override String get emptyState => 'Encara no hi ha ubicacions de QSOs.\nEls QSOs amb quadrícula, estat o país apareixeran aquí.';
 	@override String get unavailable => 'El mapa no està disponible ara mateix.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -416,6 +422,30 @@ class _Translations$map$ca extends Translations$map$en {
 	@override String get zoomIn => 'Amplia';
 	@override String get zoomOut => 'Redueix';
 	@override late final _Translations$map$postcard$ca postcard = _Translations$map$postcard$ca._(_root);
+}
+
+// Path: mapsView
+class _Translations$mapsView$ca extends Translations$mapsView$en {
+	_Translations$mapsView$ca._(TranslationsCa root) : this._root = root, super.internal(root);
+
+	final TranslationsCa _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mapes';
+	@override String get searchHint => 'Cerca parcs, cims i més';
+	@override String get activities => 'Activitats';
+	@override String get layers => 'Capes';
+	@override String get baseMap => 'Mapa base';
+	@override String get satellite => 'Satèl·lit (Esri)';
+	@override String get facilities => 'Instal·lacions dels parcs';
+	@override String get boundaries => 'Límits';
+	@override String get currentLocation => 'Ubicació actual';
+	@override String noMatches({required Object text}) => 'Res coincideix amb “${text}”';
+	@override String picksAt({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count,
+		one: '${count} referència a ${where}',
+		other: '${count} referències a ${where}',
+	);
+	@override String get startOperation => 'Inicia una operació amb aquestes referències';
 }
 
 // Path: activitiesView
@@ -1244,6 +1274,7 @@ class _Translations$home$nav$ca extends Translations$home$nav$en {
 	@override String get operations => 'Operacions';
 	@override String get chase => 'Caça';
 	@override String get logs => 'Registres';
+	@override String get maps => 'Mapes';
 	@override String get settings => 'Configuració';
 }
 
@@ -3771,6 +3802,7 @@ extension on TranslationsCa {
 			'home.nav.operations' => 'Operacions',
 			'home.nav.chase' => 'Caça',
 			'home.nav.logs' => 'Registres',
+			'home.nav.maps' => 'Mapes',
 			'home.nav.settings' => 'Configuració',
 			'home.panels.operations' => 'Llista d\'operacions',
 			'home.panels.operationsDescription' => 'Les teves operacions, les més recents primer.',
@@ -4106,9 +4138,9 @@ extension on TranslationsCa {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Comparteix ${count} fitxer combinat', other: 'Comparteix ${count} fitxers combinats', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${count} fitxer combinat', other: 'Exporta ${count} fitxers combinats', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${count} fitxer combinat', other: 'Descarrega ${count} fitxers combinats', ), 
-			'operation.export.saveOne' => ({required Object name}) => 'Desa ${name}',
 			_ => null,
 		} ?? switch (path) {
+			'operation.export.saveOne' => ({required Object name}) => 'Desa ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Comparteix ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exporta ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarrega ${name}',
@@ -4244,6 +4276,11 @@ extension on TranslationsCa {
 			'map.outlineIssue.copied' => 'Informe copiat',
 			'map.outlineIssue.notCopied' => 'No s\'ha pogut copiar l\'informe',
 			'map.outlinesDisclaimer' => 'Els contorns són només de referència. Fes la teva pròpia recerca!',
+			'map.outlinesCredit' => ({required Object sources}) => 'Contorns: ${sources}',
+			'map.boundariesCredit' => ({required Object sources}) => 'Límits: ${sources}',
+			'map.facilitiesCredit' => ({required Object sources}) => 'Instal·lacions: ${sources}',
+			'map.fullCredits' => 'Crèdits complets de les dades',
+			'map.fewerCredits' => 'Menys crèdits',
 			'map.emptyState' => 'Encara no hi ha ubicacions de QSOs.\nEls QSOs amb quadrícula, estat o país apareixeran aquí.',
 			'map.unavailable' => 'El mapa no està disponible ara mateix.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
@@ -4284,6 +4321,18 @@ extension on TranslationsCa {
 			'map.postcard.copyFailed' => 'El porta-retalls no ha acceptat la imatge. Torna-ho a provar.',
 			'map.postcard.shareFailed' => 'No s\'ha pogut compartir la postal. Torna-ho a provar.',
 			'map.postcard.fileName' => 'postal',
+			'mapsView.title' => 'Mapes',
+			'mapsView.searchHint' => 'Cerca parcs, cims i més',
+			'mapsView.activities' => 'Activitats',
+			'mapsView.layers' => 'Capes',
+			'mapsView.baseMap' => 'Mapa base',
+			'mapsView.satellite' => 'Satèl·lit (Esri)',
+			'mapsView.facilities' => 'Instal·lacions dels parcs',
+			'mapsView.boundaries' => 'Límits',
+			'mapsView.currentLocation' => 'Ubicació actual',
+			'mapsView.noMatches' => ({required Object text}) => 'Res coincideix amb “${text}”',
+			'mapsView.picksAt' => ({required num count, required Object where}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: '${count} referència a ${where}', other: '${count} referències a ${where}', ), 
+			'mapsView.startOperation' => 'Inicia una operació amb aquestes referències',
 			'activitiesView.title' => 'Activitats',
 			'activitiesView.activitiesCountZero' => 'Cap activitat seleccionada',
 			'activitiesView.activitiesCountOne' => '1 activitat',
@@ -4603,6 +4652,8 @@ extension on TranslationsCa {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} no pot escoltar al port ${port}: un altre programa l\'està fent servir, sovint el mateix ${protocol}. Tanca aquest programa o tria un altre port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no pot escoltar al port ${port}: aquest ordinador no ho permet. Tria un port per sobre de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} ha deixat d\'escoltar al port ${port}. Tornant-ho a provar…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.radio.title' => 'Control CAT',
 			'settings.radio.loggingAndCat' => 'Registre i CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
@@ -4621,8 +4672,6 @@ extension on TranslationsCa {
 			'settings.radio.pttKey.transmitting' => 'Transmetent',
 			'settings.radio.smartVfoSnap.title' => 'Ajust intel·ligent del VFO',
 			'settings.radio.smartVfoSnap.descriptionOn' => 'Quan deixes de girar el dial, s\'arrodoneix la freqüència a un pas raonable. Només en modes de veu.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.radio.smartVfoSnap.descriptionOff' => 'Es queda exactament on l\'has sintonitzat.',
 			'settings.radio.snapDebounce.title' => 'Ajust intel·ligent: retard d\'estabilització',
 			'settings.radio.snapDebounce.description' => 'Quant de temps s\'ha d\'aturar el dial abans d\'arrodonir la freqüència. Més curt sembla immediat; més llarg deixa marge per a un moviment lent.',
@@ -5117,6 +5166,8 @@ extension on TranslationsCa {
 			'settings.station.hrdTroubleshooting' => 'Això es connecta al **Rig Control de Ham Radio Deluxe, que s\'executa al teu ordinador**, no directament a la ràdio: HRD parla amb la ràdio.\n\n- **Rig Control ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servidor IP ha d\'estar activat.** Rig Control només parla amb altres programes a través d\'ell.\n- **El port** és el 7809, tret que l\'hagis canviat a la configuració del servidor IP.\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir de descripcions publicades del protocol d\'HRD i no s\'ha provat amb HRD. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.n3fjpTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			'settings.station.n3fjpTroubleshooting' => 'Això es connecta a **un programa de registre N3FJP que s\'executa al teu ordinador**, no directament a la ràdio: N3FJP parla amb la ràdio.\n\n- **L\'API del programa ha d\'estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El port** és el 1100, tret que l\'hagis canviat allà.\n- **N3FJP ha de tenir configurada una interfície de ràdio** per seguir o sintonitzar la ràdio. Sense, només informa del que s\'escriu a la seva finestra d\'entrada.\n- N3FJP només informa de banda, mode i freqüència: ni potència ni estat de transmissió.\n\nAquesta entrada s\'ha escrit a partir de l\'API publicada d\'N3FJP i no s\'ha provat amb N3FJP. Si funciona a mitges, val la pena informar-ne.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.commanderTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			'settings.station.commanderTroubleshooting' => 'Això es connecta a **DXLab Commander, que s\'executa al teu ordinador**, no directament a la ràdio: Commander parla amb la ràdio.\n\n- **Commander ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servei de xarxa ha d\'estar activat**: el botó **Net Serv** al panell Radio de la finestra Configuration de Commander.\n- **El port** és el 52002, el tercer port del bloc que comença al **Base Port** de Net Serv (52000 tret que l\'hagis canviat).\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir dels missatges TCP publicats de Commander i no s\'ha provat amb Commander. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la ràdio no respon mai',
@@ -5135,8 +5186,6 @@ extension on TranslationsCa {
 			'settings.station.antennaBands' => 'Bandes',
 			'settings.station.antennaType' => 'Tipus d\'antena',
 			'settings.station.antennaTypeRequired' => 'Tria un tipus d\'antena',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipol',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Directiva',
@@ -5631,6 +5680,8 @@ extension on TranslationsCa {
 			'exportSettings.adifQslMessageTemplate' => 'Missatge ADIF QSL',
 			'exportSettings.shared' => 'La configuració s\'aplica a totes les extensions que utilitzen aquest tipus d\'exportació.',
 			'exportSettings.defaultTemplates' => 'Activa Plantilles personalitzades per editar les plantilles d\'aquest tipus.',
+			_ => null,
+		} ?? switch (path) {
 			'templateEditor.previewLabel' => 'Previsualització:',
 			'templateEditor.reset' => 'Restableix',
 			'templateEditor.docs' => 'Documentació de plantilles',

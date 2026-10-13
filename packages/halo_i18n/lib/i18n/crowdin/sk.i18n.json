@@ -196,6 +196,7 @@
       "operations": "Prevádzky",
       "chase": "Lov",
       "logs": "Denníky",
+      "maps": "Mapy",
       "settings": "Nastavenia"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Hlásenie sa nepodarilo skopírovať"
     },
     "outlinesDisclaimer": "Obrysy sú iba orientačné. Overte si to sami!",
+    "outlinesCredit": "Obrysy: ${sources}",
+    "boundariesCredit": "Hranice: ${sources}",
+    "facilitiesCredit": "Zariadenia: ${sources}",
+    "fullCredits": "Úplné zdroje údajov",
+    "fewerCredits": "Menej zdrojov",
     "emptyState": "Zatiaľ žiadne polohy QSO.\nTu sa zobrazia QSO s lokátorom, štátom alebo krajinou.",
     "unavailable": "Mapa momentálne nie je dostupná.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Pohľadnicu sa nepodarilo zdieľať. Skúste to znova.",
       "fileName": "pohladnica"
     }
+  },
+  "mapsView": {
+    "title": "Mapy",
+    "searchHint": "Hľadať parky, vrcholy a ďalšie",
+    "activities": "Aktivity",
+    "layers": "Vrstvy",
+    "baseMap": "Podkladová mapa",
+    "satellite": "Satelit (Esri)",
+    "facilities": "Zariadenia parkov",
+    "boundaries": "Hranice",
+    "currentLocation": "Aktuálna poloha",
+    "noMatches(text)": "„${text}“ nič nezodpovedá",
+    "picksAt": {
+      "one": "${count} referencia na ${where}",
+      "other": "${count} referencií na ${where}"
+    },
+    "startOperation": "Začať prevádzku s týmito referenciami"
   },
   "activitiesView": {
     "title": "Aktivity",

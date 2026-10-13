@@ -196,6 +196,7 @@
       "operations": "Activaties",
       "chase": "Jagen",
       "logs": "Logboeken",
+      "maps": "Kaarten",
       "settings": "Instellingen"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "Kon de melding niet kopiëren"
     },
     "outlinesDisclaimer": "Omtrekken zijn alleen ter referentie. Doe je eigen onderzoek!",
+    "outlinesCredit": "Omtrekken: ${sources}",
+    "boundariesCredit": "Grenzen: ${sources}",
+    "facilitiesCredit": "Voorzieningen: ${sources}",
+    "fullCredits": "Volledige bronvermelding",
+    "fewerCredits": "Minder bronnen",
     "emptyState": "Nog geen QSO-locaties.\nQSO's met een grid square, staat of land verschijnen hier.",
     "unavailable": "De kaart is nu niet beschikbaar.",
     "qthPopupTitle": "QTH: ${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "Kon de ansichtkaart niet delen. Probeer het opnieuw.",
       "fileName": "ansichtkaart"
     }
+  },
+  "mapsView": {
+    "title": "Kaarten",
+    "searchHint": "Zoek parken, toppen en meer",
+    "activities": "Activiteiten",
+    "layers": "Lagen",
+    "baseMap": "Basiskaart",
+    "satellite": "Satelliet (Esri)",
+    "facilities": "Parkvoorzieningen",
+    "boundaries": "Grenzen",
+    "currentLocation": "Huidige locatie",
+    "noMatches(text)": "Niets gevonden voor “${text}”",
+    "picksAt": {
+      "one": "${count} referentie bij ${where}",
+      "other": "${count} referenties bij ${where}"
+    },
+    "startOperation": "Start een activatie met deze referenties"
   },
   "activitiesView": {
     "title": "Activiteiten",

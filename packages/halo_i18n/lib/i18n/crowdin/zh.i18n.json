@@ -196,6 +196,7 @@
       "operations": "操作",
       "chase": "追逐",
       "logs": "日志",
+      "maps": "地图",
       "settings": "设置"
     },
     "panels": {
@@ -804,6 +805,11 @@
       "notCopied": "无法复制报告"
     },
     "outlinesDisclaimer": "轮廓仅供参考，请自行核实！",
+    "outlinesCredit": "轮廓：${sources}",
+    "boundariesCredit": "行政边界：${sources}",
+    "facilitiesCredit": "设施：${sources}",
+    "fullCredits": "完整数据来源",
+    "fewerCredits": "更少来源",
     "emptyState": "还没有 QSO 位置。\n带有网格、州或国家的 QSO 会显示在这里。",
     "unavailable": "地图目前不可用。",
     "qthPopupTitle": "QTH：${grid}",
@@ -846,6 +852,23 @@
       "shareFailed": "无法分享明信片，请重试。",
       "fileName": "postcard"
     }
+  },
+  "mapsView": {
+    "title": "地图",
+    "searchHint": "搜索公园、山峰等",
+    "activities": "活动",
+    "layers": "图层",
+    "baseMap": "底图",
+    "satellite": "卫星影像 (Esri)",
+    "facilities": "公园设施",
+    "boundaries": "行政边界",
+    "currentLocation": "当前位置",
+    "noMatches(text)": "没有与“${text}”匹配的内容",
+    "picksAt": {
+      "one": "${where} 处的 ${count} 个参考",
+      "other": "${where} 处的 ${count} 个参考"
+    },
+    "startOperation": "用这些参考开始操作"
   },
   "activitiesView": {
     "title": "活动",
