@@ -40,8 +40,84 @@ self.sendMessage = function (channel, message) {
   // stringifies it once instead of double-escaping the whole payload.
   rawPostMessage(JSON.stringify({ kind: 'polo', message: JSON.parse(message) }));
 };
+// What a busy span is charged to — the labels the native core uses, as far
+// as the worker can tell them apart (it never learns a host call's method).
+// Mirrors batchLabel in hook_call_stats.dart.
+function batchLabel(callsJson) {
+  try {
+    const methods = new Set(JSON.parse(callsJson).map(function (call) { return call && call.method; }));
+    return methods.size === 1 ? 'batch:' + methods.values().next().value : 'batch:mixed';
+  } catch (err) {
+    return 'batch';
+  }
+}
+function busyLabel(msg) {
+  switch (msg.kind) {
+    case 'invoke': return msg.category + '.' + msg.method + (msg.key ? '@' + msg.key : '');
+    case 'invokeAll': return msg.category + '.' + msg.method;
+    case 'invokeBatch': return batchLabel(msg.callsJson);
+    case 'runTimers': return 'timers';
+    default: return msg.kind;
+  }
+}
+// A busy span opens when a message arrives and closes when a task queued
+// behind it runs — after the microtasks its handling started. That is where
+// a hook's body runs: the kernel awaits the hook's context before calling
+// it, so closing the span when the handler returns would time the dispatch
+// and miss the hook. A message arriving while a span is open joins it
+// rather than overlapping it. Work the worker does outside a message's
+// microtasks is not seen, so this approximates the native number.
+//
+// A span's start is the real wall clock, the one Dart places slices by —
+// captured here, before the kernel replaces Date with the sandbox's
+// travelled one. Its length is performance.now(), which is monotonic but
+// stops during a system sleep, so as an anchor it would drift behind and
+// every later span would land in the past and be dropped.
+const realDateNow = Date.now.bind(Date);
+const spanCloser = new MessageChannel();
+let spanStart = null;
+let spanStartMono = 0;
+let spanLabel = 'message';
+// A ping that arrives inside a span is answered when it closes, after its
+// busy report: answered sooner, the heartbeat would call the engine free
+// while the span's time had not reached Dart yet.
+let pongOwed = false;
+function pong() {
+  rawPostMessage(JSON.stringify({ kind: 'polo', message: { type: 'pong' } }));
+}
+spanCloser.port1.onmessage = function () {
+  const length = performance.now() - spanStartMono;
+  if (length > 0) {
+    rawPostMessage(JSON.stringify({ kind: 'busy', start: Math.round(spanStart * 1000), end: Math.round((spanStart + length) * 1000), label: spanLabel }));
+  }
+  spanStart = null;
+  if (pongOwed) {
+    pongOwed = false;
+    pong();
+  }
+};
 self.onmessage = function (e) {
-  const msg = JSON.parse(e.data);
+  // Never a span of its own, or every heartbeat would read as busy time.
+  if (e.data === '{"kind":"ping"}') {
+    if (spanStart === null) pong();
+    else pongOwed = true;
+    return;
+  }
+  const opens = spanStart === null;
+  if (opens) {
+    spanStart = realDateNow();
+    spanStartMono = performance.now();
+    spanLabel = 'message';
+  }
+  try {
+    const msg = JSON.parse(e.data);
+    if (opens) spanLabel = busyLabel(msg);
+    handleMessage(msg);
+  } finally {
+    if (opens) spanCloser.port2.postMessage(null);
+  }
+};
+function handleMessage(msg) {
   if (!ready) {
     if (msg.kind !== 'load') return;
     try {
@@ -117,7 +193,7 @@ self.onmessage = function (e) {
       self.__polo.setClockTravel(msg.anchorRealMillis, msg.anchorVirtualMillis, msg.speed);
       break;
   }
-};
+}
 ''';
 
 class _WebWorkerEngineRuntime implements EngineRuntime {
@@ -125,6 +201,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   String? _blobUrl;
   void Function(Map<String, dynamic>)? _onMessage;
   void Function(String)? _onFatalError;
+  void Function(int startMicros, int endMicros, String label)? _onBusySpan;
 
   @override
   String get engineDescription => 'browser worker';
@@ -137,6 +214,11 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   @override
   void onFatalError(void Function(String message) callback) {
     _onFatalError = callback;
+  }
+
+  @override
+  void onBusySpan(void Function(int startMicros, int endMicros, String label) callback) {
+    _onBusySpan = callback;
   }
 
   @override
@@ -159,6 +241,8 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
         case 'polo':
           final poloMsg = (msg['message'] as Map).cast<String, dynamic>();
           _onMessage?.call(poloMsg);
+        case 'busy':
+          if (msg case {'start': int start, 'end': int end, 'label': String label}) _onBusySpan?.call(start, end, label);
       }
     });
     web.EventStreamProviders.errorEvent.forTarget(worker).listen((event) {
@@ -225,6 +309,12 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   @override
+  void ping() {
+    // Matched by the bootstrap as this exact string.
+    _worker!.postMessage('{"kind":"ping"}'.toJS);
+  }
+
+  @override
   void setAppVisible(bool visible) {
     _send({'kind': 'setAppVisible', 'visible': visible});
   }
@@ -244,8 +334,9 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
   }
 
   @override
-  void pump() {
+  bool pump() {
     // Real JS engine, real event loop — nothing to pump.
+    return false;
   }
 
   @override

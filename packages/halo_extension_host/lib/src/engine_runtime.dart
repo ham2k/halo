@@ -48,6 +48,12 @@ abstract class EngineRuntime {
   /// simply never call it.
   void onFatalError(void Function(String message) callback);
 
+  /// Registers the callback for busy spans the engine times ITSELF, in real
+  /// microseconds since the epoch. Only a backend whose engine runs where
+  /// Dart cannot time it (the web worker) calls this; on native the core
+  /// times its own entries into the engine, and this is never called.
+  void onBusySpan(void Function(int startMicros, int endMicros, String label) callback);
+
   /// Loads the kernel bundle, then every extension bundle in order, then
   /// activates all extensions. Throws if any step fails.
   /// [clock] is applied BEFORE any bundle evaluates, so extensions activate on
@@ -104,10 +110,16 @@ abstract class EngineRuntime {
   /// of 0 means real time.
   void setClockTravel(int anchorRealMillis, int anchorVirtualMillis, double speed);
 
+  /// Asks for a `{type: 'pong'}` message on the [onMessage] channel as soon
+  /// as the engine is free to run anything — after whatever it is busy with
+  /// now. The heartbeat behind `EngineLoadFeed`'s stall reading.
+  void ping();
+
   /// Pumps the engine's job queue, for backends (QuickJS) that don't have a
   /// real event loop and need manual pumping to process microtasks/promises.
-  /// A no-op for backends (Worker) with a real event loop.
-  void pump();
+  /// A no-op for backends (Worker) with a real event loop. Returns whether
+  /// any job ran.
+  bool pump();
 
   void dispose();
 }

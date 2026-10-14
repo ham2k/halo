@@ -163,6 +163,13 @@ class StatusBarFooter extends StatefulWidget {
   /// visible footer with no items at all.
   final List<StatusBarPermaData> perma;
 
+  /// Drawn at the trailing edge of the collapsed bar, before the [perma]
+  /// icons — a small readout that is neither a message nor a status with a
+  /// menu, such as a developer's live metric. Updates itself: the footer
+  /// does not rebuild for it. It brings its own leading space, so one that
+  /// is showing nothing at the moment takes none.
+  final Widget? trailing;
+
   /// Accessible name for an item's dismiss button — it is icon-only, and the
   /// app has no hover tooltips (docs/design/user-interface.md). The caller
   /// names it; the default stands in for one that does not.
@@ -202,6 +209,7 @@ class StatusBarFooter extends StatefulWidget {
     required this.items,
     required this.onDismiss,
     this.perma = const [],
+    this.trailing,
     this.maxExpandedHeight,
     this.dismissLabel = 'Dismiss',
     this.showWhenEmpty = false,
@@ -471,6 +479,15 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                       ),
                     ),
             ),
+            // Beside the perma icons and outside the message column for the
+            // same reasons they are (below).
+            if (widget.trailing case final trailing?)
+              Center(
+                child: DefaultTextStyle.merge(
+                  style: theme.textTheme.bodySmall?.copyWith(color: foregroundColor),
+                  child: trailing,
+                ),
+              ),
             // The icons sit OUTSIDE the centered message column on purpose:
             // they belong to the bar, not to whatever is being said in it, so
             // they stay put at the trailing edge while messages come and go.

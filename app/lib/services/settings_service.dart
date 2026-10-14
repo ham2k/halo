@@ -24,6 +24,7 @@ import '../config/device_identity.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
+import 'extensions/engine_load_settings.dart';
 import 'extensions/extension_store_settings.dart';
 import 'cw_message_set.dart';
 import 'onboarding_flows.dart';
@@ -43,7 +44,7 @@ ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
   return showingDark ? ThemeMode.light : ThemeMode.dark;
 }
 
-class SettingsService extends ChangeNotifier with ExtensionStoreSettings implements SyncSettings {
+class SettingsService extends ChangeNotifier with ExtensionStoreSettings, EngineLoadSettings implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _profilesKey = 'profiles';
   static const _activeProfileKey = 'activeProfile';

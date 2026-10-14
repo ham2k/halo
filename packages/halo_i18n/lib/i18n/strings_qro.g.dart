@@ -764,6 +764,8 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '${name} ENABLED';
 	@override String experimentDisabled({required Object name}) => '${name} DISABLED';
 	@override String get sentryTestSent => 'TEST ERROR REPORT SENT TO SENTRY';
+	@override String get idleMetricsEnabled => 'IDLE METRICS ENABLED IN THE STATUS BAR';
+	@override String get idleMetricsDisabled => 'IDLE METRICS DISABLED';
 	@override String get sentryTestLocalOnly => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY';
 	@override String get noOperationOpen => 'THAT COMMAND NEEDS AN OPEN OPERATION';
 	@override String unknownSegmentKind({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'';
@@ -2614,6 +2616,11 @@ class _Translations$settings$developer$qro extends Translations$settings$develop
 	// Translations
 	@override String get developerModeDescription => 'ENABLE DEVELOPER WARNINGS, DEBUG LOGS, AND TOOLS.';
 	@override String get experiments => 'EXPERIMENTS';
+	@override String get showIdleMetrics => 'SHOW IDLE METRICS';
+	@override String get showIdleMetricsDescription => 'SHOW IN THE STATUS BAR HOW IDLE THE EXTENSION ENGINE HAS BEEN OVER THE LAST SECOND. TAP IT FOR THE 10- AND 60-SECOND AVERAGES.';
+	@override String idleMetricsReadout({required Object percent}) => '${percent}% IDLE';
+	@override String get idleMetricsAverages => 'IDLE AVG:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}S ${percent}%';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
 		one: '${count} ENABLED',
 		other: '${count} ENABLED',
@@ -5459,6 +5466,11 @@ extension on TranslationsQro {
 			'settings.search.hint' => 'SEARCH PREFERENCES',
 			'settings.developer.developerModeDescription' => 'ENABLE DEVELOPER WARNINGS, DEBUG LOGS, AND TOOLS.',
 			'settings.developer.experiments' => 'EXPERIMENTS',
+			'settings.developer.showIdleMetrics' => 'SHOW IDLE METRICS',
+			'settings.developer.showIdleMetricsDescription' => 'SHOW IN THE STATUS BAR HOW IDLE THE EXTENSION ENGINE HAS BEEN OVER THE LAST SECOND. TAP IT FOR THE 10- AND 60-SECOND AVERAGES.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent}% IDLE',
+			'settings.developer.idleMetricsAverages' => 'IDLE AVG:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}S ${percent}%',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} ENABLED', other: '${count} ENABLED', ), 
 			'settings.developer.patchTrack' => 'CODE PUSH TRACK',
 			'settings.developer.patchTrackDescription' => 'WHICH OVER-THE-AIR CODE PUSH RING THIS DEVICE FOLLOWS. MORE ADVENTUROUS RINGS GET FIXES EARLIER, LESS TESTED. CODE PUSHES APPLY ON THE NEXT RESTART.',
@@ -5549,6 +5561,8 @@ extension on TranslationsQro {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',
 			'commands.sentryTestSent' => 'TEST ERROR REPORT SENT TO SENTRY',
+			'commands.idleMetricsEnabled' => 'IDLE METRICS ENABLED IN THE STATUS BAR',
+			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',
@@ -5765,6 +5779,8 @@ extension on TranslationsQro {
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} CONTACT FROM ${filename}', other: 'IMPORTED ${formatted} CONTACTS FROM ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} DOES NOT LOOK LIKE AN ADIF FILE',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'WARNING: THIS ADIF HAS QSOS FROM ${calls}, BUT THEY WILL BE IMPORTED AS ${station} IF YOU CONTINUE.',
 			'adifImport.stationCallJoin' => ' AND ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} HAS NO DATE AND CANNOT BE IMPORTED', other: '${formatted} HAVE NO DATE AND CANNOT BE IMPORTED', ), 
@@ -5772,8 +5788,6 @@ extension on TranslationsQro {
 			'adifImport.addActivation' => 'ADD IT TO THIS OPERATION',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'ONLY ${written} OF ${planned} COULD BE APPLIED — THE LOG CHANGED WHILE YOU WERE DECIDING.',
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.oneFileOnly' => 'DROP ONE ADIF FILE AT A TIME — THE ORDER FILES ARE IMPORTED IN DECIDES WHICH DATA WINS.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
 			'offline.statusOffline' => 'INTERNET: OFFLINE',

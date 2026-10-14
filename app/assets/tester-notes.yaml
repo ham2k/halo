@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+"upcoming":
+  changes:
+    - "New Show idle metrics developer setting: extension engine headroom in the status bar"
+
 "179":
   changes:
     - "Improved operation location: new operations take your GPS fix, or the park's"

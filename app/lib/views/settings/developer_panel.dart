@@ -81,6 +81,14 @@ class DeveloperPanel extends StatelessWidget {
                 );
               },
             ),
+            if (settings.developerMode)
+              SwitchListTile(
+                secondary: const Icon(MdiIcons.speedometer),
+                title: Text(context.t.settings.developer.showIdleMetrics),
+                subtitle: Text(context.t.settings.developer.showIdleMetricsDescription),
+                value: settings.showIdleMetrics,
+                onChanged: settings.setShowIdleMetrics,
+              ),
             // The extension dev loop (docs/extensions/development.md). Below
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far

@@ -22,7 +22,9 @@ import '../station_panel.dart' show equipmentStatusLabel;
 import '../../services/bottom_chrome_squeezed.dart';
 
 import '../../services/error_reporting_service.dart';
+import '../../services/extensions/engine_load_monitor.dart';
 import '../../services/cat/cat_service.dart';
+import '../../services/settings_service.dart';
 import '../../services/status_bar_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -91,6 +93,90 @@ class _ChromeScrim extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// Settings → Developer → Show idle metrics: the extension engine's idle
+/// share over the last second, which moves as the operator types. Tapped, it
+/// opens to the 1-, 10- and 60-second shares; the 10-second one is the share
+/// the report to the backend is judged on ([EngineLoadMonitor.reportWindow]).
+/// A developer-mode setting, so leaving developer mode hides it along with
+/// the switch that turns it off.
+///
+/// Listens to [settings] itself, so a settings change rebuilds this and not
+/// the whole bar.
+class _IdleReadout extends StatefulWidget {
+  final EngineLoadMonitor monitor;
+  final SettingsService settings;
+
+  const _IdleReadout({required this.monitor, required this.settings});
+
+  @override
+  State<_IdleReadout> createState() => _IdleReadoutState();
+}
+
+class _IdleReadoutState extends State<_IdleReadout> {
+  /// Fixed rather than themed: the bar is the same teal (#006783) in both
+  /// brightnesses. The yellow is 4.55:1 against it; the red is the lightest
+  /// that still reads as red, at 3.78:1, which is why the warning states are
+  /// also set heavier.
+  static const _low = Color(0xFFFFD54F);
+  static const _critical = Color(0xFFFFB4AB);
+
+  static const _windows = [Duration(seconds: 1), EngineLoadMonitor.reportWindow, Duration(seconds: 60)];
+
+  bool _expanded = false;
+
+  int _percent(Duration window) => (widget.monitor.idle(window) * 100).round();
+
+  /// Each share in its own colour, so an expanded line says which window is
+  /// short of headroom.
+  static TextStyle? _style(int percent) {
+    final color = percent <= 50 ? _critical : (percent <= 70 ? _low : null);
+    return color == null ? null : TextStyle(color: color, fontWeight: FontWeight.w600);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: widget.settings,
+    builder: (context, _) {
+      if (!widget.settings.developerMode || !widget.settings.showIdleMetrics) return const SizedBox.shrink();
+      final s = context.t.settings.developer;
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(start: Space.sm),
+        child: Semantics(
+          container: true,
+          button: true,
+          expanded: _expanded,
+          child: InkResponse(
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: OncePerSecond(
+              builder: (context, _) {
+                if (!_expanded) {
+                  final percent = _percent(_windows.first);
+                  return Text(s.idleMetricsReadout(percent: percent), style: _style(percent));
+                }
+                final shares = [for (final window in _windows) (seconds: window.inSeconds, percent: _percent(window))];
+                return Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(text: s.idleMetricsAverages),
+                      for (final (i, share) in shares.indexed) ...[
+                        TextSpan(text: i == 0 ? ' ' : ' · '),
+                        TextSpan(
+                          text: s.idleMetricsWindow(seconds: share.seconds, percent: share.percent),
+                          style: _style(share.percent),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    },
+  );
 }
 
 @visibleForTesting
@@ -530,6 +616,9 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                   StatusBarFooter(
                     items: footerItems,
                     perma: perma,
+                    // Rides with the perma icons: over a keyboard the band is
+                    // borrowed space, and a developer readout least of all.
+                    trailing: footerHidden ? null : _IdleReadout(monitor: widget.services.extensions.engineLoad, settings: widget.services.settings),
                     showWhenEmpty: !keyboardUp,
                     // See [_closeListIfUnopenable]: the flag behind this is
                     // cleared rather than masked, so a list the band took away

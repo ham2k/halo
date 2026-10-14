@@ -23,6 +23,7 @@ import 'runtime.dart' show CliUsageError;
 const defaultSettings = <String, Object?>{
   'developerMode': false,
   'devMapInfo': false,
+  'showIdleMetrics': false,
   'locale': 'en',
   // Machine-facing (ADIF PROGRAMID, a spot's `source`) — the same fixed name
   // the app reports, so a file exported here matches one exported there.

@@ -2067,6 +2067,11 @@
     "developer": {
       "developerModeDescription": "ENABLE DEVELOPER WARNINGS, DEBUG LOGS, AND TOOLS.",
       "experiments": "EXPERIMENTS",
+      "showIdleMetrics": "SHOW IDLE METRICS",
+      "showIdleMetricsDescription": "SHOW IN THE STATUS BAR HOW IDLE THE EXTENSION ENGINE HAS BEEN OVER THE LAST SECOND. TAP IT FOR THE 10- AND 60-SECOND AVERAGES.",
+      "idleMetricsReadout": "${percent}% IDLE",
+      "idleMetricsAverages": "IDLE AVG:",
+      "idleMetricsWindow": "${seconds}S ${percent}%",
       "experimentsEnabled": {
         "one": "${count} ENABLED",
         "other": "${count} ENABLED"
@@ -2183,6 +2188,8 @@
     "experimentEnabled": "${name} ENABLED",
     "experimentDisabled": "${name} DISABLED",
     "sentryTestSent": "TEST ERROR REPORT SENT TO SENTRY",
+    "idleMetricsEnabled": "IDLE METRICS ENABLED IN THE STATUS BAR",
+    "idleMetricsDisabled": "IDLE METRICS DISABLED",
     "sentryTestLocalOnly": "SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY",
     "noOperationOpen": "THAT COMMAND NEEDS AN OPEN OPERATION",
     "unknownSegmentKind": "DON'T KNOW HOW TO MARK A '${kind}'",

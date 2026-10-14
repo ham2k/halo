@@ -1589,6 +1589,9 @@ export interface CommandAction {
   /// Shows or hides the maps' zoom and viewport-size box (DEVMAPINFO). The
   /// app owns the setting and reports which way it went.
   devMapInfo?: Record<string, never>
+  /// Shows or hides the extension engine's idle share in the status bar
+  /// (DEVIDLE). The app owns the setting and reports which way it went.
+  devIdle?: Record<string, never>
   /// Toggles an experimental feature (EXP command). The app resolves
   /// `token` against `app/experiments.yaml`'s keys and aliases and flips
   /// that experiment's persisted state; an unknown token reports an error

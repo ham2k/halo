@@ -45,6 +45,11 @@ class _IoEngineRuntime implements EngineRuntime {
     // engine to report.
   }
 
+  @override
+  void onBusySpan(void Function(int startMicros, int endMicros, String label) callback) {
+    // The engine runs on the core's own thread, which times its entries.
+  }
+
   /// QuickJS-NG on every native platform, compiled into the app by
   /// packages/halo_quickjs (see docs/design/js-engine.md).
   HaloQuickJs _createRuntime() {
@@ -193,6 +198,11 @@ class _IoEngineRuntime implements EngineRuntime {
     _evaluate('__polo.runTimers()', name: 'runTimers');
   }
 
+  /// Answered at once: the engine runs on this thread, so if this runs, it is
+  /// free.
+  @override
+  void ping() => _onMessage?.call(const {'type': 'pong'});
+
   @override
   void setAppVisible(bool visible) {
     _evaluate('__polo.setAppVisible($visible)', name: 'setAppVisible');
@@ -231,15 +241,15 @@ class _IoEngineRuntime implements EngineRuntime {
   /// another job unconditionally would spin here forever. Anything legitimate
   /// settles in a handful of turns.
   @override
-  void pump() {
+  bool pump() {
     final js = _js;
-    if (js == null || _disposed) return;
+    if (js == null || _disposed) return false;
     final elapsed = Stopwatch()..start();
     for (var i = 0; i < 1000; i++) {
       // 0 means the queue is empty; NEGATIVE means the job threw, and there
       // may still be more queued behind it. Treating <0 as "done" would defer
       // the rest of the queue to the host's next 5ms tick.
-      if (js.pump() == 0) return;
+      if (js.pump() == 0) return i > 0;
 
       // A COUNT bound is not enough. The eval budget is per outermost call and
       // every pump() is one, so each job gets a fresh 15s — 1000 of them is
@@ -247,8 +257,9 @@ class _IoEngineRuntime implements EngineRuntime {
       // nothing at all, including 'dispose' and 'abandon'. Cutting the drain
       // short loses nothing; the host's 5ms timer comes straight back for
       // whatever is left.
-      if (elapsed.elapsedMilliseconds >= _maxDrainMs) return;
+      if (elapsed.elapsedMilliseconds >= _maxDrainMs) return true;
     }
+    return true;
   }
 
   /// Hands the kernel's timer queue [extensionTimerClock]'s time ahead of every

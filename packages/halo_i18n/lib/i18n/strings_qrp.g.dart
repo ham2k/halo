@@ -764,6 +764,8 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '${name} enabled';
 	@override String experimentDisabled({required Object name}) => '${name} disabled';
 	@override String get sentryTestSent => 'test error report sent to sentry';
+	@override String get idleMetricsEnabled => 'idle metrics enabled in the status bar';
+	@override String get idleMetricsDisabled => 'idle metrics disabled';
 	@override String get sentryTestLocalOnly => 'sentry is disabled in this build — test error logged locally only';
 	@override String get noOperationOpen => 'that command needs an open operation';
 	@override String unknownSegmentKind({required Object kind}) => 'don\'t know how to mark a \'${kind}\'';
@@ -2614,6 +2616,11 @@ class _Translations$settings$developer$qrp extends Translations$settings$develop
 	// Translations
 	@override String get developerModeDescription => 'enable developer warnings, debug logs, and tools.';
 	@override String get experiments => 'experiments';
+	@override String get showIdleMetrics => 'show idle metrics';
+	@override String get showIdleMetricsDescription => 'show in the status bar how idle the extension engine has been over the last second. tap it for the 10- and 60-second averages.';
+	@override String idleMetricsReadout({required Object percent}) => '${percent}% idle';
+	@override String get idleMetricsAverages => 'idle avg:';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds}s ${percent}%';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
 		one: '${count} enabled',
 		other: '${count} enabled',
@@ -5459,6 +5466,11 @@ extension on TranslationsQrp {
 			'settings.search.hint' => 'search preferences',
 			'settings.developer.developerModeDescription' => 'enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'experiments',
+			'settings.developer.showIdleMetrics' => 'show idle metrics',
+			'settings.developer.showIdleMetricsDescription' => 'show in the status bar how idle the extension engine has been over the last second. tap it for the 10- and 60-second averages.',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent}% idle',
+			'settings.developer.idleMetricsAverages' => 'idle avg:',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds}s ${percent}%',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} enabled', other: '${count} enabled', ), 
 			'settings.developer.patchTrack' => 'code push track',
 			'settings.developer.patchTrackDescription' => 'which over-the-air code push ring this device follows. more adventurous rings get fixes earlier, less tested. code pushes apply on the next restart.',
@@ -5549,6 +5561,8 @@ extension on TranslationsQrp {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'test error report sent to sentry',
+			'commands.idleMetricsEnabled' => 'idle metrics enabled in the status bar',
+			'commands.idleMetricsDisabled' => 'idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
@@ -5765,6 +5779,8 @@ extension on TranslationsQrp {
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} contact from ${filename}', other: 'imported ${formatted} contacts from ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an adif file',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'warning: this adif has qsos from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
@@ -5772,8 +5788,6 @@ extension on TranslationsQrp {
 			'adifImport.addActivation' => 'add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.oneFileOnly' => 'drop one adif file at a time — the order files are imported in decides which data wins.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
 			'offline.statusOffline' => 'internet: offline',

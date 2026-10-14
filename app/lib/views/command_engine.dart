@@ -873,6 +873,8 @@ class CommandEngine extends ChangeNotifier {
         await runAction('devLogCat', null);
       } else if (map['devMapInfo'] is Map) {
         await runAction('devMapInfo', null);
+      } else if (map['devIdle'] is Map) {
+        await runAction('devIdle', null);
       } else if (map['reloadDataFiles'] is Map) {
         await runAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else if (map['toggleExperiment'] is Map) {

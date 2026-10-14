@@ -39,6 +39,7 @@ import 'dart:math';
 import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:http/http.dart' as http;
 
+import 'src/engine_load.dart';
 import 'src/extension_sockets.dart';
 import 'src/extension_timers.dart';
 import 'src/fetch_policy.dart';
@@ -46,6 +47,7 @@ import 'src/hook_call_stats.dart';
 import 'src/js_engine.dart';
 
 export 'src/extension_sockets.dart' show isLocalNetworkHost, localNetworkEntry, maxWebSocketFrameSize, maxWebSocketsPerExtension;
+export 'src/engine_load.dart' show EngineLoadBucket, EngineLoadFeed, EngineLoadWindow, engineLoadBucketMicros;
 export 'src/extension_timers.dart' show TimerSuspension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
@@ -64,15 +66,6 @@ typedef HostCallHandler = Future<dynamic> Function(String method, Map<String, dy
 /// One call in an [ExtensionHost.invokeHookBatch]: the same four things an
 /// [ExtensionHost.invokeHook] takes.
 typedef HookCall = ({String category, String? key, String method, Object? args});
-
-/// A batch's name in the samples, the queue summary and a timeout's message:
-/// its method when every call shares one, so the same work groups under one
-/// row whatever the batch's size, and no one program is named for a batch
-/// that spans several.
-String _batchLabel(List<Object?> methods) {
-  final distinct = methods.toSet();
-  return distinct.length == 1 ? 'batch:${distinct.single}' : 'batch:mixed';
-}
 
 class ExtensionHost {
   final bool runningInIsolate;
@@ -145,6 +138,9 @@ class ExtensionHost {
 
   /// An extension whose timers broke their budget (extensions/sdk/src/timerQueue.ts); its hooks keep working.
   Stream<TimerSuspension> get timerSuspensions => _timerSuspensions.stream;
+
+  /// The engine's busy time, and whether it is still answering.
+  late final engineLoad = EngineLoadFeed(ping: () => _dispatch(const {'type': 'ping'}), nowMicros: () => realNowUtc().microsecondsSinceEpoch);
 
   /// Fires when the runtime dies outside any single call (isolate/worker
   /// crash or unexpected exit). By then every pending hook call has been
@@ -495,7 +491,7 @@ class ExtensionHost {
     try {
       final result = await _send(
         'invokeBatch',
-        _batchLabel([for (final call in calls) call.method]),
+        batchLabel([for (final call in calls) call.method]),
         {
           'calls': [
             // Encoded by the core — see invokeHook.
@@ -528,6 +524,7 @@ class ExtensionHost {
       throw ExtensionHostException('extension runtime is dead (hook $label not attempted)');
     }
     id ??= _nextId++;
+    engineLoad.wake();
     final completer = Completer<dynamic>();
     _pending[id] = completer;
     _inFlight[id] = (label, Stopwatch()..start());
@@ -692,6 +689,10 @@ class ExtensionHost {
         } else {
           completer.complete();
         }
+      case 'engineLoad':
+        engineLoad.add(msg);
+      case 'pong':
+        engineLoad.pong();
       case 'timersSuspended':
         if (msg case {'extensionKey': String key, 'reason': String reason}) _timerSuspensions.add((extensionKey: key, reason: reason));
       case 'updateInterpretation':
@@ -730,6 +731,7 @@ class ExtensionHost {
         }
         _pendingReloads.clear();
         _fatalErrors.add(error);
+        unawaited(engineLoad.dispose());
         // A crash before activation ever finishes must not leave a caller
         // awaiting [activated] hanging forever.
         if (!_activated.isCompleted) _activated.complete();
@@ -805,6 +807,7 @@ class ExtensionHost {
     await _fatalErrors.close();
     await _interpretationUpdates.close();
     await _timerSuspensions.close();
+    await engineLoad.dispose();
   }
 }
 
@@ -933,7 +936,7 @@ class _HostCore {
     userAgent: userAgent,
     deliver: (socketId, event) {
       try {
-        _js.socketEvent(socketId, jsonEncode(event));
+        _busy('socket', () => _js.socketEvent(socketId, jsonEncode(event)));
       } catch (e) {
         emit({'type': 'log', 'message': 'ERROR delivering socket event: $e'});
       }
@@ -970,8 +973,21 @@ class _HostCore {
 
   void _runTimers() {
     _lastEvalLabel = 'timers';
-    _js.runTimers();
+    _busy('timers', _js.runTimers);
   }
+
+  late final _load = EngineLoadMeter(
+    onBucket: (bucket) => emit({'type': 'engineLoad', ...bucket.toMessage()}),
+    nowMicros: () => realNowUtc().microsecondsSinceEpoch,
+  );
+
+  /// Runs [body], charging its wall time to the engine's busy time under
+  /// [label] — every way into the engine goes through here, so the idle
+  /// share is the whole thread's, not just the hooks'.
+  ///
+  /// A pass-through on web, where the engine runs in a worker that times
+  /// itself: this thread's time there is the UI's, not the engine's.
+  T _busy<T>(String label, T Function() body) => runningOnWeb ? body() : _load.run(label, body);
 
   /// Ids (not a bare counter) so a duplicate/forged 'result' can't drive
   /// the count negative and stall the pump while genuine calls wait, and so
@@ -1036,8 +1052,12 @@ class _HostCore {
     _js = createEngineRuntime();
     _js.onMessage(_onPoloMessage);
     _js.onFatalError(_onFatalError);
+    _js.onBusySpan(_load.record);
     try {
-      await _js.load(kernelSource, bundles, clock: clock);
+      // `load` is async, but on native every evaluation in it runs before it
+      // returns its future, so the wrapper times the whole boot — and host
+      // calls answered during it count as part of it, not on top of it.
+      await _busy('load', () => _js.load(kernelSource, bundles, clock: clock));
     } catch (e) {
       _timers.dispose(); // a timer set while activating may already be armed
       _js.dispose();
@@ -1047,7 +1067,11 @@ class _HostCore {
     return (stopwatch..stop()).elapsedMilliseconds;
   }
 
-  void handle(Map<String, dynamic> msg) {
+  /// A ping is answered outside [_busy]: timed, every heartbeat would open a slice of its own.
+  void handle(Map<String, dynamic> msg) =>
+      msg['type'] == 'ping' ? _js.ping() : (runningOnWeb ? _handle(msg) : _load.run(engineLoadLabel(msg), () => _handle(msg)));
+
+  void _handle(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'invoke':
       case 'invokeAll':
@@ -1056,7 +1080,7 @@ class _HostCore {
         _outstandingIds.add(id);
         _ensurePumping();
         final calls = msg['calls'];
-        final label = calls is List ? _batchLabel([for (final call in calls) (call as Map)['method']]) : '${msg['category']}.${msg['method']}';
+        final label = calls is List ? batchLabel([for (final call in calls) (call as Map)['method']]) : '${msg['category']}.${msg['method']}';
         _noteQueueWait(id, label, msg['sentAtMicros']);
         try {
           // Inside the try, so an arg the caller believed JSON-encodable and
@@ -1224,7 +1248,7 @@ class _HostCore {
   /// of a permanent fast timer.
   void _ensurePumping() {
     _pump ??= Timer.periodic(const Duration(milliseconds: 5), (_) {
-      _js.pump();
+      runningOnWeb ? _js.pump() : _load.runIfWorked('jobs', _js.pump);
       if (_outstandingIds.isEmpty && _reloadsInFlight.isEmpty) {
         _pump?.cancel();
         _pump = null;
@@ -1265,7 +1289,7 @@ class _HostCore {
       case 'reloadComplete':
         _reloadsInFlight.remove(msg['token']);
         emit(msg);
-      case 'updateInterpretation' || 'timersSuspended':
+      case 'updateInterpretation' || 'timersSuspended' || 'pong':
         emit(msg);
       case 'timerWake':
         _timers.arm((msg['delayMillis'] as num?)?.ceil());
@@ -1280,6 +1304,11 @@ class _HostCore {
   }
 
   Future<void> _handleHostCall(int callId, String method, Map<String, dynamic> params) async {
+    // Read before the first await, while the requesting call still runs: the
+    // answer resumes it (the kernel fetches a hook's settings before running
+    // it), so charging it to the host call would name `getSettings` for
+    // every busy hook there is.
+    final chargedTo = _load.currentLabel ?? 'host:$method';
     Object? result;
     bool ok = true;
     try {
@@ -1320,18 +1349,20 @@ class _HostCore {
     // become an ok:false response — never an undelivered one, which leaks
     // the kernel's pending call and wedges the awaiting hook until the
     // Dart-side timeout.
-    String resultJson;
-    try {
-      resultJson = jsonEncode(result);
-    } catch (e) {
-      ok = false;
-      resultJson = jsonEncode('host call $method returned an unencodable result: $e');
-    }
-    try {
-      _js.hostResponse(callId, ok, resultJson);
-    } catch (e) {
-      emit({'type': 'log', 'message': 'ERROR delivering host response: $e'});
-    }
+    _busy(chargedTo, () {
+      String resultJson;
+      try {
+        resultJson = jsonEncode(result);
+      } catch (e) {
+        ok = false;
+        resultJson = jsonEncode('host call $method returned an unencodable result: $e');
+      }
+      try {
+        _js.hostResponse(callId, ok, resultJson);
+      } catch (e) {
+        emit({'type': 'log', 'message': 'ERROR delivering host response: $e'});
+      }
+    });
   }
 
   void handleHostCallResponse(int callId, bool ok, Object? result) {
@@ -1453,6 +1484,7 @@ class _HostCore {
 
   void dispose() {
     _pump?.cancel();
+    _load.dispose();
     _timers.dispose();
     _sockets.abandonAll();
     if (_ownsHttpClient) _http.close();

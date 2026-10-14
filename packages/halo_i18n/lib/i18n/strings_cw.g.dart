@@ -764,6 +764,8 @@ class _Translations$commands$cw extends Translations$commands$en {
 	@override String experimentEnabled({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··';
 	@override String experimentDisabled({required Object name}) => '${name} / —·· ·· ··· ·— —··· ·—·· · —··';
 	@override String get sentryTestSent => '— · ··· — / · ·—· ·—· ——— ·—· / ·—· · ·——· ——— ·—· — / ··· · —· — / — ——— / ··· · —· — ·—· —·——';
+	@override String get idleMetricsEnabled => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / · —· ·— —··· ·—·· · —·· / ·· —· / — ···· · / ··· — ·— — ··— ··· / —··· ·— ·—·';
+	@override String get idleMetricsDisabled => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / —·· ·· ··· ·— —··· ·—·· · —··';
 	@override String get sentryTestLocalOnly => '··· · —· — ·—· —·—— / ·· ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ·· —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· / — / — · ··· — / · ·—· ·—· ——— ·—· / ·—·· ——— ——· ——· · —·· / ·—·· ——— —·—· ·— ·—·· ·—·· —·—— / ——— —· ·—·· —·——';
 	@override String get noOperationOpen => '— ···· ·— — / —·—· ——— —— —— ·— —· —·· / —· · · —·· ··· / ·— —· / ——— ·——· · —· / ——— ·——· · ·—· ·— — ·· ——— —·';
 	@override String unknownSegmentKind({required Object kind}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / —— ·— ·—· —·— / ·— / ·————· ${kind} ·————·';
@@ -2614,6 +2616,11 @@ class _Translations$settings$developer$cw extends Translations$settings$develope
 	// Translations
 	@override String get developerModeDescription => '· —· ·— —··· ·—·· · / —·· · ···— · ·—·· ——— ·——· · ·—· / ·—— ·— ·—· —· ·· —· ——· ··· ——··—— / —·· · —··· ··— ——· / ·—·· ——— ——· ··· ——··—— / ·— —· —·· / — ——— ——— ·—·· ··· ·—·—·—';
 	@override String get experiments => '· —··— ·——· · ·—· ·· —— · —· — ···';
+	@override String get showIdleMetrics => '··· ···· ——— ·—— / ·· —·· ·—·· · / —— · — ·—· ·· —·—· ···';
+	@override String get showIdleMetricsDescription => '··· ···· ——— ·—— / ·· —· / — ···· · / ··· — ·— — ··— ··· / —··· ·— ·—· / ···· ——— ·—— / ·· —·· ·—·· · / — ···· · / · —··— — · —· ··· ·· ——— —· / · —· ——· ·· —· · / ···· ·— ··· / —··· · · —· / ——— ···— · ·—· / — ···· · / ·—·· ·— ··· — / ··· · —·—· ——— —· —·· ·—·—·— / — ·— ·——· / ·· — / ··—· ——— ·—· / — ···· · / ·———— ————— —····— / ·— —· —·· / —···· ————— —····— ··· · —·—· ——— —· —·· / ·— ···— · ·—· ·— ——· · ··· ·—·—·—';
+	@override String idleMetricsReadout({required Object percent}) => '${percent} % / ·· —·· ·—·· ·';
+	@override String get idleMetricsAverages => '·· —·· ·—·· · / ·— ···— ——· ———···';
+	@override String idleMetricsWindow({required Object seconds, required Object percent}) => '${seconds} ··· / ${percent} %';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count,
 		one: '${count} / · —· ·— —··· ·—·· · —··',
 		other: '${count} / · —· ·— —··· ·—·· · —··',
@@ -5459,6 +5466,11 @@ extension on TranslationsCw {
 			'settings.search.hint' => '··· · ·— ·—· —·—· ···· / ·——· ·—· · ··—· · ·—· · —· —·—· · ···',
 			'settings.developer.developerModeDescription' => '· —· ·— —··· ·—·· · / —·· · ···— · ·—·· ——— ·——· · ·—· / ·—— ·— ·—· —· ·· —· ——· ··· ——··—— / —·· · —··· ··— ——· / ·—·· ——— ——· ··· ——··—— / ·— —· —·· / — ——— ——— ·—·· ··· ·—·—·—',
 			'settings.developer.experiments' => '· —··— ·——· · ·—· ·· —— · —· — ···',
+			'settings.developer.showIdleMetrics' => '··· ···· ——— ·—— / ·· —·· ·—·· · / —— · — ·—· ·· —·—· ···',
+			'settings.developer.showIdleMetricsDescription' => '··· ···· ——— ·—— / ·· —· / — ···· · / ··· — ·— — ··— ··· / —··· ·— ·—· / ···· ——— ·—— / ·· —·· ·—·· · / — ···· · / · —··— — · —· ··· ·· ——— —· / · —· ——· ·· —· · / ···· ·— ··· / —··· · · —· / ——— ···— · ·—· / — ···· · / ·—·· ·— ··· — / ··· · —·—· ——— —· —·· ·—·—·— / — ·— ·——· / ·· — / ··—· ——— ·—· / — ···· · / ·———— ————— —····— / ·— —· —·· / —···· ————— —····— ··· · —·—· ——— —· —·· / ·— ···— · ·—· ·— ——· · ··· ·—·—·—',
+			'settings.developer.idleMetricsReadout' => ({required Object percent}) => '${percent} % / ·· —·· ·—·· ·',
+			'settings.developer.idleMetricsAverages' => '·· —·· ·—·· · / ·— ···— ——· ———···',
+			'settings.developer.idleMetricsWindow' => ({required Object seconds, required Object percent}) => '${seconds} ··· / ${percent} %',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —· ·— —··· ·—·· · —··', other: '${count} / · —· ·— —··· ·—·· · —··', ), 
 			'settings.developer.patchTrack' => '—·—· ——— —·· · / ·——· ··— ··· ···· / — ·—· ·— —·—· —·—',
 			'settings.developer.patchTrackDescription' => '·—— ···· ·· —·—· ···· / ——— ···— · ·—· —····— — ···· · —····— ·— ·· ·—· / —·—· ——— —·· · / ·——· ··— ··· ···· / ·—· ·· —· ——· / — ···· ·· ··· / —·· · ···— ·· —·—· · / ··—· ——— ·—·· ·—·· ——— ·—— ··· ·—·—·— / —— ——— ·—· · / ·— —·· ···— · —· — ··— ·—· ——— ··— ··· / ·—· ·· —· ——· ··· / ——· · — / ··—· ·· —··— · ··· / · ·— ·—· ·—·· ·· · ·—· ——··—— / ·—·· · ··· ··· / — · ··· — · —·· ·—·—·— / —·—· ——— —·· · / ·——· ··— ··· ···· · ··· / ·— ·——· ·——· ·—·· —·—— / ——— —· / — ···· · / —· · —··— — / ·—· · ··· — ·— ·—· — ·—·—·—',
@@ -5549,6 +5561,8 @@ extension on TranslationsCw {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} / —·· ·· ··· ·— —··· ·—·· · —··',
 			'commands.sentryTestSent' => '— · ··· — / · ·—· ·—· ——— ·—· / ·—· · ·——· ——— ·—· — / ··· · —· — / — ——— / ··· · —· — ·—· —·——',
+			'commands.idleMetricsEnabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / · —· ·— —··· ·—·· · —·· / ·· —· / — ···· · / ··· — ·— — ··— ··· / —··· ·— ·—·',
+			'commands.idleMetricsDisabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / —·· ·· ··· ·— —··· ·—·· · —··',
 			'commands.sentryTestLocalOnly' => '··· · —· — ·—· —·—— / ·· ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ·· —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· / — / — · ··· — / · ·—· ·—· ——— ·—· / ·—·· ——— ——· ——· · —·· / ·—·· ——— —·—· ·— ·—·· ·—·· —·—— / ——— —· ·—·· —·——',
 			'commands.noOperationOpen' => '— ···· ·— — / —·—· ——— —— —— ·— —· —·· / —· · · —·· ··· / ·— —· / ——— ·——· · —· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'commands.unknownSegmentKind' => ({required Object kind}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / —— ·— ·—· —·— / ·— / ·————· ${kind} ·————·',
@@ -5765,6 +5779,8 @@ extension on TranslationsCw {
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '·· —— ·——· ——— ·—· — · —·· / ${count} / —·—· ——— —· — ·— —·—· — / ··—· ·—· ——— —— / ${filename}', other: '·· —— ·——· ——— ·—· — · —·· / ${formatted} / —·—· ——— —· — ·— —·—· — ··· / ··—· ·—· ——— —— / ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·· —— ·——· ——— ·—· — / ${filename} ———··· / ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} / —·· ——— · ··· / —· ——— — / ·—·· ——— ——— —·— / ·—·· ·· —·— · / ·— —· / ·— —·· ·· ··—· / ··—· ·· ·—·· ·',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => '·—— ·— ·—· —· ·· —· ——· ———··· / — ···· ·· ··· / ·— —·· ·· ··—· / ···· ·— ··· / ——·— ··· ——— ··· / ··—· ·—· ——— —— / ${calls} ——··—— / —··· ··— — / — ···· · —·—— / ·—— ·· ·—·· ·—·· / —··· · / ·· —— ·——· ——— ·—· — · —·· / ·— ··· / ${station} / ·· ··—· / —·—— ——— ··— / —·—· ——— —· — ·· —· ··— · ·—·—·—',
 			'adifImport.stationCallJoin' => '·— —· —··',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ···· ·— ··· / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', other: '${formatted} / ···· ·— ···— · / —· ——— / —·· ·— — · / ·— —· —·· / —·—· ·— —· —· ——— — / —··· · / ·· —— ·——· ——— ·—· — · —··', ), 
@@ -5772,8 +5788,6 @@ extension on TranslationsCw {
 			'adifImport.addActivation' => '·— —·· —·· / ·· — / — ——— / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => '——— —· ·—·· —·—— / ${written} / ——— ··—· / ${planned} / —·—· ——— ··— ·—·· —·· / —··· · / ·— ·——· ·——· ·—·· ·· · —·· / — / — ···· · / ·—·· ——— ——· / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / —·—— ——— ··— / ·—— · ·—· · / —·· · —·—· ·· —·· ·· —· ——· ·—·—·—',
 			'adifImport.busy' => '·— —· / ·· —— ·——· ——— ·—· — / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——· ·—·—·— / ·—— ·— ·· — / ··—· ——— ·—· / ·· — / — ——— / ··—· ·· —· ·· ··· ···· / —··· · ··—· ——— ·—· · / ··· — ·— ·—· — ·· —· ——· / ·— —· ——— — ···· · ·—· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.oneFileOnly' => '—·· ·—· ——— ·——· / ——— —· · / ·— —·· ·· ··—· / ··—· ·· ·—·· · / ·— — / ·— / — ·· —— · / — / — ···· · / ——— ·—· —·· · ·—· / ··—· ·· ·—·· · ··· / ·— ·—· · / ·· —— ·——· ——— ·—· — · —·· / ·· —· / —·· · —·—· ·· —·· · ··· / ·—— ···· ·· —·—· ···· / —·· ·— — ·— / ·—— ·· —· ··· ·—·—·—',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} / ···· ·— ··· / —— ——— ·—· · / — ···· ·— —· / ${limit} / ——·— ··· ——— ··· ——··—— / — ···· · / —— ——— ··· — / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / —·—· ·— —· / ·· —— ·——· ——— ·—· — / ·— — / ·— / — ·· —— · ·—·—·—',
 			'offline.statusOffline' => '·· —· — · ·—· —· · — ———··· / ——— ··—· ··—· ·—·· ·· —· ·',

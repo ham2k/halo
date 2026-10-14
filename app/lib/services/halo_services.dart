@@ -1754,6 +1754,13 @@ class HaLoServices {
         final show = !settings.devMapInfo;
         await settings.setDevMapInfo(show);
         return (text: show ? 'Maps show their zoom and viewport size' : 'Map info hidden', failed: false);
+      case 'devIdle':
+        final show = !settings.showIdleMetrics;
+        await settings.setShowIdleMetrics(show);
+        // The kernel caches settings for 3s; without this a second DEVIDLE
+        // right after the first offers to enable what is already on.
+        extensions.invalidateHookContext();
+        return (text: show ? t.commands.idleMetricsEnabled : t.commands.idleMetricsDisabled, failed: false);
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':

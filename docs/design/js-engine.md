@@ -236,6 +236,59 @@ one runaway extension most readily takes the app down, and desktop values have
 not been measured. Extending it to desktop, which does the largest imports,
 belongs with the untrusted-extension work rather than here.
 
+### Engine load
+
+One engine answers every hook, so a keystroke's lookup or dupe check waits
+behind whatever else extensions are doing. How much room it has is measured
+as **busy time**, in 100ms slices of real time
+(`halo_extension_host/lib/src/engine_load.dart`). Each slice carries its busy
+total, its time by label, and the longest single busy span that ended in it,
+at its full length — the worst wait a call arriving during it could have had.
+
+- **Native** times every entry into the engine from the core
+  (`_HostCore._busy`): incoming calls, the job pump, timers, socket events,
+  host responses, the boot. Only the outermost entry counts, because the host
+  callback re-enters the engine and would otherwise be charged twice.
+- **A host response is charged to the call that made the request**, not to the
+  host method: the answer resumes that call, and the kernel fetches a hook's
+  settings before running it, so without this every busy hook reads as
+  `host:getSettings`.
+- **Web** is approximate. The worker opens a span when a message arrives and
+  closes it when a task queued behind it runs, so the microtasks the message
+  started — where a hook's body runs, after the kernel awaits its context —
+  are inside it. Work outside those microtasks is not seen.
+- **A span's length is monotonic, its place is real time.** Measured on the
+  wall clock, a laptop asleep mid-call would wake to a span hours long. No
+  span is recorded longer than the minute the window keeps.
+- **A span is known only once it ends**, so a heartbeat covers the call still
+  running (`EngineLoadFeed`). The host pings the engine once a second; the
+  ping queues behind whatever holds it (on web, the worker answers only once
+  its open span has been reported). A ping unanswered for a whole heartbeat
+  makes every slice since it was sent count as busy, until the answer comes —
+  without it, a long call reads as idle until it returns, and a wedged web
+  worker as idle for good. The heartbeat runs only while the engine reported
+  busy time in the last 10 seconds or a call is being sent, so a hang that
+  starts from quiet is noticed with the next call, the first one it holds up.
+  A ping is never timed as busy time itself, and a dead engine's heartbeat
+  stops with it rather than reading as a stall until it is replaced.
+- A slice with no busy time is never sent, and the flush timer runs only
+  while a slice is open, armed once per slice — an idle engine costs no
+  wake-ups. A job-pump tick that finds the queue empty is not busy time: the
+  pump ticks every 5ms while a hook awaits the network.
+
+`EngineLoadMonitor` (app) follows the slices across runtime replacements.
+Settings → Developer → Show idle metrics (or `DEVIDLE`) shows the 1-second
+idle share in the status bar; tapped, it opens to the 1-, 10- and 60-second
+shares. Each share is yellow at 70% or below and red at 50% or below.
+The readout is a developer-mode setting: leaving developer mode hides it with
+its switch. Below 30% it sends an "Extension engine busy" diagnostic
+([error-reporting.md](error-reporting.md)) at most every five minutes, and only
+while "Share app usage data" is on, since the app volunteers it. In the first
+runtime's first minute it reports only when that launch drew a 10% sample,
+rolled once, so a busy launch does not report itself; a replacement runtime
+gets no such exemption, since an engine that crash-loops is the one most worth
+hearing about.
+
 ---
 
 ## 6. Where quickjs-ng differs from a browser

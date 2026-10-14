@@ -2067,6 +2067,11 @@
     "developer": {
       "developerModeDescription": "enable developer warnings, debug logs, and tools.",
       "experiments": "experiments",
+      "showIdleMetrics": "show idle metrics",
+      "showIdleMetricsDescription": "show in the status bar how idle the extension engine has been over the last second. tap it for the 10- and 60-second averages.",
+      "idleMetricsReadout": "${percent}% idle",
+      "idleMetricsAverages": "idle avg:",
+      "idleMetricsWindow": "${seconds}s ${percent}%",
       "experimentsEnabled": {
         "one": "${count} enabled",
         "other": "${count} enabled"
@@ -2183,6 +2188,8 @@
     "experimentEnabled": "${name} enabled",
     "experimentDisabled": "${name} disabled",
     "sentryTestSent": "test error report sent to sentry",
+    "idleMetricsEnabled": "idle metrics enabled in the status bar",
+    "idleMetricsDisabled": "idle metrics disabled",
     "sentryTestLocalOnly": "sentry is disabled in this build — test error logged locally only",
     "noOperationOpen": "that command needs an open operation",
     "unknownSegmentKind": "don't know how to mark a '${kind}'",

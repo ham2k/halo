@@ -13,6 +13,15 @@
 /// with `kIsWeb`.
 const bool debugBuild = !bool.fromEnvironment('dart.vm.product') && !bool.fromEnvironment('dart.vm.profile');
 
+/// A batch's name in the samples, the queue summary and a timeout's message:
+/// its method when every call shares one, so the same work groups under one
+/// row whatever the batch's size, and no one program is named for a batch
+/// that spans several.
+String batchLabel(List<Object?> methods) {
+  final distinct = methods.toSet();
+  return distinct.length == 1 ? 'batch:${distinct.single}' : 'batch:mixed';
+}
+
 /// One completed hook invocation, for latency analysis.
 class HookCallSample {
   final String label;

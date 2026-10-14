@@ -55,6 +55,7 @@ import '../../config/navigation.dart';
 import '../../tools/backoff.dart';
 import '../../tools/activity_suggestions.dart';
 import '../../tools/qso_patch.dart';
+import 'engine_load_monitor.dart';
 
 // The types callers pair with the runtime: one import serves both.
 export 'extension_info.dart';
@@ -155,6 +156,10 @@ class ExtensionService
   bool get ready => _host != null;
   @override
   ExtensionHost? get host => _host;
+
+  /// How idle the engine has been, followed across every runtime this
+  /// service boots.
+  late final engineLoad = EngineLoadMonitor(consented: () => settings?.consentAppData ?? false);
 
   @override
   Future<void> start() {
@@ -445,6 +450,7 @@ class ExtensionService
       }
       _host = host;
       _loadedExtensionKeys = loaded;
+      engineLoad.attach(host);
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       _host!.interpretationUpdates.listen(_interpretationUpdates.add);
       _host!.timerSuspensions.listen(_noticeTimerSuspension);

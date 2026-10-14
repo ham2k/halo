@@ -15,7 +15,8 @@
 // staleness check), for both developers iterating on `csvToLookupEntry`
 // mapping logic and anyone troubleshooting stale/missing lookup data.
 // DEVMAPINFO shows the maps' zoom and the size of what they show, for tuning
-// the zoom thresholds the maps act on. DEVTT moves the app clock, for testing anything that turns on the date or on
+// the zoom thresholds the maps act on. DEVIDLE shows how idle the extension
+// engine has been, the headroom a keystroke's hooks have. DEVTT moves the app clock, for testing anything that turns on the date or on
 // elapsed time (see timetravel.ts and docs/design/time.md).
 // SEED fills the current log with generated QSOs for exercising list/
 // scoring/map UI against realistic data (ported from app-polo's
@@ -336,6 +337,19 @@ const DevMapInfoCommand = {
   catalog: devCatalog("DEVMAPINFO", "Show or hide the maps' zoom and viewport size"),
 }
 
+const DevIdleCommand = {
+  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (input.trim().toUpperCase() !== "DEVIDLE") return null
+    const showing = (await host.getSettings()).showIdleMetrics === true
+    return {
+      describe: showing ? "Disable idle metrics in the status bar?" : "Enable idle metrics in the status bar?",
+      commands: [{ devIdle: {} }],
+    }
+  },
+
+  catalog: devCatalog("DEVIDLE", "Enable or disable idle metrics in the status bar"),
+}
+
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
 // that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
 // data file. Bare "RELOAD" (no target, no ALL/!) isn't executable by itself,
@@ -644,5 +658,6 @@ defineExtension({
     registerHook("command", { key: "dev-commands-devbench", hook: DevBenchCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devlogcat", hook: DevLogCatCommand, priority: 100 })
     registerHook("command", { key: "dev-commands-devmapinfo", hook: DevMapInfoCommand, priority: 100 })
+    registerHook("command", { key: "dev-commands-devidle", hook: DevIdleCommand, priority: 100 })
   },
 })

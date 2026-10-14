@@ -153,10 +153,11 @@ reach the fallback zone above.
 `ErrorReportingService.diagnostic(title:, body:)` and
 `updateEquipmentContext(radio:)` are outside the policy for the same reason:
 neither is an error, so there is nothing to decide. The diagnostic is an
-info-level report that groups by its title — a benchmark result, or the
-first-success radio report, which is app-initiated and gated on
-`consentAppData` at its call site ([telemetry.md](telemetry.md) § Radios owns
-that rule). The equipment context is a scope tag naming the connected radio's
+info-level report that groups by its title — a benchmark result, or one of
+the app-initiated reports, each gated on `consentAppData` at its call site:
+the "Extension engine busy" report when extensions leave the engine under 30%
+idle ([js-engine.md](js-engine.md) § Engine load), and the first-success radio
+report ([telemetry.md](telemetry.md) § Radios owns that rule). The equipment context is a scope tag naming the connected radio's
 catalogue key, so every later event says what was on the other end of the
 cable. Both swallow a synchronous backend failure, exactly as `breadcrumb`
 does and for the same reason: they ride along with something the operator
