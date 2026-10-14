@@ -87,6 +87,11 @@ void _reportScorerFailure(String scorerKey, String method, Object error, StackTr
   );
 }
 
+/// The failure streak for building a spots pass's own checkpoints
+/// ([ExtensionScoring.scoreCandidates]'s `resumesFor`): one report until it
+/// next succeeds, not one per spots refresh.
+const _candidateResumesKey = 'scoring:candidateResumes';
+
 /// How long one scorer gets to answer [ExtensionScoring.scoreQso]. Public so
 /// the contest bench can tell a sample that ran out the clock from an answer.
 const kScoreQsoTimeout = Duration(seconds: 4);
@@ -362,12 +367,20 @@ mixin ExtensionScoring {
   /// `resolveScoringResume`, which is the one place that decides when they
   /// may be sent. A scorer that gets one skips the whole-log fold, which on a
   /// long log is the dominant cost of a pass.
+  ///
+  /// [resumesFor] is asked for the selected scorers [resume] has no
+  /// checkpoint for, and answers with a resume of their own for each it
+  /// can — in practice the ones a candidate's own references brought in
+  /// (`ScoringService.candidateResumesFor`). Each carries its own tail: these
+  /// checkpoints are not the operation's, and stand at a different point in
+  /// the log.
   Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
     required Map<String, Map<String, dynamic>> candidates,
     List<Map<String, dynamic>>? segments,
     ScoringResume? resume,
+    Future<Map<String, ScoringResume>> Function(List<Scorer> scorers)? resumesFor,
     Set<String> huntedRefTypes = const {},
   }) async {
     final host = this.host;
@@ -424,12 +437,36 @@ mixin ExtensionScoring {
     // no scorer computes any more.
     if (batches.isEmpty) return const {};
 
+    final uncovered = [
+      for (final batch in batches)
+        if (resume?.checkpoints[batch.scorer.key] == null) batch.scorer,
+    ];
+    // Started beside the covered scorers' calls rather than ahead of them:
+    // building a checkpoint can be a whole-log pass, and core's verdicts need
+    // not wait for it. A saving, never a precondition — a failure leaves
+    // those scorers to fold cold, as they would with no builder at all.
+    final own = uncovered.isEmpty || resumesFor == null
+        ? null
+        : resumesFor(uncovered).then(
+            (resumes) {
+              ErrorReportingService.recordSuccess(_candidateResumesKey);
+              return resumes;
+            },
+            onError: (Object e, StackTrace stackTrace) {
+              ErrorReportingService.reportIfRepeated(_candidateResumesKey, e, stackTrace, context: _candidateResumesKey, threshold: 1);
+              return const <String, ScoringResume>{};
+            },
+          );
+
     await Future.wait(
       batches.map((batch) async {
         final (:scorer, :payload) = batch;
         try {
-          final checkpoint = resume?.checkpoints[scorer.key];
-          final tail = resume?.tail;
+          final shared = resume?.checkpoints[scorer.key];
+          final ownResumes = shared == null ? await own : null;
+          final mine = ownResumes?[scorer.key];
+          final checkpoint = shared ?? mine?.checkpoints[scorer.key];
+          final tail = shared != null ? resume?.tail : mine?.tail;
           final result = await _invokeResumable(host, scorer.key, Hooks.scoringScoreCandidates, {
             'operation': withUuid,
             'candidates': payload,

@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_extension_host/halo_extension_host.dart' show Scorer;
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -47,6 +48,7 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, Map<String, dynamic>> candidates,
     List<Map<String, dynamic>>? segments,
     ScoringResume? resume,
+    Future<Map<String, ScoringResume>> Function(List<Scorer> scorers)? resumesFor,
     Set<String> huntedRefTypes = const {},
   }) async => {
     for (final key in candidates.keys)

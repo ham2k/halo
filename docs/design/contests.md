@@ -399,6 +399,17 @@ fast-path, never truth**:
   said it holds, forgets it all when the runtime's generation ticks, and
   answers a `resume-missing` refusal by sending the sheet once more
   (docs/extensions/hooks.md, the scoring section, is the wire contract).
+- A scorer the spots board selects only through a spot's reference type —
+  SOTA on a POTA hunter's board — is not one the operation's passes run, so it
+  has no checkpoint in `local_data`. `ScoringService.candidateResumesFor`
+  gives it one of its own, in memory for the operation the board shows: a
+  batch pass builds it (its verdicts thrown away), a logged contact is replayed
+  onto it once, and a refresh over an unchanged log replays nothing; the same
+  `resolveScoringResume` rule decides when it may be used, and it is dropped
+  with the runtime. Never written to the operation, so these scorers never
+  reach its score summaries or another device. Without it, each such scorer
+  reads and folds the whole log on every spots refresh and every logged
+  contact, which on a long log holds the extension engine for most of a second.
 
 `ScoringService` owns that invariant: it resumes from a cached checkpoint — in
 a pass, and for the live paths through `liveResumeFor` — only for an

@@ -55,6 +55,7 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, Map<String, dynamic>> candidates,
     List<Map<String, dynamic>>? segments,
     ScoringResume? resume,
+    Future<Map<String, ScoringResume>> Function(List<Scorer> scorers)? resumesFor,
     Set<String> huntedRefTypes = const {},
   }) async {
     scored.add(candidates);

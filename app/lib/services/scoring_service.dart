@@ -165,6 +165,29 @@ ScoringResume? resolveScoringResume({
   return (checkpoints: checkpoints, tail: tail);
 }
 
+/// Where a pass over [rows] ends, for [resolveScoringResume]: the newest
+/// stamp among the rows it folds (the event markers included, since the
+/// timeline is part of the fold), a digest of those rows, the time of the
+/// last contact in log order, and the operation's own stamp. Taken from the
+/// very list the scorers are about to fold, never re-read.
+Map<String, dynamic> checkpointStampOf(Operation operation, List<Qso> rows) {
+  var newestStamp = 0;
+  var lastStartAt = 0;
+  for (final qso in rows) {
+    final at = qso.updatedAtMillis ?? 0;
+    if (at > newestStamp) newestStamp = at;
+    if (qso.isEvent || qso.hasIncompleteCall) continue;
+    final startAt = qso.startAtMillis ?? 0;
+    if (startAt > lastStartAt) lastStartAt = startAt;
+  }
+  return {
+    'digest': checkpointDigestOf(rows),
+    'updatedAtMillis': newestStamp,
+    'startAtMillis': lastStartAt,
+    'operationUpdatedAtMillis': operation.updatedAtMillis,
+  };
+}
+
 /// The name a checkpoint is held under in the runtime, from its stamp — every
 /// field of it, so two sheets of one operation never share a name, not even
 /// the same log folded under an edited operation. The pass that produces a
@@ -235,6 +258,19 @@ class ScoringService {
   /// finish writing after the tick.
   final _foldedBy = <String, ExtensionHost>{};
 
+  /// Checkpoints for the scorers the spots board selects through the
+  /// references on the spots alone — the operation's own passes never run
+  /// them, so `local_data['scoring']` has none, and each would otherwise read
+  /// and fold the whole log on every pass over the board, which on a long log
+  /// is most of the engine's time. Shaped like `local_data['scoring']`, for
+  /// [resolveScoringResume].
+  ///
+  /// In memory only: written to the operation, these scorers would appear in
+  /// its score summaries and travel to every device. One operation at a time,
+  /// the one the board shows, and only under the host that folded them, for
+  /// the reason [_foldedBy] says.
+  ({String uuid, ExtensionHost host, Map<String, Map<String, dynamic>> scoring})? _candidateScoring;
+
   /// The pass in flight per operation. A second request queues behind it and
   /// reads the operation afresh when its turn comes, so it continues the
   /// write it waited for: two passes reading the same stale checkpoint and
@@ -246,7 +282,10 @@ class ScoringService {
     extensions.runtimeGeneration.addListener(_onRuntimeGenerationChanged);
   }
 
-  void _onRuntimeGenerationChanged() => _foldedBy.clear();
+  void _onRuntimeGenerationChanged() {
+    _foldedBy.clear();
+    _candidateScoring = null;
+  }
 
   bool _foldedByCurrentHost(String uuid) {
     final host = extensions.host;
@@ -266,6 +305,96 @@ class ScoringService {
       operationUpdatedAtMillis: operation.updatedAtMillis,
       qsos: qsos,
       excludeUuid: excludeUuid,
+    );
+  }
+
+  /// A resume for each of [scorers] — the ones a spots pass selected that
+  /// [liveResumeFor] has no checkpoint for — built from [_candidateScoring].
+  ///
+  /// A scorer whose checkpoint [log] cannot resume from without a tail gets a
+  /// batch pass first, from its checkpoint plus the contacts logged since
+  /// when [resolveScoringResume] allows, or over the whole log when it does
+  /// not; its verdicts are thrown away and only the end sheet is kept. So the
+  /// board folds a scorer's log once per edit, replays a logged contact once,
+  /// and on a spots refresh replays nothing. The pass reads the log afresh;
+  /// a [log] that has not caught up with it resumes nothing this time, and
+  /// that scorer folds cold, as before.
+  ///
+  /// Not for a scorer the operation's own passes run — one with an entry in
+  /// `local_data['scoring']`. [liveResumeFor] has nothing for it only while
+  /// a rescore is due (just opened, a new runtime, an edit), and that rescore
+  /// is already folding the whole log: a second whole-log pass beside it
+  /// would buy one spots pass.
+  ///
+  /// Missing from the result: a scorer whose pass failed, found an empty log,
+  /// or answered without a sheet. It folds cold.
+  Future<Map<String, ScoringResume>> candidateResumesFor(Operation operation, List<Qso> log, List<Scorer> scorers) async {
+    final host = extensions.host;
+    if (host == null || scorers.isEmpty) return const {};
+    final held = _candidateScoring;
+    final scoring = held != null && held.uuid == operation.uuid && identical(held.host, host) ? held.scoring : <String, Map<String, dynamic>>{};
+    _candidateScoring = (uuid: operation.uuid, host: host, scoring: scoring);
+
+    ScoringResume? resumeOf(String scorerKey, Operation of, List<Qso> rows) {
+      final entry = scoring[scorerKey];
+      return entry == null ? null : resolveScoringResume(scoring: {scorerKey: entry}, operationUpdatedAtMillis: of.updatedAtMillis, qsos: rows);
+    }
+
+    final operationScoring = operation.localData['scoring'];
+    final byKey = {
+      for (final scorer in scorers)
+        if (!(operationScoring is Map && operationScoring.containsKey(scorer.key))) scorer.key: scorer,
+    };
+    final stale = [
+      for (final scorer in byKey.values)
+        if (scoring[scorer.key]?['unresumable'] != true && resumeOf(scorer.key, operation, log)?.tail.isEmpty != true) scorer,
+    ];
+    if (stale.isNotEmpty) await _foldCandidates(operation.uuid, scoring, stale, resumeOf);
+    return {for (final key in byKey.keys) key: ?resumeOf(key, operation, log)};
+  }
+
+  Future<void> _foldCandidates(
+    String uuid,
+    Map<String, Map<String, dynamic>> scoring,
+    List<Scorer> scorers,
+    ScoringResume? Function(String scorerKey, Operation of, List<Qso> rows) resumeOf,
+  ) async {
+    final operation = await operations.get(uuid);
+    if (operation == null) return;
+    final all = await qsos.forOperation(uuid);
+    final qsoList = all.where((q) => !q.isEvent && !q.hasIncompleteCall).toList();
+    if (qsoList.isEmpty) return;
+    final checkpoint = checkpointStampOf(operation, all);
+    final segmented = SegmentedOperation.from(operation: operation.data, qsos: all);
+    await Future.wait(
+      scorers.map((scorer) async {
+        final resume = resumeOf(scorer.key, operation, all);
+        // Already where the log is: it is the caller's view that is behind.
+        if (resume != null && resume.tail.isEmpty) return;
+        final from = resume?.checkpoints[scorer.key];
+        final result = await extensions.scoreQsos(
+          scorerKey: scorer.key,
+          args: {
+            ..._batchArgs(operation, qsoList: qsoList, segmented: segmented, checkpoint: checkpoint, tail: from == null ? null : resume!.tail),
+            'ref': ?scorer.ref,
+            'resumeKey': ?from?.key,
+            'resumeFrom': ?from?.sheet,
+            'resumeDay': ?from?.day,
+          },
+        );
+        if (result == null) {
+          scoring.remove(scorer.key);
+          return;
+        }
+        // The sheet is optional to a scorer. One without it gives nothing to
+        // resume from, and asked again it would only fold the log again, on
+        // every spots refresh, for nothing.
+        if (result['scoresheet'] == null) {
+          scoring[scorer.key] = const {'unresumable': true};
+          return;
+        }
+        scoring[scorer.key] = {'scoresheet': result['scoresheet'], 'scoresheetDay': ?result['scoresheetDay'], 'checkpoint': checkpoint};
+      }),
     );
   }
 
@@ -303,6 +432,29 @@ class ScoringService {
     });
   }
 
+  /// A batch pass's request, but for the scorer's own `ref` and checkpoint:
+  /// the whole log, or only [tail] when the pass resumes.
+  static Map<String, dynamic> _batchArgs(
+    Operation operation, {
+    required List<Qso> qsoList,
+    required SegmentedOperation segmented,
+    required Map<String, dynamic> checkpoint,
+    List<Map<String, dynamic>>? tail,
+  }) => {
+    'operation': operationQsonFor(operation),
+    // A tail is a handful of contacts and goes as itself. A full pass names
+    // the contacts it read, and the runtime folds them from its copy of the
+    // log (`withLoggedQsos` in the SDK kernel) — the whole log would
+    // otherwise cross the bridge once per scorer.
+    if (tail != null) 'qsos': tail else 'qsoUuids': [for (final qso in qsoList) qso.uuid],
+    // The runtime keeps this pass's end sheet under this name, so the live
+    // paths can name it rather than send it back on every keystroke.
+    'checkpointKey': checkpointKeyOf(checkpoint),
+    // Only when there is something to resolve — an unsegmented operation
+    // sends nothing extra and the harness takes its existing path.
+    if (segmented.isSegmented) 'segments': segmented.payload,
+  };
+
   Future<void> _run(String uuid, {required bool full}) async {
     final host = extensions.host;
     if (host == null) return;
@@ -326,26 +478,7 @@ class ScoringService {
     // unconditional one per rescore is a rebuild per rescore that tells the UI
     // nothing, and the value moves perhaps once in an operation's life.
     final huntedRefTypes = ExtensionService.huntedRefTypesOf(qsoList);
-    // Where this pass's checkpoints end, for [resolveScoringResume]: the newest
-    // stamp among the rows they fold (the event markers included, since the
-    // timeline is part of the fold), a digest of those rows, the time of the
-    // last contact in log order, and the operation's own stamp. Taken from the
-    // very list the scorers are about to fold, never re-read.
-    var newestStamp = 0;
-    var lastStartAt = 0;
-    for (final qso in all) {
-      final at = qso.updatedAtMillis ?? 0;
-      if (at > newestStamp) newestStamp = at;
-      if (qso.isEvent || qso.hasIncompleteCall) continue;
-      final startAt = qso.startAtMillis ?? 0;
-      if (startAt > lastStartAt) lastStartAt = startAt;
-    }
-    final checkpoint = {
-      'digest': checkpointDigestOf(all),
-      'updatedAtMillis': newestStamp,
-      'startAtMillis': lastStartAt,
-      'operationUpdatedAtMillis': operation.updatedAtMillis,
-    };
+    final checkpoint = checkpointStampOf(operation, all);
     final cached = ((operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet();
     if (!setEquals(cached, huntedRefTypes)) {
       await operations.updateLocalData(operation.uuid, {'huntedRefTypes': huntedRefTypes.toList()..sort()});
@@ -376,20 +509,7 @@ class ScoringService {
           : resolveScoringResume(scoring: cachedScoring, operationUpdatedAtMillis: operation.updatedAtMillis, qsos: all);
       final append = resume != null && resume.tail.isNotEmpty && scorers.every((scorer) => resume.checkpoints.containsKey(scorer.key));
 
-      final payload = {
-        'operation': operationQsonFor(operation),
-        // A tail is a handful of contacts and goes as itself. A full pass
-        // names the contacts it read, and the runtime folds them from its
-        // copy of the log (`withLoggedQsos` in the SDK kernel) — the whole
-        // log would otherwise cross the bridge once per scorer.
-        if (append) 'qsos': resume.tail else 'qsoUuids': [for (final qso in qsoList) qso.uuid],
-        // The runtime keeps this pass's end sheet under this name, so the live
-        // paths can name it rather than send it back on every keystroke.
-        'checkpointKey': checkpointKeyOf(checkpoint),
-        // Only when there is something to resolve — an unsegmented operation
-        // sends nothing extra and the harness takes its existing path.
-        if (segmented.isSegmented) 'segments': segmented.payload,
-      };
+      final payload = _batchArgs(operation, qsoList: qsoList, segmented: segmented, checkpoint: checkpoint, tail: append ? resume.tail : null);
 
       // Independent per-scorer calls — a contest scorer that throws must not
       // cost the operation its core scoring, so each result is collected on its

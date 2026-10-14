@@ -352,6 +352,7 @@ class SpotBoardService extends ChangeNotifier {
           candidates: candidates,
           segments: segmented.isSegmented ? segmented.payload : null,
           resume: scoring.liveResumeFor(operation, qsos),
+          resumesFor: (scorers) => scoring.candidateResumesFor(operation, qsos, scorers),
           huntedRefTypes: _huntedRefTypesOf(operation),
         );
         // Nobody is left reading: the verdicts describe nothing on screen.

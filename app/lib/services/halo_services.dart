@@ -1753,6 +1753,8 @@ class HaLoServices {
       case 'devMapInfo':
         final show = !settings.devMapInfo;
         await settings.setDevMapInfo(show);
+        // As DEVIDLE's, below.
+        extensions.invalidateHookContext();
         return (text: show ? 'Maps show their zoom and viewport size' : 'Map info hidden', failed: false);
       case 'devIdle':
         final show = !settings.showIdleMetrics;
