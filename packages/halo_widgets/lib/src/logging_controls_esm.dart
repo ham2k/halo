@@ -71,6 +71,11 @@ class EnterSends {
 /// Run with none is one Enter: the caller gets their exchange and a thanks,
 /// and the contact is logged, since nothing is left to receive. S&P is always
 /// two: the station has to be called before there is anything to log.
+///
+/// [incompleteCall] is a call with a `?` in it — a partial being asked back,
+/// running or S&P. It keys their call as typed, `?` and all, which is the
+/// asking, and stays: no exchange goes to a station that has not answered,
+/// and the plain log that would follow accepts an incomplete call.
 EsmStep? esmStep({
   required bool running,
   required bool callEmpty,
@@ -79,10 +84,12 @@ EsmStep? esmStep({
   required bool hasExchange,
   required bool exchangeCopied,
   bool callFocused = false,
+  bool incompleteCall = false,
 }) {
   if (callEmpty) {
     return running ? (send: const [EsmMessage.cq], then: EsmThen.stay) : null;
   }
+  if (incompleteCall) return (send: const [EsmMessage.hisCall], then: EsmThen.stay);
   // Not a callsign — the refusal a plain Enter gives is the right answer.
   if (!canLog) return null;
   if (running) {

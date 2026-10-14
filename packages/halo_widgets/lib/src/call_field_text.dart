@@ -18,8 +18,9 @@ import 'package:halo_core/halo_core.dart';
 /// filter, and the test for whether text in it would survive that filter.
 /// One class, because a character added to the filter and not to the test
 /// would let a free-text parameter be judged safe and then be stripped by
-/// the returning filter on the next keystroke.
-const callsignCharacters = r'a-zA-Z0-9/.,';
+/// the returning filter on the next keystroke. `?` marks a call not fully
+/// copied ([isIncompleteCall]).
+const callsignCharacters = r'a-zA-Z0-9/.,?';
 
 /// The "//"-separated segments of a stack, each one's start offset in the
 /// field text, and the index of the segment holding the cursor.
@@ -207,10 +208,10 @@ class CallFieldText {
   }
 
   /// The calls in one stacked segment, or null when it doesn't read as a
-  /// callsign or a comma list of them.
+  /// loggable call or a comma list of them.
   static List<String>? _segmentCalls(String segment) {
     final calls = segment.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
-    return calls.isNotEmpty && calls.every(looksLikeCallsign) ? calls : null;
+    return calls.isNotEmpty && calls.every(isLoggableCall) ? calls : null;
   }
 
   /// The calls a template names (docs/extensions/templates.md): `call` is

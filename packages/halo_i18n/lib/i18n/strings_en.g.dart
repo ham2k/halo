@@ -1897,6 +1897,9 @@ class Translations$spotting$en {
 	/// en: 'Nothing to spot — no extension offers spotting here.'
 	String get nothingToSpot => 'Nothing to spot — no extension offers spotting here.';
 
+	/// en: 'Can't spot an incomplete call — finish the callsign first.'
+	String get incompleteCall => 'Can\'t spot an incomplete call — finish the callsign first.';
+
 	/// en: '${source} failed: ${message}'
 	String spotFailed({required Object source, required Object message}) => '${source} failed: ${message}';
 
@@ -3890,6 +3893,9 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'Unknown Event'
 	String get noticeUnknownEvent => 'Unknown Event';
+
+	/// en: 'Incomplete Call — Not Scored'
+	String get noticeIncompleteCall => 'Incomplete Call — Not Scored';
 
 	/// en: 'Set Our Grid'
 	String get noticeOurGrid => 'Set Our Grid';
@@ -8860,6 +8866,7 @@ extension on Translations {
 			'loggingControls.info.noticeMissingExchange' => 'No Exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
+			'loggingControls.info.noticeIncompleteCall' => 'Incomplete Call — Not Scored',
 			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
 			'loggingControls.info.noticeRareCounty' => 'Rare County!',
 			'loggingControls.info.noticeOurLocation' => 'Set Our County',
@@ -9013,9 +9020,9 @@ extension on Translations {
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'Preferred Bands',
-			'settings.logging.modes' => 'Preferred Modes',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.modes' => 'Preferred Modes',
 			'settings.catServer.title' => 'CAT Server',
 			'settings.catServer.description' => 'Allow other apps (WSJT-X, loggers, etc) to control the radio through Ham2K Logger.',
 			'settings.catServer.protocol' => 'Protocol',
@@ -9527,9 +9534,9 @@ extension on Translations {
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.',
 			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
-			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
@@ -9887,6 +9894,7 @@ extension on Translations {
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
+			'spotting.incompleteCall' => 'Can\'t spot an incomplete call — finish the callsign first.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
@@ -10040,10 +10048,10 @@ extension on Translations {
 			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${formatted} contacts from ${filename}', ), 
-			'adifImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
-			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an ADIF file',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
+			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an ADIF file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 

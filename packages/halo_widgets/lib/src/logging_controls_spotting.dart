@@ -104,6 +104,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       final ageMillis = editingQso.startAtMillis == null ? null : nowMillis() - editingQso.startAtMillis!;
       final tooOld = ageMillis == null || ageMillis > staleAfter.inMilliseconds;
       final summary = t.loggingControls.spottingControl;
+      // No source is offered for it (`suggestSpotSources`), so an enabled
+      // button would send to nobody and say nothing.
+      if (editingQso.hasIncompleteCall) {
+        return (summary: summary, buttonLabel: t.spotting.incompleteCall, enabled: false, showComment: false);
+      }
       if (tooOld) {
         return (summary: summary, buttonLabel: t.loggingControls.spotTooLate(call: call), enabled: false, showComment: false);
       }

@@ -61,6 +61,11 @@ import 'hook_payloads.dart';
 /// only a tail-aware harness ever returns, so a checkpoint without one is
 /// resumed only when there is nothing to replay.
 ///
+/// A contact with an incomplete call ([Qso.hasIncompleteCall]) is no scorer's
+/// to fold, so it never enters the tail either — but it stays in the digest,
+/// so one whose call is completed or broken by an edit folds cold like any
+/// other edit.
+///
 /// [qsos] is the list the view holds, deleted rows and event markers included;
 /// only real contacts are counted, as the rescore counts them. A contact with
 /// no stamp cannot be placed and folds cold. The proof is against that list,
@@ -119,8 +124,10 @@ ScoringResume? resolveScoringResume({
       final updatedAt = qso.updatedAtMillis!;
       if (updatedAt <= stampedAt) break;
       if (qso.isEvent) return null;
-      if ((qso.startAtMillis ?? 0) <= lastStartAt) return null;
-      tail.add(qso.data);
+      if (!qso.hasIncompleteCall) {
+        if ((qso.startAtMillis ?? 0) <= lastStartAt) return null;
+        tail.add(qso.data);
+      }
       foldedDigest -= qsoDigestTerm(qso);
     }
     if (foldedDigest != digest) return null;
@@ -146,7 +153,7 @@ ScoringResume? resolveScoringResume({
         folded.add(qso);
       } else if (qso.isEvent) {
         return null;
-      } else {
+      } else if (!qso.hasIncompleteCall) {
         if ((qso.startAtMillis ?? 0) <= lastStartAt) return null;
         tail.add(qso.data);
       }
@@ -303,7 +310,9 @@ class ScoringService {
     if (operation == null) return;
 
     final all = await qsos.forOperation(operation.uuid);
-    final qsoList = all.where((q) => !q.isEvent).toList();
+    // An incomplete call scores nothing until it is completed: no scorer may
+    // judge the letters around its `?` as a station, so none is shown it.
+    final qsoList = all.where((q) => !q.isEvent && !q.hasIncompleteCall).toList();
 
     // The activities this log HUNTS, which the operation's own refs never name
     // — a chaser activates nothing (docs/design/activities.md §4). Written
@@ -327,7 +336,7 @@ class ScoringService {
     for (final qso in all) {
       final at = qso.updatedAtMillis ?? 0;
       if (at > newestStamp) newestStamp = at;
-      if (qso.isEvent) continue;
+      if (qso.isEvent || qso.hasIncompleteCall) continue;
       final startAt = qso.startAtMillis ?? 0;
       if (startAt > lastStartAt) lastStartAt = startAt;
     }
@@ -342,7 +351,10 @@ class ScoringService {
       await operations.updateLocalData(operation.uuid, {'huntedRefTypes': huntedRefTypes.toList()..sort()});
     }
 
-    if (qsoList.isEmpty) return;
+    // Not on `qsoList`: a log of nothing but incomplete calls still runs, so
+    // its summary drops to nothing instead of keeping what those contacts
+    // scored before an edit put a `?` in them.
+    if (!all.any((q) => q.isRealContact)) return;
 
     // Resolved from the FULL list — the event rows carrying the segment
     // overrides are exactly what `qsoList` just filtered out

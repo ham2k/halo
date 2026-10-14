@@ -23,6 +23,7 @@ void main() {
       bool hasExchange = false,
       bool exchangeCopied = false,
       bool callFocused = false,
+      bool incompleteCall = false,
     }) {
       final step = esmStep(
         running: running,
@@ -32,6 +33,7 @@ void main() {
         hasExchange: hasExchange,
         exchangeCopied: exchangeCopied,
         callFocused: callFocused,
+        incompleteCall: incompleteCall,
       );
       return step == null ? null : '${step.send.map((m) => m.name).join('+')} -> ${step.then.name}';
     }
@@ -54,6 +56,16 @@ void main() {
     // and the contact unlogged for no reason.
     test('running with reports only answers, thanks and logs in one Enter', () {
       expect(step(), 'hisCall+exchange+thanks -> log');
+    });
+
+    // A `?` call is a partial being asked back: the step that would answer or
+    // complete it — the exchange, the thanks, the log — goes to a station
+    // that has not answered yet, however far the contact had got.
+    test('an incomplete call keys only their call and stays, running or S&P', () {
+      for (final running in [true, false]) {
+        expect(step(running: running, incompleteCall: true), 'hisCall -> stay');
+        expect(step(running: running, incompleteCall: true, hasExchange: true, answered: true, exchangeCopied: true), 'hisCall -> stay');
+      }
     });
 
     test('running with an exchange sends it first and waits for theirs', () {
@@ -175,6 +187,24 @@ void main() {
 
       expect(await logged(tester), hasLength(1));
       expect(sent, isEmpty);
+    });
+
+    // `K1A?` typed mid-pileup is a partial being asked back: the `?` keyed
+    // with it is the asking. Enter must not fall through to the plain log,
+    // which accepts an incomplete call, and close a contact with a station
+    // that has not answered yet.
+    testWidgets('an incomplete call keys their call with its ? and logs nothing, running or S&P', (tester) async {
+      for (final running in [true, false]) {
+        sent.clear();
+        await tester.pumpWidget(host(enterSends: esm(running: running)));
+        await tester.pump();
+        await tester.enterText(field('Their call'), 'K1A?');
+        await enter(tester);
+
+        expect(sent, ['hisCall @ K1A?'], reason: running ? 'running' : 'S&P');
+        expect(await logged(tester), isEmpty, reason: running ? 'running' : 'S&P');
+        expect(focused(tester, 'Their call'), isTrue, reason: 'the full call is still to be typed');
+      }
     });
 
     testWidgets('running, an empty call field calls CQ', (tester) async {

@@ -326,6 +326,41 @@ void main() {
       expect(h.draft.differsFrom(qso), isTrue);
     });
 
+    // An incomplete call is never looked up, so nothing replaces the guess the
+    // record carries — the name, grid and entity of the call that was there
+    // before, which every export would then file under the new one.
+    test('a record edited to an incomplete call drops the guess it carried for the old one', () {
+      final h = _Harness();
+      addTearDown(h.dispose);
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'uuid': 'q1',
+          'their': {
+            'call': 'W1AW',
+            'guess': {'name': 'Hiram', 'dxccCode': 291},
+            'lookups': [
+              {'source': 'qrz'},
+            ],
+          },
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': 1700000000000,
+        },
+      );
+      h.editingQso = qso;
+      h.draft.populate(() => h.draft.applyData(qso.data));
+      h.call.text = 'W1AW';
+      expect((h.draft.toData()['their'] as Map)['guess'], {'name': 'Hiram', 'dxccCode': 291}, reason: 'a complete call keeps its guess');
+
+      h.call.text = 'W1A?';
+      final their = h.draft.toData()['their'] as Map;
+      expect(their.containsKey('guess'), isTrue, reason: 'written as null, or the merge over the record keeps the old one');
+      expect(their['guess'], isNull);
+      expect(their['lookups'], isNull);
+    });
+
     test('a note deleted from a saved contact is cleared; one never written is not stamped', () {
       final h = _Harness();
       addTearDown(h.dispose);

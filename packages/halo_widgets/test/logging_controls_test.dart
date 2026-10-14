@@ -107,6 +107,25 @@ void main() {
     expect(logged, isEmpty, reason: 'an implausible call is refused, not logged');
   });
 
+  // The `?` is the operator saying "I didn't get all of it" — refusing the
+  // contact loses it outright, and the call field's character filter would
+  // strip the `?` before the log gate ever saw it.
+  testWidgets('a call marked incomplete with a `?` logs as typed, a lone `?` included', (tester) async {
+    await tester.pumpWidget(host());
+    await openControl(tester, MdiIcons.radio);
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'k1a?c');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect((await waitForQsos(tester, 1)).map((q) => q.theirCall), ['K1A?C']);
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), '?');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    expect((await waitForQsos(tester, 2)).map((q) => q.theirCall), ['K1A?C', '?']);
+  });
+
   // The panel reserves the home indicator below its fields, but NOT while the
   // on-screen keyboard is up — the keyboard covers the indicator, and
   // StatusBarOverlay is already holding back that whole strip so the status

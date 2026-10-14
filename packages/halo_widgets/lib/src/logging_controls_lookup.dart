@@ -360,6 +360,18 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     if (scoreFn == null) return;
     _scoreDebounce?.cancel();
     final call = activeCall();
+    // An incomplete call scores nothing by rule, so it is answered here
+    // rather than by the scorers, which would judge the letters around the
+    // `?` as a station (ScoringService). It still counts as scored: editing
+    // a saved one holds the info area until it is.
+    if (isCallInfoActive() && isIncompleteCall(call)) {
+      _scoreFor = call;
+      _alertKeys = const ['incompleteCall'];
+      _noticeKeys = const [];
+      _scoreSources = const {};
+      notify();
+      return;
+    }
     // Only score a plausible callsign — the same gate the lookup uses. Without
     // it, command input ("RELOAD", "NOTE hi") and non-callsign junk would each
     // fire a whole-log getQsos read in the runtime for nothing.

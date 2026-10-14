@@ -402,6 +402,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       hasExchange: exchange.isNotEmpty,
       exchangeCopied: exchange.any((field) => _exchange.valueOf(field.key).trim().isNotEmpty),
       callFocused: _callFocus.hasFocus,
+      incompleteCall: isIncompleteCall(call),
     );
     if (step == null) return false;
     // A step that logs hands over what the entry is AFTER the log too, for
@@ -1553,7 +1554,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (_isCallStackField) {
       return _callText.pickStackedCall() != null;
     }
-    return _callList.isNotEmpty && _callList.every(looksLikeCallsign);
+    return _callList.isNotEmpty && _callList.every(isLoggableCall);
   }
 
   /// Note expansion inside a stack (issue #17 × issue #7): asks the command

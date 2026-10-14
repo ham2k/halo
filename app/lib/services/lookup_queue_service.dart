@@ -136,7 +136,8 @@ class LookupQueueService {
   /// is why the skips have to be visible to the caller rather than swallowed
   /// here.
   _PendingLookup? _enqueueOne(Qso qso, {required bool force}) {
-    if (!qso.isRealContact || qso.theirCall.length < 3) return null;
+    // An incomplete call would send a callbook the letters around the `?`.
+    if (!qso.isRealContact || qso.theirCall.length < 3 || qso.hasIncompleteCall) return null;
     if (!force && _hasOnlineLookup(qso)) return null;
     if (!_queuedUuids.add(qso.uuid)) return null;
     final entry = _PendingLookup(qso.uuid, qso.operationUuid);
@@ -301,7 +302,7 @@ class LookupQueueService {
     final qso = await qsos.get(entry.qsoUuid);
     if (qso == null || !qso.isRealContact) return null;
     final call = qso.theirCall;
-    if (call.length < 3) return null;
+    if (call.length < 3 || qso.hasIncompleteCall) return null;
 
     if (_cachedOperation?.uuid != entry.operationUuid) {
       _cachedOperation = await operations.get(entry.operationUuid);

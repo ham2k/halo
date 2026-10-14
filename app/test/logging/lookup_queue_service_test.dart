@@ -505,6 +505,55 @@ void main() {
     expect((await qsos.get(ok.uuid))!.theirName, 'Fine');
   });
 
+  // A callbook asked about "K1A?C" answers for whatever its search makes of
+  // the letters — and the queue would stamp that station's name and grid on
+  // a contact whose call the operator said they did not get.
+  test('an incomplete call is never looked up — not queued, not forced, not once it is edited in', () async {
+    final incomplete = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1A?C'},
+    });
+    final editedLater = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final complete = await qsos.add(operation.uuid, {
+      'their': {'call': 'N2XYZ'},
+    });
+
+    final calls = <String>[];
+    final release = Completer<void>();
+    final queue = service((call, {required qso, required operation, bool online = true, bool recentContext = false}) async {
+      calls.add(call);
+      await release.future;
+      return {
+        'guess': {'name': 'Somebody'},
+      };
+    });
+
+    queue.enqueue(incomplete);
+    queue.enqueueAll([incomplete]);
+    // In flight, holding the queue, so the next entry is still waiting when
+    // its record is edited below.
+    queue.enqueue(complete);
+    queue.enqueue(editedLater);
+    // The queue re-reads each record before it looks it up: an edit that
+    // lands while it waits decides.
+    await qsos.update(
+      Qso(
+        uuid: editedLater.uuid,
+        operationUuid: operation.uuid,
+        data: {
+          ...editedLater.data,
+          'their': {'call': 'W1A?'},
+        },
+      ),
+    );
+    release.complete();
+    await queue.idle;
+
+    expect(calls, ['N2XYZ']);
+    expect((await qsos.get(incomplete.uuid))!.theirName, isNull);
+  });
+
   test('dedupes a QSO still waiting in the queue, but a re-request for one already in flight runs again', () async {
     final a = await qsos.add(operation.uuid, {
       'their': {'call': 'W1AW'},

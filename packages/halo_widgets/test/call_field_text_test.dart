@@ -39,6 +39,14 @@ void main() {
     expect(_at('K1ABC//1AB', 9).callAtCursor, 'K1ABC');
   });
 
+  test('a stack picks an incomplete call under the cursor rather than skipping past it', () {
+    // Without this, Enter on the `?` the operator just typed logs the call
+    // before it in the stack instead — a different station.
+    expect(_at('K1ABC//W1A?', 10).pickStackedCall()?.calls, ['W1A?']);
+    expect(_at('K1ABC//W1A?', 10).pickStackedCall()?.remainder, 'K1ABC');
+    expect(_at('K1ABC//1AB', 9).pickStackedCall()?.calls, ['K1ABC'], reason: 'an unmarked fragment is still skipped');
+  });
+
   test('a stacked segment that is itself a list follows the cursor inside it', () {
     // "KI2D//W1AB,W1AC" — the shape a mid-stack note expansion leaves.
     expect(_at('KI2D//W1AB,W1AC', 8).callAtCursor, 'W1AB');

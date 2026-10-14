@@ -2013,6 +2013,9 @@ class HaLoServices {
     if (target == 'last' && qso == null) return (text: t.spotting.noQsoYet, failed: true);
     final freq = (params['freq'] as num?)?.toDouble();
     if (qso == null && freq == null) return (text: t.spotting.setFrequencyFirst, failed: true);
+    // Said here, before [suggestSpotSources] offers nothing for it and the
+    // operator reads that as no extension spotting at all.
+    if (qsonHasIncompleteCall(qso)) return (text: t.spotting.incompleteCall, failed: true);
 
     final sources = await extensions.suggestSpotSources(operation: operation, qso: qso);
     if (sources.isEmpty) return (text: t.spotting.nothingToSpot, failed: true);

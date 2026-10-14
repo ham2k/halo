@@ -51,13 +51,13 @@ class _LiveExtensions extends ExtensionService {
   Future<void> start() async {}
 }
 
-Qso _contact(String uuid, {required int updatedAt, int? startAt, bool deleted = false, bool event = false}) => Qso(
+Qso _contact(String uuid, {required int updatedAt, int? startAt, bool deleted = false, bool event = false, String call = 'W1AW'}) => Qso(
   uuid: uuid,
   operationUuid: 'op-1',
   deleted: deleted,
   data: {
     'uuid': uuid,
-    'their': {'call': 'W1AW'},
+    'their': {'call': call},
     'band': event ? 'event' : '20m',
     'mode': 'SSB',
     'startAtMillis': startAt ?? updatedAt,
@@ -151,6 +151,21 @@ void main() {
         expect(_resolve(_scoring(folded, day: 86400000), restoredLast)?.tail.map((q) => q['uuid']), ['z']);
         final restoredEarly = [_contact('z', updatedAt: 2600, startAt: 500), ...folded];
         expect(_resolve(_scoring(folded), restoredEarly), isNull);
+      });
+
+      // No scorer may see an incomplete call, and a tail goes straight to the
+      // scorers. Folding cold over it instead would hand them the whole log
+      // through `getQsos`, `?` and all.
+      test('an incomplete call logged since the checkpoint is no part of the tail, and still resumes', () {
+        final withIncomplete = [...folded, _contact('c', updatedAt: 3000), _contact('q', updatedAt: 3500, startAt: 1500, call: 'K1A?C')];
+        final resume = _resolve(_scoring(folded, day: 86400000), withIncomplete);
+        expect(resume, isNotNull, reason: 'its time, earlier than the last fold, does not matter: it is never replayed');
+        expect(resume!.tail.map((q) => q['uuid']), ['c']);
+      });
+
+      test('a folded contact edited into an incomplete call folds cold — the sheet still counts it', () {
+        final edited = [_contact('a', updatedAt: 1000), _contact('b', updatedAt: 2500, call: 'W1A?')];
+        expect(_resolve(_scoring(folded), edited), isNull);
       });
 
       test('the contact being edited is inside the sheet, so it folds cold', () {
@@ -349,6 +364,63 @@ void main() {
       );
       expect(resume?.tail, isEmpty);
       expect(resume?.checkpoints['core']?.day, 0);
+    });
+  });
+
+  group('ScoringService.rescoreOperation with incomplete calls', () {
+    // The letters around a `?` would claim a prefix, an entity or a dupe for
+    // a station nobody heard, in every scorer the operation selects — so the
+    // host keeps the contact from all of them, not each scorer on its own.
+    test('an incomplete call reaches no scorer, and a log of nothing else still rescores to empty', () async {
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final operation = await operations.create(stationCall: 'N0DEV');
+      final complete = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+      });
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'K1A?C'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': 2000,
+      });
+
+      final host = _RecordingHost({
+        'core:scoreQsos': {
+          'qsoScores': const {},
+          'daySections': const [],
+          'operationSummary': const {'qsos': 1},
+          'scoresheet': const {},
+        },
+      });
+      final service = ScoringService(extensions: _LiveExtensions(host), qsos: qsos, operations: operations);
+      await service.rescoreOperation((await operations.get(operation.uuid))!);
+
+      List<Object?> sentCalls() =>
+          ((host.calls.lastWhere((c) => c.method == 'scoreQsos').args as Map)['qsos'] as List).map((q) => ((q as Map)['their'] as Map)['call']).toList();
+      expect(sentCalls(), ['W1AW']);
+
+      // Without this, the summary would keep counting the contact the edit
+      // just made incomplete: an empty fold must still run and be written.
+      await qsos.update(
+        Qso(
+          uuid: complete.uuid,
+          operationUuid: operation.uuid,
+          data: {
+            ...complete.data,
+            'their': {'call': 'W1A?'},
+          },
+        ),
+      );
+      host.calls.clear();
+      await service.rescoreOperation((await operations.get(operation.uuid))!, full: true);
+      expect(host.calls.where((c) => c.method == 'scoreQsos'), hasLength(1));
+      expect(sentCalls(), isEmpty);
     });
   });
 

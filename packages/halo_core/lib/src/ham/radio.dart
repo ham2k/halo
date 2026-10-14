@@ -1124,6 +1124,17 @@ final RegExp _callsignRegex = RegExp(
 /// parsing (prefixes, DXCC, modifiers) is plugin territory.
 bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.trim().toUpperCase());
 
+/// Whether [call] is one the operator marked as not fully copied — any `?`
+/// in it, a lone `?` included ("worked someone, didn't get the call"), as
+/// app-polo accepts. Such a call logs, but is never looked up, scored or
+/// spotted: every one of those would act on letters nobody heard. It stays
+/// that way until the operator edits the `?` out.
+bool isIncompleteCall(String call) => call.contains('?');
+
+/// Whether [call] is enough to log a contact with: a plausible callsign, or
+/// an [isIncompleteCall] one.
+bool isLoggableCall(String call) => looksLikeCallsign(call) || isIncompleteCall(call);
+
 /// [call] uppercased with its pre- and postindicators dropped — `KI2D` for
 /// `EA4/KI2D`, `KI2D/P` and `KI2D/1/QRP` — matching `@ham2k/lib-callsigns`'
 /// `baseCall`. Synchronous, for the places that compare calls on every build

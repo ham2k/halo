@@ -61,6 +61,9 @@ String scoreNoticeLabel(BuildContext context, String key) {
     // app, or next year's event added elsewhere first. Nothing scores, and the
     // operator has to be told why rather than reading a silent zero.
     'unknownEvent' => t.noticeUnknownEvent,
+    // Not a scorer's: the panel's own answer for a call with a `?` in it,
+    // which no scorer is shown (`isIncompleteCall`).
+    'incompleteCall' => t.noticeIncompleteCall,
     _ => key,
   };
 }

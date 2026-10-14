@@ -188,6 +188,13 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       final their = <String, dynamic>{...?asQsonMap(qso.data['their'])};
       final our = <String, dynamic>{...?asQsonMap(qso.data['our'])};
       their['call'] = _call.text.trim().toUpperCase();
+      // The same rule as the logging panel's draft: an incomplete call is
+      // never looked up, so the guess still on the record names the station
+      // the call was before (docs/design/logging-fields.md).
+      if (isIncompleteCall(their['call'] as String)) {
+        their['guess'] = null;
+        their['lookups'] = null;
+      }
       their['sent'] = _rcvdRst.text.trim();
       our['sent'] = _sentRst.text.trim();
       // Only what was edited, and then even when emptied: an empty value

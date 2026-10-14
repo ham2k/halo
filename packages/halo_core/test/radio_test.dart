@@ -754,6 +754,27 @@ void main() {
     });
   });
 
+  group('isLoggableCall', () {
+    // An incomplete call must never also read as a callsign: everything that
+    // looks a call up, scores it or spots it is gated on [looksLikeCallsign],
+    // so one that passed it would send the letters around its `?` out as a
+    // station.
+    test('a `?` anywhere makes a call incomplete, and loggable, but never a callsign', () {
+      for (final call in ['K1A?C', 'W1AW?', '?', '??', 'DL/K1A?C', 'K1A?C/P']) {
+        expect(isIncompleteCall(call), isTrue, reason: call);
+        expect(isLoggableCall(call), isTrue, reason: call);
+        expect(looksLikeCallsign(call), isFalse, reason: call);
+      }
+    });
+
+    test('without a `?`, only a plausible callsign logs', () {
+      expect(isLoggableCall('W1AW'), isTrue);
+      expect(isIncompleteCall('W1AW'), isFalse);
+      expect(isLoggableCall('1AB'), isFalse, reason: 'a fragment the operator has not marked');
+      expect(isLoggableCall(''), isFalse);
+    });
+  });
+
   group('sidebands', () {
     test('a frequency answers on its own, with no band table to agree with', () {
       // The rule is a plain split through HF, not a band lookup: below 9 MHz

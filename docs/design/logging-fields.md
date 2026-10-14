@@ -610,7 +610,10 @@ depends on where the contact stands**, decided by `esmStep`:
   keyed for a contact that then refuses to log. Editing a logged contact is
   never ESM's: an edit is a correction, not an exchange.
 - **The keyboard's Enter only.** The submit button logs, whatever ESM says:
-  it is a deliberate "log this", not the rhythm of an exchange.
+  it is a deliberate "log this", not the rhythm of an exchange. That is also
+  the only way to log an incomplete call with ESM on: Enter on one keys
+  their call as typed, `?` and all (F5), and stays in the call field, since
+  mid-pileup it is a partial being asked back.
 - **The messages are the active set's F-keys by position**
   (`CwMessageSet.esmKeys`) — N1MM's, which the **ESM Messages** set
   added with the experiment follows ([cat.md](cat.md) § CW keying); an
@@ -640,6 +643,30 @@ depends on where the contact stands**, decided by `esmStep`:
   a first part that failed to render — a TU to a station that never heard
   its call or report closes nothing.
 
+## An incomplete call
+
+A `?` anywhere in a call — `K1A?C`, `W1AW?`, a lone `?` — is the operator
+saying they did not copy all of it, and such a call logs as typed, as in
+app-polo (`isIncompleteCall`). Wherever "a callsign" decides something below,
+an incomplete call counts as one for logging and for nothing else:
+
+- **It is never looked up** — not live, not by the background queue — since a
+  callbook would answer for whatever its search makes of the letters. An
+  edit that makes a logged call incomplete clears the guess it carried, which
+  belonged to the call it replaced.
+- **It scores nothing until completed.** The host keeps it out of every
+  scorer's fold (`ScoringService`), and the SDK's scoring harness skips it in
+  the log a live score reads for itself, so no contest or activity counts it,
+  takes a multiplier or an entity from it, or calls it a dupe. The info area
+  says so with an `incompleteCall` pill rather than leaving it bare.
+- **It is never spotted.** No spot source is offered for it.
+- **With Enter Sends Messages on, Enter asks for it again** — keys their
+  call, `?` and all, and logs nothing (§ Enter Sends Messages).
+
+It still counts as a contact everywhere else — numbering, the QSO count,
+exports, which write the call as typed — and the QSO list paints its call in
+the theme's orange, so the operator can find and fix it.
+
 ## More than one call in the field
 
 The callsign field takes three multi-call syntaxes. They are separate
@@ -658,12 +685,14 @@ typed name is not duplicated, being specific to whoever it was entered for.
 (Editing is the exception: the record being edited keeps everything it
 already had, and only the calls added alongside it are new.) A single call
 with no comma is just a one-item list, so this is also the common path. The
-list is all-or-nothing: one implausible entry and nothing logs.
+list is all-or-nothing: one implausible entry and nothing logs (an
+incomplete one is not implausible).
 
 **`//` stacks calls** — a second station worked in while the first is still
 queued up. `K1ABC//W1AW` holds both, and Enter logs *one* segment: the one
 the cursor is in, or, when that isn't a callsign yet, the first one to its
-left that is. The rest stay in the field for the next contact. Nothing
+left that is. An incomplete call under the cursor is picked, not skipped —
+skipping it would log the station before it instead. The rest stay in the field for the next contact. Nothing
 carries over between them — logging one wipes the entry fully (refs, notes,
 overrides, reports, manual time) before restoring the remainder, exactly as
 if the operator had just typed it.

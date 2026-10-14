@@ -8,6 +8,7 @@
 import 'dart:convert';
 
 import '../ham/grid.dart';
+import '../ham/radio.dart' show isIncompleteCall;
 import 'operation_title.dart';
 import 'qson_values.dart';
 
@@ -23,6 +24,10 @@ import 'qson_values.dart';
 /// Both `T` and `TEST` count. Neither is a standard modifier — those are
 /// `/P`, `/M`, `/MM`, `/AM` — so nothing a real operator signs with is
 /// swept in by accident.
+/// [Qso.hasIncompleteCall] for a record still in its QSON form — one that
+/// crossed the extension bridge, or a draft not yet saved.
+bool qsonHasIncompleteCall(Map<String, dynamic>? qso) => isIncompleteCall(asQsonString(asQsonMap(qso?['their'])?['call']) ?? '');
+
 bool isTestCall(String call) => call.toUpperCase().split('/').any((segment) => segment == 'T' || segment == 'TEST');
 
 /// The `gridSource` of a location an operation's refs placed — app-polo's
@@ -410,6 +415,11 @@ class Qso {
   /// Whether this counts as an actual contact for QSO counts/numbering/
   /// per-band/per-mode stats — excludes event markers and soft-deleted QSOs.
   bool get isRealContact => !isEvent && !deleted;
+
+  /// Whether [theirCall] was logged as not fully copied ([isIncompleteCall]).
+  /// A real contact still — it counts, numbers and exports — but no scorer
+  /// ever sees it (`ScoringService`).
+  bool get hasIncompleteCall => qsonHasIncompleteCall(data);
 
   Map<String, dynamic>? get event => asQsonMap(data['event']);
 

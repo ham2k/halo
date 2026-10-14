@@ -343,6 +343,10 @@ class QsoDraft extends ChangeNotifier with PanelModel {
         // `guess`/`lookups`, never flattened onto `their`'s own fields —
         // readers fall back to `their.guess.x` when `their.x` isn't set.
         if (config.lookup.resultFor(call) case final result?) ...{'guess': result['guess'], 'lookups': result['lookups']},
+        // An incomplete call is never looked up, so a guess the record still
+        // carries belongs to the call it replaced — a different station,
+        // whose name and entity would otherwise go out in every export.
+        if (isIncompleteCall(call)) ...{'guess': null, 'lookups': null},
       },
       'freq': config.radio.freq,
       'band': config.radio.band,

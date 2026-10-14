@@ -826,6 +826,10 @@ class _QsoListState extends State<QsoList> {
       var rowMono = selected ? mono.copyWith(color: theme.colorScheme.onSecondaryContainer) : mono;
       var rowMonoDim = selected ? monoDim.copyWith(color: theme.colorScheme.onSecondaryContainer.withValues(alpha: 0.75)) : monoDim;
       var rowCall = selected ? callStyle.copyWith(color: theme.colorScheme.onSecondaryContainer) : callStyle;
+      // A call logged with a `?` scores nothing until it is completed, and
+      // the list is where the operator goes looking for the ones to fix — so
+      // it stands out in the theme's orange even when selected.
+      if (qso.hasIncompleteCall) rowCall = rowCall.copyWith(color: theme.colorScheme.tertiary);
       // Deleted QSOs only ever show up here when the "show deleted QSOs"
       // menu toggle is on — struck-through and faded so they read as
       // gone without disappearing from the timeline.

@@ -99,6 +99,17 @@ function isEvent(qso: Record<string, JSONValue>): boolean {
   return qso.band === "event"
 }
 
+/// A call with a `?` in it was not fully copied, and scores nothing until the
+/// operator fixes it: judged as written, its letters would claim a prefix,
+/// an entity or a dupe for a station nobody heard. The host already keeps
+/// these out of the batch pass; this covers the log a live score reads for
+/// itself through `ctx.getQsos`.
+function hasIncompleteCall(qso: Record<string, JSONValue>): boolean {
+  const their = qso.their
+  const call = their && typeof their === "object" && !Array.isArray(their) ? their.call : undefined
+  return typeof call === "string" && call.includes("?")
+}
+
 export interface ContestScorerOptions {
   /// Which operations this scorer applies to. Read by the host *before*
   /// invoking, so an operation with no matching ref never crosses the bridge.
@@ -214,7 +225,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     let segmentIndex = 0
 
     for (const qso of qsos) {
-      if (isEvent(qso)) continue
+      if (isEvent(qso) || hasIncompleteCall(qso)) continue
 
       let operation = args.operation
       let ref = args.ref

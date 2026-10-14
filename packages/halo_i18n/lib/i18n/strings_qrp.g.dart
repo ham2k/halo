@@ -872,6 +872,7 @@ class _Translations$spotting$qrp extends Translations$spotting$en {
 	@override String get noQsoYet => 'no qso logged yet to spot.';
 	@override String get setFrequencyFirst => 'set a frequency first.';
 	@override String get nothingToSpot => 'nothing to spot — no extension offers spotting here.';
+	@override String get incompleteCall => 'can\'t spot an incomplete call — finish the callsign first.';
 	@override String spotFailed({required Object source, required Object message}) => '${source} failed: ${message}';
 	@override String get unknownError => 'unknown error';
 	@override String get notSent => 'spot not sent.';
@@ -1814,6 +1815,7 @@ class _Translations$loggingControls$info$qrp extends Translations$loggingControl
 	@override String get noticeMissingExchange => 'no exchange';
 	@override String get noticeInvalidExchange => 'bad exchange';
 	@override String get noticeUnknownEvent => 'unknown event';
+	@override String get noticeIncompleteCall => 'incomplete call — not scored';
 	@override String get noticeOurGrid => 'set our grid';
 	@override String get noticeRareCounty => 'rare county!';
 	@override String get noticeOurLocation => 'set our county';
@@ -4597,6 +4599,7 @@ extension on TranslationsQrp {
 			'loggingControls.info.noticeMissingExchange' => 'no exchange',
 			'loggingControls.info.noticeInvalidExchange' => 'bad exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'unknown event',
+			'loggingControls.info.noticeIncompleteCall' => 'incomplete call — not scored',
 			'loggingControls.info.noticeOurGrid' => 'set our grid',
 			'loggingControls.info.noticeRareCounty' => 'rare county!',
 			'loggingControls.info.noticeOurLocation' => 'set our county',
@@ -4750,9 +4753,9 @@ extension on TranslationsQrp {
 			'settings.logging.numbersRowVibrate.title' => 'vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'haptic feedback when you tap a number key',
 			'settings.logging.bands' => 'preferred bands',
-			'settings.logging.modes' => 'preferred modes',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.modes' => 'preferred modes',
 			'settings.catServer.title' => 'cat server',
 			'settings.catServer.description' => 'allow other apps (wsjt-x, loggers, etc) to control the radio through ham2k logger.',
 			'settings.catServer.protocol' => 'protocol',
@@ -5264,9 +5267,9 @@ extension on TranslationsQrp {
 			'settings.station.yaesuTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low. on a digirig, signalink or most home-brew cables that same line is ptt, so raising it would key your transmitter. on the radio\'s own usb port, **hold rts high** under advanced settings is the alternative. where that setting lives differs by model (menu **05-08** on an ft-891).\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **modes follow the ft-891\'s table.** most of the yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. the frequency is unaffected.',
 			'settings.station.yaesuRs232Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **the cat jack is rs-232.** it needs a usb-to-serial adapter and a straight-through db-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\nthis entry was written from published cat documentation and has not been run against one of these radios. if it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **use the first of the radio\'s two usb ports.** cat is normally on the first (the **enhanced** com port on windows); the second (**standard**) is for ptt and keying. the picker points at the first wherever it can tell the two apart.\n- **cat rts must be off at the radio.** with it on, the radio waits for a handshake line the app keeps low unless **hold rts high** is on under advanced settings.\n- **speed must match** the radio\'s cat rate menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
-			'settings.station.k4SerialNotes' => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.k4SerialNotes' => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.',
 			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. this is cat control, not the separate remote-audio connection on port 9204.\n\nhalo controls the radio and its keyers without streaming audio or panadapter data.',
 			'settings.station.k4PowerTimeout' => 'k4 power was not changed because the radio did not confirm its output range. try again.',
 			'settings.station.k4PowerRange' => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.',
@@ -5624,6 +5627,7 @@ extension on TranslationsQrp {
 			'spotting.noQsoYet' => 'no qso logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'set a frequency first.',
 			'spotting.nothingToSpot' => 'nothing to spot — no extension offers spotting here.',
+			'spotting.incompleteCall' => 'can\'t spot an incomplete call — finish the callsign first.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'spot not sent.',
@@ -5777,10 +5781,10 @@ extension on TranslationsQrp {
 			'adifImport.confirm' => 'import',
 			'adifImport.importing' => ({required Object filename}) => 'importing ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} contact from ${filename}', other: 'imported ${formatted} contacts from ${filename}', ), 
-			'adifImport.failed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
-			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an adif file',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.failed' => ({required Object filename, required Object error}) => 'could not import ${filename}: ${error}',
+			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an adif file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'warning: this adif has qsos from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 

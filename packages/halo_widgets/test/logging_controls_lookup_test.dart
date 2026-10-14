@@ -548,6 +548,45 @@ void main() {
       expect(scored, ['W1AW']);
     });
 
+    // The scorers would judge the letters around the `?` as a station — a
+    // prefix multiplier, an entity, a dupe of another half-copied call — so
+    // they are never asked, and the operator is told why nothing scored.
+    testWidgets('an incomplete call is never scored or looked up, and says it scores nothing', (tester) async {
+      final scored = <String>[];
+      final looked = <String>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: baseLog(),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async {
+                  looked.add(call);
+                  return null;
+                },
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  scored.add(((qso['their'] as Map)['call']) as String);
+                  return {
+                    'notices': ['newMult'],
+                    'alerts': <String>[],
+                  };
+                },
+                scoreNoticeLabel: (key) => key == 'incompleteCall' ? 'Not Scored' : key,
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1A?');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(scored, isEmpty);
+      expect(looked, isEmpty);
+      expect(find.text('Not Scored'), findsOneWidget);
+      expect(find.text('newMult'), findsNothing);
+    });
+
     // New State is scored off `their.guess.state`, which the lookup resolves
     // AFTER the scoring debounce has already run against a QSO that had no
     // guess at all. Scoring once per call would show the pill only for a call

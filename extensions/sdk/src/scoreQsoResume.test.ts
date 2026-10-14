@@ -85,6 +85,25 @@ test("a resumed pass continues the checkpoint's day instead of opening a new one
   assert.equal(appended.scoresheetDay, DAY_1)
 })
 
+// The host keeps incomplete calls out of the batch pass, but a live score
+// folding cold reads the log for itself through `getQsos` — and a `?` contact
+// that slipped into either fold would be the tenth that activates the park.
+test("an incomplete call neither scores nor counts toward an activation, in either fold", async () => {
+  const nine = Array.from({ length: 9 }, (_, i) => qso(`W${i}AAA`, DAY_1 + i * 60_000))
+  const incomplete = qso("K1A?C", DAY_1 + 3600_000)
+  const { hook, ctx } = hookOver([...nine, incomplete])
+
+  const batch = await hook.scoreQsos({ operation, ref, qsos: [...nine, incomplete] }, ctx)
+  assert.equal(batch.daySections[0].scores.activation?.total, 9)
+  assert.equal(batch.qsoScores[incomplete.uuid as string], undefined)
+
+  // Cold: no checkpoint, so the scorer folds the log `getQsos` returned. The
+  // host never scores an incomplete candidate; one is used here only because
+  // a fold that had taken the logged `K1A?C` in would call it a duplicate.
+  const live = await hook.scoreQso!({ operation, ref, qso: qso("K1A?C", DAY_1 + 7200_000) }, ctx)
+  assert.deepEqual(live.alerts, [])
+})
+
 test("a pass that folds nothing reports no day", async () => {
   const { hook, ctx } = hookOver([])
   const empty = await hook.scoreQsos({ operation, ref, qsos: [] }, ctx)

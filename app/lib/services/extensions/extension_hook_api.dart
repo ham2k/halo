@@ -384,6 +384,9 @@ mixin _ExtensionHookApi {
   Future<List<Map<String, dynamic>>> suggestSpotSources({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async {
     final host = this.host;
     if (host == null) return const [];
+    // Every poster would send the call as typed, `?` and all, to a network
+    // other operators chase from.
+    if (qsonHasIncompleteCall(qso)) return const [];
     final hook = qso == null ? Hooks.spotsIsSelfSpotEnabled : Hooks.spotsIsOtherSpotEnabled;
     final args = qso == null ? {'operation': operation} : {'qso': qso};
     try {

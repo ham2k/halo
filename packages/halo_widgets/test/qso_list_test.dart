@@ -569,6 +569,42 @@ void main() {
     });
   });
 
+  // An incomplete call scores nothing until it is fixed, and nothing but the
+  // list leads the operator back to it — a `?` in the ordinary call color is
+  // easy to scroll past.
+  testWidgets('an incomplete call is painted orange, selected or not, and a complete one is not', (tester) async {
+    final operation = await operations.create(stationCall: 'KI2D');
+    final incomplete = await qsos.add(operation.uuid, {
+      'their': {'call': 'K1A?C'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+    final complete = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 2000,
+    });
+    final theme = buildHaLoTheme(Brightness.light);
+
+    Future<void> pumpList({String? selectedUuid}) => tester.pumpWidget(
+      MaterialApp(
+        theme: theme,
+        home: Scaffold(
+          body: QsoList(qsos: [incomplete, complete], selectedUuid: selectedUuid, onSelect: (_) {}),
+        ),
+      ),
+    );
+
+    await pumpList();
+    expect(tester.widget<Text>(find.text('K1A?C')).style?.color, theme.colorScheme.tertiary);
+    expect(tester.widget<Text>(find.text('W1AW')).style?.color, isNot(theme.colorScheme.tertiary));
+
+    await pumpList(selectedUuid: incomplete.uuid);
+    expect(tester.widget<Text>(find.text('K1A?C')).style?.color, theme.colorScheme.tertiary);
+  });
+
   testWidgets('newest QSO renders at the bottom, next to the logging panel', (tester) async {
     final operation = await operations.create(stationCall: 'KI2D');
     final first = await qsos.add(operation.uuid, {

@@ -7,6 +7,7 @@
 "upcoming":
   changes:
     - "New Show idle metrics developer setting: extension engine headroom in the status bar"
+    - "Calls you didn't fully copy can be logged with a `?`, like `K1A?C`"
 
 "179":
   changes:

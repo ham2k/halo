@@ -105,6 +105,25 @@ void main() {
     h.model.dispose();
   });
 
+  // The host offers no source for an incomplete call, so an enabled button
+  // would send to nobody — no status icon, no notice — and read as spotting
+  // being broken.
+  test('editing: a recent QSO with an incomplete call cannot be spotted, and says why', () {
+    final h = _Harness();
+    h.editingQso = Qso(
+      uuid: 'q1',
+      operationUuid: 'op',
+      data: {
+        'their': {'call': 'W1A?'},
+        'startAtMillis': nowMillis() - 60 * 1000,
+        'freq': 7200,
+      },
+    );
+    expect(h.model.state.enabled, isFalse);
+    expect(h.model.state.buttonLabel, contains('incomplete call'));
+    h.model.dispose();
+  });
+
   test('the answers are keyed to the sources the send began with, not whatever is on offer when it lands', () async {
     final h = _Harness();
     h.vfo = const Vfo(freq: 14285);
