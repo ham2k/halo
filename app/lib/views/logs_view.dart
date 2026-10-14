@@ -275,13 +275,20 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
 
   LogsGrouping _grouping = LogsGrouping.date;
 
-  /// Per grouping, the groups the operator has turned from how they start
-  /// ([LogsGrouping.startsCollapsed]), by [LogsGrouping.pathOf] path: closed
-  /// ones under Date, opened ones under DX. Stored with the filter, and each
-  /// set replaced rather than changed, so the row cache can tell by identity.
-  Map<LogsGrouping, Set<String>> _toggled = const {};
+  /// Per grouping, the groups the operator has opened or closed — stored
+  /// with the filter.
+  Map<LogsGrouping, _LogsFolds> _storedFolds = const {};
 
-  bool _isCollapsed(LogsGrouping grouping, String path) => grouping.startsCollapsed != (_toggled[grouping]?.contains(path) ?? false);
+  /// Which groups are closed while a search runs: none to begin with, so
+  /// every match is in sight whatever the operator had closed, and nothing
+  /// folded here is kept past this search.
+  _LogsFolds? _searchFolds;
+
+  _LogsFolds get _folds {
+    if (_searchQuery.trim().isEmpty) return _storedFolds[_grouping] ?? _noFolds[_grouping]!;
+    if (_searchFolds case final folds? when folds.grouping == _grouping) return folds;
+    return _searchFolds = _LogsFolds(_grouping, startsCollapsed: false);
+  }
 
   /// The span of the log on screen, applied to the stream's QSOs before the
   /// search and the sort (see [_inPeriod]).
@@ -348,7 +355,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   String? _cachedRowsQuery;
   _LogsSort? _cachedRowsSort;
   _LogsGrouped? _cachedGrouped;
-  Set<String>? _cachedRowsToggled;
+  _LogsFolds? _cachedRowsFolds;
 
   /// Also what the keyboard steps through: it is exactly what is on screen.
   _LogsTableRows? _cachedRows;
@@ -395,9 +402,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
       _cachedGrouped = grouped;
     }
     final cached = _cachedRows;
-    if (cached != null && identical(cached.grouped, grouped) && identical(_toggled[_grouping], _cachedRowsToggled)) return cached;
-    final rows = _LogsTableRows(grouped, collapsed: (path) => _isCollapsed(_grouping, path));
-    _cachedRowsToggled = _toggled[_grouping];
+    final folds = _folds;
+    if (cached != null && identical(cached.grouped, grouped) && identical(folds, _cachedRowsFolds)) return cached;
+    final rows = _LogsTableRows(grouped, collapsed: folds.collapsed);
+    _cachedRowsFolds = folds;
     _cachedRows = rows;
     return rows;
   }
@@ -462,10 +470,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     final storedFilter = settings.layoutData(LayoutKeys.logsFilter);
     _period = LogsPeriod.values.asNameMap()[storedFilter?['period']] ?? LogsPeriod.allTime;
     _grouping = LogsGrouping.values.asNameMap()[storedFilter?['group']] ?? LogsGrouping.date;
-    if (storedFilter?['toggled'] case final Map<String, dynamic> toggled) {
-      _toggled = {
-        for (final MapEntry(:key, :value) in toggled.entries)
-          if ((LogsGrouping.values.asNameMap()[key], value) case (final grouping?, final List<dynamic> paths)) grouping: paths.whereType<String>().toSet(),
+    if (storedFilter?['folds'] case final Map<String, dynamic> folds) {
+      _storedFolds = {
+        for (final grouping in LogsGrouping.values)
+          if (folds.containsKey(grouping.name)) grouping: _LogsFolds.fromJson(grouping, folds[grouping.name]),
       };
     }
     if ((DateTime.tryParse('${storedFilter?['from']}'), DateTime.tryParse('${storedFilter?['to']}')) case (final from?, final to?) when !to.isBefore(from)) {
@@ -598,7 +606,10 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         ...?settings.layoutData(LayoutKeys.logsFilter),
         if (call) 'call': _filter.allCalls ? null : _filter.stationCall,
         'group': _grouping.name,
-        'toggled': {for (final MapEntry(:key, :value) in _toggled.entries) key.name: value.toList()},
+        'folds': {
+          for (final MapEntry(:key, :value) in _storedFolds.entries)
+            if (!value.isEmpty) key.name: value.toJson(),
+        },
         'period': _period.name,
         'from': range == null ? null : _dateFormat.format(range.start),
         'to': range == null ? null : _dateFormat.format(range.end),
@@ -762,8 +773,11 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     if (rows == null || rows.qsos.isEmpty) return;
     final anchor = _selectedUuid ?? _keyboardAnchor;
     final current = anchor == null ? null : rows.qsoIndexOf(anchor);
-    // From nothing, ↓ starts at the top and ↑ at the bottom.
-    final next = current == null ? (delta > 0 ? 0 : rows.qsos.length - 1) : (current + delta).clamp(0, rows.qsos.length - 1);
+    // From a row a collapsed group hides, the keys carry on from where it
+    // sits; from nothing, ↓ starts at the top and ↑ at the bottom.
+    final next = current != null
+        ? (current + delta).clamp(0, rows.qsos.length - 1)
+        : (anchor == null ? null : rows.nearestShownTo(anchor, delta)) ?? (delta > 0 ? 0 : rows.qsos.length - 1);
     final uuid = rows.qsos[next].uuid;
     if (uuid == _selectedUuid || !await _settleEditor() || !mounted) return;
     // The wait can outlast the row: the dialog stays up for as long as the
@@ -818,7 +832,12 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   void _searchNow(String text) {
     _searchTimer?.cancel();
     _searchTimer = null;
-    if (mounted && text != _searchQuery) setState(() => _searchQuery = text);
+    if (mounted && text != _searchQuery) {
+      setState(() {
+        _searchQuery = text;
+        _searchFolds = null;
+      });
+    }
   }
 
   void _sortBy(String column) {
@@ -834,22 +853,22 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   void _toggleGroup(_LogsGroupHeader header, int itemIndex) {
     final keyboard = HardwareKeyboard.instance;
     final all = keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed;
-    final grouping = header.grouping;
-    final collapse = !header.collapsed;
-    final targets = all ? (_cachedRows?.siblingsAndDescendants(header) ?? [header.path]) : [header.path];
-    final next = {...?_toggled[grouping]};
-    for (final path in targets) {
-      if (collapse != grouping.startsCollapsed) {
-        next.add(path);
-      } else {
-        next.remove(path);
-      }
-    }
+    final folds = _folds;
+    final next = all
+        ? folds.withAllUnder(header.grouping.parentOf(header.path), collapsed: !header.collapsed)
+        : folds.withGroup(header.path, collapsed: !header.collapsed);
+    final searching = _searchQuery.trim().isNotEmpty;
     final listContext = _listFocus.context;
     final extent = listContext == null ? null : LayoutDensity.metricsOf(listContext).qsoRowHeight;
     final wasPinned = extent != null && _listScroll.positions.length == 1 && _listScroll.offset > (itemIndex - header.level) * extent;
-    setState(() => _toggled = {..._toggled, grouping: next});
-    _rememberFilter();
+    setState(() {
+      if (searching) {
+        _searchFolds = next;
+      } else {
+        _storedFolds = {..._storedFolds, header.grouping: next};
+      }
+    });
+    if (!searching) _rememberFilter();
     if (!wasPinned) return;
     // Siblings above it can fold too, so the header's place is looked up
     // again in the rows this toggle rebuilt.

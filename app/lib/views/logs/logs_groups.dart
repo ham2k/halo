@@ -64,6 +64,93 @@ enum LogsGrouping {
         return [continent, '$continent/${known(qso.theirEntityName?.toLowerCase())}'];
     }
   }
+
+  /// The group one level out from [path], read off the path itself so it
+  /// answers for groups the QSOs on screen don't reach; `''` above the
+  /// outermost. A DX path splits at its FIRST `/`, since an entity's name
+  /// may hold one and a continent never does.
+  String parentOf(String path) {
+    final at = this == LogsGrouping.dx ? path.indexOf('/') : path.lastIndexOf('-');
+    return at < 0 ? '' : path.substring(0, at);
+  }
+}
+
+/// Each grouping as it starts, one instance apiece so the row cache keeps
+/// hitting while nothing has been opened or closed.
+final _noFolds = {for (final grouping in LogsGrouping.values) grouping: _LogsFolds(grouping)};
+
+/// Which groups are closed, for one grouping. A group the operator opened or
+/// closed has its [own] state; otherwise it takes the state its nearest
+/// enclosing group holds [under] it (`''` standing for the whole list), and
+/// with none, how the grouping starts. A modifier-click sets one [under]
+/// entry and clears everything inside it, so what is kept grows with the
+/// clicks, not with the log, and an entry that only repeats what would hold
+/// anyway is never kept. Replaced rather than changed, so the row cache can
+/// tell by identity.
+class _LogsFolds {
+  final LogsGrouping grouping;
+  final bool startsCollapsed;
+  final Map<String, bool> own;
+  final Map<String, bool> under;
+
+  _LogsFolds(LogsGrouping grouping, {bool? startsCollapsed}) : this._(grouping, startsCollapsed ?? grouping.startsCollapsed, const {}, const {});
+
+  _LogsFolds._(this.grouping, this.startsCollapsed, this.own, this.under);
+
+  /// [stored] is what [toJson] wrote; anything else in it is skipped.
+  factory _LogsFolds.fromJson(LogsGrouping grouping, Object? stored) {
+    Map<String, bool> read(Object? map) => {
+      if (map is Map<String, dynamic>)
+        for (final MapEntry(:key, :value) in map.entries)
+          if (value is bool) key: value,
+    };
+    return stored is Map<String, dynamic> ? _LogsFolds._(grouping, grouping.startsCollapsed, read(stored['own']), read(stored['under'])) : _LogsFolds(grouping);
+  }
+
+  Map<String, dynamic> toJson() => {'own': own, 'under': under};
+
+  bool get isEmpty => own.isEmpty && under.isEmpty;
+
+  bool collapsed(String path) => own[path] ?? _inherited(path);
+
+  /// What [path] would be with no state of its own: the nearest [under]
+  /// entry around it.
+  bool _inherited(String path) {
+    var at = path;
+    while (at.isNotEmpty) {
+      at = grouping.parentOf(at);
+      if (under[at] case final state?) return state;
+    }
+    return startsCollapsed;
+  }
+
+  bool _inside(String path, String group) {
+    var at = path;
+    while (at.isNotEmpty) {
+      at = grouping.parentOf(at);
+      if (at == group) return true;
+    }
+    return false;
+  }
+
+  _LogsFolds withGroup(String path, {required bool collapsed}) {
+    final next = {...own}..remove(path);
+    if (collapsed != _inherited(path)) next[path] = collapsed;
+    return _LogsFolds._(grouping, startsCollapsed, next, under);
+  }
+
+  /// Every group inside [parent], at every depth, [collapsed].
+  _LogsFolds withAllUnder(String parent, {required bool collapsed}) {
+    final nextUnder = {
+      for (final MapEntry(:key, :value) in under.entries)
+        if (key != parent && !_inside(key, parent)) key: value,
+    };
+    if (collapsed != _inherited(parent)) nextUnder[parent] = collapsed;
+    return _LogsFolds._(grouping, startsCollapsed, {
+      for (final MapEntry(:key, :value) in own.entries)
+        if (!_inside(key, parent)) key: value,
+    }, nextUnder);
+  }
 }
 
 /// A group's header among the table's rows — one row tall like everything
@@ -74,7 +161,7 @@ class _LogsGroupHeader {
   /// 0 for the outermost.
   final int level;
 
-  /// See [LogsGrouping.pathOf]; what [_LogsViewState]'s toggled sets hold.
+  /// See [LogsGrouping.pathOf]; what [_LogsFolds] keys on.
   final String path;
 
   /// The first QSO in the group, for what the path alone doesn't keep: an
@@ -248,37 +335,26 @@ class _LogsTableRows {
 
   int? itemIndexOf(String uuid) => _itemIndex[uuid];
 
+  /// For [uuid] in a collapsed group, the index in [qsos] of the nearest QSO
+  /// on screen past where it sits, in [delta]'s direction — or, with none
+  /// that way, the nearest the other way. Null when [all] doesn't hold it.
+  int? nearestShownTo(String uuid, int delta) {
+    final at = all.indexWhere((qso) => qso.uuid == uuid);
+    if (at < 0) return null;
+    for (final step in [delta.sign, -delta.sign]) {
+      for (var i = at + step; i >= 0 && i < all.length; i += step) {
+        if (_qsoIndex[all[i].uuid] case final index?) return index;
+      }
+    }
+    return null;
+  }
+
   /// Where [path]'s header is in [items], when no collapsed group hides it.
   int? headerIndexOf(String path) {
     for (final (index, item) in items.indexed) {
       if (item is _LogsGroupHeader && item.path == path) return index;
     }
     return null;
-  }
-
-  /// [header]'s group and its siblings — the groups under the same parent —
-  /// and every group inside any of them.
-  List<String> siblingsAndDescendants(_LogsGroupHeader header) {
-    final parent = header.level == 0 ? '' : _parentOf(header.path);
-    final found = <String>[];
-    void walk(String path) {
-      found.add(path);
-      for (final child in children[path] ?? const <String>[]) {
-        walk(child);
-      }
-    }
-
-    for (final sibling in children[parent] ?? [header.path]) {
-      walk(sibling);
-    }
-    return found;
-  }
-
-  String _parentOf(String path) {
-    for (final MapEntry(:key, :value) in children.entries) {
-      if (value.contains(path)) return key;
-    }
-    return '';
   }
 
   /// The headers pinned over the list at [firstItem] — the item at its top

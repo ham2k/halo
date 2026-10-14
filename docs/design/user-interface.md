@@ -246,7 +246,9 @@ of every QSO the station callsigns have logged, across operations.
   a sort runs across. DX starts with every group closed, an index to open
   from; Date starts open. What the operator opens or closes is remembered per
   grouping. Ctrl, ⌘ or Alt on a header gives its siblings, and every group
-  inside them, the state it takes.
+  inside them, the state it takes. A search starts with every group open, so
+  no match hides in a closed one; what is folded during it is forgotten when
+  the search changes or ends.
 - **The search** sits centred in the header, as the Maps View's does.
 
 The table stays fixed-extent — a header is one row tall like every QSO — so

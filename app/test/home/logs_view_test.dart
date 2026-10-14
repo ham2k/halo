@@ -287,6 +287,83 @@ void main() {
       await _unmount(tester);
     });
 
+    testWidgets('a search opens every group, and what it folds goes with it', (tester) async {
+      final h = await _harness();
+      await h.settings.setLayoutData(LayoutKeys.logsFilter, {'group': 'dx'});
+      final operation = await h.services.operations.create(stationCall: 'K1ABC');
+      final dx = [('NA', 'United States'), ('NA', 'Canada'), ('EU', 'Germany'), ('AS', 'Japan')];
+      for (final (i, (continent, entity)) in dx.indexed) {
+        await _log(h.services, operation, 'K${i}AA', _utc(20 + i, 9), theirExtra: {'continent': continent, 'entityName': entity});
+      }
+      await _pumpLogs(tester, h);
+      await tester.tap(_row('North America'));
+      await settleFrames(tester, frames: 3);
+
+      // Under DX's closed groups, a match would be a count with nothing to
+      // read.
+      await tester.enterText(find.byType(TextField), 'K2');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await settleFrames(tester, frames: 3);
+      expect(_row('K2AA'), findsOneWidget);
+      await tester.tap(_row('Germany'));
+      await settleFrames(tester, frames: 3);
+      expect(_row('K2AA'), findsNothing, reason: 'a group still folds during a search');
+
+      await tester.tap(find.byIcon(MdiIcons.close));
+      await settleFrames(tester, frames: 3);
+      expect(_row('Canada'), findsOneWidget, reason: 'the open continent is open again');
+      expect(_row('Germany'), findsNothing, reason: 'Europe is closed again');
+      expect(h.settings.layoutData(LayoutKeys.logsFilter)?['folds'], {
+        'dx': {
+          'own': {'NA': false},
+          'under': <String, bool>{},
+        },
+      }, reason: 'nothing folded during the search is stored');
+      await _unmount(tester);
+    });
+
+    testWidgets('a modifier-click stores one entry however many groups it folds, and they still open folded', (tester) async {
+      final h = await _harness();
+      final operation = await h.services.operations.create(stationCall: 'K1ABC');
+      for (var day = 1; day <= 20; day++) {
+        await _log(h.services, operation, 'K${day}AA', _utc(day, 9));
+      }
+      await _pumpLogs(tester, h);
+      Object? stored() => h.settings.layoutData(LayoutKeys.logsFilter)?['folds'];
+      Future<void> modifierTap(String header) async {
+        await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+        await tester.tap(_row(header));
+        await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+        await settleFrames(tester, frames: 3);
+      }
+
+      // Kept path by path, a log's years, months and days would each be one.
+      await modifierTap('2026');
+      expect(stored(), {
+        'date': {
+          'own': <String, bool>{},
+          'under': {'': true},
+        },
+      });
+      await tester.tap(_row('2026'));
+      await settleFrames(tester, frames: 3);
+      expect(_row('September'), findsOneWidget);
+      expect(_row('K20AA'), findsNothing, reason: 'the month inside opens still folded');
+
+      await modifierTap('September');
+      expect(_row('K20AA'), findsOneWidget);
+      await modifierTap('2026');
+      expect(stored(), {
+        'date': {
+          'own': <String, bool>{},
+          'under': {'': true},
+        },
+      }, reason: 'a modifier-click clears what it reaches into');
+      await modifierTap('2026');
+      expect(stored(), isEmpty, reason: 'all open is how Date starts');
+      await _unmount(tester);
+    });
+
     testWidgets('pins the headers of the groups scrolled through over the top of the table', (tester) async {
       final h = await _harness();
       final operation = await h.services.operations.create(stationCall: 'K1ABC');
@@ -1017,6 +1094,34 @@ void main() {
       await settleFrames(tester, frames: 6);
       expect((await _stored(tester, h.services, qsos['K2AA']!)).theirCall, 'K2AB');
       expect(_editing(tester), isNull);
+      await _unmount(tester);
+    });
+
+    testWidgets('↑/↓ carry on from a row a collapsed group hides', (tester) async {
+      final h = await _harness();
+      final operation = await h.services.operations.create(stationCall: 'K1ABC');
+      await _log(h.services, operation, 'K22AA', _utc(22, 9));
+      await _log(h.services, operation, 'K21AA', _utc(21, 9));
+      await _log(h.services, operation, 'K20AA', _utc(20, 9));
+      await _pumpLogs(tester, h);
+
+      // From the top or the bottom, the keys would jump past every row
+      // between there and the one that was selected.
+      await _tapRow(tester, 'K21AA');
+      await tester.tap(_row('Mon, Sep 21'));
+      await settleFrames(tester, frames: 4);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settleFrames(tester, frames: 4);
+      expect(_editing(tester), 'K20AA');
+
+      await tester.tap(_row('Mon, Sep 21'));
+      await settleFrames(tester, frames: 4);
+      await _tapRow(tester, 'K21AA');
+      await tester.tap(_row('Mon, Sep 21'));
+      await settleFrames(tester, frames: 4);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await settleFrames(tester, frames: 4);
+      expect(_editing(tester), 'K22AA');
       await _unmount(tester);
     });
 
