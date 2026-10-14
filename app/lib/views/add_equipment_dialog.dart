@@ -44,6 +44,10 @@ class AddEquipmentDialog extends StatefulWidget {
   /// experiment, with everything that keys.
   final bool showKeyer;
 
+  /// Whether "Other Equipment" offers the SDR receivers — behind `EXP FALL`,
+  /// with the spectrum they exist to show.
+  final bool showSdr;
+
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const AddEquipmentDialog({
@@ -52,6 +56,7 @@ class AddEquipmentDialog extends StatefulWidget {
     required this.showDiscovery,
     required this.showAntennaAndKey,
     required this.showKeyer,
+    this.showSdr = false,
     required this.supportedVariants,
   });
 
@@ -281,6 +286,9 @@ class _AddEquipmentDialogState extends State<AddEquipmentDialog> {
           variants: widget.supportedVariants(winkeyerModel),
         ),
       ...switches,
+      if (widget.showSdr)
+        for (final model in sdrModels)
+          if (widget.supportedVariants(model) case final variants when variants.isNotEmpty) _AddRow.forModel(model, variants),
     ];
 
     return [

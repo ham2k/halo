@@ -2511,6 +2511,84 @@ SmartSDR or AetherSDR wants. A slice no client owns — HaLo alone on the radio
 — would instead need HaLo to be the GUI client: its own multiFLEX station,
 pan and slice, with the radio's FFT. That session mode does not exist yet.
 
+## SDR receivers
+
+A receive-only SDR — an RTL-SDR or Nooelec NESDR, an SDRplay RSP, an Airspy —
+as equipment of its own category (`kCategorySdr`), listed under Other
+Equipment and offered only while `EXP FALL` is on. It exists to be a
+spectrum source: it has no VFO, nothing logs from it, and nothing tunes it but
+the app.
+
+**It draws a radio's spectrum, not its own.** Its config links it to a radio —
+a specific node, or whichever is Main (`sdrRadio`). `CatService.spectrumNodeFor`
+answers "where does this radio's spectrum come from" in one place, for the
+scene control (`CatSpectrumSource`) and for `readRadio().spectrum` and
+`setRadioSpectrum` alike: a linked SDR when there is one — it wins over the
+radio's own scope, since linking it is the operator saying which picture they
+want — otherwise the radio. An SDR the operator disconnected hands the radio
+its own scope back; one that failed to connect does not, and says why, so the
+picture does not swap each time a server comes and goes. The dial marker, overlays and a scene's `radio.`
+values still read the radio, so no extension needs to know an SDR exists.
+An SDR no display has connected reports its spectrum as waiting (or the
+reason it could not connect) rather than absent, so a panel that shows its control only for a radio with a spectrum
+still shows the one display that connects it.
+
+**Two ways to wire one** (`sdrTuning`):
+
+- *Its own antenna*: the app tunes it to the linked radio's dial and may place
+  its window (`canRecenter`). In fixed mode it moves only when the dial leaves
+  the window, so a panel's `follow` places it with margins and is not fought
+  over; in center mode it sits on the dial, retuned at most four times a
+  second. An upconverter's oscillator is a frequency offset added to what the
+  device is told and never to a label.
+- *The radio's IF output*: tuned once to the IF, and every sweep is relabelled
+  around the dial, mirrored for an inverted IF. Its window is the radio
+  mixer's, so it cannot be recentered.
+
+The session reads the linked dial through its sink (`SdrSink.linkedVfoHz`) on
+each sweep: a driver never reaches into app state, and a sweep is when the
+dial is needed.
+
+**Connected only while a display wants it.** An rtl_tcp server streams for as
+long as a client holds it — megabytes a second, with no pause command — and
+serves one client at a time, so an SDR held open idle wastes the link and
+locks every other program on the station out of the dongle. The first display
+connects it, it is let go a few seconds after the last one leaves, and a
+failed connect or a drop is retried after a pause while a display waits. The
+operator overrides both ways: their Connect keeps it connected with no
+display, their Disconnect keeps it off. A release is neither.
+
+One function, `_settleSdr`, makes every one of those decisions, from the state
+as it is when called — on a display arriving or leaving, at the end of every
+connect and disconnect, and from its timers. While a connect, a release or an
+edit of the SDR is under way it does nothing, and each settles it again as it
+ends: a display that comes and goes before a connect has said `connecting`
+would otherwise start a second one, which supersedes the first on a server
+that takes one client. Any edit to an SDR's setup reconnects it, since the
+session reads it all at the start. Its connects skip the auto-connect crash
+mark, which guards a native open that can wedge the process — a socket
+cannot. Its IQ is kept out of the CAT
+traffic log, which a few megabytes a second would fill in moments.
+
+**The samples are mostly thrown away.** `SdrSpectrum` converts one FFT window
+per sweep — a few thousand samples out of millions a second — and skips the
+rest unread. After every retune or rate change it discards a tenth of a second
+of IQ, which belongs to the old setting and drawn at the new one smears a
+signal sideways. The DC spike every zero-IF receiver has is removed from the
+middle bin, where the dial marker sits in center mode.
+
+**rtl_tcp** (`rtl_tcp_driver.dart`) opens with `RTL0`, the tuner type and its
+gain count, then streams unsigned 8-bit I/Q; commands are five bytes, never
+answered. SDRplay's rsp_tcp speaks the same protocol. None of this has been
+on the bench: the edge trim, the settle time and rsp_tcp's rates are
+untested assumptions, and `equipment_models_sdr.dart` says so.
+
+Still to come: SpyServer (Airspy and RTL-SDR over the network, with the
+server computing the FFT), and USB on desktop through the vendors' libraries
+— libairspy and libairspyhf bundled, SDRplay's API installed by the operator.
+An RTL-SDR has no USB path: librtlsdr is GPL-2.0, and a sandboxed macOS app
+cannot load a copy the operator installed.
+
 ## Where this is going
 
 Shipped: the type registry, the TCP transport, the FlexRadio driver, UDP discovery, a Station

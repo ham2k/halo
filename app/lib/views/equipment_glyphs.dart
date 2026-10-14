@@ -20,6 +20,7 @@ IconData iconForCategory(String? category) => switch (category) {
   kCategoryKey => MdiIcons.key,
   kCategoryKeyer => MdiIcons.keyboardVariant,
   kCategoryAntennaSwitch => MdiIcons.directionsFork,
+  kCategorySdr => MdiIcons.waveform,
   _ => MdiIcons.developerBoard,
 };
 

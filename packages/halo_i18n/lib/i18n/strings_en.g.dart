@@ -4996,6 +4996,84 @@ class Translations$settings$station$en {
 	/// en: 'The radio's scope is set outside the range it can show'
 	String get spectrumOutOfRange => 'The radio\'s scope is set outside the range it can show';
 
+	/// en: 'Waiting for the linked radio's frequency…'
+	String get spectrumSdrNoRadio => 'Waiting for the linked radio\'s frequency…';
+
+	/// en: 'The SDR is not connected'
+	String get spectrumSdrNotConnected => 'The SDR is not connected';
+
+	/// en: 'Set the radio's IF frequency in this SDR's settings'
+	String get spectrumSdrNoIf => 'Set the radio\'s IF frequency in this SDR\'s settings';
+
+	/// en: 'Shows the spectrum for'
+	String get sdrRadio => 'Shows the spectrum for';
+
+	/// en: 'A spectrum display on this radio draws from this receiver instead of the radio's own scope.'
+	String get sdrRadioDescription => 'A spectrum display on this radio draws from this receiver instead of the radio\'s own scope.';
+
+	/// en: 'The Main radio'
+	String get sdrRadioMain => 'The Main radio';
+
+	/// en: 'Antenna input'
+	String get sdrTuning => 'Antenna input';
+
+	/// en: 'Where the receiver's signal comes from. On its own antenna it tunes itself to follow the radio; on the radio's IF output it stays on the IF.'
+	String get sdrTuningDescription => 'Where the receiver\'s signal comes from. On its own antenna it tunes itself to follow the radio; on the radio\'s IF output it stays on the IF.';
+
+	/// en: 'Its own antenna'
+	String get sdrTuningIndependent => 'Its own antenna';
+
+	/// en: 'The radio's IF output'
+	String get sdrTuningIfTap => 'The radio\'s IF output';
+
+	/// en: 'IF frequency (Hz)'
+	String get sdrIfHz => 'IF frequency (Hz)';
+
+	/// en: 'For an IF output only: the frequency the radio's dial sits at on its IF, such as 68330000 on an FT-817.'
+	String get sdrIfHzDescription => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.';
+
+	/// en: 'IF is inverted'
+	String get sdrIfInverted => 'IF is inverted';
+
+	/// en: 'Gain (dB)'
+	String get sdrGainDb => 'Gain (dB)';
+
+	/// en: 'Leave blank for the receiver's automatic gain.'
+	String get sdrGainDbDescription => 'Leave blank for the receiver\'s automatic gain.';
+
+	/// en: 'Frequency offset (Hz)'
+	String get sdrOffsetHz => 'Frequency offset (Hz)';
+
+	/// en: 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.'
+	String get sdrOffsetHzDescription => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.';
+
+	/// en: 'Frequency correction (ppm)'
+	String get sdrPpm => 'Frequency correction (ppm)';
+
+	/// en: 'Direct sampling'
+	String get rtlDirectSampling => 'Direct sampling';
+
+	/// en: 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.'
+	String get rtlDirectSamplingDescription => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.';
+
+	/// en: 'Off'
+	String get rtlDirectSamplingOff => 'Off';
+
+	/// en: 'I branch'
+	String get rtlDirectSamplingI => 'I branch';
+
+	/// en: 'Q branch'
+	String get rtlDirectSamplingQ => 'Q branch';
+
+	/// en: 'This is not an rtl_tcp server'
+	String get rtlTcpNotAServer => 'This is not an rtl_tcp server';
+
+	/// en: 'This connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into. - **Start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do. - **Port** is 1234 unless you started it with `-p`. - **One program at a time:** rtl_tcp serves a single client. The app connects only while a spectrum display is showing, and lets go a few seconds after it closes. - **On Android**, the *SDR driver* app runs the same server on the phone.'
+	String get rtlTcpNotes => 'This connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into.\n\n- **Start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** rtl_tcp serves a single client. The app connects only while a spectrum display is showing, and lets go a few seconds after it closes.\n- **On Android**, the *SDR driver* app runs the same server on the phone.';
+
+	/// en: 'This connects to an **rsp_tcp server you run yourself** on the computer the RSP is plugged into, with SDRplay's API installed there. - **Start it** with `rsp_tcp -a 0.0.0.0`. - **Port** is 1234 unless you started it with `-p`. - **One program at a time:** the server takes a single client. The app connects only while a spectrum display is showing.'
+	String get rspTcpNotes => 'This connects to an **rsp_tcp server you run yourself** on the computer the RSP is plugged into, with SDRplay\'s API installed there.\n\n- **Start it** with `rsp_tcp -a 0.0.0.0`.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** the server takes a single client. The app connects only while a spectrum display is showing.';
+
 	/// en: 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio'
 	String get n3fjpNoRig => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio';
 
@@ -7684,6 +7762,15 @@ class Translations$settings$station$models$en {
 
 	/// en: 'Sierra Radio CX-1 Coax Switch'
 	String get sierraCoax => 'Sierra Radio CX-1 Coax Switch';
+
+	/// en: 'RTL-SDR'
+	String get rtlSdr => 'RTL-SDR';
+
+	/// en: 'Nooelec NESDR'
+	String get nesdr => 'Nooelec NESDR';
+
+	/// en: 'SDRplay RSP'
+	String get sdrplay => 'SDRplay RSP';
 }
 
 // Path: settings.station.transports
@@ -9308,6 +9395,32 @@ extension on Translations {
 			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
+			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
+			'settings.station.spectrumSdrNotConnected' => 'The SDR is not connected',
+			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
+			'settings.station.sdrRadio' => 'Shows the spectrum for',
+			'settings.station.sdrRadioDescription' => 'A spectrum display on this radio draws from this receiver instead of the radio\'s own scope.',
+			'settings.station.sdrRadioMain' => 'The Main radio',
+			'settings.station.sdrTuning' => 'Antenna input',
+			'settings.station.sdrTuningDescription' => 'Where the receiver\'s signal comes from. On its own antenna it tunes itself to follow the radio; on the radio\'s IF output it stays on the IF.',
+			'settings.station.sdrTuningIndependent' => 'Its own antenna',
+			'settings.station.sdrTuningIfTap' => 'The radio\'s IF output',
+			'settings.station.sdrIfHz' => 'IF frequency (Hz)',
+			'settings.station.sdrIfHzDescription' => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.',
+			'settings.station.sdrIfInverted' => 'IF is inverted',
+			'settings.station.sdrGainDb' => 'Gain (dB)',
+			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
+			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
+			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
+			'settings.station.sdrPpm' => 'Frequency correction (ppm)',
+			'settings.station.rtlDirectSampling' => 'Direct sampling',
+			'settings.station.rtlDirectSamplingDescription' => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.',
+			'settings.station.rtlDirectSamplingOff' => 'Off',
+			'settings.station.rtlDirectSamplingI' => 'I branch',
+			'settings.station.rtlDirectSamplingQ' => 'Q branch',
+			'settings.station.rtlTcpNotAServer' => 'This is not an rtl_tcp server',
+			'settings.station.rtlTcpNotes' => 'This connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into.\n\n- **Start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** rtl_tcp serves a single client. The app connects only while a spectrum display is showing, and lets go a few seconds after it closes.\n- **On Android**, the *SDR driver* app runs the same server on the phone.',
+			'settings.station.rspTcpNotes' => 'This connects to an **rsp_tcp server you run yourself** on the computer the RSP is plugged into, with SDRplay\'s API installed there.\n\n- **Start it** with `rsp_tcp -a 0.0.0.0`.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** the server takes a single client. The app connects only while a spectrum display is showing.',
 			'settings.station.n3fjpNoRig' => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio',
 			'settings.station.winkeyerKeyPort' => 'Key output',
 			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
@@ -9375,6 +9488,9 @@ extension on Translations {
 			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
+			'settings.station.models.rtlSdr' => 'RTL-SDR',
+			'settings.station.models.nesdr' => 'Nooelec NESDR',
+			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Network/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Serial',
 			'settings.station.transports.wifi' => 'Network/WiFi',
@@ -9391,6 +9507,8 @@ extension on Translations {
 			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
@@ -9420,8 +9538,6 @@ extension on Translations {
 			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
 			'settings.station.peerRadioElsewhereTitle' => ({required Object radio}) => '${radio} is on another device',
 			'settings.station.peerRadioElsewhereMessage' => ({required Object device}) => 'This radio is connected to ${device}. Its connection and settings are configured on that device.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
 			'settings.station.noneSelected' => 'None',
@@ -9905,6 +10021,8 @@ extension on Translations {
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
 			'offline.statusOffline' => 'Internet: OFFLINE',
@@ -9934,8 +10052,6 @@ extension on Translations {
 			'exportSettings.adifFields' => 'ADIF Fields',
 			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
 			'exportSettings.retry' => 'Retry',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.',
 			'exportSettings.includePrivateDataDescriptionOn' => 'Including names, addresses, emails, notes and precise locations in ADIF files.',

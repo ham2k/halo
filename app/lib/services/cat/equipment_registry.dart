@@ -39,6 +39,7 @@ import 'equipment_models_accessories.dart';
 import 'equipment_models_icom.dart';
 import 'equipment_models_kenwood.dart';
 import 'equipment_models_other_radios.dart';
+import 'equipment_models_sdr.dart';
 import 'equipment_models_yaesu.dart';
 import 'transport.dart';
 import 'transports/bluetooth_serial_transport.dart';
@@ -51,6 +52,7 @@ export 'equipment_models_accessories.dart';
 export 'equipment_models_icom.dart';
 export 'equipment_models_kenwood.dart';
 export 'equipment_models_other_radios.dart';
+export 'equipment_models_sdr.dart';
 export 'equipment_models_yaesu.dart';
 
 /// One way of reaching a model — everything that differs between the same
@@ -485,6 +487,7 @@ const _defaultModels = [
   antennaModel,
   keyModel,
   winkeyerModel,
+  ...sdrModels,
 ];
 
 class EquipmentRegistry {

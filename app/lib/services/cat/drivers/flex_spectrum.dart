@@ -46,11 +46,6 @@ const _maxPoints = 1024;
 
 const _sweepsPerSecond = {SpectrumSpeed.slow: 8, SpectrumSpeed.mid: 15, SpectrumSpeed.fast: 25};
 
-/// How far below the noise the display starts, and how tall it is — the
-/// shape of the radio's own panadapter at its default levels.
-const _floorBelowNoiseDb = 10.0;
-const _displayRangeDb = 80.0;
-
 class FlexDaxSpectrum {
   /// Sends a command; [onReply] gets the answer's code and body.
   final void Function(String command, {void Function(int code, String body)? onReply}) send;
@@ -97,7 +92,7 @@ class FlexDaxSpectrum {
   int _rate = 48000;
   bool _littleEndian = true;
   IqSpectrum? _fft;
-  double? _noise;
+  final _noise = NoiseFloor();
   SpectrumSettings _settings = const SpectrumSettings(speed: SpectrumSpeed.mid, refLevelDb: 0);
 
   bool _socketReady = false;
@@ -356,7 +351,7 @@ class FlexDaxSpectrum {
     _stream = null;
     _assignedChannel = null;
     _fft = null;
-    _noise = null;
+    _noise.reset();
   }
 
   /// One UDP datagram. Returns whether it was this stream's, so the meter
@@ -409,38 +404,20 @@ class FlexDaxSpectrum {
     final centerMhz = double.tryParse(status?['center'] ?? '');
     if (centerMhz == null) return;
     final trim = (levels.length * flexDaxIqTrim).round();
-    final pooled = _pool(Float32List.sublistView(levels, trim, levels.length - trim));
-    final sorted = Float32List.fromList(pooled)..sort();
-    final noise = sorted[sorted.length ~/ 5];
-    if (!noise.isFinite) return;
-    _noise = _noise == null ? noise : _noise! * 0.9 + noise * 0.1;
-    final floor = _noise! - _floorBelowNoiseDb - (_settings.refLevelDb ?? 0);
+    final pooled = poolPeaks(Float32List.sublistView(levels, trim, levels.length - trim), _maxPoints);
+    final range = _noise.update(pooled, refLevelDb: _settings.refLevelDb ?? 0);
+    if (range == null) return;
     final center = (centerMhz * 1e6).round();
     sink?.reportSpectrum(
       SpectrumFrame(
         lowHz: center - _visibleHalfWidth(_rate),
         highHz: center + _visibleHalfWidth(_rate),
         levels: pooled,
-        floorDb: floor,
-        ceilingDb: floor + _displayRangeDb,
+        floorDb: range.floor,
+        ceilingDb: range.ceiling,
         atMillis: nowMillis(),
       ),
     );
-  }
-
-  /// The loudest bin of each group: a narrow carrier has to survive pooling.
-  static Float32List _pool(Float32List levels) {
-    if (levels.length <= _maxPoints) return levels;
-    final factor = (levels.length / _maxPoints).ceil();
-    final out = Float32List(levels.length ~/ factor);
-    for (var i = 0; i < out.length; i++) {
-      var peak = levels[i * factor];
-      for (var j = 1; j < factor; j++) {
-        peak = math.max(peak, levels[i * factor + j]);
-      }
-      out[i] = peak;
-    }
-    return out;
   }
 
   void _report(SpectrumSettings settings) {

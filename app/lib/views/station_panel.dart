@@ -173,6 +173,7 @@ class StationPanel extends StatelessWidget {
         showDiscovery: showDiscovery,
         showAntennaAndKey: services.settings.trackStationInfo && services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
         showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
+        showSdr: services.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,
       ),
     );
@@ -633,6 +634,22 @@ class StationPanel extends StatelessWidget {
         // operator opening this dialog mid-operation is looking for the
         // former, and the latter is answered once and rarely revisited.
         if (model.category == kCategoryAntennaSwitch) ...[..._switchCurrentState(context, node), ..._switchWiring(context, type, node)],
+        // Which radio this receiver shows the spectrum for. Here rather than
+        // in the driver for the antenna bands' reason: the choices are the
+        // station's own radios, which a driver cannot see.
+        if (model.category == kCategorySdr)
+          {
+            'type': 'field',
+            'fieldType': 'select',
+            'key': sdrRadioConfigKey,
+            'label': st.sdrRadio,
+            'description': st.sdrRadioDescription,
+            'options': [
+              {'value': sdrRadioMain, 'label': st.sdrRadioMain},
+              for (final candidate in _cat.nodes)
+                if (_cat.typeFor(candidate)?.category == kCategoryTransceiver) {'value': candidate.uuid, 'label': _displayName(candidate)},
+            ],
+          },
         ...connection.where(isNote),
       ];
     }

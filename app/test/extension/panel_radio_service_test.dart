@@ -57,7 +57,7 @@ class TestCat extends Fake implements CatService {
   }
 
   @override
-  Future<void> disconnect(String uuid) async {
+  Future<void> disconnect(String uuid, {bool byUser = true}) async {
     connections.add('disconnect:$uuid');
   }
 

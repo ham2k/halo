@@ -90,10 +90,11 @@ experiments:
     aliases: [screens, screenshare]
     private: true
   # A radio's panadapter and waterfall as a `spectrum` control in extension
-  # scene panels (docs/design/cat.md § Spectrum). Gated because it streams
-  # the radio's scope — on a Flex it assigns a DAX IQ channel to the
-  # operator's panadapter — and because only an IC-705 and a FLEX-6600 have
-  # been on the bench.
+  # scene panels (docs/design/cat.md § Spectrum), and SDR receivers as the
+  # source of one (§ SDR receivers). Gated because it streams the radio's
+  # scope — on a Flex it assigns a DAX IQ channel to the operator's
+  # panadapter — and because only an IC-705 and a FLEX-6600 have been on the
+  # bench, and no SDR at all.
   - key: fall
     name: Panadapter & Waterfall
     description: Show a CAT radio's panadapter and waterfall in scene panels that ask for one.

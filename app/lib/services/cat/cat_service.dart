@@ -35,6 +35,7 @@ import 'spectrum.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
+import 'drivers/sdr_spectrum.dart' show SdrSink;
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'keyer_repeat.dart';
@@ -188,6 +189,15 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
   /// [Duration.zero] rather than sleeping through it for real.
   final Duration reconnectDelay;
 
+  /// How long an SDR stays connected after the last display leaves it — long
+  /// enough that switching dock tabs does not reconnect it.
+  final Duration sdrIdleRelease;
+
+  /// How long an SDR a display waits on is left between failed connects.
+  /// Its own value rather than [reconnectDelay], which tests zero: a display
+  /// left open on a server that is not there would retry in a tight loop.
+  final Duration sdrRetryDelay;
+
   /// When [_autoReconnectAfterDrop] last let a burst through, so a flapping
   /// radio cannot become a reconnect storm.
   /// Per node: radio1 and the keyer flap independently.
@@ -293,10 +303,13 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     this._radio,
     this._onTrack,
     this.reconnectDelay = _defaultReconnectDelay,
+    this.sdrIdleRelease = const Duration(seconds: 5),
+    this.sdrRetryDelay = const Duration(seconds: 5),
     this.now = realNowUtc,
     this.idleRetryFirst = _idleRetryFirst,
     this.staleAfter = catStaleAfter,
   }) : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
+       assert(sdrRetryDelay > Duration.zero, 'a zero delay retries an absent SDR in a tight loop'),
        registry = registry ?? EquipmentRegistry() {
     _load();
     // The meter calibration tables (drivers/info/), read once. Not awaited
@@ -1231,10 +1244,28 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     // Only on a type change. An edited host or baud rate leaves the pairing
     // intact, and disconnecting for those would drop a working radio every
     // time its name was corrected.
-    if (previous.typeKey != node.typeKey) await disconnect(node.uuid);
-    _nodes[node.uuid] = await _stashSecrets(node);
-    await _save();
+    //
+    // An SDR, or a node becoming one, reconnects on ANY edit, and not as the
+    // operator's Disconnect: its whole setup is read when its session starts,
+    // and the display that wants it connects it straight back. Held busy
+    // until the new setup is saved, or that display reconnects it on the old.
+    final toSdr = typeFor(node)?.category == kCategorySdr;
+    final sdrEdited = (isSdr(node.uuid) || toSdr) && (previous.typeKey != node.typeKey || !mapEquals(previous.config, node.config));
+    final sdr = sdrEdited ? (_runtimeFor(node.uuid)..cancelSdrTimers()) : null;
+    if (sdr != null) sdr.sdrBusy++;
+    try {
+      if (sdrEdited && stateFor(node.uuid).status != EquipmentStatus.disconnected) {
+        await disconnect(node.uuid, byUser: !toSdr);
+      } else if (previous.typeKey != node.typeKey && !sdrEdited) {
+        await disconnect(node.uuid);
+      }
+      _nodes[node.uuid] = await _stashSecrets(node);
+      await _save();
+    } finally {
+      if (sdr != null) sdr.sdrBusy--;
+    }
     notifyListeners();
+    if (sdr != null) _settleSdr(sdr);
     // Given a port or address at last: nothing retried it, and a re-type above
     // marked it disconnected on purpose although it never connected.
     final wasUnconfigured = typeFor(previous)?.isUnconfigured(previous.config) ?? false;
@@ -1342,7 +1373,9 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     // being removed goes on sending regardless.
     _withKeyInUseTidied(() {
       _nodes.remove(uuid);
-      unawaited(_runtimes.remove(uuid)?.spectrum?.close());
+      final removed = _runtimes.remove(uuid);
+      removed?.cancelSdrTimers();
+      unawaited(removed?.spectrum?.close());
       // Removing the designated radio clears the choice rather than quietly
       // moving the logging panel onto a different rig immediately after a
       // destructive action. The dropdown is right there.
@@ -1505,7 +1538,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
 
   // -------------------------------------------------------------- runtime
 
-  _NodeRuntime _runtimeFor(String uuid) => _runtimes.putIfAbsent(uuid, _NodeRuntime.new);
+  _NodeRuntime _runtimeFor(String uuid) => _runtimes.putIfAbsent(uuid, () => _NodeRuntime(uuid));
 
   /// [notify] false stores the state without waking a listener — for a
   /// change nothing on screen can render. Only the meter refresh below uses
@@ -1537,7 +1570,8 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     // resume looking after this node.
     _runtimeFor(uuid)
       ..userDisconnected = false
-      ..linesRefused = false;
+      ..linesRefused = false
+      ..sdrPinned = isSdr(uuid);
     // And it is the way back from a held auto-connect: the operator asking for
     // this node by hand is both the deliberate act the hold waits for and the
     // evidence it wants, since a port that opens on request is one worth
@@ -1734,6 +1768,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
 
     final sink = _NodeSink(
       connection: connection,
+      linkedVfo: () => _linkedVfoHz(uuid),
       onSend: (bytes) => trafficLog?.sent(_logLabel(uuid), bytes),
       onReading: (reading) {
         // A session from a superseded connection must not write state.
@@ -1920,7 +1955,9 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     // and a serial port name carries the adapter's serial number on macOS.
     trafficLog?.note(_logLabel(uuid), config['baudRate'] == null ? 'connected' : 'connected at ${config['baudRate']} baud');
     runtime.subscription = connection.data.listen((chunk) {
-      trafficLog?.received(_logLabel(uuid), chunk);
+      // Not an SDR's IQ: megabytes a second of it would fill the log in
+      // moments and end the recording of the CAT traffic it exists for.
+      if (type.category != kCategorySdr) trafficLog?.received(_logLabel(uuid), chunk);
       try {
         session.handleData(chunk);
       } catch (e, st) {
@@ -1949,6 +1986,8 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
         unawaited(_closeSession(runtime));
         _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
         _autoReconnectAfterDrop(uuid);
+        // An SDR comes back for the display still waiting on it.
+        _retrySdr(runtime);
         // And keep trying slowly afterwards, in case that burst is spent before
         // the radio is back.
         //
@@ -1974,6 +2013,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     }
     runtime.spectrumStarted = false;
     if (runtime.spectrum?.hasListener ?? false) _spectrumDemand(runtime, true);
+    _settleSdr(runtime);
     return _ConnectOutcome.connected;
   }
 
@@ -2158,12 +2198,19 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     _scheduleIdleRetry();
   }
 
-  Future<void> disconnect(String uuid) async {
+  /// [byUser] false is the app letting go of a node it connected for itself
+  /// — an SDR no display wants any more — which must not read as the
+  /// operator switching it off.
+  Future<void> disconnect(String uuid, {bool byUser = true}) async {
     final runtime = _runtimes[uuid];
     if (runtime == null) return;
     // Recorded BEFORE the teardown, because the retry loop reads it later and
     // has no other way to tell this from a radio that vanished.
-    runtime.userDisconnected = true;
+    if (byUser) {
+      runtime.userDisconnected = true;
+      runtime.sdrPinned = false;
+    }
+    runtime.cancelSdrTimers();
     runtime.cancel?.cancel();
     runtime.cancel = null;
     // Bump the sequence so an attempt still in flight knows it lost.
@@ -2174,6 +2221,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnecting));
     await _teardown(runtime);
     _setState(uuid, const EquipmentState(status: EquipmentStatus.disconnected));
+    _settleSdr(runtime);
   }
 
   /// Closes every live session and **waits for it**, for use when the app is
@@ -2638,6 +2686,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
     stopDiscovery();
     for (final runtime in _runtimes.values) {
       runtime.cancel?.cancel();
+      runtime.cancelSdrTimers();
       unawaited(_teardown(runtime));
       unawaited(runtime.spectrum?.close());
     }

@@ -6,8 +6,9 @@
 
 part of 'cat_service.dart';
 
-class _NodeSink implements EquipmentSink, SpectrumSink, TunerSink, PassbandSink, RadioAntennaSink {
+class _NodeSink implements EquipmentSink, SpectrumSink, SdrSink, TunerSink, PassbandSink, RadioAntennaSink {
   final EquipmentConnection connection;
+  final double? Function() linkedVfo;
   final void Function(VfoReading) onReading;
   final void Function(num) onPower;
   final void Function(bool) onTransmitting;
@@ -31,6 +32,7 @@ class _NodeSink implements EquipmentSink, SpectrumSink, TunerSink, PassbandSink,
 
   _NodeSink({
     required this.connection,
+    required this.linkedVfo,
     required this.onSend,
     required this.onReading,
     required this.onPower,
@@ -106,6 +108,9 @@ class _NodeSink implements EquipmentSink, SpectrumSink, TunerSink, PassbandSink,
 
   @override
   void reportSpectrumProblem(String? message) => onSpectrumProblem(message);
+
+  @override
+  double? get linkedVfoHz => linkedVfo();
 
   @override
   void reportTuner(TunerStatus? status) => onTuner(status);

@@ -6,6 +6,10 @@
 part of 'cat_service.dart';
 
 class _NodeRuntime {
+  final String uuid;
+
+  _NodeRuntime(this.uuid);
+
   EquipmentState state = const EquipmentState();
   EquipmentConnection? connection;
   EquipmentSession? session;
@@ -53,6 +57,27 @@ class _NodeRuntime {
 
   /// Whether this connection's scope was started — what a demand changes.
   bool spectrumStarted = false;
+
+  /// The operator pressed Connect on this SDR: it stays connected with no
+  /// display drawing it, until they press Disconnect.
+  bool sdrPinned = false;
+
+  /// Connects, disconnects and edits of this SDR under way. While any is,
+  /// nothing else starts one — two connects to a one-client server
+  /// supersede each other — and each settles the SDR again as it ends.
+  int sdrBusy = 0;
+
+  /// An SDR's pending idle release, and its next try at connecting while a
+  /// display waits — see [CatServiceSpectrum._settleSdr].
+  Timer? sdrRelease;
+  Timer? sdrRetry;
+
+  void cancelSdrTimers() {
+    sdrRelease?.cancel();
+    sdrRelease = null;
+    sdrRetry?.cancel();
+    sdrRetry = null;
+  }
 
   /// The transmission under way: SWR readings taken with RF out.
   double _swrSum = 0;

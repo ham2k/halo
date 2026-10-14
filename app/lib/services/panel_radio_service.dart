@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 import 'dart:async';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_core/halo_core.dart' show realNowMillis, nowMillis;
 import 'cat/cat_service.dart';
 import 'cat/equipment.dart';
@@ -91,7 +92,7 @@ class PanelRadioService {
       'maxWatts': config?['maxWatts'] as num?,
       'modes': type == null ? const <String>[] : _settableModes(type, config!),
       'keying': live && keyingEnabled() && cat.isRadio1(node.uuid) ? _keying() : null,
-      if (spectrumEnabled()) 'spectrum': node == null || !live ? null : _spectrum(node.uuid, state),
+      if (spectrumEnabled()) 'spectrum': node == null || !live ? null : _spectrum(cat.spectrumNodeFor(node.uuid)),
     };
   }
 
@@ -121,14 +122,39 @@ class PanelRadioService {
   }
 
   /// The radio's scope as the radio reports it, and what it accepts. Null for
-  /// a radio with none; the sweeps themselves are drawn by the host.
-  Map<String, dynamic>? _spectrum(String uuid, EquipmentState state) {
+  /// a radio with none; the sweeps themselves are drawn by the host. [uuid]
+  /// is where the radio's spectrum comes from — its linked SDR, when it has
+  /// one, which reports nothing until a display has connected it.
+  Map<String, dynamic>? _spectrum(String uuid) {
     final session = cat.spectrumSessionFor(uuid);
+    final sdrProblem = cat.isSdr(uuid) ? cat.sdrConnectionProblem(uuid) : null;
+    // An SDR with no display is not connected, and has no settings to tell.
+    // Said as a problem rather than as no spectrum at all: a panel that shows
+    // its control only for a radio with a spectrum would otherwise never show
+    // the one display that connects it.
+    if (session == null && cat.isSdr(uuid)) {
+      return {
+        'problem': sdrProblem ?? t.settings.station.spectrumWaiting,
+        'mode': null,
+        'spanHz': null,
+        'lowHz': null,
+        'highHz': null,
+        'refLevelDb': null,
+        'speed': null,
+        'spansHz': const <int>[],
+        'refMinDb': 0,
+        'refMaxDb': 0,
+        'refStepDb': 0,
+        'modes': const <String>[],
+        'speeds': const <String>[],
+      };
+    }
     if (session == null) return null;
+    final state = cat.stateFor(uuid);
     final settings = state.spectrum;
     final caps = session.spectrumCapabilities;
     return {
-      'problem': session.spectrumUnavailable ?? state.spectrumProblem,
+      'problem': sdrProblem ?? session.spectrumUnavailable ?? state.spectrumProblem,
       'mode': settings?.mode.name,
       'spanHz': settings?.spanHz,
       'lowHz': settings?.lowHz,
@@ -151,7 +177,8 @@ class PanelRadioService {
     final selection = args['selection'] as String?;
     final state = read(selection);
     if (!spectrumEnabled() || args['id'] == null || args['id'] != state['id']) return {'accepted': false, 'reason': 'changed', 'state': state};
-    final session = cat.spectrumSessionFor(state['id'] as String);
+    final source = cat.spectrumNodeFor(state['id'] as String);
+    final session = cat.spectrumSessionFor(source);
     if (session == null || session.spectrumUnavailable != null) return {'accepted': false, 'reason': 'disconnected', 'state': state};
     T? pick<T extends Enum>(List<T> values, Object? name) => name == null ? null : values.asNameMap()[name];
     final span = args['spanHz'], ref = args['refLevelDb'];
@@ -166,10 +193,7 @@ class PanelRadioService {
         (span == null && ref == null && mode == null && speed == null)) {
       return {'accepted': false, 'reason': 'invalid', 'state': state};
     }
-    final taken = cat.setSpectrum(
-      state['id'] as String,
-      SpectrumRequest(mode: mode, spanHz: (span as num?)?.round(), refLevelDb: (ref as num?)?.toDouble(), speed: speed),
-    );
+    final taken = cat.setSpectrum(source, SpectrumRequest(mode: mode, spanHz: (span as num?)?.round(), refLevelDb: (ref as num?)?.toDouble(), speed: speed));
     // Not queued for later: a scope runs only while a display shows it.
     return {'accepted': taken, if (!taken) 'reason': 'stopped', 'state': read(selection)};
   }

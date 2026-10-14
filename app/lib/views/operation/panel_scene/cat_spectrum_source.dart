@@ -25,18 +25,27 @@ class CatSpectrumSource implements SceneSpectrumSource {
 
   const CatSpectrumSource(this.cat, {this.spectrumEnabled = true, this.canCommand = false});
 
+  /// The node whose sweeps a control draws: the radio's linked SDR when it
+  /// has one, otherwise the radio. Everything about the radio itself — its
+  /// dial, its meters — is read back through [_radioOf], so a scene's
+  /// `radio` values stay the radio's whichever node draws.
   @override
   String? resolve(String? radio) {
-    if (radio == null) {
-      return switch (cat.radio1) {
-        LocalRadio(:final uuid) => uuid,
-        _ => null,
-      };
-    }
-    // A node that is not a radio — a keyer, a switch — has no scope to name.
-    final node = cat.nodeFor(radio);
-    return node != null && cat.typeFor(node)?.category == kCategoryTransceiver ? radio : null;
+    final uuid = radio == null
+        ? switch (cat.radio1) {
+            LocalRadio(:final uuid) => uuid,
+            _ => null,
+          }
+        // A node that is not a radio — a keyer, a switch — has no scope to name.
+        : switch (cat.nodeFor(radio)) {
+            final node? when cat.typeFor(node)?.category == kCategoryTransceiver => radio,
+            _ => null,
+          };
+    if (uuid == null || !spectrumEnabled) return uuid;
+    return cat.spectrumNodeFor(uuid);
   }
+
+  String? _radioOf(String uuid) => cat.isSdr(uuid) ? cat.linkedRadioFor(uuid) : uuid;
 
   @override
   Stream<SpectrumFrame> frames(String uuid) => cat.spectrumFrames(uuid);
@@ -44,6 +53,9 @@ class CatSpectrumSource implements SceneSpectrumSource {
   @override
   String? problem(String uuid) {
     final state = cat.stateFor(uuid);
+    if (cat.isSdr(uuid)) {
+      if (cat.sdrConnectionProblem(uuid) case final problem?) return problem;
+    }
     if (state.status != EquipmentStatus.connected) return t.settings.station.spectrumNoRadio;
     final session = cat.spectrumSessionFor(uuid);
     if (session == null) return t.settings.station.spectrumUnsupported;
@@ -51,8 +63,11 @@ class CatSpectrumSource implements SceneSpectrumSource {
   }
 
   @override
-  double? vfoHz(String uuid) => switch (cat.stateFor(uuid).vfo.freqKHz) {
-    final khz? => khz * 1000,
+  double? vfoHz(String uuid) => switch (_radioOf(uuid)) {
+    final radio? => switch (cat.stateFor(radio).vfo.freqKHz) {
+      final khz? => khz * 1000,
+      null => null,
+    },
     null => null,
   };
 
@@ -60,7 +75,9 @@ class CatSpectrumSource implements SceneSpectrumSource {
   Listenable get changes => cat;
 
   @override
-  Map<String, num> readings(String uuid) {
+  Map<String, num> readings(String node) {
+    final uuid = _radioOf(node);
+    if (uuid == null) return const {};
     final state = cat.stateFor(uuid);
     final live = state.status == EquipmentStatus.connected && !state.stale && state.problem == null;
     final transmitting = live && state.telemetry.transmitting == true, last = cat.lastTransmissionFor(uuid);

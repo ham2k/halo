@@ -44,6 +44,19 @@ const kCategoryKeyer = 'keyer';
 /// list the operator picks their antenna from.
 const kCategoryAntennaSwitch = 'antennaSwitch';
 
+/// A receive-only SDR — an RTL-SDR, an SDRplay, an Airspy — that shows the
+/// spectrum for a radio which has no scope of its own, or a better one than
+/// the radio's (docs/design/cat.md § SDR receivers). Never a transceiver:
+/// nothing tunes it but the app, and nothing logs from it.
+const kCategorySdr = 'sdr';
+
+/// The config key naming the radio an SDR shows the spectrum for: a node's
+/// uuid, or [sdrRadioMain] (also what an absent value means).
+const sdrRadioConfigKey = 'sdrRadio';
+
+/// [sdrRadioConfigKey]'s value for whichever radio is Main at the time.
+const sdrRadioMain = 'main';
+
 /// Old [EquipmentNode.typeKey] values, mapped to what the catalogue calls
 /// them now.
 ///

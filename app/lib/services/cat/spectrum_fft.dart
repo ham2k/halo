@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Turns a radio's IQ samples into sweeps, for a radio that streams IQ rather
-// than a finished spectrum — a FlexRadio mirrored through DAX IQ.
+// Turns IQ samples into sweeps, for equipment that streams IQ rather than a
+// finished spectrum — a FlexRadio mirrored through DAX IQ, and every SDR.
 
 import 'dart:math' as math;
 
@@ -99,4 +99,43 @@ class IqSpectrum {
         }(),
     ];
   }
+}
+
+/// [levels] reduced to at most [maxPoints] by keeping the loudest bin of each
+/// group: a narrow carrier has to survive pooling.
+Float32List poolPeaks(Float32List levels, int maxPoints) {
+  if (levels.length <= maxPoints) return levels;
+  final factor = (levels.length / maxPoints).ceil();
+  final out = Float32List(levels.length ~/ factor);
+  for (var i = 0; i < out.length; i++) {
+    var peak = levels[i * factor];
+    for (var j = 1; j < factor; j++) {
+      peak = math.max(peak, levels[i * factor + j]);
+    }
+    out[i] = peak;
+  }
+  return out;
+}
+
+/// Where a computed sweep's display range sits: the noise, followed slowly so
+/// one loud signal does not drag the floor up, and a range the shape of a
+/// radio's own panadapter at its default levels.
+class NoiseFloor {
+  /// How far below the noise the display starts, and how tall it is.
+  static const belowNoiseDb = 10.0;
+  static const rangeDb = 80.0;
+
+  double? _noise;
+
+  /// Folds [levels] in; null when they hold no usable reading.
+  ({double floor, double ceiling})? update(Float32List levels, {double refLevelDb = 0}) {
+    final sorted = Float32List.fromList(levels)..sort();
+    final noise = sorted[sorted.length ~/ 5];
+    if (!noise.isFinite) return null;
+    _noise = _noise == null ? noise : _noise! * 0.9 + noise * 0.1;
+    final floor = _noise! - belowNoiseDb - refLevelDb;
+    return (floor: floor, ceiling: floor + rangeDb);
+  }
+
+  void reset() => _noise = null;
 }

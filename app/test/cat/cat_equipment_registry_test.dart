@@ -257,6 +257,9 @@ void main() {
       'sierra-coax-serial',
       'antenna-none',
       'key-none',
+      'rtl-sdr-rtltcp',
+      'nesdr-rtltcp',
+      'sdrplay-rsptcp',
       // Derived from the model's key, one per real transceiver — stored like
       // any other, so renaming a model's key orphans its placeholder nodes.
       'flexradio-placeholder',
@@ -632,7 +635,8 @@ void main() {
     // be read back, so a fresh session assumes the poll and drops the claim
     // once the radio announces on its own (cat_icom_civ_test.dart).
     // The Winkeyer pushes too: status, echo and pot reports, as they happen.
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer'};
+    // An SDR streams IQ continuously and has no dial of its own to settle.
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer', 'rtl-tcp'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.
