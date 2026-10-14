@@ -507,9 +507,9 @@ void main() {
         }
       }
 
-      test('AC writes are in line or bypass, and the builder cannot start a tune', () {
-        // P3 2 is "tune start" — a carrier on the air. Taking a bool rather
-        // than a P3 is what keeps it out of reach.
+      test('AC writes are in line or bypass, and the switch builder cannot start a tune', () {
+        // P3 2 is "tune start" — a carrier on the air, and buildStartTuneCommand's alone.
+        // Taking a bool rather than a P3 is what keeps it out of a switch's reach.
         expect(buildSetTunerCommand(inline: true), 'AC001;');
         expect(buildSetTunerCommand(inline: false), 'AC000;');
         expect(parseTunerParams('000'), 0);
@@ -518,6 +518,76 @@ void main() {
         expect(parseTunerParams('01'), isNull, reason: 'a frame that lost a byte');
         expect(parseTunerParams('101'), isNull, reason: 'P1P2 is a fixed 00');
         expect(parseTunerParams('003'), isNull);
+      });
+
+      test('a tune is AC002; and a read-back, only once the radio has answered AC', () {
+        // Before an answer, AC is not known to reach a tuner: the carrier would go
+        // into whatever the radio has on its antenna port.
+        expect(session.canStartTune, isFalse);
+        session.startTune();
+        expect(sink.sent, isEmpty);
+        session.feed('AC000;');
+        expect(session.canStartTune, isTrue);
+        session.startTune();
+        expect(sink.sent, ['AC002;', 'AC;']);
+      });
+
+      test('a tune is not started over a transmission', () {
+        fakeAsync((async) {
+          session.startUpdates();
+          session.feed('AC001;');
+          session.feed('TX2;');
+          async.elapse(const Duration(seconds: 1));
+          sink.sent.clear();
+          expect(session.canStartTune, isTrue, reason: 'refused for transmitting, not for want of a tuner');
+          session.startTune();
+          expect(sink.sent, isNot(contains('AC002;')));
+          session.teardown();
+        });
+      });
+
+      test('a tune is not started into one already running', () {
+        // A second start mid-tune cancels or restarts it on the air.
+        session.feed('AC002;');
+        expect(session.canStartTune, isTrue);
+        session.startTune();
+        expect(sink.sent, isNot(contains('AC002;')));
+      });
+
+      test('a tune is ended by putting the tuner in line, even on the air', () {
+        fakeAsync((async) {
+          session.startUpdates();
+          session.feed('AC002;');
+          session.feed('TX2;');
+          async.elapse(const Duration(seconds: 1));
+          sink.sent.clear();
+          session.stopTune();
+          expect(sink.sent.first, 'AC001;');
+          session.teardown();
+        });
+      });
+
+      test('a tune it started is read on the air, even when the first read-back beat it', () {
+        // The tuner is otherwise never read while transmitting: answered `AC001;`
+        // just before the tune began, it would read `inline` for the whole tune.
+        fakeAsync((async) {
+          session.startUpdates();
+          session.feed('AC001;');
+          session.startTune();
+          session.feed('AC001;');
+          session.feed('TX2;');
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 4));
+          expect(sink.sent, contains('AC;'));
+          // Once the tune's transmission ends, an over is just an over again.
+          session.feed('TX0;');
+          session.feed('TX2;');
+          async.elapse(const Duration(seconds: 1));
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 30));
+          expect(sink.sent, isNot(contains('AC;')));
+          session.teardown();
+        });
       });
 
       test('in line and bypass each write once and read back, and neither starts a tune', () {

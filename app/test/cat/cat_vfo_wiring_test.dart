@@ -25,6 +25,7 @@ import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_clock.dart';
 import '../support/fake_secure_storage.dart';
 
 class _FakeConnection implements EquipmentConnection {
@@ -97,7 +98,7 @@ class _FakeTransport extends EquipmentTransport {
 
 /// Records what the manager asked the radio to do, and can push readings
 /// back the way a real radio's status stream would.
-class _FakeSession implements TransceiverSession {
+class _FakeSession implements TransceiverSession, AntennaTunerSession {
   final EquipmentSink sink;
   final List<String> commands = [];
   var throwOnSet = false;
@@ -113,6 +114,19 @@ class _FakeSession implements TransceiverSession {
 
   /// An acknowledgement with nothing in it — a FlexRadio's `R` line to a ping.
   void radioAnswers() => sink.reportAlive();
+
+  void tunerReports(TunerStatus status) {
+    if (sink case final TunerSink tuners) tuners.reportTuner(status);
+  }
+
+  @override
+  void setTuner({required bool inline}) => commands.add('tuner:$inline');
+  @override
+  bool get canStartTune => true;
+  @override
+  void startTune() => commands.add('tune');
+  @override
+  void stopTune() => commands.add('stop-tune');
 
   @override
   void handleData(Uint8List chunk) {}
@@ -1014,6 +1028,53 @@ void main() {
         isNotEmpty,
         reason: 'the policy has to claim it, or the report goes to the backend and the operator',
       );
+    });
+  });
+
+  group('a tune the app starts', () {
+    test('a second press before the first shows as a tune is the same press', () async {
+      // The radio reports the tune a poll or two later; a start sent into it
+      // in the meantime cancels or restarts it on the air.
+      final node = await connectedRadio();
+      cat.startNodeTune(node.uuid);
+      cat.startNodeTune(node.uuid);
+      expect(session().commands.where((c) => c == 'tune'), hasLength(1));
+    });
+
+    test('Escape ends it, once, and is claimed for it', () async {
+      final node = await connectedRadio();
+      cat.startNodeTune(node.uuid);
+      session().tunerReports(TunerStatus.tuning);
+      expect(cat.stopKeying(), isTrue, reason: 'claimed, so the same Escape does not also end a QSO edit');
+      expect(session().commands, contains('stop-tune'));
+      session().commands.clear();
+      expect(cat.stopKeying(), isFalse);
+      expect(session().commands, isEmpty);
+    });
+
+    test('Escape leaves alone a tune started at the radio', () async {
+      await connectedRadio();
+      session().tunerReports(TunerStatus.tuning);
+      expect(cat.stopKeying(), isFalse);
+      expect(session().commands, isNot(contains('stop-tune')));
+    });
+
+    test('Escape ends a tune too new to show yet, but not one that has finished', () {
+      runOnFakeClock((async) async {
+        final node = await connectedRadio();
+        cat.startNodeTune(node.uuid);
+        expect(cat.stopKeying(), isTrue, reason: 'the radio has not reported the tune yet, but it is coming');
+        expect(session().commands, contains('stop-tune'));
+
+        await Future<void>.delayed(const Duration(seconds: 5));
+        cat.startNodeTune(node.uuid);
+        session().tunerReports(TunerStatus.tuning);
+        session().tunerReports(TunerStatus.inline);
+        await Future<void>.delayed(const Duration(seconds: 5));
+        session().commands.clear();
+        expect(cat.stopKeying(), isFalse, reason: 'over, so the Escape is the logging fields\' again');
+        expect(session().commands, isEmpty);
+      });
     });
   });
 

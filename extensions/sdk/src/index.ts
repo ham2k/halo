@@ -311,7 +311,7 @@ export const host = {
   async setRadioPtt(args: PanelRadioTarget & { on: boolean }): Promise<PanelRadioResult> {
     return (await hostCallFn()("setRadioPtt", { ...args })) as PanelRadioResult
   },
-  /** Stops all CW, voice and PTT the app is keying, as Escape does. Needs `requiresRadioWrite` and extension API 7. */
+  /** Stops all CW, voice and PTT the app is keying, and a tune it started (extension API 9), as Escape does. Needs `requiresRadioWrite` and extension API 7. */
   async stopRadioTransmit(args: PanelRadioTarget): Promise<PanelRadioResult> {
     return (await hostCallFn()("stopRadioTransmit", { ...args })) as PanelRadioResult
   },

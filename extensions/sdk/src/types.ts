@@ -2869,6 +2869,12 @@ export interface PanelRadioState {
    */
   tuner?: "inline" | "bypassed" | "tuning" | "failed" | null
   /**
+   * Whether the radio starts a tune apart from putting its tuner in line — `setRadio`'s `startTune`.
+   * False on a FlexRadio, whose in line already is the tune, and wherever `tuner` is null
+   * (extension API 9).
+   */
+  canStartTune?: boolean
+  /**
    * The receive filter's edges in Hz from the tuned frequency, as the radio shows them — `100`…`2800`
    * in USB, `-2800`…`-100` in LSB, around zero in CW — or null where its driver cannot read it
    * (extension API 7).
@@ -2966,6 +2972,13 @@ export interface PanelRadioSet extends PanelRadioTarget {
    * On a FlexRadio, in line is a TUNE — a carrier on the air — since its tuner has no other way in.
    */
   tunerInline?: boolean
+  /**
+   * Starts a tune — a carrier on the air until the tuner settles. Only for an operator's explicit
+   * press. Goes alone: with any other setting in the same call it is `invalid`; `unsupported` where
+   * `canStartTune` is false (extension API 9). Not a keying call: it reaches the radio the panel
+   * shows, with keying on or off. `host.stopRadioTransmit()` ends a tune the app started.
+   */
+  startTune?: true
   /**
    * The receive filter, as `passband` reports it; refused as `unsupported` where that is null. A
    * radio that sets only a width from a table takes the nearest, keeping its own shift — read the

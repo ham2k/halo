@@ -7,6 +7,13 @@
 
 part of 'cat_service.dart';
 
+/// How soon a tune the radio was asked for shows as one in its reports.
+const _tuneShowsWithinMillis = 3000;
+
+/// Longer than a tune runs: a radio tuning this long after the app started
+/// one is tuning again on its own.
+const _tuneOutlastsMillis = 60000;
+
 mixin _RadioControls {
   Map<String, _NodeRuntime> get _runtimes;
   EquipmentSession? connectedSession(String uuid);
@@ -35,6 +42,57 @@ mixin _RadioControls {
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:set-tuner');
     }
+  }
+
+  /// Whether [uuid]'s radio starts a tune apart from putting its tuner in
+  /// line — see [AntennaTunerSession.canStartTune].
+  bool canStartTuneFor(String uuid) => switch (connectedSession(uuid)) {
+    final AntennaTunerSession session => session.canStartTune,
+    _ => false,
+  };
+
+  /// When this app last started a tune on each radio: the tunes
+  /// [stopNodeTunes] ends.
+  final _tunesStarted = <String, int>{};
+
+  /// Starts a tune on [uuid]'s radio — a carrier on the air. Only for an
+  /// operator's explicit request; a no-op where [canStartTuneFor] is false.
+  void startNodeTune(String uuid) {
+    final session = connectedSession(uuid);
+    if (session is! AntennaTunerSession) return;
+    // A tune takes a moment to show as one in the radio's reports, and until
+    // it does a second press would go out into it.
+    final started = _tunesStarted[uuid];
+    if (started != null && realNowMillis() - started < _tuneShowsWithinMillis) return;
+    try {
+      session.startTune();
+      _tunesStarted[uuid] = realNowMillis();
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:start-tune');
+    }
+  }
+
+  /// Ends every tune this app started that is still running, or too new to
+  /// show yet — Escape's, and a panel's stop. True when it ended one. A tune
+  /// started on the radio itself is the operator's at the radio, and left
+  /// alone.
+  bool stopNodeTunes() {
+    final now = realNowMillis();
+    var stopped = false;
+    for (final MapEntry(key: uuid, value: started) in _tunesStarted.entries) {
+      final age = now - started;
+      if (age >= _tuneOutlastsMillis || (stateFor(uuid).tuner != TunerStatus.tuning && age >= _tuneShowsWithinMillis)) continue;
+      if (connectedSession(uuid) case final AntennaTunerSession session) {
+        try {
+          session.stopTune();
+          stopped = true;
+        } catch (e, st) {
+          ErrorReportingService.report(e, st, context: 'cat:stop-tune');
+        }
+      }
+    }
+    _tunesStarted.clear();
+    return stopped;
   }
 
   /// Pushes [watts] to the radio [uuid] names — what [setPower] does for

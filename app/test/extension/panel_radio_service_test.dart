@@ -78,6 +78,13 @@ class TestCat extends Fake implements CatService {
   @override
   void setNodeTuner(String uuid, {required bool inline}) => tuners[uuid] = inline;
 
+  bool startsTune = false;
+  final tunes = <String>[];
+  @override
+  bool canStartTuneFor(String uuid) => startsTune;
+  @override
+  void startNodeTune(String uuid) => tunes.add(uuid);
+
   final passbands = <String, Passband>{};
   @override
   void setNodePassband(String uuid, Passband passband) => passbands[uuid] = passband;
@@ -306,6 +313,27 @@ void main() {
     expect((await bridge.set({'id': 'a', 'tunerInline': 'yes'}))['reason'], 'invalid');
     expect((await bridge.set({'id': 'a', 'tunerInline': false}))['accepted'], true);
     expect(cat.tuners, {'a': false});
+  });
+
+  test('a tune is offered only where the radio starts one apart from its tuner switch, and goes alone', () async {
+    final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+    cat.state = cat.state.copyWith(tuner: TunerStatus.bypassed);
+    // A Flex: in line already is the tune.
+    expect(bridge.read()['canStartTune'], false);
+    expect((await bridge.set({'id': 'a', 'startTune': true}))['reason'], 'unsupported');
+    cat.startsTune = true;
+    expect(bridge.read()['canStartTune'], true);
+    expect((await bridge.set({'id': 'a', 'startTune': false}))['reason'], 'invalid');
+    // A carrier keyed in the same call that moves the radio would tune for wherever the driver
+    // happened to be when it went out.
+    expect((await bridge.set({'id': 'a', 'startTune': true, 'frequencyHz': 14200000}))['reason'], 'invalid');
+    expect((await bridge.set({'id': 'a', 'startTune': true, 'tunerInline': true}))['reason'], 'invalid');
+    expect(cat.tunes, isEmpty);
+    cat.state = cat.state.copyWith(telemetry: const RadioTelemetry(transmitting: true));
+    expect((await bridge.set({'id': 'a', 'startTune': true}))['reason'], 'transmitting');
+    cat.state = cat.state.copyWith(telemetry: const RadioTelemetry(transmitting: false));
+    expect((await bridge.set({'id': 'a', 'startTune': true}))['accepted'], true);
+    expect(cat.tunes, ['a']);
   });
 
   test('the passband is reported and set only where the radio reads one', () async {

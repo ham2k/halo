@@ -1015,6 +1015,8 @@ void main() {
         session.setTuner(inline: false);
         session.setTuner(inline: true);
         expect(sink.sent.map((c) => c.split('|').last.trim()), ['atu bypass', 'atu start']);
+        // In line already is the tune: a separate Tune beside it would be the same carrier twice over.
+        expect(session.canStartTune, isFalse);
         // The radio may not echo a status to the client that asked, so the
         // outcome is read back rather than waited for.
         async.elapse(const Duration(seconds: 1));

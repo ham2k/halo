@@ -120,10 +120,12 @@ String buildSetHeadPowerCommand(int head, num watts) {
 /// ATAS the radio drives. From the CAT manuals, not a capture.
 String buildReadTunerCommand() => 'AC;';
 
-/// `AC001;` puts the tuner in line, `AC000;` bypasses it. P3 `2` STARTS A
-/// TUNE — a carrier on the air — and is never sent: this app reads a tune,
-/// it does not start one, which is why this takes a bool and not a P3.
+/// `AC001;` puts the tuner in line, `AC000;` bypasses it. Never P3 `2`,
+/// which transmits and is [buildStartTuneCommand]'s.
 String buildSetTunerCommand({required bool inline}) => 'AC00${inline ? 1 : 0};';
+
+/// `AC002;` starts a tune — a carrier on the air.
+String buildStartTuneCommand() => 'AC002;';
 
 /// `001` → 1, the P3 of [buildReadTunerCommand]'s answer. Null for anything
 /// but `00` followed by `0`, `1` or `2`.

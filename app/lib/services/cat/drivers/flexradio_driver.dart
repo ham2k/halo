@@ -693,6 +693,16 @@ class FlexRadioSession
     _refreshAtu(const Duration(milliseconds: 300));
   }
 
+  /// In line already is the tune here.
+  @override
+  bool get canStartTune => false;
+
+  @override
+  void startTune() {}
+
+  @override
+  void stopTune() {}
+
   /// `interlock state=TRANSMITTING …`, on the `tx` subscription this driver
   /// already takes — so a Flex costs nothing at all to watch, unlike every
   /// polled radio here.

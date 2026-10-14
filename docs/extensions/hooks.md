@@ -1965,6 +1965,9 @@ rate. Extension API 7 adds to the answer:
   modes `setRadio` accepts for this radio, in the radio's order.
 - `tuner`: `inline`, `bypassed`, `tuning` or `failed`; null for a radio
   without one, or whose driver cannot read it.
+- `canStartTune` (extension API 9): the radio starts a tune apart from
+  putting its tuner in line — `setRadio`'s `startTune`. False on a FlexRadio,
+  whose in line already is the tune, and wherever `tuner` is null.
 - `passband`: `{lowHz, highHz}`, the receive filter's edges in Hz from the
   tuned frequency as the radio shows them — `100`…`2800` in USB,
   `-2800`…`-100` in LSB, around zero in CW — or null where its driver cannot
@@ -1999,6 +2002,14 @@ extension API 7: a bundle using them declares `"api": 7`.
 - `tunerInline`: puts the antenna tuner in line or bypasses it. On a
   FlexRadio, whose tuner has no other way in, in line is a TUNE — a carrier
   on the air; other radios switch it without transmitting.
+- `startTune: true` (extension API 9): starts a tune — a carrier on the air
+  until the tuner settles, read back through `tuner` as `tuning`. Only for an
+  operator's explicit press: never send it on a hook's own initiative. It
+  goes alone — in the same call as any other setting it is `invalid` — and is
+  `unsupported` where `canStartTune` is false. It is the radio's own tune,
+  not one of the keying calls below: it reaches whichever radio the panel
+  shows, with keying on or off. A start while one is running is ignored, and
+  `stopRadioTransmit` (or Escape) ends a tune the app started.
 - `passband`: `{lowHz, highHz}`, as `passband` reports it. A radio that sets
   only a width from a table takes the nearest, keeping its own shift — read
   the result back from `passband`. It applies to the mode the radio is in: a
@@ -2033,7 +2044,7 @@ rather than keying the logging radio behind the operator's back:
   `on: false` releases whatever key the app holds and is never refused; a
   radio that does not take the key answers `on: true` with `disconnected`.
 - `host.stopRadioTransmit({id, selection?})` stops every CW message, voice
-  memory and PTT the app is keying, as Escape does, whatever radio the
+  memory, PTT and tune the app is keying, as Escape does, whatever radio the
   identity names: a stop is never the call that is refused.
 
 A radio that cannot do what is asked (no CW key, no voice memories, no PTT)

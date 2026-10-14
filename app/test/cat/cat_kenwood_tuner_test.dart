@@ -72,9 +72,9 @@ void main() {
   int tunerReads() => sink.sent.where((c) => c == 'AC;').length;
 
   group('the AC codec', () {
-    test('no set the app can build starts a tune', () {
-      // P3 `1` keys a carrier to find a match. The app reads a tune; a set
-      // that carried it would transmit on a button meant only to switch.
+    test('no switch the app can build starts a tune', () {
+      // P3 `1` keys a carrier to find a match. A switch that carried it
+      // would transmit on a button meant only to switch.
       for (final rx in [false, true]) {
         for (final inline in [false, true]) {
           expect(buildKenwoodSetTunerCommand(rxInline: rx, inline: inline), endsWith('0;'));
@@ -232,6 +232,56 @@ void main() {
       // and its RX-AT, which the write must carry back, is not known either.
       session.setTuner(inline: true);
       expect(sink.sent, isEmpty);
+    });
+
+    test('a tune puts the TX-AT in line, keeps the operator\'s RX-AT, and reads back', () {
+      // P2 `1` with P3 `1`: a tune through a bypassed tuner matches nothing.
+      receive('AC100;');
+      sink.sent.clear();
+      expect(session.canStartTune, isTrue);
+      session.startTune();
+      expect(sink.sent, ['AC111;', 'AC;']);
+
+      receive('AC000;');
+      sink.sent.clear();
+      session.startTune();
+      expect(sink.sent.first, 'AC011;');
+    });
+
+    test('a tune is not started into one already running', () {
+      // A second start mid-tune cancels or restarts it on the air.
+      receive('AC111;');
+      sink.sent.clear();
+      expect(session.canStartTune, isTrue);
+      session.startTune();
+      expect(sink.sent, isEmpty);
+    });
+
+    test('a tune is ended by the TX-AT in line without one, keeping the RX-AT', () {
+      receive('AC111;');
+      sink.sent.clear();
+      session.stopTune();
+      expect(sink.sent, ['AC110;', 'AC;']);
+    });
+
+    test('a tune is not started before the radio answers AC, nor over a transmission', () {
+      expect(session.canStartTune, isFalse);
+      session.startTune();
+      expect(sink.sent, isEmpty);
+      fakeAsync((async) {
+        session.startUpdates();
+        const rx = '0000+00000', tx = '0000+00001';
+        receive('AC010;');
+        // Two packets settle where the transmit flag sits; the third keys.
+        receive('MD2;IF00014250000${rx}2;');
+        receive('MD2;IF00014255000${rx}2;');
+        receive('IF00014255000${tx}2;');
+        sink.sent.clear();
+        expect(session.canStartTune, isTrue, reason: 'refused for transmitting, not for want of a tuner');
+        session.startTune();
+        expect(sink.sent.where((c) => c.startsWith('AC') && c.endsWith('1;')), isEmpty);
+        session.stopUpdates();
+      });
     });
 
     test('writes nothing once the radio has refused AC', () {

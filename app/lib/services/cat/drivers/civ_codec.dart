@@ -338,17 +338,21 @@ const civTunerStatus = 0x01;
 const civTunerThrough = 0x00;
 const civTunerInline = 0x01;
 
-/// Starts a tune — transmits. Read back from the radio, never sent: the app
-/// switches a tuner in or out, and leaves keying a carrier to the operator.
+/// A tune under way — transmits. Sent only by [buildStartTuneFrame], on the
+/// operator's explicit request (cat.md § Tuner).
 const civTunerTuning = 0x02;
 
 List<int> buildReadTunerFrame({required int to, int from = civDefaultControllerAddress}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: const [civTunerStatus]);
 
-/// In line ([inline]) or through. There is deliberately no way to ask this
-/// for [civTunerTuning].
+/// In line ([inline]) or through — never [civTunerTuning], which transmits
+/// and is [buildStartTuneFrame]'s.
 List<int> buildSetTunerFrame({required int to, int from = civDefaultControllerAddress, required bool inline}) =>
     buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: [civTunerStatus, inline ? civTunerInline : civTunerThrough]);
+
+/// Starts a tune — a carrier on the air.
+List<int> buildStartTuneFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: const [civTunerStatus, civTunerTuning]);
 
 /// `frame.data` of a 0x1C reply: the tuner's state byte, or null for any
 /// other sub-command, a short reply, or a state this codec does not know.

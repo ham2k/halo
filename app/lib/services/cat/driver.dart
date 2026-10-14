@@ -276,6 +276,21 @@ abstract class PassbandSession implements EquipmentSession {
 /// carrier on the air, from its memory for the frequency when it has one.
 abstract class AntennaTunerSession implements EquipmentSession {
   void setTuner({required bool inline});
+
+  /// Whether [startTune] is a separate act from [setTuner] — false on a
+  /// FlexRadio, whose in line already is the tune, and on a radio that has
+  /// not shown it has a tuner.
+  bool get canStartTune;
+
+  /// Starts a tune: a carrier on the air until the tuner settles. Only ever
+  /// an operator's explicit request (cat.md § Tuner) — nothing in the app
+  /// calls it on its own. Never into a tune already running: a second start
+  /// cancels or restarts it.
+  void startTune();
+
+  /// Ends a tune [startTune] began, leaving the tuner in line — sent even
+  /// while the radio transmits, which is when it matters.
+  void stopTune();
 }
 
 /// A session that can key CW from text and set a keyer's speed — a

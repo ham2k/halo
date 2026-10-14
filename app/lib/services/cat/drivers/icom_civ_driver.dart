@@ -1052,14 +1052,29 @@ class IcomCivSession
   }
 
   /// In line or through, then read back: a set is answered with a bare ACK.
-  /// Never a tune ([civTunerTuning]) — that transmits, and the app leaves
-  /// putting a carrier on the air to the operator.
+  /// Never a tune ([civTunerTuning]) — that transmits; [startTune] is its
+  /// own act.
   @override
   void setTuner({required bool inline}) {
     if (!_tunerSupport.available) return;
     _send(buildSetTunerFrame(to: radioAddress, from: controllerAddress, inline: inline));
     _send(_tunerRead);
   }
+
+  @override
+  bool get canStartTune => _tunerSupport.available && _tuner != null;
+
+  @override
+  void startTune() {
+    if (!canStartTune || _telemetry.transmitting || _tuner == TunerStatus.tuning) return;
+    _send(buildStartTuneFrame(to: radioAddress, from: controllerAddress));
+    _send(_tunerRead);
+  }
+
+  /// In line, which on an Icom is also the end of a tune. From the CI-V
+  /// manuals, not a capture.
+  @override
+  void stopTune() => setTuner(inline: true);
 
   /// Given up for the rest of the session by a radio that refuses or ignores
   /// the width read, and from the start where the entry pins it off

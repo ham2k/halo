@@ -1104,6 +1104,23 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _readTuner();
   }
 
+  /// Like [setTuner], only once the radio has answered `AC` in Kenwood's shape.
+  @override
+  bool get canStartTune => _tunerFlags != null;
+
+  @override
+  void startTune() {
+    final flags = _tunerFlags;
+    if (flags == null || _telemetry.transmitting || flags.tuning) return;
+    _send(buildKenwoodStartTuneCommand(rxInline: flags.rxInline));
+    _readTuner();
+  }
+
+  /// P3 `0` with the transmit-side AT in line ends a tune. From the CAT
+  /// manuals, not a capture.
+  @override
+  void stopTune() => setTuner(inline: true);
+
   /// Writes nothing until the radio has answered `AN` in [antennaDialect]'s
   /// shape, nothing while it is transmitting — no antenna relay moves under
   /// RF, and a refused switch is not queued for after the over — and nothing

@@ -2244,13 +2244,22 @@ and `.antennas`.
 | Kenwood | `AC` (TS-480/590/890/990) | per a dialect the entry pins: the TS-590SG's `SL`/`SH`, `FW` and `IS`; Elecraft's (the K4 included) `BW` and `IS` | `AN`, per a dialect the entry pins (one port of two, or the TS-590's with its RX ANT jack); never the K4's |
 | FlexRadio | `atu` | the slice's `filter_lo`/`filter_hi` | the slice's `rxant`/`txant`, chosen separately |
 
-- **The app switches a tuner; it does not start a tune.** On Icom, Yaesu and Kenwood "in line" puts
-  the tuner in on the setting it remembers, without transmitting. Each protocol's start-a-tune value
-  (CI-V's `0x02`, Yaesu's `AC002;`, Kenwood's P3 `1`) is read from the radio and never sent — keying
-  a carrier stays the operator's act. A FlexRadio has no in-line switch: its tuner engages only by
-  TUNING, so there "in line" is a carrier on the air, briefly, from its memory for the frequency when
-  it has one. Kenwood's set touches only the transmit-side AT and hands the receive-side one back as
-  the radio last reported it, since that one is the operator's choice.
+- **Switching a tuner never transmits; a tune is its own act, and only ever the operator's.** On
+  Icom, Yaesu and Kenwood "in line" puts the tuner in on the setting it remembers, without
+  transmitting. Each protocol's start-a-tune value (CI-V's `0x02`, Yaesu's `AC002;`, Kenwood's P3
+  `1`, sent with P2 `1` so the tune goes through the tuner) goes out only from
+  `AntennaTunerSession.startTune`, whose one caller is an extension's `setRadio({startTune: true})`
+  — an operator pressing a button. Nothing in the app starts a tune on its own. The driver refuses
+  one while the radio transmits, while its tuner reads as tuning, and on a radio that has not yet
+  answered its tuner read, where a carrier would go into an antenna nothing matches; `CatService`
+  also drops a second start within three seconds, before the first shows in the radio's reports.
+  Escape (`stopKeying`) ends a tune the app started — `AntennaTunerSession.stopTune`, which puts
+  the tuner in line and is sent even while transmitting — but not one started at the radio, which
+  is the operator's there. The start and stop values come from the CAT manuals, not a capture. A FlexRadio has no in-line switch: its tuner
+  engages only by TUNING, so there "in line" is a carrier on the air, briefly, from its memory for
+  the frequency when it has one, and `canStartTune` is false — a separate tune would be the same
+  carrier again. Kenwood's set touches only the transmit-side AT and hands the receive-side one back
+  as the radio last reported it, since that one is the operator's choice.
 - **A passband is edges, not a width.** Hz from the tuned frequency as the radio draws them — `100`
   to `2800` in USB, negative in LSB — so one shape describes a Flex's free edges and a table radio's
   width plus shift. A radio that sets only a width from a table takes the nearest one and keeps its

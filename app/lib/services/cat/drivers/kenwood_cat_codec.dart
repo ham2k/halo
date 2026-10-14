@@ -96,10 +96,13 @@ String buildKenwoodReadTunerCommand() => 'AC;';
 
 /// Sets the transmit-side AT and nothing else: [rxInline] is the P1 the
 /// radio last reported, handed back unchanged because the receive-side AT
-/// is the operator's choice. P3 is always `0` — `1` STARTS A TUNE, a carrier
-/// on the air, and this app reads a tune but never starts one, which is why
-/// there is no parameter for it.
+/// is the operator's choice. P3 is always `0`: `1` transmits, and is
+/// [buildKenwoodStartTuneCommand]'s.
 String buildKenwoodSetTunerCommand({required bool rxInline, required bool inline}) => 'AC${rxInline ? 1 : 0}${inline ? 1 : 0}0;';
+
+/// Puts the transmit-side AT in line and starts a tune — a carrier on the
+/// air — handing [rxInline] back as [buildKenwoodSetTunerCommand] does.
+String buildKenwoodStartTuneCommand({required bool rxInline}) => 'AC${rxInline ? 1 : 0}11;';
 
 /// `AC010;` → its three flags. Null unless it is exactly three `0`/`1`
 /// characters — anything else is not the Kenwood tuner answer.

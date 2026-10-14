@@ -914,7 +914,7 @@ void main() {
       ]);
     });
 
-    test('nothing the app sends starts a tune', () {
+    test('nothing but startTune starts a tune', () {
       // 0x1C 0x01 0x02 puts a carrier on the air. Driven through every path
       // that writes the tuner, polling included, the byte must never appear.
       fakeAsync((async) {
@@ -954,6 +954,57 @@ void main() {
       session.setTuner(inline: true);
       feed(sink.sent.first);
       expect(sink.tuners, isEmpty);
+    });
+
+    group('starting a tune', () {
+      test('is 0x1C 0x01 0x02, read back, once the radio has shown a tuner', () {
+        feed(_fromRadio([0x1C, 0x01, 0x00]));
+        expect(session.canStartTune, isTrue);
+        session.startTune();
+        expect(sink.sent, [
+          [0xFE, 0xFE, ic705, us, 0x1C, 0x01, 0x02, 0xFD],
+          readTuner,
+        ]);
+      });
+
+      test('sends nothing to a radio that has not answered its tuner read', () {
+        // A carrier from a radio not known to have a tuner is a carrier into
+        // whatever antenna is on it, matched by nothing.
+        expect(session.canStartTune, isFalse);
+        session.startTune();
+        expect(sink.sent, isEmpty);
+      });
+
+      test('sends nothing while the radio transmits', () {
+        // A tune keyed over a transmission already on the air would hand the
+        // transmitter to the tuner mid-over.
+        feed(_fromRadio([0x1C, 0x01, 0x01]));
+        feed(_fromRadio([0x1C, 0x00, 0x01]));
+        expect(session.canStartTune, isTrue, reason: 'refused for transmitting, not for want of a tuner');
+        session.startTune();
+        expect(sink.sent.where((f) => f.length > 6 && f[4] == 0x1C && f[5] == 0x01 && f[6] == 0x02), isEmpty);
+      });
+
+      test('sends nothing into a tune already running', () {
+        // A second start mid-tune cancels or restarts it on the air.
+        feed(_fromRadio([0x1C, 0x01, 0x02]));
+        expect(session.canStartTune, isTrue);
+        session.startTune();
+        expect(sink.sent.where((f) => f.length > 6 && f[4] == 0x1C && f[5] == 0x01 && f[6] == 0x02), isEmpty);
+      });
+
+      test('is ended by putting the tuner in line, even on the air', () {
+        // The stop is for a carrier that is up: a transmit guard here would
+        // leave Escape doing nothing exactly when it is pressed.
+        feed(_fromRadio([0x1C, 0x01, 0x02]));
+        feed(_fromRadio([0x1C, 0x00, 0x01]));
+        sink.sent.clear();
+        session.stopTune();
+        expect(sink.sent, [
+          [0xFE, 0xFE, ic705, us, 0x1C, 0x01, 0x01, 0xFD],
+          readTuner,
+        ]);
+      });
     });
 
     group('on a serial radio that answers only when told', () {

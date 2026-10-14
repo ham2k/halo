@@ -888,7 +888,11 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
   void playVoiceSequence(List<int> memories) => _keying.playVoiceSequence(memories);
   void cancelVoiceSequence() => _keying.cancelVoiceSequence();
   void stopMessageOne() => _keying.stopMessageOne();
-  bool stopKeying() => _keying.stopKeying(alsoStopped: _ptt.release());
+  bool stopKeying() {
+    final released = _ptt.release(), tuneStopped = stopNodeTunes();
+    return _keying.stopKeying(alsoStopped: released || tuneStopped);
+  }
+
   bool get escapeStoppedKeying => _keying.escapeStoppedKeying;
 
   /// ['] in a Phone mode (cat_ptt.dart) — this station's radios, never a peer's.

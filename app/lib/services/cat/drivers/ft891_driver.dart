@@ -564,12 +564,18 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   /// What the radio last said its tuner is doing.
   TunerStatus? _tuner;
 
+  /// A tune [startTune] sent, until the radio next ends a transmission: its
+  /// tuner is read on every poll and on the air, like one already showing as
+  /// a tune. Without it, a read-back answered before the tune began leaves
+  /// the tuner `inline`, and no read goes out again until the tune is over.
+  bool _tuneStarted = false;
+
   /// Asks for the tuner, unless the reads so far say the radio has none —
   /// decided here, at the next ask, because the answer to the last one has
   /// had a whole poll to arrive by now.
   void _readTuner() {
     // Never while transmitting, but for a tune's own outcome: see [_readPassband].
-    if (_telemetry.transmitting && _tuner != TunerStatus.tuning) return;
+    if (_telemetry.transmitting && _tuner != TunerStatus.tuning && !_tuneStarted) return;
     if (!_tunerRead.judge()) return;
     _tunerRead.sent();
     _send(buildReadTunerCommand());
@@ -685,7 +691,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     _send(buildReadPowerCommand());
     // On every poll while a tune runs, so its outcome shows when it lands
     // rather than a whole tuner interval later.
-    if (_pollsUntilTunerRead > 0 && _tuner != TunerStatus.tuning) {
+    if (_pollsUntilTunerRead > 0 && _tuner != TunerStatus.tuning && !_tuneStarted) {
       _pollsUntilTunerRead--;
     } else {
       _pollsUntilTunerRead = yaesuTunerReadEvery - 1;
@@ -812,6 +818,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
       case 'TX':
         final transmitting = parseTransmitStatusParams(command.params);
         if (transmitting != null && _telemetry.noteTransmitting(transmitting)) {
+          if (!transmitting) _tuneStarted = false;
           _sink.reportTransmitting(transmitting);
         }
         // The same answer is a playing memory's clock — see
@@ -934,13 +941,28 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   }
 
   /// Sets, then reads back, as [setKeyerSpeed] does. Never starts a tune —
-  /// see [buildSetTunerCommand].
+  /// that is [startTune].
   @override
   void setTuner({required bool inline}) {
     if (!_tunerRead.available) return;
     _send(buildSetTunerCommand(inline: inline));
     _readTuner();
   }
+
+  @override
+  bool get canStartTune => _tunerRead.available && _tuner != null;
+
+  @override
+  void startTune() {
+    if (!canStartTune || _telemetry.transmitting || _tuner == TunerStatus.tuning) return;
+    _send(buildStartTuneCommand());
+    _tuneStarted = true;
+    _readTuner();
+  }
+
+  /// `AC001;`, in line, ends a tune. From the CAT manuals, not a capture.
+  @override
+  void stopTune() => setTuner(inline: true);
 
   /// The nearest width the radio offers in its present mode and NARROW
   /// state, then a read-back — never a mode, a NARROW switch or a shift.

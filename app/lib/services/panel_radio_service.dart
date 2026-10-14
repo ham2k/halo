@@ -72,6 +72,7 @@ class PanelRadioService {
       'mode': state.vfo.mode,
       'powerWatts': live ? state.power : null,
       'tuner': live ? state.tuner?.name : null,
+      'canStartTune': live && cat.canStartTuneFor(node.uuid),
       'passband': switch (live ? state.passband : null) {
         final p? => {'lowHz': p.lowHz, 'highHz': p.highHz},
         null => null,
@@ -215,7 +216,7 @@ class PanelRadioService {
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }
 
-  /// Frequency, mode, power, keyer speed, tuner, passband and antennas. Paced: each one moves the radio,
+  /// Frequency, mode, power, keyer speed, tuner, a tune, passband and antennas. Paced: each one moves the radio,
   /// and a dragged control would otherwise flood its CAT link.
   Future<Map<String, dynamic>> set(Map<String, dynamic> args) async {
     final previous = _tail;
@@ -236,8 +237,10 @@ class PanelRadioService {
     final power = args['powerWatts'];
     final wpm = args['keyerSpeedWpm'];
     final tunerInline = args['tunerInline'];
+    final startTune = args['startTune'];
     final antenna = args['antenna'];
     final antennas = state['antennas'] as Map<String, dynamic>?;
+    final asked = [frequency, mode, power, wpm, tunerInline, startTune, args['passband'], antenna].nonNulls.length;
     // A port this radio names for that direction, or nothing asked of it. A radio that lists
     // only the transmit port and its receive-only input for receive also takes a receive
     // antenna moved along with the transmit one.
@@ -259,7 +262,10 @@ class PanelRadioService {
       reason = 'transmitting';
     } else if (antenna != null && antennas == null) {
       reason = 'unsupported';
-    } else if ((frequency == null && mode == null && power == null && wpm == null && tunerInline == null && args['passband'] == null && antenna == null) ||
+    } else if (asked == 0 ||
+        // A tune is a carrier on the air, tuned for where the radio is: alone, so it never goes out
+        // on a frequency or into a tuner this same call was still moving.
+        (startTune != null && (startTune != true || asked > 1)) ||
         (antenna != null &&
             (antenna is! Map ||
                 (antenna['rx'] == null && antenna['tx'] == null) ||
@@ -280,6 +286,8 @@ class PanelRadioService {
     } else if (wpm != null && keying?['canKeyCw'] != true) {
       reason = 'unsupported';
     } else if (tunerInline != null && state['tuner'] == null) {
+      reason = 'unsupported';
+    } else if (startTune != null && state['canStartTune'] != true) {
       reason = 'unsupported';
     } else if (passband != null && state['passband'] == null) {
       reason = 'unsupported';
@@ -302,6 +310,7 @@ class PanelRadioService {
       if (power != null) cat.setNodePower(id, power as num);
     }
     if (tunerInline != null) cat.setNodeTuner(id, inline: tunerInline as bool);
+    if (startTune == true) cat.startNodeTune(id);
     if (passband != null) cat.setNodePassband(id, passband);
     if (antenna is Map) cat.setNodeAntenna(id, rx: antenna['rx'] as String?, tx: antenna['tx'] as String?);
     // Acceptance is not an acknowledgement: read() contains only radio reports.
@@ -367,7 +376,8 @@ class PanelRadioService {
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }
 
-  /// Stops everything the app is keying — CW, voice and PTT — as Escape does.
+  /// Stops everything the app is keying — CW, voice, PTT and a tune it
+  /// started — as Escape does.
   /// Answered even with keying off, the radio gone or its identity stale: a
   /// stop must never be the call that is refused, and it is the app's, not
   /// one radio's.
