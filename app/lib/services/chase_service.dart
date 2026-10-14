@@ -86,7 +86,13 @@ typedef ChaseRank = ({int rank, int goal});
 const _maxCachedCandidates = 4000;
 
 class ChaseService extends ChangeNotifier {
-  ChaseService({required this.extensions, required this.claims, required this.settings, this.changeDebounce = const Duration(milliseconds: 300)}) {
+  ChaseService({
+    required this.extensions,
+    required this.claims,
+    required this.qsos,
+    required this.settings,
+    this.changeDebounce = const Duration(milliseconds: 300),
+  }) {
     _optionsJson = jsonEncode(options);
     settings.addListener(_onSettings);
     extensions.runtimeGeneration.addListener(_onRuntime);
@@ -96,6 +102,7 @@ class ChaseService extends ChangeNotifier {
 
   final ExtensionService extensions;
   final ClaimsRepository claims;
+  final QsosRepository qsos;
   final SettingsService settings;
 
   /// How long a burst of writes to the claims table gathers before readers
@@ -359,6 +366,47 @@ class ChaseService extends ChangeNotifier {
       if (tallies != null) summaries.add((program: program, holder: holder, edition: edition, tallies: tallies));
     }
     return summaries;
+  }
+
+  /// Reads the file [name] through [program]'s [importer] and makes what it
+  /// claims that importer's claim records in the log (claims.md §9),
+  /// replacing the last file of its kind: `claims`, the slots the file fills,
+  /// and `skipped`, the records the program could not read. Null when the
+  /// program failed. A file that claims nothing writes nothing — read as an
+  /// empty export it would delete the whole last one, and a file picked by
+  /// mistake reads that way too.
+  Future<({int claims, int skipped})?> importFile(
+    ChasingProgram program,
+    ChasingImporter importer, {
+    required String name,
+    required String text,
+    required Map<String, dynamic> station,
+  }) async {
+    final read = await extensions.importClaims(program.key, importer: importer.key, name: name, text: text, station: station);
+    if (read == null) return null;
+    final importedAt = nowMillis();
+    final best = <String, ImportedClaim>{};
+    final records = <String, Map<String, dynamic>>{};
+    for (final imported in read.claims) {
+      final record = claimEventQson(program: program.key, importer: importer.key, imported: imported, fallbackMillis: importedAt);
+      final uuid = record['uuid'] as String;
+      final held = best[uuid];
+      if (held != null && !_betterImport(imported, held)) continue;
+      best[uuid] = imported;
+      records[uuid] = record;
+    }
+    if (records.isNotEmpty) await qsos.replaceClaimEvents(program.key, importer.key, records.values.toList());
+    return (claims: records.length, skipped: read.skipped);
+  }
+
+  /// Of two records a file makes for one slot, the one the slot rule
+  /// ([compareClaims]) would keep: the higher level, then the earlier date,
+  /// a date over none.
+  static bool _betterImport(ImportedClaim a, ImportedClaim b) {
+    if (a.claim.level != b.claim.level) return a.claim.level.index > b.claim.level.index;
+    final aAt = a.atMillis, bAt = b.atMillis;
+    if (aAt == null || bAt == null) return aAt != null && bAt == null;
+    return aAt < bAt;
   }
 
   bool _disposed = false;

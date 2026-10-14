@@ -46,7 +46,9 @@ class ChasingProgram {
     this.icon,
     this.color,
     this.supersedes = const {},
-  });
+    this.imports = const [],
+    String? refLabel,
+  }) : refLabel = refLabel ?? label;
 
   final String key;
   final String label;
@@ -55,8 +57,15 @@ class ChasingProgram {
   final String? icon;
   final String? color;
 
+  /// What one reference of the checklist is called in notices ("New POTA
+  /// Park"); the program's own label unless it says otherwise.
+  final String refLabel;
+
   /// The scoring notice keys this program's verdicts stand in for.
   final Set<String> supersedes;
+
+  /// The files the program can read claims from (claims.md §9).
+  final List<ChasingImporter> imports;
 
   /// Null for anything that is not a usable description: an extension
   /// answering a malformed `program` has registered no program.
@@ -69,6 +78,8 @@ class ChasingProgram {
     final icon = json['icon'];
     final color = json['color'];
     final supersedes = json['supersedes'];
+    final imports = json['imports'];
+    final refLabel = json['refLabel'];
     return ChasingProgram(
       key: key,
       label: label,
@@ -77,7 +88,42 @@ class ChasingProgram {
       icon: icon is String ? icon : null,
       color: color is String ? color : null,
       supersedes: {if (supersedes is List) ...supersedes.whereType<String>()},
+      imports: [if (imports is List) ...imports.map(ChasingImporter.tryParse).nonNulls],
+      refLabel: refLabel is String && refLabel.isNotEmpty ? refLabel : null,
     );
+  }
+}
+
+/// One kind of file a program reads claims from: a sponsor's export.
+class ChasingImporter {
+  const ChasingImporter({required this.key, required this.label, required this.extensions});
+
+  /// Names the import batch (§9): importing the same kind of file again
+  /// replaces what the last one wrote.
+  final String key;
+  final String label;
+
+  /// Lower-case file extensions, without the dot.
+  final List<String> extensions;
+
+  /// Whether a file named [fileName] is one this importer takes.
+  bool takes(String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    return dot >= 0 && extensions.contains(fileName.substring(dot + 1).toLowerCase());
+  }
+
+  /// Null for an entry missing its key, label or extensions.
+  static ChasingImporter? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final key = json['key'];
+    final label = json['label'];
+    final extensions = json['extensions'];
+    if (key is! String || key.isEmpty || label is! String || label.isEmpty || extensions is! List) return null;
+    final types = [
+      for (final extension in extensions.whereType<String>())
+        if (extension.isNotEmpty) extension.toLowerCase().replaceFirst(RegExp(r'^\.'), ''),
+    ];
+    return types.isEmpty ? null : ChasingImporter(key: key, label: label, extensions: types);
   }
 }
 
@@ -138,6 +184,19 @@ class QsoClaim {
     );
   }
 
+  /// The shape [tryParse] reads.
+  Map<String, dynamic> toJson() => {
+    'holder': holder,
+    'ref': ref,
+    'band': band,
+    'mode': mode,
+    if (edition.isNotEmpty) 'edition': edition,
+    'level': level.name,
+    'by': ?by,
+    'label': ?label,
+    if (guess) 'guess': true,
+  };
+
   @override
   bool operator ==(Object other) =>
       other is QsoClaim &&
@@ -160,6 +219,73 @@ class QsoClaim {
 
 /// Where a stored claim came from: the log, or one import batch (§9).
 const kClaimSourceLog = 'log';
+
+/// One record a program read from an imported file: a claim with no contact
+/// behind it, and when it was earned if the file says.
+class ImportedClaim {
+  const ImportedClaim(this.claim, {this.atMillis});
+
+  final QsoClaim claim;
+  final int? atMillis;
+
+  /// Null for a record that is not a claim.
+  static ImportedClaim? tryParse(Object? json) {
+    final claim = QsoClaim.tryParse(json);
+    if (claim == null) return null;
+    final at = (json as Map)['at'];
+    return ImportedClaim(claim, atMillis: at is num ? at.toInt() : null);
+  }
+}
+
+/// The `event` kind of a claim record (claims.md §9): an imported claim kept
+/// in the log as an event row, so it syncs with the log and the claims table
+/// can be rebuilt from the log alone.
+const kClaimEventKind = 'claim';
+
+/// The QSON of the claim record for [imported], read by [program]'s
+/// [importer]. Its uuid is one per program, importer and slot, so importing
+/// the same kind of file again rewrites the same rows. A record that does not
+/// say when it was earned is dated [fallbackMillis].
+Map<String, dynamic> claimEventQson({required String program, required String importer, required ImportedClaim imported, required int fallbackMillis}) {
+  final claim = imported.claim;
+  return {
+    'uuid': claimUuid(
+      program: program,
+      holder: claim.holder,
+      edition: claim.edition,
+      ref: claim.ref,
+      band: claim.band,
+      mode: claim.mode,
+      source: 'import:$importer',
+    ),
+    'band': 'event',
+    // The placeholder calls every event row carries: a PoLo device syncing
+    // the log keys each row on them.
+    'our': {'call': 'EVENT'},
+    'their': {'call': kClaimEventKind.toUpperCase()},
+    'startAtMillis': imported.atMillis ?? fallbackMillis,
+    'event': {
+      'event': kClaimEventKind,
+      'program': program,
+      'importer': importer,
+      'claim': {...claim.toJson(), 'at': ?imported.atMillis},
+    },
+  };
+}
+
+/// What the claim record [qso] says, or null for any other row. `atMillis`
+/// is null when the file did not say when the slot was earned.
+({String program, String importer, QsoClaim claim, int? atMillis})? claimEventOf(Map<String, dynamic> qso) {
+  if (qso['band'] != 'event') return null;
+  final event = qso['event'];
+  if (event is! Map || event['event'] != kClaimEventKind) return null;
+  final program = event['program'];
+  final importer = event['importer'];
+  final claim = QsoClaim.tryParse(event['claim']);
+  if (program is! String || program.isEmpty || importer is! String || claim == null) return null;
+  final at = (event['claim'] as Map)['at'];
+  return (program: program, importer: importer, claim: claim, atMillis: at is num ? at.toInt() : null);
+}
 
 /// The namespace every slot uuid is derived under. Changing it re-keys every
 /// claim on every device.

@@ -29,7 +29,7 @@ enum ChaseVerdict {
 
 /// One program's verdict on one candidate contact.
 class ChaseJudgement {
-  const ChaseJudgement({required this.program, required this.verdicts, this.guess = false});
+  const ChaseJudgement({required this.program, required this.verdicts, this.guess = false, this.refs = const {}});
 
   final String program;
 
@@ -42,14 +42,24 @@ class ChaseJudgement {
   /// from home.
   final bool guess;
 
+  /// The references of the claims deciding it: for a new reference, the
+  /// references the checklist lacks, which a spot row can point out among
+  /// the ones it shows.
+  final Set<String> refs;
+
   int get rank => verdicts.first.rank;
 
   @override
   bool operator ==(Object other) =>
-      other is ChaseJudgement && other.program == program && other.guess == guess && other.verdicts.join(',') == verdicts.join(',');
+      other is ChaseJudgement &&
+      other.program == program &&
+      other.guess == guess &&
+      other.verdicts.join(',') == verdicts.join(',') &&
+      other.refs.length == refs.length &&
+      other.refs.containsAll(refs);
 
   @override
-  int get hashCode => Object.hash(program, guess, verdicts.join(','));
+  int get hashCode => Object.hash(program, guess, verdicts.join(','), Object.hashAllUnordered(refs));
 
   @override
   String toString() => 'ChaseJudgement($program ${verdicts.map((v) => v.name).join('+')}${guess ? ' guess' : ''})';
@@ -80,7 +90,7 @@ ChaseJudgement? judgeChaseClaims(String program, List<QsoClaim> claims, Map<Stri
       if (!held.containsKey(chaseSlotKey(claim))) claim,
   ];
   ChaseJudgement judged(List<ChaseVerdict> verdicts, Iterable<QsoClaim> deciding) =>
-      ChaseJudgement(program: program, verdicts: verdicts, guess: deciding.any((claim) => claim.guess));
+      ChaseJudgement(program: program, verdicts: verdicts, guess: deciding.any((claim) => claim.guess), refs: {for (final claim in deciding) claim.ref});
 
   final newRefs = missing.where((claim) => claim.band == null && claim.mode == null);
   if (newRefs.isNotEmpty) return judged(const [ChaseVerdict.newRef], newRefs);

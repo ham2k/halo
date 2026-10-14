@@ -543,7 +543,7 @@ class HaLoServices {
 
   /// What the operator chases, and every candidate's verdicts against the
   /// claims (docs/design/claims.md §8).
-  late final ChaseService chase = ChaseService(extensions: extensions, claims: claims, settings: settings);
+  late final ChaseService chase = ChaseService(extensions: extensions, claims: claims, qsos: qsos, settings: settings);
 
   final LookupQueueService? _lookupQueueOverride;
   late final LookupQueueService lookupQueue =

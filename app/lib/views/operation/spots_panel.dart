@@ -728,6 +728,9 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot) =>
       spotDisplayFlags(spot, scores: _spotScores, ourBaseCalls: _ourBaseCalls);
 
+  @override
+  Set<String> _newRefsFor(Map<String, dynamic> spot, Set<String> notices) => spotNewRefs(spot, notices: notices, judgements: _board.judgements);
+
   /// The sort the list follows: the Chasing view keeps its own.
   @override
   String get _sortBy => widget.chasing ? widget.services.chase.spotsSortBy : _filterState.sortBy;

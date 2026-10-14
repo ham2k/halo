@@ -114,7 +114,7 @@ class InformationPanel extends StatelessWidget {
           const SizedBox(height: Space.xl),
           Text(context.t.chase.checklists, style: theme.textTheme.titleSmall),
           for (final summary in chaseSummaries)
-            ..._tallyRows(context, summary.tallies, resolveExtensionColor(summary.program.color) ?? theme.colorScheme.onSurfaceVariant),
+            ..._checklistRows(context, summary.tallies, resolveExtensionColor(summary.program.color) ?? theme.colorScheme.onSurfaceVariant),
         ],
         if (daySections.length > 1) ..._daySummaries(context, daySections),
         if (scoringWidgets.isNotEmpty) ...[
@@ -241,6 +241,39 @@ class InformationPanel extends StatelessWidget {
       widgets.add(const SizedBox(height: Space.xl));
     }
     return widgets;
+  }
+
+  /// A chasing program's tallies, each one sentence of body text beside its
+  /// icon: "2 DXCC Entities, 0 confirmed". Scoring's two-column treatment
+  /// lines a number up for comparing against the next period; a checklist
+  /// has no period, and its `summary` reads as the rest of the sentence.
+  List<Widget> _checklistRows(BuildContext context, Map<String, dynamic> tallies, Color iconColor) {
+    final theme = Theme.of(context);
+    return [
+      for (final tally in tallies.values)
+        if (tally is Map && tally['label'] is String && (tally['label'] as String).isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: Space.sm),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (tally['icon'] is String) ...[
+                  Padding(
+                    padding: const EdgeInsets.only(top: Space.xxs),
+                    child: Icon(resolveIconName(tally['icon'] as String), size: 16, color: iconColor),
+                  ),
+                  const SizedBox(width: Space.sm),
+                ],
+                Expanded(
+                  child: Text(
+                    [tally['label'], if (tally['summary'] is String && (tally['summary'] as String).isNotEmpty) tally['summary']].join(', '),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ),
+    ];
   }
 
   /// A tally's `longSummary` markdown — a DXCC entities list or a band

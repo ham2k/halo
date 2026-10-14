@@ -19,6 +19,7 @@ import 'package:archive/archive.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show ChaseNotice, ChaseVerdict, ChasingProgram;
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/tools/scoring_labels.dart';
@@ -99,5 +100,35 @@ void main() {
     ]..sort();
 
     expect(unlabelled, isEmpty, reason: 'these reach the operator as raw camelCase; add them to scoreNoticeLabel and both i18n catalogs');
+  });
+
+  // A program's label names the checklist ("POTA Hunter"); a notice names
+  // one reference of it. "New POTA Hunter" tells the operator nothing about
+  // the park on the spot.
+  testWidgets('a chasing notice names what the program calls one reference, or the program when it does not say', (tester) async {
+    late BuildContext ctx;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              ctx = context;
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+    final programs = {
+      'pota': ChasingProgram.tryParse('pota', {'label': 'POTA Hunter', 'refLabel': 'POTA Park', 'version': 1, 'editions': 'lifetime'})!,
+      'dxcc': ChasingProgram.tryParse('dxcc', {'label': 'DXCC', 'version': 1, 'editions': 'lifetime'})!,
+    };
+    String label(String program) => scoreNoticeLabel(
+      ctx,
+      ChaseNotice(program: program, verdict: ChaseVerdict.newRef).key,
+      programs: programs,
+    );
+    expect(label('pota'), 'New POTA Park');
+    expect(label('dxcc'), 'New DXCC');
   });
 }

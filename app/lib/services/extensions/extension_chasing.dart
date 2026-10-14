@@ -3,11 +3,12 @@
 //
 // The `chasing` hook calls `ExtensionService` makes: what programs exist, what
 // a batch of contacts claims under one of them, whose checklists a station
-// keeps, and how one reads (docs/design/claims.md). A mixin rather than an
+// keeps, how one reads, and what an imported file claims
+// (docs/design/claims.md). A mixin rather than an
 // extension so a test double can still override one call.
 
 import 'package:flutter/foundation.dart' show ValueNotifier, debugPrint;
-import 'package:halo_core/halo_core.dart' show ChasingProgram, Hooks, QsoClaim;
+import 'package:halo_core/halo_core.dart' show ChasingProgram, Hooks, ImportedClaim, QsoClaim;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import '../error_reporting_service.dart';
@@ -46,6 +47,14 @@ void _reportFailure(String programKey, String method, Object error, StackTrace s
 /// A whole batch of contacts goes in one call, so this is per batch, not per
 /// contact.
 const kClaimsForQsosTimeout = Duration(seconds: 20);
+
+/// A whole file goes in one call: a sponsor's export runs to thousands of
+/// lines.
+const kImportClaimsTimeout = Duration(seconds: 60);
+
+/// What a program read from an imported file: its claims, and how many of
+/// the file's records it could not read, malformed answers included.
+typedef ImportedClaims = ({List<ImportedClaim> claims, int skipped});
 
 mixin ExtensionChasing {
   ExtensionHost? get host;
@@ -183,6 +192,54 @@ mixin ExtensionChasing {
         for (final MapEntry(:key, :value) in result.entries)
           if (key is String && value is Map) key: value.cast<String, dynamic>(),
       };
+    } catch (e, stackTrace) {
+      _reportFailure(programKey, method, e, stackTrace);
+      return null;
+    }
+  }
+
+  /// What the file [name], read as [text], claims under [programKey]'s
+  /// [importer], for [station] — the file may not say whose it is. Null
+  /// when the program failed.
+  Future<ImportedClaims?> importClaims(
+    String programKey, {
+    required String importer,
+    required String name,
+    required String text,
+    required Map<String, dynamic> station,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    final method = Hooks.chasingImportClaims.method;
+    try {
+      final result = await host.invoke(
+        Hooks.chasingImportClaims,
+        key: programKey,
+        args: {
+          'importer': importer,
+          'file': {'name': name, 'text': text},
+          'station': station,
+        },
+        timeout: kImportClaimsTimeout,
+      );
+      if (result is! Map || result['claims'] is! List) throw FormatException('importClaims answered ${result.runtimeType}, not {claims}');
+      final parsed = [for (final item in result['claims'] as List) ImportedClaim.tryParse(item)];
+      final malformed = parsed.where((claim) => claim == null).length;
+      final skipped = result['skipped'];
+      // Optional, but one that is not a count is a defect like a malformed
+      // claim: read as none, the operator is told the file read cleanly.
+      final badSkipped = skipped != null && skipped is! num;
+      if (malformed > 0 || badSkipped) {
+        _reportFailure(
+          programKey,
+          method,
+          FormatException([if (malformed > 0) '$malformed malformed claims', if (badSkipped) 'skipped is ${skipped.runtimeType}, not a count'].join('; ')),
+          StackTrace.current,
+        );
+      } else {
+        ErrorReportingService.recordSuccess(_failureKey(programKey, method));
+      }
+      return (claims: parsed.nonNulls.toList(), skipped: (skipped is num ? skipped.toInt() : 0) + malformed);
     } catch (e, stackTrace) {
       _reportFailure(programKey, method, e, stackTrace);
       return null;

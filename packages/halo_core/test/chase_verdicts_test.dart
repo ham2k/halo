@@ -26,6 +26,14 @@ void main() {
       expect(judged.rank, 3);
     });
 
+    // A contact hunting two parks, one new: the spot row accents its park
+    // only when that park is the new one, not the one already hunted.
+    test('a new reference names the references the checklist lacks, and only those', () {
+      List<QsoClaim> park(String ref) => [QsoClaim(holder: 'KI2D', ref: ref, band: null, mode: null, level: ClaimLevel.worked)];
+      final held = _held({park('US-0001').single: ClaimLevel.worked});
+      expect(judgeChaseClaims('pota', [...park('US-0001'), ...park('US-0002')], held)!.refs, {'US-0002'});
+    });
+
     test('a worked reference on a new band and a new mode is both, at one rank', () {
       final claims = _entity('339');
       final held = _held({claims[0]: ClaimLevel.confirmed, _entity('339', band: '40m', mode: 'PHONE')[1]: ClaimLevel.worked});

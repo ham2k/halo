@@ -12,6 +12,7 @@ mixin _SpotsList on State<SpotsPanel> {
   String get _sortBy;
   Set<String> get _ourBaseCalls;
   ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot);
+  Set<String> _newRefsFor(Map<String, dynamic> spot, Set<String> notices);
   String? _noteEmojiOf(Map<String, dynamic> spot);
   ScrollController get _scrollController;
   GlobalKey get _currentRowKey;
@@ -235,6 +236,7 @@ mixin _SpotsList on State<SpotsPanel> {
                                       logged: flags.worked,
                                       isSelf: flags.isSelf,
                                       notices: flags.notices,
+                                      newRefs: _newRefsFor(spot, flags.notices),
                                       highlight: spotIsCurrentQso(spot, currentCall: currentCall) ? highlight : null,
                                       // A spot that is ours alone suggests no QSO — there
                                       // is no one to work. Tapping it re-tunes instead:

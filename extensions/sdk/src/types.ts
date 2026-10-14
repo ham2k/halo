@@ -1476,6 +1476,35 @@ export interface ChasingProgram {
   /// verdict and drops the scorer's notice, rather than two pills saying
   /// "new" about different checklists.
   supersedes?: string[]
+  /// What one reference of the checklist is called where a notice names it
+  /// ("New POTA Park"). The program's `label` when left out.
+  refLabel?: string
+  /// The kinds of file `importClaims` reads — a sponsor's export, each its own
+  /// batch. Listed as data so the app can offer an importer for a file by its
+  /// extension before calling anything.
+  imports?: ChasingImporter[]
+}
+
+/// One kind of file a program imports claims from.
+export interface ChasingImporter {
+  /// Names the batch: importing a file of the same kind again replaces every
+  /// claim the last one gave.
+  key: string
+  label: string
+  /// File extensions it reads, without the dot (`["csv"]`).
+  extensions: string[]
+}
+
+/// One record of an imported file: a claim no contact in the log stands
+/// behind. A sponsor's export is the sponsor's word for the slot, so the
+/// level is whatever the sponsor's records say — `verified` for a credited
+/// reference.
+export interface ImportedClaim extends QsoClaim {
+  /// When the slot was earned, in epoch millis, if the file says.
+  at?: number
+  /// The contact the record describes, if the file says, for matching it to
+  /// a contact in the log. Not yet read by the app (claims.md §9).
+  match?: { theirCall?: string; startAtMillis?: number; band?: string; mode?: string }
 }
 
 /// worked: a contact counts toward the slot. confirmed: that contact has a QSL
@@ -1539,6 +1568,15 @@ export interface ChasingHook {
     args: { holder: string; edition?: string; slots: ClaimSlot[] },
     ctx: HookContext,
   ): Promise<Record<string, ClaimsTally>> | Record<string, ClaimsTally>
+
+  /// What a file of one of `program.imports` claims, for `station` — the
+  /// station the operator is chasing as, since an export rarely says whose
+  /// it is. `skipped` counts the records it could not read. Answering no
+  /// claims leaves the last import of that kind as it was.
+  importClaims?(
+    args: { importer: string; file: { name: string; text: string }; station: { call: string } & Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<{ claims: ImportedClaim[]; skipped?: number }> | { claims: ImportedClaim[]; skipped?: number }
 }
 
 export interface CommandAction {

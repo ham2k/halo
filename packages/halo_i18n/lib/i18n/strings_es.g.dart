@@ -340,6 +340,7 @@ class _Translations$chase$es extends Translations$chase$en {
 	@override late final _Translations$chase$notice$es notice = _Translations$chase$notice$es._(_root);
 	@override late final _Translations$chase$alerts$es alerts = _Translations$chase$alerts$es._(_root);
 	@override String get checklists => 'Progreso de cacería';
+	@override late final _Translations$chase$imports$es imports = _Translations$chase$imports$es._(_root);
 }
 
 // Path: dialogs
@@ -1443,6 +1444,24 @@ class _Translations$chase$alerts$es extends Translations$chase$alerts$en {
 	@override String get newBand => 'Banda nueva';
 	@override String get newMode => 'Modo nuevo';
 	@override String get unconfirmed => 'Sin confirmar';
+}
+
+// Path: chase.imports
+class _Translations$chase$imports$es extends Translations$chase$imports$en {
+	_Translations$chase$imports$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String importFrom({required Object label}) => 'Importar ${label}';
+	@override String pickTitle({required Object file}) => 'Importar ${file} como';
+	@override String get dropHint => 'Suelta un archivo para importarlo en un programa de cacería';
+	@override String done({required Object count, required Object program, required Object file}) => 'Se importaron ${count} entradas de ${program} desde ${file}';
+	@override String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Se importaron ${count} entradas de ${program} desde ${file}; se omitieron ${skipped} que no pudo leer';
+	@override String nothing({required Object file, required Object program}) => '${file} no tiene nada que ${program} pueda importar';
+	@override String failed({required Object program, required Object file}) => '${program} no pudo leer ${file}';
+	@override String unreadable({required Object program, required Object skipped, required Object file}) => '${program} no pudo leer ninguno de los ${skipped} registros de ${file}';
+	@override String noProgram({required Object file}) => 'Ningún programa de cacería importa ${file}';
 }
 
 // Path: dialogs.callChange
@@ -3947,6 +3966,15 @@ extension on TranslationsEs {
 			'chase.alerts.newMode' => 'Modo nuevo',
 			'chase.alerts.unconfirmed' => 'Sin confirmar',
 			'chase.checklists' => 'Progreso de cacería',
+			'chase.imports.importFrom' => ({required Object label}) => 'Importar ${label}',
+			'chase.imports.pickTitle' => ({required Object file}) => 'Importar ${file} como',
+			'chase.imports.dropHint' => 'Suelta un archivo para importarlo en un programa de cacería',
+			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Se importaron ${count} entradas de ${program} desde ${file}',
+			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Se importaron ${count} entradas de ${program} desde ${file}; se omitieron ${skipped} que no pudo leer',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} no tiene nada que ${program} pueda importar',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program} no pudo leer ${file}',
+			'chase.imports.unreadable' => ({required Object program, required Object skipped, required Object file}) => '${program} no pudo leer ninguno de los ${skipped} registros de ${file}',
+			'chase.imports.noProgram' => ({required Object file}) => 'Ningún programa de cacería importa ${file}',
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
@@ -4176,6 +4204,8 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioSwr' => 'ROE',
 			'operation.layout.panels.radioAlc' => 'ALC',
 			'operation.layout.panels.radioVolts' => 'V',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.radioSwrHigh' => 'ROE alta',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer',
@@ -4185,8 +4215,6 @@ extension on TranslationsEs {
 			'operation.export.qsosInOperation' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en esta operación', other: '${count} QSOs en esta operación', ), 
 			'operation.export.qsosSynced' => ({required Object total}) => 'Los ${total} QSOs están sincronizados',
 			'operation.export.qsosPending' => ({required Object pending, required Object total}) => '${pending} de ${total} QSOs pendientes de sincronizar',
-			_ => null,
-		} ?? switch (path) {
 			'operation.export.eventsSynced' => ({required Object total}) => '${total} marcadores de evento sincronizados',
 			'operation.export.eventsPending' => ({required Object pending, required Object total}) => '${pending} de ${total} marcadores de evento pendientes',
 			'operation.export.loading' => 'Cargando opciones de exportación…',
@@ -4690,6 +4718,8 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
 			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
@@ -4699,8 +4729,6 @@ extension on TranslationsEs {
 			'settings.catServer.title' => 'Servidor CAT',
 			'settings.catServer.description' => 'Permite que otras aplicaciones (WSJT-X, registros, etc.) controlen la radio a través de Ham2K Logger.',
 			'settings.catServer.protocol' => 'Protocolo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.catServer.protocolOpts.off' => 'Desactivado',
 			'settings.catServer.protocolOpts.rigctld' => 'Hamlib rigctld',
 			'settings.catServer.protocolOpts.flrig' => 'flrig',
@@ -5204,6 +5232,8 @@ extension on TranslationsEs {
 			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} antena', other: '${count} antenas', ), 
 			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} otro equipo', other: '${count} otros equipos', ), 
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.equipmentInUse' => 'Controles de la radio',
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.peerRadioNotAvailable' => 'No disponible',
@@ -5213,8 +5243,6 @@ extension on TranslationsEs {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom, entre ellas la IC-705, presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso: el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador, y cuando esta app puede distinguir los dos puertos marca ese como sugerido. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio (por USB, CI-V USB Baud Rate). Pon en la radio el mismo número que aquí, **no Auto**. En Auto algunas radios, entre ellas la IC-7300, conectan y dejan de responder al cabo de un minuto o así.\n- **Otra aplicación puede tener el puerto abierto**: WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
 			'settings.station.ic705PortNote' => '\n- El **IC-705** presenta dos puertos serie USB, ambos con el nombre de la radio. CI-V está en el **primero**, que el selector señala cuando puede distinguirlos.',
@@ -5718,6 +5746,8 @@ extension on TranslationsEs {
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
 			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.defaultsDescription' => 'Ajustes base para todas las exportaciones, con plantillas de nombre de archivo y título separadas para actividades con referencia y otras actividades. Cada tipo de exportación puede proporcionar sus propios valores predeterminados o ajustes personalizados.',
 			'exportSettings.referenceActivities' => 'Actividades con referencia',
 			'exportSettings.otherActivities' => 'Otras actividades',
@@ -5727,8 +5757,6 @@ extension on TranslationsEs {
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
 			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
-			_ => null,
-		} ?? switch (path) {
 			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.',

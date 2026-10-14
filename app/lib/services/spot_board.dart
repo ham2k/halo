@@ -478,3 +478,24 @@ List<Map<String, dynamic>> mergedSpotBoard(Map<String, List<Map<String, dynamic>
   }
   return (filtered: sortSpots(spots, filters.sortBy), total: total);
 }
+
+/// The references [spot]'s operators would be new for, under each program
+/// whose new-reference verdict alerts in [notices] ([ChaseNotice]),
+/// upper-cased: what the row's reference label is accented for. Only an
+/// alerting verdict accents, as only an alerting one accents the call: the
+/// Chasing view's notices carry every verdict, to order its list. A new DXCC
+/// entity names no reference a row shows. [judgements] is keyed by
+/// [spotCandidateKey].
+Set<String> spotNewRefs(Map<String, dynamic> spot, {required Set<String> notices, required Map<String, List<ChaseJudgement>> judgements}) {
+  final programs = {
+    for (final key in notices)
+      if (ChaseNotice.tryParse(key) case final notice? when notice.verdict == ChaseVerdict.newRef && notice.alerting) notice.program,
+  };
+  if (programs.isEmpty) return const {};
+  return {
+    for (final call in spotOperatorCalls(spot))
+      for (final judgement in judgements[spotCandidateKey(call, spot)] ?? const <ChaseJudgement>[])
+        if (programs.contains(judgement.program) && judgement.verdicts.contains(ChaseVerdict.newRef))
+          for (final ref in judgement.refs) ref.toUpperCase(),
+  };
+}

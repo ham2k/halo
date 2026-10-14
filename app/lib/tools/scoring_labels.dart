@@ -14,10 +14,11 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// a shipped scorer produces belongs here: an unlabelled key reaches the
 /// operator as raw camelCase, which is worse than useless mid-contest.
 ///
-/// A chasing verdict ([ChaseNotice]) reads with its program's name, from
-/// [programs]; a program no longer registered reads by its key.
+/// A chasing verdict ([ChaseNotice]) reads with what its program calls one
+/// reference ([ChasingProgram.refLabel]), from [programs]; a program no
+/// longer registered reads by its key.
 String scoreNoticeLabel(BuildContext context, String key, {Map<String, ChasingProgram> programs = const {}}) {
-  if (ChaseNotice.tryParse(key) case final chase?) return _chaseNoticeLabel(context, chase, programs[chase.program]?.label ?? chase.program);
+  if (ChaseNotice.tryParse(key) case final chase?) return _chaseNoticeLabel(context, chase, programs[chase.program]?.refLabel ?? chase.program);
   final t = context.t.loggingControls.info;
   return switch (key) {
     'duplicate' => t.noticeDupe,

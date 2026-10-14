@@ -324,7 +324,18 @@
       "newMode": "Modo nuevo",
       "unconfirmed": "Sin confirmar"
     },
-    "checklists": "Progreso de cacería"
+    "checklists": "Progreso de cacería",
+    "imports": {
+      "importFrom": "Importar ${label}",
+      "pickTitle": "Importar ${file} como",
+      "dropHint": "Suelta un archivo para importarlo en un programa de cacería",
+      "done": "Se importaron ${count} entradas de ${program} desde ${file}",
+      "doneSkipped": "Se importaron ${count} entradas de ${program} desde ${file}; se omitieron ${skipped} que no pudo leer",
+      "nothing": "${file} no tiene nada que ${program} pueda importar",
+      "failed": "${program} no pudo leer ${file}",
+      "unreadable": "${program} no pudo leer ninguno de los ${skipped} registros de ${file}",
+      "noProgram": "Ningún programa de cacería importa ${file}"
+    }
   },
   "dialogs": {
     "operationDetails": "Detalles de la operación",

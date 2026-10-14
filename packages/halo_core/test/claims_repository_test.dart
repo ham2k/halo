@@ -335,6 +335,72 @@ void main() {
     expect({for (final c in checklist) c.ref: c.level}, {'230': ClaimLevel.verified, '291': ClaimLevel.worked});
   });
 
+  // The app offers an importer for a file by its extension alone, before
+  // anything runs: an entry it cannot read must not offer to take files.
+  test('a program lists its importers as data, and a malformed one is left out', () {
+    final program = ChasingProgram.tryParse('pota', {
+      'label': 'POTA',
+      'version': 1,
+      'editions': 'lifetime',
+      'imports': [
+        {
+          'key': 'hunted',
+          'label': 'Hunted parks',
+          'extensions': ['.CSV'],
+        },
+        {
+          'key': 'nameless',
+          'extensions': ['csv'],
+        },
+        {'key': 'typeless', 'label': 'Typeless', 'extensions': []},
+      ],
+    })!;
+    expect([for (final importer in program.imports) importer.key], ['hunted']);
+    expect(program.imports.single.takes('hunter_parks.csv'), isTrue);
+    expect(program.imports.single.takes('HUNTER_PARKS.CSV'), isTrue);
+    expect(program.imports.single.takes('log.adi'), isFalse);
+    expect(program.imports.single.takes('csv'), isFalse);
+  });
+
+  // An imported claim is a row in the log, so it syncs with the log and the
+  // claims table can be rebuilt from the log alone. A uuid that moved with
+  // anything but the slot would add a second row on every re-import instead
+  // of rewriting the first.
+  test('a claim record reads back as the claim it was made from, under one uuid per program, importer and slot', () {
+    const park = QsoClaim(holder: 'KI2D', ref: 'US-0022', band: null, mode: null, level: ClaimLevel.verified, by: 'pota', label: 'Denali');
+    Map<String, dynamic> record({String importer = 'hunted-parks', int? at = 500, String label = 'Denali'}) => claimEventQson(
+      program: 'pota',
+      importer: importer,
+      imported: ImportedClaim(
+        QsoClaim(holder: park.holder, ref: park.ref, band: null, mode: null, level: park.level, by: park.by, label: label),
+        atMillis: at,
+      ),
+      fallbackMillis: 9000,
+    );
+
+    final read = claimEventOf(record())!;
+    expect((read.program, read.importer, read.claim, read.atMillis), ('pota', 'hunted-parks', park, 500));
+    expect(record()['band'], 'event', reason: 'every contact query already leaves event rows out');
+    expect(record(label: 'Denali National Park')['uuid'], record()['uuid']);
+    expect(record(importer: 'other')['uuid'], isNot(record()['uuid']));
+    expect(record(at: null)['startAtMillis'], 9000);
+    expect(claimEventOf(record(at: null))!.atMillis, isNull, reason: 'the slot rule ranks a claim that does not say when below one that does');
+    expect(
+      claimEventOf({
+        'band': 'event',
+        'event': {'event': 'start'},
+      }),
+      isNull,
+    );
+    expect(
+      claimEventOf({
+        'band': '20m',
+        'their': {'call': 'W1AW'},
+      }),
+      isNull,
+    );
+  });
+
   test('a contact\'s slots are found from the contact', () async {
     await claims.applyUpgrades([_claim(ref: '230', qso: 'q1'), _claim(ref: '230', band: '20m', qso: 'q1'), _claim(ref: '291', qso: 'q2')]);
     expect((await claims.heldBy(['q1'])).map((c) => c.band), unorderedEquals([null, '20m']));

@@ -349,7 +349,18 @@
       "newMode": "New mode",
       "unconfirmed": "Unconfirmed"
     },
-    "checklists": "Chasing Progress"
+    "checklists": "Chasing Progress",
+    "imports": {
+      "importFrom": "Import ${label}",
+      "pickTitle": "Import ${file} as",
+      "dropHint": "Drop a file to import it into a chasing program",
+      "done": "Imported ${count} ${program} entries from ${file}",
+      "doneSkipped": "Imported ${count} ${program} entries from ${file}, skipped ${skipped} it could not read",
+      "nothing": "${file} has nothing ${program} can import",
+      "failed": "${program} could not read ${file}",
+      "unreadable": "${program} could not read any of the ${skipped} records in ${file}",
+      "noProgram": "No chasing program imports ${file}"
+    }
   },
   "dialogs": {
     "operationDetails": "Operation details",

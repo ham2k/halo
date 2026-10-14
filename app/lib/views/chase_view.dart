@@ -30,6 +30,7 @@ import 'dock_host.dart';
 import 'extensions_panel.dart';
 import 'home_navigation_rail.dart';
 import 'app_shell/home_rail_state.dart';
+import 'chase_import_flow.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
@@ -681,24 +682,31 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       body: PaneSafeArea.root(
         context,
         child: withViewOverrides(
-          buildDock(
-            children: {
-              ChaseView.loggingPanelId: KeyedSubtree(
-                key: _loggingKey,
-                child: Builder(
-                  builder: (context) => KeyboardAccessoryVisibility(visible: DockPaneVisibility.of(context), child: loggingPanel),
+          ChaseImportDropTarget(
+            onFile: (file) => importDroppedChaseFile(context, widget.services, file, stationCall: _operation.stationCall),
+            child: buildDock(
+              children: {
+                ChaseView.loggingPanelId: KeyedSubtree(
+                  key: _loggingKey,
+                  child: Builder(
+                    builder: (context) => KeyboardAccessoryVisibility(visible: DockPaneVisibility.of(context), child: loggingPanel),
+                  ),
                 ),
-              ),
-              ChaseView.spotsPanelId: KeyedSubtree(key: _spotsKey, child: spotsPanel),
-              ChaseView.infoPanelId: infoPanel,
-              ChaseView.mapPanelId: KeyedSubtree(key: _mapKey, child: mapPanel),
-            },
-            tabActions: {
-              ChaseView.loggingPanelId: (context) =>
-                  buildTargetSettingsButton(context, target: 'logging', title: context.t.operation.menu.loggingSettingsTitle, groupOverrides: _loggingSettings),
-              ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
-            },
-            extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
+                ChaseView.spotsPanelId: KeyedSubtree(key: _spotsKey, child: spotsPanel),
+                ChaseView.infoPanelId: infoPanel,
+                ChaseView.mapPanelId: KeyedSubtree(key: _mapKey, child: mapPanel),
+              },
+              tabActions: {
+                ChaseView.loggingPanelId: (context) => buildTargetSettingsButton(
+                  context,
+                  target: 'logging',
+                  title: context.t.operation.menu.loggingSettingsTitle,
+                  groupOverrides: _loggingSettings,
+                ),
+                ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
+              },
+              extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
+            ),
           ),
         ),
       ),
@@ -914,6 +922,11 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
               child: _ChaseGoalsEditor(
                 goals: _goals,
                 onChanged: _setGoals,
+                importersOf: (key) => widget.services.chase.programs[key]?.imports ?? const [],
+                onImport: (key, importer) {
+                  final program = widget.services.chase.programs[key];
+                  if (program != null) unawaited(runChaseImport(context, widget.services, program, importer, stationCall: _operation.stationCall));
+                },
                 onManageExtensions: () => _manageExtensions(context),
                 extensionsExpanded: _options['extensionsHidden'] != true,
                 onToggleExtensions: () => unawaited(_setOptions({'extensionsHidden': _options['extensionsHidden'] != true})),
@@ -1100,6 +1113,10 @@ class _ChaseGoalsEditor extends StatefulWidget {
   final ValueChanged<List<ChaseGoal>> onChanged;
   final VoidCallback onManageExtensions;
 
+  /// The files a goal's program imports, each offered on its row.
+  final List<ChasingImporter> Function(String key) importersOf;
+  final void Function(String key, ChasingImporter importer) onImport;
+
   /// Whether the extensions band is open — the operator's to decide, and
   /// remembered with the view's other options, like the operation sheet's
   /// own Activity Types band.
@@ -1110,6 +1127,8 @@ class _ChaseGoalsEditor extends StatefulWidget {
     required this.goals,
     required this.onChanged,
     required this.onManageExtensions,
+    required this.importersOf,
+    required this.onImport,
     required this.extensionsExpanded,
     required this.onToggleExtensions,
   });
@@ -1125,6 +1144,36 @@ class _ChaseGoalsEditorState extends State<_ChaseGoalsEditor> {
     final color = resolveExtensionColor(goal.color);
     final icon = Icon(resolveIconName(goal.icon));
     return CircleAvatar(backgroundColor: color?.withValues(alpha: 0.6), child: icon);
+  }
+
+  /// One button for a program that imports one kind of file, a menu for
+  /// one that imports several, nothing for one that imports none.
+  List<Widget> _importButtons(BuildContext context, ChaseGoal goal) {
+    final t = context.t.chase.imports;
+    final importers = widget.importersOf(goal.key);
+    if (importers.isEmpty) return const [];
+    if (importers.length == 1) {
+      final importer = importers.single;
+      return [
+        IconButton(
+          icon: Icon(MdiIcons.fileImportOutline, semanticLabel: t.importFrom(label: importer.label)),
+          onPressed: () => widget.onImport(goal.key, importer),
+        ),
+      ];
+    }
+    return [
+      PopupMenuButton<ChasingImporter>(
+        icon: Icon(MdiIcons.fileImportOutline, semanticLabel: t.importFrom(label: goal.label)),
+        onSelected: (importer) => widget.onImport(goal.key, importer),
+        itemBuilder: (context) => [
+          for (final importer in importers)
+            PopupMenuItem(
+              value: importer,
+              child: Text(t.importFrom(label: importer.label)),
+            ),
+        ],
+      ),
+    ];
   }
 
   @override
@@ -1171,15 +1220,21 @@ class _ChaseGoalsEditorState extends State<_ChaseGoalsEditor> {
                         child: MouseRegion(cursor: SystemMouseCursors.grab, child: _goalIcon(goal)),
                       ),
                       title: Text(goal.label),
-                      trailing: IconButton(
-                        icon: Icon(MdiIcons.trashCanOutline, semanticLabel: t.remove(name: goal.label)),
-                        onPressed: () => save(
-                          [
-                            for (final g in chased)
-                              if (g.key != goal.key) g,
-                          ],
-                          [goal.withOn(false), ...available],
-                        ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ..._importButtons(context, goal),
+                          IconButton(
+                            icon: Icon(MdiIcons.trashCanOutline, semanticLabel: t.remove(name: goal.label)),
+                            onPressed: () => save(
+                              [
+                                for (final g in chased)
+                                  if (g.key != goal.key) g,
+                              ],
+                              [goal.withOn(false), ...available],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],

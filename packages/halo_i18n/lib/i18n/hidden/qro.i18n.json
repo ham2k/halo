@@ -349,7 +349,18 @@
       "newMode": "NEW MODE",
       "unconfirmed": "UNCONFIRMED"
     },
-    "checklists": "CHASING PROGRESS"
+    "checklists": "CHASING PROGRESS",
+    "imports": {
+      "importFrom": "IMPORT ${label}",
+      "pickTitle": "IMPORT ${file} AS",
+      "dropHint": "DROP A FILE TO IMPORT IT INTO A CHASING PROGRAM",
+      "done": "IMPORTED ${count} ${program} ENTRIES FROM ${file}",
+      "doneSkipped": "IMPORTED ${count} ${program} ENTRIES FROM ${file}, SKIPPED ${skipped} IT COULD NOT READ",
+      "nothing": "${file} HAS NOTHING ${program} CAN IMPORT",
+      "failed": "${program} COULD NOT READ ${file}",
+      "unreadable": "${program} COULD NOT READ ANY OF THE ${skipped} RECORDS IN ${file}",
+      "noProgram": "NO CHASING PROGRAM IMPORTS ${file}"
+    }
   },
   "dialogs": {
     "operationDetails": "OPERATION DETAILS",

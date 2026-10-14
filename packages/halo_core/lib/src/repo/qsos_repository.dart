@@ -22,6 +22,7 @@ import '../models/qson_values.dart';
 import 'write_policy.dart';
 
 import 'operations_repository.dart';
+import 'claim_record_queries.dart';
 import 'qso_history_queries.dart';
 import 'qso_log_stream.dart';
 import 'repo_support.dart';
@@ -44,7 +45,7 @@ class QsoLogChanges {
   const QsoLogChanges({required this.cursor, required this.count, this.reset = false, this.qsos = const [], this.removed = const []});
 }
 
-class QsosRepository with QsoHistoryQueries {
+class QsosRepository with QsoHistoryQueries, ClaimRecordQueries {
   @override
   final HaLoDatabase db;
 
@@ -383,6 +384,7 @@ class QsosRepository with QsoHistoryQueries {
   /// and the rest reach drift's typed columns as they came, so a file that
   /// puts a number where a string belongs throws a cast error mid-batch.
   /// Validating a whole record is the parser's job, not this one's.
+  @override
   Future<int> writeBatch({
     required String operationUuid,
     List<Map<String, dynamic>> inserts = const [],
@@ -640,11 +642,13 @@ class QsosRepository with QsoHistoryQueries {
     }
   }
 
+  @override
   Future<void> softDelete(Qso qso) => _writeDeleted(qso, deleted: true);
 
   /// Restores a soft-deleted QSO. Pushing sends
   /// `deleted` only when true (see `SyncEngine._buildPayload`), so the
   /// restored record's payload simply omits the key.
+  @override
   Future<void> undelete(Qso qso) => _writeDeleted(qso, deleted: false);
 
   /// Flips the deleted flag, re-stamping `data.updatedAtMillis` (rewriting

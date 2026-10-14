@@ -703,6 +703,8 @@ class Translations$chase$en {
 
 	/// en: 'Chasing Progress'
 	String get checklists => 'Chasing Progress';
+
+	late final Translations$chase$imports$en imports = Translations$chase$imports$en.internal(_root);
 }
 
 // Path: dialogs
@@ -3053,6 +3055,42 @@ class Translations$chase$alerts$en {
 
 	/// en: 'Unconfirmed'
 	String get unconfirmed => 'Unconfirmed';
+}
+
+// Path: chase.imports
+class Translations$chase$imports$en {
+	Translations$chase$imports$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Import ${label}'
+	String importFrom({required Object label}) => 'Import ${label}';
+
+	/// en: 'Import ${file} as'
+	String pickTitle({required Object file}) => 'Import ${file} as';
+
+	/// en: 'Drop a file to import it into a chasing program'
+	String get dropHint => 'Drop a file to import it into a chasing program';
+
+	/// en: 'Imported ${count} ${program} entries from ${file}'
+	String done({required Object count, required Object program, required Object file}) => 'Imported ${count} ${program} entries from ${file}';
+
+	/// en: 'Imported ${count} ${program} entries from ${file}, skipped ${skipped} it could not read'
+	String doneSkipped({required Object count, required Object program, required Object file, required Object skipped}) => 'Imported ${count} ${program} entries from ${file}, skipped ${skipped} it could not read';
+
+	/// en: '${file} has nothing ${program} can import'
+	String nothing({required Object file, required Object program}) => '${file} has nothing ${program} can import';
+
+	/// en: '${program} could not read ${file}'
+	String failed({required Object program, required Object file}) => '${program} could not read ${file}';
+
+	/// en: '${program} could not read any of the ${skipped} records in ${file}'
+	String unreadable({required Object program, required Object skipped, required Object file}) => '${program} could not read any of the ${skipped} records in ${file}';
+
+	/// en: 'No chasing program imports ${file}'
+	String noProgram({required Object file}) => 'No chasing program imports ${file}';
 }
 
 // Path: dialogs.callChange
@@ -8369,6 +8407,15 @@ extension on Translations {
 			'chase.alerts.newMode' => 'New mode',
 			'chase.alerts.unconfirmed' => 'Unconfirmed',
 			'chase.checklists' => 'Chasing Progress',
+			'chase.imports.importFrom' => ({required Object label}) => 'Import ${label}',
+			'chase.imports.pickTitle' => ({required Object file}) => 'Import ${file} as',
+			'chase.imports.dropHint' => 'Drop a file to import it into a chasing program',
+			'chase.imports.done' => ({required Object count, required Object program, required Object file}) => 'Imported ${count} ${program} entries from ${file}',
+			'chase.imports.doneSkipped' => ({required Object count, required Object program, required Object file, required Object skipped}) => 'Imported ${count} ${program} entries from ${file}, skipped ${skipped} it could not read',
+			'chase.imports.nothing' => ({required Object file, required Object program}) => '${file} has nothing ${program} can import',
+			'chase.imports.failed' => ({required Object program, required Object file}) => '${program} could not read ${file}',
+			'chase.imports.unreadable' => ({required Object program, required Object skipped, required Object file}) => '${program} could not read any of the ${skipped} records in ${file}',
+			'chase.imports.noProgram' => ({required Object file}) => 'No chasing program imports ${file}',
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
@@ -8581,6 +8628,8 @@ extension on Translations {
 			'operation.layout.panels.remoteScreenDegraded' => 'The connection is struggling — skipping frames.',
 			'operation.layout.panels.remoteScreenStalled' => 'Frames stopped getting through — this connection may be too slow.',
 			'operation.layout.panels.radioDescription' => 'A radio\'s front panel — frequency, mode and power, under CAT control',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.radioStyle' => 'Style',
 			'operation.layout.panels.radioStyleLcd' => 'LCD',
 			'operation.layout.panels.radioStyleModern' => 'Modern',
@@ -8590,8 +8639,6 @@ extension on Translations {
 			'operation.layout.panels.radioNoRadio' => 'No radio to show. Pick one in this panel\'s settings, or add one under Station Configuration.',
 			'operation.layout.panels.radioNotConfigured' => 'This radio is not configured yet. Choose its port or address under Station Configuration.',
 			'operation.layout.panels.radioNoFrequency' => '—',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.radioOff' => 'Radio not connected',
 			'operation.layout.panels.radioWatts' => 'W',
 			'operation.layout.panels.radioConnect' => 'Connect this radio',
@@ -9095,6 +9142,8 @@ extension on Translations {
 			'settings.logging.countryFlagsDescription.all' => 'Showing flags for all contacts',
 			'settings.logging.countryFlagsDescription.none' => 'Not showing any flags',
 			'settings.logging.suggestDefaultOperator.title' => 'Suggest Operator',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offering your callsign as the operator when an operation runs under a different station callsign',
 			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Leaving the operator blank unless you fill it in',
 			'settings.logging.showBearing.title' => 'Show Bearing',
@@ -9104,8 +9153,6 @@ extension on Translations {
 			'settings.logging.showReverseBearing.descriptionOn' => 'Showing the bearing from the station too, as "45° / 225°"',
 			'settings.logging.showReverseBearing.descriptionOff' => 'Only showing the bearing to the station',
 			'settings.logging.switchSentRcvd.title' => 'Switch signal report order',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.switchSentRcvd.sentFirst' => 'Sent first, Rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rcvd first, Sent second',
 			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
@@ -9609,6 +9656,8 @@ extension on Translations {
 			'settings.station.models.hrdNodeName' => 'My Radio (via HRD)',
 			'settings.station.models.n3fjp' => 'Radio controlled via N3FJP',
 			'settings.station.models.n3fjpNodeName' => 'My Radio (via N3FJP)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.commander' => 'Radio controlled via DXLab Commander',
 			'settings.station.models.commanderNodeName' => 'My Radio (via Commander)',
 			'settings.station.models.antenna' => 'Antenna',
@@ -9618,8 +9667,6 @@ extension on Translations {
 			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.rtlSdr' => 'RTL-SDR',
 			'settings.station.models.nesdr' => 'Nooelec NESDR',
 			'settings.station.models.sdrplay' => 'SDRplay RSP',
@@ -10123,6 +10170,8 @@ extension on Translations {
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
@@ -10132,8 +10181,6 @@ extension on Translations {
 			'switchAccounts.switchNotAccepted' => 'That account did not accept the switch. Try linking it with an email address instead.',
 			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
 			'adifImport.title' => 'Import QSOs from ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Reading ${filename}…',

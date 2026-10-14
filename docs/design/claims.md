@@ -4,7 +4,8 @@
 The `claims` table and the service keeping it current (§5–§7) are built, and
 run only under `EXP CHASE`. They sync through LoFi once the server
 advertises them. Verdicts, goals and alerts (§8) are built
-(`app/lib/services/chase_service.dart`). Imports (§9) are not.*
+(`app/lib/services/chase_service.dart`). Imports (§9) are built as batches;
+matching a record to a contact is not.*
 
 Chasing is about programs that ask for contacts with references: a POTA
 park, a DXCC entity, a US state for WAS, a US county, a Spanish municipio.
@@ -147,20 +148,21 @@ same two fields.
 claims                     synced through LoFi and backed up; never over peer links
   uuid        v5 of the JSON array [program, holder, edition, ref, band, mode, source]
   program, holder, edition, ref, band, mode
-  source      'log' | 'import:<batchId>'
+  source      'log': every row derives from the log (§9's imports too)
   level       'worked' | 'confirmed' | 'verified'
   at_millis   when the claiming contact happened (null if an import didn't say)
-  qso         the claiming contact; null for an unmatched import     (indexed)
-  data        by, label, guess, and an import's own fields
+  qso         the claiming contact, or claim record (§9)               (indexed)
+  data        by, label, guess
   version     the program version that computed it
   epoch       raised by a rescan; outranks the claim on merge (§7)
   deleted, synced, updated_at_millis
 ```
 
-A slot has at most one `log` row, plus any `import:` rows. **The checklist
-is the best row per slot across sources**, by §1's rule.
+A slot has one row, the best claim any row of the log makes for it, by
+§1's rule: **the checklist is the claims table**. The `source` column
+leaves room for rows no log stands behind; nothing writes one.
 
-`log` rows are derivable from the log, and synced anyway: a device holding
+Rows are derivable from the log, and synced anyway: a device holding
 part of the log, or a web client holding none, reads its checklists from
 here. Every device computes the same row from the same contacts, and the
 uuid is deterministic, so they agree on which row they are writing.
@@ -332,11 +334,16 @@ operation's own scoring. A program names the scoring notices its verdicts
 stand in for (`supersedes`; DXCC's is core scoring's `newDXCC`), and where it
 judges a call those are dropped: the scorer keeps them for everyone chasing
 does not reach yet, and a feature leaves core scoring only once chasing
-ships without the experiment.
+ships without the experiment. A notice names the reference by what the
+program calls one (`refLabel`: "New POTA Park"), or by the program's label
+("New DXCC").
 
 **Alerts.** The operator picks which verdicts alert; new ref, new band and
-new mode until they do. An alerting spot's callsign takes the multiplier
-accent, and its band or mode the new-band or new-mode one. The Chasing view
+new mode until they do. An alerting spot's callsign takes the green accent
+of something new, not the multiplier's, and its band or mode the new-band or
+new-mode one. A spot whose reference is the one a new-ref verdict names
+(`ChaseJudgement.refs`) has that reference accented too; a new DXCC entity
+names none a spot row shows. The Chasing view
 can show only alerting spots. Sound and notifications are not built.
 
 **Most wanted** is the Chasing view's own spot sort, and its default: by
@@ -346,14 +353,16 @@ spots worked this period come last.
 The Info panel shows each goal's checklist through `summarizeClaims`, for
 the station's first holder in the current edition: empty for a lifetime
 program, the UTC year for an annual one. An event program has no current
-edition the app can tell from the date, and shows none.
+edition the app can tell from the date, and shows none. Each tally reads as
+one sentence ("2 DXCC Entities, 0 confirmed"), not scoring's columns.
 
 ## 9. Imports
 
 A sponsor's export confirms or verifies references but rarely says which
 contact did it — POTA's CSV of hunted parks, for one — and the contact may
 not be in this log at all. Each export has its own format, so reading it is
-the program's `importClaims`:
+the program's `importClaims`, for the importers its `program.imports` lists
+(`{key, label, extensions}`):
 
 ```ts
 interface ImportedClaim extends QsoClaim {
@@ -362,17 +371,47 @@ interface ImportedClaim extends QsoClaim {
 }
 ```
 
-The app reconciles each record against the contacts it holds:
+Every record becomes a **claim record** in the log: a loose event row, like
+an operation's start and break markers, so it syncs with the log — through
+LoFi and over peer links — and every contact query already leaves it out:
 
-- **A contact matches** (same call, close in time, same band if given):
-  the record becomes `qso.credits.<program>` on that contact, and the claim
-  derives from the contact from then on.
-- **None does:** the record becomes an `import:<batchId>` row with no
-  contact behind it.
+```jsonc
+{
+  "band": "event",
+  "our": { "call": "EVENT" }, "their": { "call": "CLAIM" },  // what a PoLo device keys each row on
+  "startAtMillis": 1689379200000,                            // the claim's date, or the import's
+  "event": {
+    "event": "claim", "program": "ham2k-pota", "importer": "hunted-parks",
+    "claim": { "holder": "KI2D", "ref": "US-0022", "band": null, "mode": null,
+               "level": "verified", "by": "pota", "label": "Denali National Park",
+               "at": 1689379200000 }
+  }
+}
+```
 
-A contact that arrives later — by sync, or an ADIF import — is matched the
-next time any device holding it reconciles. The unmatched row and the
-derived one can both stand; the slot is the better of the two.
+The claims service reads a claim record as the claim it holds, under its
+own program, without asking the program again (§6): the program made that
+claim when it read the file. So the claims table stays a cache of the log,
+and emptying it — as a device joining an account does — loses nothing.
+
+A record's uuid is one per program, importer and slot. Exports are
+cumulative, so a file is the whole of its importer's records: importing the
+same kind of file again rewrites the records that changed, deletes those the
+new file no longer lists, and leaves the rest alone, so the same file twice
+syncs nothing. A file the program answers with no claims replaces nothing,
+since an empty export and a file picked by mistake read the same.
+
+The operator imports from a goal's row in the Chasing sheet, or by dropping
+a file on the Chasing view, which offers the importers that take its
+extension.
+
+**Not yet built: matching.** A record that names its contact (`match`) and
+verifies the slot should become `qso.credits.<program>` on that contact, so
+the claim derives from the contact from then on, and a contact that arrives
+later — by sync, or an ADIF import — should be matched the next time a device
+holding it reconciles. No importer yet reads such a file: POTA's hunted parks
+name no contact, and POTA's hunter log is only ever worked. It is built with
+the first importer that needs it.
 
 ## 10. Not yet decided
 

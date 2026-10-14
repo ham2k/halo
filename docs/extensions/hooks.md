@@ -1494,12 +1494,15 @@ registerHook("chasing", { key: "dxcc", hook: {
   claimsForQsos({ qsos }, ctx) { /* { [uuid]: QsoClaim[] } */ },
   holdersFor({ station }, ctx) { /* string[] */ },
   summarizeClaims({ holder, edition, slots }, ctx) { /* { [key]: ClaimsTally } */ },
+  importClaims({ importer, file, station }, ctx) { /* { claims: ImportedClaim[], skipped? } */ }, // optional
 }})
 ```
 
 - **`program`** is plain data, read across every extension in one call
   without invoking anything. Raise `version` whenever the same contacts would
   claim something different: the app keeps no claim from an older version.
+  `refLabel` is what one reference is called where a notice names it
+  ("New POTA Park"), the program's `label` when left out.
   `supersedes` names the scoring notices the program's verdicts stand in for
   (DXCC: `newDXCC`): wherever the program judges a call or a spot, the
   scorer's notice is dropped in favor of the verdict.
@@ -1525,6 +1528,17 @@ registerHook("chasing", { key: "dxcc", hook: {
   one; an `event` program's checklist has no current edition to show.
 - **`summarizeClaims`** reads one holder's filled slots (`{ref, band, mode,
   level, label?}` each) into tallies, a `ScoreTally` without its `for`.
+- **`importClaims`**, for a program whose `program.imports` lists importers
+  (`{key, label, extensions}`), reads one file — `{name, text}` — that the
+  operator picked or dropped, for the station they chase as. It answers the
+  claims the file makes, each a `QsoClaim` plus `at` (epoch millis, when the
+  slot was earned) if the file says, and `skipped`, the records it could not
+  read. Each claim is kept in the log as a claim record — an event row, so it
+  syncs with the log ([claims.md](../design/claims.md) §9) — and
+  `claimsForQsos` is never asked about one: the app reads the claim it holds.
+  The file is the whole of its importer's records: importing the same kind of
+  file again replaces every claim the last one gave, and a file answered with
+  no claims replaces nothing.
 
 The host isolates programs from each other
 (`app/lib/services/extensions/extension_chasing.dart`): a program that throws

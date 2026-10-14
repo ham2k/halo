@@ -98,9 +98,15 @@ class _SpotTile extends StatelessWidget {
   /// would accent most rows most of the time.
   ///
   /// Of the chasing notices ([ChaseNotice]), only those the operator alerts on
-  /// are drawn: the call as a multiplier's is, and a new band or mode on its
-  /// field. The rest only order the Chasing view's list.
+  /// are drawn, in [HaLoColors.important] rather than a multiplier's color:
+  /// on the call, and a new band or mode on its field. The rest only order
+  /// the Chasing view's list.
   final Set<String> notices;
+
+  /// References a chasing program would count as new
+  /// ([ChaseJudgement.refs]): the row's reference label is accented when it
+  /// shows one.
+  final Set<String> newRefs;
 
   /// Fill for the row of the QSO being logged right now
   /// ([currentQsoHighlight]), null for every other row. Painted behind the
@@ -122,6 +128,7 @@ class _SpotTile extends StatelessWidget {
     this.logged = false,
     this.isSelf = false,
     this.notices = const {},
+    this.newRefs = const {},
     this.highlight,
   });
 
@@ -170,8 +177,10 @@ class _SpotTile extends StatelessWidget {
     };
     final freqAccent = notices.contains('newBand') || alerts.contains(ChaseVerdict.newBand) ? important : null;
     final modeAccent = notices.contains('newMode') || alerts.contains(ChaseVerdict.newMode) ? important : null;
-    final callAccent = notices.contains('newMult') || alerts.isNotEmpty ? multiplier : null;
-    final refAccent = notices.contains('newMult') ? multiplier : (notices.contains('newDay') || notices.contains('newRef') ? important : null);
+    final callAccent = notices.contains('newMult') ? multiplier : (alerts.isNotEmpty ? important : null);
+    final refs = _refsOf(spot);
+    final refIsNew = refs.isNotEmpty && newRefs.contains(asSpotString(refs.first['ref'])?.toUpperCase());
+    final refAccent = notices.contains('newMult') ? multiplier : (notices.contains('newDay') || notices.contains('newRef') || refIsNew ? important : null);
     // An accented field is bold as well as colored — color alone is not a
     // signal an operator can rely on (docs/design/user-interface.md), and at
     // spot-row size the weight is what actually catches the eye.
@@ -212,7 +221,6 @@ class _SpotTile extends StatelessWidget {
       );
     }
 
-    final refs = _refsOf(spot);
     final refType = refs.isEmpty ? null : asSpotString(refs.first['type']);
     final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
     // The extension's declared accent tints its icon (the same tint the

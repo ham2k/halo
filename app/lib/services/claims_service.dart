@@ -429,14 +429,32 @@ class ClaimsService {
   /// What each of [batch] — at most [kClaimsBatchSize] contacts, one crossing
   /// into the runtime — claims under [program] as stored rows, keyed by
   /// contact; null when the program failed.
+  ///
+  /// A claim record ([claimEventOf]) is not asked about: it is a claim the
+  /// program already made when its file was imported, and claims what it says
+  /// under its own program and nothing under any other.
   Future<Map<String, List<StoredClaim>>?> _claimsFor(ChasingProgram program, List<Qso> batch) async {
     if (batch.isEmpty) return const {};
-    final byUuid = {for (final qso in batch) qso.uuid: qso};
+    final recorded = <String, List<StoredClaim>>{};
+    final contacts = <Qso>[];
+    for (final qso in batch) {
+      if (claimEventOf(qso.data) case final event?) {
+        recorded[qso.uuid] = [
+          if (event.program == program.key)
+            StoredClaim.fromQso(program: program.key, version: program.version, claim: event.claim, qso: qso.uuid, atMillis: event.atMillis),
+        ];
+      } else {
+        contacts.add(qso);
+      }
+    }
+    if (contacts.isEmpty) return recorded;
+    final byUuid = {for (final qso in contacts) qso.uuid: qso};
     final answer = await extensions.claimsForQsos(program.key, [
-      for (final qso in batch) {...qso.data, 'uuid': qso.uuid},
+      for (final qso in contacts) {...qso.data, 'uuid': qso.uuid},
     ]);
     if (answer == null) return null;
     return {
+      ...recorded,
       for (final MapEntry(key: uuid, value: claims) in answer.entries)
         // A program answering for a contact it was not asked about is not
         // describing anything in this log.

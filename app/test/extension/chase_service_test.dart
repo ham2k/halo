@@ -42,6 +42,7 @@ void main() {
 
   late HaLoDatabase db;
   late ClaimsRepository claims;
+  late QsosRepository qsos;
   late SettingsService settings;
   late Map<String, Object?> stubs;
   late ChaseService service;
@@ -52,6 +53,7 @@ void main() {
     settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
     db = HaLoDatabase(NativeDatabase.memory());
     claims = ClaimsRepository(db);
+    qsos = QsosRepository(db);
     asked = 0;
     stubs = {
       'chasing:*:program': [
@@ -76,6 +78,7 @@ void main() {
     service = ChaseService(
       extensions: ExtensionServiceWithFakeHost(FakeExtensionHost(stubs)),
       claims: claims,
+      qsos: qsos,
       settings: settings,
       changeDebounce: Duration.zero,
     );
@@ -228,7 +231,7 @@ void main() {
   // change, and every later judgement reads the slot as still open.
   test('a checklist read overtaken by a change to the table is not kept', () async {
     final slow = _SlowClaims(db);
-    final judging = ChaseService(extensions: service.extensions, claims: slow, settings: settings, changeDebounce: Duration.zero);
+    final judging = ChaseService(extensions: service.extensions, claims: slow, qsos: qsos, settings: settings, changeDebounce: Duration.zero);
     addTearDown(judging.dispose);
     await settle();
     slow.gate = Completer<void>();
@@ -240,6 +243,73 @@ void main() {
     slow.gate = null;
     await first;
     expect(verdictOf(await judging.judge({'a': _candidate('K1ABC')}), 'a'), [ChaseVerdict.unconfirmed]);
+  });
+
+  group('imports', () {
+    const importer = ChasingImporter(key: 'credited', label: 'Credited calls', extensions: ['csv']);
+    late List<Object?> answer;
+    late Map<dynamic, dynamic> sent;
+    setUp(() {
+      answer = [];
+      stubs['chasing:calls:importClaims'] = (Object? args) {
+        sent = args! as Map;
+        return {'claims': answer, 'skipped': 1};
+      };
+    });
+    Map<String, dynamic> credited(String call, {int? at}) => {
+      'holder': 'ME',
+      'ref': call,
+      'band': null,
+      'mode': null,
+      'level': 'verified',
+      'by': 'sponsor',
+      'at': ?at,
+    };
+    Future<({int claims, int skipped})?> import() =>
+        service.importFile(service.programs['calls']!, importer, name: 'credits.csv', text: 'the file', station: {'call': 'ME'});
+
+    /// The live claim records the importer keeps in the log, by reference.
+    Future<Map<String, (ClaimLevel, int?)>> recorded() async => {
+      for (final qso in await qsos.claimEvents('calls', 'credited'))
+        if (!qso.deleted)
+          if (claimEventOf(qso.data) case final event?) event.claim.ref: (event.claim.level, event.atMillis),
+    };
+
+    // Kept in the claims table alone, an import vanished whenever the table
+    // was emptied — a device joining an account empties it.
+    test('a file becomes claim records in the log, and the program reads the file for the station', () async {
+      answer = [credited('W1AW', at: 500), credited('W1AW', at: 900), 'not a claim'];
+      expect(await import(), (claims: 1, skipped: 2));
+      expect(sent['importer'], 'credited');
+      expect(sent['file'], {'name': 'credits.csv', 'text': 'the file'});
+      expect(sent['station'], {'call': 'ME'});
+      expect(await recorded(), {'W1AW': (ClaimLevel.verified, 500)}, reason: 'the earlier of two records for one slot');
+    });
+
+    // Sponsor exports are cumulative, so the new file is the whole list.
+    test('importing the same kind of file again replaces the last one', () async {
+      answer = [credited('W1AW'), credited('K1ABC')];
+      await import();
+      answer = [credited('K1ABC')];
+      await import();
+      expect((await recorded()).keys, ['K1ABC']);
+    });
+
+    // An empty export and a file picked by mistake read the same; taking
+    // either as the new list would withdraw everything the last one gave.
+    test('a file that claims nothing leaves the last import as it was', () async {
+      answer = [credited('W1AW')];
+      await import();
+      answer = [];
+      expect(await import(), (claims: 0, skipped: 1));
+      expect((await recorded()).keys, ['W1AW']);
+    });
+
+    test('a program that fails to read the file writes nothing', () async {
+      stubs['chasing:calls:importClaims'] = ExtensionHostException('timed out');
+      expect(await import(), isNull);
+      expect(await recorded(), isEmpty);
+    });
   });
 
   test("a summary is the program's own tally of the station's first holder's checklist", () async {

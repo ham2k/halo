@@ -566,6 +566,54 @@ void main() {
     expect(await checklist(), {'W1AW': (ClaimLevel.worked, logged.uuid)});
   });
 
+  group('claim records', () {
+    Map<String, dynamic> record(String ref, {String program = 'calls', ClaimLevel level = ClaimLevel.verified}) => claimEventQson(
+      program: program,
+      importer: 'credits',
+      imported: ImportedClaim(QsoClaim(holder: 'ME', ref: ref, band: null, mode: null, level: level), atMillis: 500),
+      fallbackMillis: 9000,
+    );
+
+    // The program made these claims when the file was imported; asking it
+    // again about an event row gets nothing, which would withdraw them.
+    test('an imported claim fills its slot from the log, without asking the program', () async {
+      service.start();
+      await settle();
+      final before = asked;
+      await qsos.replaceClaimEvents('calls', 'credits', [record('W1AW'), record('K1ABC', program: 'other')]);
+      await settle();
+      final held = await checklist();
+      expect(held.keys, ['W1AW'], reason: "another program's record claims nothing under this one");
+      expect(held['W1AW']!.$1, ClaimLevel.verified);
+      expect(asked, before);
+    });
+
+    // The reason imports live in the log: a device joining an account empties
+    // the claims table, and only what the log holds comes back.
+    test('imported claims come back when the claims table is rebuilt', () async {
+      await qsos.replaceClaimEvents('calls', 'credits', [record('W1AW')]);
+      service.start();
+      await settle();
+      await claims.clearAll();
+      await settle();
+      extensions.runtimeGeneration.value++;
+      await settle();
+      expect((await checklist())['W1AW']?.$1, ClaimLevel.verified);
+    });
+
+    test('a park the next file no longer lists gives up its slot', () async {
+      final contact = await log('W1AW');
+      await qsos.replaceClaimEvents('calls', 'credits', [record('W1AW'), record('K1ABC')]);
+      service.start();
+      await settle();
+      await qsos.replaceClaimEvents('calls', 'credits', [record('K1ABC')]);
+      await settle();
+      final held = await checklist();
+      expect(held['W1AW'], (ClaimLevel.worked, contact.uuid), reason: 'the contact in the log holds the slot again');
+      expect(held['K1ABC']?.$1, ClaimLevel.verified);
+    });
+  });
+
   test('a synced row naming a deleted contact is checked even when it arrives before the service starts', () async {
     final confirmed = await log('W1AW', at: 3000, lotw: true);
     final runnerUp = await log('W1AW', at: 1000);
