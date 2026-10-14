@@ -173,6 +173,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 
 	// Translations
 	@override String get categoryActivity => 'ACTIVITIES';
+	@override String get categoryAward => 'AWARDS';
 	@override String get categoryContest => 'CONTESTS';
 	@override String get categoryLookup => 'CALLSIGN LOOKUPS';
 	@override String get categorySpots => 'SPOT SOURCES';
@@ -3845,6 +3846,7 @@ extension on TranslationsQro {
 			'testerOverlay.whatsNew' => ({required Object build}) => 'WHAT\'S NEW IN BUILD ${build}',
 			'testerOverlay.thanks' => 'THANK YOU FOR PUTTING YOUR LOG AT RISK IN ORDER TO HELP US MAKE THIS APP BETTER!',
 			'extensionsPanel.categoryActivity' => 'ACTIVITIES',
+			'extensionsPanel.categoryAward' => 'AWARDS',
 			'extensionsPanel.categoryContest' => 'CONTESTS',
 			'extensionsPanel.categoryLookup' => 'CALLSIGN LOOKUPS',
 			'extensionsPanel.categorySpots' => 'SPOT SOURCES',
@@ -4305,9 +4307,9 @@ extension on TranslationsQro {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'SOURCES: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'THE CONNECTION IS STRUGGLING — SKIPPING FRAMES.',
 			'operation.layout.panels.remoteScreenStalled' => 'FRAMES STOPPED GETTING THROUGH — THIS CONNECTION MAY BE TOO SLOW.',
-			'operation.layout.panels.radioDescription' => 'A RADIO\'S FRONT PANEL — FREQUENCY, MODE AND POWER, UNDER CAT CONTROL',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.radioDescription' => 'A RADIO\'S FRONT PANEL — FREQUENCY, MODE AND POWER, UNDER CAT CONTROL',
 			'operation.layout.panels.radioStyle' => 'STYLE',
 			'operation.layout.panels.radioStyleLcd' => 'LCD',
 			'operation.layout.panels.radioStyleModern' => 'MODERN',
@@ -4819,9 +4821,9 @@ extension on TranslationsQro {
 			'settings.logging.countryFlagsDescription.dx' => 'SHOWING FLAGS ONLY FOR DX CONTACTS',
 			'settings.logging.countryFlagsDescription.all' => 'SHOWING FLAGS FOR ALL CONTACTS',
 			'settings.logging.countryFlagsDescription.none' => 'NOT SHOWING ANY FLAGS',
-			'settings.logging.suggestDefaultOperator.title' => 'SUGGEST OPERATOR',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.suggestDefaultOperator.title' => 'SUGGEST OPERATOR',
 			'settings.logging.suggestDefaultOperator.descriptionOn' => 'OFFERING YOUR CALLSIGN AS THE OPERATOR WHEN AN OPERATION RUNS UNDER A DIFFERENT STATION CALLSIGN',
 			'settings.logging.suggestDefaultOperator.descriptionOff' => 'LEAVING THE OPERATOR BLANK UNLESS YOU FILL IT IN',
 			'settings.logging.showBearing.title' => 'SHOW BEARING',
@@ -5333,9 +5335,9 @@ extension on TranslationsQro {
 			'settings.station.models.hrd' => 'RADIO CONTROLLED VIA HAM RADIO DELUXE®',
 			'settings.station.models.hrdNodeName' => 'MY RADIO (VIA HRD)',
 			'settings.station.models.n3fjp' => 'RADIO CONTROLLED VIA N3FJP',
-			'settings.station.models.n3fjpNodeName' => 'MY RADIO (VIA N3FJP)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.n3fjpNodeName' => 'MY RADIO (VIA N3FJP)',
 			'settings.station.models.commander' => 'RADIO CONTROLLED VIA DXLAB COMMANDER',
 			'settings.station.models.commanderNodeName' => 'MY RADIO (VIA COMMANDER)',
 			'settings.station.models.antenna' => 'ANTENNA',
@@ -5847,9 +5849,9 @@ extension on TranslationsQro {
 			'switchAccounts.sendEmailInstead' => 'SEND A CONFIRMATION EMAIL INSTEAD',
 			'switchAccounts.emailSent' => ({required Object email}) => 'AN EMAIL WAS SENT TO ${email}. OPEN IT AND CONFIRM THE REQUEST TO LINK THIS DEVICE.',
 			'switchAccounts.resendEmail' => 'RESEND EMAIL',
-			'switchAccounts.qrPrompt' => 'SCAN THIS QR CODE FROM A DEVICE ALREADY LINKED TO THE ACCOUNT YOU WANT — FOR EXAMPLE WITH HAM2K PORTABLE LOGGER ON YOUR PHONE.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.qrPrompt' => 'SCAN THIS QR CODE FROM A DEVICE ALREADY LINKED TO THE ACCOUNT YOU WANT — FOR EXAMPLE WITH HAM2K PORTABLE LOGGER ON YOUR PHONE.',
 			'switchAccounts.serverUnreachable' => 'COULD NOT REACH THE SYNC SERVER. TRY AGAIN LATER.',
 			'switchAccounts.emailRequired' => 'ENTER AN EMAIL ADDRESS TO LINK.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'NO ACCOUNT FOUND FOR ${email}.',

@@ -1520,17 +1520,24 @@ registerHook("chasing", { key: "dxcc", hook: {
   data — never the log — because the app asks it about spots, and about
   contacts on a device that holds only part of the log. An empty list is an
   answer: that contact claims nothing. So is the list for an event marker
-  (`band: 'event'`), whose placeholder calls are not stations.
+  (`band: 'event'`), whose placeholder calls are not stations. A contact's
+  `our` carries the place it was made from — `grid`, `lat`/`lon` — its own,
+  or its operation's when it states none, for a program that keeps a
+  checklist per place. A spot candidate's `their` carries the lookup's
+  `guess.state` when an offline lookup knows one.
 - **`holdersFor`** lists the holders a station claims as — the opaque
   strings the program puts on its claims — so the app knows whose checklist
-  to show: the first, in the current edition. An `annual` program names its
-  editions by UTC year (`'2026'`), which is how the app tells the current
-  one; an `event` program's checklist has no current edition to show.
+  to show: the first, in the current edition. `station` carries its call
+  and, when it has one, its place, as a contact's `our` does. An `annual`
+  program names its editions by UTC year (`'2026'`), which is how the app
+  tells the current one; an `event` program's checklist has no current
+  edition to show.
 - **`summarizeClaims`** reads one holder's filled slots (`{ref, band, mode,
   level, label?}` each) into tallies, a `ScoreTally` without its `for`.
 - **`importClaims`**, for a program whose `program.imports` lists importers
   (`{key, label, extensions}`), reads one file — `{name, text}` — that the
-  operator picked or dropped, for the station they chase as. It answers the
+  operator picked or dropped, for the station they chase as (`station`, its
+  call and place as `holdersFor` gets them). It answers the
   claims the file makes, each a `QsoClaim` plus `at` (epoch millis, when the
   slot was earned) if the file says, and `skipped`, the records it could not
   read. Each claim is kept in the log as a claim record — an event row, so it
@@ -1552,7 +1559,10 @@ it anything — is never offered it.
 
 Implemented by: `dxcc` (core) — Mixed, per-band and per-mode slots for the
 station call worked from each entity; LoTW and paper QSLs confirm, LoTW credit
-verifies.
+verifies. `ham2k-pota` — one slot per park hunted, worked only; its
+hunted-parks export verifies. `ham2k-was` — Mixed, per-band and per-mode
+slots (plus FT8 and RTTY) for the station call worked from one 4-character
+grid; LoTW and paper QSLs confirm, `WAS` credit verifies.
 
 ## ✅ `bench` — kernel diagnostics
 

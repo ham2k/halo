@@ -173,6 +173,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 
 	// Translations
 	@override String get categoryActivity => 'Actividades';
+	@override String get categoryAward => 'Diplomas';
 	@override String get categoryContest => 'Concursos';
 	@override String get categoryLookup => 'Búsqueda de indicativos';
 	@override String get categorySpots => 'Fuentes de spots';
@@ -3743,6 +3744,7 @@ extension on TranslationsEs {
 			'testerOverlay.whatsNew' => ({required Object build}) => 'Novedades del build ${build}',
 			'testerOverlay.thanks' => '¡Gracias por poner tu log en riesgo para ayudarnos a mejorar esta aplicación!',
 			'extensionsPanel.categoryActivity' => 'Actividades',
+			'extensionsPanel.categoryAward' => 'Diplomas',
 			'extensionsPanel.categoryContest' => 'Concursos',
 			'extensionsPanel.categoryLookup' => 'Búsqueda de indicativos',
 			'extensionsPanel.categorySpots' => 'Fuentes de spots',
@@ -4203,9 +4205,9 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioTransmitting' => 'TX',
 			'operation.layout.panels.radioSwr' => 'ROE',
 			'operation.layout.panels.radioAlc' => 'ALC',
-			'operation.layout.panels.radioVolts' => 'V',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'ROE alta',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer',
@@ -4717,9 +4719,9 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
-			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
@@ -5231,9 +5233,9 @@ extension on TranslationsEs {
 			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, zero: 'Ninguna radio', one: '${count} radio', other: '${count} radios', ), 
 			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} antena', other: '${count} antenas', ), 
 			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} otro equipo', other: '${count} otros equipos', ), 
-			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.equipmentInUse' => 'Controles de la radio',
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.peerRadioNotAvailable' => 'No disponible',
@@ -5745,9 +5747,9 @@ extension on TranslationsEs {
 			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
-			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
 			_ => null,
 		} ?? switch (path) {
+			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
 			'exportSettings.defaultsDescription' => 'Ajustes base para todas las exportaciones, con plantillas de nombre de archivo y título separadas para actividades con referencia y otras actividades. Cada tipo de exportación puede proporcionar sus propios valores predeterminados o ajustes personalizados.',
 			'exportSettings.referenceActivities' => 'Actividades con referencia',
 			'exportSettings.otherActivities' => 'Otras actividades',

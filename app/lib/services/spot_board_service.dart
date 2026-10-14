@@ -63,6 +63,11 @@ class SpotBoardSubscription {
   }
 }
 
+/// The failure streak the board's own lookups count toward: it looks up every
+/// spotted call at once, and a burst of timeouts it caused is not the
+/// operator's lookup failing (`ExtensionHookApi.lookupCall`).
+const _lookupStreakKey = 'extensions:lookup-call:spot-board';
+
 class SpotBoardService extends ChangeNotifier {
   SpotBoardService({required this.extensions, required this.spots, required this.settings, required this.radio, required this.scoring, this.chase});
 
@@ -178,6 +183,7 @@ class SpotBoardService extends ChangeNotifier {
     _judgements = {};
     _withChase = {};
     _callInfo.clear();
+    _candidateStates.clear();
   }
 
   /// Brings the verdicts in line with what the top viewer shows. Never
@@ -271,7 +277,7 @@ class SpotBoardService extends ChangeNotifier {
     final operationData = operation?.data ?? const <String, dynamic>{};
     final results = await Future.wait(
       calls.map((call) async {
-        final result = await extensions.lookupCall(call, qso: const {}, operation: operationData, online: false);
+        final result = await extensions.lookupCall(call, qso: const {}, operation: operationData, online: false, streakKey: _lookupStreakKey);
         // Null is no answer at all — a runtime still booting, a lookup timed
         // out — not "nothing known", which comes back as a result. Cached, it
         // would cost that call its note and emoji for the session; left out,
@@ -366,11 +372,7 @@ class SpotBoardService extends ChangeNotifier {
           list.forEach(ask);
         }
         _chaseCandidates = {
-          for (final MapEntry(:key, :value) in candidates.entries)
-            key: {
-              ...value,
-              'our': {'call': operation.stationCall},
-            },
+          for (final MapEntry(:key, :value) in candidates.entries) key: {...value, 'our': stationOfOperation(operation)},
         };
         if (candidates.isEmpty) {
           // Already judged empty: nothing a reader shows has moved.
@@ -438,7 +440,11 @@ class SpotBoardService extends ChangeNotifier {
     final shown = _shown;
     if (chase == null || shown == null || _subscribers == 0) return;
     final serial = ++_judgeSerial;
-    final judged = shown.chasing || chase.enabled ? await chase.judge(_chaseCandidates) : const <String, List<ChaseJudgement>>{};
+    final judging = shown.chasing || chase.enabled;
+    final guessing = judging && chase.goals.any((goal) => goal.on);
+    final candidates = guessing ? await _withGuessedStates(_chaseCandidates, shown.operation.data) : _chaseCandidates;
+    if (serial != _judgeSerial || _subscribers == 0) return;
+    final judged = judging ? await chase.judge(candidates) : const <String, List<ChaseJudgement>>{};
     if (serial != _judgeSerial || _subscribers == 0) return;
     // Nothing judged before or now, as on every pass with chasing off: no
     // reader has anything to rebuild.
@@ -446,6 +452,78 @@ class SpotBoardService extends ChangeNotifier {
     _judgements = judged;
     _mergeChase();
     _bump();
+  }
+
+  /// The state an offline lookup gives each chase candidate, by its call and
+  /// refs ([_stateKey]): from call history for a station worked before, from
+  /// its park for a park spot. A spot carries no state of its own, so without
+  /// this a program that chases states judges no spot at all. A null state:
+  /// the lookup knew none, asked again once [_noStateRetry] has passed, since
+  /// the data the lookup reads (a parks list still downloading, a hook that
+  /// failed once) may have arrived since — but not on every pass, as most
+  /// such calls are stations no lookup will ever place, a DX station with no
+  /// state at all, and the board can hold hundreds. All of it is dropped
+  /// when the extensions runtime restarts ([_statesGeneration]).
+  final Map<String, ({String? state, int atMillis})> _candidateStates = {};
+  int? _statesGeneration;
+  static const _noStateRetry = Duration(minutes: 5);
+
+  /// What an offline lookup's answer depends on: the call and the refs, not
+  /// the band or mode a spot was on.
+  static String _stateKey(Map<String, dynamic> candidate) {
+    final refs = [
+      for (final ref in (candidate['refs'] as List?) ?? const [])
+        if (ref is Map) '${ref['type']}:${ref['ref']}',
+    ]..sort();
+    return '${asQsonString(asQsonMap(candidate['their'])?['call'])?.toUpperCase() ?? ''}|${refs.join(',')}';
+  }
+
+  /// [candidates], each carrying its looked-up state as the lookup's guess
+  /// (`their.guess.state`), as a contact typed in the logging panel does.
+  Future<Map<String, Map<String, dynamic>>> _withGuessedStates(Map<String, Map<String, dynamic>> candidates, Map<String, dynamic> operationData) async {
+    final generation = extensions.runtimeGeneration.value;
+    if (generation != _statesGeneration) {
+      _candidateStates.clear();
+      _statesGeneration = generation;
+    }
+    final now = realNowMillis();
+    bool known(String key) => switch (_candidateStates[key]) {
+      null => false,
+      (state: null, :final atMillis) => now - atMillis < _noStateRetry.inMilliseconds,
+      _ => true,
+    };
+    final asking = <String, Map<String, dynamic>>{
+      for (final candidate in candidates.values)
+        if (!known(_stateKey(candidate))) _stateKey(candidate): candidate,
+    };
+    final found = await Future.wait([
+      for (final MapEntry(:key, value: candidate) in asking.entries)
+        () async {
+          final call = asQsonString(asQsonMap(candidate['their'])?['call']) ?? '';
+          final result = await extensions.lookupCall(call, qso: candidate, operation: operationData, online: false, streakKey: _lookupStreakKey);
+          // Null is no answer at all, as in [refreshCallInfo]: asked again
+          // on the next pass rather than cached as knowing nothing.
+          if (result == null) return null;
+          return MapEntry(key, (state: asQsonString(asQsonMap(result['guess'])?['state']), atMillis: now));
+        }(),
+    ]);
+    // Released while asking: what was found describes a board nobody reads,
+    // and would outlive the release that cleared the cache.
+    if (_subscribers == 0 || generation != _statesGeneration) return candidates;
+    _candidateStates.addEntries(found.nonNulls);
+    return {
+      for (final MapEntry(:key, :value) in candidates.entries)
+        key: switch (_candidateStates[_stateKey(value)]?.state) {
+          final state? => {
+            ...value,
+            'their': {
+              ...?asQsonMap(value['their']),
+              'guess': {...?asQsonMap(asQsonMap(value['their'])?['guess']), 'state': state},
+            },
+          },
+          null => value,
+        },
+    };
   }
 
   /// Folds [_judgements] into [_scores] ([ChaseService.withNotices]).

@@ -9,6 +9,8 @@ import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
+import 'models.dart';
+
 /// Ordered: a later value outranks an earlier one in a slot.
 enum ClaimLevel {
   worked,
@@ -411,15 +413,7 @@ class StoredClaim {
       other.qso == qso &&
       other.version == version &&
       other.deleted == deleted &&
-      jsonEncode(_canonical(other.data)) == jsonEncode(_canonical(data));
-
-  /// [value] with every map's keys in order: a row that went through a
-  /// server can come back with the same data in another order.
-  static Object? _canonical(Object? value) => switch (value) {
-    Map() => {for (final key in value.keys.map((k) => '$k').toList()..sort()) key: _canonical(value[key])},
-    List() => [for (final item in value) _canonical(item)],
-    _ => value,
-  };
+      jsonEncode(withSortedKeys(other.data)) == jsonEncode(withSortedKeys(data));
 
   /// The record shape claims travel in.
   Map<String, dynamic> toRecord() => {
@@ -515,3 +509,40 @@ int compareClaimRows(StoredClaim a, StoredClaim b) {
   if (rule != 0) return rule;
   return (a.updatedAtMillis ?? 0).compareTo(b.updatedAtMillis ?? 0);
 }
+
+/// [value] with every map's keys in order, for comparing content: a row that
+/// went through a server can come back with the same data in another order.
+Object? withSortedKeys(Object? value) => switch (value) {
+  Map() => {for (final key in value.keys.map((k) => '$k').toList()..sort()) key: withSortedKeys(value[key])},
+  List() => [for (final item in value) withSortedKeys(item)],
+  _ => value,
+};
+
+/// The keys that say where a station was: one statement about one place
+/// (docs/design/locations.md), copied together or not at all.
+const _placeKeys = ['grid', 'gridSource', 'lat', 'lon'];
+
+bool _hasPlace(Map<String, dynamic> side) {
+  final grid = side['grid'];
+  return (grid is String && grid.isNotEmpty) || (side['lat'] is num && side['lon'] is num);
+}
+
+/// [side] — a contact's `our`, or a station a program is asked about — with
+/// the place [from] states, an operation's data, when it states none of its
+/// own. A program whose holder is a call at a place reads it there
+/// (claims.md §3), and a contact made in an operation records no place: its
+/// operation does.
+Map<String, dynamic> withPlaceFrom(Map<String, dynamic> side, Map<String, dynamic> from) {
+  if (_hasPlace(side) || !_hasPlace(from)) return side;
+  return {
+    ...side,
+    for (final key in _placeKeys)
+      if (from[key] != null && from[key] != '') key: from[key],
+  };
+}
+
+/// The station [operation]'s contacts are made from, as a program is asked
+/// about it: its first call — the one the logging controls stamp on each
+/// contact, since `stationCall` can hold several, and a holder built from
+/// the whole field is one no contact claims under — at the operation's place.
+Map<String, dynamic> stationOfOperation(Operation operation) => withPlaceFrom({'call': operation.stationCalls.firstOrNull ?? ''}, operation.data);

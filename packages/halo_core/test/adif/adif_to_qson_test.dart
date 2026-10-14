@@ -481,8 +481,23 @@ void main() {
       });
     });
 
+    test('WAS credit is the WAS program\'s, beside DXCC\'s from the same list', () {
+      expect(creditsOf('WAS:lotw,DXCC:card,WAS_MODE:lotw'), {
+        'ham2k-was': {
+          'level': 'verified',
+          'by': 'lotw',
+          'awards': ['WAS', 'WAS_MODE'],
+        },
+        'dxcc': {
+          'level': 'verified',
+          'by': 'qsl',
+          'awards': ['DXCC'],
+        },
+      });
+    });
+
     test('awards no program chases are left out, and a list of only those leaves no credits', () {
-      expect(creditsOf('WAS:lotw,IOTA:card'), isNull);
+      expect(creditsOf('WAZ:lotw,IOTA:card'), isNull);
     });
   });
 

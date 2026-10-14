@@ -10,7 +10,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../db/database.dart';
-import '../models/claims.dart' show claimEventOf;
+import '../models/claims.dart' show claimEventOf, withSortedKeys;
 import '../models/models.dart';
 import 'repo_support.dart';
 
@@ -45,7 +45,7 @@ mixin ClaimRecordQueries {
   Future<int> replaceClaimEvents(String program, String importer, List<Map<String, dynamic>> records) async {
     final held = {for (final qso in await claimEvents(program, importer)) qso.uuid: qso};
     final listed = {for (final record in records) record['uuid'] as String: record};
-    String content(Map<String, dynamic> data) => jsonEncode(_sortedKeys({'startAtMillis': data['startAtMillis'], 'event': data['event']}));
+    String content(Map<String, dynamic> data) => jsonEncode(withSortedKeys({'startAtMillis': data['startAtMillis'], 'event': data['event']}));
     final inserts = <Map<String, dynamic>>[];
     final updates = <Qso>[];
     var written = 0;
@@ -69,12 +69,4 @@ mixin ClaimRecordQueries {
     }
     return written;
   }
-
-  /// [value] with every map's keys in order: a row that came back through a
-  /// server can hold the same data in another order.
-  static Object? _sortedKeys(Object? value) => switch (value) {
-    Map() => {for (final key in value.keys.map((k) => '$k').toList()..sort()) key: _sortedKeys(value[key])},
-    List() => [for (final item in value) _sortedKeys(item)],
-    _ => value,
-  };
 }

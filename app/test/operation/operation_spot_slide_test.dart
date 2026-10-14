@@ -50,6 +50,7 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) async => null;
 }
 

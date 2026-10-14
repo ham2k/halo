@@ -1517,7 +1517,7 @@ export type ClaimLevel = "worked" | "confirmed" | "verified"
 /// claim per slot — a higher level, then the earlier contact.
 export interface QsoClaim {
   /// Who can claim it, in the program's own terms: a call, a call per entity
-  /// (`KI2D@291`), a call at a place (`KI2D@FN21rq`). Opaque to the app.
+  /// (`KI2D@291`), a call at a place (`KI2D@FN21`). Opaque to the app.
   holder: string
   ref: string
   /// The band this claim is for, or null for any band.
@@ -1558,10 +1558,14 @@ export interface ChasingHook {
   /// contact and the extension's own reference data: it never reads the log,
   /// which is what lets the app ask it about a spot, or about a contact on a
   /// device that holds only part of the log. One contact usually claims
-  /// several slots — one per granularity the program tracks.
+  /// several slots — one per granularity the program tracks. A contact's
+  /// `our` carries the place it was made from (`grid`, `lat`/`lon`): its own,
+  /// else its operation's, for a program whose holder is a call at a place.
   claimsForQsos(args: { qsos: Record<string, JSONValue>[] }, ctx: HookContext): Promise<Record<string, QsoClaim[]>> | Record<string, QsoClaim[]>
 
-  /// The holders a station claims as, so the app knows whose checklist to show.
+  /// The holders a station claims as, so the app knows whose checklist to
+  /// show. `station` carries its place (`grid`, `lat`/`lon`) when it has one,
+  /// as a contact's `our` does.
   holdersFor(args: { station: { call: string } & Record<string, JSONValue> }, ctx: HookContext): Promise<string[]> | string[]
 
   summarizeClaims(
@@ -1571,7 +1575,7 @@ export interface ChasingHook {
 
   /// What a file of one of `program.imports` claims, for `station` — the
   /// station the operator is chasing as, since an export rarely says whose
-  /// it is. `skipped` counts the records it could not read. Answering no
+  /// it is, with its place as `holdersFor` gets it. `skipped` counts the records it could not read. Answering no
   /// claims leaves the last import of that kind as it was.
   importClaims?(
     args: { importer: string; file: { name: string; text: string }; station: { call: string } & Record<string, JSONValue> },

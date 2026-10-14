@@ -1,11 +1,12 @@
 # Claims: what a contact counts toward
 
-*Status: partial. The hook (§2) is built, with DXCC as its first program.
+*Status: partial. The hook (§2) is built. Its programs are DXCC (core),
+and POTA's hunter checklist and WAS (catalog extensions).
 The `claims` table and the service keeping it current (§5–§7) are built, and
 run only under `EXP CHASE`. They sync through LoFi once the server
 advertises them. Verdicts, goals and alerts (§8) are built
-(`app/lib/services/chase_service.dart`). Imports (§9) are built as batches;
-matching a record to a contact is not.*
+(`app/lib/services/chase_service.dart`). Imports (§9) are built as claim
+records in the log; matching a record to a contact is not.*
 
 Chasing is about programs that ask for contacts with references: a POTA
 park, a DXCC entity, a US state for WAS, a US county, a Spanish municipio.
@@ -67,7 +68,7 @@ interface ChasingHook {
   claimsForQsos({ qsos }, ctx): Record<string, QsoClaim[]>    // keyed by qso uuid
   holdersFor({ station }, ctx): string[]
   summarizeClaims({ holder, edition, slots }, ctx): Record<string, ClaimsTally>
-  importClaims?({ file, holders }, ctx): Promise<ImportedClaim[]>      // §9, not built yet
+  importClaims?({ importer, file, station }, ctx): { claims: ImportedClaim[], skipped? }   // §9
 }
 
 interface QsoClaim {
@@ -102,9 +103,17 @@ checklist.
 - **Holder.** Who can claim. Programs differ: some credit the operator,
   some keep `KI2D` and `KI2D/P` apart and others merge them, some split by
   the DXCC entity operated from (`KI2D` and `KI2D/VE2` differ), and WAS
-  claims for a call at a place (`KI2D@FN21rq`). The holder is an opaque
-  string the program builds; `holdersFor` lists the ones a station uses, so
-  the view knows which checklist to show.
+  claims for a call at a place (`KI2D@FN31`: ARRL counts contacts made
+  within 50 miles of one place, and a 4-character grid stands in for it).
+  A contact made in an operation records no place of its own, so the app
+  hands a program the operation's (`our.grid`, `our.lat`/`lon`) unless the
+  contact states one, and hands `holdersFor` the station's. **Not yet
+  followed:** a segment's own place (a rover's later stretch claims at the
+  operation's), and a place the operation gets after its contacts were
+  claimed, which reaches them only at the next rebuild. Both are wanted
+  before a program keyed by place leaves `EXP CHASE`. The holder is
+  an opaque string the program builds; `holdersFor` lists the ones a
+  station uses, so the view knows which checklist to show.
 - **Mode.** Whatever grouping the program uses — `CW`, `PHONE`, `FT8`,
   `DIGITAL`. The app never maps modes for it.
 - **Edition.** Lifetime programs leave it empty. A recurring or special
@@ -293,7 +302,12 @@ payload.
 
 A spot goes through the same hook as a contact: the app builds a candidate
 contact from it — their call, the band from the frequency, the spotted
-mode, any refs the spot carries, our station — and calls `claimsForQsos`.
+mode, any refs the spot carries, our station and its place — and calls
+`claimsForQsos`. A spot says nothing about the state it is in, so the
+candidate carries the state an offline lookup gives for its call and refs,
+as the lookup's guess: call history's for a station worked before, the
+park's for a park spot. A station never worked, spotted on a cluster, has
+none, and a program that chases states does not judge it.
 What comes back is what working the station would claim, at `worked`.
 Typing a call in the logging panel does the same.
 
@@ -331,7 +345,7 @@ only its `duplicate`: a station worked this period. A duplicate gets no
 verdict notice, so its row stays struck. Under `EXP CHASE`, an operation's
 spots and calls also carry the verdicts the operator alerts on, beside the
 operation's own scoring. A program names the scoring notices its verdicts
-stand in for (`supersedes`; DXCC's is core scoring's `newDXCC`), and where it
+stand in for (`supersedes`; DXCC's is core scoring's `newDXCC`, WAS's its `newState`), and where it
 judges a call those are dropped: the scorer keeps them for everyone chasing
 does not reach yet, and a feature leaves core scoring only once chasing
 ships without the experiment. A notice names the reference by what the

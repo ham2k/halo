@@ -471,6 +471,33 @@ void main() {
     expect(settings.built, {'calls': 1});
   });
 
+  // A write that names no contacts is followed by a rescan of the whole log.
+  // A program that fails there and is not tried again stays unbuilt, its
+  // checklist as the failure left it, until the next launch or runtime.
+  test('a program that fails on a pass over the whole log is rebuilt once, in the same session', () async {
+    service.start();
+    await log('W1AW');
+    await qsos.add('op', {
+      'their': {'call': 'N0OLD'},
+      'band': '20m',
+    });
+    await settle();
+    expect(settings.built, {'calls': 1});
+    var failures = 1;
+    final working = stubs['chasing:calls:claimsForQsos']! as Object? Function(Object?);
+    stubs['chasing:calls:claimsForQsos'] = (Object? args) {
+      if (failures-- > 0) throw ExtensionHostException('boom');
+      return working(args);
+    };
+
+    await withErrorHooks(() async {
+      await qsos.hardDeleteAllForOperation('op');
+      await settle();
+    }, backend: FakeErrorReportingBackend());
+    expect(failures, lessThan(0), reason: 'the pass over the whole log failed');
+    expect(settings.built, {'calls': 1});
+  });
+
   // Asking on every pass is a crossing into every extension per contact
   // logged, and one that times out answers no programs at all.
   test('the programs are asked for once per runtime, not once per pass', () async {
@@ -793,5 +820,38 @@ void main() {
     await settle();
     expect((await checklist()).keys, contains('W1AW'));
     expect(asked, 1);
+  });
+
+  // A program whose holder is a call at a place (WAS) reads the place from
+  // `our`, and a contact made in an operation records none: without the
+  // operation's, every contact would claim under the bare call.
+  test("a contact is asked about with its operation's place, unless it states its own", () async {
+    final created = await operations.create(stationCall: 'KI2D');
+    await operations.saveData(Operation(uuid: created.uuid, data: {...created.data, 'grid': 'FN31pr', 'lat': 41.7, 'lon': -72.7}));
+    final sent = <String, Map<String, dynamic>>{};
+    stubs['chasing:calls:claimsForQsos'] = (Object? args) {
+      final qsos = ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>();
+      for (final qso in qsos) {
+        sent[qso['uuid'] as String] = (qso['our'] as Map).cast<String, dynamic>();
+      }
+      return {for (final qso in qsos) qso['uuid']: _claimsOf(qso)};
+    };
+    final inherits = await qsos.add(created.uuid, {
+      'our': {'call': 'KI2D'},
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'startAtMillis': 1000,
+    });
+    final ownPlace = await qsos.add(created.uuid, {
+      'our': {'call': 'KI2D', 'grid': 'EM12'},
+      'their': {'call': 'K1ABC'},
+      'band': '20m',
+      'startAtMillis': 2000,
+    });
+    service.start();
+    await settle();
+
+    expect(sent[inherits.uuid], {'call': 'KI2D', 'grid': 'FN31pr', 'lat': 41.7, 'lon': -72.7});
+    expect(sent[ownPlace.uuid], {'call': 'KI2D', 'grid': 'EM12'}, reason: "a contact's own place outranks its operation's, and is not mixed with it");
   });
 }

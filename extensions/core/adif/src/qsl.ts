@@ -12,7 +12,7 @@ import type { AdifField } from "./fields.ts"
 /// The ADIF award each chasing program's credit is written as when the
 /// credit does not list its own: the importer's `_adifCreditPrograms`, the
 /// other way round.
-const PROGRAM_AWARDS: Record<string, string> = { dxcc: "DXCC" }
+const PROGRAM_AWARDS: Record<string, string> = { dxcc: "DXCC", "ham2k-was": "WAS" }
 
 /// The importer's `_adifCreditMedia`, the other way round.
 const CREDIT_MEDIA: Record<string, string> = { lotw: "LOTW", qsl: "CARD", eqsl: "EQSL" }

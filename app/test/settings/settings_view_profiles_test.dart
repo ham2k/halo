@@ -48,6 +48,7 @@ class _StubLookupExtensionService extends ExtensionServiceWithFakeHost {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) async {
     final prefix = entityPrefixes[lookupCalls.clamp(0, entityPrefixes.length - 1)];
     lookupCalls++;

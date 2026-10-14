@@ -283,9 +283,12 @@ class ClaimsService {
       for (final row in rows)
         if (!row.deleted && (gone.contains(row.qso) || (inLog.contains(row.qso) && row.version < (programs[row.program]?.version ?? 0)))) row.program,
     };
+    var failed = false;
     for (final key in stale) {
-      if (programs[key] case final program?) await _rescan(program);
+      final program = programs[key];
+      if (program != null && !await _rescan(program)) failed = true;
     }
+    if (failed) _enqueue(_refresh);
   }
 
   void _schedule() {
@@ -352,10 +355,13 @@ class ClaimsService {
     // only the whole log can tell. A device holding part of it still raises
     // slots from the contacts that were named alongside it.
     if (all && holdsWholeLog()) {
+      var failed = false;
       for (final program in programs.values) {
-        await _rescan(program);
+        if (!await _rescan(program)) failed = true;
       }
       _settled();
+      // One more try for a program that failed, as below.
+      if (failed) _enqueue(_refresh);
       return;
     }
     if (uuids.isEmpty) return _settled();
@@ -370,10 +376,11 @@ class ClaimsService {
         final live = await qsos.liveAmong(page);
         final inLog = {for (final qso in live) qso.uuid};
         final held = await claims.heldBy(page);
+        final places = await _operationDataOf(live);
 
         for (final program in programs.values) {
           if (missed.contains(program.key)) continue;
-          final answer = await _claimsFor(program, live);
+          final answer = await _claimsFor(program, live, places);
           if (answer == null) {
             // This program missed these contacts; only a rebuild catches it up.
             missed.add(program.key);
@@ -405,7 +412,7 @@ class ClaimsService {
     // then leaves the marker set, and the next launch rebuilds.
     if (holdsWholeLog()) {
       for (final program in programs.values) {
-        if (lowered.contains(program.key) && !missed.contains(program.key)) await _rescan(program);
+        if (lowered.contains(program.key) && !missed.contains(program.key) && !await _rescan(program)) missed.add(program.key);
       }
     }
     _settled();
@@ -426,6 +433,16 @@ class ClaimsService {
   /// asked.
   Future<Map<String, ChasingProgram>?> _chasingPrograms() => extensions.chasingPrograms();
 
+  /// The data of each operation [batch]'s contacts belong to, by uuid: where
+  /// a contact that records no place of its own was made ([withPlaceFrom]).
+  /// Read once per page and shared by every program, in one query. The base
+  /// operation's, not a segment's, and a place changed after its contacts
+  /// were claimed is not followed (claims.md §3).
+  Future<Map<String, Map<String, dynamic>>> _operationDataOf(List<Qso> batch) async {
+    final uuids = {for (final qso in batch) qso.operationUuid}..remove('');
+    return {for (final operation in await operations.byUuids(uuids.toList())) operation.uuid: operation.data};
+  }
+
   /// What each of [batch] — at most [kClaimsBatchSize] contacts, one crossing
   /// into the runtime — claims under [program] as stored rows, keyed by
   /// contact; null when the program failed.
@@ -433,7 +450,7 @@ class ClaimsService {
   /// A claim record ([claimEventOf]) is not asked about: it is a claim the
   /// program already made when its file was imported, and claims what it says
   /// under its own program and nothing under any other.
-  Future<Map<String, List<StoredClaim>>?> _claimsFor(ChasingProgram program, List<Qso> batch) async {
+  Future<Map<String, List<StoredClaim>>?> _claimsFor(ChasingProgram program, List<Qso> batch, Map<String, Map<String, dynamic>> operationData) async {
     if (batch.isEmpty) return const {};
     final recorded = <String, List<StoredClaim>>{};
     final contacts = <Qso>[];
@@ -450,7 +467,8 @@ class ClaimsService {
     if (contacts.isEmpty) return recorded;
     final byUuid = {for (final qso in contacts) qso.uuid: qso};
     final answer = await extensions.claimsForQsos(program.key, [
-      for (final qso in contacts) {...qso.data, 'uuid': qso.uuid},
+      for (final qso in contacts)
+        {...qso.data, 'uuid': qso.uuid, 'our': withPlaceFrom(asQsonMap(qso.data['our']) ?? const {}, operationData[qso.operationUuid] ?? const {})},
     ]);
     if (answer == null) return null;
     return {
@@ -470,8 +488,9 @@ class ClaimsService {
   /// writes what changed (§6). Abandoned, writing nothing, if the program
   /// fails on any batch: a checklist built from part of the log would
   /// withdraw every slot the rest of it holds. A contact it leaves out of
-  /// an answer keeps the slots it holds, for the same reason.
-  Future<void> _rescan(ChasingProgram program) async {
+  /// an answer keeps the slots it holds, for the same reason. False when the
+  /// program failed, which leaves it unbuilt for [_refresh] to try again.
+  Future<bool> _rescan(ChasingProgram program) async {
     final generation = claims.generation;
     final title = t.chase.claims.rebuilding(program: program.label);
     final total = await qsos.liveCount();
@@ -481,13 +500,16 @@ class ClaimsService {
     String? after;
     try {
       while (true) {
-        if (!_active) return;
+        if (!_active) return true;
         _progress(title, done, total);
         final page = await qsos.livePage(afterUuid: after, limit: kClaimsBatchSize);
         if (page.isEmpty) break;
         after = page.last.uuid;
-        final answer = await _claimsFor(program, page);
-        if (answer == null) return _forget(program.key);
+        final answer = await _claimsFor(program, page, await _operationDataOf(page));
+        if (answer == null) {
+          await _forget(program.key);
+          return false;
+        }
         // Left out: a malformed answer, reported where it was read.
         unanswered.addAll([
           for (final qso in page)
@@ -509,6 +531,7 @@ class ClaimsService {
     }
     await saveBuiltVersions({...builtVersions(), program.key: program.version});
     _forgotten = false;
+    return true;
   }
 
   /// Shows in the footer how far a pass over [total] contacts has got, once

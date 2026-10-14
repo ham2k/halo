@@ -208,8 +208,14 @@ class ChaseService extends ChangeNotifier {
   int _checklistsCleared = 0;
 
   /// A candidate's identity for the claims cache: everything a program may
-  /// read but the time, which moves on every spots pass.
-  static String _candidateKey(Map<String, dynamic> qso) => jsonEncode({...qso}..remove('startAtMillis'));
+  /// read, with the time as its UTC day. The time moves on every spots pass,
+  /// but a program with editions computes each claim's from the date, so a
+  /// contact typed for another day — an edit to an older one, or a pass
+  /// after midnight — is another question.
+  static String _candidateKey(Map<String, dynamic> qso) {
+    final at = asQsonNum(qso['startAtMillis'])?.toInt();
+    return jsonEncode({...qso, 'startAtMillis': at == null ? null : at ~/ Duration.millisecondsPerDay});
+  }
 
   /// Each of [candidates]' verdicts under every goal that is on, in goal
   /// order, keyed as given. A candidate is a contact as it would be logged
@@ -400,13 +406,10 @@ class ChaseService extends ChangeNotifier {
   }
 
   /// Of two records a file makes for one slot, the one the slot rule
-  /// ([compareClaims]) would keep: the higher level, then the earlier date,
-  /// a date over none.
+  /// ([compareClaims]) would keep; the first on a tie.
   static bool _betterImport(ImportedClaim a, ImportedClaim b) {
-    if (a.claim.level != b.claim.level) return a.claim.level.index > b.claim.level.index;
-    final aAt = a.atMillis, bAt = b.atMillis;
-    if (aAt == null || bAt == null) return aAt != null && bAt == null;
-    return aAt < bAt;
+    StoredClaim stored(ImportedClaim imported) => StoredClaim.fromQso(program: '', version: 0, claim: imported.claim, qso: '', atMillis: imported.atMillis);
+    return compareClaims(stored(a), stored(b)) > 0;
   }
 
   bool _disposed = false;

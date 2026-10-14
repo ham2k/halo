@@ -39,6 +39,7 @@ test("award credit is written as ADIF's credit list, award by award", () => {
 
 test("a credit that lists no awards is written as its program's award", () => {
   assert.equal(renderRow(qslFields({ credits: { dxcc: { level: "verified", by: "qsl" } } })), "<CREDIT_GRANTED:9>DXCC:CARD ")
+  assert.equal(renderRow(qslFields({ credits: { "ham2k-was": { level: "verified", by: "lotw" } } })), "<CREDIT_GRANTED:8>WAS:LOTW ")
 })
 
 // POTA's credit has no ADIF award: written under a made-up name it would be a

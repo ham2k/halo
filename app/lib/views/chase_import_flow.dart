@@ -42,15 +42,16 @@ List<XTypeGroup> chaseImportTypeGroups(ChasingImporter importer) {
 String chaseImportText(List<int> bytes) => utf8.decode(bytes, allowMalformed: true).replaceFirst(RegExp('^\uFEFF'), '');
 
 /// Reads [file] — or one the operator picks, when null — through
-/// [program]'s [importer] for [stationCall], and says how it went. A file
-/// that cannot be picked, read or written says so, and is reported: the
-/// operator asked for this import and waits to hear how it went.
+/// [program]'s [importer] for [station] ([stationOfOperation]), and says how
+/// it went. A file that cannot be picked, read or written says so, and is
+/// reported: the operator asked for this import and waits to hear how it
+/// went.
 Future<void> runChaseImport(
   BuildContext context,
   HaLoServices services,
   ChasingProgram program,
   ChasingImporter importer, {
-  required String stationCall,
+  required Map<String, dynamic> station,
   XFile? file,
 }) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
@@ -61,13 +62,7 @@ Future<void> runChaseImport(
     final chosen = file ?? await openFile(acceptedTypeGroups: chaseImportTypeGroups(importer));
     if (chosen == null) return;
     name = chosen.name;
-    outcome = await services.chase.importFile(
-      program,
-      importer,
-      name: chosen.name,
-      text: chaseImportText(await chosen.readAsBytes()),
-      station: {'call': stationCall},
-    );
+    outcome = await services.chase.importFile(program, importer, name: chosen.name, text: chaseImportText(await chosen.readAsBytes()), station: station);
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'chaseImport');
     messenger?.showSnackBar(haloSnackBar(t.failed(program: program.label, file: name)));
@@ -92,7 +87,7 @@ Future<void> runChaseImport(
 
 /// A [file] dropped on the Chasing view: read by the one importer that takes
 /// its extension, or by the one the operator picks when several do.
-Future<void> importDroppedChaseFile(BuildContext context, HaLoServices services, XFile file, {required String stationCall}) async {
+Future<void> importDroppedChaseFile(BuildContext context, HaLoServices services, XFile file, {required Map<String, dynamic> station}) async {
   final t = context.t.chase.imports;
   final candidates = [
     for (final program in services.chase.programs.values)
@@ -119,7 +114,7 @@ Future<void> importDroppedChaseFile(BuildContext context, HaLoServices services,
           ),
         );
   if (chosen == null || !context.mounted) return;
-  await runChaseImport(context, services, chosen.program, chosen.importer, stationCall: stationCall, file: file);
+  await runChaseImport(context, services, chosen.program, chosen.importer, station: station, file: file);
 }
 
 /// Takes a file dropped anywhere on its [child]. Inert on iOS and Android,

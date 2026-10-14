@@ -109,6 +109,7 @@ class _CannedCommandExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) async => cannedLookup;
 
   /// Stands in for the extension runtime's `host.updateInterpretation`

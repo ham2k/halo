@@ -110,12 +110,16 @@ void main() {
   // A board is judged again on every spots refresh and every checklist
   // change. Asking the runtime each time is a crossing per spot per pass; a
   // spot's time moves on every pass, so a cache keyed on it would never hit.
-  test('the program is asked about a station once, however often it is judged, and whenever', () async {
+  // But a program with editions claims by the contact's date, and an answer
+  // for one day kept for another puts the claim in last year's checklist.
+  test('the program is asked about a station once a day, however often it is judged', () async {
     await service.judge({'a': _candidate('K1ABC', at: 1000)});
     await service.judge({'a': _candidate('K1ABC', at: 61000), 'b': _candidate('K1ABC', at: 2000)});
     expect(asked, 1);
     await service.judge({'a': _candidate('K1ABC', band: '40m')});
     expect(asked, 2, reason: 'another band is another question');
+    await service.judge({'a': _candidate('K1ABC', at: 1000 + Duration.millisecondsPerDay)});
+    expect(asked, 3, reason: 'another day is another question');
   });
 
   // Logging the station fills its slots; a verdict still reading "new" sends

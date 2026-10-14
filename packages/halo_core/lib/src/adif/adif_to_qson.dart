@@ -396,7 +396,7 @@ Map<String, dynamic> _qslFrom(Map<String, String> f, bool genericQsl) {
 /// (docs/design/claims.md §4). An award no program here chases is left out:
 /// a credit is read only by the program it names. The ADIF export
 /// (`extensions/core/adif`) holds the same table the other way round.
-const _adifCreditPrograms = {'DXCC': 'dxcc', 'DXCC_BAND': 'dxcc', 'DXCC_MODE': 'dxcc'};
+const _adifCreditPrograms = {'DXCC': 'dxcc', 'DXCC_BAND': 'dxcc', 'DXCC_MODE': 'dxcc', 'WAS': 'ham2k-was', 'WAS_BAND': 'ham2k-was', 'WAS_MODE': 'ham2k-was'};
 
 /// ADIF's QSL media, in the order a credit names what verified it: what the
 /// sponsor itself checked first.

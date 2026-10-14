@@ -42,6 +42,15 @@ class _FakeExtensions extends ExtensionService {
   /// The chasing programs registered: none, unless a test registers some.
   Map<String, ChasingProgram> programs = const {};
 
+  /// The state each call's lookup guesses.
+  Map<String, String> states = const {};
+
+  /// The failure streaks the lookups were counted toward.
+  final Set<String?> streakKeys = {};
+
+  /// Every contact the programs were asked about.
+  final List<Map<String, dynamic>> claimed = [];
+
   @override
   ExtensionHost? get host => _host;
 
@@ -82,10 +91,13 @@ class _FakeExtensions extends ExtensionService {
 
   /// Every program's checklist is the calls worked, on any band and mode.
   @override
-  Future<Map<String, List<QsoClaim>>?> claimsForQsos(String programKey, List<Map<String, dynamic>> qsos) async => {
-    for (final qso in qsos)
-      qso['uuid'] as String: [QsoClaim(holder: 'ME', ref: (qso['their'] as Map)['call'] as String, band: null, mode: null, level: ClaimLevel.worked)],
-  };
+  Future<Map<String, List<QsoClaim>>?> claimsForQsos(String programKey, List<Map<String, dynamic>> qsos) async {
+    claimed.addAll(qsos);
+    return {
+      for (final qso in qsos)
+        qso['uuid'] as String: [QsoClaim(holder: 'ME', ref: (qso['their'] as Map)['call'] as String, band: null, mode: null, level: ClaimLevel.worked)],
+    };
+  }
 
   @override
   Future<Map<String, dynamic>?> lookupCall(
@@ -94,10 +106,14 @@ class _FakeExtensions extends ExtensionService {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) async {
     lookedUp.add(call);
+    streakKeys.add(streakKey);
     if (unanswered.contains(call)) return null;
-    return {'guess': <String, dynamic>{}};
+    return {
+      'guess': <String, dynamic>{'state': ?states[call]},
+    };
   }
 }
 
@@ -416,6 +432,79 @@ void main() {
         await pumpEventQueue();
         expect(seen, isNotEmpty);
         expect(seen.expand((verdicts) => verdicts), isEmpty);
+      }),
+    );
+
+    // A spot carries no state of its own: without the lookup's guess, a
+    // program that chases states (WAS) judges no spot at all. And without
+    // the station's place, one that keeps a checklist per place judges every
+    // spot against the bare call's. A multi-call operation's whole field is
+    // no callsign: a holder built from it is one no logged contact claims
+    // under, and every spot would read new.
+    test(
+      "a candidate carries its lookup's state as a guess, and the station's first call and place",
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.programs = callsProgram;
+        extensions.runtimeGeneration.value++;
+        extensions.states = {'K1ABC': 'CT'};
+        view.show(
+          Operation(uuid: '', data: const {'stationCall': 'ME, YOU', 'grid': 'FN31pr'}),
+          const [],
+          logRevision: 'r0',
+          chasing: true,
+        );
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        Map<String, dynamic> askedAbout(String call) => extensions.claimed.lastWhere((qso) => (qso['their'] as Map)['call'] == call);
+        expect((askedAbout('K1ABC')['their'] as Map)['guess'], {'state': 'CT'});
+        expect((askedAbout('W1AW')['their'] as Map).containsKey('guess'), isFalse, reason: 'a lookup that knew no state adds none');
+        expect(askedAbout('K1ABC')['our'], {'call': 'ME', 'grid': 'FN31pr'});
+      }),
+    );
+
+    // A lookup that knew no state may have answered before the parks list
+    // downloaded, or while a hook was failing: cached for the session, that
+    // spot would never be judged for a state. Asked on every refresh, each
+    // of a board's hundreds of DX stations, which no lookup will ever place,
+    // is a crossing into the runtime per pass. And a restarted runtime may
+    // answer differently from the one that filled the cache.
+    test(
+      'a lookup that knew no state is asked again after a while, not on every refresh, and a restarted runtime is asked about every spot',
+      () => runOnFakeClock((async) async {
+        await openBoard();
+        extensions.programs = callsProgram;
+        extensions.runtimeGeneration.value++;
+        view.show(
+          Operation(uuid: '', data: const {'stationCall': 'ME'}),
+          const [],
+          logRevision: 'r0',
+          chasing: true,
+        );
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        Object? guessFor(String call) => (extensions.claimed.lastWhere((qso) => (qso['their'] as Map)['call'] == call)['their'] as Map)['guess'];
+        expect(guessFor('W1AW'), isNull);
+
+        extensions.states = {'W1AW': 'NY'};
+        await services.spots.refresh();
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(guessFor('W1AW'), isNull, reason: 'a refresh right away does not ask again');
+
+        async.elapseBlocking(const Duration(minutes: 5));
+        await services.spots.refresh();
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(guessFor('W1AW'), {'state': 'NY'});
+
+        extensions.states = {'W1AW': 'NJ'};
+        extensions.runtimeGeneration.value++;
+        await services.spots.refresh();
+        await Future<void>.delayed(_debounce);
+        await pumpEventQueue();
+        expect(guessFor('W1AW'), {'state': 'NJ'}, reason: 'a state is kept across spot refreshes only until the runtime restarts');
+        expect(extensions.streakKeys, {'extensions:lookup-call:spot-board'}, reason: "the board's lookups are not the operator's");
       }),
     );
 

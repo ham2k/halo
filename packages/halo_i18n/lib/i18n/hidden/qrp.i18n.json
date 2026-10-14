@@ -59,6 +59,7 @@
   },
   "extensionsPanel": {
     "categoryActivity": "activities",
+    "categoryAward": "awards",
     "categoryContest": "contests",
     "categoryLookup": "callsign lookups",
     "categorySpots": "spot sources",

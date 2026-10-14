@@ -192,6 +192,7 @@ class _CannedExtensions extends ExtensionService {
     Map<String, dynamic>? operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) async {
     lookupPasses.add((call, online));
     if (!online) {

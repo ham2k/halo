@@ -59,6 +59,7 @@ class _Scripted extends ExtensionServiceWithFakeHost {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) {
     final completer = Completer<Map<String, dynamic>?>();
     entityLookups.add(completer);

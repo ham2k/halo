@@ -603,14 +603,17 @@ mixin _ExtensionHookApi {
     required Map<String, dynamic> operation,
     bool online = true,
     bool recentContext = false,
+    String? streakKey,
   }) async {
     if (ExtensionService.stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
     final host = this.host;
     if (host == null || call.length < 3) return null;
     // One key for the whole pipeline, unlike _syncTransportCall's per-method
     // one: `lookupCallInfo` is a single coarse hook, so there is no
-    // per-source failure to keep apart here.
-    const streakKey = 'extensions:lookup-call';
+    // per-source failure to keep apart here. A caller that fans out over many
+    // calls at once (the spot board) passes its own [streakKey], so a burst
+    // it caused does not read as the operator's lookup failing.
+    streakKey ??= 'extensions:lookup-call';
 
     // While we believe we have no internet the pipeline still runs, but every
     // hook is asked to stay local — call history, call notes, cached data

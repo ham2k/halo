@@ -59,6 +59,7 @@
   },
   "extensionsPanel": {
     "categoryActivity": "ACTIVITIES",
+    "categoryAward": "AWARDS",
     "categoryContest": "CONTESTS",
     "categoryLookup": "CALLSIGN LOOKUPS",
     "categorySpots": "SPOT SOURCES",

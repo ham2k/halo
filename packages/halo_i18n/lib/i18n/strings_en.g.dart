@@ -278,6 +278,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Activities'
 	String get categoryActivity => 'Activities';
 
+	/// en: 'Awards'
+	String get categoryAward => 'Awards';
+
 	/// en: 'Contests'
 	String get categoryContest => 'Contests';
 
@@ -8167,6 +8170,7 @@ extension on Translations {
 			'testerOverlay.whatsNew' => ({required Object build}) => 'What\'s new in build ${build}',
 			'testerOverlay.thanks' => 'Thank you for putting your log at risk in order to help us make this app better!',
 			'extensionsPanel.categoryActivity' => 'Activities',
+			'extensionsPanel.categoryAward' => 'Awards',
 			'extensionsPanel.categoryContest' => 'Contests',
 			'extensionsPanel.categoryLookup' => 'Callsign Lookups',
 			'extensionsPanel.categorySpots' => 'Spot Sources',
@@ -8627,9 +8631,9 @@ extension on Translations {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'The connection is struggling — skipping frames.',
 			'operation.layout.panels.remoteScreenStalled' => 'Frames stopped getting through — this connection may be too slow.',
-			'operation.layout.panels.radioDescription' => 'A radio\'s front panel — frequency, mode and power, under CAT control',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.radioDescription' => 'A radio\'s front panel — frequency, mode and power, under CAT control',
 			'operation.layout.panels.radioStyle' => 'Style',
 			'operation.layout.panels.radioStyleLcd' => 'LCD',
 			'operation.layout.panels.radioStyleModern' => 'Modern',
@@ -9141,9 +9145,9 @@ extension on Translations {
 			'settings.logging.countryFlagsDescription.dx' => 'Showing flags only for DX contacts',
 			'settings.logging.countryFlagsDescription.all' => 'Showing flags for all contacts',
 			'settings.logging.countryFlagsDescription.none' => 'Not showing any flags',
-			'settings.logging.suggestDefaultOperator.title' => 'Suggest Operator',
 			_ => null,
 		} ?? switch (path) {
+			'settings.logging.suggestDefaultOperator.title' => 'Suggest Operator',
 			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offering your callsign as the operator when an operation runs under a different station callsign',
 			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Leaving the operator blank unless you fill it in',
 			'settings.logging.showBearing.title' => 'Show Bearing',
@@ -9655,9 +9659,9 @@ extension on Translations {
 			'settings.station.models.hrd' => 'Radio controlled via Ham Radio Deluxe®',
 			'settings.station.models.hrdNodeName' => 'My Radio (via HRD)',
 			'settings.station.models.n3fjp' => 'Radio controlled via N3FJP',
-			'settings.station.models.n3fjpNodeName' => 'My Radio (via N3FJP)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.n3fjpNodeName' => 'My Radio (via N3FJP)',
 			'settings.station.models.commander' => 'Radio controlled via DXLab Commander',
 			'settings.station.models.commanderNodeName' => 'My Radio (via Commander)',
 			'settings.station.models.antenna' => 'Antenna',
@@ -10169,9 +10173,9 @@ extension on Translations {
 			'switchAccounts.sendEmailInstead' => 'Send a confirmation email instead',
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
-			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',

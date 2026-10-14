@@ -420,7 +420,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
 
   Future<void> _loadSummaries() async {
     final request = ++_summariesRequest;
-    final summaries = await widget.services.chase.summaries({'call': _operation.stationCall});
+    final summaries = await widget.services.chase.summaries(stationOfOperation(_operation));
     if (mounted && request == _summariesRequest) setState(() => _summaries = summaries);
   }
 
@@ -522,10 +522,11 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     final after = _operation;
     if (before.stationCall != after.stationCall) {
       unawaited(_runtime.resolveOurEntity(after));
-      unawaited(_loadSummaries());
     }
     if (before.stationCall != after.stationCall || jsonEncode(before.data) != jsonEncode(after.data)) {
       unawaited(_runtime.refreshControls(after));
+      // A program may hold a checklist per place (WAS): a move shows another.
+      unawaited(_loadSummaries());
     }
   }
 
@@ -683,7 +684,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
         context,
         child: withViewOverrides(
           ChaseImportDropTarget(
-            onFile: (file) => importDroppedChaseFile(context, widget.services, file, stationCall: _operation.stationCall),
+            onFile: (file) => importDroppedChaseFile(context, widget.services, file, station: stationOfOperation(_operation)),
             child: buildDock(
               children: {
                 ChaseView.loggingPanelId: KeyedSubtree(
@@ -925,7 +926,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                 importersOf: (key) => widget.services.chase.programs[key]?.imports ?? const [],
                 onImport: (key, importer) {
                   final program = widget.services.chase.programs[key];
-                  if (program != null) unawaited(runChaseImport(context, widget.services, program, importer, stationCall: _operation.stationCall));
+                  if (program != null) unawaited(runChaseImport(context, widget.services, program, importer, station: stationOfOperation(_operation)));
                 },
                 onManageExtensions: () => _manageExtensions(context),
                 extensionsExpanded: _options['extensionsHidden'] != true,

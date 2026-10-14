@@ -750,7 +750,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       final judged = await chase.judge({
         'call': {
           ...qso,
-          'our': {...?asQsonMap(qso['our']), 'call': widget.operation.stationCall},
+          'our': withPlaceFrom({...?asQsonMap(qso['our']), 'call': widget.operation.stationCalls.firstOrNull ?? ''}, widget.operation.data),
         },
       });
       return judged['call'] ?? const [];
