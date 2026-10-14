@@ -287,9 +287,7 @@ class ExtensionHost {
       _HostIsolateInit(
         mainPort: fromIsolate.sendPort,
         kernelSource: kernelSource,
-        bundles: [
-          for (final p in extensions) [p.key, p.source],
-        ],
+        bundles: [for (final p in extensions) (key: p.key, source: p.source, api: p.api)],
         fetchAllowlists: fetchAllowlists,
         webSocketAllowlists: webSocketAllowlists,
         secrets: secrets,
@@ -597,7 +595,7 @@ class ExtensionHost {
     final token = _nextId++;
     final completer = Completer<void>();
     _pendingReloads[token] = completer;
-    _dispatch({'type': 'reloadBundle', 'token': token, 'key': bundle.key, 'source': bundle.source, 'domains': ?domains});
+    _dispatch({'type': 'reloadBundle', 'token': token, 'key': bundle.key, 'source': bundle.source, 'api': bundle.api, 'domains': ?domains});
     return completer.future.timeout(
       timeout,
       onTimeout: () {
@@ -848,7 +846,7 @@ class _FanOutProgress {
 class _HostIsolateInit {
   final SendPort mainPort;
   final String kernelSource;
-  final List<List<String>> bundles;
+  final List<({String key, String source, int? api})> bundles;
   final Map<String, List<String>> fetchAllowlists;
   final Map<String, List<String>> webSocketAllowlists;
 
@@ -894,7 +892,7 @@ Future<void> _hostIsolateMain(_HostIsolateInit init) async {
   try {
     final loadMillis = await core.init(
       init.kernelSource,
-      [for (final b in init.bundles) ExtensionBundle(key: b[0], source: b[1])],
+      [for (final b in init.bundles) ExtensionBundle(key: b.key, source: b.source, api: b.api)],
       clock: ClockTravelState(anchorRealMillis: init.clockAnchorRealMillis, anchorVirtualMillis: init.clockAnchorVirtualMillis, speed: init.clockSpeed),
     );
     init.mainPort.send({'type': 'ready', 'loadMillis': loadMillis, 'engine': core.engineDescription});
@@ -1127,7 +1125,7 @@ class _HostCore {
         if (domains != null) fetchAllowlists[key] = domains;
         _reloadsInFlight.add(token);
         try {
-          _js.reloadBundle(ExtensionBundle(key: key, source: msg['source'] as String), token);
+          _js.reloadBundle(ExtensionBundle(key: key, source: msg['source'] as String, api: msg['api'] as int?), token);
           // Success is NOT reported here: the kernel's activateReloaded posts
           // `reloadComplete` once activation has genuinely settled, which is
           // strictly later than this call returning.

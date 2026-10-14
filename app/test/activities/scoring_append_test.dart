@@ -17,6 +17,8 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/scoring_service.dart';
 
+import '../support/fake_extension_host.dart' show scoredUuids;
+
 class _StubHost implements ExtensionHost {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -55,10 +57,10 @@ class _FakeExtensions extends ExtensionService {
 /// section per pass, and a sheet that names the pass. [withDay] is what a
 /// tail-aware harness returns; an older one returns no day.
 Map<String, dynamic> _fold(String scorerKey, Map<String, dynamic> args, {bool withDay = true}) {
-  final sent = (args['qsos'] as List).cast<Map<String, dynamic>>();
+  final sent = scoredUuids(args);
   return {
     'qsoScores': {
-      for (final q in sent) q['uuid'] as String: {'value': 1, 'pass': args.containsKey('resumeFrom') ? 'tail' : 'full'},
+      for (final uuid in sent) uuid: {'value': 1, 'pass': args.containsKey('resumeFrom') ? 'tail' : 'full'},
     },
     'daySections': [
       {
@@ -113,7 +115,7 @@ void main() {
     'mode': 'SSB',
     'startAtMillis': DateTime.utc(2026, 7, 15, 13, i).millisecondsSinceEpoch,
   });
-  List<String> sentUuids(Map<String, dynamic> args) => [for (final q in (args['qsos'] as List).cast<Map<String, dynamic>>()) q['uuid'] as String];
+  List<String> sentUuids(Map<String, dynamic> args) => scoredUuids(args);
 
   group('an append replays a tail', () {
     test('the second pass sends only the new contact, with the checkpoint and its day', () async {

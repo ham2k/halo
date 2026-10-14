@@ -128,7 +128,7 @@ class _IoEngineRuntime implements EngineRuntime {
       // The begin/end bracket is what makes extension identity
       // host-declared: the kernel only accepts defineExtension keys matching
       // the manifest key this bundle was loaded under.
-      _evaluate('__polo.beginBundle(${jsonEncode(bundle.key)})', name: 'beginBundle');
+      _evaluate(beginBundleCall(bundle), name: 'beginBundle');
       _evaluate(bundle.source, name: bundle.key);
       _evaluate('__polo.endBundle()', name: 'endBundle');
     }
@@ -140,7 +140,7 @@ class _IoEngineRuntime implements EngineRuntime {
   @override
   void reloadBundle(ExtensionBundle bundle, int token) {
     _evaluate('__polo.unloadBundle(${jsonEncode(bundle.key)})', name: 'unloadBundle');
-    _evaluate('__polo.beginBundle(${jsonEncode(bundle.key)})', name: 'beginBundle');
+    _evaluate(beginBundleCall(bundle), name: 'beginBundle');
     try {
       _evaluate(bundle.source, name: bundle.key);
     } finally {

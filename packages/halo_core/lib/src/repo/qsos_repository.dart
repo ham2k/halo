@@ -25,6 +25,24 @@ import 'qso_history_queries.dart';
 import 'qso_log_stream.dart';
 import 'repo_support.dart';
 
+/// What [QsosRepository.changesSince] found: the log's rows that joined or
+/// changed, the uuids that left it, and the cursor to ask from next time. A
+/// [reset] answer carries the whole log in [qsos] and replaces whatever copy
+/// the reader held.
+///
+/// [count] is how many rows the log holds now. A reader whose copy then
+/// holds another number has missed a write the ledger never recorded, and
+/// asks for the whole log rather than keep a copy it knows is wrong.
+class QsoLogChanges {
+  final String cursor;
+  final bool reset;
+  final List<Qso> qsos;
+  final List<String> removed;
+  final int count;
+
+  const QsoLogChanges({required this.cursor, required this.count, this.reset = false, this.qsos = const [], this.removed = const []});
+}
+
 class QsosRepository with QsoHistoryQueries {
   @override
   final HaLoDatabase db;
@@ -812,6 +830,71 @@ class QsosRepository with QsoHistoryQueries {
     return qsosFromRows(await _forOperationQuery(operationUuid, includeDeleted: includeDeleted).get());
   }
 
+  /// How [operationUuid]'s log — as [forOperation] reads it — has changed
+  /// since [cursor], for a reader that keeps its own copy and cannot follow
+  /// [watchForOperation]: the extension runtime, which would otherwise read
+  /// the whole log on every `getQsos`.
+  ///
+  /// Answers from [_ledger], like the log stream ([rereadTouched]): every row
+  /// a write named under this operation is read again by uuid, so one that
+  /// left the log — deleted, purged, moved to another operation — is reported
+  /// removed, and one that joined or changed is reported in
+  /// [QsoLogChanges.qsos]. Reading again is idempotent, so a footprint whose
+  /// write then failed costs a read and changes nothing. A score-cache write
+  /// changes nothing such a reader holds, and is passed over.
+  ///
+  /// The whole log instead ([QsoLogChanges.reset]) when the changes cannot
+  /// be told: no cursor, one this repository never issued, one older than
+  /// the ledger reaches, a write that reached every row, or more rows than
+  /// one read by uuid should name.
+  ///
+  /// The cursor is taken BEFORE the rows are read. A write landing between
+  /// the two is then read again on the next call — never skipped, which is
+  /// what taking it after would risk.
+  Future<QsoLogChanges> changesSince(String operationUuid, String? cursor) async {
+    final position = _ledger.positionOf(cursor);
+    final next = _ledger.cursor;
+    final footprints = position == null ? null : _ledger.since(position, contentOnly: true);
+    // The rows and the count in one transaction, so they describe one moment:
+    // a contact logged between the two would leave the count one ahead of
+    // what the reader holds, and send it the whole log for nothing.
+    final changes = await db.transaction(() async {
+      final reread = footprints == null ? null : await rereadTouched(db, footprints, operationUuid, includeDeleted: false, limit: _changesLimit);
+      if (reread == null) return null;
+      return (reread: reread, count: await _liveCount(operationUuid));
+    });
+    if (changes == null) {
+      final log = await forOperation(operationUuid);
+      return QsoLogChanges(cursor: next, reset: true, qsos: log, count: log.length);
+    }
+    final kept = {for (final qso in changes.reread.fresh) qso.uuid};
+    return QsoLogChanges(
+      cursor: next,
+      qsos: changes.reread.fresh,
+      removed: [
+        for (final uuid in changes.reread.touched)
+          if (!kept.contains(uuid)) uuid,
+      ],
+      count: changes.count,
+    );
+  }
+
+  /// How many rows [forOperation] would read, without reading them.
+  Future<int> _liveCount(String operationUuid) async {
+    final count = db.qsos.uuid.count();
+    final query = db.selectOnly(db.qsos)
+      ..addColumns([count])
+      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false));
+    return (await query.getSingle()).read(count) ?? 0;
+  }
+
+  /// Rows one [changesSince] reads by uuid before reading the whole log is
+  /// the better move. Higher than the log stream's limit: what a reset costs
+  /// this reader is the whole log crossing into the extension runtime, far
+  /// more than a longer read here — and still well under SQLite's
+  /// bound-variable limit.
+  static const _changesLimit = 500;
+
   /// Brings the operation's segment rows up to date with a local edit (see
   /// `OperationsRepository.onLocalSave`): the LATEST `start`/`break` row takes
   /// [override], so the current stretch follows the edit, and EVERY row that
@@ -1305,7 +1388,7 @@ class QsosRepository with QsoHistoryQueries {
           batch.update(db.qsos, QsosCompanion(scoreCache: Value(entry.value)), where: (q) => q.uuid.equals(entry.key));
         }
       });
-      _touch([operationUuid], scoreCacheByUuid.keys);
+      _ledger.record({operationUuid: scoreCacheByUuid.keys.toSet()}, cacheOnly: true);
     });
   }
 

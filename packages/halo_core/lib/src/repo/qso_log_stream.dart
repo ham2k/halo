@@ -55,23 +55,92 @@ typedef QsoWriteFootprint = Map<String, Set<String>>;
 @internal
 class QsoWriteLedger {
   final _footprints = <QsoWriteFootprint?>[];
+
+  /// Beside each footprint: whether its write touched only what a row caches
+  /// for this device (its scores), and none of the contact itself.
+  final _cacheOnly = <bool>[];
   var _base = 0;
+
+  /// Tells this ledger's positions from another's. A repository made again —
+  /// a test's, a restored database's — starts counting from zero, and a
+  /// position it never issued must read as unknown, not as a place in it.
+  final _epoch = _ledgers++;
+  static var _ledgers = 0;
 
   /// The position a new listener starts consuming from.
   int get end => _base + _footprints.length;
 
+  /// [end] as a token for a reader outside this process's Dart code — the
+  /// extension runtime — which holds it between calls and hands it back.
+  String get cursor => '$_epoch:$end';
+
+  /// The position [cursor] names, or null when this ledger never issued it.
+  int? positionOf(String? cursor) {
+    final parts = cursor?.split(':');
+    if (parts == null || parts.length != 2 || parts[0] != '$_epoch') return null;
+    final position = int.tryParse(parts[1]);
+    return position == null || position > end ? null : position;
+  }
+
   /// Records what a write touched; `null` for a write that reaches every row.
-  void record(QsoWriteFootprint? footprint) {
+  /// [cacheOnly] marks a write of what a row caches and nothing else.
+  void record(QsoWriteFootprint? footprint, {bool cacheOnly = false}) {
     _footprints.add(footprint);
+    _cacheOnly.add(cacheOnly);
     if (_footprints.length > _ledgerCapacity) {
       _footprints.removeAt(0);
+      _cacheOnly.removeAt(0);
       _base++;
     }
   }
 
   /// The footprints recorded since [cursor], or null when the ledger no
   /// longer reaches back that far.
-  List<QsoWriteFootprint?>? since(int cursor) => cursor < _base ? null : _footprints.sublist(cursor - _base);
+  ///
+  /// [contentOnly] leaves out the cache-only writes, for a reader that holds
+  /// the contacts and not their scores: a rescore caches a verdict on every
+  /// contact, and counting that as a change would hand such a reader the
+  /// whole log after every one. A log stream must not leave them out — it
+  /// shows the scores, and pairs one footprint with each table update.
+  List<QsoWriteFootprint?>? since(int cursor, {bool contentOnly = false}) {
+    if (cursor < _base) return null;
+    final from = cursor - _base;
+    return [
+      for (var i = from; i < _footprints.length; i++)
+        if (!contentOnly || !_cacheOnly[i]) _footprints[i],
+    ];
+  }
+}
+
+/// The rows [footprints] name under [operationUuid], read again: [touched],
+/// every uuid named, and [fresh], those of them still in the operation's log
+/// as [includeDeleted] reads it — so a touched row missing from [fresh] has
+/// left it, deleted or moved to another operation. Null when only a whole
+/// read will do: a footprint that reached every row, or more than [limit]
+/// rows to read.
+///
+/// By uuid alone, not through the operation filter: a row that left the log
+/// has to be found to be known gone, and one that joined it to be placed.
+@internal
+Future<({Set<String> touched, List<Qso> fresh})?> rereadTouched(
+  HaLoDatabase db,
+  List<QsoWriteFootprint?> footprints,
+  String operationUuid, {
+  required bool includeDeleted,
+  required int limit,
+}) async {
+  if (footprints.contains(null)) return null;
+  final touched = {for (final footprint in footprints) ...?footprint![operationUuid]};
+  if (touched.isEmpty) return (touched: touched, fresh: const <Qso>[]);
+  if (touched.length > limit) return null;
+  final rows = await (db.select(db.qsos)..where((q) => q.uuid.isIn(touched.toList()))).get();
+  return (
+    touched: touched,
+    fresh: [
+      for (final qso in await qsosFromRows(rows))
+        if (qso.operationUuid == operationUuid && (includeDeleted || !qso.deleted)) qso,
+    ],
+  );
 }
 
 /// An operation's log, followed once for every listener that wants it — the
@@ -253,23 +322,11 @@ class QsoLogFollower {
       }
     }
     final current = _current;
-    if (current == null || footprints == null || unledgered || footprints.contains(null)) return _fresh();
-    final touched = <String>{};
-    for (final footprint in footprints) {
-      touched.addAll(footprint![operationUuid] ?? const {});
-    }
-    if (touched.isEmpty) return null;
-    if (touched.length > _patchLimit) return _fresh();
-    // By uuid alone, not through the operation filter: a row that left this
-    // view — deleted, or moved to another operation — has to be found so it
-    // can be dropped, and one that entered it has to be found so it can be
-    // placed.
-    final rows = await (db.select(db.qsos)..where((q) => q.uuid.isIn(touched.toList()))).get();
-    final fresh = [
-      for (final qso in await qsosFromRows(rows))
-        if (qso.operationUuid == operationUuid && (includeDeleted || !qso.deleted)) qso,
-    ];
-    return _patched(current, touched, fresh);
+    if (current == null || footprints == null || unledgered) return _fresh();
+    final reread = await rereadTouched(db, footprints, operationUuid, includeDeleted: includeDeleted, limit: _patchLimit);
+    if (reread == null) return _fresh();
+    if (reread.touched.isEmpty) return null;
+    return _patched(current, reread.touched, reread.fresh);
   }
 
   /// A whole-log read reconciles everything, so whatever debt was owed is

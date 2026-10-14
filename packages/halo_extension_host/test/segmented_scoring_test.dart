@@ -236,7 +236,18 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'k2hrc-cqww', source: bundleSource('k2hrc-cqww'))],
-        onHostCall: (method, params) async => method == 'getQsos' ? log : null,
+        // The log as a host serves it: `getQsoChanges` is what the kernel's
+        // copy asks, the whole log once and then from its cursor.
+        onHostCall: (method, params) async => switch (method) {
+          'getQsos' => log,
+          'getQsoChanges' => {
+            'cursor': 'test',
+            'reset': params['cursor'] != 'test',
+            'qsos': params['cursor'] == 'test' ? const [] : log,
+            'removed': const <String>[],
+          },
+          _ => null,
+        },
       );
       addTearDown(host.dispose);
       final result =

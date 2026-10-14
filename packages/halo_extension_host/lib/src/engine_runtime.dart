@@ -7,12 +7,24 @@
 // postMessage. See engine_runtime_io.dart / engine_runtime_web.dart and
 // js_engine.dart for the conditional-export wiring.
 
+import 'dart:convert';
+
 class ExtensionBundle {
   final String key;
   final String source;
 
-  const ExtensionBundle({required this.key, required this.source});
+  /// The extension API level its manifest declares — what the kernel keys a
+  /// contract change on, such as handing the shared log's QSOs frozen
+  /// (`extensions/sdk/src/logCopy.ts`). Null for an extension built with
+  /// the app, which is always at the app's own level.
+  final int? api;
+
+  const ExtensionBundle({required this.key, required this.source, this.api});
 }
+
+/// The kernel's `beginBundle` call for [bundle]: the host declares the key
+/// the bundle may define, and the API level it was built for.
+String beginBundleCall(ExtensionBundle bundle) => '__polo.beginBundle(${jsonEncode(bundle.key)}, ${jsonEncode(bundle.api)})';
 
 class ExtensionHostException implements Exception {
   final String message;

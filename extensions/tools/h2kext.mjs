@@ -37,8 +37,9 @@ import yazl from "yazl"
 /// tuner, passband and antennas, the keying calls, what `readRadio` reports of
 /// them, and the scene's host-fed `radio` values; 8 adds the Developer
 /// panel's `target: 'developer'` settings and leaves a settings panel with
-/// nothing to show out of the Settings list.
-export const H2KEXT_API_VERSION = 8
+/// nothing to show out of the Settings list; 9 hands `ctx.getQsos`'s QSOs
+/// frozen, from the one copy of the log every extension shares.
+export const H2KEXT_API_VERSION = 9
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -147,6 +148,7 @@ SHARED_MODULES_BY_API[5] = SHARED_MODULES_BY_API[4]
 SHARED_MODULES_BY_API[6] = SHARED_MODULES_BY_API[5]
 SHARED_MODULES_BY_API[7] = SHARED_MODULES_BY_API[6]
 SHARED_MODULES_BY_API[8] = SHARED_MODULES_BY_API[7]
+SHARED_MODULES_BY_API[9] = SHARED_MODULES_BY_API[8]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

@@ -1,8 +1,30 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+
+/// The uuids of the contacts a scoring batch pass hands its scorer, as the
+/// runtime hands them over. A tail goes over as `qsos`; a full pass names its
+/// contacts in `qsoUuids`, and the runtime folds them from its copy of the log
+/// (`withLoggedQsos` in the SDK kernel). A fake standing in for the runtime
+/// reads both, or it sees an empty fold wherever the host sent the whole log.
+List<String> scoredUuids(Object? args) {
+  final map = args as Map;
+  final qsos = map['qsos'];
+  if (qsos is List) return [for (final qso in qsos.cast<Map<dynamic, dynamic>>()) qso['uuid'] as String];
+  return (map['qsoUuids'] as List).cast<String>();
+}
+
+/// The contacts [scoredUuids] names, for a fake that folds what they hold: a
+/// full pass's read from [qsos], as the runtime reads them from its copy.
+Future<List<Map<String, dynamic>>> scoredQsos(Object? args, QsosRepository qsos) async {
+  final map = args as Map;
+  if (map['qsos'] case final List<dynamic> sent) return sent.cast<Map<String, dynamic>>();
+  final byUuid = {for (final qso in await qsos.forOperation((map['operation'] as Map)['uuid'] as String)) qso.uuid: qso.data};
+  return [for (final uuid in scoredUuids(args)) ?byUuid[uuid]];
+}
 
 /// An [ExtensionHost] that answers hook calls from a map instead of a JS
 /// runtime. Keys are `'category:key:method'` for [invokeHook] — and for each

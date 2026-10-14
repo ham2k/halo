@@ -33,6 +33,14 @@ class BundleEntry {
   final String name;
   final String? category;
 
+  /// The extension API level the manifest declares, null when it declares none.
+  final int? api;
+
+  /// The level the runtime holds this extension to, as the app's
+  /// `ExtensionInfo.runtimeApi` reads it: a built-in at the app's own (null),
+  /// any other that declares none at 0.
+  int? get runtimeApi => core ? null : (api ?? 0);
+
   /// The hook categories the manifest DECLARES. Informational — the runtime
   /// learns the real ones from `registerHook`, which is what `list --hooks`
   /// reports.
@@ -63,6 +71,7 @@ class BundleEntry {
     this.requiresLocation = false,
     this.allowUserAgentOverride = false,
     this.category,
+    this.api,
     this.hooks = const [],
   });
 
@@ -78,6 +87,7 @@ class BundleEntry {
     requiresLocation: json['requiresLocation'] as bool? ?? false,
     allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
     name: json['name'] as String? ?? json['key'] as String,
+    api: (json['api'] as num?)?.toInt(),
     category: json['category'] as String?,
     hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
     fromDevServer: json['fromDevServer'] as bool? ?? false,

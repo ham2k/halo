@@ -106,11 +106,11 @@ void main() {
           {'key': 'core', 'ok': true, 'value': 'always'},
         ],
         'scoring:core:scoreQsos': (Object? args) {
-          final sent = ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>();
-          passes.add(args.cast<String, dynamic>());
+          final sent = scoredUuids(args);
+          passes.add((args as Map).cast<String, dynamic>());
           return {
             'qsoScores': {
-              for (final q in sent) q['uuid'] as String: {'value': 1},
+              for (final uuid in sent) uuid: {'value': 1},
             },
             'daySections': const <dynamic>[],
             'operationSummary': const <String, dynamic>{},
@@ -165,7 +165,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
     expect(passes, hasLength(1));
-    expect((passes.single['qsos'] as List).length, 2, reason: 'the open pass folds the whole log');
+    expect(scoredUuids(passes.single).length, 2, reason: 'the open pass folds the whole log');
     expect(passes.single.containsKey('resumeFrom'), isFalse);
 
     final added = await services.qsos.add(operation.uuid, {
@@ -178,8 +178,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
     expect(passes, hasLength(2));
-    final tail = (passes.last['qsos'] as List).cast<Map<String, dynamic>>();
-    expect(tail.map((q) => q['uuid']), [added.uuid], reason: 'the pass after a logged contact replays only that contact');
+    expect(scoredUuids(passes.last), [added.uuid], reason: 'the pass after a logged contact replays only that contact');
     expect(passes.last['resumeFrom'], {'folded': 2});
 
     // An edit moves no count. Only a fingerprint that carries every stamp
@@ -200,7 +199,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
     expect(passes, hasLength(3), reason: 'an edit is a rescore');
-    expect((passes.last['qsos'] as List).length, 3);
+    expect(scoredUuids(passes.last).length, 3);
     expect(passes.last.containsKey('resumeFrom'), isFalse);
 
     await tester.pumpWidget(const SizedBox());
@@ -222,11 +221,11 @@ void main() {
           {'key': 'core', 'ok': true, 'value': 'always'},
         ],
         'scoring:core:scoreQsos': (Object? args) {
-          final sent = ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>();
-          passes.add(args.cast<String, dynamic>());
+          final sent = scoredUuids(args);
+          passes.add((args as Map).cast<String, dynamic>());
           return {
             'qsoScores': {
-              for (final q in sent) q['uuid'] as String: {'value': 1},
+              for (final uuid in sent) uuid: {'value': 1},
             },
             'daySections': const <dynamic>[],
             'operationSummary': const <String, dynamic>{},

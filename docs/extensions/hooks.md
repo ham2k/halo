@@ -60,9 +60,12 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   raw QSON, oldest first, excluding soft-deleted records but *including*
   event markers (`band: 'event'`) — or null when the operation is unknown or
   the host has no log access, distinct from `[]` (the operation exists and
-  simply has no QSOs yet). Each call is a bridge round-trip carrying a whole
-  log — fine at command-execution or export scale, not on per-keystroke
-  paths.
+  simply has no QSOs yet). Every extension reads one copy of the log the
+  runtime keeps, which asks the host only what changed since the last read:
+  a call is never staler than itself, and the whole log crosses the bridge
+  only the first time. Each call gets a new array. From extension API 9 its
+  QSOs are that shared copy, frozen — a write throws, so copy what you mean
+  to change; under an older `api` each call gets QSOs of its own.
 * `getSpotsForCall?(call, maxAgeMinutes = 30)` — the spots the host has
   already fetched for `call`, no older than `maxAgeMinutes` (measured on the
   spot's own `spot.timeInMillis`, not on when it was fetched), newest first.
@@ -2178,7 +2181,8 @@ its first render.
 
 The whole log is deliberately absent from `render`'s args. A panel that
 needs it calls `ctx.getQsos(operation.uuid)` — right for a `'qsoLogged'`
-render, wrong for a per-keystroke one. Spots are absent for the same reason:
+render, which comes for every change to the log: a contact logged, edited
+or deleted, or one a sync brought in. Spots are absent for the same reason:
 a panel showing them declares `'spots'` and calls `ctx.getSpots()`, which
 answers the operator's own filtered board, judged against this operation.
 

@@ -92,6 +92,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     operation: _draftOperation ?? _operationForPanels,
     qso: _draftQso,
     qsoCount: _realQsoCountForTabs,
+    log: _logForPanels,
     spotsRevision: _spotsRevision,
     lookupRevision: _lookupRevision,
   );

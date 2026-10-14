@@ -50,6 +50,7 @@ import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./
 import { installAppClock } from "./appClock.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
 import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
+import { createLogCopies, deepFreeze, FROZEN_QSOS_API, type LogChanges } from "./logCopy.ts"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"
 import * as libCountryFiles from "@ham2k/lib-country-files"
@@ -191,6 +192,22 @@ const hooks: HookRecord[] = []
 // Null for the kernel's own definitions, made outside any bundle window:
 // nothing can unload those, which is the intent.
 const definingBundle: Record<string, string | null> = {}
+// The extension API level each bundle's manifest declares, as the host
+// states it at `beginBundle` — null for one built with the app, which is
+// always at the app's own level. Read through `apiOf`.
+const bundleApi: Record<string, number | null> = {}
+
+/// The API level [extensionKey] was built for: its defining bundle's, and
+/// the app's own for a bundle that declares none or for the kernel's own.
+function apiOf(extensionKey: string): number {
+  const bundle = definingBundle[extensionKey]
+  return (bundle ? bundleApi[bundle] : null) ?? Infinity
+}
+
+const logCopies = createLogCopies({
+  changes: async (operationUuid, cursor) => (await dispatchHostCall("getQsoChanges", { operationUuid, cursor })) as LogChanges | null,
+  whole: async (operationUuid) => (await dispatchHostCall("getQsos", { operationUuid })) as Record<string, unknown>[] | null,
+})
 const pendingHostCalls = new Map<number, PendingHostCall>()
 let nextHostCallId = 1
 
@@ -548,11 +565,13 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     // per call like the rest of ctx but deliberately NOT cached like
     // settings/account above — log data changes with every QSO, and a
     // 3s-stale QSO list is exactly what a caller like SEED can't tolerate.
+    // `getQsos` answers from the shared copy, which asks the host what
+    // changed on every call (logCopy.ts), so it is never staler than that.
     // Not identity-bearing (no ns/kvKey), so plain dispatchHostCall is fine.
     getOperation: async (uuid: string) => ((await dispatchHostCall("getOperation", { uuid })) as Record<string, unknown> | null) ?? null,
     // Null (unknown operation / no log access) passes through untouched —
     // it means something different from [] (see HookContext.getQsos).
-    getQsos: async (operationUuid: string) => (await dispatchHostCall("getQsos", { operationUuid })) as Record<string, unknown>[] | null,
+    getQsos: (operationUuid: string) => logCopies.read(operationUuid, { frozen: apiOf(record.extensionKey) >= FROZEN_QSOS_API }),
     // Reads the host's already-fetched spot cache; never triggers a fetch,
     // so it is cheap enough for the per-keystroke lookup pipeline (see
     // HookContext.getSpotsForCall).
@@ -598,7 +617,40 @@ async function runHook(category: HookCategoryName, key: string | null, method: s
   }
   const requested = (args as { online?: unknown } | null)?.online
   const online = typeof requested === "boolean" ? requested : true
+  if (category === "scoring") args = await withLoggedQsos(record, args)
   return await callHookMethod(record, method, args, online)
+}
+
+/// A full rescore names the contacts it read (`qsoUuids`) instead of sending
+/// them: they come from the shared log copy here, in the host's order, so the
+/// log crosses the bridge once per change rather than once per scorer per
+/// pass. Every scorer still finds `qsos` in its args, so a bundle on any SDK
+/// folds them unchanged — frozen at the frozen level, copies below it.
+///
+/// `qsos` the host sent as themselves — a tail, the live paths' replay — are
+/// frozen at that level too. A scorer handed writable contacts on most passes
+/// and frozen ones on a full pass would fail only on the pass that rescores
+/// everything, inside the app and nowhere else.
+///
+/// Uuids, not "the log", because the host's checkpoint digest counts exactly
+/// the contacts it read: one logged since, folded here, would be replayed as
+/// the next pass's tail and counted twice. One deleted or edited since is
+/// absent or newer here, which the digest no longer matches, so the next
+/// pass folds cold (`resolveScoringResume`).
+async function withLoggedQsos(record: HookRecord, args: unknown): Promise<unknown> {
+  const { qsoUuids, ...rest } = (args ?? {}) as { qsoUuids?: unknown; qsos?: unknown }
+  const frozen = apiOf(record.extensionKey) >= FROZEN_QSOS_API
+  if (Array.isArray(rest.qsos)) {
+    if (frozen) deepFreeze(rest.qsos)
+    return args
+  }
+  if (!Array.isArray(qsoUuids)) return args
+  const operationUuid = operationUuidOf(args)
+  const qsos = operationUuid ? await logCopies.pick(operationUuid, qsoUuids.map(String), { frozen }) : null
+  // A log the runtime cannot read is a failed pass, not an empty one: folded
+  // as empty, its zero totals would replace the operation's cached score.
+  if (qsos === null) throw new Error(`scoreQsos named contacts of an operation whose log cannot be read (${operationUuid ?? "no operation"})`)
+  return { ...rest, qsos }
 }
 
 /// Activates one extension, returning once its onActivation call (and
@@ -749,9 +801,10 @@ const kernel = {
 
   /// Host-only bracketing of bundle evaluation — see the block comment on
   /// currentBundleKey above.
-  beginBundle(key: string) {
+  beginBundle(key: string, api?: number | null) {
     bundlesStarted = true
     currentBundleKey = key
+    bundleApi[key] = typeof api === "number" ? api : null
   },
 
   endBundle() {

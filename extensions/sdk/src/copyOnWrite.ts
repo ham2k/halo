@@ -19,8 +19,12 @@
 //
 // Sheets are JSON (`Scoresheet = JSONValue`): plain objects, arrays and
 // primitives, which is all the view knows how to wrap. A sheet with an
-// accessor, or one that is frozen, is outside the contract, and the view
-// throws at the first touch rather than pretend.
+// accessor is outside the contract, and the view throws at the first touch
+// rather than pretend. A FROZEN container is inside it: a scorer at extension
+// API 9 is handed the log's QSOs frozen, and may keep part of one in its
+// sheet. A proxy over a frozen object must hand back each nested value as it
+// is — the language refuses a view of it — so a frozen container is viewed
+// through a shallow copy of itself instead, which the view may then wrap.
 
 /// A view of [base] that a caller may mutate freely; [base] is never written.
 ///
@@ -29,7 +33,13 @@
 /// later read agree about what was written through it. A view over a view
 /// works the same way, each layer with its own overlay.
 export function copyOnWrite<T>(base: T): T {
-  return isContainer(base) ? (wrap(base) as T) : base
+  return isContainer(base) ? (wrap(wrappable(base)) as T) : base
+}
+
+/// [value] itself, or a shallow copy when it is frozen — see the header.
+function wrappable<T extends object>(value: T): T {
+  if (!Object.isFrozen(value)) return value
+  return (Array.isArray(value) ? [...value] : { ...value }) as T
 }
 
 function isContainer(value: unknown): value is object {
@@ -52,7 +62,7 @@ function wrap<T extends object>(target: T): T {
       // prototype (`push`, `some`) must stay the real function, called with the
       // view as `this` so its reads and writes go through these traps.
       if (isContainer(value) && Object.prototype.hasOwnProperty.call(t, key)) {
-        const view = wrap(value)
+        const view = wrap(wrappable(value))
         own.set(key, view)
         return view
       }

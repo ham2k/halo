@@ -256,7 +256,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   };
 
   @override
-  PanelRenderContext get panelRenderContext => PanelRenderContext(operation: _operation, qsoCount: _realQsoCount);
+  PanelRenderContext get panelRenderContext => PanelRenderContext(operation: _operation, qsoCount: _realQsoCount, log: _logForPanels);
 
   /// This view's own copy of the logging settings, standing in for the
   /// operation's wherever its logging pane offers them — see [LoggingScope].
@@ -392,6 +392,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   CallInfoData? _callInfo;
   String? _selectedQsoUuid;
   int _realQsoCount = 0;
+  List<Qso>? _logForPanels;
 
   /// The period's contacts for this station, and their fingerprint, as last
   /// filtered — redone only when the log, the period's start or the station
@@ -608,6 +609,9 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
         final operation = _operation;
         final filtered = _filter(snapshot.data ?? const <Qso>[], operation.stationCalls.first);
         _realQsoCount = filtered.qsos.where((q) => q.isRealContact).length;
+        // The stream's own list, not the filtered one: that is built again
+        // on every build, and a new list is what tells panels the log changed.
+        _logForPanels = snapshot.data;
         return _buildScaffold(context, operation, filtered.qsos, filtered.fingerprint);
       },
     );

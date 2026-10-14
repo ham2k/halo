@@ -23,6 +23,7 @@ class _ExtensionHostCalls {
       'translateAll' => _translateAll(params),
       'getOperation' => _getOperation(params),
       'getQsos' => _getQsos(params),
+      'getQsoChanges' => _getQsoChanges(params),
       'getSpotsForCall' => _getSpotsForCall(params),
       'getSpots' => _getSpots(params),
       'getHistoryForCall' => _getHistoryForCall(params),
@@ -230,6 +231,27 @@ class _ExtensionHostCalls {
     // Excludes soft-deleted records, keeps event markers; oldest first.
     final list = await _service.qsos!.forOperation(operationUuid);
     return [for (final qso in list) qso.data];
+  }
+
+  /// The kernel's copy of a log, kept in step (`extensions/sdk/src/logCopy.ts`):
+  /// what changed since the cursor it holds — or the whole log, `reset`, when
+  /// that cannot be told — and the cursor to hold next. Null exactly where
+  /// [_getQsos] is null. Each row carries its uuid from the row itself, since
+  /// the copy is keyed on it.
+  Future<dynamic> _getQsoChanges(Map<String, dynamic> params) async {
+    final operationUuid = params['operationUuid'] as String;
+    if (_service.operations == null || _service.qsos == null) return null;
+    if (await _service.operations!.get(operationUuid) == null) return null;
+    final changes = await _service.qsos!.changesSince(operationUuid, params['cursor'] as String?);
+    return {
+      'cursor': changes.cursor,
+      'reset': changes.reset,
+      'qsos': [
+        for (final qso in changes.qsos) {...qso.data, 'uuid': qso.uuid},
+      ],
+      'removed': changes.removed,
+      'count': changes.count,
+    };
   }
 
   Future<dynamic> _getSpotsForCall(Map<String, dynamic> params) async {

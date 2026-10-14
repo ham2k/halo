@@ -267,6 +267,17 @@ class ExtensionInfo with ExtensionSearchable {
       const ListEquality<String>().equals(webSockets, other.webSockets);
 
   final bool core;
+
+  /// The extension API level the manifest declares (see
+  /// `ExtensionBundle.api`), null when it declares none.
+  final int? api;
+
+  /// The level the runtime holds this extension to. A built-in is always at
+  /// the app's own (null); any other that declares none is the oldest, 0 —
+  /// as the install check reads it, so nothing installed as API 0 is then
+  /// handed what only a newer one was promised, such as frozen QSOs.
+  int? get runtimeApi => core ? null : (api ?? 0);
+
   @override
   final String name;
   final String? shortName;
@@ -332,6 +343,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresRadioRead = false,
     this.requiresRadioWrite = false,
     required this.core,
+    this.api,
     required this.name,
     this.shortName,
     this.category,
@@ -365,6 +377,7 @@ class ExtensionInfo with ExtensionSearchable {
     // A stale index without metadata degrades to "everything core" —
     // the fail-safe: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,
+    api: (json['api'] as num?)?.toInt(),
     name: json['name'] as String? ?? json['key'] as String,
     shortName: json['shortName'] as String?,
     category: json['category'] as String?,

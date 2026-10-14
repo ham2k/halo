@@ -74,7 +74,7 @@ class ExtRuntime {
 
     final host = await ExtensionHost.start(
       kernelSource: index.kernelSource,
-      extensions: [for (final entry in selected) ExtensionBundle(key: entry.key, source: index.sourceFor(entry))],
+      extensions: [for (final entry in selected) ExtensionBundle(key: entry.key, source: index.sourceFor(entry), api: entry.runtimeApi)],
       onHostCall: onHostCall,
       fetchAllowlists: {for (final entry in selected) entry.key: entry.domains},
       webSocketAllowlists: {for (final entry in selected) entry.key: entry.webSockets},

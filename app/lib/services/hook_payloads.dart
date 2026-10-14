@@ -22,16 +22,20 @@ import 'package:halo_core/halo_core.dart';
 /// `local` carries that one field and not the whole blob: `localData` also
 /// holds the scoring cache and the title fragments, which have no business in
 /// an export payload crossing the extension bridge.
-Map<String, dynamic> qsonPayloadFor({required Operation operation, required List<Qso> qsos}) {
+Map<String, dynamic> qsonPayloadFor({required Operation operation, required List<Qso> qsos}) => {
+  'operation': operationQsonFor(operation),
+  'qsos': [for (final qso in qsos) qso.data],
+};
+
+/// The `operation` half of [qsonPayloadFor], for a payload that sends its
+/// contacts some other way (a scoring pass naming them by uuid).
+Map<String, dynamic> operationQsonFor(Operation operation) {
   final operatorCall = operatorCallFor(operation);
   return {
-    'operation': {
-      ...operation.data,
-      'uuid': operation.uuid,
-      'operatorCall': operatorCall,
-      'local': {'operatorCall': operatorCall},
-    },
-    'qsos': [for (final qso in qsos) qso.data],
+    ...operation.data,
+    'uuid': operation.uuid,
+    'operatorCall': operatorCall,
+    'local': {'operatorCall': operatorCall},
   };
 }
 

@@ -19,6 +19,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/scoring_service.dart';
 
 import '../support/error_reporting_fakes.dart';
+import '../support/fake_extension_host.dart';
 
 class _RecordingHost implements ExtensionHost {
   final List<({String? key, String method, Object? args})> calls = [];
@@ -401,9 +402,10 @@ void main() {
       final service = ScoringService(extensions: _LiveExtensions(host), qsos: qsos, operations: operations);
       await service.rescoreOperation((await operations.get(operation.uuid))!);
 
-      List<Object?> sentCalls() =>
-          ((host.calls.lastWhere((c) => c.method == 'scoreQsos').args as Map)['qsos'] as List).map((q) => ((q as Map)['their'] as Map)['call']).toList();
-      expect(sentCalls(), ['W1AW']);
+      Future<List<Object?>> sentCalls() async => [
+        for (final q in await scoredQsos(host.calls.lastWhere((c) => c.method == 'scoreQsos').args, qsos)) (q['their'] as Map)['call'],
+      ];
+      expect(await sentCalls(), ['W1AW']);
 
       // Without this, the summary would keep counting the contact the edit
       // just made incomplete: an empty fold must still run and be written.
@@ -420,7 +422,7 @@ void main() {
       host.calls.clear();
       await service.rescoreOperation((await operations.get(operation.uuid))!, full: true);
       expect(host.calls.where((c) => c.method == 'scoreQsos'), hasLength(1));
-      expect(sentCalls(), isEmpty);
+      expect(await sentCalls(), isEmpty);
     });
   });
 

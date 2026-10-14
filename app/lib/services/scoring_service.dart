@@ -377,8 +377,12 @@ class ScoringService {
       final append = resume != null && resume.tail.isNotEmpty && scorers.every((scorer) => resume.checkpoints.containsKey(scorer.key));
 
       final payload = {
-        ...qsonPayloadFor(operation: operation, qsos: append ? const [] : qsoList),
-        if (append) 'qsos': resume.tail,
+        'operation': operationQsonFor(operation),
+        // A tail is a handful of contacts and goes as itself. A full pass
+        // names the contacts it read, and the runtime folds them from its
+        // copy of the log (`withLoggedQsos` in the SDK kernel) — the whole
+        // log would otherwise cross the bridge once per scorer.
+        if (append) 'qsos': resume.tail else 'qsoUuids': [for (final qso in qsoList) qso.uuid],
         // The runtime keeps this pass's end sheet under this name, so the live
         // paths can name it rather than send it back on every keystroke.
         'checkpointKey': checkpointKeyOf(checkpoint),

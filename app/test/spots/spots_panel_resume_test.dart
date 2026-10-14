@@ -33,6 +33,9 @@ class _FakeExtensions extends ExtensionService {
   final List<Map<String, dynamic>> board;
   final List<ScoringResume?> resumes = [];
 
+  /// What the runtime would fold a full pass from.
+  late final QsosRepository log;
+
   /// One instance throughout: the board resumes only from a pass folded by
   /// the host still answering.
   final ExtensionHost _host = FakeExtensionHost();
@@ -46,7 +49,7 @@ class _FakeExtensions extends ExtensionService {
   /// The rescore's pass: a sheet naming the calls it folded.
   @override
   Future<Map<String, dynamic>?> scoreQsos({required String scorerKey, required Map<String, dynamic> args}) async {
-    final sent = (args['qsos'] as List).cast<Map<String, dynamic>>();
+    final sent = await scoredQsos(args, log);
     return {
       'qsoScores': {
         for (final q in sent) q['uuid'] as String: const {'value': 1},
@@ -112,6 +115,7 @@ void main() {
 
     final operations = OperationsRepository(db);
     final qsos = QsosRepository(db);
+    extensions.log = qsos;
     final created = await operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     await qsos.add(created.uuid, {
       'their': {'call': 'W1AW'},

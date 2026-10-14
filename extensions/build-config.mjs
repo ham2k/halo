@@ -259,6 +259,9 @@ export function indexEntryFor({ key, manifest: m }) {
     key,
     file: `${key}.js`,
     version: m.version,
+    // A built-in declares none and is at the app's own level; a dev-served
+    // catalog extension declares the level it was built for.
+    ...(m.api ? { api: m.api } : {}),
     domains: m.domains ?? [],
     ...(m.webSockets?.length ? { webSockets: m.webSockets } : {}),
     ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),

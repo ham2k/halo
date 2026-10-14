@@ -27,6 +27,7 @@ import type { ExtensionDefinition, HookContext, JSONValue } from "./types.ts"
 import { installAppClock } from "./appClock.ts"
 import type { AppClockHandle } from "./appClock.ts"
 import { createTimerQueue } from "./timerQueue.ts"
+import { deepFreeze, FROZEN_QSOS_API } from "./logCopy.ts"
 
 /// A host call's stand-in answer, by method name (`getSettings`,
 /// `dbLookupSelectAll`, `fetch`…). Anything unlisted answers null, which
@@ -38,6 +39,11 @@ export interface LoadExtensionOptions {
   hostCalls?: HostCallStubs
   /// Merged over the default context handed to every hook call.
   ctx?: Partial<HookContext>
+  /// The extension API level to run under. Defaults to the `api` the
+  /// definition carries from its manifest. One that declares none is held to
+  /// the levels the app holds it to: a built-in (no `category`) at the app's
+  /// own, any other at 0.
+  api?: number
 }
 
 export interface RunHookOptions {
@@ -304,6 +310,14 @@ export async function loadExtension(importer: () => Promise<unknown>, options: L
   // fires, in the app as here — the work it scheduled silently never happens.
   if (timerRefusals.length) throw new Error(`loadExtension: ${timerRefusals.join("; ")}`)
 
+  // From API 9 the app hands an extension the log's QSOs frozen (logCopy.ts),
+  // and a write to one throws. A harness that handed them over writable would
+  // let an extension pass its own tests and throw inside the app.
+  const declared = (definitions[0] as { api?: unknown }).api
+  const api = options.api ?? (typeof declared === "number" ? declared : definitions[0].category ? 0 : Infinity)
+  const frozenQsos = api >= FROZEN_QSOS_API
+  const frozenCopy = <T>(value: T): T => deepFreeze(structuredClone(value))
+
   return {
     definitions,
     hooks,
@@ -327,6 +341,17 @@ export async function loadExtension(importer: () => Promise<unknown>, options: L
         throw new Error(`runHook: '${category}' hook has no '${method}' method — it has: ${methods || "none"}`)
       }
       const ctx = { ...defaultContext, ...options.ctx, ...runOptions.ctx } as HookContext
+      if (frozenQsos) {
+        const getQsos = ctx.getQsos
+        if (getQsos) {
+          ctx.getQsos = async (uuid) => {
+            const log = await getQsos(uuid)
+            return log && frozenCopy(log)
+          }
+        }
+        const sent = (args as { qsos?: unknown } | null)?.qsos
+        if (category === "scoring" && Array.isArray(sent)) args = { ...(args as object), qsos: frozenCopy(sent) }
+      }
       return await (member as (a: unknown, c: HookContext) => unknown).call(hook, args, ctx)
     },
   }

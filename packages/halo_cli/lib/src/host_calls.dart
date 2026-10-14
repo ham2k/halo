@@ -108,6 +108,26 @@ class CliHostCalls {
   final LookupStore? lookups;
   final LogContext log;
 
+  /// The one cursor `getQsoChanges` issues: the log never changes in a run.
+  static const _logCursor = 'cli';
+
+  /// The log as `getQsoChanges` hands it over: the contacts that are not
+  /// deleted, each with a uuid of its own. The kernel's copy keys contacts on
+  /// it, and a hand-written `--qsos` often carries none, or the same one
+  /// twice — without one each, every such contact would collapse into one.
+  late final List<Map<String, Object?>> _liveQsos = () {
+    final seen = <String>{};
+    var index = 0;
+    return [
+      for (final qso in log.qsos!)
+        if (!asQsonBool(qso['deleted']))
+          switch (qso['uuid']) {
+            final String uuid when seen.add(uuid) => qso,
+            _ => {...qso, 'uuid': 'cli-qso-${index++}'},
+          },
+    ];
+  }();
+
   /// Where `getLocation` answers from — `--location lat,lon`, since a CLI has
   /// no GPS. Null means "no fix", which is a normal answer the extensions
   /// already handle (permission denied on a device looks the same).
@@ -195,6 +215,20 @@ class CliHostCalls {
           for (final qso in log.qsos!)
             if (!asQsonBool(qso['deleted'])) qso,
         ];
+
+      case 'getQsoChanges':
+        // The kernel's copy of the log (extensions/sdk/src/logCopy.ts). The
+        // log here is fixed for the whole run, so the first ask gets all of
+        // it and every later one, holding the cursor it was given, gets
+        // nothing. Null exactly where `getQsos` is null.
+        if (log.qsos == null) return null;
+        final ours = log.operation?['uuid'];
+        if (ours != null && ours != params['operationUuid']) return null;
+        final live = _liveQsos;
+        if (params['cursor'] == _logCursor) {
+          return {'cursor': _logCursor, 'reset': false, 'qsos': const <Object?>[], 'removed': const <String>[], 'count': live.length};
+        }
+        return {'cursor': _logCursor, 'reset': true, 'qsos': live, 'removed': const <String>[], 'count': live.length};
 
       case 'getSpotsForCall':
         final call = (params['call'] as String?)?.toUpperCase();

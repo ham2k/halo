@@ -101,6 +101,12 @@ gives `{}`, a lookup gives `[]`, everything else null — what an extension
 already has to tolerate); pass `hostCalls` to answer a particular one, and
 `ctx` to set the locale or anything else the hook reads.
 
+From extension API 9 the app hands a hook the log's QSOs frozen — through
+`ctx.getQsos`, and as a scorer's `qsos` — and so does `runHook`, taking the
+level from your manifest (or `loadExtension(..., { api })`). A write to one
+throws in your tests where it would throw in the app; copy what you mean to
+change.
+
 Timers run on a clock only the test moves. The extension's `host.setTimeout`
 and friends go to the runtime's own timer queue — the same budget and rules —
 and `ext.timers.advance(ms)` moves the clock, firing whatever comes due in

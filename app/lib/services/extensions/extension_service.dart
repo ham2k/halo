@@ -386,7 +386,7 @@ class ExtensionService
         // until a re-enable restarts the runtime with them included.
         if (!isExtensionActive(info)) continue;
         loaded.add(info.key);
-        bundles.add(ExtensionBundle(key: info.key, source: await _sourceFor(info)));
+        bundles.add(ExtensionBundle(key: info.key, source: await _sourceFor(info), api: info.runtimeApi));
         // The manifest's declared network capabilities (`domains`,
         // `webSockets` and `allowUserAgentOverride`; see
         // extensions/build-config.mjs).

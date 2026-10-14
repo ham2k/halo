@@ -147,6 +147,23 @@ test("freezing the view is refused, and the base stays writable", () => {
   assert.equal(later.qsos, 2)
 })
 
+test("a sheet holding part of a frozen QSO is viewed like any other, and writes still reach only the view", () => {
+  // A scorer at API 9 folds frozen QSOs and may keep a piece of one in its
+  // sheet. A proxy cannot hand back a view of a frozen object's nested values,
+  // so without a way around it the live paths throw on their first read.
+  const refs = Object.freeze([Object.freeze({ type: "pota", ref: "K-0001" })])
+  const base = { refsByCall: { K1ABC: refs } }
+  const view = copyOnWrite(base) as unknown as { refsByCall: Record<string, { type: string; ref: string }[]> }
+  assert.equal(view.refsByCall.K1ABC[0].ref, "K-0001")
+  view.refsByCall.K1ABC[0].ref = "K-0002"
+  view.refsByCall.K1ABC.push({ type: "sota", ref: "W1/AA-001" })
+  assert.equal(view.refsByCall.K1ABC[0].ref, "K-0002")
+  assert.equal(view.refsByCall.K1ABC.length, 2)
+  assert.equal(refs[0].ref, "K-0001")
+  assert.equal(refs.length, 1)
+  assert.equal(copyOnWrite(Object.freeze({ a: 1 })).a, 1, "a frozen sheet itself is viewed too")
+})
+
 test("a primitive is handed back as it is", () => {
   assert.equal(copyOnWrite(3), 3)
   assert.equal(copyOnWrite(null), null)

@@ -68,6 +68,10 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// [nativeTitles] is read by the mixin without it.
   int _realQsoCountForTabs = 0;
 
+  /// The log stream's latest list, for the panels' `qsoLogged` trigger
+  /// (`PanelRenderContext.log`).
+  List<Qso>? _logForPanels;
+
   /// Surface the logging panel wherever this layout keeps it.
   void _revealLoggingPanel() => dockKey.currentState?.revealModule('logging');
 
@@ -264,6 +268,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
     required Operation operation,
   }) {
     _realQsoCountForTabs = realQsoCount;
+    _logForPanels = qsos;
     _operationForPanels = operation;
     // A local_data write rebuilds this view, which is the only signal a
     // POSITION or OPER change gives — see [_republishPeerHeaderIfChanged].

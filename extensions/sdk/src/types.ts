@@ -73,9 +73,14 @@ export interface HookContext {
   /// QSON `data` — oldest first, excluding soft-deleted records but
   /// including event markers (`band: 'event'`). Resolves null when the
   /// operation is unknown or the host has no log access — distinct from
-  /// `[]`, which means the operation exists and simply has no QSOs yet. A
-  /// whole-log read crossing the bridge: fine for command execution or an
-  /// export-sized job, not for per-keystroke paths.
+  /// `[]`, which means the operation exists and simply has no QSOs yet.
+  ///
+  /// Every extension reads one copy of the log the runtime keeps, which asks
+  /// the host only what changed since the last read — so a call is never
+  /// staler than itself, and costs the whole log only the first time. Each
+  /// call gets a new array. From extension API 9 its QSOs are the shared
+  /// ones, frozen: writing to one throws, so copy what you mean to change.
+  /// Under an older `api` each call gets QSOs of its own, as it always did.
   getQsos?(operationUuid: string): Promise<Record<string, JSONValue>[] | null>
   /// Every spot the host has already fetched for [call] (case-insensitive)
   /// that is no older than `maxAgeMinutes` (default 30), newest first.

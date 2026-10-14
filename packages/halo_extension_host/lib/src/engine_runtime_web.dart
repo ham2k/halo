@@ -129,7 +129,7 @@ function handleMessage(msg) {
         self.__polo.setClockTravel(msg.clock.anchorRealMillis, msg.clock.anchorVirtualMillis, msg.clock.speed);
       }
       for (const bundle of msg.bundles) {
-        self.__polo.beginBundle(bundle.key);
+        self.__polo.beginBundle(bundle.key, bundle.api);
         (0, eval)(bundle.source);
         self.__polo.endBundle();
       }
@@ -164,7 +164,7 @@ function handleMessage(msg) {
       // definition refused.
       try {
         self.__polo.unloadBundle(msg.key);
-        self.__polo.beginBundle(msg.key);
+        self.__polo.beginBundle(msg.key, msg.api);
         try {
           (0, eval)(msg.source);
         } finally {
@@ -260,7 +260,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
       'kind': 'load',
       'kernelSource': kernelSource,
       'bundles': [
-        for (final b in bundles) {'key': b.key, 'source': b.source},
+        for (final b in bundles) {'key': b.key, 'source': b.source, 'api': b.api},
       ],
       // Applied by the bootstrap between the kernel and the bundles, so the
       // sandbox's Date is already on the app's clock when they evaluate.
@@ -275,7 +275,7 @@ class _WebWorkerEngineRuntime implements EngineRuntime {
     // Unlike the io backend, evaluation happens inside the worker and so
     // cannot throw back to this call — the bootstrap reports a failed reload
     // as a `reloadComplete` with ok:false instead.
-    _send({'kind': 'reload', 'key': bundle.key, 'source': bundle.source, 'token': token});
+    _send({'kind': 'reload', 'key': bundle.key, 'source': bundle.source, 'api': bundle.api, 'token': token});
   }
 
   @override

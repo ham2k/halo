@@ -109,6 +109,65 @@ void main() {
       expect(await withLog.call('getQsos', {'operationUuid': 'op-1'}), isEmpty);
     });
 
+    test('getQsoChanges hands the kernel the whole log once, and nothing after: the log never changes in a run', () async {
+      // The kernel's copy of the log (logCopy.ts) asks this, not getQsos. An
+      // answer that kept resetting would cost the whole log every read; one
+      // that never reset would leave the copy empty.
+      expect(await host().call('getQsoChanges', {'operationUuid': 'op-1'}), isNull, reason: 'no log, exactly where getQsos is null');
+      final calls = host(
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'uuid': 'a',
+              'their': {'call': 'KI2D'},
+            },
+            {'uuid': 'b', 'deleted': true},
+          ],
+        ),
+      );
+      final first = (await calls.call('getQsoChanges', {'operationUuid': 'op-1'})) as Map;
+      expect(first['reset'], isTrue);
+      expect((first['qsos'] as List).map((q) => (q as Map)['uuid']), ['a'], reason: 'soft-deleted contacts are not in the log, as with getQsos');
+      final next = (await calls.call('getQsoChanges', {'operationUuid': 'op-1', 'cursor': first['cursor']})) as Map;
+      expect(next['reset'], isFalse);
+      expect(next['qsos'], isEmpty);
+      expect(next['removed'], isEmpty);
+      expect(await calls.call('getQsoChanges', {'operationUuid': 'op-2'}), isNull);
+    });
+
+    test('getQsoChanges gives every contact a uuid of its own, so none collapse in the kernel copy', () async {
+      // The kernel's copy keys contacts on their uuid. A hand-written --qsos
+      // often has none, or repeats one: without a uuid each, those contacts
+      // collapse into one and getQsos answers fewer than the log holds.
+      final calls = host(
+        log: const LogContext(
+          operation: {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'K1A'},
+            },
+            {
+              'their': {'call': 'K2B'},
+            },
+            {
+              'uuid': 'same',
+              'their': {'call': 'K3C'},
+            },
+            {
+              'uuid': 'same',
+              'their': {'call': 'K4D'},
+            },
+          ],
+        ),
+      );
+      final answer = (await calls.call('getQsoChanges', {'operationUuid': 'op-1'})) as Map;
+      final uuids = [for (final qso in (answer['qsos'] as List).cast<Map<dynamic, dynamic>>()) qso['uuid']];
+      expect(uuids.toSet(), hasLength(4));
+      expect(uuids[2], 'same', reason: 'a uuid the log gave is kept');
+      expect(answer['count'], 4);
+    });
+
     test('a request for a DIFFERENT operation is a miss, not a substitution', () async {
       // The CLI holds one operation. Answering with it regardless of the uuid
       // asked for would let a hook believe it read the log it named.

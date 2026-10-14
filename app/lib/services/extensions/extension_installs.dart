@@ -362,7 +362,7 @@ mixin _ExtensionInstalls {
     // gone — a progress bar it left behind would sit there for the session.
     statusBar?.clearNamespace(key);
     await host.reloadBundle(
-      ExtensionBundle(key: key, source: source),
+      ExtensionBundle(key: key, source: source, api: info.runtimeApi),
       domains: info.domains,
     );
     // Panels, settings panels and the command catalog are all cached against

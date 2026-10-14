@@ -194,10 +194,10 @@ void main() {
         },
       ],
       'scoring:cqww:scoreQsos': (Object? args) {
-        final sent = ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>();
+        final sent = scoredUuids(args);
         return {
           'qsoScores': {
-            for (final q in sent) q['uuid'] as String: const {'value': 1},
+            for (final uuid in sent) uuid: const {'value': 1},
           },
           'daySections': const <dynamic>[],
           'operationSummary': {'count': sent.length},

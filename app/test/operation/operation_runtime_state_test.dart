@@ -460,7 +460,7 @@ void main() {
           ],
           'scoring:core:scoreQsos': (Object? args) => {
             'qsoScores': {
-              for (final q in ((args as Map)['qsos'] as List).cast<Map<String, dynamic>>()) q['uuid'] as String: {'value': 1},
+              for (final uuid in scoredUuids(args)) uuid: {'value': 1},
             },
             'daySections': const <dynamic>[],
             'operationSummary': const <String, dynamic>{},
