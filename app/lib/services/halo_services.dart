@@ -745,7 +745,7 @@ class HaLoServices {
   /// no operation is open.
   ///
   /// The QSO-scoped actions — `setVfo`, `addQso`, `updateQso`,
-  /// `setCallField`, `sendSpots` — can only be applied by the widget that owns
+  /// `setCallField`, `sendSpots`, `autoRespot` — can only be applied by the widget that owns
   /// the in-progress QSO and its controllers. Without this a "20M" run from
   /// the ⌘K dialog interprets fine, returns `setVfo`, and then silently does
   /// nothing. Routing the whole batch through here instead makes a command
@@ -1764,8 +1764,13 @@ class HaLoServices {
         // right after the first offers to enable what is already on.
         extensions.invalidateHookContext();
         return (text: show ? t.commands.idleMetricsEnabled : t.commands.idleMetricsDisabled, failed: false);
-      case 'sendSpots':
-        return _sendSpot(params ?? const {});
+      case 'sendSpots' when params?['target'] == 'last':
+        return _sendSpot(params!);
+      // Self-spots and RESPOT, which the Spotting control has already run:
+      // here to answer the command where it was typed.
+      case 'sendSpots' || 'autoRespot':
+        final failure = params?['failure'] as String?;
+        return failure == null ? null : (text: failure, failed: true);
       case 'toggleExperiment':
         // EXP <key-or-alias>: the command hook only parsed; resolving the
         // token against the catalog and flipping the stored state happens
@@ -2005,17 +2010,13 @@ class HaLoServices {
     return null;
   }
 
-  /// Backs both the Spotting control's send button and the SPOT/QRV/QRT/
-  /// QSY/QRX/SPOTLAST-family commands (`logging_controls.dart`'s
-  /// `_dispatchActions`, which already resolved *who* gets spotted —
-  /// this only posts and summarizes the per-source result).
+  /// SPOTLAST: posts the QSO `logging_controls_spotting.dart` resolved, and
+  /// summarizes the per-source result. Self-spots are the Spotting control's
+  /// own to send, since auto-respotting repeats them.
   Future<CommandActionOutcome?> _sendSpot(Map<String, dynamic> params) async {
     final operation = (params['operation'] as Map?)?.cast<String, dynamic>() ?? const {};
     final qso = (params['qso'] as Map?)?.cast<String, dynamic>();
-    final target = params['target'] as String? ?? 'self';
-    if (target == 'last' && qso == null) return (text: t.spotting.noQsoYet, failed: true);
-    final freq = (params['freq'] as num?)?.toDouble();
-    if (qso == null && freq == null) return (text: t.spotting.setFrequencyFirst, failed: true);
+    if (qso == null) return (text: t.spotting.noQsoYet, failed: true);
     // Said here, before [suggestSpotSources] offers nothing for it and the
     // operator reads that as no extension spotting at all.
     if (qsonHasIncompleteCall(qso)) return (text: t.spotting.incompleteCall, failed: true);
@@ -2027,33 +2028,11 @@ class HaLoServices {
       sources: sources,
       operation: operation,
       qso: qso,
-      freq: freq,
-      mode: params['mode'] as String?,
       comment: params['comment'] as String?,
       spotterCall: settings.activeProfile.operatorCall,
     );
-
-    // Only failures get a notice — a successful spot already shows in the
-    // Spotting control's per-source status icons, and a "Spotted on X" text
-    // notice on top of that is a confirmation nobody asked to acknowledge.
-    // A refusal still has to surface: it's bad news the operator needs to
-    // see, since the icon alone is easy to miss. Distinct from every source
-    // failing: no result at all (every hookKey missing from `results`) means
-    // the spot never went anywhere, which is its own failure to report.
-    var anyResult = false;
-    final failures = <String>[];
-    for (final source in sources) {
-      final hookKey = source['hookKey'] as String? ?? '?';
-      final result = results[hookKey];
-      if (result == null) continue;
-      anyResult = true;
-      if (result['ok'] != true) {
-        failures.add(t.spotting.spotFailed(source: hookKey, message: (result['message'] as Object?) ?? t.spotting.unknownError));
-      }
-    }
-    if (!anyResult) return (text: t.spotting.notSent, failed: true);
-    if (failures.isEmpty) return null;
-    return (text: failures.join('; '), failed: true);
+    final failure = spotFailureText(sources, results);
+    return failure == null ? null : (text: failure, failed: true);
   }
 
   Future<Map<String, dynamic>> _syncTransportCall(HookRef hook, Map<String, dynamic> args) async {

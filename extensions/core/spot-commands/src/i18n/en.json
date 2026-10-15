@@ -8,5 +8,11 @@
   "spottingLast": "Spotting last QSO…",
   "catalogCategory": "Spotting",
   "catalogSelfSpot": "Spot yourself on the cluster",
-  "catalogSpotLast": "Spot the last logged QSO"
+  "catalogSpotLast": "Spot the last logged QSO",
+  "respotEvery": "Re-spot every {{minutes}} min?",
+  "respottingEvery": "Re-spotting every {{minutes}} min",
+  "respotOff": "Stop auto spots?",
+  "respotStopped": "Auto spots stopped",
+  "respotUsage": "Use RESPOT, RESPOT <minutes> or RESPOT OFF",
+  "catalogRespot": "Re-spot yourself every 5 to 60 minutes"
 }

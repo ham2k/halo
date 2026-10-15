@@ -820,7 +820,7 @@ class CommandEngine extends ChangeNotifier {
   ///
   /// When a logging panel is live it gets the WHOLE batch: only it can apply
   /// the QSO-scoped fields (`setVfo`, `addQso`, `updateQso`, `setCallField`,
-  /// `sendSpots`), which need the in-progress QSO and its controllers, and it
+  /// `sendSpots`, `autoRespot`), which need the in-progress QSO and its controllers, and it
   /// handles the app-scoped ones too — so routing everything there makes a
   /// command run from the ⌘K dialog behave exactly as if it had been typed
   /// into the call field, ordering included. Splitting the batch would break
@@ -916,7 +916,7 @@ class CommandEngine extends ChangeNotifier {
       } else {
         // Nothing above recognized this action's key(s) — most likely a
         // command that's scoped to the logging panel (addQso, updateQso,
-        // sendSpots, setCallField) matched here where no QSO is in
+        // sendSpots, autoRespot, setCallField) matched here where no QSO is in
         // progress, or a new CommandAction field with no matching branch
         // here yet. Either way this must not fail silently: see
         // logging_controls.dart's own _dispatchActions and its regression

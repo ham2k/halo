@@ -8,6 +8,7 @@
   changes:
     - "New Show idle metrics developer setting: extension engine headroom in the status bar"
     - "Calls you didn't fully copy can be logged with a `?`, like `K1A?C`"
+    - "New auto-respotting: after a self-spot, or with the RESPOT command"
 
 "179":
   changes:

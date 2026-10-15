@@ -66,7 +66,7 @@ typedef CommandActionHandler = Future<void> Function(String action, [Map<String,
 
 /// Applies a command's `CommandAction`s. This widget's own dispatcher is the
 /// only one that can service the QSO-scoped fields — `setVfo`, `addQso`,
-/// `updateQso`, `setCallField`, `sendSpots` all need the live in-progress QSO
+/// `updateQso`, `setCallField`, `sendSpots`, `autoRespot` all need the live in-progress QSO
 /// and controllers — so it hands this out via
 /// [CommandHooks.onDispatcherChanged] for callers outside the logging
 /// panel (the ⌘K command dialog) to route through instead of reimplementing.

@@ -576,6 +576,15 @@ class _Translations$loggingControls$cw extends Translations$loggingControls$en {
 	@override String spotTooLate({required Object call}) => '— ——— ——— / ·—·· ·— — · / — ——— / ··· ·——· ——— — / ${call}';
 	@override String get spotNoFreq => '··—· ·· ·—· ··· — / ··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / ··· ·——· ——— —';
 	@override String get spotComment => '—·—· ——— —— —— · —· —';
+	@override String get spottingAutoControl => '·— ··— — ——— / ··· ·——· ——— — ···';
+	@override String spotAutoEvery({required Object minutes}) => '·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·—— / ${minutes} / —— ·· —·';
+	@override String get spotAutoStop => '··· — ——— ·——· / ·— ··— — ——— / ··· ·——· ——— — ···';
+	@override String get spotAutoNotStarted => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····';
+	@override String get spotAutoMoved => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·';
+	@override String get spotAutoStopped => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —··';
+	@override String get spotAutoLeftFreq => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —··';
+	@override String get spotAutoNoFreq => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——';
+	@override String get spotBusy => '·— —· ——— — ···· · ·—· / ··· ·——· ——— — / ·· ··· / ··· — ·· ·—·· ·—·· / —··· · ·· —· ——· / ··· · —· —';
 	@override String get bandOrFreqRequired => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ·—· / —··· ·— —· —·· / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·';
 	@override String get missingBand => '—· ——— / —··· ·— —· —··';
 	@override String get missingMode => '—· ——— / —— ——— —·· ·';
@@ -4656,6 +4665,15 @@ extension on TranslationsCw {
 			'loggingControls.spotTooLate' => ({required Object call}) => '— ——— ——— / ·—·· ·— — · / — ——— / ··· ·——· ——— — / ${call}',
 			'loggingControls.spotNoFreq' => '··—· ·· ·—· ··· — / ··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / ··· ·——· ——— —',
 			'loggingControls.spotComment' => '—·—· ——— —— —— · —· —',
+			'loggingControls.spottingAutoControl' => '·— ··— — ——— / ··· ·——· ——— — ···',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => '·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·—— / ${minutes} / —— ·· —·',
+			'loggingControls.spotAutoStop' => '··· — ——— ·——· / ·— ··— — ——— / ··· ·——· ——— — ···',
+			'loggingControls.spotAutoNotStarted' => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····',
+			'loggingControls.spotAutoMoved' => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·',
+			'loggingControls.spotAutoStopped' => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —··',
+			'loggingControls.spotAutoLeftFreq' => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —··',
+			'loggingControls.spotAutoNoFreq' => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——',
+			'loggingControls.spotBusy' => '·— —· ——— — ···· · ·—· / ··· ·——· ——— — / ·· ··· / ··· — ·· ·—·· ·—·· / —··· · ·· —· ——· / ··· · —· —',
 			'loggingControls.bandOrFreqRequired' => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ·—· / —··· ·— —· —·· / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·',
 			'loggingControls.missingBand' => '—· ——— / —··· ·— —· —··',
 			'loggingControls.missingMode' => '—· ——— / —— ——— —·· ·',
@@ -4812,6 +4830,8 @@ extension on TranslationsCw {
 			'settings.userInterface' => '··— ··· · ·—· / ·· —· — · ·—· ··—· ·— —·—· ·',
 			'settings.logging.title' => '·—·· ——— ——· ——· ·· —· ——·',
 			'settings.logging.leftieMode.title' => '·—·· · ··—· — ·· · / —— ——— —·· ·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.leftieMode.descriptionOn' => '··— ··· ·· —· ——· / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· / ·—·· · ··—· — —····— ···· ·— —· —·· · —·· / ··— ··· · ·—· ···',
 			'settings.logging.leftieMode.descriptionOff' => '··— ··· ·· —· ——· / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· / ·—· ·· ——· ···· — —····— ···· ·— —· —·· · —·· / ··— ··· · ·—· ···',
 			'settings.logging.countryFlags.title' => '—·—· ——— ··— —· — ·—· —·—— / ··—· ·—·· ·— ——· ···',
@@ -4821,8 +4841,6 @@ extension on TranslationsCw {
 			'settings.logging.countryFlagsDescription.dx' => '··· ···· ——— ·—— ·· —· ——· / ··—· ·—·· ·— ——· ··· / ——— —· ·—·· —·—— / ··—· ——— ·—· / —·· —··— / —·—· ——— —· — ·— —·—· — ···',
 			'settings.logging.countryFlagsDescription.all' => '··· ···· ——— ·—— ·· —· ——· / ··—· ·—·· ·— ——· ··· / ··—· ——— ·—· / ·— ·—·· ·—·· / —·—· ——— —· — ·— —·—· — ···',
 			'settings.logging.countryFlagsDescription.none' => '—· ——— — / ··· ···· ——— ·—— ·· —· ——· / ·— —· —·—— / ··—· ·—·· ·— ——· ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.suggestDefaultOperator.title' => '··· ··— ——· ——· · ··· — / ——— ·——· · ·—· ·— — ——— ·—·',
 			'settings.logging.suggestDefaultOperator.descriptionOn' => '——— ··—· ··—· · ·—· ·· —· ——· / —·—— ——— ··— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / ·— ··· / — ···· · / ——— ·——· · ·—· ·— — ——— ·—· / ·—— ···· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / ·—· ··— —· ··· / ··— —· —·· · ·—· / ·— / —·· ·· ··—· ··—· · ·—· · —· — / ··· — ·— — ·· ——— —· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·',
 			'settings.logging.suggestDefaultOperator.descriptionOff' => '·—·· · ·— ···— ·· —· ——· / — ···· · / ——— ·——· · ·—· ·— — ——— ·—· / —··· ·—·· ·— —· —·— / ··— —· ·—·· · ··· ··· / —·—— ——— ··— / ··—· ·· ·—·· ·—·· / ·· — / ·· —·',
@@ -5326,6 +5344,8 @@ extension on TranslationsCw {
 			'settings.station.models.ic7100' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ·———— ————— —————',
 			'settings.station.models.ic7610' => '·· —·—· ——— —— / ·· —·—· —····— ——··· —···· ·———— —————',
 			'settings.station.models.ic7760' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ——··· —···· —————',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.x6100' => '—··— ·· · ——· ··— / —··— —···· ·———— ————— —————',
 			'settings.station.models.g90' => '—··— ·· · ——· ··— / ——· ————· —————',
 			'settings.station.models.rigctld' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / ·—· ·· ——· —·—· — ·—·· —··',
@@ -5335,8 +5355,6 @@ extension on TranslationsCw {
 			'settings.station.models.hrd' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / ···· ·— —— / ·—· ·— —·· ·· ——— / —·· · ·—·· ··— —··— · ®',
 			'settings.station.models.hrdNodeName' => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / ···· ·—· —·· —·——·—',
 			'settings.station.models.n3fjp' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / —· ···—— ··—· ·——— ·——·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.n3fjpNodeName' => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / —· ···—— ··—· ·——— ·——· —·——·—',
 			'settings.station.models.commander' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / —·· —··— ·—·· ·— —··· / —·—· ——— —— —— ·— —· —·· · ·—·',
 			'settings.station.models.commanderNodeName' => '—— —·—— / ·—· ·— —·· ·· ——— / —·——· ···— ·· ·— / —·—· ——— —— —— ·— —· —·· · ·—· —·——·—',
@@ -5840,6 +5858,8 @@ extension on TranslationsCw {
 			'switchAccounts.linkWithEmail' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— —· / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkWithEmailDescription' => '—·—· ——— —· ··—· ·· ·—· —— / ·—— ·· — ···· / ·— / —·—· ——— —·· · / ——— ·—· / ·— —· / · —— ·— ·· ·—·· / ·—·· ·· —· —·—',
 			'switchAccounts.enterEmailPrompt' => '· —· — · ·—· / — ···· · / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ··· / ——— ··—· / — ···· · / ·— —·—· —·—· ——— ··— —· — / —·—— ——— ··— / ·—— ·— —· — / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ··— ··· · ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.emailAddress' => '· —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkAccount' => '·—·· ·· —· —·— / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.copiedCode' => '—·—· ——— ·——· ·· · —·· / —·—· ——— —·· · / — ——— / —·—· ·—·· ·· ·——· —··· ——— ·— ·—· —··',
@@ -5849,8 +5869,6 @@ extension on TranslationsCw {
 			'switchAccounts.sendEmailInstead' => '··· · —· —·· / ·— / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· / · —— ·— ·· ·—·· / ·· —· ··· — · ·— —··',
 			'switchAccounts.emailSent' => ({required Object email}) => '·— —· / · —— ·— ·· ·—·· / ·—— ·— ··· / ··· · —· — / — ——— / ${email} ·—·—·— / ——— ·——· · —· / ·· — / ·— —· —·· / —·—· ——— —· ··—· ·· ·—· —— / — ···· · / ·—· · ——·— ··— · ··· — / — ——— / ·—·· ·· —· —·— / — ···· ·· ··· / —·· · ···— ·· —·—· · ·—·—·—',
 			'switchAccounts.resendEmail' => '·—· · ··· · —· —·· / · —— ·— ·· ·—··',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.qrPrompt' => '··· —·—· ·— —· / — ···· ·· ··· / ——·— ·—· / —·—· ——— —·· · / ··—· ·—· ——— —— / ·— / —·· · ···— ·· —·—· · / ·— ·—·· ·—· · ·— —·· —·—— / ·—·· ·· —· —·— · —·· / — ——— / — ···· · / ·— —·—· —·—· ——— ··— —· — / —·—— ——— ··— / ·—— ·— —· — / — / ··—· ——— ·—· / · —··— ·— —— ·——· ·—·· · / ·—— ·· — ···· / ···· ·— —— ··——— —·— / ·——· ——— ·—· — ·— —··· ·—·· · / ·—·· ——— ——· ——· · ·—· / ——— —· / —·—— ——— ··— ·—· / ·——· ···· ——— —· · ·—·—·—',
 			'switchAccounts.serverUnreachable' => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ·— —·—· ···· / — ···· · / ··· —·—— —· —·—· / ··· · ·—· ···— · ·—· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'switchAccounts.emailRequired' => '· —· — · ·—· / ·— —· / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ··· / — ——— / ·—·· ·· —· —·— ·—·—·—',

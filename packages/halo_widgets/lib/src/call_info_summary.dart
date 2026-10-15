@@ -137,12 +137,14 @@ final _leadingEmoji = RegExp(r'^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u
 /// tinted fill — dark on light themes, light on dark themes. Contrasting
 /// with the fill, not matching it: a white halo on a light fill is invisible
 /// and the glyph reads as having none.
-List<Shadow> glyphGlow(ThemeData theme) {
+List<Shadow> glyphGlow(ThemeData theme) => [Shadow(color: glyphGlowColor(theme), blurRadius: 6)];
+
+/// [glyphGlow]'s halo color, for a glow drawn at another strength.
+Color glyphGlowColor(ThemeData theme) {
   // Black carries further than white at the same alpha, so light mode
   // takes a fainter halo to read as the same weight.
   final dark = theme.brightness == Brightness.dark;
-  final color = (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.4 : 0.25);
-  return [Shadow(color: color, blurRadius: 6)];
+  return (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.4 : 0.25);
 }
 
 /// Shared layout for every state of an info area: a top-aligned leading icon

@@ -264,6 +264,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       radioService: widget.radio.radioService,
       editingQso: widget.session.editingQso,
       operation: widget.log.operation,
+      notice: _command.showError,
     ),
   );
 
@@ -1392,6 +1393,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// control, but never over the operator.
   void _onRadioVfoChanged() {
     if (!mounted) return;
+    // Ahead of the editing guard: a self-spot is about the VFO, whatever QSO
+    // is open.
+    _spotting.followVfo();
     // An existing QSO's own recorded freq/band/mode always wins; ambient
     // radio state must not rewrite something already logged. An event's
     // freq/mode are sentinels, not a record — its Radio control keeps
@@ -2236,30 +2240,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.commands.onCommandAction?.call('syncAll');
       } else if (map['purgeTests'] is Map) {
         await widget.commands.onCommandAction?.call('purgeTests', (map['purgeTests'] as Map).cast<String, dynamic>());
-      } else if (map['sendSpots'] is Map) {
-        // Resolving *who* gets spotted stays here (this widget owns
-        // `qsos`/`editingQso`/`radioService`) — the command hook only
-        // parsed text into a comment + target. 'last' (SPOTLAST family)
-        // spots the most recent real (non-event) QSO regardless of what's
-        // being edited; 'self' (default) spots the operation itself at the
-        // current VFO. `qsos` is oldest-first (see `watchForOperation`), so
-        // the last real contact is `lastWhere`, not `firstWhere`.
-        final params = (map['sendSpots'] as Map).cast<String, dynamic>();
-        final target = params['target'] as String? ?? 'self';
-        final comment = params['comment'] as String?;
-        Qso? qso;
-        if (target == 'last') {
-          qso = widget.log.qsos.cast<Qso?>().lastWhere((q) => q!.isRealContact, orElse: () => null);
-        }
-        final vfo = widget.radio.radioService?.vfoA;
-        await widget.commands.onCommandAction?.call('sendSpots', {
-          'operation': _spotting.operationPayload,
-          'target': target,
-          if (qso != null) 'qso': qso.data,
-          'comment': ?comment,
-          if (qso == null) 'freq': vfo?.freq,
-          if (qso == null) 'mode': vfo?.mode,
-        });
+      } else if (map['sendSpots'] is Map || map['autoRespot'] is Map) {
+        await _spotting.runCommandAction(map, qsos: widget.log.qsos, forward: widget.commands.onCommandAction);
       } else if (map['devNotice'] is Map) {
         await widget.commands.onCommandAction?.call('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
       } else if (map['devStatus'] is Map) {

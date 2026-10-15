@@ -30,6 +30,7 @@ import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
 import 'package:halo_i18n/halo_i18n.dart';
 
+import 'call_info_summary.dart' show glyphGlowColor;
 import 'mdi_icons.g.dart';
 import 'density.dart';
 import 'spacing.dart';
@@ -77,6 +78,13 @@ class SecondaryControlSpec {
   /// active extension.
   final Color? iconColor;
 
+  /// A glow behind the icon, re-evaluated once per second via [OncePerSecond]
+  /// like [liveSummary]: 0 is none, 1 is full strength. For a chip announcing
+  /// something about to happen on its own — the Spotting chip's next
+  /// auto-respot. In [glyphGlowColor]: a white halo on a light fill cannot be
+  /// seen.
+  final ValueGetter<double>? liveIconGlow;
+
   /// The node the caller uses to put the keyboard on this chip, and to hang
   /// its key handling off (APP-19's focus ladder: arrows walk the strip, Up
   /// leaves for the QSO list, Down returns to the main fields). Owned by the
@@ -111,6 +119,7 @@ class SecondaryControlSpec {
     this.liveSummary,
     this.summaryParts,
     this.iconColor,
+    this.liveIconGlow,
     this.focusNode,
     this.enabled = true,
     this.alert = false,
@@ -136,6 +145,7 @@ class SecondaryControlSpec {
     ValueGetter<String>? liveSummary,
     List<SummaryPart>? summaryParts,
     Color? iconColor,
+    ValueGetter<double>? liveIconGlow,
     FocusNode? focusNode,
     bool? enabled,
     bool? alert,
@@ -147,6 +157,7 @@ class SecondaryControlSpec {
     liveSummary: liveSummary ?? this.liveSummary,
     summaryParts: summaryParts ?? this.summaryParts,
     iconColor: iconColor ?? this.iconColor,
+    liveIconGlow: liveIconGlow ?? this.liveIconGlow,
     focusNode: focusNode ?? this.focusNode,
     enabled: enabled ?? this.enabled,
     alert: alert ?? this.alert,
@@ -857,21 +868,42 @@ class _ControlChip extends StatelessWidget {
       selectedColor = selectedColor.withValues(alpha: 0.5);
     }
 
+    Widget icon({List<Shadow>? shadows}) => Icon(
+      control.icon,
+      size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+      // The accent shows whenever the field holds a reference — open
+      // (selected, solid tertiary fill) or closed (tertiaryLight fill).
+      // Holding one is all it means: a reference the control's pattern
+      // rejects is kept like any other, and says so through [alert] below
+      // rather than by withholding the accent. Contrast against the selected fill isn't
+      // guaranteed for an arbitrary extension color, but that's on the
+      // extension to pick a color that works — same as the unselected case.
+      // An alerting chip drops the accent entirely (see [alert]).
+      color: control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground,
+      shadows: shadows,
+    );
+
     return ChoiceChip(
       focusNode: control.focusNode,
-      avatar: Icon(
-        control.icon,
-        size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
-        // The accent shows whenever the field holds a reference — open
-        // (selected, solid tertiary fill) or closed (tertiaryLight fill).
-        // Holding one is all it means: a reference the control's pattern
-        // rejects is kept like any other, and says so through [alert] below
-        // rather than by withholding the accent. Contrast against the selected fill isn't
-        // guaranteed for an arbitrary extension color, but that's on the
-        // extension to pick a color that works — same as the unselected case.
-        // An alerting chip drops the accent entirely (see [alert]).
-        color: control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground,
-      ),
+      avatar: control.liveIconGlow != null
+          ? OncePerSecond(
+              builder: (_, _) {
+                final glow = control.liveIconGlow!().clamp(0.0, 1.0);
+                return icon(
+                  shadows: glow == 0
+                      ? null
+                      : [
+                          Shadow(
+                            // Up to twice a static glyph's halo: a glow
+                            // that only matched it would not read as rising.
+                            color: glyphGlowColor(Theme.of(context)).withValues(alpha: glyphGlowColor(Theme.of(context)).a * 2 * glow),
+                            blurRadius: 4 + 8 * glow,
+                          ),
+                        ],
+                );
+              },
+            )
+          : icon(),
       label: control.liveSummary != null
           ? OncePerSecond(
               builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)),

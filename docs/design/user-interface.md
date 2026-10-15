@@ -818,7 +818,7 @@ against the front-most Operation View's operation via
 `HaLoServices.currentOperationContext`.
 
 **Where a command's actions land.** Most `CommandAction`s are QSO-scoped —
-`setVfo`, `addQso`, `updateQso`, `setCallField`, `sendSpots` — and only the
+`setVfo`, `addQso`, `updateQso`, `setCallField`, `sendSpots`, `autoRespot` — and only the
 logging panel can apply them, since they need the in-progress QSO and its
 controllers. So while a logging panel is mounted it publishes its dispatcher
 as `HaLoServices.currentCommandDispatch`, and the dialog hands it the whole

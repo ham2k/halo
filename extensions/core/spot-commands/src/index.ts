@@ -11,15 +11,18 @@
 //   SPOTLAST / SPOTEM / SPOTTHEM / SPTHEM — spot the most recently logged
 //                                       QSO, no reference in app-polo (new
 //                                       behavior for app-halo)
+//   RESPOT [minutes|OFF]             — auto-respotting, HaLo's own: the
+//                                       Spotting control's "Re-spot every
+//                                       10 min" with a chosen interval
 // Neither command resolves *who* gets spotted or *how* — that's Dart's job
 // (it owns the QSO list and the extension-hook fan-out); this just parses
-// text into a `sendSpots` CommandAction. Parsing itself lives in
+// text into a `sendSpots` or `autoRespot` CommandAction. Parsing itself lives in
 // spotCommandParsing.ts so it's unit-testable without the extension-runtime
 // globals `defineExtension` depends on.
 
 import { defineExtension } from "@ham2k/extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
-import { parseSelfSpotCommand, isLastSpotCommand } from "./spotCommandParsing.ts"
+import { parseSelfSpotCommand, isLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -92,10 +95,49 @@ const LastSpotCommand = {
   },
 }
 
+const RespotCommand = {
+  async interpret({ input, operation }: { input: string; operation?: Record<string, JSONValue> }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    const parsed = parseRespotCommand(input)
+    if (!parsed) return null
+    const t = tFor(ctx)
+    if (!operation) return { error: t("needsOperation") }
+    // mixedCase, like SEED: bare RESPOT runs on Enter, yet Space must stay a
+    // literal character so "RESPOT 5" can still be typed.
+    if ("invalid" in parsed) return { mixedCase: true, error: t("respotUsage") }
+    if ("off" in parsed) {
+      return { mixedCase: true, describe: t("respotOff"), confirm: t("respotStopped"), commands: [{ autoRespot: { off: true } }] }
+    }
+    const { minutes } = parsed
+    return {
+      mixedCase: true,
+      describe: t("respotEvery", { minutes }),
+      confirm: t("respottingEvery", { minutes }),
+      commands: [{ autoRespot: { minutes } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [
+      {
+        command: "RESPOT",
+        params: "[minutes|OFF]",
+        describe: t("catalogRespot"),
+        category: t("catalogCategory"),
+        needsOperation: true,
+        // Types in rather than running, for SPOT's reason: it can post to the
+        // public cluster.
+        expectsParams: true,
+      },
+    ]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook("command", { key: "spot-commands-self", hook: SelfSpotCommand, priority: 100 })
     registerHook("command", { key: "spot-commands-last", hook: LastSpotCommand, priority: 100 })
+    registerHook("command", { key: "spot-commands-respot", hook: RespotCommand, priority: 100 })
   },
 })

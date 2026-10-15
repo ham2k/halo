@@ -576,6 +576,15 @@ class _Translations$loggingControls$qrp extends Translations$loggingControls$en 
 	@override String spotTooLate({required Object call}) => 'too late to spot ${call}';
 	@override String get spotNoFreq => 'first set a frequency to spot';
 	@override String get spotComment => 'comment';
+	@override String get spottingAutoControl => 'auto spots';
+	@override String spotAutoEvery({required Object minutes}) => 're-spot every ${minutes} min';
+	@override String get spotAutoStop => 'stop auto spots';
+	@override String get spotAutoNotStarted => 'auto spots not started: the spot did not go through';
+	@override String get spotAutoMoved => 'auto spots not started: the frequency changed while spotting';
+	@override String get spotAutoStopped => 'auto spots stopped';
+	@override String get spotAutoLeftFreq => 'auto spots stopped: the frequency changed';
+	@override String get spotAutoNoFreq => 'auto spots stopped: the radio reports no frequency';
+	@override String get spotBusy => 'another spot is still being sent';
 	@override String get bandOrFreqRequired => 'set a frequency or band before logging';
 	@override String get missingBand => 'no band';
 	@override String get missingMode => 'no mode';
@@ -4656,6 +4665,15 @@ extension on TranslationsQrp {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'first set a frequency to spot',
 			'loggingControls.spotComment' => 'comment',
+			'loggingControls.spottingAutoControl' => 'auto spots',
+			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 're-spot every ${minutes} min',
+			'loggingControls.spotAutoStop' => 'stop auto spots',
+			'loggingControls.spotAutoNotStarted' => 'auto spots not started: the spot did not go through',
+			'loggingControls.spotAutoMoved' => 'auto spots not started: the frequency changed while spotting',
+			'loggingControls.spotAutoStopped' => 'auto spots stopped',
+			'loggingControls.spotAutoLeftFreq' => 'auto spots stopped: the frequency changed',
+			'loggingControls.spotAutoNoFreq' => 'auto spots stopped: the radio reports no frequency',
+			'loggingControls.spotBusy' => 'another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'set a frequency or band before logging',
 			'loggingControls.missingBand' => 'no band',
 			'loggingControls.missingMode' => 'no mode',
@@ -4812,6 +4830,8 @@ extension on TranslationsQrp {
 			'settings.userInterface' => 'user interface',
 			'settings.logging.title' => 'logging',
 			'settings.logging.leftieMode.title' => 'leftie mode',
+			_ => null,
+		} ?? switch (path) {
 			'settings.logging.leftieMode.descriptionOn' => 'using layout for left-handed users',
 			'settings.logging.leftieMode.descriptionOff' => 'using layout for right-handed users',
 			'settings.logging.countryFlags.title' => 'country flags',
@@ -4821,8 +4841,6 @@ extension on TranslationsQrp {
 			'settings.logging.countryFlagsDescription.dx' => 'showing flags only for dx contacts',
 			'settings.logging.countryFlagsDescription.all' => 'showing flags for all contacts',
 			'settings.logging.countryFlagsDescription.none' => 'not showing any flags',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.suggestDefaultOperator.title' => 'suggest operator',
 			'settings.logging.suggestDefaultOperator.descriptionOn' => 'offering your callsign as the operator when an operation runs under a different station callsign',
 			'settings.logging.suggestDefaultOperator.descriptionOff' => 'leaving the operator blank unless you fill it in',
@@ -5326,6 +5344,8 @@ extension on TranslationsQrp {
 			'settings.station.models.ic7100' => 'icom ic-7100',
 			'settings.station.models.ic7610' => 'icom ic-7610',
 			'settings.station.models.ic7760' => 'icom ic-7760',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.x6100' => 'xiegu x6100',
 			'settings.station.models.g90' => 'xiegu g90',
 			'settings.station.models.rigctld' => 'radio controlled via rigctld',
@@ -5335,8 +5355,6 @@ extension on TranslationsQrp {
 			'settings.station.models.hrd' => 'radio controlled via ham radio deluxe®',
 			'settings.station.models.hrdNodeName' => 'my radio (via hrd)',
 			'settings.station.models.n3fjp' => 'radio controlled via n3fjp',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.n3fjpNodeName' => 'my radio (via n3fjp)',
 			'settings.station.models.commander' => 'radio controlled via dxlab commander',
 			'settings.station.models.commanderNodeName' => 'my radio (via commander)',
@@ -5840,6 +5858,8 @@ extension on TranslationsQrp {
 			'switchAccounts.linkWithEmail' => 'link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'confirm with a code or an email link',
 			'switchAccounts.enterEmailPrompt' => 'enter the email address of the account you want this device to use.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.emailAddress' => 'email address',
 			'switchAccounts.linkAccount' => 'link account',
 			'switchAccounts.copiedCode' => 'copied code to clipboard',
@@ -5849,8 +5869,6 @@ extension on TranslationsQrp {
 			'switchAccounts.sendEmailInstead' => 'send a confirmation email instead',
 			'switchAccounts.emailSent' => ({required Object email}) => 'an email was sent to ${email}. open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'resend email',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.qrPrompt' => 'scan this qr code from a device already linked to the account you want — for example with ham2k portable logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'could not reach the sync server. try again later.',
 			'switchAccounts.emailRequired' => 'enter an email address to link.',

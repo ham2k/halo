@@ -86,7 +86,7 @@ void main() {
     await operations.updateLocalData(operation.uuid, {'multiIdentifier': '2'});
     operation = (await operations.get(operation.uuid))!;
 
-    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    final spottedOperations = <Map<String, dynamic>>[];
     Future<Map<String, dynamic>?> fakeSpotCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'SPOT') return null;
       return {
@@ -100,10 +100,17 @@ void main() {
 
     await tester.pumpWidget(
       host(
-        commands: CommandHooks(
-          interpretCommand: fakeSpotCommand,
-          onCommandAction: (action, [params]) async {
-            dispatched.add(MapEntry(action, params));
+        commands: CommandHooks(interpretCommand: fakeSpotCommand),
+        // A typed self-spot is the Spotting control's own, sent as its button's.
+        spotting: SpottingHooks(
+          suggestSpotSources: ({required operation, qso}) async => [
+            {'hookKey': 'pota'},
+          ],
+          sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) async {
+            spottedOperations.add(operation);
+            return {
+              'pota': {'ok': true},
+            };
           },
         ),
       ),
@@ -114,10 +121,104 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(dispatched.single.key, 'sendSpots');
-    final spotted = (dispatched.single.value!['operation'] as Map).cast<String, dynamic>();
+    final spotted = spottedOperations.single;
     expect((spotted['local'] as Map)['multiIdentifier'], '2');
     expect(spotted['stationCall'], 'KI2D', reason: 'the suffix is applied downstream, not here');
+  });
+
+  group('RESPOT', () {
+    final sent = <double?>[];
+    var accept = true;
+    Future<List<Map<String, dynamic>>> oneSource({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async => [
+      {'hookKey': 'pota', 'icon': 'pine-tree'},
+    ];
+    Future<Map<String, Map<String, dynamic>>> recordingSend({
+      required List<Map<String, dynamic>> sources,
+      required Map<String, dynamic> operation,
+      Map<String, dynamic>? qso,
+      double? freq,
+      String? mode,
+      String? comment,
+      String? spotterCall,
+    }) async {
+      sent.add(freq);
+      return {
+        'pota': {'ok': accept},
+      };
+    }
+
+    Future<Map<String, dynamic>?> fakeRespot(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
+      if (input.trim().toUpperCase() != 'RESPOT') return null;
+      return {
+        'confirm': 'Re-spotting every 5 min',
+        'commands': [
+          {
+            'autoRespot': {'minutes': 5},
+          },
+        ],
+      };
+    }
+
+    Future<void> runRespot(WidgetTester tester, {CommandActionHandler? onCommandAction}) async {
+      await tester.pumpWidget(
+        host(
+          commands: CommandHooks(interpretCommand: fakeRespot, onCommandAction: onCommandAction),
+          spotting: SpottingHooks(suggestSpotSources: oneSource, sendSpot: recordingSend),
+        ),
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RESPOT');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    setUp(() {
+      sent.clear();
+      accept = true;
+      // Respots are timed on the real clock, which the widget-test zone only
+      // moves when followed.
+      AppClock.followZoneClock = true;
+    });
+    tearDown(() => AppClock.followZoneClock = false);
+
+    // The command must drive the Spotting control's own auto-respotting, not
+    // a second one beside it: otherwise the chip would not say so, its Stop
+    // button would not stop it, and a QSY would leave it spotting a
+    // frequency the operator has left.
+    testWidgets('spots now and turns the Spotting chip to auto spots; moving the VFO stops it', (tester) async {
+      await runRespot(tester);
+      expect(sent, [14285]);
+      expect(find.text('Auto spots'), findsOneWidget);
+      await tester.pump(const Duration(minutes: 5, seconds: 1));
+      expect(sent, [14285, 14285], reason: 'five minutes, as asked');
+
+      tunedRadio.setVfo('vfoA', freq: 7200);
+      await tester.pump();
+      expect(find.text('Auto spots'), findsNothing);
+      await tester.pump(const Duration(minutes: 11));
+      expect(sent, hasLength(2));
+    });
+
+    testWidgets('a spot that does not go through says so instead of confirming', (tester) async {
+      accept = false;
+      await runRespot(tester);
+      expect(find.textContaining('pota failed'), findsOneWidget);
+      expect(find.text('Auto spots'), findsNothing);
+      await tester.pump(const Duration(minutes: 11));
+      expect(sent, hasLength(1), reason: 'nothing to repeat');
+    });
+
+    // The app answers a command where it was typed: from the palette, a
+    // notice in the call field would land behind it, under the hook's
+    // "Re-spotting every 5 min".
+    testWidgets("with an app to answer it, the failure goes there rather than to the call field", (tester) async {
+      accept = false;
+      final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+      await runRespot(tester, onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)));
+      expect(dispatched.single.key, 'autoRespot');
+      expect(dispatched.single.value!['failure'], contains('pota failed'));
+      expect(find.textContaining('pota failed'), findsNothing);
+    });
   });
 
   group('Spotting control pill label', () {

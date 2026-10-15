@@ -1616,6 +1616,13 @@ export interface CommandAction {
     comment?: string
     target?: "self" | "last"
   }
+  /// RESPOT: auto-respotting every `minutes` — the self-spot just taken at the
+  /// current VFO, or one sent now when there is none to repeat — or `off`
+  /// to stop it, as `minutes` of 0 or less does too. The app holds `minutes`
+  /// between 5 and 60 and defaults it to 10. Panel-only, like `sendSpots`;
+  /// the app answers with an error when the spot it would repeat can't be
+  /// sent.
+  autoRespot?: { minutes?: number; off?: boolean }
   syncAll?: Record<string, never>
   /// PURGETESTS (`test-ops-commands`): app-side lists Test Operations, asks
   /// for confirmation, then purges each — see `HaLoServices.purgeOperation`.

@@ -8,5 +8,11 @@
   "spottingLast": "Spoteando el último QSO…",
   "catalogCategory": "Spots",
   "catalogSelfSpot": "Publicar tu propio spot",
-  "catalogSpotLast": "Publicar un spot del último QSO"
+  "catalogSpotLast": "Publicar un spot del último QSO",
+  "respotEvery": "¿Repetir el auto-spot cada {{minutes}} min?",
+  "respottingEvery": "Repitiendo el auto-spot cada {{minutes}} min",
+  "respotOff": "¿Dejar de repetir el auto-spot?",
+  "respotStopped": "Auto-spot detenido",
+  "respotUsage": "Usa RESPOT, RESPOT <minutos> o RESPOT OFF",
+  "catalogRespot": "Repetir tu propio spot cada 5 a 60 minutos"
 }
