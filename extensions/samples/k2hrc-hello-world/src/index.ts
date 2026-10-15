@@ -8,9 +8,9 @@
 // comparison. See the catalog's `ham2k-custom-text` for a panel that earns its
 // keep, and docs/extensions/hooks.md for every other hook there is.
 //
-// It declares no `sharedDependencies` because it uses none. An extension that
-// wants @ham2k/lib-callsigns or liquidjs says so in its manifest and uses the
-// host's copy, rather than carrying its own — see docs/extensions/distribution.md.
+// Its manifest still lists the host's shared libraries in `sharedDependencies`:
+// the SDK reaches them, and declaring them makes the bundle use the host's
+// copy rather than carry its own — see docs/extensions/distribution.md.
 
 import { defineExtension } from "@ham2k/extension-sdk"
 import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/extension-sdk"

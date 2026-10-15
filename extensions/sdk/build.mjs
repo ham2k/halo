@@ -230,6 +230,7 @@ building — the header comment in each \`src/index.ts\` says what it leaves out
 
 | | |
 | --- | --- |
+| \`k2hrc-hello-world\` | The smallest extension there is: one panel, saying hello |
 | \`k2hrc-hamqth\` | A callsign lookup, and the \`account\` hook that asks for a password |
 | \`k2hrc-llota\` | An award program: references, an offline list, activation scoring |
 | \`k2hrc-cqww\` | A contest: an exchange to type, and a score to keep |
@@ -270,7 +271,7 @@ See \`../AGENTS.md\` for the map, and \`../docs/\` for the references.
 /// SDK and the tools through workspace paths; an author's copy reaches them
 /// through npm, and shipping the workspace form would hand every reader a
 /// build script that cannot resolve its own imports.
-const shippedSamples = ["k2hrc-hamqth", "k2hrc-llota", "k2hrc-cqww", "k2hrc-radio", "k2hrc-panel-scenes", "k2hrc-panafall"]
+const shippedSamples = ["k2hrc-hello-world", "k2hrc-hamqth", "k2hrc-llota", "k2hrc-cqww", "k2hrc-radio", "k2hrc-panel-scenes", "k2hrc-panafall"]
 
 const samplesOut = join(here, "samples")
 await rm(samplesOut, { recursive: true, force: true })

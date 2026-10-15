@@ -240,7 +240,7 @@ what you want, which is how you use a version the host does not carry, say so:
 await buildExtension(build, { dir: import.meta.dirname, inline: ["liquidjs"] })
 ```
 
-`extensions/samples/hello-world` is the shortest complete example. Declaring
+`extensions/samples/k2hrc-hello-world` is the shortest complete example. Declaring
 what it uses rather than carrying it took the packaged bundle from 185 KB to
 **4 KB**.
 
