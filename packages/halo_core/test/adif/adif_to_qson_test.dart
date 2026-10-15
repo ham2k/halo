@@ -316,8 +316,8 @@ void main() {
       final names = log.qsos.map((q) => _their(q)['name']).whereType<String>();
 
       expect(cities, contains('Tía Juana Zulia'));
-      expect(names, contains('MARIANO ORDOÑEZ TERRON'));
-      expect(names, contains('RICARDO IBAÑEZ BURGUET'));
+      expect(names, contains('TOMÁS PEÑA ARGÜELLO'));
+      expect(names, contains('IGNACIO NÚÑEZ SOLER'));
     });
 
     test('a recovered length is not reported as suspect', () {
