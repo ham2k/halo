@@ -140,9 +140,9 @@
     },
     {
       "key": "ham2k-pota",
-      "version": "0.2.9",
-      "file": "ham2k-pota-0.2.9.h2kext",
-      "sha256": "50a2301236cb59e9db22bf45bef55639f7e6133cce6849a54e339f201b175779"
+      "version": "0.2.10",
+      "file": "ham2k-pota-0.2.10.h2kext",
+      "sha256": "ce7b95f0cf391c5c07de73ca1f3882dad228a4ccb8d507fdd051c3004927f724"
     },
     {
       "key": "ham2k-qrz",
