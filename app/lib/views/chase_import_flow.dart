@@ -10,26 +10,24 @@ import 'dart:convert';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/error_reporting_service.dart';
+import '../services/file_pick.dart';
 import '../services/halo_services.dart';
 
 /// The filter handed to the picker for [importer].
 ///
 /// iOS filters by UTI and THROWS for a group carrying none
 /// (`file_selector_ios`), and a sponsor's export has no UTI of its own, so
-/// the group asks for `public.data`. Android greys out anything outside the
-/// requested MIME types and maps few extensions to one, so there the group is
-/// empty, asking for `*/*`. Either way the program decides what it can read:
-/// a file it cannot answers with no claims, and replaces nothing.
+/// the group asks for `public.data`. Android's picker offers every file
+/// whatever this asks for ([pickFile]). Either way the program decides what
+/// it can read: a file it cannot answers with no claims, and replaces nothing.
 @visibleForTesting
 List<XTypeGroup> chaseImportTypeGroups(ChasingImporter importer) {
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return const [];
   return [
     XTypeGroup(label: importer.label, extensions: importer.extensions, uniformTypeIdentifiers: const ['public.data']),
   ];
@@ -59,7 +57,7 @@ Future<void> runChaseImport(
   var name = file?.name ?? importer.label;
   final ({int claims, int skipped})? outcome;
   try {
-    final chosen = file ?? await openFile(acceptedTypeGroups: chaseImportTypeGroups(importer));
+    final chosen = file ?? await pickFile(acceptedTypeGroups: chaseImportTypeGroups(importer));
     if (chosen == null) return;
     name = chosen.name;
     outcome = await services.chase.importFile(program, importer, name: chosen.name, text: chaseImportText(await chosen.readAsBytes()), station: station);

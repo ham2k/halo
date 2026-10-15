@@ -12,7 +12,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
@@ -329,5 +331,46 @@ void main() {
     // then happen is a question the operator should never be asked.
     expect(find.widgetWithText(FilledButton, t.extensionsPanel.installAction), findsNothing);
     expect(commits, 0);
+  });
+
+  testWidgets("a pick that failed is refused in the install flow's own dialog, saying why", (tester) async {
+    // On Android a failed pick THROWS rather than reading as a cancel.
+    // Uncaught here it would surface as the app's generic error notice,
+    // naming nothing about the file.
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    const channel = MethodChannel('ham2k/file_pick');
+    final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(channel, (_) async => throw PlatformException(code: 'pick_failed', message: 'provider went away'));
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+    final store = InstalledExtensions(
+      builtInKeys: () => const {},
+      hostSharedModules: const {'i18next': '23.11.5'},
+      storage: FileBundleStorage(root: Directory.systemTemp),
+    );
+    var commits = 0;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          locale: const Locale('en'),
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: ElevatedButton(
+                onPressed: () => installExtensionFromFile(context, store: store, commit: (_) async => commits++),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.installFailed), findsOneWidget);
+    expect(find.text('provider went away'), findsOneWidget);
+    expect(commits, 0);
+    // Inside the body: the binding checks for a leftover override before any
+    // tearDown runs.
+    debugDefaultTargetPlatformOverride = null;
   });
 }

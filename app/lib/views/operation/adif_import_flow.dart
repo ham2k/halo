@@ -17,7 +17,6 @@ import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, visibleForTesting, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -26,6 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/adif_import_plan.dart';
 import '../../services/adif_import_service.dart';
 import '../../services/error_reporting_service.dart';
+import '../../services/file_pick.dart';
 import '../../services/extensions/extension_service.dart' show ExtensionInfo;
 import '../../services/hook_payloads.dart';
 import '../../services/status_bar_service.dart';
@@ -63,17 +63,11 @@ bool adifImportInFlight = false;
 /// belongs in the Logs destination's import, which this does not limit.
 const maxOperationImportRecords = 1000;
 
-/// The filter handed to the picker.
-///
-/// Android greys out anything outside the requested MIME types, and `.adi` /
-/// `.adif` map to no MIME type at all (`file_selector_android` drops
-/// extensions `MimeTypeMap` cannot convert), so a filtered group there offers
-/// the operator a browser with nothing selectable in it. An empty group asks
-/// for `*/*`; what the operator picks is filtered by [looksLikeAdif] and
-/// [bytesLookLikeAdif] instead.
+/// The filter handed to the picker. Android's offers every file whatever
+/// this asks for ([pickFile]); what the operator picks is filtered by
+/// [looksLikeAdif] and [bytesLookLikeAdif] there.
 @visibleForTesting
 List<XTypeGroup> adifTypeGroups() {
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return const [];
   return [
     XTypeGroup(
       label: 'ADIF',
@@ -99,12 +93,10 @@ final _adifMarker = RegExp(r'<(eoh>|eor>|[a-z_]+:\d)', caseSensitive: false);
 
 /// Whether [head] — the first bytes of a file — reads as ADIF.
 ///
-/// The NAME cannot answer this on Android: the picker hands back a COPY of
-/// the chosen file whose extension the platform rewrote from the provider's
-/// MIME type (`file_selector_android`'s `FileUtils.getFileExtension`), and
-/// `.adi` has no MIME type of its own — so an ADIF file arrives named `.bin`
-/// or `.txt` and [looksLikeAdif] alone would refuse what the operator picked
-/// correctly, naming a file that exists nowhere on their device.
+/// The NAME cannot always answer this: a file is named however its provider
+/// names it — a cloud copy, an export a logger saved without an extension, a
+/// share that arrives as `.txt` — and [looksLikeAdif] alone would refuse an
+/// ADIF file the operator picked correctly.
 ///
 /// Latin-1 because this is a byte scan: any decoding that can throw would
 /// turn an unusual encoding into a refusal, and the markers are ASCII.
@@ -113,9 +105,9 @@ bool bytesLookLikeAdif(Uint8List head) => _adifMarker.hasMatch(latin1.decode(hea
 /// The first [_sniffBytes] of [file], or all of it when it is shorter.
 ///
 /// The end is clamped here because `openRead` does not clamp it for every
-/// file: one backed by disk stops at its end, but one held in memory — what
-/// the Android picker returns — throws a `RangeError` for an end past its
-/// length, which would fail every ADIF file under 64 KiB picked there.
+/// file: one backed by disk stops at its end, but one held in memory
+/// (`XFile.fromData`) throws a `RangeError` for an end past its length, which
+/// would fail every such file under 64 KiB.
 @visibleForTesting
 Future<Uint8List> readAdifHead(XFile file) async {
   final end = min(_sniffBytes, await file.length());
@@ -130,7 +122,7 @@ Future<Uint8List> readAdifHead(XFile file) async {
 Future<void> pickAndImportAdif(BuildContext context, {required HaLoServices services, required Operation operation}) async {
   final XFile? file;
   try {
-    file = await openFile(acceptedTypeGroups: adifTypeGroups());
+    file = await pickFile(acceptedTypeGroups: adifTypeGroups());
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'adifImport:picker');
     if (context.mounted) {
@@ -158,8 +150,8 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
   }
 
   if (!looksLikeAdif(filename)) {
-    // The name is only the first answer, and on Android it is a rewritten one
-    // ([bytesLookLikeAdif]), so the bytes get the last word before a refusal.
+    // The name is only the first answer ([bytesLookLikeAdif]), so the bytes
+    // get the last word before a refusal.
     final Uint8List head;
     try {
       head = await readAdifHead(file);

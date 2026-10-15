@@ -3,7 +3,6 @@ package com.ham2k.logger
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -114,7 +113,7 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
     worker.execute {
       try {
         write(uri, content)
-        val name = displayNameOf(uri) ?: filename
+        val name = queryDisplayName(activity.contentResolver, uri) ?: filename
         activity.runOnUiThread { finish(name, null) }
       } catch (e: Exception) {
         activity.runOnUiThread { finish(null, e.message ?: e.toString()) }
@@ -138,15 +137,6 @@ class FileSaveChannel(private val activity: Activity, messenger: BinaryMessenger
       ) ?: throw IllegalStateException("Could not open $uri for writing")
     stream.use { it.write(content) }
   }
-
-  private fun displayNameOf(uri: Uri): String? =
-    try {
-      activity.contentResolver.query(
-        uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null
-      )?.use { cursor -> if (cursor.moveToFirst() && !cursor.isNull(0)) cursor.getString(0) else null }
-    } catch (e: Exception) {
-      null
-    }
 
   private fun finish(name: String?, errorMessage: String?) {
     val result = pendingResult ?: return

@@ -20,6 +20,10 @@ class MainActivity : FlutterActivity() {
   // (FileSaveChannel): file_selector has no working save on Android.
   private var fileSaveChannel: FileSaveChannel? = null
 
+  // Its open half (FilePickChannel): file_selector's Android pick drops a file
+  // whose provider reports no size, as if the operator had cancelled.
+  private var filePickChannel: FilePickChannel? = null
+
   // Which interfaces of a USB device are serial ports (UsbInterfacesChannel):
   // the CAT port picker needs it for radios that present more than one.
   private var usbInterfacesChannel: UsbInterfacesChannel? = null
@@ -54,6 +58,7 @@ class MainActivity : FlutterActivity() {
       }
     }
     fileSaveChannel = FileSaveChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+    filePickChannel = FilePickChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     usbInterfacesChannel = UsbInterfacesChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     siblingAppsChannel = SiblingAppsChannel(this, flutterEngine.dartExecutor.binaryMessenger)
     imageClipboardChannel = ImageClipboardChannel(this, flutterEngine.dartExecutor.binaryMessenger)
@@ -79,6 +84,8 @@ class MainActivity : FlutterActivity() {
     hardwareKeyboardChannel = null
     fileSaveChannel?.dispose()
     fileSaveChannel = null
+    filePickChannel?.dispose()
+    filePickChannel = null
     usbInterfacesChannel?.dispose()
     usbInterfacesChannel = null
     siblingAppsChannel?.dispose()
@@ -125,7 +132,7 @@ class MainActivity : FlutterActivity() {
     // carries no extension, and the Dart side drops anything that does not end
     // in one. That is the browser-download path, which is the likeliest way a
     // bundle arrives at all.
-    val name = queryDisplayName(uri) ?: "extension"
+    val name = queryDisplayName(contentResolver, uri) ?: "extension"
     val stem = if (name.endsWith(".h2kext", ignoreCase = true)) name else "$name.h2kext"
     sweepOldCopies()
     val target = java.io.File(cacheDir, "opened-" + System.currentTimeMillis() + "-" + stem)
@@ -139,17 +146,6 @@ class MainActivity : FlutterActivity() {
       // Logged rather than thrown: the operator asked to open a file and the
       // provider would not hand it over, which is a bad day, not a crash.
       android.util.Log.w("ham2k", "could not read opened file: " + e.message)
-      null
-    }
-  }
-
-  /// The provider's own name for [uri], which is the only reliable one.
-  private fun queryDisplayName(uri: Uri): String? {
-    if (uri.scheme == "file") return uri.lastPathSegment
-    return try {
-      contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
-        ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
-    } catch (e: Exception) {
       null
     }
   }
@@ -179,6 +175,7 @@ class MainActivity : FlutterActivity() {
     // on would have every registered plugin inspect a request code it doesn't
     // own.
     if (fileSaveChannel?.onActivityResult(requestCode, resultCode, data) == true) return
+    if (filePickChannel?.onActivityResult(requestCode, resultCode, data) == true) return
     super.onActivityResult(requestCode, resultCode, data)
   }
 

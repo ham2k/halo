@@ -5,8 +5,8 @@
 // `maxOperationImportRecords` records, before planning it. The pair of cases
 // sits on the boundary: dropping the check lets 1,001 through to the
 // planner, and an off-by-one refuses a file of exactly 1,000. The same
-// harness drives the Android picker's route, which reaches the planner only
-// through the byte sniff.
+// harness drives a small file held in memory under a name that says nothing,
+// which reaches the planner only through the byte sniff.
 
 import 'dart:convert';
 
@@ -76,10 +76,10 @@ void main() {
     expect(find.text(t.adifImport.confirm), findsOneWidget);
   });
 
-  testWidgets('a small file the Android picker renamed is planned', (tester) async {
-    // Android hands back an in-memory copy renamed `.bin`, so the import
-    // sniffs its bytes first — a sniff that reads past a short file's end
-    // reports every small ADIF picked there as a failure.
+  testWidgets('a small in-memory file under a name that says nothing is planned', (tester) async {
+    // A `.bin` name sends the import to the bytes first, and a sniff that
+    // reads past an in-memory file's end reports every small ADIF as a
+    // failure.
     await _import(tester, _adif(3, path: 'mylog.bin'));
     expect(find.text(t.adifImport.newContacts(count: 3, formatted: '3')), findsOneWidget);
     expect(find.text(t.adifImport.confirm), findsOneWidget);

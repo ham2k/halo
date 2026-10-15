@@ -23,11 +23,6 @@ void main() {
       expect(chaseImportTypeGroups(importer).single.uniformTypeIdentifiers, isNotEmpty);
     });
 
-    test('Android asks for no filter, since it greys out what it cannot map', () {
-      debugDefaultTargetPlatformOverride = TargetPlatform.android;
-      expect(chaseImportTypeGroups(importer), isEmpty);
-    });
-
     test('desktop filters to the extensions the importer takes', () {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
       expect(chaseImportTypeGroups(importer).single.extensions, ['csv']);

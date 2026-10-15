@@ -14,7 +14,6 @@ import 'dart:async';
 
 import 'package:desktop_drop/desktop_drop.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart' show HookCategories, Hooks;
 import 'package:halo_widgets/halo_widgets.dart';
@@ -24,20 +23,19 @@ import 'package:halo_extension_host/halo_extension_host.dart' show localNetworkE
 import '../services/extensions/extension_info.dart';
 import '../services/extensions/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogUpdateCheck;
 import '../services/error_reporting_service.dart';
+import '../services/file_pick.dart';
 import '../services/halo_services.dart';
 import '../services/extensions/installed_extensions.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
 
 /// The file types the picker offers.
 ///
-/// Mirrors `adifTypeGroups()`, for the same reasons and with the same two
-/// platform traps: Android's `MimeTypeMap` cannot convert an extension it has
-/// never heard of, so a filtered group offers a browser with nothing
-/// selectable in it; and iOS filters by UTI and THROWS for a group carrying
-/// none. What the operator picks is filtered by its magic bytes anyway.
+/// Mirrors `adifTypeGroups()`: iOS filters by UTI and THROWS for a group
+/// carrying none, and Android's picker offers every file whatever this asks
+/// for ([pickFile]). What the operator picks is filtered by its magic bytes
+/// anyway.
 @visibleForTesting
 List<XTypeGroup> h2kextTypeGroups() {
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) return const [];
   return const [
     XTypeGroup(
       label: 'Ham2K extension',
@@ -58,7 +56,14 @@ Future<String?> installExtensionFromFile(
   required Future<void> Function(InspectedBundle) commit,
   bool Function(String key)? isBusy,
 }) async {
-  final file = await openFile(acceptedTypeGroups: h2kextTypeGroups());
+  final XFile? file;
+  try {
+    file = await pickFile(acceptedTypeGroups: h2kextTypeGroups());
+  } catch (e, stack) {
+    ErrorReportingService.report(e, stack, context: 'extension-install:picker');
+    if (context.mounted) await showInstallRefusal(context, '$e');
+    return null;
+  }
   if (file == null) return null;
   if (!context.mounted) return null;
   return installExtensionFromBytes(context, store: store, commit: commit, read: file.readAsBytes, isBusy: isBusy);
