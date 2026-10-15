@@ -4,7 +4,9 @@
 // An operation refuses an ADIF file holding more than
 // `maxOperationImportRecords` records, before planning it. The pair of cases
 // sits on the boundary: dropping the check lets 1,001 through to the
-// planner, and an off-by-one refuses a file of exactly 1,000.
+// planner, and an off-by-one refuses a file of exactly 1,000. The same
+// harness drives the Android picker's route, which reaches the planner only
+// through the byte sniff.
 
 import 'dart:convert';
 
@@ -17,7 +19,7 @@ import 'package:ham2k_logger/views/operation/adif_import_flow.dart';
 
 import '../support/halo_test_support.dart';
 
-XFile _adif(int records) {
+XFile _adif(int records, {String path = 'big.adi'}) {
   final body = StringBuffer('<PROGRAMID:4>Test<EOH>\n');
   for (var i = 0; i < records; i++) {
     final minute = (i % 60).toString().padLeft(2, '0');
@@ -27,10 +29,10 @@ XFile _adif(int records) {
     final call = 'W${i}X';
     body.write('<CALL:${call.length}>$call<QSO_DATE:8>20260901<TIME_ON:4>$hour$minute<BAND:3>20m<MODE:2>CW<EOR>\n');
   }
-  return XFile.fromData(utf8.encode(body.toString()), name: 'big.adi', path: 'big.adi');
+  return XFile.fromData(utf8.encode(body.toString()), path: path);
 }
 
-Future<void> _import(WidgetTester tester, int records) async {
+Future<void> _import(WidgetTester tester, XFile file) async {
   late Operation operation;
   final harness = await makeHaLoServices();
   await tester.runAsync(() async {
@@ -42,7 +44,7 @@ Future<void> _import(WidgetTester tester, int records) async {
     (services) => Scaffold(
       body: Builder(
         builder: (context) => TextButton(
-          onPressed: () => importAdifFile(context, services: services, operation: operation, file: _adif(records)),
+          onPressed: () => importAdifFile(context, services: services, operation: operation, file: file),
           child: const Text('import'),
         ),
       ),
@@ -63,14 +65,23 @@ void main() {
   setUp(() => adifImportInFlight = false);
 
   testWidgets('a file over the limit is refused before it is planned', (tester) async {
-    await _import(tester, maxOperationImportRecords + 1);
+    await _import(tester, _adif(maxOperationImportRecords + 1));
     expect(find.text(t.adifImport.tooMany(filename: 'big.adi', limit: '1,000')), findsOneWidget);
     expect(find.text(t.adifImport.confirm), findsNothing);
   });
 
   testWidgets('a file of exactly the limit is planned', (tester) async {
-    await _import(tester, maxOperationImportRecords);
+    await _import(tester, _adif(maxOperationImportRecords));
     expect(find.text(t.adifImport.newContacts(count: 1000, formatted: '1,000')), findsOneWidget);
+    expect(find.text(t.adifImport.confirm), findsOneWidget);
+  });
+
+  testWidgets('a small file the Android picker renamed is planned', (tester) async {
+    // Android hands back an in-memory copy renamed `.bin`, so the import
+    // sniffs its bytes first — a sniff that reads past a short file's end
+    // reports every small ADIF picked there as a failure.
+    await _import(tester, _adif(3, path: 'mylog.bin'));
+    expect(find.text(t.adifImport.newContacts(count: 3, formatted: '3')), findsOneWidget);
     expect(find.text(t.adifImport.confirm), findsOneWidget);
   });
 }

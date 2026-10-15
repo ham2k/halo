@@ -5,6 +5,7 @@
 
 import 'dart:convert';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/views/operation/adif_import_flow.dart';
@@ -49,6 +50,23 @@ void main() {
       // full parse of whatever was picked.
       expect(bytesLookLikeAdif(_bytes('<html><body>hello</body></html>')), isFalse);
       expect(bytesLookLikeAdif(_bytes('Dear operator, the contest is on Saturday.')), isFalse);
+    });
+
+    test('a picked file shorter than the sniff window is read whole', () async {
+      // The Android picker returns an XFile held in memory, whose `openRead`
+      // throws for an end past its length instead of clamping as a
+      // disk-backed one does — an unclamped read fails every small ADIF there.
+      final text = '<EOH>\n<CALL:5>N0DEV<EOR>\n';
+      final file = XFile.fromData(_bytes(text), path: 'mylog.bin');
+      final head = await readAdifHead(file);
+      expect(head, _bytes(text));
+    });
+
+    test('a file longer than the sniff window is read only that far', () async {
+      // The sniff runs before a file is known to be ADIF, so a video dropped
+      // by mistake must not be read whole just to be refused.
+      final file = XFile.fromData(Uint8List(256 * 1024), path: 'video.bin');
+      expect((await readAdifHead(file)).length, 64 * 1024);
     });
 
     test('undecodable bytes are refused, not thrown at', () {

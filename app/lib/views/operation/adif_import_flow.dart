@@ -12,6 +12,7 @@
 // them (packages/halo_core/lib/src/adif/adif_parser.dart).
 
 import 'dart:convert';
+import 'dart:math' show min;
 import 'dart:typed_data';
 
 import 'package:desktop_drop/desktop_drop.dart';
@@ -109,9 +110,17 @@ final _adifMarker = RegExp(r'<(eoh>|eor>|[a-z_]+:\d)', caseSensitive: false);
 /// turn an unusual encoding into a refusal, and the markers are ASCII.
 bool bytesLookLikeAdif(Uint8List head) => _adifMarker.hasMatch(latin1.decode(head, allowInvalid: true));
 
-Future<Uint8List> _readHead(XFile file) async {
+/// The first [_sniffBytes] of [file], or all of it when it is shorter.
+///
+/// The end is clamped here because `openRead` does not clamp it for every
+/// file: one backed by disk stops at its end, but one held in memory — what
+/// the Android picker returns — throws a `RangeError` for an end past its
+/// length, which would fail every ADIF file under 64 KiB picked there.
+@visibleForTesting
+Future<Uint8List> readAdifHead(XFile file) async {
+  final end = min(_sniffBytes, await file.length());
   final builder = BytesBuilder(copy: false);
-  await for (final chunk in file.openRead(0, _sniffBytes)) {
+  await for (final chunk in file.openRead(0, end)) {
     builder.add(chunk);
   }
   return builder.takeBytes();
@@ -153,7 +162,7 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
     // ([bytesLookLikeAdif]), so the bytes get the last word before a refusal.
     final Uint8List head;
     try {
-      head = await _readHead(file);
+      head = await readAdifHead(file);
     } catch (e, stack) {
       _reportFailure(services, 'adifImport:sniff', e, stack, t.failed(filename: filename, error: '$e'));
       if (context.mounted) {
