@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A self-spot or RESPOT the Spotting control has already run comes back to
+// A spot or RESPOT the Spotting control has already run comes back to
 // `handleCommandAction` only to be answered: its failure is what replaces
 // the hook's hopeful confirm on the command bar that ran it.
 import 'package:flutter_test/flutter_test.dart';
@@ -20,9 +20,9 @@ void main() {
     expect(await services.handleCommandAction('autoRespot', {}), isNull);
   });
 
-  test('SPOTLAST is still posted here, and needs a QSO', () async {
+  test('SPOTLAST is panel-run too: answered, never posted again here', () async {
     final services = (await makeHaLoServices()).services;
-    final outcome = await services.handleCommandAction('sendSpots', {'target': 'last'});
-    expect(outcome?.failed, isTrue, reason: 'taken for a panel-run spot, it would answer nothing and spot nothing');
+    expect(await services.handleCommandAction('sendSpots', {'target': 'last', 'failure': 'No QSO to spot yet.'}), (text: 'No QSO to spot yet.', failed: true));
+    expect(await services.handleCommandAction('sendSpots', {'target': 'last'}), isNull, reason: 'posting it here would spot the station twice');
   });
 }

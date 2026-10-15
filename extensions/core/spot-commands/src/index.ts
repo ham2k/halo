@@ -8,7 +8,7 @@
 //                                       the start of the comment (e.g.
 //                                       "QRT ADIOS" spots with comment
 //                                       "QRT ADIOS")
-//   SPOTLAST / SPOTEM / SPOTTHEM / SPTHEM — spot the most recently logged
+//   SPOTLAST / SPOTEM / SPOTTHEM / SPTHEM [comment] — spot the most recently logged
 //                                       QSO, no reference in app-polo (new
 //                                       behavior for app-halo)
 //   RESPOT [minutes|OFF]             — auto-respotting, HaLo's own: the
@@ -22,7 +22,7 @@
 
 import { defineExtension } from "@ham2k/extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
-import { parseSelfSpotCommand, isLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
+import { parseSelfSpotCommand, parseLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -72,13 +72,18 @@ const SelfSpotCommand = {
 
 const LastSpotCommand = {
   async interpret({ input, operation }: { input: string; operation?: Record<string, JSONValue> }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (!isLastSpotCommand(input)) return null
+    const parsed = parseLastSpotCommand(input)
+    if (!parsed) return null
     const t = tFor(ctx)
     if (!operation) return { error: t("needsOperation") }
+    const { comment } = parsed
     return {
-      describe: t("spotLast"),
-      confirm: t("spottingLast"),
-      commands: [{ sendSpots: { target: "last" } }],
+      // Free prose for other operators, as SPOT's comment is: mixed case, and
+      // space a character rather than advance-focus.
+      mixedCase: true,
+      describe: comment ? t("spotLastWithComment", { comment }) : t("spotLast"),
+      confirm: comment ? t("spottingLastComment", { comment }) : t("spottingLast"),
+      commands: [{ sendSpots: { comment: comment || undefined, target: "last" } }],
     }
   },
 
@@ -87,6 +92,7 @@ const LastSpotCommand = {
     return [
       {
         command: "SPOTLAST",
+        params: "[comment]",
         describe: t("catalogSpotLast"),
         category: t("catalogCategory"),
         needsOperation: true,

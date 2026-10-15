@@ -330,6 +330,48 @@ directly to the POTA API, no auth required). `sota`'s spot API requires an
 authenticated account app-halo doesn't have yet, so `sota` stays
 fetch-only for now.
 
+## ✅ `cluster` — the DX cluster connection
+
+```ts
+interface ClusterHook {
+  onLines(args: { lines: ClusterLine[] }, ctx): Promise<void>
+}
+// ClusterLine: {seq, at, text}
+// host.clusterSubscribe(): Promise<ClusterStatus>   // then onLines, until
+// host.clusterUnsubscribe(): Promise<ClusterStatus> // this
+// host.clusterLines({after?, limit?}): Promise<ClusterLine[]>
+// host.clusterStatus(): Promise<ClusterStatus>
+// host.clusterPostSpot({freq, call, comment?}): Promise<ClusterReply>
+// host.clusterSend(command): Promise<ClusterReply>
+// ClusterReply: {ok, lines: string[], error?, message?}
+```
+
+The app holds one telnet connection to the DX cluster node the operator picked
+in Settings, logged in as the operator. Extensions share it rather than open
+their own, because a node logs a call in once
+([docs/design/cluster.md](../design/cluster.md)). Not on web, where every call
+answers `error: 'unsupported'`. Extension API 10.
+
+`clusterPostSpot` is how a `spots` hook posts to the cluster: the host builds
+the `DX` command, sends at most 60 characters of comment, and spaces spots five
+seconds apart. A reply with `ok: true` means the node took the spot without
+refusing it. It does not prove the spot left that node: a DXSpider node can keep
+a self-spot local and still echo it.
+
+`onLines` is called only for an extension that called `clusterSubscribe()`,
+with the lines since the last batch, at most once a second. Register the hook
+under the extension's own key (the default): that is the key the host delivers
+to. A subscription lasts until `clusterUnsubscribe()` or the runtime restarts,
+and keeps the session open while it lasts. A reader that only polls
+`clusterLines({ after })` holds nothing open.
+
+Three manifest grants gate it, each including the ones before it:
+`"requiresClusterRead": true` for status, lines and subscribing;
+`"requiresClusterSpot": true` adds `clusterPostSpot`;
+`"requiresClusterCommand": true` adds `clusterSend`, which sends any command in
+the operator's name. Declare the least you need: the consent screen names it.
+Implemented by: `ki2d-cluster-spotter` (spot).
+
 ## ✅ `export` — log file generation
 
 ```ts

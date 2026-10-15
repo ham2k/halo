@@ -7,7 +7,7 @@
 // refFormatting.ts.
 
 const SELF_SPOT_MATCH = /^(SPOT|SPOTME|SPME|SELFSPOT|QRV|QRT|QSY|QRX)(|[ /][\s\w\d!,.\-_]*)$/i
-const LAST_SPOT_MATCH = /^(SPOTLAST|SPOTEM|SPOTTHEM|SPTHEM)$/i
+const LAST_SPOT_MATCH = /^(SPOTLAST|SPOTEM|SPOTTHEM|SPTHEM)(|[ /][\s\w\d!,.\-_]*)$/i
 const Q_CODES = new Set(["QRV", "QRT", "QSY", "QRX"])
 const RESPOT_MATCH = /^RESPOT(?:\s+(.*))?$/i
 
@@ -26,8 +26,14 @@ export function parseSelfSpotCommand(input: string): { comment: string } | null 
   return { comment }
 }
 
-export function isLastSpotCommand(input: string): boolean {
-  return LAST_SPOT_MATCH.test(input.trim())
+/// Returns the comment to spot the last QSO with (possibly empty string), or
+/// `null` if `input` doesn't match SPOTLAST or its aliases. The comment
+/// follows a space or a slash, as SPOT's does.
+export function parseLastSpotCommand(input: string): { comment: string } | null {
+  const match = LAST_SPOT_MATCH.exec(input.trim())
+  if (!match) return null
+  const rest = match[2]
+  return { comment: rest ? rest.slice(1).trim() : "" }
 }
 
 /// RESPOT's defaults: the same ten minutes the Spotting control offers, a

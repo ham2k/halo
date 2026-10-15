@@ -253,6 +253,13 @@ class TemplateError implements Exception {
 mixin _ExtensionHookApi {
   // Owned by the class or by another part of this library.
   ExtensionHost? get host;
+
+  /// Hands [lines] to [extensionKey]'s `cluster.onLines` hook — the lines a
+  /// node sent since the last batch, for an extension that subscribed.
+  Future<void> deliverClusterLines(String extensionKey, List<Map<String, dynamic>> lines) async {
+    await host?.invoke(Hooks.clusterOnLines, key: extensionKey, args: {'lines': lines}, timeout: const Duration(seconds: 5));
+  }
+
   SettingsService? get settings;
   Future<void> start();
   void presentResultMessage(Map<String, dynamic> message, {String ns});
@@ -398,7 +405,12 @@ mixin _ExtensionHookApi {
         if (value['enabled'] != true) continue;
         sources.add({...value, 'hookKey': entry['key']});
       }
-      return sources;
+      if (sources.isEmpty) return sources;
+      // What the Spotting control names each source's icon with.
+      final names = await getSpotSourceNames();
+      return [
+        for (final source in sources) {...source, 'name': ?names[source['hookKey']]},
+      ];
     } catch (e) {
       debugPrint('[extensions] suggestSpotSources failed: $e');
       return const [];

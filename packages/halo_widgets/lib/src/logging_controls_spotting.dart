@@ -18,6 +18,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'call_info_summary.dart';
+import 'hover_label.dart';
 import 'icon_resolver.dart';
 import 'logging_controls_types.dart';
 import 'mdi_icons.g.dart';
@@ -268,12 +269,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   ///
   /// `sendSpots` (SPOT and the Q-codes): a self-spot is this control's own,
   /// sent as the button's is, so what auto-respotting repeats is a spot it
-  /// saw go out. SPOTLAST (`target: 'last'`) resolves *who* gets spotted
-  /// here — the command hook only parsed text into a target — and the spot
-  /// itself is the app's ([forward]): the most recent real (non-event) QSO,
-  /// regardless of what's being edited. [qsos] is oldest-first (see
-  /// `watchForOperation`), so the last real contact is `lastWhere`, not
-  /// `firstWhere`.
+  /// saw go out. SPOTLAST (`target: 'last'`) spots the most recent real
+  /// (non-event) QSO, regardless of what's being edited — sent from here
+  /// too, so the button shows it in flight and the icons colour by its
+  /// answers. [qsos] is oldest-first (see `watchForOperation`), so the last
+  /// real contact is `lastWhere`, not `firstWhere`.
   ///
   /// `autoRespot` (RESPOT) runs this control's own auto-respotting, so the
   /// chip, the button and the respots are one, however it was started.
@@ -298,7 +298,27 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       return _reportRan('sendSpots', {'target': 'self', 'failure': ?failure}, forward);
     }
     final qso = qsos.cast<Qso?>().lastWhere((q) => q!.isRealContact, orElse: () => null);
-    await forward?.call('sendSpots', {'operation': operationPayload, 'target': 'last', if (qso != null) 'qso': qso.data, 'comment': ?comment});
+    final failure = await _spotLast(qso, comment);
+    return _reportRan('sendSpots', {'target': 'last', 'failure': ?failure}, forward);
+  }
+
+  /// SPOTLAST: spots [qso]'s station on every source offering it. Returns why
+  /// it did not go through, or null.
+  Future<String?> _spotLast(Qso? qso, String? comment) async {
+    if (qso == null) return t.spotting.noQsoYet;
+    // Said here, before [SpottingConfig.suggestSpotSources] offers nothing
+    // for it and the operator reads that as no extension spotting at all.
+    if (qso.hasIncompleteCall) return t.spotting.incompleteCall;
+    final cfg = config();
+    final suggest = cfg.suggestSpotSources;
+    if (cfg.sendSpot == null || suggest == null) return t.spotting.nothingToSpot;
+    final sources = await suggest(operation: cfg.operation.data, qso: qso.data);
+    if (isDisposed) return null;
+    if (sources.isEmpty) return t.spotting.nothingToSpot;
+    final results = await _post(sources: sources, qso: qso.data, comment: comment);
+    if (isDisposed) return null;
+    if (results == null) return t.loggingControls.spotBusy;
+    return spotFailureText(sources, results);
   }
 
   /// A command this control ran, on to the app; with no app to answer it,
@@ -720,24 +740,27 @@ class SpottingControlFields extends StatelessWidget {
           icon: model.sending ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(MdiIcons.handWave),
           label: Text(state.buttonLabel),
         ),
-        // Up to 3 source-status icons per column, wrapping into another
-        // column to the right once a column fills up.
-        for (var i = 0; i < sources.length; i += 3)
+        // Two source-status icons per column, wrapping into another column
+        // to the right once a column fills up.
+        for (var i = 0; i < sources.length; i += 2)
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (final source in sources.skip(i).take(3))
+              for (final source in sources.skip(i).take(2))
                 Padding(
                   padding: const EdgeInsets.only(left: Space.xs, top: Space.xxs, bottom: Space.xxs),
-                  child: Icon(
-                    resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
-                    size: 16,
-                    color: switch (model.statusOf(source['hookKey'] as String? ?? '')) {
-                      true => colors.important,
-                      false => theme.colorScheme.error,
-                      null => theme.colorScheme.onTertiaryContainer,
-                    },
-                    shadows: glyphGlow(theme),
+                  child: HoverLabel(
+                    label: source['name'] as String? ?? source['hookKey'] as String? ?? '',
+                    child: Icon(
+                      resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
+                      size: 16,
+                      color: switch (model.statusOf(source['hookKey'] as String? ?? '')) {
+                        true => colors.important,
+                        false => theme.colorScheme.error,
+                        null => theme.colorScheme.onTertiaryContainer,
+                      },
+                      shadows: glyphGlow(theme),
+                    ),
                   ),
                 ),
             ],

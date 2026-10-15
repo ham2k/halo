@@ -482,6 +482,8 @@ class _ConsentDialog extends StatelessWidget {
               _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
             else if (bundle.requiresRadioRead)
               _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
+            if (bundle.requiresClusterRead)
+              _Capability(icon: MdiIcons.accessPointNetwork, label: _clusterGrantLabel(bundle.requiresClusterCommand, bundle.requiresClusterSpot)),
             if (bundle.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
           ],
           const SizedBox(height: Space.xl),
@@ -498,6 +500,14 @@ class _ConsentDialog extends StatelessWidget {
 /// no host, so it says what it admits instead.
 String _socketGrantLabel(String entry) =>
     entry == localNetworkEntry ? t.extensionsPanel.canHoldLocalConnection : t.extensionsPanel.canHoldConnection(host: entry);
+
+/// One line for the cluster, the strongest level declared: each includes
+/// the ones below it.
+String _clusterGrantLabel(bool command, bool spot) => command
+    ? t.extensionsPanel.canCommandCluster
+    : spot
+    ? t.extensionsPanel.canSpotCluster
+    : t.extensionsPanel.canReadCluster;
 
 class _Capability extends StatelessWidget {
   final IconData icon;
@@ -744,6 +754,9 @@ class _DetailsDialog extends StatelessWidget {
         info.requiresLocation ||
         info.requiresRadioRead ||
         info.requiresRadioWrite ||
+        info.requiresClusterRead ||
+        info.requiresClusterSpot ||
+        info.requiresClusterCommand ||
         info.allowUserAgentOverride;
     final hookLabels = extensionHookLabels(info.hooks, t);
 
@@ -785,6 +798,8 @@ class _DetailsDialog extends StatelessWidget {
               _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
             else if (info.requiresRadioRead)
               _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
+            if (info.requiresClusterRead || info.requiresClusterSpot || info.requiresClusterCommand)
+              _Capability(icon: MdiIcons.accessPointNetwork, label: _clusterGrantLabel(info.requiresClusterCommand, info.requiresClusterSpot)),
             if (info.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
           ],
           if (hookLabels.isNotEmpty) ...[

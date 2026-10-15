@@ -32,6 +32,10 @@ import type {
   PanelRadioResult,
   ExtensionWebSocket,
   WebSocketOptions,
+  ClusterLine,
+  ClusterPostSpotRequest,
+  ClusterReply,
+  ClusterStatus,
 } from "./types.ts"
 
 import { base64ToBytes, bytesToBase64 } from "./base64.ts"
@@ -314,6 +318,29 @@ export const host = {
   /** Stops all CW, voice and PTT the app is keying, and a tune it started (extension API 9), as Escape does. Needs `requiresRadioWrite` and extension API 7. */
   async stopRadioTransmit(args: PanelRadioTarget): Promise<PanelRadioResult> {
     return (await hostCallFn()("stopRadioTransmit", { ...args })) as PanelRadioResult
+  },
+  /** The app's DX cluster connection, as Settings shows it. Needs `requiresClusterRead` and extension API 10. */
+  async clusterStatus(): Promise<ClusterStatus> {
+    return (await hostCallFn()("clusterStatus", {})) as ClusterStatus
+  },
+  /** The node's recent lines after `after`, oldest first, at most `limit` of the newest. Needs `requiresClusterRead` and extension API 10. */
+  async clusterLines(args: { after?: number; limit?: number } = {}): Promise<ClusterLine[]> {
+    return (await hostCallFn()("clusterLines", { ...args })) as ClusterLine[]
+  },
+  /** Connects if need be and delivers every new line to this extension's `cluster` hook until `clusterUnsubscribe`. Needs `requiresClusterRead` and extension API 10. */
+  async clusterSubscribe(): Promise<ClusterStatus> {
+    return (await hostCallFn()("clusterSubscribe", {})) as ClusterStatus
+  },
+  async clusterUnsubscribe(): Promise<ClusterStatus> {
+    return (await hostCallFn()("clusterUnsubscribe", {})) as ClusterStatus
+  },
+  /** Posts a spot, logged in as the operator. Needs `requiresClusterSpot` and extension API 10. */
+  async clusterPostSpot(args: ClusterPostSpotRequest): Promise<ClusterReply> {
+    return (await hostCallFn()("clusterPostSpot", { ...args })) as ClusterReply
+  },
+  /** Sends any one command line, in the operator's name. Needs `requiresClusterCommand` and extension API 10. */
+  async clusterSend(command: string): Promise<ClusterReply> {
+    return (await hostCallFn()("clusterSend", { command })) as ClusterReply
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse

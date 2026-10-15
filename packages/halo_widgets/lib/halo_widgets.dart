@@ -22,6 +22,7 @@ export 'src/form_pane.dart';
 export 'src/halo_snack_bar.dart';
 export 'src/icon_resolver.dart';
 export 'src/halo_dialog.dart';
+export 'src/hover_label.dart';
 export 'src/inline_markdown.dart';
 export 'src/keyboard_dismiss.dart';
 export 'src/layout.dart';

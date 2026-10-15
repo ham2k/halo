@@ -640,6 +640,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// `interpretCommand` calls.
   void _setCommandContext(Operation? operation) {
     _commandContext.operation = operation == null ? null : {...operation.data, 'uuid': operation.uuid};
+    _commandContext.operatorCall = operation == null ? null : operatorCallFor(operation);
   }
 
   void _onOperationChanged(Operation? operation) {

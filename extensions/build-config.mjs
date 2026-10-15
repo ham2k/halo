@@ -97,6 +97,10 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // host.listRadios()/readRadio() (and a scene's spectrum control) and
 // host.setRadio()/setRadioConnection()/setRadioSpectrum() and the keying calls.
 // Write implies read: a command answers with the radio's state.
+// `requiresClusterRead`, `requiresClusterSpot` and `requiresClusterCommand`
+// allow the DX cluster calls, each including the ones before it:
+// host.clusterStatus()/clusterLines()/clusterSubscribe(), then
+// host.clusterPostSpot(), then host.clusterSend() (docs/design/cluster.md).
 // Each extension's USER-FACING metadata (name, category, icon, keywords,
 // translations, fetch-domain allowlist, …) lives in the package's own
 // manifest.json — the single source both this build and the bundle itself
@@ -269,6 +273,9 @@ export function indexEntryFor({ key, manifest: m }) {
     ...(m.requiresLocation ? { requiresLocation: true } : {}),
     ...(m.requiresRadioRead ? { requiresRadioRead: true } : {}),
     ...(m.requiresRadioWrite ? { requiresRadioWrite: true } : {}),
+    ...(m.requiresClusterRead ? { requiresClusterRead: true } : {}),
+    ...(m.requiresClusterSpot ? { requiresClusterSpot: true } : {}),
+    ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
     core: !m.category,

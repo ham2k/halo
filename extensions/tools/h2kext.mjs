@@ -39,8 +39,10 @@ import yazl from "yazl"
 /// panel's `target: 'developer'` settings and leaves a settings panel with
 /// nothing to show out of the Settings list; 9 hands `ctx.getQsos`'s QSOs
 /// frozen, from the one copy of the log every extension shares, and adds the
-/// `chasing` hook category.
-export const H2KEXT_API_VERSION = 9
+/// `chasing` hook category; 10 adds the DX cluster connection — the
+/// `requiresCluster*` grants, the `host.cluster*` calls and the `cluster`
+/// hook category.
+export const H2KEXT_API_VERSION = 10
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -52,6 +54,11 @@ export const WEB_SOCKETS_API_VERSION = 2
 /// program, and for an extension that does nothing else, install a bundle
 /// that silently does nothing.
 export const CHASING_API_VERSION = 9
+
+/// The first API with the DX cluster calls. A manifest declaring a
+/// `requiresCluster*` grant or a `cluster` hook under an older one is
+/// refused: an older app would install it and refuse every call it makes.
+export const CLUSTER_API_VERSION = 10
 
 /// The first API with timers. The build points a bundle's bare `setTimeout`
 /// and friends at the SDK's only from here on: an older app's kernel hands an
@@ -156,6 +163,7 @@ SHARED_MODULES_BY_API[6] = SHARED_MODULES_BY_API[5]
 SHARED_MODULES_BY_API[7] = SHARED_MODULES_BY_API[6]
 SHARED_MODULES_BY_API[8] = SHARED_MODULES_BY_API[7]
 SHARED_MODULES_BY_API[9] = SHARED_MODULES_BY_API[8]
+SHARED_MODULES_BY_API[10] = SHARED_MODULES_BY_API[9]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still
@@ -347,6 +355,14 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
 
   if (Array.isArray(manifest.hooks) && manifest.hooks.includes("chasing") && Number.isInteger(manifest.api) && manifest.api < CHASING_API_VERSION) {
     say(`'chasing' needs 'api' ${CHASING_API_VERSION} or later — an app older than that would install this and never ask it what a contact claims`)
+  }
+
+  const clusterGrant = ["requiresClusterRead", "requiresClusterSpot", "requiresClusterCommand"].find((grant) => manifest[grant] === true)
+  const clusterHook = Array.isArray(manifest.hooks) && manifest.hooks.includes("cluster")
+  if ((clusterGrant || clusterHook) && Number.isInteger(manifest.api) && manifest.api < CLUSTER_API_VERSION) {
+    say(
+      `'${clusterGrant ?? "cluster"}' needs 'api' ${CLUSTER_API_VERSION} or later — an app older than that would install this and refuse every cluster call it makes`,
+    )
   }
 
   // An extension with no category is CORE to the host: always enabled, and

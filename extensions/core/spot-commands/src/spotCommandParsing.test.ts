@@ -6,7 +6,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { parseSelfSpotCommand, isLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
+import { parseSelfSpotCommand, parseLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
 
 test("parseSelfSpotCommand: bare SPOT has an empty comment", () => {
   assert.deepEqual(parseSelfSpotCommand("SPOT"), { comment: "" })
@@ -40,23 +40,26 @@ test("parseSelfSpotCommand: a slash separator works the same as a space", () => 
 
 test("parseSelfSpotCommand: unrelated input doesn't match", () => {
   assert.equal(parseSelfSpotCommand("K1ABC"), null)
-  assert.equal(parseSelfSpotCommand("SPOTLAST"), null) // handled by isLastSpotCommand instead
+  assert.equal(parseSelfSpotCommand("SPOTLAST"), null) // handled by parseLastSpotCommand instead
   assert.equal(parseSelfSpotCommand(""), null)
 })
 
-test("isLastSpotCommand: SPOTLAST, SPOTEM, SPOTTHEM, SPTHEM all match, case-insensitively", () => {
+test("parseLastSpotCommand: SPOTLAST, SPOTEM, SPOTTHEM, SPTHEM all match bare, case-insensitively", () => {
   for (const trigger of ["SPOTLAST", "SPOTEM", "SPOTTHEM", "SPTHEM", "spotlast"]) {
-    assert.equal(isLastSpotCommand(trigger), true, trigger)
+    assert.deepEqual(parseLastSpotCommand(trigger), { comment: "" }, trigger)
   }
 })
 
-test("isLastSpotCommand: doesn't accept trailing text (no comment support, per the issue)", () => {
-  assert.equal(isLastSpotCommand("SPOTLAST typo"), false)
+test("parseLastSpotCommand: text after a space or a slash is the comment, as SPOT's is", () => {
+  assert.deepEqual(parseLastSpotCommand("SPOTTHEM nice signal"), { comment: "nice signal" })
+  assert.deepEqual(parseLastSpotCommand("spotlast/QSB, try again"), { comment: "QSB, try again" })
 })
 
-test("isLastSpotCommand: unrelated input doesn't match", () => {
-  assert.equal(isLastSpotCommand("SPOT"), false)
-  assert.equal(isLastSpotCommand("K1ABC"), false)
+test("parseLastSpotCommand: a call that merely starts with the word is not the command", () => {
+  // SPOTEMX would otherwise spot the last QSO with comment "X".
+  assert.equal(parseLastSpotCommand("SPOTEMX"), null)
+  assert.equal(parseLastSpotCommand("SPOT"), null)
+  assert.equal(parseLastSpotCommand("K1ABC"), null)
 })
 
 test("parseRespotCommand: bare RESPOT is every ten minutes, a number is that many", () => {

@@ -256,6 +256,14 @@ class ExtensionInfo with ExtensionSearchable {
   final bool requiresRadioRead;
   final bool requiresRadioWrite;
 
+  /// What this extension may do with the app's DX cluster connection, each
+  /// level including the ones before it: read what the node sends
+  /// (`requiresClusterRead`), post spots (`requiresClusterSpot`), send any
+  /// command (`requiresClusterCommand`). All three log the operator in.
+  final bool requiresClusterRead;
+  final bool requiresClusterSpot;
+  final bool requiresClusterCommand;
+
   /// Whether [other] declares the same capabilities the host resolves into
   /// allowlists when the runtime STARTS. A dev reload that changes one cannot
   /// be hot-swapped: the running host would keep enforcing the old answer.
@@ -263,6 +271,9 @@ class ExtensionInfo with ExtensionSearchable {
       requiresLocation == other.requiresLocation &&
       requiresRadioRead == other.requiresRadioRead &&
       requiresRadioWrite == other.requiresRadioWrite &&
+      requiresClusterRead == other.requiresClusterRead &&
+      requiresClusterSpot == other.requiresClusterSpot &&
+      requiresClusterCommand == other.requiresClusterCommand &&
       allowUserAgentOverride == other.allowUserAgentOverride &&
       const ListEquality<String>().equals(webSockets, other.webSockets);
 
@@ -342,6 +353,9 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresLocation = false,
     this.requiresRadioRead = false,
     this.requiresRadioWrite = false,
+    this.requiresClusterRead = false,
+    this.requiresClusterSpot = false,
+    this.requiresClusterCommand = false,
     required this.core,
     this.api,
     required this.name,
@@ -374,6 +388,9 @@ class ExtensionInfo with ExtensionSearchable {
     requiresLocation: json['requiresLocation'] as bool? ?? false,
     requiresRadioRead: json['requiresRadioRead'] as bool? ?? false,
     requiresRadioWrite: json['requiresRadioWrite'] as bool? ?? false,
+    requiresClusterRead: json['requiresClusterRead'] as bool? ?? false,
+    requiresClusterSpot: json['requiresClusterSpot'] as bool? ?? false,
+    requiresClusterCommand: json['requiresClusterCommand'] as bool? ?? false,
     // A stale index without metadata degrades to "everything core" —
     // the fail-safe: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,

@@ -1764,10 +1764,8 @@ class HaLoServices {
         // right after the first offers to enable what is already on.
         extensions.invalidateHookContext();
         return (text: show ? t.commands.idleMetricsEnabled : t.commands.idleMetricsDisabled, failed: false);
-      case 'sendSpots' when params?['target'] == 'last':
-        return _sendSpot(params!);
-      // Self-spots and RESPOT, which the Spotting control has already run:
-      // here to answer the command where it was typed.
+      // Spots and RESPOT, which the Spotting control has already run: here to
+      // answer the command where it was typed.
       case 'sendSpots' || 'autoRespot':
         final failure = params?['failure'] as String?;
         return failure == null ? null : (text: failure, failed: true);
@@ -2008,31 +2006,6 @@ class HaLoServices {
     await operations.saveData(updated);
     unawaited(scoring.rescoreOperation(updated));
     return null;
-  }
-
-  /// SPOTLAST: posts the QSO `logging_controls_spotting.dart` resolved, and
-  /// summarizes the per-source result. Self-spots are the Spotting control's
-  /// own to send, since auto-respotting repeats them.
-  Future<CommandActionOutcome?> _sendSpot(Map<String, dynamic> params) async {
-    final operation = (params['operation'] as Map?)?.cast<String, dynamic>() ?? const {};
-    final qso = (params['qso'] as Map?)?.cast<String, dynamic>();
-    if (qso == null) return (text: t.spotting.noQsoYet, failed: true);
-    // Said here, before [suggestSpotSources] offers nothing for it and the
-    // operator reads that as no extension spotting at all.
-    if (qsonHasIncompleteCall(qso)) return (text: t.spotting.incompleteCall, failed: true);
-
-    final sources = await extensions.suggestSpotSources(operation: operation, qso: qso);
-    if (sources.isEmpty) return (text: t.spotting.nothingToSpot, failed: true);
-
-    final results = await extensions.sendSpot(
-      sources: sources,
-      operation: operation,
-      qso: qso,
-      comment: params['comment'] as String?,
-      spotterCall: settings.activeProfile.operatorCall,
-    );
-    final failure = spotFailureText(sources, results);
-    return failure == null ? null : (text: failure, failed: true);
   }
 
   Future<Map<String, dynamic>> _syncTransportCall(HookRef hook, Map<String, dynamic> args) async {

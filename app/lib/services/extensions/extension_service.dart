@@ -37,6 +37,7 @@ import 'installed_extensions.dart';
 import 'preloaded_extensions.dart';
 import '../location_service.dart';
 import '../panel_service.dart';
+import 'cluster_host_calls.dart';
 import 'radio_host_calls.dart';
 import '../settings_service.dart';
 import '../spots_service.dart';
@@ -146,6 +147,9 @@ class ExtensionService
 
   /// The radio host calls, behind their manifest capabilities.
   final radioCalls = RadioHostCalls();
+
+  /// The DX cluster host calls, behind their manifest capabilities.
+  final clusterCalls = ClusterHostCalls();
 
   /// Backs the `getSpotsForCall` host call (HookContext.getSpotsForCall),
   /// which the `spot-history` lookup hook reads. Optional like the other
@@ -423,6 +427,7 @@ class ExtensionService
       final loadedInfos = available.where((info) => loaded.contains(info.key)).toList();
       _location = CapabilityGrant.among(loadedInfos, (info) => info.requiresLocation);
       radioCalls.allow(loadedInfos);
+      clusterCalls.allow(loadedInfos);
       // Pessimistic from the moment a host exists until its activations have
       // genuinely settled below, so a consumer reading it the instant `host`
       // goes non-null is not told the hook set is authoritative while

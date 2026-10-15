@@ -20,6 +20,7 @@ abstract final class HookCategories {
   static const adifImport = 'adifImport';
   static const callNotes = 'callNotes';
   static const chasing = 'chasing';
+  static const cluster = 'cluster';
   static const command = 'command';
   static const dataFile = 'dataFile';
   static const export = 'export';
@@ -128,6 +129,8 @@ abstract final class Hooks {
   static const spotsIsOtherSpotEnabled = HookRef(HookCategories.spots, 'isOtherSpotEnabled');
   static const spotsPostSelfSpot = HookRef(HookCategories.spots, 'postSelfSpot');
   static const spotsPostOtherSpot = HookRef(HookCategories.spots, 'postOtherSpot');
+
+  static const clusterOnLines = HookRef(HookCategories.cluster, 'onLines');
 
   static const syncTransportSync = HookRef(HookCategories.syncTransport, 'sync');
   static const syncTransportGetAccountData = HookRef(HookCategories.syncTransport, 'getAccountData');

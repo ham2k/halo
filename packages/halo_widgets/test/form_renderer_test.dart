@@ -2691,6 +2691,45 @@ void main() {
       expect(find.text('••••••••'), findsOneWidget);
     });
 
+    testWidgets('a stored secret says its storedText in place of the mask, and only while stored', (tester) async {
+      // The words replace the mask, never the value: a row that says
+      // "on file" with nothing stored tells the operator a login will work
+      // when it will not.
+      Widget form(String value) => MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'secret',
+                  'key': 'password',
+                  'label': 'Password',
+                  'icon': 'key-outline',
+                  'description': 'Only if needed',
+                  'storedText': 'Password on file for K3LR',
+                  'value': value,
+                },
+              ],
+            },
+            initialState: const {},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(form('hunter2'));
+      expect(find.text('Password on file for K3LR'), findsOneWidget);
+      expect(find.text('hunter2'), findsNothing);
+      expect(find.text('••••••••'), findsNothing);
+
+      await tester.pumpWidget(Container());
+      await tester.pumpWidget(form(''));
+      expect(find.text('Password on file for K3LR'), findsNothing);
+      expect(find.text('Only if needed'), findsOneWidget);
+    });
+
     testWidgets('a header with no style (or style: default) keeps the bold form-title look', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

@@ -40,6 +40,7 @@ void main() {
     final trailingEventMarker = Qso(uuid: 'evt', operationUuid: operation.uuid, data: {'band': 'event', 'startAtMillis': 3000});
 
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    final spottedQsos = <Map<String, dynamic>?>[];
     Future<Map<String, dynamic>?> fakeSpotLastCommand(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async {
       if (input.trim().toUpperCase() != 'SPOTLAST') return null;
       return {
@@ -62,6 +63,19 @@ void main() {
             dispatched.add(MapEntry(action, params));
           },
         ),
+        // Sent by the Spotting control, as SPOT is, so the button shows it in
+        // flight and the source icons colour by its answers.
+        spotting: SpottingHooks(
+          suggestSpotSources: ({required operation, qso}) async => [
+            {'hookKey': 'pota'},
+          ],
+          sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) async {
+            spottedQsos.add(qso);
+            return {
+              'pota': {'ok': true},
+            };
+          },
+        ),
       ),
     );
 
@@ -70,11 +84,9 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(dispatched, hasLength(1));
-    expect(dispatched.single.key, 'sendSpots');
-    final params = dispatched.single.value!;
-    expect(params['target'], 'last');
-    expect((params['qso'] as Map)['their'], {'call': 'W1XYZ'});
+    expect(spottedQsos.single?['their'], {'call': 'W1XYZ'});
+    expect(dispatched.single.key, 'sendSpots', reason: 'the app still answers the command where it was typed');
+    expect(dispatched.single.value, {'target': 'last'}, reason: 'a spot that went out has no failure to report');
   });
 
   testWidgets("a spot carries the operation's device-local data, where the multi-station identifier lives", (tester) async {

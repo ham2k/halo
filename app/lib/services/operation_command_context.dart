@@ -13,6 +13,10 @@ class OperationCommandContext {
   /// The operation QSON with `uuid` folded in, once it has loaded.
   Map<String, dynamic>? operation;
 
+  /// Who is operating it from this device (`operatorCallFor`), which the
+  /// QSON alone cannot say: a multi-op position lives in `localData`.
+  String? operatorCall;
+
   /// This operation's logging panel dispatcher, while one is mounted.
   CommandActionsDispatcher? dispatch;
 

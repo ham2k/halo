@@ -30,7 +30,7 @@ import 'extension_service.dart';
 /// says so rather than failing somewhere inside a hook. Kept equal to the
 /// packer's `H2KEXT_API_VERSION` (extensions/tools/h2kext.mjs), which lists
 /// what each version adds.
-const kExtensionApiVersion = 9;
+const kExtensionApiVersion = 10;
 
 /// The prefix reserved for Ham2K's own extensions. Refused to an installed
 /// bundle: there is no signing, so anyone could claim it, and the key is what
@@ -247,11 +247,15 @@ class InspectedBundle {
   bool get requiresLocation => manifest['requiresLocation'] == true;
   bool get requiresRadioWrite => manifest['requiresRadioWrite'] == true;
   bool get requiresRadioRead => requiresRadioWrite || manifest['requiresRadioRead'] == true;
+  bool get requiresClusterCommand => manifest['requiresClusterCommand'] == true;
+  bool get requiresClusterSpot => requiresClusterCommand || manifest['requiresClusterSpot'] == true;
+  bool get requiresClusterRead => requiresClusterSpot || manifest['requiresClusterRead'] == true;
   bool get allowUserAgentOverride => manifest['allowUserAgentOverride'] == true;
 
   /// Whether it asks for anything at all beyond running. A bundle claiming
   /// nothing should not be dressed up as though it did.
-  bool get claimsCapabilities => domains.isNotEmpty || webSockets.isNotEmpty || requiresLocation || requiresRadioRead || allowUserAgentOverride;
+  bool get claimsCapabilities =>
+      domains.isNotEmpty || webSockets.isNotEmpty || requiresLocation || requiresRadioRead || requiresClusterRead || allowUserAgentOverride;
 }
 
 /// Reads, validates, installs and removes `.h2kext` bundles.

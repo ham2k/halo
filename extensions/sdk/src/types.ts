@@ -394,6 +394,62 @@ export interface SpotsHook {
   postOtherSpot?(args: PostOtherSpotRequest, ctx: HookContext): Promise<PostResult>
 }
 
+/// One line a DX cluster node sent (docs/design/cluster.md). Extension API 10.
+export interface ClusterLine {
+  /// Increases by one per line for the app's whole session, across
+  /// reconnects: ask `host.clusterLines({ after })` with the last one seen
+  /// and nothing is missed or repeated.
+  seq: number
+  /// When it arrived, epoch milliseconds on the app clock.
+  at: number
+  /// As the node sent it — a `DX de …` spot, an announcement, a prompt.
+  text: string
+}
+
+export interface ClusterStatus {
+  state: "idle" | "connecting" | "connected" | "failed"
+  node: { name: string; host: string; port: number }
+  /// The call logged in: the operator of the operation in front.
+  call?: string
+  /// Why the last attempt failed — see `ClusterReply.error`.
+  error?: string
+  message?: string
+  /// The newest line's `seq`; 0 before the first.
+  lastSeq: number
+}
+
+/// What the node answered a command or a spot with.
+export interface ClusterReply {
+  ok: boolean
+  /// What the node sent between the command and its next prompt, which
+  /// includes whatever spots it interleaved meanwhile.
+  lines: string[]
+  /// `unsupported` (the web build has no sockets), `noCall`, `connectFailed`,
+  /// `needsPassword`, `loginFailed`, `disconnected`, `timeout`, `refused`
+  /// (the node said no; `message` quotes it), `tooSoon` (spots are spaced a
+  /// few seconds apart), `invalidCall`, `invalidFrequency`.
+  error?: string
+  message?: string
+}
+
+export interface ClusterPostSpotRequest {
+  /// kHz.
+  freq: number
+  call: string
+  /// Up to 60 characters are sent. Nodes show the first 30 in a `DX de`
+  /// line and forward the rest, so what matters most goes first.
+  comment?: string
+}
+
+/// Lines from the node, for an extension that called
+/// `host.clusterSubscribe()`. Registered under the extension's own key (the
+/// default): that is the key the host delivers to.
+export interface ClusterHook {
+  /// The lines since the last batch, oldest first — at most one call a
+  /// second, however busy the node.
+  onLines(args: { lines: ClusterLine[] }, ctx: HookContext): Promise<void>
+}
+
 /// A reference ties a QSO or operation to an activity program entity
 /// (a park, a summit, a contest). Same shape as app-polo's QSON refs.
 export interface Ref {
@@ -2293,6 +2349,18 @@ export interface ExtensionManifest {
   /// `host.stopRadioTransmit()`. Implies `requiresRadioRead`, since a command
   /// answers with the radio's state.
   requiresRadioWrite?: boolean
+  /// Declares this extension's bundle may read the app's DX cluster
+  /// connection — `host.clusterStatus()`, `host.clusterLines()`,
+  /// `host.clusterSubscribe()` and the `cluster` hook's `onLines`. Each of
+  /// these logs the operator in to the node the operator picked. Extension
+  /// API 10.
+  requiresClusterRead?: boolean
+  /// Also `host.clusterPostSpot()`: spots posted in the operator's name.
+  /// Implies `requiresClusterRead`.
+  requiresClusterSpot?: boolean
+  /// Also `host.clusterSend()`: any command, in the operator's name.
+  /// Implies `requiresClusterSpot`.
+  requiresClusterCommand?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
   /// Extensions panel and its bundle never loads. The user's enable/disable
@@ -2506,6 +2574,10 @@ export interface FormField {
   /// that follows the uppercase-unless-explicitly-mixed-case rule (grids,
   /// states, RSTs) while free-prose fields (names, notes) stay unflagged.
   uppercase?: boolean
+  /// Only used when fieldType === 'secret' in a settings list: what the row
+  /// says while a value is stored ("Password on file for K3LR"), in place of
+  /// the fixed mask. A host that predates this shows the mask.
+  storedText?: string
   /// Only used when fieldType === 'text': the codes this field takes, offered
   /// as the operator types (matched on code and name, like a `kind: 'options'`
   /// logging control) and checked on the way out — a value that is not one of

@@ -1521,15 +1521,18 @@ class FormRendererState extends State<FormRenderer> {
   }
 
   /// What [_buildTextRow] shows for [el]'s current value. A secret is shown
-  /// as a fixed-length mask: settings panels are read over shoulders and on
-  /// shared screens, and even the LENGTH of a password is more than the row
-  /// needs to say to confirm one is stored.
+  /// as a fixed-length mask, or as its `storedText` when it declares one:
+  /// settings panels are read over shoulders and on shared screens, and even
+  /// the LENGTH of a password is more than the row needs to say to confirm
+  /// one is stored.
   String _displayValue(Map<String, dynamic> el, String fieldType) {
     // Through the same helper the dialog seeds from, or the row and the
     // editor it opens show one value two ways, a tap apart.
     final raw = _controllerTextFor(el['key'] as String, _values[el['key']]);
     if (raw.isEmpty) return '';
-    return fieldType == 'secret' ? '••••••••' : raw;
+    if (fieldType != 'secret') return raw;
+    final stored = el['storedText'];
+    return stored is String && stored.isNotEmpty ? stored : '••••••••';
   }
 
   /// Opens the editor dialog for a text-like icon-row field and commits what

@@ -190,6 +190,9 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get canUseLocation => 'YOUR LOCATION';
 	@override String get canReadRadio => 'YOUR RADIO, TO READ ITS FREQUENCY AND MODE';
 	@override String get canControlRadio => 'YOUR RADIO, TO CONTROL IT AND TO TRANSMIT WITH IT — TUNING, POWER, CW, VOICE MEMORIES AND PTT';
+	@override String get canReadCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO READ WHAT IT SENDS';
+	@override String get canSpotCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME';
+	@override String get canCommandCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME';
 	@override String get canSetUserAgent => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME';
 	@override String get noCapabilities => 'IT ASKS FOR NOTHING OUTSIDE THE APP.';
 	@override String get sandboxNote => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.';
@@ -734,6 +737,7 @@ class _Translations$settings$qro extends Translations$settings$en {
 	@override String get userInterface => 'USER INTERFACE';
 	@override late final _Translations$settings$logging$qro logging = _Translations$settings$logging$qro._(_root);
 	@override late final _Translations$settings$catServer$qro catServer = _Translations$settings$catServer$qro._(_root);
+	@override late final _Translations$settings$cluster$qro cluster = _Translations$settings$cluster$qro._(_root);
 	@override late final _Translations$settings$radio$qro radio = _Translations$settings$radio$qro._(_root);
 	@override late final _Translations$settings$help$qro help = _Translations$settings$help$qro._(_root);
 	@override late final _Translations$settings$exports$qro exports = _Translations$settings$exports$qro._(_root);
@@ -2042,6 +2046,35 @@ class _Translations$settings$catServer$qro extends Translations$settings$catServ
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} CANNOT LISTEN ON PORT ${port}: ANOTHER PROGRAM IS USING IT, OFTEN ${protocol} ITSELF. CLOSE THAT PROGRAM OR CHOOSE ANOTHER PORT.';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} CANNOT LISTEN ON PORT ${port}: THIS COMPUTER DOES NOT ALLOW IT. CHOOSE A PORT ABOVE 1024.';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} STOPPED LISTENING ON PORT ${port}. TRYING AGAIN…';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$qro extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'DX CLUSTER';
+	@override String get description => 'THE SERVER EXTENSIONS POST SPOTS TO AND READ SPOTS FROM, LOGGED IN AS THE OPERATOR.';
+	@override String get server => 'CLUSTER SERVER';
+	@override String get selectServer => 'SELECT SERVER';
+	@override String get serverOther => 'OTHER';
+	@override String serverOtherIncomplete({required Object node}) => 'NO HOST ENTERED YET, SO SPOTS GO TO ${node}';
+	@override String get customHost => 'SERVER';
+	@override String get customPort => 'PORT';
+	@override String get password => 'PASSWORD';
+	@override String get passwordDescription => 'ONLY IF NEEDED';
+	@override String passwordStored({required Object node}) => 'PASSWORD ON FILE FOR ${node}';
+	@override String get scrollback => 'LINES KEPT';
+	@override String scrollbackOpt({required Object count}) => '${count} LINES';
+	@override String get connection => 'CONNECTION';
+	@override String get statusIdle => 'NOT CONNECTED. CONNECTS WHEN AN EXTENSION NEEDS IT. TAP TO TEST.';
+	@override String statusConnecting({required Object node}) => 'CONNECTING TO ${node}…';
+	@override String statusConnected({required Object node, required Object call}) => 'CONNECTED TO ${node} AS ${call}.';
+	@override String statusFailed({required Object node, required Object reason}) => 'COULD NOT CONNECT TO ${node}: ${reason}';
+	@override String get statusUnsupported => 'NOT AVAILABLE IN THE WEB VERSION.';
+	@override late final _Translations$settings$cluster$errors$qro errors = _Translations$settings$cluster$errors$qro._(_root);
 }
 
 // Path: settings.radio
@@ -3363,6 +3396,21 @@ class _Translations$settings$catServer$protocolOpts$qro extends Translations$set
 	@override String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$qro extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => 'NO OPERATOR CALLSIGN TO LOG IN WITH';
+	@override String get connectFailed => 'THE NODE COULD NOT BE REACHED';
+	@override String get needsPassword => 'THE NODE ASKS FOR A PASSWORD, AND NONE IS STORED';
+	@override String get loginFailed => 'THE NODE DID NOT ACCEPT THE LOGIN';
+	@override String get disconnected => 'THE NODE CLOSED THE CONNECTION';
+	@override String get timeout => 'THE NODE DID NOT ANSWER';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$qro extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -3872,6 +3920,9 @@ extension on TranslationsQro {
 			'extensionsPanel.canUseLocation' => 'YOUR LOCATION',
 			'extensionsPanel.canReadRadio' => 'YOUR RADIO, TO READ ITS FREQUENCY AND MODE',
 			'extensionsPanel.canControlRadio' => 'YOUR RADIO, TO CONTROL IT AND TO TRANSMIT WITH IT — TUNING, POWER, CW, VOICE MEMORIES AND PTT',
+			'extensionsPanel.canReadCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO READ WHAT IT SENDS',
+			'extensionsPanel.canSpotCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME',
+			'extensionsPanel.canCommandCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME',
 			'extensionsPanel.canSetUserAgent' => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME',
 			'extensionsPanel.noCapabilities' => 'IT ASKS FOR NOTHING OUTSIDE THE APP.',
 			'extensionsPanel.sandboxNote' => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.',
@@ -4313,11 +4364,11 @@ extension on TranslationsQro {
 			'operation.layout.panels.solarBandGood' => 'GOOD',
 			'operation.layout.panels.solarBandFair' => 'FAIR',
 			'operation.layout.panels.solarBandPoor' => 'POOR',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'SOURCES: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'THE CONNECTION IS STRUGGLING — SKIPPING FRAMES.',
 			'operation.layout.panels.remoteScreenStalled' => 'FRAMES STOPPED GETTING THROUGH — THIS CONNECTION MAY BE TOO SLOW.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.radioDescription' => 'A RADIO\'S FRONT PANEL — FREQUENCY, MODE AND POWER, UNDER CAT CONTROL',
 			'operation.layout.panels.radioStyle' => 'STYLE',
 			'operation.layout.panels.radioStyleLcd' => 'LCD',
@@ -4827,11 +4878,11 @@ extension on TranslationsQro {
 			'settings.distanceUnits' => 'DISTANCE UNITS',
 			'settings.distanceUnitsOpts.kilometers' => 'KILOMETERS',
 			'settings.distanceUnitsOpts.miles' => 'MILES',
+			_ => null,
+		} ?? switch (path) {
 			'settings.userInterface' => 'USER INTERFACE',
 			'settings.logging.title' => 'LOGGING',
 			'settings.logging.leftieMode.title' => 'LEFTIE MODE',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.leftieMode.descriptionOn' => 'USING LAYOUT FOR LEFT-HANDED USERS',
 			'settings.logging.leftieMode.descriptionOff' => 'USING LAYOUT FOR RIGHT-HANDED USERS',
 			'settings.logging.countryFlags.title' => 'COUNTRY FLAGS',
@@ -4890,6 +4941,31 @@ extension on TranslationsQro {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} CANNOT LISTEN ON PORT ${port}: ANOTHER PROGRAM IS USING IT, OFTEN ${protocol} ITSELF. CLOSE THAT PROGRAM OR CHOOSE ANOTHER PORT.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} CANNOT LISTEN ON PORT ${port}: THIS COMPUTER DOES NOT ALLOW IT. CHOOSE A PORT ABOVE 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} STOPPED LISTENING ON PORT ${port}. TRYING AGAIN…',
+			'settings.cluster.title' => 'DX CLUSTER',
+			'settings.cluster.description' => 'THE SERVER EXTENSIONS POST SPOTS TO AND READ SPOTS FROM, LOGGED IN AS THE OPERATOR.',
+			'settings.cluster.server' => 'CLUSTER SERVER',
+			'settings.cluster.selectServer' => 'SELECT SERVER',
+			'settings.cluster.serverOther' => 'OTHER',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'NO HOST ENTERED YET, SO SPOTS GO TO ${node}',
+			'settings.cluster.customHost' => 'SERVER',
+			'settings.cluster.customPort' => 'PORT',
+			'settings.cluster.password' => 'PASSWORD',
+			'settings.cluster.passwordDescription' => 'ONLY IF NEEDED',
+			'settings.cluster.passwordStored' => ({required Object node}) => 'PASSWORD ON FILE FOR ${node}',
+			'settings.cluster.scrollback' => 'LINES KEPT',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} LINES',
+			'settings.cluster.connection' => 'CONNECTION',
+			'settings.cluster.statusIdle' => 'NOT CONNECTED. CONNECTS WHEN AN EXTENSION NEEDS IT. TAP TO TEST.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => 'CONNECTING TO ${node}…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'CONNECTED TO ${node} AS ${call}.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'COULD NOT CONNECT TO ${node}: ${reason}',
+			'settings.cluster.statusUnsupported' => 'NOT AVAILABLE IN THE WEB VERSION.',
+			'settings.cluster.errors.noCall' => 'NO OPERATOR CALLSIGN TO LOG IN WITH',
+			'settings.cluster.errors.connectFailed' => 'THE NODE COULD NOT BE REACHED',
+			'settings.cluster.errors.needsPassword' => 'THE NODE ASKS FOR A PASSWORD, AND NONE IS STORED',
+			'settings.cluster.errors.loginFailed' => 'THE NODE DID NOT ACCEPT THE LOGIN',
+			'settings.cluster.errors.disconnected' => 'THE NODE CLOSED THE CONNECTION',
+			'settings.cluster.errors.timeout' => 'THE NODE DID NOT ANSWER',
 			'settings.radio.title' => 'CAT CONTROL',
 			'settings.radio.loggingAndCat' => 'LOGGING & CAT',
 			'settings.radio.tuningSection' => 'TUNING',
@@ -5316,6 +5392,8 @@ extension on TranslationsQro {
 			'settings.station.connectFailedTimeout' => 'THE RADIO DIDN\'T RESPOND IN TIME. CHECK IT\'S POWERED ON AND REACHABLE.',
 			'settings.station.models.flexRadio' => 'FLEXRADIO (SMARTSDR)',
 			'settings.station.models.ft891' => 'YAESU FT-891',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ft991a' => 'YAESU FT-991/A',
 			'settings.station.models.ft710' => 'YAESU FT-710',
 			'settings.station.models.ftdx10' => 'YAESU FTDX10',
@@ -5344,8 +5422,6 @@ extension on TranslationsQro {
 			'settings.station.models.ic7100' => 'ICOM IC-7100',
 			'settings.station.models.ic7610' => 'ICOM IC-7610',
 			'settings.station.models.ic7760' => 'ICOM IC-7760',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.x6100' => 'XIEGU X6100',
 			'settings.station.models.g90' => 'XIEGU G90',
 			'settings.station.models.rigctld' => 'RADIO CONTROLLED VIA RIGCTLD',
@@ -5830,6 +5906,8 @@ extension on TranslationsQro {
 			'confirmDevice.title' => 'CONFIRM A DEVICE',
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
 			'confirmDevice.code' => 'CODE',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.lookUp' => 'LOOK UP',
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',
@@ -5858,8 +5936,6 @@ extension on TranslationsQro {
 			'switchAccounts.linkWithEmail' => 'LINK WITH AN EMAIL ADDRESS',
 			'switchAccounts.linkWithEmailDescription' => 'CONFIRM WITH A CODE OR AN EMAIL LINK',
 			'switchAccounts.enterEmailPrompt' => 'ENTER THE EMAIL ADDRESS OF THE ACCOUNT YOU WANT THIS DEVICE TO USE.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.emailAddress' => 'EMAIL ADDRESS',
 			'switchAccounts.linkAccount' => 'LINK ACCOUNT',
 			'switchAccounts.copiedCode' => 'COPIED CODE TO CLIPBOARD',

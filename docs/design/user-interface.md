@@ -370,6 +370,15 @@ parameter to turn it off, so the app root wraps everything in
 enforces the rule; not setting `tooltip:` in our own code is the other half.
 Both halves are guarded by `app/test/guards/no_hover_tooltips_test.dart`.
 
+**One exception: `HoverLabel`.** A row of status icons with no other label —
+the Spotting control's source icons, which change with the extensions
+installed — names each one in a small popup while the mouse is over it. It is
+our own widget (`halo_widgets` `hover_label.dart`), not a `Tooltip`, and it
+also makes the name the icon's accessible label, which is what touch and
+screen readers get. Anything else that seems to need one still needs a
+better icon or a visible label; a second use is a decision to make here
+first.
+
 **Animated SWAPS stay out of the semantics tree.** A widget that keeps an
 outgoing subtree mounted beside its replacement and then destroys it —
 `AnimatedSwitcher`, and the cross-fading stacks built on it — can stop a

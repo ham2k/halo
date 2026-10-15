@@ -7,8 +7,11 @@
 
 import 'dart:async';
 
+import '../settings/cluster_settings_group.dart';
 import '../settings/settings_command.dart';
 import '../views/settings/accounts_panel.dart';
+import 'cluster/cluster_service.dart';
+import 'cluster/cluster_settings.dart';
 import 'extensions/extension_catalog_migration.dart';
 import 'halo_services.dart';
 import 'spots_for_extensions.dart';
@@ -30,6 +33,7 @@ void wireExtensions(HaLoServices services) {
   extensions.qsos = services.qsos;
   extensions.location = services.location;
   extensions.radioCalls.radio = services.panelRadio;
+  _wireCluster(services);
   extensions.spots = services.spots;
   extensions.catalog = services.catalog;
   extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(services, key, subkey: subkey));
@@ -40,4 +44,33 @@ void wireExtensions(HaLoServices services) {
   // settings to carry choices or record installs in. Without this that
   // session runs on the core extensions alone.
   if (extensions.ready && !extensions.firstCatchUpSettled) unawaited(catchUpOnCatalogExtensions(extensions));
+}
+
+/// The DX cluster connection extensions post spots through
+/// (docs/design/cluster.md), and its Settings section. Built on first use;
+/// it connects only when an extension sends or subscribes.
+void _wireCluster(HaLoServices services) {
+  final extensions = services.extensions;
+  final settings = services.settings;
+  final passwords = ClusterPasswords();
+  ClusterService? cluster;
+  ClusterService clusterService() => cluster ??= ClusterService(
+    settings: settings,
+    // The operator of the operation in front, or the profile's with none open.
+    loginCall: () {
+      final operatorCall = services.frontOperationContext?.operatorCall ?? '';
+      return operatorCall.isNotEmpty ? operatorCall : settings.activeProfile.operatorCall;
+    },
+    password: passwords.read,
+  )..deliver = (subscriber, lines) => extensions.deliverClusterLines(subscriber, [for (final line in lines) line.toJson()]);
+  extensions.clusterCalls.cluster = clusterService;
+  services.settingsRegistry.register(
+    ClusterSettingsGroup(
+      settings,
+      passwords: passwords,
+      cluster: clusterService,
+      offered: () => extensions.clusterCalls.offered,
+      changes: () => extensions.runtimeGeneration,
+    ),
+  );
 }

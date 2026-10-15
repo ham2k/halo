@@ -991,7 +991,20 @@ class _LoggingPanelState extends State<LoggingPanel> {
         spottingAfterReferences: widget.scope == LoggingScope.chase,
         onControlsSettingsChanged: _handleControlsSettingsChanged,
       ),
-      spotting: SpottingHooks(suggestSpotSources: widget.services.extensions.suggestSpotSources, sendSpot: widget.services.extensions.sendSpot),
+      spotting: SpottingHooks(
+        suggestSpotSources: widget.services.extensions.suggestSpotSources,
+        // The profile's operator as the spotter, for a QSO with no call of
+        // its own to spot from (POTA's `our.call ?? spotterCall`).
+        sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) => widget.services.extensions.sendSpot(
+          sources: sources,
+          operation: operation,
+          qso: qso,
+          freq: freq,
+          mode: mode,
+          comment: comment,
+          spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
+        ),
+      ),
       prefs: LoggingPreferences(
         // Leftie Mode is a one-handed-phone layout; a desktop or web session
         // carrying a stored `true` (restored from a phone) has no toggle to

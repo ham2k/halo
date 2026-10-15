@@ -25,6 +25,7 @@ export const HOOK_CATEGORIES = [
   "bench",
   "callNotes",
   "chasing",
+  "cluster",
   "command",
   "dataFile",
   "export",

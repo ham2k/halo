@@ -190,6 +190,9 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get canUseLocation => '—·—— ——— ··— ·—· / ·—·· ——— —·—· ·— — ·· ——— —·';
 	@override String get canReadRadio => '—·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ——··—— / — ——— / ·—· · ·— —·· / ·· — ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·— —· —·· / —— ——— —·· ·';
 	@override String get canControlRadio => '—·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ——··—— / — ——— / —·—· ——— —· — ·—· ——— ·—·· / ·· — / ·— —· —·· / — ——— / — ·—· ·— —· ··· —— ·· — / ·—— ·· — ···· / ·· — / — / — ··— —· ·· —· ——· ——··—— / ·——· ——— ·—— · ·—· ——··—— / —·—· ·—— ——··—— / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ··· / ·— —· —·· / ·——· — —';
+	@override String get canReadCluster => '— ···· · / —·· —··— / —·—· ·—·· ··— ··· — · ·—· ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / —·—— ——— ··— ——··—— / — ——— / ·—· · ·— —·· / ·—— ···· ·— — / ·· — / ··· · —· —·· ···';
+	@override String get canSpotCluster => '— ···· · / —·· —··— / —·—· ·—·· ··— ··· — · ·—· ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / —·—— ——— ··— ——··—— / — ——— / ·——· ——— ··· — / ··· ·——· ——— — ··· / ·· —· / —·—— ——— ··— ·—· / —· ·— —— ·';
+	@override String get canCommandCluster => '— ···· · / —·· —··— / —·—· ·—·· ··— ··· — · ·—· ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / —·—— ——— ··— ——··—— / — ——— / ··· · —· —·· / ·· — / ·— —· —·—— / —·—· ——— —— —— ·— —· —·· / ·· —· / —·—— ——— ··— ·—· / —· ·— —— ·';
 	@override String get canSetUserAgent => '·· —·· · —· — ·· ··—· —·—— / ·· — ··· · ·—·· ··—· / — ——— / ··· · ·—· ···— · ·—· ··· / ··— —· —·· · ·—· / ·· — ··· / ——— ·—— —· / —· ·— —— ·';
 	@override String get noCapabilities => '·· — / ·— ··· —·— ··· / ··—· ——— ·—· / —· ——— — ···· ·· —· ——· / ——— ··— — ··· ·· —·· · / — ···· · / ·— ·——· ·——· ·—·—·—';
 	@override String get sandboxNote => '· —··— — · —· ··· ·· ——— —· ··· / ·—· ··— —· / ··· ·— —· —·· —··· ——— —··— · —·· ———··· / —· ——— / ·— —·—· —·—· · ··· ··· / — ——— / —·—— ——— ··— ·—· / ··—· ·· ·—·· · ··· ——··—— / ·— —· —·· / —· ——— / —· · — ·—— ——— ·—· —·— / —··· · —·—— ——— —· —·· / ·—— ···· ·— — / ·· ··· / ·—·· ·· ··· — · —·· / ···· · ·—· · ·—·—·—';
@@ -734,6 +737,7 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override String get userInterface => '··— ··· · ·—· / ·· —· — · ·—· ··—· ·— —·—· ·';
 	@override late final _Translations$settings$logging$cw logging = _Translations$settings$logging$cw._(_root);
 	@override late final _Translations$settings$catServer$cw catServer = _Translations$settings$catServer$cw._(_root);
+	@override late final _Translations$settings$cluster$cw cluster = _Translations$settings$cluster$cw._(_root);
 	@override late final _Translations$settings$radio$cw radio = _Translations$settings$radio$cw._(_root);
 	@override late final _Translations$settings$help$cw help = _Translations$settings$help$cw._(_root);
 	@override late final _Translations$settings$exports$cw exports = _Translations$settings$exports$cw._(_root);
@@ -2042,6 +2046,35 @@ class _Translations$settings$catServer$cw extends Translations$settings$catServe
 	@override String portInUse({required Object protocol, required Object port}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ·· ··· / ··— ··· ·· —· ——· / ·· — ——··—— / ——— ··—· — · —· / ${protocol} / ·· — ··· · ·—·· ··—· ·—·—·— / —·—· ·—·· ——— ··· · / — ···· ·— — / ·——· ·—· ——— ——· ·—· ·— —— / ——— ·—· / —·—· ···· ——— ——— ··· · / ·— —· ——— — ···· · ·—· / ·——· ——— ·—· — ·—·—·—';
 	@override String portDenied({required Object protocol, required Object port}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· / —·· ——— · ··· / —· ——— — / ·— ·—·· ·—·· ——— ·—— / ·· — ·—·—·— / —·—· ···· ——— ——— ··· · / ·— / ·——· ——— ·—· — / ·— —··· ——— ···— · / ·———— ————— ··——— ····— ·—·—·—';
 	@override String stopped({required Object protocol, required Object port}) => '${protocol} / ··· — ——— ·——· ·——· · —·· / ·—·· ·· ··· — · —· ·· —· ——· / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / — ·—· —·—— ·· —· ——· / ·— ——· ·— ·· —· …';
+}
+
+// Path: settings.cluster
+class _Translations$settings$cluster$cw extends Translations$settings$cluster$en {
+	_Translations$settings$cluster$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '—·· —··— / —·—· ·—·· ··— ··· — · ·—·';
+	@override String get description => '— ···· · / ··· · ·—· ···— · ·—· / · —··— — · —· ··· ·· ——— —· ··· / ·——· ——— ··· — / ··· ·——· ——— — ··· / — ——— / ·— —· —·· / ·—· · ·— —·· / ··· ·——· ——— — ··· / ··—· ·—· ——— —— ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / — ···· · / ——— ·——· · ·—· ·— — ——— ·—· ·—·—·—';
+	@override String get server => '—·—· ·—·· ··— ··· — · ·—· / ··· · ·—· ···— · ·—·';
+	@override String get selectServer => '··· · ·—·· · —·—· — / ··· · ·—· ···— · ·—·';
+	@override String get serverOther => '——— — ···· · ·—·';
+	@override String serverOtherIncomplete({required Object node}) => '—· ——— / ···· ——— ··· — / · —· — · ·—· · —·· / —·—— · — ——··—— / ··· ——— / ··· ·——· ——— — ··· / ——· ——— / — ——— / ${node}';
+	@override String get customHost => '··· · ·—· ···— · ·—·';
+	@override String get customPort => '·——· ——— ·—· —';
+	@override String get password => '·——· ·— ··· ··· ·—— ——— ·—· —··';
+	@override String get passwordDescription => '——— —· ·—·· —·—— / ·· ··—· / —· · · —·· · —··';
+	@override String passwordStored({required Object node}) => '·——· ·— ··· ··· ·—— ——— ·—· —·· / ——— —· / ··—· ·· ·—·· · / ··—· ——— ·—· / ${node}';
+	@override String get scrollback => '·—·· ·· —· · ··· / —·— · ·——· —';
+	@override String scrollbackOpt({required Object count}) => '${count} / ·—·· ·· —· · ···';
+	@override String get connection => '—·—· ——— —· —· · —·—· — ·· ——— —·';
+	@override String get statusIdle => '—· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·— / —·—· ——— —· —· · —·—· — ··· / ·—— ···· · —· / ·— —· / · —··— — · —· ··· ·· ——— —· / —· · · —·· ··· / ·· — ·—·—·— / — ·— ·——· / — ——— / — · ··· — ·—·—·—';
+	@override String statusConnecting({required Object node}) => '—·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${node} …';
+	@override String statusConnected({required Object node, required Object call}) => '—·—· ——— —· —· · —·—· — · —·· / — ——— / ${node} / ·— ··· / ${call} ·—·—·—';
+	@override String statusFailed({required Object node, required Object reason}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / — ——— / ${node} ———··· / ${reason}';
+	@override String get statusUnsupported => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· ·—·—·—';
+	@override late final _Translations$settings$cluster$errors$cw errors = _Translations$settings$cluster$errors$cw._(_root);
 }
 
 // Path: settings.radio
@@ -3363,6 +3396,21 @@ class _Translations$settings$catServer$protocolOpts$cw extends Translations$sett
 	@override String get n3fjp => '—· ···—— ··—· ·——— ·——·';
 }
 
+// Path: settings.cluster.errors
+class _Translations$settings$cluster$errors$cw extends Translations$settings$cluster$errors$en {
+	_Translations$settings$cluster$errors$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get noCall => '—· ——— / ——— ·——· · ·—· ·— — ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / — ——— / ·—·· ——— ——· / ·· —· / ·—— ·· — ····';
+	@override String get connectFailed => '— ···· · / —· ——— —·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —··';
+	@override String get needsPassword => '— ···· · / —· ——— —·· · / ·— ··· —·— ··· / ··—· ——— ·—· / ·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· ——··—— / ·— —· —·· / —· ——— —· · / ·· ··· / ··· — ——— ·—· · —··';
+	@override String get loginFailed => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / ·—·· ——— ——· ·· —·';
+	@override String get disconnected => '— ···· · / —· ——— —·· · / —·—· ·—·· ——— ··· · —·· / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·';
+	@override String get timeout => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —· ··· ·—— · ·—·';
+}
+
 // Path: settings.radio.units
 class _Translations$settings$radio$units$cw extends Translations$settings$radio$units$en {
 	_Translations$settings$radio$units$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -3872,6 +3920,9 @@ extension on TranslationsCw {
 			'extensionsPanel.canUseLocation' => '—·—— ——— ··— ·—· / ·—·· ——— —·—· ·— — ·· ——— —·',
 			'extensionsPanel.canReadRadio' => '—·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ——··—— / — ——— / ·—· · ·— —·· / ·· — ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·— —· —·· / —— ——— —·· ·',
 			'extensionsPanel.canControlRadio' => '—·—— ——— ··— ·—· / ·—· ·— —·· ·· ——— ——··—— / — ——— / —·—· ——— —· — ·—· ——— ·—·· / ·· — / ·— —· —·· / — ——— / — ·—· ·— —· ··· —— ·· — / ·—— ·· — ···· / ·· — / — / — ··— —· ·· —· ——· ——··—— / ·——· ——— ·—— · ·—· ——··—— / —·—· ·—— ——··—— / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ··· / ·— —· —·· / ·——· — —',
+			'extensionsPanel.canReadCluster' => '— ···· · / —·· —··— / —·—· ·—·· ··— ··· — · ·—· ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / —·—— ——— ··— ——··—— / — ——— / ·—· · ·— —·· / ·—— ···· ·— — / ·· — / ··· · —· —·· ···',
+			'extensionsPanel.canSpotCluster' => '— ···· · / —·· —··— / —·—· ·—·· ··— ··· — · ·—· ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / —·—— ——— ··— ——··—— / — ——— / ·——· ——— ··· — / ··· ·——· ——— — ··· / ·· —· / —·—— ——— ··— ·—· / —· ·— —— ·',
+			'extensionsPanel.canCommandCluster' => '— ···· · / —·· —··— / —·—· ·—·· ··— ··· — · ·—· ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / —·—— ——— ··— ——··—— / — ——— / ··· · —· —·· / ·· — / ·— —· —·—— / —·—· ——— —— —— ·— —· —·· / ·· —· / —·—— ——— ··— ·—· / —· ·— —— ·',
 			'extensionsPanel.canSetUserAgent' => '·· —·· · —· — ·· ··—· —·—— / ·· — ··· · ·—·· ··—· / — ——— / ··· · ·—· ···— · ·—· ··· / ··— —· —·· · ·—· / ·· — ··· / ——— ·—— —· / —· ·— —— ·',
 			'extensionsPanel.noCapabilities' => '·· — / ·— ··· —·— ··· / ··—· ——— ·—· / —· ——— — ···· ·· —· ——· / ——— ··— — ··· ·· —·· · / — ···· · / ·— ·——· ·——· ·—·—·—',
 			'extensionsPanel.sandboxNote' => '· —··— — · —· ··· ·· ——— —· ··· / ·—· ··— —· / ··· ·— —· —·· —··· ——— —··— · —·· ———··· / —· ——— / ·— —·—· —·—· · ··· ··· / — ——— / —·—— ——— ··— ·—· / ··—· ·· ·—·· · ··· ——··—— / ·— —· —·· / —· ——— / —· · — ·—— ——— ·—· —·— / —··· · —·—— ——— —· —·· / ·—— ···· ·— — / ·· ··· / ·—·· ·· ··· — · —·· / ···· · ·—· · ·—·—·—',
@@ -4313,11 +4364,11 @@ extension on TranslationsCw {
 			'operation.layout.panels.solarBandGood' => '——· ——— ——— —··',
 			'operation.layout.panels.solarBandFair' => '··—· ·— ·· ·—·',
 			'operation.layout.panels.solarBandPoor' => '·——· ——— ——— ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => '··· ——— ··— ·—· —·—· · ··· ———··· / ${primary} ——··—— / ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => '— ···· · / —·—· ——— —· —· · —·—· — ·· ——— —· / ·· ··· / ··· — ·—· ··— ——· ——· ·—·· ·· —· ——· / — / ··· —·— ·· ·——· ·——· ·· —· ——· / ··—· ·—· ·— —— · ··· ·—·—·—',
 			'operation.layout.panels.remoteScreenStalled' => '··—· ·—· ·— —— · ··· / ··· — ——— ·——· ·——· · —·· / ——· · — — ·· —· ——· / — ···· ·—· ——— ··— ——· ···· / — / — ···· ·· ··· / —·—· ——— —· —· · —·—· — ·· ——— —· / —— ·— —·—— / —··· · / — ——— ——— / ··· ·—·· ——— ·—— ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.radioDescription' => '·— / ·—· ·— —·· ·· ——— ·————· ··· / ··—· ·—· ——— —· — / ·——· ·— —· · ·—·· / — / ··—· ·—· · ——·— ··— · —· —·—· —·—— ——··—— / —— ——— —·· · / ·— —· —·· / ·——· ——— ·—— · ·—· ——··—— / ··— —· —·· · ·—· / —·—· ·— — / —·—· ——— —· — ·—· ——— ·—··',
 			'operation.layout.panels.radioStyle' => '··· — —·—— ·—·· ·',
 			'operation.layout.panels.radioStyleLcd' => '·—·· —·—· —··',
@@ -4827,11 +4878,11 @@ extension on TranslationsCw {
 			'settings.distanceUnits' => '—·· ·· ··· — ·— —· —·—· · / ··— —· ·· — ···',
 			'settings.distanceUnitsOpts.kilometers' => '—·— ·· ·—·· ——— —— · — · ·—· ···',
 			'settings.distanceUnitsOpts.miles' => '—— ·· ·—·· · ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.userInterface' => '··— ··· · ·—· / ·· —· — · ·—· ··—· ·— —·—· ·',
 			'settings.logging.title' => '·—·· ——— ——· ——· ·· —· ——·',
 			'settings.logging.leftieMode.title' => '·—·· · ··—· — ·· · / —— ——— —·· ·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.leftieMode.descriptionOn' => '··— ··· ·· —· ——· / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· / ·—·· · ··—· — —····— ···· ·— —· —·· · —·· / ··— ··· · ·—· ···',
 			'settings.logging.leftieMode.descriptionOff' => '··— ··· ·· —· ——· / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· / ·—· ·· ——· ···· — —····— ···· ·— —· —·· · —·· / ··— ··· · ·—· ···',
 			'settings.logging.countryFlags.title' => '—·—· ——— ··— —· — ·—· —·—— / ··—· ·—·· ·— ——· ···',
@@ -4890,6 +4941,31 @@ extension on TranslationsCw {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / ·— —· ——— — ···· · ·—· / ·——· ·—· ——— ——· ·—· ·— —— / ·· ··· / ··— ··· ·· —· ——· / ·· — ——··—— / ——— ··—· — · —· / ${protocol} / ·· — ··· · ·—·· ··—· ·—·—·— / —·—· ·—·· ——— ··· · / — ···· ·— — / ·——· ·—· ——— ——· ·—· ·— —— / ——— ·—· / —·—· ···· ——— ——— ··· · / ·— —· ——— — ···· · ·—· / ·——· ——— ·—· — ·—·—·—',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} / —·—· ·— —· —· ——— — / ·—·· ·· ··· — · —· / ——— —· / ·——· ——— ·—· — / ${port} ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· / —·· ——— · ··· / —· ——— — / ·— ·—·· ·—·· ——— ·—— / ·· — ·—·—·— / —·—· ···· ——— ——— ··· · / ·— / ·——· ——— ·—· — / ·— —··· ——— ···— · / ·———— ————— ··——— ····— ·—·—·—',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} / ··· — ——— ·——· ·——· · —·· / ·—·· ·· ··· — · —· ·· —· ——· / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / — ·—· —·—— ·· —· ——· / ·— ——· ·— ·· —· …',
+			'settings.cluster.title' => '—·· —··— / —·—· ·—·· ··— ··· — · ·—·',
+			'settings.cluster.description' => '— ···· · / ··· · ·—· ···— · ·—· / · —··— — · —· ··· ·· ——— —· ··· / ·——· ——— ··· — / ··· ·——· ——— — ··· / — ——— / ·— —· —·· / ·—· · ·— —·· / ··· ·——· ——— — ··· / ··—· ·—· ——— —— ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / — ···· · / ——— ·——· · ·—· ·— — ——— ·—· ·—·—·—',
+			'settings.cluster.server' => '—·—· ·—·· ··— ··· — · ·—· / ··· · ·—· ···— · ·—·',
+			'settings.cluster.selectServer' => '··· · ·—·· · —·—· — / ··· · ·—· ···— · ·—·',
+			'settings.cluster.serverOther' => '——— — ···· · ·—·',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => '—· ——— / ···· ——— ··· — / · —· — · ·—· · —·· / —·—— · — ——··—— / ··· ——— / ··· ·——· ——— — ··· / ——· ——— / — ——— / ${node}',
+			'settings.cluster.customHost' => '··· · ·—· ···— · ·—·',
+			'settings.cluster.customPort' => '·——· ——— ·—· —',
+			'settings.cluster.password' => '·——· ·— ··· ··· ·—— ——— ·—· —··',
+			'settings.cluster.passwordDescription' => '——— —· ·—·· —·—— / ·· ··—· / —· · · —·· · —··',
+			'settings.cluster.passwordStored' => ({required Object node}) => '·——· ·— ··· ··· ·—— ——— ·—· —·· / ——— —· / ··—· ·· ·—·· · / ··—· ——— ·—· / ${node}',
+			'settings.cluster.scrollback' => '·—·· ·· —· · ··· / —·— · ·——· —',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} / ·—·· ·· —· · ···',
+			'settings.cluster.connection' => '—·—· ——— —· —· · —·—· — ·· ——— —·',
+			'settings.cluster.statusIdle' => '—· ——— — / —·—· ——— —· —· · —·—· — · —·· ·—·—·— / —·—· ——— —· —· · —·—· — ··· / ·—— ···· · —· / ·— —· / · —··— — · —· ··· ·· ——— —· / —· · · —·· ··· / ·· — ·—·—·— / — ·— ·——· / — ——— / — · ··· — ·—·—·—',
+			'settings.cluster.statusConnecting' => ({required Object node}) => '—·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${node} …',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => '—·—· ——— —· —· · —·—· — · —·· / — ——— / ${node} / ·— ··· / ${call} ·—·—·—',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / — ——— / ${node} ———··· / ${reason}',
+			'settings.cluster.statusUnsupported' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· ·—·—·—',
+			'settings.cluster.errors.noCall' => '—· ——— / ——— ·——· · ·—· ·— — ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / — ——— / ·—·· ——— ——· / ·· —· / ·—— ·· — ····',
+			'settings.cluster.errors.connectFailed' => '— ···· · / —· ——— —·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —··',
+			'settings.cluster.errors.needsPassword' => '— ···· · / —· ——— —·· · / ·— ··· —·— ··· / ··—· ——— ·—· / ·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· ——··—— / ·— —· —·· / —· ——— —· · / ·· ··· / ··· — ——— ·—· · —··',
+			'settings.cluster.errors.loginFailed' => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / ·—·· ——— ——· ·· —·',
+			'settings.cluster.errors.disconnected' => '— ···· · / —· ——— —·· · / —·—· ·—·· ——— ··· · —·· / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·',
+			'settings.cluster.errors.timeout' => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —· ··· ·—— · ·—·',
 			'settings.radio.title' => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—··',
 			'settings.radio.loggingAndCat' => '·—·· ——— ——· ——· ·· —· ——· / ·—··· / —·—· ·— —',
 			'settings.radio.tuningSection' => '— ··— —· ·· —· ——·',
@@ -5316,6 +5392,8 @@ extension on TranslationsCw {
 			'settings.station.connectFailedTimeout' => '— ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· —· ·————· — / ·—· · ··· ·——· ——— —· —·· / ·· —· / — ·· —— · ·—·—·— / —·—· ···· · —·—· —·— / ·· — ·————· ··· / ·——· ——— ·—— · ·—· · —·· / ——— —· / ·— —· —·· / ·—· · ·— —·—· ···· ·— —··· ·—·· · ·—·—·—',
 			'settings.station.models.flexRadio' => '··—· ·—·· · —··— ·—· ·— —·· ·· ——— / —·——· ··· —— ·— ·—· — ··· —·· ·—· —·——·—',
 			'settings.station.models.ft891' => '—·—— ·— · ··· ··— / ··—· — —····— ———·· ————· ·————',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ft991a' => '—·—— ·— · ··· ··— / ··—· — —····— ————· ————· ·———— —··—· ·—',
 			'settings.station.models.ft710' => '—·—— ·— · ··· ··— / ··—· — —····— ——··· ·———— —————',
 			'settings.station.models.ftdx10' => '—·—— ·— · ··· ··— / ··—· — —·· —··— ·———— —————',
@@ -5344,8 +5422,6 @@ extension on TranslationsCw {
 			'settings.station.models.ic7100' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ·———— ————— —————',
 			'settings.station.models.ic7610' => '·· —·—· ——— —— / ·· —·—· —····— ——··· —···· ·———— —————',
 			'settings.station.models.ic7760' => '·· —·—· ——— —— / ·· —·—· —····— ——··· ——··· —···· —————',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.x6100' => '—··— ·· · ——· ··— / —··— —···· ·———— ————— —————',
 			'settings.station.models.g90' => '—··— ·· · ——· ··— / ——· ————· —————',
 			'settings.station.models.rigctld' => '·—· ·— —·· ·· ——— / —·—· ——— —· — ·—· ——— ·—·· ·—·· · —·· / ···— ·· ·— / ·—· ·· ——· —·—· — ·—·· —··',
@@ -5830,6 +5906,8 @@ extension on TranslationsCw {
 			'confirmDevice.title' => '—·—· ——— —· ··—· ·· ·—· —— / ·— / —·· · ···— ·· —·—· ·',
 			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
 			'confirmDevice.code' => '—·—· ——— —·· ·',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.lookUp' => '·—·· ——— ——— —·— / ··— ·——·',
 			'confirmDevice.codeNotFound' => '—· ——— / ·—· · ——·— ··— · ··· — / —— ·— — —·—· ···· · ··· / — ···· ·— — / —·—· ——— —·· · ·—·—·— / —·—· ——— —·· · ··· / · —··— ·——· ·· ·—· · / ·— ··—· — · ·—· / ·———— ————— / —— ·· —· ··— — · ··· / — / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ··—· ——— ·—· / ·— / ··—· ·—· · ··· ···· / ——— —· · ·—·—·—',
 			'confirmDevice.linkExpired' => '— ···· ·— — / ·—·· ·· —· —·— / ···· ·— ··· / · —··— ·——· ·· ·—· · —·· ·—·—·— / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / — ——— / ··· ···· ——— ·—— / ·— / —· · ·—— / ——·— ·—· / —·—· ——— —·· · ·—·—·—',
@@ -5858,8 +5936,6 @@ extension on TranslationsCw {
 			'switchAccounts.linkWithEmail' => '·—·· ·· —· —·— / ·—— ·· — ···· / ·— —· / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkWithEmailDescription' => '—·—· ——— —· ··—· ·· ·—· —— / ·—— ·· — ···· / ·— / —·—· ——— —·· · / ——— ·—· / ·— —· / · —— ·— ·· ·—·· / ·—·· ·· —· —·—',
 			'switchAccounts.enterEmailPrompt' => '· —· — · ·—· / — ···· · / · —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ··· / ——— ··—· / — ···· · / ·— —·—· —·—· ——— ··— —· — / —·—— ——— ··— / ·—— ·— —· — / — ···· ·· ··· / —·· · ···— ·· —·—· · / — ——— / ··— ··· · ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.emailAddress' => '· —— ·— ·· ·—·· / ·— —·· —·· ·—· · ··· ···',
 			'switchAccounts.linkAccount' => '·—·· ·· —· —·— / ·— —·—· —·—· ——— ··— —· —',
 			'switchAccounts.copiedCode' => '—·—· ——— ·——· ·· · —·· / —·—· ——— —·· · / — ——— / —·—· ·—·· ·· ·——· —··· ——— ·— ·—· —··',

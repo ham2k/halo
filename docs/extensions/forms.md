@@ -38,6 +38,10 @@ export interface FormField {
   value?: any; // initial state value if not provided in host call state
   placeholder?: string;
   uppercase?: boolean; // force typed input to uppercase (callsign fields always are)
+  // Only used when fieldType === 'secret' in a settings list: what the row
+  // says while a value is stored, in place of the fixed mask. A host older
+  // than this shows the mask.
+  storedText?: string;
   // Only used when fieldType === 'text': the codes the field takes, offered
   // in a list under it as the operator types (matched on code and name, as a
   // `kind: 'options'` logging control matches) and named beside it — a value

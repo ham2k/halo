@@ -6,6 +6,8 @@
   "selfSpotting": "Self-spotting…",
   "spotLast": "Spot the last logged QSO?",
   "spottingLast": "Spotting last QSO…",
+  "spotLastWithComment": "Spot the last logged QSO with comment \"{{comment}}\"?",
+  "spottingLastComment": "Spotting last QSO: {{comment}}",
   "catalogCategory": "Spotting",
   "catalogSelfSpot": "Spot yourself on the cluster",
   "catalogSpotLast": "Spot the last logged QSO",

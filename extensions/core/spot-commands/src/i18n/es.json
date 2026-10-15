@@ -6,6 +6,8 @@
   "selfSpotting": "Enviando auto-spot…",
   "spotLast": "¿Spotear el último QSO registrado?",
   "spottingLast": "Spoteando el último QSO…",
+  "spotLastWithComment": "¿Spotear el último QSO registrado con el comentario \"{{comment}}\"?",
+  "spottingLastComment": "Spoteando el último QSO: {{comment}}",
   "catalogCategory": "Spots",
   "catalogSelfSpot": "Publicar tu propio spot",
   "catalogSpotLast": "Publicar un spot del último QSO",

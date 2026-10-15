@@ -329,6 +329,15 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT'
 	String get canControlRadio => 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT';
 
+	/// en: 'The DX cluster, logged in as you, to read what it sends'
+	String get canReadCluster => 'The DX cluster, logged in as you, to read what it sends';
+
+	/// en: 'The DX cluster, logged in as you, to post spots in your name'
+	String get canSpotCluster => 'The DX cluster, logged in as you, to post spots in your name';
+
+	/// en: 'The DX cluster, logged in as you, to send it any command in your name'
+	String get canCommandCluster => 'The DX cluster, logged in as you, to send it any command in your name';
+
 	/// en: 'Identify itself to servers under its own name'
 	String get canSetUserAgent => 'Identify itself to servers under its own name';
 
@@ -1621,6 +1630,7 @@ class Translations$settings$en {
 
 	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
 	late final Translations$settings$catServer$en catServer = Translations$settings$catServer$en.internal(_root);
+	late final Translations$settings$cluster$en cluster = Translations$settings$cluster$en.internal(_root);
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
 	late final Translations$settings$help$en help = Translations$settings$help$en.internal(_root);
 	late final Translations$settings$exports$en exports = Translations$settings$exports$en.internal(_root);
@@ -4299,6 +4309,74 @@ class Translations$settings$catServer$en {
 
 	/// en: '$protocol stopped listening on port $port. Trying again…'
 	String stopped({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…';
+}
+
+// Path: settings.cluster
+class Translations$settings$cluster$en {
+	Translations$settings$cluster$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'DX Cluster'
+	String get title => 'DX Cluster';
+
+	/// en: 'The server extensions post spots to and read spots from, logged in as the operator.'
+	String get description => 'The server extensions post spots to and read spots from, logged in as the operator.';
+
+	/// en: 'Cluster Server'
+	String get server => 'Cluster Server';
+
+	/// en: 'Select Server'
+	String get selectServer => 'Select Server';
+
+	/// en: 'Other'
+	String get serverOther => 'Other';
+
+	/// en: 'No host entered yet, so spots go to $node'
+	String serverOtherIncomplete({required Object node}) => 'No host entered yet, so spots go to ${node}';
+
+	/// en: 'Server'
+	String get customHost => 'Server';
+
+	/// en: 'Port'
+	String get customPort => 'Port';
+
+	/// en: 'Password'
+	String get password => 'Password';
+
+	/// en: 'Only if needed'
+	String get passwordDescription => 'Only if needed';
+
+	/// en: 'Password on file for $node'
+	String passwordStored({required Object node}) => 'Password on file for ${node}';
+
+	/// en: 'Lines kept'
+	String get scrollback => 'Lines kept';
+
+	/// en: '$count lines'
+	String scrollbackOpt({required Object count}) => '${count} lines';
+
+	/// en: 'Connection'
+	String get connection => 'Connection';
+
+	/// en: 'Not connected. Connects when an extension needs it. Tap to test.'
+	String get statusIdle => 'Not connected. Connects when an extension needs it. Tap to test.';
+
+	/// en: 'Connecting to $node…'
+	String statusConnecting({required Object node}) => 'Connecting to ${node}…';
+
+	/// en: 'Connected to $node as $call.'
+	String statusConnected({required Object node, required Object call}) => 'Connected to ${node} as ${call}.';
+
+	/// en: 'Could not connect to $node: $reason'
+	String statusFailed({required Object node, required Object reason}) => 'Could not connect to ${node}: ${reason}';
+
+	/// en: 'Not available in the web version.'
+	String get statusUnsupported => 'Not available in the web version.';
+
+	late final Translations$settings$cluster$errors$en errors = Translations$settings$cluster$errors$en.internal(_root);
 }
 
 // Path: settings.radio
@@ -7235,6 +7313,33 @@ class Translations$settings$catServer$protocolOpts$en {
 	String get n3fjp => 'N3FJP';
 }
 
+// Path: settings.cluster.errors
+class Translations$settings$cluster$errors$en {
+	Translations$settings$cluster$errors$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'no operator callsign to log in with'
+	String get noCall => 'no operator callsign to log in with';
+
+	/// en: 'the node could not be reached'
+	String get connectFailed => 'the node could not be reached';
+
+	/// en: 'the node asks for a password, and none is stored'
+	String get needsPassword => 'the node asks for a password, and none is stored';
+
+	/// en: 'the node did not accept the login'
+	String get loginFailed => 'the node did not accept the login';
+
+	/// en: 'the node closed the connection'
+	String get disconnected => 'the node closed the connection';
+
+	/// en: 'the node did not answer'
+	String get timeout => 'the node did not answer';
+}
+
 // Path: settings.radio.units
 class Translations$settings$radio$units$en {
 	Translations$settings$radio$units$en.internal(this._root);
@@ -8214,6 +8319,9 @@ extension on Translations {
 			'extensionsPanel.canUseLocation' => 'Your location',
 			'extensionsPanel.canReadRadio' => 'Your radio, to read its frequency and mode',
 			'extensionsPanel.canControlRadio' => 'Your radio, to control it and to transmit with it — tuning, power, CW, voice memories and PTT',
+			'extensionsPanel.canReadCluster' => 'The DX cluster, logged in as you, to read what it sends',
+			'extensionsPanel.canSpotCluster' => 'The DX cluster, logged in as you, to post spots in your name',
+			'extensionsPanel.canCommandCluster' => 'The DX cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -8655,11 +8763,11 @@ extension on Translations {
 			'operation.layout.panels.solarBandGood' => 'Good',
 			'operation.layout.panels.solarBandFair' => 'Fair',
 			'operation.layout.panels.solarBandPoor' => 'Poor',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'The connection is struggling — skipping frames.',
 			'operation.layout.panels.remoteScreenStalled' => 'Frames stopped getting through — this connection may be too slow.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.radioDescription' => 'A radio\'s front panel — frequency, mode and power, under CAT control',
 			'operation.layout.panels.radioStyle' => 'Style',
 			'operation.layout.panels.radioStyleLcd' => 'LCD',
@@ -9169,11 +9277,11 @@ extension on Translations {
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
 			'settings.distanceUnitsOpts.miles' => 'Miles',
+			_ => null,
+		} ?? switch (path) {
 			'settings.userInterface' => 'User Interface',
 			'settings.logging.title' => 'Logging',
 			'settings.logging.leftieMode.title' => 'Leftie Mode',
-			_ => null,
-		} ?? switch (path) {
 			'settings.logging.leftieMode.descriptionOn' => 'Using layout for left-handed users',
 			'settings.logging.leftieMode.descriptionOff' => 'Using layout for right-handed users',
 			'settings.logging.countryFlags.title' => 'Country Flags',
@@ -9232,6 +9340,31 @@ extension on Translations {
 			'settings.catServer.portInUse' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: another program is using it, often ${protocol} itself. Close that program or choose another port.',
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} cannot listen on port ${port}: this computer does not allow it. Choose a port above 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
+			'settings.cluster.title' => 'DX Cluster',
+			'settings.cluster.description' => 'The server extensions post spots to and read spots from, logged in as the operator.',
+			'settings.cluster.server' => 'Cluster Server',
+			'settings.cluster.selectServer' => 'Select Server',
+			'settings.cluster.serverOther' => 'Other',
+			'settings.cluster.serverOtherIncomplete' => ({required Object node}) => 'No host entered yet, so spots go to ${node}',
+			'settings.cluster.customHost' => 'Server',
+			'settings.cluster.customPort' => 'Port',
+			'settings.cluster.password' => 'Password',
+			'settings.cluster.passwordDescription' => 'Only if needed',
+			'settings.cluster.passwordStored' => ({required Object node}) => 'Password on file for ${node}',
+			'settings.cluster.scrollback' => 'Lines kept',
+			'settings.cluster.scrollbackOpt' => ({required Object count}) => '${count} lines',
+			'settings.cluster.connection' => 'Connection',
+			'settings.cluster.statusIdle' => 'Not connected. Connects when an extension needs it. Tap to test.',
+			'settings.cluster.statusConnecting' => ({required Object node}) => 'Connecting to ${node}…',
+			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'Connected to ${node} as ${call}.',
+			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'Could not connect to ${node}: ${reason}',
+			'settings.cluster.statusUnsupported' => 'Not available in the web version.',
+			'settings.cluster.errors.noCall' => 'no operator callsign to log in with',
+			'settings.cluster.errors.connectFailed' => 'the node could not be reached',
+			'settings.cluster.errors.needsPassword' => 'the node asks for a password, and none is stored',
+			'settings.cluster.errors.loginFailed' => 'the node did not accept the login',
+			'settings.cluster.errors.disconnected' => 'the node closed the connection',
+			'settings.cluster.errors.timeout' => 'the node did not answer',
 			'settings.radio.title' => 'CAT Control',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Tuning',
@@ -9658,6 +9791,8 @@ extension on Translations {
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ft991a' => 'Yaesu FT-991/A',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
@@ -9686,8 +9821,6 @@ extension on Translations {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Radio controlled via rigctld',
@@ -10172,6 +10305,8 @@ extension on Translations {
 			'confirmDevice.title' => 'Confirm a Device',
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.lookUp' => 'Look Up',
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
@@ -10200,8 +10335,6 @@ extension on Translations {
 			'switchAccounts.linkWithEmail' => 'Link with an email address',
 			'switchAccounts.linkWithEmailDescription' => 'Confirm with a code or an email link',
 			'switchAccounts.enterEmailPrompt' => 'Enter the email address of the account you want this device to use.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.emailAddress' => 'Email address',
 			'switchAccounts.linkAccount' => 'Link account',
 			'switchAccounts.copiedCode' => 'Copied code to clipboard',
