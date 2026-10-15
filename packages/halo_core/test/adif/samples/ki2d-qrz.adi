@@ -18,13 +18,13 @@ QRZLogbook download for ki2d
 <cqz:1>9
 <distance:4>3549
 <dxcc:3>148
-<email:16>yv5kaj@yahoo.com
+<email:18>yv5kaj@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK60NL
 <ituz:2>12
-<lat:11>N010 29.466
-<lon:11>W066 52.509
+<lat:11>N010 28.750
+<lon:11>W066 52.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -37,10 +37,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:18>PASQUALE CASALE V.
+<name:11>ALEX MORGAN
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -67,13 +67,13 @@ QRZLogbook download for ki2d
 <cqz:2>30
 <distance:5>16163
 <dxcc:3>150
-<email:15>vk2lx@yahoo.com
+<email:17>vk2lx@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>QF44RS
 <ituz:2>59
-<lat:11>S035 14.574
-<lon:11>E149 26.803
+<lat:11>S035 13.750
+<lon:11>E149 27.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -86,10 +86,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:16>Grant J Rawstorn
+<name:12>Jordan Reyes
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -117,14 +117,14 @@ QRZLogbook download for ki2d
 <cqz:1>8
 <distance:4>2737
 <dxcc:3>202
-<email:21>chegui.kp3g@gmail.com
+<email:16>kp3g@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK78AE
 <iota:6>NA-099
 <ituz:2>11
-<lat:11>N018 11.669
-<lon:11>W065 55.268
+<lat:11>N018 11.250
+<lon:11>W065 57.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -137,10 +137,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>JOSE L TORRES
+<name:15>CASEY LINDQVIST
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -167,14 +167,14 @@ QRZLogbook download for ki2d
 <cqz:1>9
 <distance:4>3274
 <dxcc:2>91
-<email:24>etiennechat007@gmail.com
+<email:16>p41e@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK52AM
 <iota:6>SA-036
 <ituz:2>11
-<lat:11>N012 30.600
-<lon:11>W070 00.000
+<lat:11>N012 31.250
+<lon:11>W069 57.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -187,10 +187,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:16>Etienne Chatlein
+<name:12>Robin Okafor
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -217,14 +217,14 @@ QRZLogbook download for ki2d
 <cqz:1>8
 <distance:4>3098
 <dxcc:2>79
-<email:13>fg4no@free.fr
+<email:17>fg4no@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK96JD
 <iota:6>NA-102
 <ituz:2>11
-<lat:11>N016 13.700
-<lon:11>W061 22.600
+<lat:11>N016 08.750
+<lon:11>W061 12.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -237,10 +237,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>Nicolas Queru
+<name:13>Taylor Brandt
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -267,13 +267,13 @@ QRZLogbook download for ki2d
 <cqz:1>9
 <distance:4>3341
 <dxcc:3>520
-<email:14>erwin@pj4el.nl
+<email:17>pj4el@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK52UE
 <ituz:1>6
-<lat:11>N012 08.805
-<lon:11>W068 14.495
+<lat:11>N012 11.250
+<lon:11>W068 17.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -286,10 +286,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>Erwin Lemmers
+<name:12>Morgan Ellis
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>Y
@@ -319,13 +319,13 @@ QRZLogbook download for ki2d
 <cqz:1>5
 <distance:4>1219
 <dxcc:3>291
-<email:16>ka9vrx@yahoo.com
+<email:18>ka9vrx@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>EM67AV
 <ituz:1>8
-<lat:11>N037 54.420
-<lon:11>W087 57.409
+<lat:11>N037 53.750
+<lon:11>W087 57.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -338,10 +338,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:16>Melvin D Ziegler
+<name:12>Jamie Duarte
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -369,14 +369,14 @@ QRZLogbook download for ki2d
 <cqz:2>30
 <distance:5>15893
 <dxcc:3>150
-<email:17>vk2wj@hotmail.com
+<email:17>vk2wj@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>QF56SS
 <iota:6>OC-001
 <ituz:2>59
-<lat:11>S033 13.800
-<lon:11>E151 32.400
+<lat:11>S033 13.750
+<lon:11>E151 32.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -389,10 +389,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:11>John Harris
+<name:11>Riley Novak
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -420,13 +420,13 @@ QRZLogbook download for ki2d
 <cqz:1>5
 <distance:3>676
 <dxcc:3>291
-<email:19>rodburn@verizon.net
+<email:17>k4wpc@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>EM97WI
 <ituz:1>8
-<lat:11>N037 22.031
-<lon:11>W080 06.076
+<lat:11>N037 21.250
+<lon:11>W080 07.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -439,10 +439,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:17>Rodney W Burnette
+<name:14>Avery Castillo
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -470,13 +470,13 @@ QRZLogbook download for ki2d
 <cqz:1>5
 <distance:4>1180
 <dxcc:3>291
-<email:18>KD4YDD@hotmail.com
+<email:18>kd4ydd@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:4>EM84
 <ituz:1>8
-<lat:11>N034 03.761
-<lon:11>W083 55.455
+<lat:11>N034 30.000
+<lon:11>W083 00.000
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -488,10 +488,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>SCOTT D BROWN
+<name:12>QUINN HARLOW
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -518,13 +518,13 @@ QRZLogbook download for ki2d
 <cqz:1>9
 <distance:4>3714
 <dxcc:2>90
-<email:17>dgosine@gmail.com
+<email:17>9y4dg@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK90GF
 <ituz:2>11
-<lat:11>N010 22.786
-<lon:11>W061 18.223
+<lat:11>N010 13.750
+<lon:11>W061 27.500
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -536,10 +536,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:10>DEV GOSINE
+<name:9>DREW SATO
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -565,13 +565,13 @@ QRZLogbook download for ki2d
 <cqz:1>9
 <distance:4>3553
 <dxcc:3>148
-<email:22>yv5nr.nelson@gmail.com
+<email:17>yv5nr@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>FK60MK
 <ituz:2>12
-<lat:11>N010 26.137
-<lon:11>W066 58.437
+<lat:11>N010 26.250
+<lon:11>W066 57.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210518
@@ -584,15 +584,15 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>Nelson Rivero
+<name:12>Parker Vance
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
 <qsl_sent:1>N
-<qsl_via:40>P.O Box 3636 ZP 1010-A Caracas Venezuela
+<qsl_via:6>DIRECT
 <qso_date:8>20210504
 <qso_date_off:8>20210504
 <qth:7>Caracas
@@ -612,12 +612,12 @@ QRZLogbook download for ki2d
 <country:4>Fiji
 <distance:5>12786
 <dxcc:3>176
-<email:17>3d2zk88@gmail.com
+<email:17>3d2zk@example.com
 <freq:7>7.07582
 <freq_rx:7>7.07582
 <gridsquare:6>RH82RG
-<lat:11>S017 43.800
-<lon:11>E177 27.400
+<lat:11>S017 43.750
+<lon:11>E177 27.500
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -629,10 +629,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:14>Joanna Korczak
+<name:13>Hayden Moreau
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -659,13 +659,13 @@ QRZLogbook download for ki2d
 <cqz:2>30
 <distance:5>16652
 <dxcc:3>150
-<email:17>andrew@3fs.net.au
+<email:17>vk3fs@example.com
 <freq:7>10.1378
 <freq_rx:7>10.1378
 <gridsquare:6>QF21MR
 <ituz:2>59
-<lat:11>S038 16.300
-<lon:11>E145 02.400
+<lat:11>S038 16.250
+<lon:11>E145 02.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -678,10 +678,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>Andrew McColm
+<name:12>Emerson Pike
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -709,13 +709,13 @@ QRZLogbook download for ki2d
 <cqz:1>4
 <distance:3>879
 <dxcc:3>291
-<email:13>qrz@n4pgw.org
+<email:17>n4pgw@example.com
 <freq:7>10.1378
 <freq_rx:7>10.1378
 <gridsquare:6>EM95FW
 <ituz:1>8
-<lat:11>N035 55.912
-<lon:11>W081 30.510
+<lat:11>N035 56.250
+<lon:11>W081 32.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -728,10 +728,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:23>Francis M McDaniel, III
+<name:14>Rowan Galloway
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -759,12 +759,12 @@ QRZLogbook download for ki2d
 <country:13>United States
 <distance:4>2109
 <dxcc:3>291
-<email:14>ak5da@arrl.net
+<email:17>ak5da@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>EM22IH
-<lat:11>N032 19.461
-<lon:11>W095 18.531
+<lat:11>N032 18.750
+<lon:11>W095 17.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -777,10 +777,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:13>DAVID R ALLEN
+<name:13>SAGE WHITAKER
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -806,14 +806,14 @@ QRZLogbook download for ki2d
 <cqz:1>8
 <distance:4>2412
 <dxcc:2>70
-<email:15>co8ly@frcuba.cu
+<email:17>co8ly@example.com
 <freq:7>10.1378
 <freq_rx:7>10.1378
 <gridsquare:6>FL20CA
 <iota:6>NA-015
 <ituz:2>11
-<lat:11>N020 01.200
-<lon:11>W075 47.600
+<lat:11>N020 01.250
+<lon:11>W075 47.500
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -825,10 +825,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:23>Eduardo Somoano Cremati
+<name:14>Blake Ferreira
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -856,13 +856,13 @@ QRZLogbook download for ki2d
 <cqz:1>4
 <distance:4>1558
 <dxcc:3>291
-<email:15>ed_vanc@msn.com
+<email:16>w0vc@example.com
 <freq:7>10.1378
 <freq_rx:7>10.1378
 <gridsquare:6>EN34HU
 <ituz:1>7
-<lat:11>N044 50.046
-<lon:11>W093 20.453
+<lat:11>N044 51.250
+<lon:11>W093 22.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -875,10 +875,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:23>Edward F Van Cleave, Jr
+<name:12>Cameron Holt
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -911,8 +911,8 @@ QRZLogbook download for ki2d
 <freq_rx:7>10.1378
 <gridsquare:6>DM42NL
 <ituz:1>6
-<lat:11>N032 28.825
-<lon:11>W110 54.519
+<lat:11>N032 28.750
+<lon:11>W110 52.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -925,10 +925,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:14>Igor Dorovskoy
+<name:11>Dakota Rhee
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -955,13 +955,13 @@ QRZLogbook download for ki2d
 <cqz:1>9
 <distance:4>3714
 <dxcc:2>90
-<email:17>dgosine@gmail.com
+<email:17>9y4dg@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>FK90GF
 <ituz:2>11
-<lat:11>N010 22.786
-<lon:11>W061 18.223
+<lat:11>N010 13.750
+<lon:11>W061 27.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -974,10 +974,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:10>DEV GOSINE
+<name:9>DREW SATO
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1003,14 +1003,14 @@ QRZLogbook download for ki2d
 <cqz:1>5
 <distance:4>1833
 <dxcc:1>1
-<email:24>aaronabbott709@gmail.com
+<email:17>vo1iv@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>GN37ON
 <iota:6>NA-027
 <ituz:1>9
-<lat:11>N047 33.700
-<lon:11>W052 47.600
+<lat:11>N047 33.750
+<lon:11>W052 47.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210519
@@ -1023,10 +1023,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:14>Aaron k Abbott
+<name:13>Finley Mercer
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1053,13 +1053,13 @@ QRZLogbook download for ki2d
 <cqz:1>4
 <distance:4>1396
 <dxcc:3>291
-<email:19>ckarnes53@gmail.com
+<email:18>ko4dul@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>EM56MD
 <ituz:1>2
-<lat:11>N036 02.967
-<lon:11>W088 58.874
+<lat:11>N036 08.750
+<lon:11>W088 57.500
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -1071,10 +1071,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:15>Thomas C Karnes
+<name:15>Logan Abernathy
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1102,13 +1102,13 @@ QRZLogbook download for ki2d
 <cqz:1>4
 <distance:4>2567
 <dxcc:3>291
-<email:19>ars.k4ila@gmail.com
+<email:17>k4ila@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>DM79OC
 <ituz:1>2
-<lat:11>N039 05.929
-<lon:11>W104 49.418
+<lat:11>N039 06.250
+<lon:11>W104 47.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1121,10 +1121,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:23>FREDERICK N PESSARO, JR
+<name:12>PEYTON VARGA
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1151,13 +1151,13 @@ QRZLogbook download for ki2d
 <cqz:1>7
 <distance:4>3383
 <dxcc:2>76
-<email:16>TG9AWS@ymail.com
+<email:18>tg9aws@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>EK44SN
 <ituz:2>11
-<lat:11>N014 34.061
-<lon:11>W090 28.091
+<lat:11>N014 33.750
+<lon:11>W090 27.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1170,10 +1170,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:16>STEPHEN WHEELOCK
+<name:14>REESE CALLOWAY
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1201,13 +1201,13 @@ QRZLogbook download for ki2d
 <cqz:1>4
 <distance:4>1650
 <dxcc:3>291
-<email:16>n0dow@icloud.com
+<email:17>n0dow@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>EN26VH
 <ituz:1>7
-<lat:11>N046 19.854
-<lon:11>W094 12.714
+<lat:11>N046 18.750
+<lon:11>W094 12.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1220,10 +1220,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:15>Richard W Shell
+<name:14>Skyler Dunmore
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1251,13 +1251,13 @@ QRZLogbook download for ki2d
 <cqz:1>3
 <distance:4>3638
 <dxcc:3>291
-<email:22>solutions884@gmail.com
+<email:17>n9ami@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:4>DM19
 <ituz:1>7
-<lat:11>N039 28.072
-<lon:11>W117 59.123
+<lat:11>N039 30.000
+<lon:11>W117 00.000
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -1269,10 +1269,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:15>JOHN C MC GRATH
+<name:13>KENDALL ASHBY
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1299,12 +1299,12 @@ QRZLogbook download for ki2d
 <country:13>United States
 <distance:4>1103
 <dxcc:3>291
-<email:20>Pilotcop@comcast.net
+<email:17>k9mdw@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:4>EN61
-<lat:11>N041 31.994
-<lon:11>W087 49.536
+<lat:11>N041 30.000
+<lon:11>W087 00.000
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -1316,10 +1316,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:17>ALFRED SZOLDATITS
+<name:15>MARLOW QUINTERO
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1347,13 +1347,13 @@ QRZLogbook download for ki2d
 <cqz:1>4
 <distance:4>1767
 <dxcc:3>291
-<email:18>kg5wtudf@gmail.com
+<email:18>kg5wtu@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>EM35JG
 <ituz:1>7
-<lat:11>N035 16.016
-<lon:11>W093 10.730
+<lat:11>N035 16.250
+<lon:11>W093 12.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1366,10 +1366,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:17>Dennis W Fleniken
+<name:15>Ellis Brannigan
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1397,13 +1397,13 @@ QRZLogbook download for ki2d
 <cqz:1>5
 <distance:3>918
 <dxcc:3>291
-<email:13>k5ek@arrl.net
+<email:16>k5ek@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>FM03WW
 <ituz:1>8
-<lat:11>N033 55.554
-<lon:11>W078 06.827
+<lat:11>N033 56.250
+<lon:11>W078 07.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1416,10 +1416,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:16>EDWARD J KUEBERT
+<name:12>SHAWN KEPLER
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1452,8 +1452,8 @@ QRZLogbook download for ki2d
 <freq_rx:7>14.0758
 <gridsquare:6>EM61UG
 <ituz:1>8
-<lat:11>N031 17.106
-<lon:11>W086 15.494
+<lat:11>N031 16.250
+<lon:11>W086 17.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1466,10 +1466,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:15>Glenn R Brazier
+<name:13>Toby Lindgren
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1497,14 +1497,14 @@ QRZLogbook download for ki2d
 <cqz:1>8
 <distance:4>2818
 <dxcc:3>285
-<email:20>monvaz2008@gmail.com
+<email:16>kp2b@example.com
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>FK77PS
 <iota:6>NA-106
 <ituz:2>11
-<lat:11>N017 46.078
-<lon:11>W064 44.307
+<lat:11>N017 46.250
+<lon:11>W064 42.500
 <lotw_qsl_rcvd:1>Y
 <lotw_qsl_sent:1>Y
 <lotw_qslrdate:8>20210510
@@ -1517,10 +1517,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:26>ST Croix VI Contest Groups
+<name:14>Noel Fairbanks
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N
@@ -1549,8 +1549,8 @@ QRZLogbook download for ki2d
 <freq:7>14.0758
 <freq_rx:7>14.0758
 <gridsquare:6>FN31BG
-<lat:11>N041 17.484
-<lon:11>W073 53.186
+<lat:11>N041 16.250
+<lon:11>W073 52.500
 <lotw_qsl_rcvd:1>N
 <lotw_qsl_sent:1>Y
 <lotw_qslsdate:8>20210510
@@ -1562,10 +1562,10 @@ QRZLogbook download for ki2d
 <my_gridsquare:6>FN21rq
 <my_itu_zone:2>11
 <my_lat:11>N041 41.250
-<my_lon:11>W074 32.520
+<my_lon:11>W074 32.500
 <my_name:17>Sebastian Delmont
 <my_state:2>NY
-<name:22>Joseph R Calabrese, Jr
+<name:12>Indigo Marsh
 <qrzcom_qso_upload_date:8>20210504
 <qrzcom_qso_upload_status:1>Y
 <qsl_rcvd:1>N

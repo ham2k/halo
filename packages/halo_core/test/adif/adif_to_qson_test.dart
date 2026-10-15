@@ -755,22 +755,22 @@ Header text <PROGRAMID>Ham2K LoKi
 
   group('coordinates', () {
     test("a real file's LAT/MY_LAT arrive as numbers, in the degrees QSON stores", () {
-      // ki2d-qrz.adi carries QRZ's own `<lat:11>N010 29.466` — ADIF states a
+      // ki2d-qrz.adi carries QRZ's own `<lat:11>N010 28.750` — ADIF states a
       // coordinate in degrees and decimal MINUTES, so a mapper that copies the
-      // field verbatim (or reads 10.29466 out of it) puts the station tens of
+      // field verbatim (or reads 10.2875 out of it) puts the station tens of
       // kilometres away, or in a type nothing downstream can measure with.
       final log = _load('ki2d-qrz.adi');
-      final withLat = log.qsos.firstWhere((q) => q.fields['lat'] == 'N010 29.466');
+      final withLat = log.qsos.firstWhere((q) => q.fields['lat'] == 'N010 28.750');
 
-      expect(_their(withLat)['lat'], closeTo(10.4911, 1e-4));
+      expect(_their(withLat)['lat'], closeTo(10.4792, 1e-4));
       expect(_our(withLat)['lat'], closeTo(41.6875, 1e-4));
     });
 
     test('a southern hemisphere letter reads as a negative latitude', () {
       final log = _load('ki2d-qrz.adi');
-      final southern = log.qsos.firstWhere((q) => q.fields['lat'] == 'S035 14.574');
+      final southern = log.qsos.firstWhere((q) => q.fields['lat'] == 'S035 13.750');
 
-      expect(_their(southern)['lat'], closeTo(-35.2429, 1e-4));
+      expect(_their(southern)['lat'], closeTo(-35.2292, 1e-4));
     });
 
     test('parses the ADIF Location format on both axes', () {
