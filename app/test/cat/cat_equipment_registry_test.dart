@@ -223,6 +223,7 @@ void main() {
       'ft897-serial',
       'q900-serial',
       'q900-bluetooth',
+      'sotacat-tcp',
       'icom-generic-serial',
       'kenwood-serial',
       'qmx-serial',

@@ -121,11 +121,11 @@
 	<key>SUEnableInstallerLauncherService</key>
 	<true/>
 	<!-- macOS 15 gates local-network access behind a consent prompt, and a
-	     build with no reason string shows a bare, alarming one. Two features
-	     reach the LAN: capturing QSOs from N1MM+/WSJT-X (HALO-306) and peer
-	     device sync (HALO-310). Both are opt-in and neither is reachable
-	     without the operator turning it on first. -->
+	     build with no reason string shows a bare, alarming one. Three features
+	     reach the LAN: capturing QSOs from N1MM+/WSJT-X, peer device sync,
+	     and equipment discovery while the Add Equipment dialog is open. None
+	     runs without the operator asking. -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Ham2K Logger finds your other devices on this network to share an operation's log with them, and listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X. Both are off until you turn them on.</string>
+	<string>Ham2K Logger finds your other devices on this network to share an operation's log with them, listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X, and finds radios on this network when you add equipment. None of this happens until you turn it on or ask for it.</string>
 </dict>
 </plist>

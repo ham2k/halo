@@ -455,6 +455,7 @@ const _defaultModels = [
   ft857Model,
   ft897Model,
   q900Model,
+  sotacatModel,
   yaesuGenericModel,
   ic705Model,
   ic7300Model,

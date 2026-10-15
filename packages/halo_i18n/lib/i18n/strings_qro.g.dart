@@ -3715,6 +3715,7 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get ft897 => 'YAESU FT-897';
 	@override String get ft450 => 'YAESU FT-450 / FT-450D';
 	@override String get q900 => 'GUOHETEC Q900';
+	@override String get sotacat => 'SOTACAT (ELECRAFT KX2/KX3)';
 	@override String get yaesuGeneric => 'YAESU - GENERIC';
 	@override String get icomGeneric => 'ICOM - GENERIC';
 	@override String get kenwoodGeneric => 'KENWOOD - GENERIC';
@@ -5403,6 +5404,7 @@ extension on TranslationsQro {
 			'settings.station.models.ft897' => 'YAESU FT-897',
 			'settings.station.models.ft450' => 'YAESU FT-450 / FT-450D',
 			'settings.station.models.q900' => 'GUOHETEC Q900',
+			'settings.station.models.sotacat' => 'SOTACAT (ELECRAFT KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'YAESU - GENERIC',
 			'settings.station.models.icomGeneric' => 'ICOM - GENERIC',
 			'settings.station.models.kenwoodGeneric' => 'KENWOOD - GENERIC',
@@ -5905,9 +5907,9 @@ extension on TranslationsQro {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'COULD NOT REACH YOUR ACTIVITIES, SO ${refs} WAS LEFT OFF — TRY THAT LINK AGAIN',
 			'confirmDevice.title' => 'CONFIRM A DEVICE',
 			'confirmDevice.codePrompt' => 'ENTER THE CODE SHOWN ON THE DEVICE THAT WANTS TO JOIN THIS ACCOUNT.',
-			'confirmDevice.code' => 'CODE',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.code' => 'CODE',
 			'confirmDevice.lookUp' => 'LOOK UP',
 			'confirmDevice.codeNotFound' => 'NO REQUEST MATCHES THAT CODE. CODES EXPIRE AFTER 10 MINUTES — ASK THE OTHER DEVICE FOR A FRESH ONE.',
 			'confirmDevice.linkExpired' => 'THAT LINK HAS EXPIRED. ASK THE OTHER DEVICE TO SHOW A NEW QR CODE.',

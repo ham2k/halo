@@ -7933,6 +7933,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Guohetec Q900'
 	String get q900 => 'Guohetec Q900';
 
+	/// en: 'SOTAcat (Elecraft KX2/KX3)'
+	String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
+
 	/// en: 'Yaesu - Generic'
 	String get yaesuGeneric => 'Yaesu - Generic';
 
@@ -9802,6 +9805,7 @@ extension on Translations {
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
@@ -10304,9 +10308,9 @@ extension on Translations {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again',
 			'confirmDevice.title' => 'Confirm a Device',
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
-			'confirmDevice.code' => 'Code',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',

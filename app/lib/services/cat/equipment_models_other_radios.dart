@@ -2,18 +2,21 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The radios that belong to no protocol family: FlexRadio's SmartSDR API, the
-// Guohetec Q900's own protocol, and the placeholder that stands in for a
-// radio with no CAT at all.
+// Guohetec Q900's own protocol, a KX2/KX3 behind a SOTAcat, and the
+// placeholder that stands in for a radio with no CAT at all.
 
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'drivers/placeholder_radio_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/guohetec_driver.dart';
+import 'drivers/rigctld_driver.dart';
+import 'discovery.dart';
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
 import 'transports/bluetooth_serial_transport.dart';
+import 'transports/mdns.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
@@ -22,6 +25,7 @@ const _flexRadioTcpKey = 'flexradio-tcp';
 const _q900SerialKey = 'q900-serial';
 const _q900BluetoothKey = 'q900-bluetooth';
 const _placeholderRadioKey = 'placeholder-radio';
+const _sotacatTcpKey = 'sotacat-tcp';
 
 /// FlexRadio radios reachable over the SmartSDR TCP API.
 ///
@@ -46,6 +50,64 @@ const flexRadioModel = EquipmentModel(
 );
 
 String _flexRadioName() => t.settings.station.models.flexRadio;
+
+/// An Elecraft KX2 or KX3 behind a SOTAcat, the ESP32 module on its ACC
+/// port that serves the radio's CAT as a rigctld-compatible TCP server.
+///
+/// Found automatically by its `_sotacat._tcp` service record. The default
+/// host is the module's own mDNS name, which is what an operator types when
+/// the radio is on a phone's hotspot and its address changes every outing.
+///
+/// No manufacturer, like the rigctld bridge it speaks for: with one, the
+/// model would offer the "no CAT" placeholder variant every transceiver
+/// gains, and a SOTAcat is nothing but the CAT link. It shelves under Other
+/// Brands.
+const sotacatModel = EquipmentModel(
+  key: 'sotacat',
+  category: kCategoryTransceiver,
+  name: _sotacatName,
+  variants: [
+    EquipmentVariant(
+      key: _sotacatTcpKey,
+      driver: RigctldDriver(),
+      transport: TcpTransport(),
+      defaultConfig: {'host': 'sotacat.local', 'port': RigctldDriver.defaultPort},
+      discoverer: SotacatDiscoverer(typeKey: _sotacatTcpKey),
+    ),
+  ],
+);
+
+String _sotacatName() => t.settings.station.models.sotacat;
+
+/// The service type a SOTAcat publishes: SRV names its rigctld port, and
+/// TXT carries `id` (stable across hosts and addresses) and `fw`.
+const sotacatServiceType = '_sotacat._tcp.local';
+
+/// SOTAcats answering a browse for [sotacatServiceType].
+///
+/// The found config carries the unit's mDNS HOST NAME, not its address. A
+/// SOTAcat goes to the field on whatever hotspot is at hand, and an address
+/// stored at discovery is wrong by the next activation; the name resolves
+/// over mDNS on every connect (`lookupHost`, mdns_io.dart).
+class SotacatDiscoverer implements EquipmentDiscoverer {
+  final String typeKey;
+
+  /// A seam for tests, which cannot send multicast from `flutter_tester`.
+  final Stream<MdnsService> Function(String serviceType) browse;
+
+  const SotacatDiscoverer({required this.typeKey, this.browse = mdnsBrowse});
+
+  @override
+  Stream<DiscoveredEquipment> discover() => browse(sotacatServiceType).map(
+    (found) => DiscoveredEquipment(
+      typeKey: typeKey,
+      id: found.txt['id'] ?? found.instance,
+      name: found.instance,
+      detail: [if (found.txt['fw'] case final fw? when fw.isNotEmpty) 'v$fw', found.host].join(' · '),
+      config: {'host': found.host, 'port': found.port},
+    ),
+  );
+}
 
 /// Guohetec Q900, over the USB-C cable that also carries its sound card.
 ///

@@ -11,6 +11,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../transport.dart';
+import 'mdns_io.dart';
 import 'tcp_transport_config.dart';
 
 const _connectTimeout = Duration(seconds: 5);
@@ -38,8 +39,15 @@ class TcpTransport extends EquipmentTransport with TcpTransportConfig {
     // cancellation is destroyed rather than left dangling. Without this a
     // superseded attempt would keep hammering the radio for the full
     // handshake timeout — which some radios do not tolerate.
+    //
+    // A `.local` lookup rides inside the same race, since it can take
+    // seconds to give up on a name nothing answers for — and an attempt
+    // cancelled during it must not go on to dial at all.
     final completer = Completer<Socket>();
-    final pending = Socket.connect(host, port, timeout: _connectTimeout);
+    final pending = connectTarget(host).then((target) {
+      if (cancel.isCancelled) throw const CatCancelledException();
+      return Socket.connect(target, port, timeout: _connectTimeout);
+    });
 
     unawaited(
       pending.then(

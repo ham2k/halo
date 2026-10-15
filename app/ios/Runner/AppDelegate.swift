@@ -30,6 +30,12 @@ import UIKit
   // Clipboard cannot do.
   private var imageClipboardChannel: FlutterMethodChannel?
 
+  // Equipment discovery by service record (mdns_io.dart). Dart cannot send
+  // multicast on iOS without a restricted entitlement; NetServiceBrowser
+  // can, for any type Info.plist lists under NSBonjourServices.
+  private var bonjourChannel: FlutterMethodChannel?
+  private var bonjourBrowser: BonjourBrowser?
+
   // Documents opened from Files, a share sheet, or a browser download
   // (HALO-422). `app_links` handles custom URL schemes; an opened document
   // arrives through this delegate method instead, so a registered type
@@ -165,6 +171,31 @@ import UIKit
       UIPasteboard.general.setData(png.data, forPasteboardType: "public.png")
       result(nil)
     }
+    bonjourChannel = FlutterMethodChannel(
+      name: "ham2k/bonjour",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    bonjourChannel?.setMethodCallHandler { [weak self] call, result in
+      guard let self else { return result(nil) }
+      switch call.method {
+      case "start":
+        guard let type = (call.arguments as? [String: Any])?["type"] as? String else {
+          result(FlutterError(code: "bad-args", message: "start needs a type", details: nil))
+          return
+        }
+        self.bonjourBrowser?.stop()
+        self.bonjourBrowser = BonjourBrowser(type: type) { [weak self] found in
+          self?.bonjourChannel?.invokeMethod("found", arguments: found)
+        }
+        result(nil)
+      case "stop":
+        self.bonjourBrowser?.stop()
+        self.bonjourBrowser = nil
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
     // Re-query on disconnect rather than pushing `false`: `coalesced`
     // merges every attached keyboard, so one leaving doesn't mean none
     // remain.
@@ -215,5 +246,86 @@ import UIKit
 
   private func sendKeyCommand(_ action: String) {
     keyCommandChannel?.invokeMethod("run", arguments: action)
+  }
+}
+
+/// Browses one service type and resolves each instance it finds, reporting
+/// name, host, port and TXT. Instances are held until [stop]: a NetService
+/// nothing retains is released mid-resolve and never calls back.
+private final class BonjourBrowser: NSObject, NetServiceBrowserDelegate, NetServiceDelegate {
+  private let browser = NetServiceBrowser()
+  private var services: [NetService] = []
+  private var resolveAttempts: [ObjectIdentifier: Int] = [:]
+  private let onFound: ([String: Any]) -> Void
+
+  init(type: String, onFound: @escaping ([String: Any]) -> Void) {
+    self.onFound = onFound
+    super.init()
+    browser.delegate = self
+    browser.searchForServices(ofType: type, inDomain: "local.")
+  }
+
+  // Delegates are unowned: cleared before stopping, so a didStop delivered
+  // after this browser is released cannot reach it.
+  func stop() {
+    browser.delegate = nil
+    browser.stop()
+    services.forEach {
+      $0.delegate = nil
+      $0.stop()
+    }
+    services.removeAll()
+    resolveAttempts.removeAll()
+  }
+
+  // Refused — Local Network access declined in Settings, or the type
+  // missing from NSBonjourServices. The dialog shows nothing found, the
+  // same as every other platform without a network.
+  func netServiceBrowser(_ browser: NetServiceBrowser, didNotSearch errorDict: [String: NSNumber]) {
+    NSLog("[bonjour] browse refused: \(errorDict)")
+  }
+
+  // didFind does not fire again for an instance already found, so a resolve
+  // that timed out — a sleepy ESP32 radio missing the query — is retried
+  // here or never. A few times, not forever: a unit switched off after it
+  // was found would otherwise keep a resolve running for the whole visit.
+  func netService(_ sender: NetService, didNotResolve errorDict: [String: NSNumber]) {
+    let key = ObjectIdentifier(sender)
+    let attempts = (resolveAttempts[key] ?? 1) + 1
+    guard attempts <= 3 else {
+      NSLog("[bonjour] resolve of \(sender.name) failed: \(errorDict); giving up")
+      return
+    }
+    NSLog("[bonjour] resolve of \(sender.name) failed: \(errorDict); retrying")
+    resolveAttempts[key] = attempts
+    sender.resolve(withTimeout: 5)
+  }
+
+  func netServiceBrowser(_ browser: NetServiceBrowser, didRemove service: NetService, moreComing: Bool) {
+    guard let index = services.firstIndex(where: { $0 == service }) else { return }
+    let gone = services.remove(at: index)
+    gone.delegate = nil
+    gone.stop()
+    resolveAttempts[ObjectIdentifier(gone)] = nil
+  }
+
+  func netServiceBrowser(_ browser: NetServiceBrowser, didFind service: NetService, moreComing: Bool) {
+    services.append(service)
+    service.delegate = self
+    service.resolve(withTimeout: 5)
+  }
+
+  func netServiceDidResolveAddress(_ sender: NetService) {
+    guard let host = sender.hostName, sender.port > 0 else {
+      NSLog("[bonjour] \(sender.name) resolved without a host or port")
+      return
+    }
+    var txt: [String: String] = [:]
+    if let data = sender.txtRecordData() {
+      for (key, value) in NetService.dictionary(fromTXTRecord: data) {
+        txt[key] = String(data: value, encoding: .utf8) ?? ""
+      }
+    }
+    onFound(["name": sender.name, "host": host, "port": sender.port, "txt": txt])
   }
 }

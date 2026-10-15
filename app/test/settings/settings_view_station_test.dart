@@ -599,7 +599,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Icom IC-705'), findsNothing, reason: 'opening one shelf shuts the other');
-    expect(find.text('Xiegu X6100'), findsOneWidget);
+    expect(find.text('Guohetec Q900'), findsOneWidget);
 
     // Fully on screen and at the top of it: the shelf that just shut was above
     // this one, so without the correction the collapse leaves this header
@@ -610,7 +610,7 @@ void main() {
     final viewport = tester.getRect(find.byType(CustomScrollView).last);
     expect(header.top, greaterThanOrEqualTo(viewport.top - 1), reason: 'not clipped off the top');
     expect(header.top, lessThan(viewport.top + header.height), reason: 'at the top, not merely somewhere');
-    expect(find.text('Xiegu X6100'), findsOneWidget, reason: 'so its first rows are under it');
+    expect(find.text('Guohetec Q900'), findsOneWidget, reason: 'so its first rows are under it');
   });
 
   testWidgets('a radio whose brand has no shelf of its own falls to Other Brands', (tester) async {

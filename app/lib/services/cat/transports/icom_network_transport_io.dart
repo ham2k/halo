@@ -36,6 +36,7 @@ import 'package:halo_core/halo_core.dart';
 import '../transport.dart';
 import 'icom_network_protocol.dart';
 import 'icom_network_transport_config.dart';
+import 'mdns_io.dart';
 
 const _handshakeTimeout = Duration(seconds: 3);
 
@@ -134,7 +135,10 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
 
     // A radio's address is usually typed as one, and an address needs no
     // lookup — which is real I/O, out of reach of a test's fake clock.
-    final address = InternetAddress.tryParse(host) ?? (await InternetAddress.lookup(host)).first;
+    final address = InternetAddress.tryParse(host) ?? await lookupHost(host);
+    // A `.local` lookup can take seconds; a superseded attempt must not go
+    // on to open a session the radio then holds against the next one.
+    if (cancel.isCancelled) throw const CatCancelledException();
     _IcomSession? control;
     _IcomSession? serial;
     RawDatagramSocket? audio;

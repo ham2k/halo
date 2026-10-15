@@ -98,6 +98,18 @@ void main() {
     expect(serverSockets, isEmpty);
   });
 
+  test('a token cancelled while the host is still resolving never dials', () async {
+    // A `.local` name can take seconds to resolve. A superseded attempt that
+    // dialled once it did would land a connect-and-reset on a single-client
+    // rigctld (a SOTAcat) right beside the attempt that replaced it.
+    final cancel = CatCancelToken();
+    final attempt = const TcpTransport().connect(target, cancel: cancel);
+    cancel.cancel();
+    await expectLater(attempt, throwsA(isA<CatCancelledException>()));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+    expect(serverSockets, isEmpty);
+  });
+
   test('a refused connection reports an error rather than hanging', () async {
     // Bind and immediately release a port, so nothing is listening on it.
     final vacant = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);

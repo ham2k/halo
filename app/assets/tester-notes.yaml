@@ -10,6 +10,7 @@
     - "Calls you didn't fully copy can be logged with a `?`, like `K1A?C`"
     - "New auto-respotting: after a self-spot, or with the RESPOT command"
     - "SPOTLAST now takes a comment, like `SPOTTHEM nice signal`"
+    - "Added SOTAcat to the radio list, found automatically on your network"
 
 "179":
   changes:

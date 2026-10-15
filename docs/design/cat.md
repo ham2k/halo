@@ -658,7 +658,8 @@ On **iOS**, receiving broadcasts additionally needs `NSLocalNetworkUsageDescript
 needs `com.apple.developer.networking.multicast` — a restricted entitlement Apple grants only on
 application. The usage description is set; the multicast entitlement is not, and iOS ships no
 entitlements file at all until Apple approves that request, so multicast discovery finds nothing
-there; manual entry still works.
+there; manual entry still works. Bonjour browsing through the OS (`NSBonjourServices`) is not
+multicast the app sends, and works without it.
 
 ## Discovery
 
@@ -687,6 +688,33 @@ Two rules the UI follows:
   set up is still something you could add, so it keeps being offered, each offer carrying the lowest
   channel not yet spoken for and named after it from the second on. Filtering per radio instead is
   what left the second slice reachable only by typing the address in from the catalogue.
+
+A **SOTAcat** is found by Multicast DNS rather than broadcast: it publishes a `_sotacat._tcp` service
+record (SRV = its rigctld port, TXT `id=` a stable id and `fw=` its firmware), and the app asks for
+it with one-shot PTR queries every few seconds (`mdns_io.dart`). A found unit is stored by its SRV
+**host name** (`sotacat.local`), not the address it answered from: it goes to the field on whichever
+hotspot is at hand, and an address taken at discovery is wrong by the next activation.
+
+### `.local` host names
+
+Any TCP or Icom network host ending in `.local` is resolved by racing the OS resolver against a
+one-shot mDNS A query sent from each IPv4 interface (`lookupHost`); the first ADDRESS wins, and a
+fast failure from one side does not settle the race. Android, and a Linux without nss-mdns, do not
+resolve `.local` at all, and there the mDNS answer is the only one; Windows does, but not reliably.
+On macOS and iOS, mDNSResponder IS the OS resolver, so the race is skipped and the OS answers alone.
+A TCP connect dials the NAME when the OS resolves it (`connectTarget`), so `Socket.connect` still
+tries every address the name has rather than the one the race found.
+
+"One-shot" (RFC 6762 §5.1) is what keeps this small: a query sent from an ephemeral port, with the
+QU bit set, is answered by unicast to that port. The app never binds 5353 (the OS responder holds it
+on macOS and Windows) and never joins the group (Android delivers multicast only under a Wi-Fi
+multicast lock). One socket per interface because a multicast datagram leaves by one interface, and
+a laptop on Ethernet and on a SOTAcat's own access point must ask both.
+
+iOS refuses to send multicast without the restricted entitlement (§ Entitlements), so there the OS
+resolver answers lookups alone, and the browse goes through `NetServiceBrowser` on the
+`ham2k/bonjour` channel — which needs the type listed under `NSBonjourServices` in Info.plist, and
+finds nothing, silently, for one that is not.
 
 Discovery holds a bound socket, so it runs only while the Add dialog that shows its results is open.
 What it found is the dialog's FIRST shelf and the one that opens itself; its spinner is a row of that

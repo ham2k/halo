@@ -173,10 +173,15 @@
 	<false/>
 	<!-- "Listen for other apps" (HALO-306) binds a UDP socket to hear N1MM
 	     Logger+/WSJT-X on the local network — iOS gates ANY local-subnet
-	     traffic behind this prompt since iOS 14, regardless of whether the
-	     app also advertises a Bonjour service (it doesn't, so no
-	     NSBonjourServices entry is needed alongside this). -->
+	     traffic behind this prompt since iOS 14. -->
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Ham2K Logger finds your other devices on this network to share an operation's log with them, and listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X. Both are off until you turn them on.</string>
+	<string>Ham2K Logger finds your other devices on this network to share an operation's log with them, listens for QSOs logged in other programs like N1MM Logger+ and WSJT-X, and finds radios on this network when you add equipment. None of this happens until you turn it on or ask for it.</string>
+	<!-- The service types the Add Equipment dialog browses for
+	     (AppDelegate.swift's BonjourBrowser). iOS refuses to browse a type
+	     not listed here, silently: the browse simply finds nothing. -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_sotacat._tcp</string>
+	</array>
 </dict>
 </plist>

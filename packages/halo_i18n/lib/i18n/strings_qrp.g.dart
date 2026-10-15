@@ -3715,6 +3715,7 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get ft897 => 'yaesu ft-897';
 	@override String get ft450 => 'yaesu ft-450 / ft-450d';
 	@override String get q900 => 'guohetec q900';
+	@override String get sotacat => 'sotacat (elecraft kx2/kx3)';
 	@override String get yaesuGeneric => 'yaesu - generic';
 	@override String get icomGeneric => 'icom - generic';
 	@override String get kenwoodGeneric => 'kenwood - generic';
@@ -5403,6 +5404,7 @@ extension on TranslationsQrp {
 			'settings.station.models.ft897' => 'yaesu ft-897',
 			'settings.station.models.ft450' => 'yaesu ft-450 / ft-450d',
 			'settings.station.models.q900' => 'guohetec q900',
+			'settings.station.models.sotacat' => 'sotacat (elecraft kx2/kx3)',
 			'settings.station.models.yaesuGeneric' => 'yaesu - generic',
 			'settings.station.models.icomGeneric' => 'icom - generic',
 			'settings.station.models.kenwoodGeneric' => 'kenwood - generic',
@@ -5905,9 +5907,9 @@ extension on TranslationsQrp {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'could not reach your activities, so ${refs} was left off — try that link again',
 			'confirmDevice.title' => 'confirm a device',
 			'confirmDevice.codePrompt' => 'enter the code shown on the device that wants to join this account.',
-			'confirmDevice.code' => 'code',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.code' => 'code',
 			'confirmDevice.lookUp' => 'look up',
 			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'that link has expired. ask the other device to show a new qr code.',
