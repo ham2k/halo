@@ -48,6 +48,6 @@ const HelloPanel: PanelHook = {
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook("panel", { key: "ki2d-hello-world", hook: HelloPanel })
+    registerHook("panel", { key: "k2hrc-hello-world", hook: HelloPanel })
   },
 })
