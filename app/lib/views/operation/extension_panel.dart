@@ -42,6 +42,10 @@ import 'panel_scene/scene_spectrum.dart';
 Map<String, dynamic> operationHookArgs(Operation operation) => {
   ...operation.data,
   'uuid': operation.uuid,
+  // RESOLVED, as `operationQsonFor` sends it: with a position set the
+  // operator lives in that position's slot, and only this side knows which
+  // seat this device is in. It replaces whatever `operatorCall` the data holds.
+  'operatorCall': operatorCallFor(operation),
   // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
   // and a panel is the surface that most wants to say when the
   // operation ran. Without them a template naming the operation's

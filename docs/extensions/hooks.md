@@ -1698,6 +1698,11 @@ interface PanelHook {
 //                | {kind: 'scene', scene, title?, triggers?}   (see Panel scene reference)
 ```
 
+`operation` is the operation's data with its `uuid`, its
+`startAtMillisMin`/`startAtMillisMax`, and `operatorCall`: who is at the key on
+this device, resolved for its position in a multi-station operation, and empty
+when nobody is named.
+
 The host addresses a panel as `ext:<hookKey>:<key>`, and that id is stored
 inside saved layouts — renaming a `key` drops the panel out of every
 arrangement holding it.

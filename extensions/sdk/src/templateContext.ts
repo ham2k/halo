@@ -97,7 +97,9 @@ export function opValues(operation: Record<string, JSONValue>, extra: { qsoCount
           .filter((call) => call !== ""),
       ),
     ],
-    operator: (operation.operator ?? "") as JSONValue,
+    // Resolved by the host for this device's position; a template cannot do it
+    // itself, because the position never crosses the bridge.
+    operator: (operation.operatorCall ?? "") as JSONValue,
     // The generated, ref-derived title ("at US-1234") and the operator's own
     // words, kept apart: an export that withholds private data withholds the
     // second and keeps the first (see the adif hook's preamble).

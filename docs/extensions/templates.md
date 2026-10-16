@@ -65,7 +65,8 @@ An ISO-8601 UTC string, for the `date` filter: `{{ now | date: '%H:%M' }}`.
 ### `op` — the operation
 `station` (the field as typed, which may hold several comma-separated
 callsigns; `call` is the same value, the name `qso.call` has), `stations`
-(that list, uppercased and deduped), `operator`,
+(that list, uppercased and deduped), `operator` (who is at the key on this
+device, empty when nobody is named),
 `title` (the generated, ref-derived one), `userTitle` (the operator's own
 words), `grid`, `refs`, `uuid`, `qsoCount`, `date`, `dateCompact`, `time`,
 `at`, `startDate`, `startTime`, `startAt`, `endDate`, `endTime`, `endAt`.

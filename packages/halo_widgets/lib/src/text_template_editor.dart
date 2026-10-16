@@ -32,7 +32,7 @@ Map<String, dynamic> templateSampleFor(Map<String, dynamic> field) {
   final sample = <String, dynamic>{
     'operation': {
       'stationCall': 'N0CALL',
-      'operator': 'K2HRC',
+      'operatorCall': 'K2HRC',
       'title': 'Park activation',
       'grid': 'FN31',
       'uuid': 'example-operation',

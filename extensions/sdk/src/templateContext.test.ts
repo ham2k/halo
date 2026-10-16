@@ -50,6 +50,14 @@ test("several station callsigns are offered as a list as well as the raw field",
   assert.deepEqual(op.stations, ["N0CALL", "N0DEV"])
 })
 
+// The host stores the operator under `operatorCall`, per position when the
+// device has one, and nothing writes an `operator` key: a template reading
+// that renders `DE ` with no error to say why.
+test("op.operator is the operator the host resolved for this device", () => {
+  assert.equal(opValues({ stationCall: "K2SUL", operatorCall: "B1B" }).operator, "B1B")
+  assert.equal(renderTemplate("DE {{ op.operator }}", { op: opValues({ operatorCall: "B1B" }) }), "DE B1B")
+})
+
 test("a station-less operation yields no phantom callsign", () => {
   assert.deepEqual(opValues({}).stations, [])
 })
