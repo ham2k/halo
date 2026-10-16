@@ -27,6 +27,8 @@ import 'theme.dart';
 import 'text_template_editor.dart';
 import 'halo_snack_bar.dart';
 
+part 'form_renderer_list.dart';
+
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
@@ -75,17 +77,6 @@ String _templateString(String template, Map<String, dynamic> item) {
 TextStyle? optionEmphasisStyle(Map<String, dynamic> option, List<Map<String, dynamic>> options) {
   if (!options.any((o) => o['emphasis'] == true)) return null;
   return TextStyle(fontWeight: option['emphasis'] == true ? FontWeight.bold : FontWeight.normal);
-}
-
-/// The three callbacks a `fieldType: 'list'` editor needs — built by
-/// `_FormRendererState._listFieldActions`, shared by both presentations
-/// (`_buildInlineListField`'s inline rows and `_openListEditor`'s dialog).
-class _ListFieldActions {
-  final Future<void> Function(int? index) editItem;
-  final void Function(int index) deleteItem;
-  final void Function(int oldIndex, int newIndex) reorder;
-
-  const _ListFieldActions({required this.editItem, required this.deleteItem, required this.reorder});
 }
 
 /// The Defaults button every settings-field editor puts in its `secondary`
@@ -265,12 +256,15 @@ class FormRenderer extends StatefulWidget {
   State<FormRenderer> createState() => FormRendererState();
 }
 
-class FormRendererState extends State<FormRenderer> {
+class FormRendererState extends State<FormRenderer> with _ListFields {
+  @override
   final Map<String, dynamic> _values = {};
   final Map<String, TextEditingController> _controllers = {};
   final Map<String, FocusNode> _focusNodes = {};
+  @override
   final Map<String, String> _errors = {};
   final Set<String> _runningActions = {};
+  @override
   bool _isSubmitting = false;
 
   /// The `type: 'disclosure'` groups the operator has opened, by key. Every
@@ -297,6 +291,7 @@ class FormRendererState extends State<FormRenderer> {
   /// The orange "dev mode" accent for an element flagged `devMode: true` —
   /// null once [_elements] has already excluded it, so no builder needs its
   /// own visibility check, only this color check.
+  @override
   Color? _devModeColor(Map<String, dynamic> el) => el['devMode'] == true ? HaLoColors.of(context).devMode : null;
 
   /// Every row (ListTile-based or not) aligns to the SAME inset: whatever an
@@ -304,6 +299,7 @@ class FormRendererState extends State<FormRenderer> {
   /// settings_view.dart's wide-layout wrapper), or none at all for every
   /// other FormRenderer caller (dialogs, embedded forms), which keep the
   /// flush-left look those callers already size their own container for.
+  @override
   EdgeInsetsGeometry get _rowContentPadding => ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
 
   /// Every field, a fold's members included: a field inside a closed fold
@@ -603,6 +599,7 @@ class FormRendererState extends State<FormRenderer> {
     });
   }
 
+  @override
   Future<void> _handleFieldBlurOrInteraction(String key, dynamic value) async {
     if (widget.onChange != null) {
       try {
@@ -1716,306 +1713,6 @@ class FormRendererState extends State<FormRenderer> {
     _handleFieldBlurOrInteraction(key, value);
   }
 
-  String _listItemTitle(Map<String, dynamic> el, Map<String, dynamic> item) {
-    final template = el['itemTitle'] as String?;
-    return template != null
-        ? _templateString(template, item)
-        : item.values.firstWhere((v) => v != null && v.toString().isNotEmpty, orElse: () => '').toString();
-  }
-
-  /// A `fieldType: 'list'` field. `inline: true` renders the item rows (with
-  /// a reorder handle/delete button per row, and an Add row) directly here
-  /// — see [_buildInlineListField]. Otherwise: a single row summarizing the
-  /// current items as a comma-separated list; tapping it opens
-  /// [_openListEditor]'s dialog where the actual add/edit/delete/reorder
-  /// happens.
-  Widget _buildListField(Map<String, dynamic> el, ThemeData theme) {
-    if (el['inline'] == true) return _buildInlineListField(el, theme);
-
-    final key = el['key'] as String;
-    final label = el['label'] as String? ?? '';
-    final description = el['description'] as String?;
-    final icon = el['icon'] as String?;
-    final errorText = _errors[key];
-    final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
-    final devModeColor = _devModeColor(el);
-    final summary = [
-      for (final item in items)
-        if (_listItemTitle(el, item).isNotEmpty) _listItemTitle(el, item),
-    ].join(', ');
-
-    Widget? subtitle;
-    if (errorText != null) {
-      subtitle = Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12));
-    } else if (summary.isNotEmpty) {
-      subtitle = Text(summary, style: TextStyle(color: devModeColor));
-    } else if (description != null && description.isNotEmpty) {
-      subtitle = Text(description, style: TextStyle(color: devModeColor));
-    }
-
-    return ListTile(
-      contentPadding: _rowContentPadding,
-      leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
-      title: Text(
-        label,
-        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor),
-      ),
-      subtitle: subtitle,
-      trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
-      onTap: _isSubmitting ? null : () => _openListEditor(el),
-      mouseCursor: SystemMouseCursors.click,
-    );
-  }
-
-  /// `inline: true`'s rendering: the same add/edit/delete/reorder behavior
-  /// as [_openListEditor] (both built from [_listFieldActions]), just laid
-  /// out directly in the form instead of behind a summary row that opens a
-  /// dialog — for a list that IS the section's content (e.g. call-notes'
-  /// custom files), not one field among several. Tapping a row (or Add)
-  /// still opens the `itemFields` editor dialog; only the outer
-  /// reorder/delete/add wrapper is inline instead of a second, nested
-  /// dialog.
-  Widget _buildInlineListField(Map<String, dynamic> el, ThemeData theme) {
-    final key = el['key'] as String;
-    final label = el['label'] as String? ?? '';
-    final itemLabel = el['itemLabel'] as String? ?? label;
-    final orderable = el['orderable'] == true;
-    final errorText = _errors[key];
-    final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
-    final actions = _listFieldActions(context: context, key: key, el: el, items: items, itemLabel: itemLabel);
-
-    Widget rowFor(int index) {
-      final title = _listItemTitle(el, items[index]);
-      return ListTile(
-        key: ValueKey('$key-item-$index'),
-        contentPadding: _rowContentPadding,
-        // Leading, not trailing (unlike the dialog editor's drag handle) —
-        // the drag gesture is scoped to just this icon via the listener
-        // below, so it can't be confused with the row's own onTap.
-        leading: orderable ? ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant)) : null,
-        title: Text(title.isEmpty ? t.formChrome.untitled : title),
-        onTap: _isSubmitting ? null : () => actions.editItem(index),
-        trailing: IconButton(
-          icon: Icon(MdiIcons.delete, size: 20, semanticLabel: t.formChrome.removeItem),
-          onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
-        ),
-        mouseCursor: SystemMouseCursors.click,
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (errorText != null)
-          Padding(
-            padding: _rowContentPadding,
-            child: Text(errorText, style: TextStyle(color: theme.colorScheme.error, fontSize: 12)),
-          ),
-        if (orderable)
-          ReorderableListView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            // onReorderItem hands over already-adjusted indices, so the
-            // move-down compensation in `actions.reorder` has to change with
-            // the callback — a behaviour change that belongs to HALO-534.
-            // ignore: deprecated_member_use
-            onReorder: actions.reorder,
-            // Otherwise, on a desktop/web (mouse) platform, the framework
-            // auto-adds its OWN trailing drag handle to every row — landing
-            // right on top of the delete IconButton above. rowFor already
-            // wires up its own leading handle via ReorderableDragStartListener.
-            buildDefaultDragHandles: false,
-            children: [for (var i = 0; i < items.length; i++) rowFor(i)],
-          )
-        else
-          for (var i = 0; i < items.length; i++) rowFor(i),
-        Padding(
-          padding: _rowContentPadding,
-          child: TextButton.icon(
-            onPressed: _isSubmitting ? null : () => actions.editItem(null),
-            icon: const Icon(MdiIcons.plus, size: 18),
-            label: Text(t.formChrome.addItem(label: itemLabel)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// The add/edit/delete/reorder behavior shared by [_buildInlineListField]
-  /// and [_openListEditor] — the only thing that differs between the two
-  /// presentations is the surrounding chrome (an inline `Column` vs a
-  /// `HaloDialog`) and each row's own layout, both of which stay with their
-  /// respective callers. [items] is the current value list at the moment
-  /// of the call — both callers already re-derive it from `_values[key]`
-  /// on every rebuild they care about (the inline field's own `build`, or
-  /// the dialog's `StatefulBuilder`), so a plain list is enough; nothing
-  /// here needs to re-read it later. [afterCommit], when given, runs right
-  /// after a commit's `setState` — only the dialog needs it, to also
-  /// refresh its own `StatefulBuilder` (the inline field's `build` already
-  /// covers that).
-  _ListFieldActions _listFieldActions({
-    required BuildContext context,
-    required String key,
-    required Map<String, dynamic> el,
-    required List<Map<String, dynamic>> items,
-    required String itemLabel,
-    VoidCallback? afterCommit,
-  }) {
-    final itemFields = (el['itemFields'] as List? ?? const []).cast<Map<String, dynamic>>();
-
-    Future<void> commit(List<Map<String, dynamic>> newItems) async {
-      setState(() {
-        _values[key] = newItems;
-        _errors.remove(key);
-      });
-      afterCommit?.call();
-      await _handleFieldBlurOrInteraction(key, newItems);
-    }
-
-    Future<void> editItem(int? index) async {
-      final itemPath = '$key[${index ?? items.length}]';
-      final initial = index != null ? Map<String, dynamic>.from(items[index]) : <String, dynamic>{};
-      final result = await showFormDialog(
-        context,
-        formDefinition: {
-          'title': index != null ? t.formChrome.editItem(label: itemLabel) : t.formChrome.addItem(label: itemLabel),
-          'elements': itemFields,
-        },
-        initialState: initial,
-        validator: widget.validator == null ? null : (fieldKey, value, state) => widget.validator!('$itemPath.$fieldKey', value, state),
-        transformer: widget.transformer == null ? null : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
-        developerMode: widget.developerMode,
-      );
-      if (result == null) return;
-      final newItems = List<Map<String, dynamic>>.from(items);
-      if (index != null) {
-        newItems[index] = result;
-      } else {
-        newItems.add(result);
-      }
-      await commit(newItems);
-    }
-
-    void deleteItem(int index) {
-      final newItems = List<Map<String, dynamic>>.from(items)..removeAt(index);
-      commit(newItems);
-    }
-
-    void reorder(int oldIndex, int newIndex) {
-      final newItems = List<Map<String, dynamic>>.from(items);
-      if (newIndex > oldIndex) newIndex -= 1;
-      newItems.insert(newIndex, newItems.removeAt(oldIndex));
-      commit(newItems);
-    }
-
-    return _ListFieldActions(editItem: editItem, deleteItem: deleteItem, reorder: reorder);
-  }
-
-  /// The list field's editor dialog: a summary row per item plus an "Add"
-  /// row. Every mutation commits immediately (autosave, like every other
-  /// field) — Done just closes. Editing or adding an item reopens the same
-  /// form renderer recursively (via [showFormDialog]) scoped to
-  /// `itemFields`, so there's no separate "list item editor" widget — just
-  /// a smaller [FormDefinition].
-  Future<void> _openListEditor(Map<String, dynamic> el) async {
-    final key = el['key'] as String;
-    final label = el['label'] as String? ?? '';
-    // Matches _buildInlineListField's own fallback — without it, a non-inline
-    // list field that declares itemLabel had it silently ignored here,
-    // showing the plural container label in the Add/Edit dialog and button
-    // instead.
-    final itemLabel = el['itemLabel'] as String? ?? label;
-    final orderable = el['orderable'] == true;
-
-    await showHaloDialog<void>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) {
-          // Read through _values each build so both this dialog and the
-          // summary row behind it stay live.
-          final items = ((_values[key] as List?) ?? const []).cast<Map<String, dynamic>>();
-          final actions = _listFieldActions(
-            context: dialogContext,
-            key: key,
-            el: el,
-            items: items,
-            itemLabel: itemLabel,
-            // The inline field's own `build` already picks up a commit via
-            // the outer setState; this dialog is a separate overlay that
-            // needs telling explicitly to redraw with the new items.
-            afterCommit: () => setDialogState(() {}),
-          );
-
-          Widget rowFor(int index) {
-            final title = _listItemTitle(el, items[index]);
-            return ListTile(
-              key: ValueKey('$key-item-$index'),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: Text(title.isEmpty ? t.formChrome.untitled : title),
-              onTap: _isSubmitting ? null : () => actions.editItem(index),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // A real drag listener, not decoration — with the
-                  // framework's auto handle off below, this icon IS the
-                  // drag affordance (same wiring as the inline editor's
-                  // leading handle).
-                  if (orderable) ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant, size: 20)),
-                  IconButton(
-                    icon: Icon(MdiIcons.delete, size: 20, semanticLabel: t.formChrome.removeItem),
-                    onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return HaloDialog(
-            wide: true,
-            title: Text(label),
-            // Rows run edge to edge; the shell's own scroll view is off because
-            // this content scrolls itself, and its width comes from the shared
-            // sizing.
-            contentPadding: EdgeInsets.zero,
-            scrollable: false,
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (orderable)
-                    ReorderableListView(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      // Same as the inline editor: on mouse platforms the
-                      // framework auto-adds its own trailing handle to
-                      // every row, doubling the row's own — the trailing
-                      // icon above carries the ReorderableDragStartListener
-                      // instead.
-                      buildDefaultDragHandles: false,
-                      // See the ReorderableListView above — HALO-534.
-                      // ignore: deprecated_member_use
-                      onReorder: actions.reorder,
-                      children: [for (var i = 0; i < items.length; i++) rowFor(i)],
-                    )
-                  else
-                    for (var i = 0; i < items.length; i++) rowFor(i),
-                  TextButton.icon(
-                    onPressed: _isSubmitting ? null : () => actions.editItem(null),
-                    icon: const Icon(MdiIcons.plus, size: 18),
-                    label: Text(t.formChrome.addItem(label: itemLabel)),
-                  ),
-                ],
-              ),
-            ),
-            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
-          );
-        },
-      ),
-    );
-  }
-
   /// A `fieldType: 'checkboxGroup'` field: every option checked or unchecked
   /// inline, in one wrapping row — unlike `multiselect`, there is no summary
   /// row and no dialog, because the vocabulary this is for (a station's own
@@ -2773,6 +2470,11 @@ Future<Map<String, dynamic>?> showFormDialog(
   bool developerMode = false,
   String? saveLabel,
   bool settingsList = false,
+
+  /// A destructive action for the footer's leading edge, as
+  /// `showFormPane`'s: the dialog closes first, completing with null, and
+  /// then the callback runs.
+  ({String label, VoidCallback onPressed, Color color, IconData? icon})? destructiveAction,
 }) {
   final theme = Theme.of(context);
   final formKey = GlobalKey<FormRendererState>();
@@ -2828,6 +2530,18 @@ Future<Map<String, dynamic>?> showFormDialog(
             isSubmitting: isSubmitting,
             onCancel: () => Navigator.of(context).pop(null),
             onSave: () => formKey.currentState?.submit(),
+            destructive: destructiveAction == null
+                ? null
+                : (
+                    label: destructiveAction.label,
+                    color: destructiveAction.color,
+                    icon: destructiveAction.icon,
+                    // This context is the dialog's own, so the pop is too.
+                    onPressed: () {
+                      Navigator.of(context).pop(null);
+                      destructiveAction.onPressed();
+                    },
+                  ),
           ),
         ),
       ],

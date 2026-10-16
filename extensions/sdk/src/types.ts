@@ -347,6 +347,12 @@ export interface PostResult {
   /// host presents it in addition to the surface's own success/failure
   /// indication (e.g. the Spotting control's source icons).
   userMessage?: ResultMessage
+  /// With `ok: true`: the source deliberately sent nothing — its own rules
+  /// declined this spot. The Spotting control leaves its icon neutral rather
+  /// than lit, and its chip counts only the sources that did not skip; when
+  /// every one did, `message` is what the operator is told. A host that does
+  /// not know the field shows it as sent.
+  skipped?: boolean
 }
 
 /// A user-facing message a hook attaches to a result (see
@@ -2615,22 +2621,28 @@ export interface FormField {
   /// Record<string, any>[], each item matching the shape described by
   /// `itemFields`. The field renders as a single row summarizing the items
   /// (comma-separated `itemTitle`s); tapping opens an editor dialog with
-  /// per-item rows and add/edit/delete (edit/add reuse the same form
-  /// renderer recursively, scoped to `itemFields`, in a nested dialog) —
-  /// unless `inline` opts out of that, see below.
+  /// per-item rows and Add (edit/add reuse the same form renderer
+  /// recursively, scoped to `itemFields`, in a nested dialog, whose footer
+  /// holds Delete, confirmed, for an item that exists) — unless `inline` opts out of
+  /// that, see below.
   itemFields?: FormField[]
   /// `${key}` placeholders substituted from each item's own fields — e.g.
   /// `"${name}"`. NOT `{{key}}` (Mustache-style double braces), which the
   /// renderer does not recognize and would show literally, unsubstituted.
   itemTitle?: string
   orderable?: boolean
-  /// Only used when fieldType === 'list'. Renders the item rows (with
-  /// reorder handle/delete button per row, and an Add row) directly in the
+  /// Only used when fieldType === 'list'. The key of an on/off value in each
+  /// item, set from a switch at the end of the item's row — leave it out of
+  /// `itemFields`. An item without the key reads as on, so a new item is on
+  /// until switched off. An app that predates this shows no switch.
+  itemSwitch?: string
+  /// Only used when fieldType === 'list'. Renders the item rows (with a
+  /// reorder handle per row, and an Add row) directly in the
   /// panel instead of behind a single summary row that opens an editor
   /// dialog — for a list that's the main content of its own section rather
   /// than one field among several. Tapping a row (or Add) still opens the
   /// `itemFields` editor dialog; only the extra list-editor dialog wrapping
-  /// reorder/delete/add is skipped.
+  /// reorder/add is skipped.
   inline?: boolean
   /// Only used when fieldType === 'list'. Singular noun for one item (e.g.
   /// "custom note file"), used in the Add/Edit dialog titles and the Add
@@ -2859,13 +2871,22 @@ export interface SettingsPanelDescriptor {
   /// (app/lib/views/settings/data_files_panel.dart's `_dataFileScopedPanels`) — for a
   /// data-file-management panel (e.g. enabling/disabling individual note
   /// sources) that belongs there instead of, or in addition to, the
-  /// top-level nav. This is the ONLY host-recognized alternate surface
-  /// today; there is no way to route a panel anywhere else, so leave this
-  /// false for anything not actually about managing data files. Independent
-  /// of `sidebar`, deliberately: inferring it from `sidebar: false` would
-  /// sweep any sidebar-opt-out panel into Data Files whether or not that
-  /// made sense for it.
+  /// top-level nav. Leave this false for anything not actually about
+  /// managing data files; `section` places a panel inside one of the app's
+  /// other settings sections. Independent of `sidebar`, deliberately:
+  /// inferring it from `sidebar: false` would sweep any sidebar-opt-out
+  /// panel into Data Files whether or not that made sense for it.
   dataFilesSection?: boolean
+
+  /// The key of one of the app's own settings sections (`'spotting'`, the
+  /// Spotting section) to show this panel inside, as a single row that
+  /// opens it in a dialog — in place of a section of its own in Settings
+  /// and an entry in the sidebar, whatever `sidebar` says. For a panel that
+  /// is one part of something the app already has a section for, such as a
+  /// spot source's destinations under Spotting. An app without that section
+  /// — an older one, or a key it does not know — shows the panel as it would
+  /// without this, so setting it needs no newer API level.
+  section?: string
 }
 
 /// Same shape as FormField, but validate/transform closures are dropped in
@@ -2912,6 +2933,8 @@ export interface SimpleSettingsPanel {
   sidebar?: boolean
   /// See SettingsPanelDescriptor.dataFilesSection's doc comment.
   dataFilesSection?: boolean
+  /// See SettingsPanelDescriptor.section's doc comment.
+  section?: string
   fields: (SettingsField | FormActionElement)[]
 }
 

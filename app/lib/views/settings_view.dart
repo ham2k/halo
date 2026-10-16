@@ -104,6 +104,14 @@ const _developerPanelOrder = 90;
 const _aboutPanelOrder = 100;
 const _extensionPanelDefaultOrder = 50;
 
+/// The registered settings group an extension panel asks to sit inside
+/// (`section`), or null when it names none this build has: that panel stays
+/// a category and a sidebar entry of its own, as on an app without `section`.
+String? _placedIn(HaLoServices services, Map<String, dynamic> descriptor) {
+  final section = descriptor['section'];
+  return section is String && services.settingsRegistry[section] != null ? section : null;
+}
+
 class SettingsView extends StatefulWidget {
   /// Settings' arrangement is fixed (docs/design/layouts.md): its split
   /// opts into the "surfaces" divider style below.
@@ -254,9 +262,10 @@ class _SettingsViewState extends State<SettingsView> {
       // sidebar: false (e.g. call-notes, HALO-53) opts a panel out of this
       // top-level list — it's still returned by getSettingsPanels() for
       // whichever screen the extension links it from instead (the data
-      // sources' own "Extensions" section, here).
+      // sources' own "Extensions" section, here). So does a `section` this
+      // app has: the panel is a row inside that group instead.
       for (final p in _extensionPanels)
-        if (p['sidebar'] != false)
+        if (p['sidebar'] != false && _placedIn(widget.services, p) == null)
           _SettingsPanelEntry(
             key: p['panelKey'] as String,
             title: (p['title'] as String?) ?? (p['panelKey'] as String),
@@ -671,6 +680,10 @@ class _SettingsGroupForm extends StatefulWidget {
   /// for a host that heads them itself.
   final bool bare;
 
+  /// Extension panels that name this group as their `section`, each shown
+  /// as one row after the group's own that opens the panel in a pane.
+  final List<Map<String, dynamic>> placedPanels;
+
   const _SettingsGroupForm({
     super.key,
     required this.services,
@@ -684,6 +697,7 @@ class _SettingsGroupForm extends StatefulWidget {
     this.openPanel,
     this.excludeKeys = const {},
     this.bare = false,
+    this.placedPanels = const [],
   });
 
   @override
@@ -748,6 +762,17 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     return null;
   }
 
+  /// A placed panel's row opens that panel over Settings; any other `panel`
+  /// link moves to the panel it names.
+  void _openPanel(String key) {
+    final placed = widget.placedPanels.where((panel) => panel['panelKey'] == key).firstOrNull;
+    if (placed != null) {
+      unawaited(showExtensionSettingsPane(context, services: widget.services, descriptor: placed));
+    } else {
+      widget.openPanel?.call(key);
+    }
+  }
+
   /// See [ExtensionSettingsPanel]'s namesake: the states that are a box
   /// whichever way this group renders.
   Widget _box(Widget child) => widget.sliver ? SliverToBoxAdapter(child: child) : child;
@@ -755,6 +780,19 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   @override
   Widget build(BuildContext context) {
     var elements = _elements;
+    if (elements != null && widget.placedPanels.isNotEmpty) {
+      elements = [
+        ...elements,
+        for (final panel in widget.placedPanels)
+          {
+            'type': 'link',
+            'key': 'extension:${panel['panelKey']}',
+            'label': (panel['title'] as String?) ?? panel['panelKey'],
+            'icon': panel['icon'],
+            'panel': panel['panelKey'],
+          },
+      ];
+    }
     if (elements == null) {
       return _box(
         const Padding(
@@ -812,7 +850,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
         return null;
       },
       onOpenLink: openExternalUrl,
-      onOpenPanel: widget.openPanel,
+      onOpenPanel: widget.openPanel == null && widget.placedPanels.isEmpty ? null : _openPanel,
       onSubmit: (_) {},
       onCancel: () {},
     );
@@ -1032,8 +1070,11 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   /// Rendering the registry's groups and then the extensions' panels
   /// instead would pin every extension below every core group, and a group
   /// declaring itself last (Privacy) would land in the middle of the list.
+  /// An extension panel naming a group as its `section` is a row in that
+  /// group's category rather than a category of its own.
   List<Widget> _orderedCategories(String query) {
     final categories = <({int order, int index, Widget widget})>[];
+    final panels = _extensionPanels ?? const <Map<String, dynamic>>[];
     for (final group in widget.services.settingsRegistry.groups) {
       categories.add((
         order: group.order,
@@ -1042,6 +1083,10 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           key: _keyFor('group:${group.key}'),
           services: widget.services,
           group: group,
+          placedPanels: [
+            for (final descriptor in panels)
+              if (_placedIn(widget.services, descriptor) == group.key) descriptor,
+          ],
           sliver: true,
           searchQuery: query,
           expanded: _expanded('group:${group.key}'),
@@ -1055,7 +1100,8 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     // already on screen, and an extension's heading appearing a moment
     // later reads as the list filling in rather than as the panel waiting
     // on something.
-    for (final descriptor in _extensionPanels ?? const <Map<String, dynamic>>[]) {
+    for (final descriptor in panels) {
+      if (_placedIn(widget.services, descriptor) != null) continue;
       final panelKey = descriptor['panelKey'] as String;
       categories.add((
         order: (descriptor['order'] as num?)?.toInt() ?? _extensionPanelDefaultOrder,

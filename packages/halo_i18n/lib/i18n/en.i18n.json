@@ -1125,7 +1125,8 @@
     "validationError": "Validation error: ${error}",
     "transformationError": "Transformation error: ${error}",
     "actionError": "Error: ${error}",
-    "removeItem": "Remove",
+    "removeItem": "Delete",
+    "deleteItemTitle": "Delete ${name}?",
     "storageUnavailable": "Logins unavailable"
   },
   "qsoEditForm": {
@@ -2362,6 +2363,7 @@
     "spotFailed": "${source} failed: ${message}",
     "unknownError": "unknown error",
     "notSent": "Spot not sent.",
+    "allSkipped": "Spot not sent: every spot source skipped it.",
     "notRefreshedOffline": "No connection — spots were not refreshed"
   },
   "dataFiles": {

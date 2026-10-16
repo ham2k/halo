@@ -66,15 +66,20 @@ export interface FormField {
   // Record<string, any>[]; each item is shaped like itemFields. By default
   // the field renders as one summary row (from itemTitle, templated
   // against the item's values, e.g. "${name}" — NOT "{{name}}") that opens
-  // an editor dialog with per-item rows and add/edit/delete; `inline: true`
-  // instead renders those rows (with reorder handle/delete per row, and an
-  // Add row) directly in the form, skipping that outer dialog — for a list
-  // that's the main content of its own section. Either way, tapping a row
-  // (or Add) opens the same itemFields editor dialog (the form renderer
-  // recursively, scoped to itemFields).
+  // an editor dialog with per-item rows and Add; `inline: true` instead
+  // renders those rows (with a reorder handle per row, and an Add row)
+  // directly in the form, skipping that outer dialog — for a list that's the
+  // main content of its own section. Either way, tapping a row (or Add)
+  // opens the same itemFields editor dialog (the form renderer recursively,
+  // scoped to itemFields), whose footer holds Delete for an existing item,
+  // which asks the operator to confirm.
   itemFields?: FormField[];
   itemTitle?: string;
   orderable?: boolean;
+  // The key of an on/off value in each item, set from a switch at the end of
+  // the item's row; leave it out of itemFields. An item without the key reads
+  // as on. An app that predates this shows no switch.
+  itemSwitch?: string;
   inline?: boolean;
   // Singular noun for one item (e.g. "custom note file"), used in the
   // editor dialog's Add/Edit titles and the Add button instead of `label`

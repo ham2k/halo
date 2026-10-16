@@ -773,10 +773,15 @@ void main() {
         {'name': 'Field Day', 'exchange': '2A NNJ'},
       ]);
 
-      // Delete (back in the editor) empties the list and the summary.
+      // Delete (from the item's own editor, back in the list editor) empties
+      // the list and the summary.
       await tester.tap(find.text('Presets'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(MdiIcons.delete));
+      await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Field Day — 2A NNJ')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(TextButton, 'Done'));
       await tester.pumpAndSettle();
@@ -896,11 +901,10 @@ void main() {
         ),
       );
 
-      // The item, the reorder handle, delete button, and Add row are all
-      // directly on the form — no summary row / "tap to open a dialog" step.
+      // The item, the reorder handle and Add row are all directly on the
+      // form — no summary row / "tap to open a dialog" step.
       expect(find.text('Club Roster'), findsOneWidget);
       expect(find.byIcon(MdiIcons.dragHorizontalVariant), findsOneWidget);
-      expect(find.byIcon(MdiIcons.delete), findsOneWidget);
       expect(find.widgetWithText(TextButton, 'Add custom note file'), findsOneWidget);
       expect(find.byType(HaloDialog), findsNothing, reason: 'no list-editor dialog should have opened yet');
 
@@ -926,8 +930,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Second File'), findsOneWidget);
 
-      // Delete removes the row directly, no dialog involved.
-      await tester.tap(find.byIcon(MdiIcons.delete).first);
+      // Delete is in the item's own editor.
+      await tester.tap(find.text('Club Roster'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();
       expect(find.text('Club Roster'), findsNothing);
       expect(find.text('Second File'), findsOneWidget);

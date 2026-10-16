@@ -23,6 +23,9 @@ export interface SettingsPanelEntry {
   /// See SettingsPanelDescriptor.dataFilesSection's doc comment (types.ts)
   /// — defaults false.
   dataFilesSection: boolean
+  /// See SettingsPanelDescriptor.section's doc comment (types.ts) — null
+  /// when the panel names none.
+  section: string | null
 }
 
 /// Key namespacing rule (docs/extensions/settings.md): for categories where
@@ -70,6 +73,7 @@ export function settingsPanelEntriesFor(
         kind: "simple",
         sidebar: (hook.sidebar as boolean | undefined) ?? true,
         dataFilesSection: (hook.dataFilesSection as boolean | undefined) ?? false,
+        section: (hook.section as string | undefined) ?? null,
       },
     ]
   }
@@ -94,6 +98,7 @@ export function settingsPanelEntriesFor(
           kind: "dynamic",
           sidebar: d.sidebar ?? true,
           dataFilesSection: d.dataFilesSection ?? false,
+          section: d.section ?? null,
         }))
     }
     // No getPanels: the registration itself is the one panel. Title is
@@ -110,6 +115,7 @@ export function settingsPanelEntriesFor(
         kind: "dynamic",
         sidebar: true,
         dataFilesSection: false,
+        section: null,
       },
     ]
   }

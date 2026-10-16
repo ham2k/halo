@@ -64,6 +64,7 @@ test("settingsPanelEntriesFor: Tier 1 (kind: 'simple') is always exactly one pan
       kind: "simple",
       sidebar: true,
       dataFilesSection: false,
+      section: null,
     },
   ])
 })
@@ -84,6 +85,16 @@ test("settingsPanelEntriesFor: Tier 1's dataFilesSection: true is passed through
   assert.equal(settingsPanelEntriesFor(withoutIt)[0].dataFilesSection, false)
 })
 
+// Dropped here, the app could never place the panel: it would stay a
+// section and a sidebar entry of its own, with nothing to say why.
+test("settingsPanelEntriesFor: the section a panel asks to sit inside reaches the app, from either tier", () => {
+  const simple = { key: "discord", extensionKey: "discord", hook: { kind: "simple", title: "Discord", section: "spotting" } }
+  assert.equal(settingsPanelEntriesFor(simple)[0].section, "spotting")
+  const dynamic = { key: "discord", extensionKey: "discord", hook: { kind: "dynamic" } }
+  assert.equal(settingsPanelEntriesFor(dynamic, [{ key: "discord", title: "Discord", section: "spotting" }])[0].section, "spotting")
+  assert.equal(settingsPanelEntriesFor(dynamic, [{ key: "discord", title: "Discord" }])[0].section, null)
+})
+
 test("settingsPanelEntriesFor: Tier 2 without getPanels is one implicit panel with a null title", () => {
   const record = { key: "lofi", extensionKey: "lofi", hook: { kind: "dynamic" } }
   assert.deepEqual(settingsPanelEntriesFor(record, undefined), [
@@ -97,6 +108,7 @@ test("settingsPanelEntriesFor: Tier 2 without getPanels is one implicit panel wi
       kind: "dynamic",
       sidebar: true,
       dataFilesSection: false,
+      section: null,
     },
   ])
 })

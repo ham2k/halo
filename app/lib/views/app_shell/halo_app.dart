@@ -304,6 +304,18 @@ class _HaLoAppState extends State<HaLoApp> {
     return false;
   }
 
+  /// The template editors' sample preview. A method, not a closure in
+  /// [build]: its tear-offs are equal across rebuilds, and a new closure on
+  /// every settings change would read to each preview on screen as a new
+  /// renderer, rendering it again.
+  Future<String?> _previewTemplate(String template, Map<String, dynamic> sample) => widget.services.extensions.renderTemplate(
+    template,
+    operation: (sample['operation'] as Map?)?.cast<String, dynamic>(),
+    qso: (sample['qso'] as Map?)?.cast<String, dynamic>(),
+    log: (sample['log'] as Map?)?.cast<String, dynamic>(),
+    qsoCount: 25,
+  );
+
   @override
   Widget build(BuildContext context) {
     // Rebuilds when Settings changes themeMode or fontScale, so toggling it in the
@@ -328,16 +340,7 @@ class _HaLoAppState extends State<HaLoApp> {
         home: HomeView(services: widget.services),
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
-          child = TemplateEditorScope(
-            preview: (template, sample) => widget.services.extensions.renderTemplate(
-              template,
-              operation: (sample['operation'] as Map?)?.cast<String, dynamic>(),
-              qso: (sample['qso'] as Map?)?.cast<String, dynamic>(),
-              log: (sample['log'] as Map?)?.cast<String, dynamic>(),
-              qsoCount: 25,
-            ),
-            child: child,
-          );
+          child = TemplateEditorScope(preview: _previewTemplate, child: child);
           final scale = widget.services.settings.fontScale.scaleFactor;
 
           // One knob scales the WHOLE interface (UiScale, halo_widgets) — not

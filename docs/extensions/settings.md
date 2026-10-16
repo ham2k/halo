@@ -79,13 +79,19 @@ export interface SimpleSettingsPanel {
   // below — this only controls the top-level nav.
   sidebar?: boolean;
   // Defaults false. Set true to also show this panel as a row in the Data
-  // Files screen's own "Extensions" section — the ONLY host-recognized
-  // alternate surface today, so leave this false for anything not actually
-  // about managing data files. Independent of `sidebar`; a panel usually
-  // wants both false-then-true, but the two aren't coupled at the type
-  // level — inferring this from `sidebar: false` alone would sweep any
-  // sidebar-opt-out panel in here.
+  // Files screen's own "Extensions" section — leave this false for anything
+  // not actually about managing data files. Independent of `sidebar`; a
+  // panel usually wants both false-then-true, but the two aren't coupled at
+  // the type level — inferring this from `sidebar: false` alone would sweep
+  // any sidebar-opt-out panel in here.
   dataFilesSection?: boolean;
+  // The key of one of the app's own settings sections ('spotting', the
+  // Spotting section) to show this panel inside, as one row that opens it
+  // in a dialog — instead of a section of its own in Settings and a sidebar
+  // entry, whatever `sidebar` says. An app without that section (an older
+  // one, or a key it doesn't know) shows the panel as if this weren't set,
+  // so it needs no newer API level.
+  section?: string;
   fields: (SettingsField | FormActionElement)[];
 }
 ```
@@ -136,6 +142,7 @@ export interface SettingsPanelDescriptor {
   order?: number;
   sidebar?: boolean; // see SimpleSettingsPanel.sidebar above; defaults true
   dataFilesSection?: boolean; // see SimpleSettingsPanel.dataFilesSection above; defaults false
+  section?: string; // see SimpleSettingsPanel.section above
 }
 
 export interface DynamicSettingsPanel {
@@ -204,7 +211,14 @@ values). Tapping it opens an editor dialog with a row per item plus an
 dialog. Editing or adding an item opens the same form renderer
 recursively, scoped to `itemFields`, in a nested dialog — there is no
 separate "list item editor" widget, just `FormRenderer` given a smaller
-`FormDefinition`.
+`FormDefinition`. An existing item is deleted from that dialog's footer,
+once the operator confirms.
+Saving it merges what it edited into the item, so keys it has no field
+for are kept.
+
+Set `itemSwitch` to the key of an on/off value in each item to give every
+row a switch for it, and leave that key out of `itemFields`. An item without
+it reads as on.
 
 Set `orderable: true` to allow drag-to-reorder in the editor; omit it for
 lists where order doesn't matter.

@@ -1389,8 +1389,11 @@ class Translations$formChrome$en {
 	/// en: 'Error: ${error}'
 	String actionError({required Object error}) => 'Error: ${error}';
 
-	/// en: 'Remove'
-	String get removeItem => 'Remove';
+	/// en: 'Delete'
+	String get removeItem => 'Delete';
+
+	/// en: 'Delete ${name}?'
+	String deleteItemTitle({required Object name}) => 'Delete ${name}?';
 
 	/// en: 'Logins unavailable'
 	String get storageUnavailable => 'Logins unavailable';
@@ -1958,6 +1961,9 @@ class Translations$spotting$en {
 
 	/// en: 'Spot not sent.'
 	String get notSent => 'Spot not sent.';
+
+	/// en: 'Spot not sent: every spot source skipped it.'
+	String get allSkipped => 'Spot not sent: every spot source skipped it.';
 
 	/// en: 'No connection — spots were not refreshed'
 	String get notRefreshedOffline => 'No connection — spots were not refreshed';
@@ -9270,7 +9276,8 @@ extension on Translations {
 			'formChrome.validationError' => ({required Object error}) => 'Validation error: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'Transformation error: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'Error: ${error}',
-			'formChrome.removeItem' => 'Remove',
+			'formChrome.removeItem' => 'Delete',
+			'formChrome.deleteItemTitle' => ({required Object name}) => 'Delete ${name}?',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.operatorCall' => 'Operator',
@@ -9359,9 +9366,9 @@ extension on Translations {
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
-			'settings.distanceUnitsOpts.miles' => 'Miles',
 			_ => null,
 		} ?? switch (path) {
+			'settings.distanceUnitsOpts.miles' => 'Miles',
 			'settings.userInterface' => 'User Interface',
 			'settings.logging.title' => 'Logging',
 			'settings.logging.leftieMode.title' => 'Leftie Mode',
@@ -9873,9 +9880,9 @@ extension on Translations {
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
-			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'Device is in use',
 			'settings.station.connectFailedDenied' => 'Access denied',
@@ -10313,6 +10320,7 @@ extension on Translations {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
+			'spotting.allSkipped' => 'Spot not sent: every spot source skipped it.',
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
@@ -10386,10 +10394,10 @@ extension on Translations {
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
-			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
-			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			_ => null,
 		} ?? switch (path) {
+			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
+			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',

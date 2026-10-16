@@ -18,6 +18,23 @@ import '../../settings/settings_registry.dart';
 import 'accounts_panel.dart';
 import 'settings_category.dart';
 
+/// [descriptor]'s panel in a Modal Pane (docs/design/layouts.md): a full
+/// screen on narrow windows, a centered dialog on wide ones — for a panel
+/// shown as a row on another screen (the Data Files screen, or the settings
+/// section it names with `section`) rather than as a section of its own.
+Future<void> showExtensionSettingsPane(BuildContext context, {required HaLoServices services, required Map<String, dynamic> descriptor}) => showModalPane<void>(
+  context,
+  title: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String?) ?? '',
+  // The panel is a settings list that scrolls itself and takes its row
+  // inset from the ambient theme, as it does in the Settings pane. A pane
+  // publishes no inset and pads a scrollable body like prose: its rows
+  // would sit in that padding and its section bands would be inset twice.
+  scrollable: false,
+  builder: (context) => SettingsList(
+    child: ExtensionSettingsPanel(services: services, descriptor: descriptor),
+  ),
+);
+
 /// Renders one extension-contributed `settingsPanel` panel — the
 /// `descriptor` (from `getSettingsPanels()`) says which registration
 /// (`hookKey`) and tier (`kind`) it is; `panelKey` disambiguates when a

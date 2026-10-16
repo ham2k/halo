@@ -62,6 +62,11 @@ typedef SpottingState = ({String summary, String buttonLabel, bool enabled, bool
 /// [SpottingControlModel.respotGlow]).
 typedef _SelfSpot = ({double freq, String? comment, String operationUuid, int atRealMillis});
 
+/// How a self-spot went ([SpottingControlModel._spotSelf]): why it did not go
+/// through, or the spot it recorded; [skipped] when every source skipped it,
+/// which no source icon shows.
+typedef _Spotted = ({String? failure, _SelfSpot? spot, bool skipped});
+
 /// The Spotting control's state. See the file comment.
 class SpottingControlModel extends ChangeNotifier with PanelModel {
   SpottingControlModel({required this.config}) {
@@ -252,12 +257,18 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     return (1 - (realNowMillis() - _outcomeAtRealMillis) / resultShownFor.inMilliseconds).clamp(0.0, 1.0);
   }
 
-  /// Shows [outcome] on the chip — except while a QSO is open for editing,
+  /// Shows [outcome] on the chip, null leaving it neutral and dropping an
+  /// earlier spot's fading one — except while a QSO is open for editing,
   /// when the chip stands for spotting that QSO's station, and the station's
   /// own self-spot coloring it would read as that spot's answer. The source
   /// icons hold back for the same reason ([_post]).
-  void _showOutcome(SpotOutcome outcome) {
+  void _showOutcome(SpotOutcome? outcome) {
     if (config().editingQso != null) return;
+    if (outcome == null) {
+      _outcomeTimer?.cancel();
+      _outcome = null;
+      return notify();
+    }
     _outcome = outcome;
     _outcomeAtRealMillis = realNowMillis();
     _outcomeTimer?.cancel();
@@ -268,11 +279,23 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     notify();
   }
 
-  static SpotOutcome _outcomeOf(List<Map<String, dynamic>> sources, Map<String, Map<String, dynamic>> results) {
-    final refused = _refusedBy(sources, results).length;
+  /// How a spot went among the sources that did not skip it, or null — the
+  /// chip neutral — when every one did: nothing went out, and nothing failed.
+  /// Counted with the rest, a skip would turn a spot no source sent green.
+  static SpotOutcome? _outcomeOf(List<Map<String, dynamic>> sources, Map<String, Map<String, dynamic>> results) {
+    final answering = [
+      for (final source in sources)
+        if (!_skipped(results[_hookKey(source)])) source,
+    ];
+    if (answering.isEmpty) return null;
+    final refused = _refusedBy(answering, results).length;
     if (refused == 0) return SpotOutcome.allTook;
-    return refused < sources.length ? SpotOutcome.someTook : SpotOutcome.noneTook;
+    return refused < answering.length ? SpotOutcome.someTook : SpotOutcome.noneTook;
   }
+
+  /// Whether [result] is a source declining a spot by its own rules (see
+  /// `PostResult.skipped`): `skipped` without `ok` is still a failure.
+  static bool _skipped(Map<String, dynamic>? result) => result?['ok'] == true && result?['skipped'] == true;
 
   /// The operator's auto-respot interval, held to what RESPOT may ask for.
   Duration get _interval {
@@ -470,6 +493,9 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       final freq = cfg.radioService?.vfoA.freq;
       final spotted = await _spotSelf(comment.isEmpty ? null : comment, onAnswered: commentController.clear);
       if (isDisposed) return;
+      // Its source icons stay neutral: nothing else says the spot went
+      // nowhere.
+      if (spotted.skipped) return _notice(spotted.failure);
       // Why it did not start, not why the spot failed: a button spot's
       // failure shows on its source icons whatever this setting says.
       if (config().autoRespotByDefault) return _notice(_autoStartAfter(spotted, comment, freq));
@@ -498,7 +524,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// other that every source took, with the VFO still on its frequency,
   /// becomes what auto-respotting repeats, a running one re-timed from it.
   /// Returns why it did not go through, or the spot it recorded.
-  Future<({String? failure, _SelfSpot? spot})> _spotSelf(String? comment, {VoidCallback? onAnswered}) async {
+  Future<_Spotted> _spotSelf(String? comment, {VoidCallback? onAnswered}) async {
     // An offer standing from an earlier spot would repeat that one, or —
     // after a one-off — nothing at all.
     _withdrawOffer();
@@ -509,19 +535,23 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final cfg = config();
     final vfo = cfg.radioService?.vfoA;
     final freq = vfo?.freq;
-    if (freq == null) return (failure: t.spotting.setFrequencyFirst, spot: null);
+    if (freq == null) return (failure: t.spotting.setFrequencyFirst, spot: null, skipped: false);
     final suggest = cfg.suggestSpotSources;
-    if (cfg.sendSpot == null || suggest == null) return (failure: t.spotting.nothingToSpot, spot: null);
+    if (cfg.sendSpot == null || suggest == null) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
     final sources = await suggest(operation: cfg.operation.data, qso: null);
-    if (isDisposed) return (failure: null, spot: null);
-    if (sources.isEmpty) return (failure: t.spotting.nothingToSpot, spot: null);
+    if (isDisposed) return (failure: null, spot: null, skipped: false);
+    if (sources.isEmpty) return (failure: t.spotting.nothingToSpot, spot: null, skipped: false);
     final results = await _post(sources: sources, freq: freq, mode: vfo?.mode, comment: comment, onAnswered: onAnswered);
-    if (isDisposed) return (failure: null, spot: null);
-    if (results == null) return (failure: t.loggingControls.spotBusy, spot: null);
-    _showOutcome(_outcomeOf(sources, results));
+    if (isDisposed) return (failure: null, spot: null, skipped: false);
+    if (results == null) return (failure: t.loggingControls.spotBusy, spot: null, skipped: false);
+    final outcome = _outcomeOf(sources, results);
+    _showOutcome(outcome);
+    // Recorded, a spot nothing sent would be what auto-respotting repeats,
+    // sending nothing every round under a chip saying "Auto re-spot".
+    if (outcome == null) return (failure: _spotSkippedText(sources, results), spot: null, skipped: true);
     final failure = spotFailureText(sources, results);
     if (failure != null || _refusedBy(sources, results).isNotEmpty || _isOneOff(comment) || !_onFrequency(freq)) {
-      return (failure: failure, spot: null);
+      return (failure: failure, spot: null, skipped: false);
     }
     final spot = (freq: freq, comment: comment, operationUuid: cfg.operation.uuid, atRealMillis: realNowMillis());
     _selfSpot = spot;
@@ -531,7 +561,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       _scheduleNext();
       notify();
     }
-    return (failure: null, spot: spot);
+    return (failure: null, spot: spot, skipped: false);
   }
 
   /// With the auto-respot-by-default setting, starts auto-respotting on the
@@ -539,7 +569,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// [freq]. Returns why it did not start, which the operator is told: the
   /// setting promised it would. A one-off ([oneOffQCode]) is never expected
   /// to, and one already running was re-timed by the spot itself.
-  String? _autoStartAfter(({String? failure, _SelfSpot? spot}) spotted, String? comment, double? freq) {
+  String? _autoStartAfter(_Spotted spotted, String? comment, double? freq) {
     if (isDisposed || !config().autoRespotByDefault || _isOneOff(comment) || _autoRespotting) return null;
     if (spotted.spot != null) {
       _repeatSelfSpot(_interval);
@@ -755,12 +785,18 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
         if (results == null) {
           _retry.addAll(targets.map(_hookKey));
         } else if (!retrying) {
+          final outcome = _outcomeOf(targets, results);
+          _showOutcome(outcome);
+          // Spots that silently stop going out are what the chip saying
+          // "Auto re-spot" must not hide.
+          if (outcome == null) return _stopWith(_spotSkippedText(targets, results));
           _retry.addAll(_refusedBy(targets, results));
-          _showOutcome(_outcomeOf(targets, results));
         } else {
           // The round as a whole: the sources that took it the first time
-          // count, so a retry refused again is never worse than "some".
-          final retried = _outcomeOf(targets, results);
+          // count, so a retry refused again is never worse than "some" — and
+          // one every source retried skips leaves those first ones all the
+          // round went to.
+          final retried = _outcomeOf(targets, results) ?? (_outcome == SpotOutcome.someTook ? SpotOutcome.allTook : null);
           _showOutcome(retried == SpotOutcome.allTook || _outcome != SpotOutcome.someTook ? retried : SpotOutcome.someTook);
           // Refused twice, the round is lost for those sources: said once a
           // round, since the source icons alone are easy to miss.
@@ -829,7 +865,9 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       for (final source in sources) {
         final hookKey = _hookKey(source);
         final result = results[hookKey];
-        _status[hookKey] = result == null ? null : result['ok'] == true;
+        // A source that skipped the spot by its own rules stays neutral: lit
+        // would claim it went out, red would call a choice a failure.
+        _status[hookKey] = result == null || _skipped(result) ? null : result['ok'] == true;
       }
       onAnswered?.call();
       notify();
@@ -870,6 +908,16 @@ String? spotFailureText(List<Map<String, dynamic>> sources, Map<String, Map<Stri
   }
   if (!anyResult) return t.spotting.notSent;
   return failures.isEmpty ? null : failures.join('; ');
+}
+
+/// What the operator is told about a spot every source skipped: each
+/// source's own reason, or a general one when none gives any.
+String _spotSkippedText(List<Map<String, dynamic>> sources, Map<String, Map<String, dynamic>> results) {
+  final reasons = [
+    for (final source in sources)
+      if (results[source['hookKey'] as String? ?? '']?['message'] case final String message when message.trim().isNotEmpty) message.trim(),
+  ];
+  return reasons.isEmpty ? t.spotting.allSkipped : reasons.join('; ');
 }
 
 /// The Spotting control's expanded row: the comment field, the send button,

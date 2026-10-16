@@ -315,19 +315,61 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
 }
 
 /// A rendered example beneath a template setting, using the editor's sample.
-class TemplateSamplePreview extends StatelessWidget {
+///
+/// Renders again only when the template, its context or the app's renderer
+/// changes. The form around it rebuilds on every keystroke in ANY of its
+/// fields, and a render started per rebuild blanks this line until it lands:
+/// in a dialog sized to its content, every template row would shrink and
+/// regrow with each letter typed elsewhere, as if the dialog were closing.
+/// For the same reason a new render keeps the previous one showing until it
+/// lands.
+class TemplateSamplePreview extends StatefulWidget {
   final Map<String, dynamic> field;
   final String value;
   const TemplateSamplePreview({super.key, required this.field, required this.value});
 
   @override
-  Widget build(BuildContext context) {
+  State<TemplateSamplePreview> createState() => _TemplateSamplePreviewState();
+}
+
+class _TemplateSamplePreviewState extends State<TemplateSamplePreview> {
+  Future<String?>? _future;
+  TemplatePreview? _renderedWith;
+  String? _renderedValue;
+  Object? _renderedContext;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _renderIfChanged();
+  }
+
+  @override
+  void didUpdateWidget(TemplateSamplePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _renderIfChanged();
+  }
+
+  void _renderIfChanged() {
     final preview = TemplateEditorScope.of(context);
-    if (preview == null) return const SizedBox.shrink();
+    final templateContext = widget.field['templateContext'];
+    if (preview == _renderedWith && widget.value == _renderedValue && templateContext == _renderedContext) return;
+    _renderedWith = preview;
+    _renderedValue = widget.value;
+    _renderedContext = templateContext;
+    _future = preview?.call(widget.value, templateSampleFor(widget.field));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final future = _future;
+    if (future == null) return const SizedBox.shrink();
     return FutureBuilder<String?>(
-      future: preview(value, templateSampleFor(field)),
+      future: future,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) return const SizedBox.shrink();
+        // A pending render keeps the last one's data or error (FutureBuilder
+        // carries it over); only the very first render has nothing to show.
+        if (snapshot.connectionState != ConnectionState.done && !snapshot.hasData && !snapshot.hasError) return const SizedBox.shrink();
         final labels = context.t.templateEditor;
         final text = snapshot.hasError
             ? snapshot.error.toString()

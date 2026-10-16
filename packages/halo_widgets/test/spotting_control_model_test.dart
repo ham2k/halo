@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/src/logging_controls_spotting.dart';
 import 'package:halo_widgets/src/icon_resolver.dart';
 import 'package:halo_widgets/src/mdi_icons.g.dart';
@@ -157,6 +158,23 @@ void main() {
     expect(h.model.sending, isFalse);
     await tester.pump(const Duration(minutes: 3));
     expect(h.model.statusOf('pota'), isNull, reason: 'a three-minute-old answer says nothing about now');
+    h.model.dispose();
+  });
+
+  // A source whose own rules declined the spot (a Discord channel whose
+  // template rendered blank) must neither light up as sent nor go red as
+  // failed — and `skipped` without `ok` is still a failure, not a pass.
+  test('a source that skipped the spot stays neutral, and only an ok skip counts', () async {
+    final h = _Harness();
+    h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+    await h.model.refreshSources();
+    h.answer = {
+      'pota': {'ok': true, 'skipped': true},
+      'sota': {'ok': false, 'skipped': true},
+    };
+    await h.model.send();
+    expect(h.model.statusOf('pota'), isNull);
+    expect(h.model.statusOf('sota'), isFalse);
     h.model.dispose();
   });
 
@@ -916,6 +934,74 @@ void main() {
       }
     });
 
+    // Counted as taking it, a skip turns a spot nobody sent green, and makes
+    // one the other source refused only "some".
+    testWidgets('a source that skipped the spot is left out: every source skipping leaves the chip neutral', (tester) async {
+      for (final (sota, outcome) in [(null, null), (true, SpotOutcome.allTook), (false, SpotOutcome.noneTook)]) {
+        final h = _Harness();
+        h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+        await h.model.refreshSources();
+        h.answer = {
+          'pota': {'ok': true, 'skipped': true},
+          'sota': sota == null ? {'ok': true, 'skipped': true} : {'ok': sota},
+        };
+        await h.model.press();
+        expect(h.model.outcome, outcome, reason: 'sota $sota');
+        h.model.dispose();
+      }
+    });
+
+    // Recorded, a spot nothing sent would be offered for auto-respotting —
+    // or started, by default — and repeat sending nothing every round under
+    // a chip saying "Auto re-spot". And with its icons neutral, the notice
+    // is the only sign it went nowhere.
+    testWidgets('a self-spot every source skipped says so, and is never what auto-respotting repeats', (tester) async {
+      for (final byDefault in [false, true]) {
+        final h = _Harness()..autoRespotByDefault = byDefault;
+        h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+        await h.model.refreshSources();
+        h.answer = {
+          'pota': {'ok': true, 'skipped': true, 'message': 'No Discord channel takes this spot'},
+          'sota': {'ok': true, 'skipped': true},
+        };
+        await h.model.press();
+        expect(h.notices, ['No Discord channel takes this spot'], reason: 'byDefault $byDefault');
+        expect(h.model.autoRespotting, isFalse, reason: 'byDefault $byDefault');
+        await h.model.press();
+        expect(h.sent, hasLength(2), reason: 'a second press is a new spot, not a yes to repeating the first');
+        expect(h.model.autoRespotting, isFalse);
+        expect(await h.model.respotEvery(5), 'No Discord channel takes this spot', reason: 'RESPOT has nothing to repeat');
+        h.model.dispose();
+      }
+    });
+
+    testWidgets('an auto-respot round every source skipped stops auto-respotting, and says why', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      expect(h.model.autoRespotting, isTrue);
+      h.answer = {
+        'pota': {'ok': true, 'skipped': true},
+        'sota': {'ok': true, 'skipped': true},
+      };
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices, [t.spotting.allSkipped]);
+      h.model.dispose();
+    });
+
+    testWidgets('a spot every source skipped drops the fading outcome of the one before', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      expect(h.model.outcome, SpotOutcome.allTook);
+      h.answer = {
+        'pota': {'ok': true, 'skipped': true},
+        'sota': {'ok': true, 'skipped': true},
+      };
+      await tester.pump(const Duration(seconds: 30));
+      await h.model.press();
+      expect(h.model.outcome, isNull, reason: "the earlier spot's green would read as this one's");
+      h.model.dispose();
+    });
+
     testWidgets('a source that never answers counts as one that did not take it', (tester) async {
       final h = _Harness();
       h.vfo = const Vfo(freq: 14285, mode: 'SSB');
@@ -1049,6 +1135,24 @@ void main() {
       await tester.pump(SpottingControlModel.respotRetry);
       expect(h.sent, hasLength(3));
       expect(h.model.outcome, SpotOutcome.someTook);
+      h.model.dispose();
+    });
+
+    testWidgets('a retry every retried source skips leaves the round to the sources that took it: all of them', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      h.answer = {
+        'pota': {'ok': false},
+        'sota': {'ok': true},
+      };
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.model.outcome, SpotOutcome.someTook);
+      h.answer = {
+        'pota': {'ok': true, 'skipped': true},
+      };
+      await tester.pump(SpottingControlModel.respotRetry);
+      expect(h.sent, hasLength(3));
+      expect(h.model.outcome, SpotOutcome.allTook);
       h.model.dispose();
     });
 

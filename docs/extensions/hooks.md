@@ -309,7 +309,7 @@ interface SpotsHook {
 // Spot: {their: {call}, freq?, band?, mode?, refs?: Ref[],
 //        spot: {timeInMillis, source, label?, sourceInfo?}}
 // SpotEligibility: {enabled, icon?}
-// PostResult: {ok, message?}
+// PostResult: {ok, message?, userMessage?, skipped?}
 // PostSelfSpotRequest: {operation, freq, mode?, comment?}
 // PostOtherSpotRequest: {qso, comment?, spotterCall?}
 ```
@@ -329,6 +329,15 @@ reported `enabled: true`. Implemented by: `pota` (self + other, posts
 directly to the POTA API, no auth required). `sota`'s spot API requires an
 authenticated account app-halo doesn't have yet, so `sota` stays
 fetch-only for now.
+
+A poster whose own rules decline a particular spot — a Discord channel whose
+message template renders blank for it — answers `{ok: true, skipped: true}`.
+Its icon stays neutral gray instead of lighting as sent, and no failure is
+reported. The Spotting chip's color counts only the sources that did not skip.
+When every one did, the chip stays neutral and the operator is told so, in
+each source's `message` when it gives one; that spot is never what
+auto-respotting repeats, and a round of it every source skips ends it.
+`skipped` without `ok` is still a failure.
 
 ## ✅ `cluster` — the DX cluster connection
 

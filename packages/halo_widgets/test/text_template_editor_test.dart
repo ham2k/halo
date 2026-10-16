@@ -100,4 +100,51 @@ void main() {
     await tester.pumpAndSettle();
     expect(changes, ['updated']);
   });
+
+  // A render started per rebuild blanks the preview line until it lands, and
+  // the form rebuilds on every keystroke in any field: in a dialog sized to
+  // its content, the template rows would shrink and regrow with each letter,
+  // as if the dialog were closing.
+  testWidgets('typing in another field neither renders the template sample again nor blanks it', (tester) async {
+    var renders = 0;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: TemplateEditorScope(
+            preview: (template, sample) async {
+              renders++;
+              await Future<void>.delayed(const Duration(milliseconds: 50));
+              return template;
+            },
+            child: Scaffold(
+              body: FormRenderer(
+                formDefinition: {
+                  'elements': [
+                    {'type': 'field', 'fieldType': 'text', 'key': 'channel', 'label': 'Name'},
+                    {'type': 'field', 'fieldType': 'textTemplate', 'key': 'message', 'label': 'Message', 'value': 'hello'},
+                  ],
+                },
+                initialState: const {},
+                showActions: false,
+                onChange: (key, value, state) async => null,
+                onSubmit: (_) {},
+                onCancel: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Sample preview: hello'), findsOneWidget);
+    expect(renders, 1);
+
+    for (final text in ['K', 'KI', 'KI2D']) {
+      await tester.enterText(find.byType(TextField), text);
+      await tester.pump();
+      expect(find.text('Sample preview: hello'), findsOneWidget, reason: 'still showing the frame after "$text" was typed');
+    }
+    await tester.pumpAndSettle();
+    expect(renders, 1);
+  });
 }

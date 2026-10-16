@@ -623,7 +623,8 @@ class _Translations$formChrome$qrp extends Translations$formChrome$en {
 	@override String validationError({required Object error}) => 'validation error: ${error}';
 	@override String transformationError({required Object error}) => 'transformation error: ${error}';
 	@override String actionError({required Object error}) => 'error: ${error}';
-	@override String get removeItem => 'remove';
+	@override String get removeItem => 'delete';
+	@override String deleteItemTitle({required Object name}) => 'delete ${name}?';
 	@override String get storageUnavailable => 'logins unavailable';
 }
 
@@ -897,6 +898,7 @@ class _Translations$spotting$qrp extends Translations$spotting$en {
 	@override String spotFailed({required Object source, required Object message}) => '${source} failed: ${message}';
 	@override String get unknownError => 'unknown error';
 	@override String get notSent => 'spot not sent.';
+	@override String get allSkipped => 'spot not sent: every spot source skipped it.';
 	@override String get notRefreshedOffline => 'no connection — spots were not refreshed';
 }
 
@@ -4829,7 +4831,8 @@ extension on TranslationsQrp {
 			'formChrome.validationError' => ({required Object error}) => 'validation error: ${error}',
 			'formChrome.transformationError' => ({required Object error}) => 'transformation error: ${error}',
 			'formChrome.actionError' => ({required Object error}) => 'error: ${error}',
-			'formChrome.removeItem' => 'remove',
+			'formChrome.removeItem' => 'delete',
+			'formChrome.deleteItemTitle' => ({required Object name}) => 'delete ${name}?',
 			'formChrome.storageUnavailable' => 'logins unavailable',
 			'qsoEditForm.title' => 'edit qso',
 			'qsoEditForm.operatorCall' => 'operator',
@@ -4918,9 +4921,9 @@ extension on TranslationsQrp {
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'distance units',
 			'settings.distanceUnitsOpts.kilometers' => 'kilometers',
-			'settings.distanceUnitsOpts.miles' => 'miles',
 			_ => null,
 		} ?? switch (path) {
+			'settings.distanceUnitsOpts.miles' => 'miles',
 			'settings.userInterface' => 'user interface',
 			'settings.logging.title' => 'logging',
 			'settings.logging.leftieMode.title' => 'leftie mode',
@@ -5432,9 +5435,9 @@ extension on TranslationsQrp {
 			'settings.station.winkeyerStoppedAnswering' => 'the winkeyer stopped responding while sending; the message was dropped',
 			'settings.station.radioUser' => 'radio username',
 			'settings.station.radioPass' => 'radio password',
-			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			'settings.station.radioUserRequired' => 'the radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'device is in use',
 			'settings.station.connectFailedDenied' => 'access denied',
@@ -5872,6 +5875,7 @@ extension on TranslationsQrp {
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'spot not sent.',
+			'spotting.allSkipped' => 'spot not sent: every spot source skipped it.',
 			'spotting.notRefreshedOffline' => 'no connection — spots were not refreshed',
 			'dataFiles.downloading' => 'downloading…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'couldn\'t download ${name}',
@@ -5945,10 +5949,10 @@ extension on TranslationsQrp {
 			'notices.preferencesRestored' => 'the settings file could not be read, so halo restored the last good copy of it. anything you changed in your previous session may need setting again. the unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'settings reset',
 			'notices.preferencesReset' => 'the settings file could not be read and there was no backup to fall back on, so halo started with its defaults. the unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
-			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
-			'notices.autoConnectHeld' => ({required Object name}) => 'halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.',
 			_ => null,
 		} ?? switch (path) {
+			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
+			'notices.autoConnectHeld' => ({required Object name}) => 'halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'anonymous account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
