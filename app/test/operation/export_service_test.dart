@@ -108,6 +108,78 @@ void main() {
     expect((qsoList.single as Map)['their'], {'call': 'W1AW'});
   });
 
+  test("the QSON dump names the operation's operators as stored, whichever seat exports it", () async {
+    // The hook payload resolves the operator for THIS device's seat and writes
+    // it over the positionless slot; a dump built from it hands a copy of the
+    // log the second seat's operator as everyone's.
+    await settings.setDeveloperMode(true);
+    final seated = Operation(
+      uuid: operation.uuid,
+      data: {...operation.data, 'operatorCall': 'K1A', 'operator2': 'K2B'},
+      startAtMillisMin: operation.startAtMillisMin,
+      startAtMillisMax: operation.startAtMillisMax,
+      localData: {multiIdentifierKey: '2'},
+    );
+
+    final file = (await exports.generateExports(seated, await exports.getExportOptions(seated))).single;
+    final dumped = (jsonDecode(file['content'] as String) as Map)['operation'] as Map;
+    expect(dumped['operatorCall'], 'K1A');
+    expect(dumped['operator2'], 'K2B');
+    expect(dumped['local'], {'operatorCall': 'K1A'}, reason: 'where app-polo reads it');
+  });
+
+  test('the QSON dump carries the whole stored log, and imports back segmented', () async {
+    // The segments live in `break`/`start` event rows, which the contact list
+    // the other exports read leaves out; a dump read from that list imports
+    // as ONE segment, every later contact under the base operation's park.
+    await settings.setDeveloperMode(true);
+    final operations = OperationsRepository(db);
+    final qsos = QsosRepository(db);
+    final noon = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
+    await qsos.add(operation.uuid, {
+      'band': 'event',
+      'event': {
+        'event': 'break',
+        'operation': {
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0002'},
+          ],
+        },
+      },
+      'startAtMillis': noon + 60000,
+    });
+    await qsos.add(operation.uuid, {
+      'their': {'call': 'K2ABC'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': noon + 120000,
+    });
+    // A row column, not `data`: without folding it in, a tombstone reads as a
+    // live contact in the file and is imported as one.
+    await qsos.softDelete(
+      await qsos.add(operation.uuid, {
+        'their': {'call': 'N3XYZ'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': noon + 180000,
+      }),
+    );
+    final stored = (await operations.get(operation.uuid))!;
+
+    final file = (await exports.generateExports(stored, await exports.getExportOptions(stored))).single;
+    final dumped = ((jsonDecode(file['content'] as String) as Map)['qsos'] as List).cast<Map<String, dynamic>>();
+    expect(dumped.where((q) => q['band'] == 'event'), hasLength(1));
+    expect(dumped.singleWhere((q) => asQsonMap(q['their'])?['call'] == 'N3XYZ')['deleted'], isTrue);
+
+    final copy = await importQsonOperation(db: db, operations: operations, qsos: qsos, bytes: utf8.encode(file['content'] as String));
+    final copied = await qsos.forOperation(copy.uuid, includeDeleted: true);
+    final segmented = SegmentedOperation.from(operation: copy.data, qsos: copied);
+    expect(segmented.isSegmented, isTrue);
+    final later = copied.singleWhere((q) => q.theirCall == 'K2ABC');
+    expect((segmented.effectiveAt(later.startAtMillis)['refs'] as List).single['ref'], 'US-0002');
+    expect(copied.map((q) => q.theirCall), isNot(contains('N3XYZ')));
+  });
+
   // A multi-operator station logs everything in one operation but owes each
   // callsign its own submission, so the hooks are asked once per call against
   // an operation cloned to carry only that one.
@@ -265,6 +337,36 @@ void main() {
 
       expect((extensions.optionRequests[0]['qsos'] as List), hasLength(2), reason: 'N0CALL worked both');
       expect((extensions.optionRequests[1]['qsos'] as List), hasLength(1), reason: 'W1AW cannot have worked itself');
+    });
+
+    test("each call's file carries only its own stretches' events", () async {
+      // The full ADIF writes the events it is handed among the contacts, so
+      // another call's breaks and notes would land in a log it never kept.
+      final created = await operations.create(stationCall: 'W1AW');
+      await qsos.addEvent(created.uuid, kind: 'start', atMillis: 1000, operation: {'stationCall': 'N0CALL'});
+      await qsos.addEvent(created.uuid, kind: 'break', atMillis: 3000, operation: {'stationCall': 'W1AW'});
+      for (final (call, at) in [('DL1ABC', 2000), ('K1ABC', 4000)]) {
+        await qsos.add(created.uuid, {
+          'their': {'call': call},
+          'band': '20m',
+          'startAtMillis': at,
+        });
+      }
+      final host = _CapturingHost();
+      final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings);
+
+      await service.generateExports((await operations.get(created.uuid))!, [
+        {'hookKey': 'adif', 'exportType': 'adif', 'stationCall': 'N0CALL'},
+        {'hookKey': 'adif', 'exportType': 'adif', 'stationCall': 'W1AW'},
+      ]);
+
+      List<Object?> eventTimes(String call) => [
+        for (final request in host.calls)
+          if (((request['args'] as Map)['operation'] as Map)['stationCall'] == call)
+            for (final event in (request['args'] as Map)['events'] as List) (event as Map)['startAtMillis'],
+      ];
+      expect(eventTimes('N0CALL'), [1000]);
+      expect(eventTimes('W1AW'), [3000]);
     });
 
     test('generating rebuilds the payload for the call the option was listed under', () async {
@@ -519,6 +621,36 @@ void main() {
       expect((host.calls.last['args'] as Map).containsKey('segments'), isFalse);
     });
 
+    test("the log's events travel beside its contacts, and the operation its span", () async {
+      // Among `qsos`, every hook that counts or files contacts would take a
+      // break for one; left out, the full ADIF loses the log's timeline. The
+      // span is two row columns, not `data`, and the templates' start and end
+      // values render empty without them.
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL');
+      final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
+      await qsos.add(created.uuid, {
+        'their': {'call': 'FIRST'},
+        'startAtMillis': start,
+      });
+      await qsos.addEvent(created.uuid, kind: 'break', atMillis: start + 1000, operation: {'grid': 'DM09'});
+      await qsos.add(created.uuid, {
+        'their': {'call': 'LAST'},
+        'startAtMillis': start + 2000,
+      });
+
+      await sliced.generateExports((await operations.get(created.uuid))!, [
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+
+      final args = host.calls.last['args'] as Map;
+      expect((args['qsos'] as List).map((qso) => ((qso as Map)['their'] as Map?)?['call']), ['FIRST', 'LAST']);
+      expect((args['events'] as List).single, containsPair('event', containsPair('event', 'break')));
+      expect((args['operation'] as Map)['startAtMillisMin'], start);
+      expect((args['operation'] as Map)['startAtMillisMax'], start + 2000);
+    });
+
     // The segment is the default for a stretch; a contact that recorded where
     // it was actually made from outranks it, or a rover logging each contact's
     // own grid would have them all replaced by the stretch's.
@@ -559,6 +691,31 @@ void main() {
       // and `adifFields` would stamp the park onto the contest's own records.
       final given = ((host.calls.single['args'] as Map)['operation'] as Map)['refs'] as List;
       expect([for (final ref in given) (ref as Map)['type']], ['cqww']);
+    });
+
+    test("a slice's span is its own contacts', not the operation's", () async {
+      // The templates' op.startDate…op.endTime read it: a contest file dated to
+      // the end of the park activation after it states a span it does not hold.
+      await sliced.generateExports(segmentedOp, [
+        {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
+      ]);
+
+      final operation = (host.calls.single['args'] as Map)['operation'] as Map;
+      expect(operation['startAtMillisMin'], segmentedOp.startAtMillisMin);
+      expect(operation['startAtMillisMax'], segmentedOp.startAtMillisMin, reason: 'the contest ended at the break');
+    });
+
+    test("an activity's file gets the events of its own stretches, and the full log all of them", () async {
+      // The break opens the park: in the contest's Cabrillo it would describe
+      // a stretch the file leaves out.
+      await sliced.generateExports(segmentedOp, [
+        {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+
+      final byHook = {for (final call in host.calls) call['key']: call['args'] as Map};
+      expect(byHook['cqww']!.containsKey('events'), isFalse);
+      expect((byHook['adif']!['events'] as List).single, containsPair('event', containsPair('event', 'break')));
     });
 
     test('an export with no refType still gets the whole log', () async {

@@ -73,6 +73,7 @@ class TranslationsCw extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$deepLink$cw deepLink = _Translations$deepLink$cw._(_root);
 	@override late final _Translations$confirmDevice$cw confirmDevice = _Translations$confirmDevice$cw._(_root);
 	@override late final _Translations$switchAccounts$cw switchAccounts = _Translations$switchAccounts$cw._(_root);
+	@override late final _Translations$qsonImport$cw qsonImport = _Translations$qsonImport$cw._(_root);
 	@override late final _Translations$adifImport$cw adifImport = _Translations$adifImport$cw._(_root);
 	@override late final _Translations$offline$cw offline = _Translations$offline$cw._(_root);
 	@override late final _Translations$exportSettings$cw exportSettings = _Translations$exportSettings$cw._(_root);
@@ -1131,6 +1132,26 @@ class _Translations$switchAccounts$cw extends Translations$switchAccounts$en {
 		one: '${count} / ——— ·——· · ·—· ·— — ·· ——— —·',
 		other: '${count} / ——— ·——· · ·—· ·— — ·· ——— —· ···',
 	);
+}
+
+// Path: qsonImport
+class _Translations$qsonImport$cw extends Translations$qsonImport$en {
+	_Translations$qsonImport$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '·· —— ·——· ——— ·—· — / ——·— ··· ——— —· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get description => '—·—· ·—· · ·— — · / ·— / —· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —· / ··—· ·—· ——— —— / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· · ——··—— / ·— ··· / —·· · ···— · ·—·· ——— ·——· · ·—· / —— ——— —·· · / · —··— ·——· ——— ·—· — ··· / ——— —· · / ···· · ·—· · / ——— ·—· / ·· —· / ·——· ——— ·—·· ——— ·—·—·—';
+	@override String get dropHint => '—·· ·—· ——— ·——· / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· · / — ——— / ·· —— ·——· ——— ·—· — / ·· — / ·— ··· / ·— / —· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String importing({required Object filename}) => '·· —— ·——· ——— ·—· — ·· —· ——· / ${filename} …';
+	@override String failed({required Object filename, required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·· —— ·——· ——— ·—· — / ${filename} ———··· / ${error}';
+	@override String pickerFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· / ·— / ··—· ·· ·—·· · / — ——— / ·· —— ·——· ——— ·—· — ———··· / ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} / ·· ··· / —· ——— — / ··— — ··—· —····— ———·· / — · —··— — ——··—— / ··· ——— / ·· — / ·· ··· / —· ——— — / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· ·';
+	@override String notJson({required Object filename}) => '${filename} / ·· ··· / —· ——— — / ·— / ·——— ··· ——— —· / ··—· ·· ·—·· · ——··—— / ··· ——— / ·· — / ·· ··· / —· ——— — / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· ·';
+	@override String notOperation({required Object filename}) => '${filename} / —·· ——— · ··· / —· ——— — / ···· ——— ·—·· —·· / ·— / ——·— ··· ——— —· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get busy => '·— —· / ·· —— ·——· ——— ·—· — / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——· ·—·—·— / ·—— ·— ·· — / ··—· ——— ·—· / ·· — / — ——— / ··—· ·· —· ·· ··· ···· / —··· · ··—· ——— ·—· · / ··· — ·— ·—· — ·· —· ——· / ·— —· ——— — ···· · ·—· ·—·—·—';
+	@override String get oneFileOnly => '—·· ·—· ——— ·——· / ——— —· · / ——·— ··· ——— —· / ··—· ·· ·—·· · / ·— — / ·— / — ·· —— · / — / · ·— —·—· ···· / ——— —· · / ——— ·——· · —· ··· / ·— ··· / ·· — ··· / ——— ·—— —· / ——— ·——· · ·—· ·— — ·· ——— —· ·—·—·—';
 }
 
 // Path: adifImport
@@ -5986,6 +6007,17 @@ extension on TranslationsCw {
 			'switchAccounts.requestFailed' => '··· ——— —— · — ···· ·· —· ——· / ·—— · —· — / ·—— ·—· ——— —· ——· / — ·— ·—·· —·— ·· —· ——· / — ——— / — ···· · / ··· —·—— —· —·—· / ··· · ·—· ···— · ·—· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —· / ·—·· ·— — · ·—· ·—·—·—',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·— ··· ———', other: '${count} / ——·— ··· ——— ···', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——— ·——· · ·—· ·— — ·· ——— —·', other: '${count} / ——— ·——· · ·—· ·— — ·· ——— —· ···', ), 
+			'qsonImport.title' => '·· —— ·——· ——— ·—· — / ——·— ··· ——— —· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'qsonImport.description' => '—·—· ·—· · ·— — · / ·— / —· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —· / ··—· ·—· ——— —— / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· · ——··—— / ·— ··· / —·· · ···— · ·—·· ——— ·——· · ·—· / —— ——— —·· · / · —··— ·——· ——— ·—· — ··· / ——— —· · / ···· · ·—· · / ——— ·—· / ·· —· / ·——· ——— ·—·· ——— ·—·—·—',
+			'qsonImport.dropHint' => '—·· ·—· ——— ·——· / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· · / — ——— / ·· —— ·——· ——— ·—· — / ·· — / ·— ··· / ·— / —· · ·—— / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'qsonImport.importing' => ({required Object filename}) => '·· —— ·——· ——— ·—· — ·· —· ——· / ${filename} …',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·· —— ·——· ——— ·—· — / ${filename} ———··· / ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· / ·— / ··—· ·· ·—·· · / — ——— / ·· —— ·——· ——— ·—· — ———··· / ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} / ·· ··· / —· ——— — / ··— — ··—· —····— ———·· / — · —··— — ——··—— / ··· ——— / ·· — / ·· ··· / —· ——— — / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· ·',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} / ·· ··· / —· ——— — / ·— / ·——— ··· ——— —· / ··—· ·· ·—·· · ——··—— / ··· ——— / ·· — / ·· ··· / —· ——— — / ·— / ——·— ··· ——— —· / ··—· ·· ·—·· ·',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} / —·· ——— · ··· / —· ——— — / ···· ——— ·—·· —·· / ·— / ——·— ··· ——— —· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'qsonImport.busy' => '·— —· / ·· —— ·——· ——— ·—· — / ·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ·—· ··— —· —· ·· —· ——· ·—·—·— / ·—— ·— ·· — / ··—· ——— ·—· / ·· — / — ——— / ··—· ·· —· ·· ··· ···· / —··· · ··—· ——— ·—· · / ··· — ·— ·—· — ·· —· ——· / ·— —· ——— — ···· · ·—· ·—·—·—',
+			'qsonImport.oneFileOnly' => '—·· ·—· ——— ·——· / ——— —· · / ——·— ··· ——— —· / ··—· ·· ·—·· · / ·— — / ·— / — ·· —— · / — / · ·— —·—· ···· / ——— —· · / ——— ·——· · —· ··· / ·— ··· / ·· — ··· / ——— ·—— —· / ——— ·——· · ·—· ·— — ·· ——— —· ·—·—·—',
 			'adifImport.title' => '·· —— ·——· ——— ·—· — / ——·— ··· ——— ··· / ··—· ·—· ——— —— / ·— —·· ·· ··—·',
 			'adifImport.reading' => ({required Object filename}) => '·—· · ·— —·· ·· —· ——· / ${filename} …',
 			'adifImport.dropHint' => '—·· ·—· ——— ·——· / ·— —· / ·— —·· ·· ··—· / ··—· ·· ·—·· · / — ——— / ·· —— ·——· ——— ·—· —',

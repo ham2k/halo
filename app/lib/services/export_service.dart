@@ -116,7 +116,7 @@ class ExportService {
 
   ExportService({required this.extensions, required this.qsos, required this.settings, this.androidFileSave = const AndroidFileSave()});
 
-  /// Raw QSON dump (the same payload every hook receives), offered only in
+  /// Raw QSON dump of the whole operation ([_qsonDumpFor]), offered only in
   /// developer mode — same as app-polo's devMode extension. Generated here in
   /// Dart, no extension involved.
   static const _qsonHookKey = 'core-devmode';
@@ -157,13 +157,48 @@ class ExportService {
     };
   }
 
-  /// The operation's contacts, and its segments.
+  /// The developer QSON dump: the operation as this device stores it, whole,
+  /// as app-polo's dump is — and what `importQsonOperation` takes back.
+  ///
+  /// Every row, not [_logFor]'s contacts: the `break`/`start` event rows ARE
+  /// the segments, and a dump without them imports as one unsegmented
+  /// operation whose later contacts take the base operation's refs and
+  /// location. Unsliced and unstamped, so the file states what is stored, not
+  /// what one hook was handed.
+  ///
+  /// Deleted contacts travel as tombstones, flagged the way sync sends them,
+  /// because the flag is a row column and not in `data`. Purged ones are on
+  /// their way out of the database, and stay out.
+  ///
+  /// The operation is its stored `data`, not the hook payload
+  /// ([operationQsonFor]): that one resolves the operator for THIS device's
+  /// seat and writes it over the positionless slot, so a copy of a
+  /// multi-station log would name the second seat's operator as everyone's.
+  /// The positionless operator is restated under `local`, the one place
+  /// app-polo reads it.
+  Future<Map<String, dynamic>> _qsonDumpFor(Operation operation) async {
+    final rows = await qsos.forOperation(operation.uuid, includeDeleted: true);
+    final operatorCall = asQsonString(operation.data['operatorCall']) ?? '';
+    return {
+      'operation': {
+        ...operation.data,
+        'uuid': operation.uuid,
+        if (operatorCall.isNotEmpty) 'local': {'operatorCall': operatorCall},
+      },
+      'qsos': [
+        for (final qso in rows)
+          if (!qso.purged) {...qso.data, 'uuid': qso.uuid, if (qso.deleted) 'deleted': true},
+      ],
+    };
+  }
+
+  /// The operation's contacts, its event rows, and its segments.
   ///
   /// The segments are resolved from the FULL list, because the `break`/`start`
   /// event rows carrying the overrides are exactly what the contact list
   /// filters out (docs/design/contests.md §5.1.3) — the same trap
   /// `ScoringService.rescoreOperation` documents.
-  Future<({List<Qso> qsos, SegmentedOperation segmented})> _logFor(Operation operation) async {
+  Future<({List<Qso> qsos, List<Qso> events, SegmentedOperation segmented})> _logFor(Operation operation) async {
     final log = await _logOrNothing(operation);
     if (log == null) {
       throw ExportException('Nothing to export: this operation has no QSOs.');
@@ -177,11 +212,11 @@ class ExportService {
   /// answers — with nothing — where actually exporting one is a request it
   /// has to refuse. Thrown for both, the panel greets an operator whose only
   /// mistake was opening it before their first contact with "Export failed".
-  Future<({List<Qso> qsos, SegmentedOperation segmented})?> _logOrNothing(Operation operation) async {
+  Future<({List<Qso> qsos, List<Qso> events, SegmentedOperation segmented})?> _logOrNothing(Operation operation) async {
     final all = await qsos.forOperation(operation.uuid);
     final qsoList = all.where((q) => !q.isEvent).toList();
     if (qsoList.isEmpty) return null;
-    return (qsos: qsoList, segmented: SegmentedOperation.from(operation: operation.data, qsos: all));
+    return (qsos: qsoList, events: all.where((q) => q.isEvent).toList(), segmented: SegmentedOperation.from(operation: operation.data, qsos: all));
   }
 
   /// The QSOs one export is responsible for.
@@ -316,23 +351,59 @@ class ExportService {
   /// contact carries its own segment's answer for everything a hook would
   /// otherwise read off the base operation ([_stampSegment]) — and carries the
   /// segments themselves, for what a contact's `our` block cannot say.
-  Map<String, dynamic> _payloadAs(String stationCall, Operation operation, List<Qso> qsoList, SegmentedOperation segmented) {
+  ///
+  /// [events] go with the stretches the payload's contacts were made in, the
+  /// one rule for every slice — by call or by activity. Each file is a log of
+  /// those stretches, and another's breaks and notes would land among
+  /// contacts it does not hold.
+  Map<String, dynamic> _payloadAs(String stationCall, Operation operation, List<Qso> qsoList, SegmentedOperation segmented, {List<Qso> events = const []}) {
     final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
     // The calls of every SEGMENT, not the base operation's: a log that changed
     // call at a `break` has more than one even when the operation itself names
     // exactly one, and short-circuiting on the base would hand each file the
     // whole log under the last call.
     final perCall = segmented.allStationCalls.length >= 2;
-    if (!perCall && !segmented.isSegmented) return payload;
-    if (perCall) (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
-    payload['qsos'] = _qsosAs(perCall ? stationCall : null, qsoList, segmented);
-    // The segments themselves, as the scoring pass sends them
-    // (`ExportRequest.segments`): [_stampSegment] covers what a contact's
-    // `our` block can carry, but a contest's setup — a rover's county, a sent
-    // exchange — lives on a REF the segments restate, and only the resolved
-    // timeline lets a hook read that per contact.
-    if (segmented.isSegmented) payload['segments'] = segmented.payload;
+    if (perCall || segmented.isSegmented) {
+      if (perCall) (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
+      payload['qsos'] = _qsosAs(perCall ? stationCall : null, qsoList, segmented);
+      // The segments themselves, as the scoring pass sends them
+      // (`ExportRequest.segments`): [_stampSegment] covers what a contact's
+      // `our` block can carry, but a contest's setup — a rover's county, a sent
+      // exchange — lives on a REF the segments restate, and only the resolved
+      // timeline lets a hook read that per contact.
+      if (segmented.isSegmented) payload['segments'] = segmented.payload;
+    }
+    _stampSpan(payload);
+    if (events.isNotEmpty) {
+      final stretches = {for (final qso in payload['qsos'] as List) segmented.segmentIndexAt(asQsonNum((qso as Map)['startAtMillis'])?.toInt())};
+      final ours = [
+        for (final event in events)
+          if (stretches.contains(segmented.segmentIndexAt(event.startAtMillis))) event.data,
+      ];
+      // Beside the contacts rather than among them, where every hook that
+      // counts or files `qsos` would take a break for a contact
+      // (`ExportRequest.events`).
+      if (ours.isNotEmpty) payload['events'] = ours;
+    }
     return payload;
+  }
+
+  /// The span of the contacts [payload] holds, as the operation's
+  /// `startAtMillisMin`/`startAtMillisMax` — what the SDK's `op.startDate`…
+  /// `op.endTime` render, and empty without.
+  ///
+  /// The file's own contacts, not the operation row's columns: a file holding
+  /// one park of a two-park log would otherwise say it ran until the other
+  /// park's last contact. Over any pair `data` carries too, which app-polo
+  /// writes for the whole log.
+  static void _stampSpan(Map<String, dynamic> payload) {
+    final starts = [for (final qso in payload['qsos'] as List) ?asQsonNum((qso as Map)['startAtMillis'])?.toInt()]..sort();
+    final operation = payload['operation'] as Map<String, dynamic>
+      ..remove('startAtMillisMin')
+      ..remove('startAtMillisMax');
+    if (starts.isEmpty) return;
+    operation['startAtMillisMin'] = starts.first;
+    operation['startAtMillisMax'] = starts.last;
   }
 
   /// Every export option offered by every extension for this operation, for
@@ -356,7 +427,7 @@ class ExportService {
 
     final perCall = await Future.wait(
       calls.map((call) async {
-        final payload = _payloadAs(call, operation, log.qsos, log.segmented);
+        final payload = _payloadAs(call, operation, log.qsos, log.segmented, events: log.events);
 
         // Hooks are asked about every ref ANY segment carries, not just the base's.
         // Each contest's `suggestExportOptions` opens with
@@ -401,9 +472,8 @@ class ExportService {
 
     final options = [for (final group in perCall) ...group];
     if (settings.developerMode) {
-      // ONE dump for the whole operation, not one per call: it exists to show
-      // what the hooks were given, and the fan-out is exactly what it would
-      // hide by splitting.
+      // ONE dump for the whole operation, not one per call: it is the
+      // operation as stored, and the fan-out is a reading of it.
       return [...options, _qsonOptionFor(operation)];
     }
     return options;
@@ -418,9 +488,6 @@ class ExportService {
       throw ExportException('Extension runtime is not ready yet — try again in a moment.');
     }
     final log = await _logFor(operation);
-    // The developer QSON dump is the raw log, deliberately unsliced — it exists
-    // to show what the hooks were given for the operation as a whole.
-    final payload = qsonPayloadFor(operation: operation, qsos: log.qsos);
 
     // Independent per-option calls (each produces its own file) — no
     // ordering dependency, so run them concurrently rather than paying for
@@ -428,7 +495,7 @@ class ExportService {
     final results = await Future.wait(
       selectedOptions.map((option) async {
         if (isQsonOption(option)) {
-          return {'filename': _qsonOptionFor(operation)['filename'], 'mimeType': 'application/json', 'content': jsonEncode(payload)};
+          return {'filename': _qsonOptionFor(operation)['filename'], 'mimeType': 'application/json', 'content': jsonEncode(await _qsonDumpFor(operation))};
         }
         final scoped = _qsosForOption(option, log.qsos, log.segmented);
         // Rebuilt for the SAME call the option was listed under, so the file
@@ -436,7 +503,7 @@ class ExportService {
         // call covers an option that predates the fan-out (or a caller passing
         // one by hand, as the tests do).
         final call = option['stationCall'] as String? ?? operation.stationCalls.first;
-        final args = _payloadAs(call, operation, scoped, log.segmented);
+        final args = _payloadAs(call, operation, scoped, log.segmented, events: log.events);
         // Same reason `getExportOptions` patches the refs above: a hook offered an
         // option off a ref that lives only in a segment has to be able to READ
         // that ref when it writes the file. Without it the two halves of one

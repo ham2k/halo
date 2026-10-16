@@ -7,6 +7,7 @@
 "upcoming":
   changes:
     - "New Show idle metrics developer setting: extension engine headroom in the status bar"
+    - "New Import QSON Operation developer setting, or drop a .qson on the list"
     - "Calls you didn't fully copy can be logged with a `?`, like `K1A?C`"
     - "New auto-respotting: after a self-spot, or with the RESPOT command"
     - "Spotting chip turns green, amber or red after a self-spot"

@@ -127,8 +127,11 @@ class SegmentedOperation {
   bool get isSegmented => segments.length > 1;
 
   /// The operation as it stood at [startAtMillis].
-  Map<String, dynamic> effectiveAt(int? startAtMillis) {
-    if (segments.length == 1 || startAtMillis == null) return segments.first.operation;
+  Map<String, dynamic> effectiveAt(int? startAtMillis) => segments[segmentIndexAt(startAtMillis)].operation;
+
+  /// Which of [segments] covers [startAtMillis].
+  int segmentIndexAt(int? startAtMillis) {
+    if (segments.length == 1 || startAtMillis == null) return 0;
 
     // Rightmost segment whose boundary is at or before this instant. A QSO
     // sharing a timestamp with the event row that opens a segment belongs to
@@ -144,7 +147,7 @@ class SegmentedOperation {
         high = mid - 1;
       }
     }
-    return segments[low].operation;
+    return low;
   }
 
   /// The operation as it stands now — the last segment. What the logging panel

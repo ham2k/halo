@@ -9,7 +9,7 @@
 // are the exception, and are templated: see [TEXT_FIELD_TEMPLATES].
 
 import { exportQso } from "@ham2k/extension-sdk"
-import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
+import { fmtADIFDate, fmtADIFTime, fmtISODateTime } from "@ham2k/lib-format-tools"
 import { locationToGrid6, locationToGrid8 } from "@ham2k/lib-geo-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
@@ -207,6 +207,34 @@ const TEXT_FIELD_TEMPLATES: {
     usesQso: false,
   },
 ]
+
+/// Text for a header field. A reader finds the header's end by its `<EOH>`
+/// tag, so an operator's note quoting one would end the header early.
+function headerText(value: unknown): string {
+  return typeof value === "string" ? value.replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""
+}
+
+/// One event row (a `break`, `start`, note…) as app-polo writes it
+/// (`qsonToADIF.js:66-85`): `APP_HAM2K_<KIND>` holding its time and text,
+/// and `_DATA` for whatever structured data it carries.
+///
+/// Fields BETWEEN records, with no `<EOR>` of their own, so a reader files
+/// them with the contact that follows. An event as a record of its own would
+/// be imported by any other program as a contact with no callsign.
+function eventLines(row: Record<string, JSONValue>): string[] {
+  const event = (row.event ?? {}) as Record<string, JSONValue>
+  const kind = typeof event.event === "string" ? event.event : ""
+  const name = `APP_HAM2K_${kind.toUpperCase() || "EVENT"}`
+  const description = typeof event.description === "string" ? event.description.replace(/ • /g, " * ") : undefined
+  // Text only: a structured value would write `[object Object]`, the literal
+  // `field()` keeps out of files.
+  const text = [event.note, event.message, description].find((value) => typeof value === "string") ?? kind
+  const lines = [field(name, `${fmtISODateTime(Number(row.startAtMillis ?? 0))}: ${text}`)]
+  const data = event.data ?? Object.entries(event).find(([key]) => key.endsWith("Data"))?.[1]
+  if (data !== undefined && data !== null) lines.push(field(`${name}_DATA`, JSON.stringify(data)))
+  const boundary = kind === "break" || kind === "start"
+  return boundary ? ["", ...lines, ""] : lines
+}
 
 /// One free-text template, rendered. Shared by the per-record loop and the
 /// once-per-file one so the two cannot disagree about line handling.
@@ -694,6 +722,7 @@ const ExportHandler = {
       operation,
       qsos,
       segments,
+      events,
       compactFilenames,
       includePrivateData,
       includeLookupData,
@@ -749,6 +778,17 @@ const ExportHandler = {
     lines.push(field("ADIF_VER", ADIF_VERSION))
     lines.push(field("PROGRAMID", ctx.appName ?? DEFAULT_PROGRAM_ID))
     lines.push(field("CREATED_TIMESTAMP", `${fmtADIFDate(Date.now())} ${fmtADIFTime(Date.now())}`))
+    // Private for the same reason as the title in the preamble above; app-polo
+    // writes both (`qsonToADIF.js:56-57`).
+    if (includePrivateData === true) {
+      for (const [name, value] of [
+        ["APP_HAM2K_OP_TITLE", operation.userTitle],
+        ["APP_HAM2K_OP_NOTES", operation.notes],
+      ] as const) {
+        const line = field(name, headerText(value))
+        if (line) lines.push(line)
+      }
+    }
     lines.push("<EOH>")
     lines.push("")
 
@@ -757,10 +797,9 @@ const ExportHandler = {
         includePrivateData === true ? operation : { ...operation, title: "", userTitle: "", userNotes: "", grid: String(operation.grid ?? "").slice(0, 6) },
       qsoCount: qsos.length,
       appName: ctx.appName,
-      // The operation's row columns don't cross the bridge, so the log's own
-      // day comes from its first contact — the same instant the filename
-      // uses, so a file and the fields inside it cannot disagree about when
-      // the operation was.
+      // The log's own day is its first contact's — the same instant the
+      // filename uses, so a file and the fields inside it cannot disagree
+      // about when the operation was.
       atMillis: startMillisOf(operation, qsos),
       log: { station: stationCall, format: "adif", exportType: "adif", extension: "adi", compact: compactFilenames, ...exportData },
     })
@@ -769,7 +808,25 @@ const ExportHandler = {
     // exists rather than once per record.
     const constantTextFields = writable.filter((textField) => !textField.usesQso).map((textField) => renderTextField(textField, exportContext))
 
-    for (const qso of qsos) {
+    // The log's breaks, starts and notes, in the full ADIF alone — the copy the
+    // operator keeps, and the one file whose contacts span every segment. A
+    // program's own file holds a slice, so the events around it would only
+    // describe stretches it leaves out. Private, as the operator's notes are.
+    const timeline =
+      includePrivateData === true && mainHandler == null ? [...(events ?? [])].sort((a, b) => Number(a.startAtMillis ?? 0) - Number(b.startAtMillis ?? 0)) : []
+    let nextEvent = 0
+    const writeEventsUpTo = (millis: number) => {
+      while (nextEvent < timeline.length && Number(timeline[nextEvent].startAtMillis ?? 0) <= millis) lines.push(...eventLines(timeline[nextEvent++]))
+    }
+
+    for (const [index, qso] of qsos.entries()) {
+      // At or before: a contact sharing a timestamp with the break that opens
+      // a segment belongs to the new segment, so the break comes first. Every
+      // event left goes before the LAST contact: after its `<EOR>` they would
+      // be an unterminated record with no callsign, which a reader imports as
+      // a broken contact. Each event's own time says when it was.
+      if (index === qsos.length - 1) writeEventsUpTo(Infinity)
+      else if (typeof qso.startAtMillis === "number") writeEventsUpTo(qso.startAtMillis)
       // The program fields (SIG, POTA_REF…) come from an `adifFields` hook via
       // in-runtime hook composition — no bridge crossing. Which hooks, see
       // [fieldSetsPerHook]: this export's own alone, or those of every program

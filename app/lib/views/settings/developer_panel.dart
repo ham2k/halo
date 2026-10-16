@@ -19,6 +19,7 @@ import '../../services/halo_services.dart';
 import '../../services/app_storage.dart';
 import '../../services/windows_url_schemes.dart';
 import '../experiments_pane.dart';
+import '../qson_import_flow.dart';
 import '../../services/extensions/extension_dev_client.dart';
 import '../../services/extensions/installed_extensions.dart' show CatalogChannel;
 import '../../settings/settings_target_dialog.dart' show settingsSliverForTarget;
@@ -88,6 +89,14 @@ class DeveloperPanel extends StatelessWidget {
                 subtitle: Text(context.t.settings.developer.showIdleMetricsDescription),
                 value: settings.showIdleMetrics,
                 onChanged: settings.setShowIdleMetrics,
+              ),
+            if (settings.developerMode)
+              ListTile(
+                leading: const Icon(MdiIcons.fileImportOutline),
+                title: Text(context.t.qsonImport.title),
+                subtitle: Text(context.t.qsonImport.description),
+                mouseCursor: SystemMouseCursors.click,
+                onTap: () => runQsonImport(context, services),
               ),
             // The extension dev loop (docs/extensions/development.md). Below
             // the developer-mode switch because it is meaningless without it,

@@ -70,16 +70,24 @@ class OperationsRepository {
   /// is marked instead, by [markedForTravel]. A refusal here would be
   /// unescapable: an operation is judged test data by its stored callsign, and
   /// there is nothing stored yet to judge.
-  Future<Operation> create({required String stationCall, String userTitle = ''}) async {
+  Future<Operation> create({required String stationCall, String userTitle = ''}) => createFromData({'stationCall': stationCall, 'userTitle': userTitle});
+
+  /// A new operation, under a fresh uuid, holding [data] — what [create]
+  /// starts from, or a whole operation read from a file
+  /// (`importQsonOperation`). Marked for travel the same way [create] is.
+  ///
+  /// [data]'s own `createdAtMillis` is kept: an imported operation was
+  /// created when its original was, not when it arrived here.
+  Future<Operation> createFromData(Map<String, dynamic> data) async {
     final operation = Operation(
       uuid: uuidGenerator.v4(),
       data: {
-        'stationCall': markedForTravel(stationCall.toUpperCase()),
-        'userTitle': userTitle,
+        ...data,
+        'stationCall': markedForTravel((asQsonString(data['stationCall']) ?? '').toUpperCase()),
         // The creation DATE is what the operator reads, so it travels; the
         // revision stamp is what another device compares against, so it does
         // not (realNowMillis's doc comment, docs/design/time.md §1).
-        'createdAtMillis': nowMillis(),
+        'createdAtMillis': asQsonNum(data['createdAtMillis'])?.toInt() ?? nowMillis(),
         'updatedAtMillis': realNowMillis(),
       },
     );

@@ -1071,6 +1071,10 @@ export interface ExportRequest {
   /// contact (a rover's county, the call at the key) the way the scorer does.
   /// `operationForQso` resolves one contact's operation from it.
   segments?: OperationSegmentPayload[]
+  /// The operation's event rows — `break`, `start`, notes — as stored, for a
+  /// file that writes the log's timeline. Never in [qsos], which holds
+  /// contacts alone. Present only when there are any.
+  events?: Record<string, JSONValue>[]
   /// Stable kind of export, as returned by `suggestExportOptions`.
   exportType?: string
   /// Selected option identity, passed back unchanged. Defaults to exportType

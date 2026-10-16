@@ -84,7 +84,13 @@ void main() {
     'endAtMillis': DateTime.utc(2026, 7, 1, 12, 3).millisecondsSinceEpoch,
   };
 
-  Future<String> export({required bool includePrivateData, Map<String, dynamic>? qsoOverrides}) async {
+  Future<String> export({
+    required bool includePrivateData,
+    Map<String, dynamic>? qsoOverrides,
+    Map<String, dynamic>? operationOverrides,
+    List<Map<String, dynamic>>? qsos,
+    List<Map<String, dynamic>>? events,
+  }) async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
     final result =
         await host.invokeHook(
@@ -92,8 +98,9 @@ void main() {
               key: 'adif',
               method: 'generateExport',
               args: {
-                'operation': operation(),
-                'qsos': [qso()..addAll(qsoOverrides ?? const {})],
+                'operation': operation()..addAll(operationOverrides ?? const {}),
+                'qsos': qsos ?? [qso()..addAll(qsoOverrides ?? const {})],
+                'events': ?events,
                 'exportType': 'adif',
                 'includePrivateData': includePrivateData,
               },
@@ -413,4 +420,110 @@ void main() {
     expect(content, contains('<MODE:3>SSB'));
     expect(content, contains('<SUBMODE:3>LSB'));
   }, timeout: const Timeout(Duration(seconds: 60)));
+
+  group('the log around the contacts', () {
+    final noon = DateTime.utc(2026, 7, 1, 12).millisecondsSinceEpoch;
+    List<Map<String, dynamic>> twoContacts() => [
+      qso(),
+      qso()
+        ..['uuid'] = 'q1'
+        ..['their'] = {'call': 'K2ABC'}
+        ..['startAtMillis'] = noon + 20 * 60000,
+    ];
+    List<Map<String, dynamic>> events() => [
+      {
+        'uuid': 'e1',
+        'band': 'event',
+        'startAtMillis': noon + 10 * 60000,
+        'event': {
+          'event': 'break',
+          'description': 'moved • to the summit',
+          'operation': {'grid': 'CM88'},
+        },
+      },
+      // Sharing the second contact's instant: the contact is the new
+      // segment's, so the event that opens it comes first.
+      {
+        'uuid': 'e2',
+        'band': 'event',
+        'startAtMillis': noon + 20 * 60000,
+        'event': {'event': 'note', 'note': 'antenna swapped'},
+      },
+      {
+        'uuid': 'e3',
+        'band': 'event',
+        'startAtMillis': noon + 30 * 60000,
+        'event': {'event': 'stop'},
+      },
+    ];
+
+    test('the full ADIF keeps the breaks and notes, each before the contact it precedes', () async {
+      // Without them a log kept as ADIF loses where it moved and why: the
+      // segments live in these rows, not in any contact.
+      final content = await export(includePrivateData: true, qsos: twoContacts(), events: events());
+
+      final firstContact = content.indexOf('<CALL:4>W1AW');
+      final secondContact = content.indexOf('<CALL:5>K2ABC');
+      final breakAt = content.indexOf('<APP_HAM2K_BREAK:');
+      final noteAt = content.indexOf('<APP_HAM2K_NOTE:');
+      expect(firstContact, greaterThan(content.indexOf('<EOH>')));
+      expect(breakAt, allOf(greaterThan(firstContact), lessThan(secondContact)));
+      expect(noteAt, allOf(greaterThan(breakAt), lessThan(secondContact)));
+      expect(content, contains('2026-07-01T12:10:00Z: moved * to the summit'));
+      expect(content, contains('antenna swapped'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('an event after the last contact still lands inside a record', () async {
+      // After the final <EOR> it is an unterminated record with no callsign,
+      // and reading the operator's own backup back reports a broken contact.
+      final content = await export(includePrivateData: true, qsos: twoContacts(), events: events());
+
+      final stopAt = content.indexOf('<APP_HAM2K_STOP:');
+      expect(stopAt, isNonNegative, reason: 'dropping it loses how the log ended');
+      expect(stopAt, lessThan(content.indexOf('<CALL:5>K2ABC')));
+      expect(content.trimRight(), endsWith('<EOR>'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('an event whose note is not text writes its kind, not [object Object]', () async {
+      final content = await export(
+        includePrivateData: true,
+        events: [
+          {
+            'uuid': 'e9',
+            'band': 'event',
+            'startAtMillis': noon - 60000,
+            'event': {
+              'event': 'note',
+              'note': {'rich': true},
+            },
+          },
+        ],
+      );
+
+      expect(content, contains('2026-07-01T11:59:00Z: note'));
+      expect(content, isNot(contains('[object Object]')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a file without private data carries none of them', () async {
+      final content = await export(includePrivateData: false, qsos: twoContacts(), events: events());
+
+      expect(content, isNot(contains('APP_HAM2K_BREAK')));
+      expect(content, isNot(contains('APP_HAM2K_NOTE')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test("the header names the operation's title and notes, with private data only", () async {
+      // A note quoting `<EOH>` would end the header there for any reader that
+      // looks for the tag, and file the rest of it as a contact.
+      final overrides = {'userTitle': 'Dad\'s memorial activation', 'notes': 'ended early, see <EOH> below'};
+      final private = await export(includePrivateData: true, operationOverrides: overrides);
+      final header = private.substring(0, private.indexOf('<EOH>'));
+
+      expect(header, matches(RegExp(r"<APP_HAM2K_OP_TITLE:\d+>Dad's memorial activation")));
+      expect(header, contains('APP_HAM2K_OP_NOTES'));
+      expect(header, contains('see &lt;EOH&gt; below'));
+
+      final public = await export(includePrivateData: false, operationOverrides: overrides);
+      expect(public, isNot(contains('APP_HAM2K_OP_')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
 }

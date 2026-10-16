@@ -2528,6 +2528,19 @@
       "other": "${count} OPERATIONS"
     }
   },
+  "qsonImport": {
+    "title": "IMPORT QSON OPERATION",
+    "description": "CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.",
+    "dropHint": "DROP A QSON FILE TO IMPORT IT AS A NEW OPERATION",
+    "importing": "IMPORTING ${filename}…",
+    "failed": "COULD NOT IMPORT ${filename}: ${error}",
+    "pickerFailed": "COULD NOT OPEN A FILE TO IMPORT: ${error}",
+    "notUtf8": "${filename} IS NOT UTF-8 TEXT, SO IT IS NOT A QSON FILE",
+    "notJson": "${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE",
+    "notOperation": "${filename} DOES NOT HOLD A QSON OPERATION",
+    "busy": "AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.",
+    "oneFileOnly": "DROP ONE QSON FILE AT A TIME — EACH ONE OPENS AS ITS OWN OPERATION."
+  },
   "adifImport": {
     "title": "IMPORT QSOS FROM ADIF",
     "reading": "READING ${filename}…",

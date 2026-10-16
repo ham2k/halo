@@ -73,6 +73,7 @@ class TranslationsQro extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$deepLink$qro deepLink = _Translations$deepLink$qro._(_root);
 	@override late final _Translations$confirmDevice$qro confirmDevice = _Translations$confirmDevice$qro._(_root);
 	@override late final _Translations$switchAccounts$qro switchAccounts = _Translations$switchAccounts$qro._(_root);
+	@override late final _Translations$qsonImport$qro qsonImport = _Translations$qsonImport$qro._(_root);
 	@override late final _Translations$adifImport$qro adifImport = _Translations$adifImport$qro._(_root);
 	@override late final _Translations$offline$qro offline = _Translations$offline$qro._(_root);
 	@override late final _Translations$exportSettings$qro exportSettings = _Translations$exportSettings$qro._(_root);
@@ -1131,6 +1132,26 @@ class _Translations$switchAccounts$qro extends Translations$switchAccounts$en {
 		one: '${count} OPERATION',
 		other: '${count} OPERATIONS',
 	);
+}
+
+// Path: qsonImport
+class _Translations$qsonImport$qro extends Translations$qsonImport$en {
+	_Translations$qsonImport$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'IMPORT QSON OPERATION';
+	@override String get description => 'CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.';
+	@override String get dropHint => 'DROP A QSON FILE TO IMPORT IT AS A NEW OPERATION';
+	@override String importing({required Object filename}) => 'IMPORTING ${filename}…';
+	@override String failed({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}';
+	@override String pickerFailed({required Object error}) => 'COULD NOT OPEN A FILE TO IMPORT: ${error}';
+	@override String notUtf8({required Object filename}) => '${filename} IS NOT UTF-8 TEXT, SO IT IS NOT A QSON FILE';
+	@override String notJson({required Object filename}) => '${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE';
+	@override String notOperation({required Object filename}) => '${filename} DOES NOT HOLD A QSON OPERATION';
+	@override String get busy => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.';
+	@override String get oneFileOnly => 'DROP ONE QSON FILE AT A TIME — EACH ONE OPENS AS ITS OWN OPERATION.';
 }
 
 // Path: adifImport
@@ -5986,6 +6007,17 @@ extension on TranslationsQro {
 			'switchAccounts.requestFailed' => 'SOMETHING WENT WRONG TALKING TO THE SYNC SERVER. TRY AGAIN LATER.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} QSO', other: '${count} QSOS', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} OPERATION', other: '${count} OPERATIONS', ), 
+			'qsonImport.title' => 'IMPORT QSON OPERATION',
+			'qsonImport.description' => 'CREATE A NEW OPERATION FROM A QSON FILE, AS DEVELOPER MODE EXPORTS ONE HERE OR IN POLO.',
+			'qsonImport.dropHint' => 'DROP A QSON FILE TO IMPORT IT AS A NEW OPERATION',
+			'qsonImport.importing' => ({required Object filename}) => 'IMPORTING ${filename}…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => 'COULD NOT IMPORT ${filename}: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'COULD NOT OPEN A FILE TO IMPORT: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} IS NOT UTF-8 TEXT, SO IT IS NOT A QSON FILE',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} IS NOT A JSON FILE, SO IT IS NOT A QSON FILE',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} DOES NOT HOLD A QSON OPERATION',
+			'qsonImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
+			'qsonImport.oneFileOnly' => 'DROP ONE QSON FILE AT A TIME — EACH ONE OPENS AS ITS OWN OPERATION.',
 			'adifImport.title' => 'IMPORT QSOS FROM ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'READING ${filename}…',
 			'adifImport.dropHint' => 'DROP AN ADIF FILE TO IMPORT',

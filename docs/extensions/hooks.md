@@ -382,9 +382,15 @@ interface ExportHook {
 }
 // ExportOptionsRequest: {operation, qsos, compactFilenames?}
 // ExportOption: {exportType, exportKey?, format, label, filename?, icon?, color?, refType?, priority?, selectedByDefault?}
-// ExportRequest: {operation, qsos, exportType?, exportKey?, compactFilenames?}  — full QSON, one coarse call
+// ExportRequest: {operation, qsos, segments?, events?, exportType?, exportKey?, compactFilenames?}  — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}
 ```
+
+`qsos` holds contacts alone. The log's event rows — `break`, `start`, notes —
+come separately in `events`, for a file that writes the timeline (the full
+ADIF does, with private data); `segments` is what they resolve to.
+`operation` carries `startAtMillisMin`/`startAtMillisMax`: the span of the
+contacts in `qsos`, not of the whole operation.
 
 Two-step flow: the Exports Panel calls `suggestExportOptions` on every
 `export` hook to build its selectable list (a hook that omits it never

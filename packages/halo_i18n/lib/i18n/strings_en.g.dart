@@ -75,6 +75,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$deepLink$en deepLink = Translations$deepLink$en.internal(_root);
 	late final Translations$confirmDevice$en confirmDevice = Translations$confirmDevice$en.internal(_root);
 	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
+	late final Translations$qsonImport$en qsonImport = Translations$qsonImport$en.internal(_root);
 	late final Translations$adifImport$en adifImport = Translations$adifImport$en.internal(_root);
 	late final Translations$offline$en offline = Translations$offline$en.internal(_root);
 	late final Translations$exportSettings$en exportSettings = Translations$exportSettings$en.internal(_root);
@@ -2458,6 +2459,48 @@ class Translations$switchAccounts$en {
 		one: '${count} operation',
 		other: '${count} operations',
 	);
+}
+
+// Path: qsonImport
+class Translations$qsonImport$en {
+	Translations$qsonImport$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Import QSON Operation'
+	String get title => 'Import QSON Operation';
+
+	/// en: 'Create a new operation from a QSON file, as Developer Mode exports one here or in PoLo.'
+	String get description => 'Create a new operation from a QSON file, as Developer Mode exports one here or in PoLo.';
+
+	/// en: 'Drop a QSON file to import it as a new operation'
+	String get dropHint => 'Drop a QSON file to import it as a new operation';
+
+	/// en: 'Importing ${filename}…'
+	String importing({required Object filename}) => 'Importing ${filename}…';
+
+	/// en: 'Could not import ${filename}: ${error}'
+	String failed({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}';
+
+	/// en: 'Could not open a file to import: ${error}'
+	String pickerFailed({required Object error}) => 'Could not open a file to import: ${error}';
+
+	/// en: '${filename} is not UTF-8 text, so it is not a QSON file'
+	String notUtf8({required Object filename}) => '${filename} is not UTF-8 text, so it is not a QSON file';
+
+	/// en: '${filename} is not a JSON file, so it is not a QSON file'
+	String notJson({required Object filename}) => '${filename} is not a JSON file, so it is not a QSON file';
+
+	/// en: '${filename} does not hold a QSON operation'
+	String notOperation({required Object filename}) => '${filename} does not hold a QSON operation';
+
+	/// en: 'An import is already running. Wait for it to finish before starting another.'
+	String get busy => 'An import is already running. Wait for it to finish before starting another.';
+
+	/// en: 'Drop one QSON file at a time — each one opens as its own operation.'
+	String get oneFileOnly => 'Drop one QSON file at a time — each one opens as its own operation.';
 }
 
 // Path: adifImport
@@ -10405,6 +10448,17 @@ extension on Translations {
 			'switchAccounts.requestFailed' => 'Something went wrong talking to the sync server. Try again later.',
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} operation', other: '${count} operations', ), 
+			'qsonImport.title' => 'Import QSON Operation',
+			'qsonImport.description' => 'Create a new operation from a QSON file, as Developer Mode exports one here or in PoLo.',
+			'qsonImport.dropHint' => 'Drop a QSON file to import it as a new operation',
+			'qsonImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
+			'qsonImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
+			'qsonImport.pickerFailed' => ({required Object error}) => 'Could not open a file to import: ${error}',
+			'qsonImport.notUtf8' => ({required Object filename}) => '${filename} is not UTF-8 text, so it is not a QSON file',
+			'qsonImport.notJson' => ({required Object filename}) => '${filename} is not a JSON file, so it is not a QSON file',
+			'qsonImport.notOperation' => ({required Object filename}) => '${filename} does not hold a QSON operation',
+			'qsonImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
+			'qsonImport.oneFileOnly' => 'Drop one QSON file at a time — each one opens as its own operation.',
 			'adifImport.title' => 'Import QSOs from ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Reading ${filename}…',
 			'adifImport.dropHint' => 'Drop an ADIF file to import',

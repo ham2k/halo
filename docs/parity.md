@@ -64,7 +64,7 @@ fixes four rules it carries but never awards.
 
 | Gap | PoLo has | HaLo status |
 | --- | --- | --- |
-| **Import** | Per-operation "Add QSOs from ADIF" + global "Import History from ADIF" feeding worked-before detection; QSON import with merge/dedup (`mergeQSOs`) | 🟡 **Per-operation import landed** (HALO-173) and **PoLo's separate "history-only" import isn't needed** — the Logs view's own ADIF import (`logs/logs_adif_drop.dart`, `AdifImportService`) writes real QSOs into an operation, same as the per-operation path, so any worked-before detection (Call History, HALO-304) already sees them; there is no reason to duplicate that as a second, history-only store. The parser (HALO-166) turns ADIF into QSON against a ten-logger corpus, with same-band/supermode/5-minute merging, station-call rewriting and activation hoisting. `adifImport` recovers references for every activity except `custom` — see hooks.md for why it has none. Missing: QSON import |
+| **Import** | Per-operation "Add QSOs from ADIF" + global "Import History from ADIF" feeding worked-before detection; QSON import (developer mode, as a new operation) | 🟡 **Per-operation import landed** (HALO-173) and **PoLo's separate "history-only" import isn't needed** — the Logs view's own ADIF import (`logs/logs_adif_drop.dart`, `AdifImportService`) writes real QSOs into an operation, same as the per-operation path, so any worked-before detection (Call History, HALO-304) already sees them; there is no reason to duplicate that as a second, history-only store. The parser (HALO-166) turns ADIF into QSON against a ten-logger corpus, with same-band/supermode/5-minute merging, station-call rewriting and activation hoisting. `adifImport` recovers references for every activity except `custom` — see hooks.md for why it has none. **QSON import** is a Developer Mode tool on both sides: a file becomes a new operation (`operation_qson_import.dart`). (PoLo's `mergeQSOs` has no caller.) |
 | **Contest breadth** | 12 contest extensions + Field Day + Winter Field Day + 13 Colonies (15 total) | 🟡 **13 of the 15 ported** (+M7 ARRL VHF and M8 R1/RSGB VHF since the last sweep, with ARRL 10 GHz scored inside `arrl-vhf-tests`), plus **CWT**, an extension PoLo lacks. **QSO Parties (M10)** ships 49 operable parties (50 files; NSARA is disabled by its own sponsor's data), including Maine, which PoLo does not have, with county-line N×M scoring, rolling rover location off segments, and several rules PoLo documents but does not award (power multipliers, the bonus-station sweep, the DX-entity cap, `DIGI` points). Missing: **GAPOTA (M9)** and **13 Colonies (M12)**. Next per RFC §7: **M9** |
 | **Export breadth** | 29 ADIF variants, 11 Cabrillo, QSON, REG1TEST/EDI; user-editable Handlebars templates for filename **and title and ADIF notes/comments/QSL message**, per-export-type overrides; "ignore lookup data" toggle; Wavelog upload with station selection; **Ham2K File Stash export** (new in 26.7.3) | 🟡 whole-log + per-activity + per-contest ADIF, **Cabrillo**, **REG1TEST/EDI** (HALO-296), a **hunter/chaser export** (HALO-274) PoLo has no equivalent of, segment-sliced exports, private-data switch, QSON dump (dev-mode only, `export_service.dart`). HaLo now emits `APP_HAM2K_*` fields (`APP_HAM2K_POSITION`) and **templating exists** (HALO-201: one renderer behind the `template` hook, driving filenames, panels and ADIF text). Missing: **Wavelog**, **Ham2K File Stash** (new in 26.7.3), per-export-type template overrides in the UI, ignore-lookup-data, user-facing QSON |
 | **Activity catalog** | 21 activity dirs + WAB (under `other/`) | 🟡 **18 ported — the catalog is effectively closed.** `fd`/`wfd` shipped as contests; only **13 Colonies** (contest thread, M12) and **WAB squares** remain |
@@ -236,14 +236,12 @@ fixes four rules it carries but never awards.
 Covered on both sides: dev-mode toggle, seeded fake QSOs (`SEED`),
 synthetic error (`ERROR!` ≈ `DEVSENTRY`), sample notices (`NOTICE` ≈
 `DEVNOTICE`), onboarding re-run (`ONBOARD` ≈ `DEVONBOARD`), `SYNCALL`,
-dev QSON export.
+dev QSON export and import (Developer settings, or a `.qson` dropped on the
+operations list).
 
 PoLo has, HaLo lacks:
 - **Database surgery**: `WIPE!`/`WIPEDB!` (wipe QSOs / whole DB),
-  `FACTORY!` (factory reset), `RECOVER!`, replace-database-from-file, and
-  **QSON import** (also the doc's §1 import gap, but the dev-mode QSON
-  round-trip is the cheap first step and the natural test harness for the
-  real importer). ⛔
+  `FACTORY!` (factory reset), `RECOVER!`, replace-database-from-file. ⛔
 - **"Share system information"** diagnostic bundle for support. 🟡 HaLo's
   developer settings now *display* a System Information block (device key,
   version, data folder) — there is no shareable bundle.
@@ -300,8 +298,8 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
 1. ~~**ADIF import**~~ — done. Per-operation (HALO-173) and Logs-view
    whole-log (`AdifImportService`) both land ordinary QSOs, so there is no
    separate "history-only" import to build — PoLo's structural ⛔ here
-   doesn't apply to HaLo's shape. QSON import is the one remaining gap, but
-   it's not structural.
+   doesn't apply to HaLo's shape. QSON import is done too, as PoLo has it:
+   a Developer Mode tool.
 2. ~~**Call History lookup**~~ — done (HALO-304); no imported-ADIF-history
    half needed, per item 1.
 3. ~~Deep links `/qso`, `/vfo`, `/operation`~~ — done, and ~~Windows scheme
