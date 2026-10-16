@@ -115,7 +115,7 @@ class _FakeRigctld {
               mode = command.split(' ')[1];
               socket.add(utf8.encode('RPRT 0\n'));
             } else if (command == '+l RFPOWER_METER_WATTS') {
-              socket.add(utf8.encode('get_level:\nRFPOWER_METER_WATTS: $power\nRPRT 0\n'));
+              socket.add(utf8.encode('get_level: RFPOWER_METER_WATTS\n$power\nRPRT 0\n'));
             } else if (command.startsWith('L RFPOWER ')) {
               final fraction = double.parse(command.substring('L RFPOWER '.length).trim());
               power = (fraction * 100).round().toString();

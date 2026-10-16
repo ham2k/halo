@@ -12,6 +12,7 @@ import 'drivers/flexradio_driver.dart';
 import 'drivers/guohetec_driver.dart';
 import 'drivers/rigctld_driver.dart';
 import 'discovery.dart';
+import 'driver.dart';
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
@@ -72,6 +73,17 @@ const sotacatModel = EquipmentModel(
       driver: RigctldDriver(),
       transport: TcpTransport(),
       defaultConfig: {'host': 'sotacat.local', 'port': RigctldDriver.defaultPort},
+      // SOTAcat implements `send_morse`, `\stop_morse`, `KEYSPD`,
+      // `send_voice_mem` and `stop_voice_mem`, which a generic rigctld cannot
+      // be assumed to. The keyer range, two DVR messages and their 15 s
+      // length are the KX2/KX3's, from Elecraft's manuals.
+      overrides: {
+        cwKeyerConfigKey: true,
+        rigctldKeyerSpeedMinConfigKey: 8,
+        rigctldKeyerSpeedMaxConfigKey: 50,
+        voiceMemoriesConfigKey: 2,
+        voiceCeilingConfigKey: 15,
+      },
       discoverer: SotacatDiscoverer(typeKey: _sotacatTcpKey),
     ),
   ],

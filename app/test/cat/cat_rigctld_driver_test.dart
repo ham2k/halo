@@ -18,7 +18,9 @@ import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/rigctld_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/voice_activity_tracker.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 
 class _FakeSink implements EquipmentSink {
   final problems = <String?>[];
@@ -44,12 +46,14 @@ class _FakeSink implements EquipmentSink {
   @override
   void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
+  final keyerSpeeds = <int>[];
   @override
-  void reportKeyerSpeed(int wpm) {}
+  void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
   @override
   void reportCwProgress(CwSendProgress? progress) {}
+  final voiceActivity = <VoiceActivity?>[];
   @override
-  void reportVoiceActivity(VoiceActivity? activity) {}
+  void reportVoiceActivity(VoiceActivity? activity) => voiceActivity.add(activity);
 
   @override
   void reportVoiceMemories(List<VoiceMemory> memories) {}
@@ -142,10 +146,28 @@ void main() {
       expect(sink.readings, [const VfoReading(freqKHz: 7074)]);
     });
 
-    test('a labeled power line reports watts', () {
+    test('a level reads from the bare value after its get_level header', () {
+      // Hamlib labels `+f`'s answer (`Frequency: …`) but NOT `+l`'s: the value
+      // is bare, told apart only by the header before it — as captured from
+      // rigctld 4.7.2, and the same in 4.5. A parser waiting for
+      // `VD_METER: 13.8` reads no level from a real daemon at all.
       final sink = _FakeSink();
-      _stateOnlySession(sink).feed('get_level:\nRFPOWER_METER_WATTS: 12.500000\n');
-      expect(sink.powers, [12.5]);
+      _stateOnlySession(sink).feed('get_level: VD_METER\n13.800000\nRPRT 0\n');
+      expect(sink.meterReports, [(RadioMeter.supplyVolts, 13.8)]);
+    });
+
+    test('a --vfo daemon\'s header names the VFO, and the level still reads', () {
+      final sink = _FakeSink();
+      _stateOnlySession(sink).feed('get_level: currVFO:VD_METER\n13.7\nRPRT 0\n');
+      expect(sink.meterReports, [(RadioMeter.supplyVolts, 13.7)]);
+    });
+
+    test('a server that labels the value anyway still reads', () {
+      // Emulations differ from Hamlib here; the header is what names the
+      // level, whatever label the value line carries.
+      final sink = _FakeSink();
+      _stateOnlySession(sink).feed('get_level: VD_METER\nLevel Value: 13.9\nRPRT 0\n');
+      expect(sink.meterReports, [(RadioMeter.supplyVolts, 13.9)]);
     });
 
     test('error reports and unlabeled lines report nothing', () {
@@ -250,12 +272,16 @@ void main() {
       final sink = _FakeSink();
       final session = _stateOnlySession(sink);
       session.startUpdates();
+      // Nothing but the probe until it is answered: a read sent blind leaves
+      // a `--vfo` daemon waiting for its VFO or level name, and it takes the
+      // next line it is sent as that — running the rest of the line as
+      // commands (rigctld 4.7.2 -o, captured).
+      expect(sink.sent, ['+\\chk_vfo\n']);
       // The + prefix is what makes each answer parse on its own — a plain
       // `f` answers with a bare number indistinguishable from a plain `m`'s
-      // passband line without order bookkeeping. The probe leads so its
-      // answer lands before the SECOND poll; the burst behind it goes out
-      // bare on purpose rather than waiting one RTT.
-      expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n', '+l RFPOWER_METER_WATTS\n']);
+      // passband line without order bookkeeping.
+      session.feed('ChkVFO: 0\n');
+      expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n']);
       session.teardown();
     });
 
@@ -266,7 +292,7 @@ void main() {
         session.startUpdates();
         sink.sent.clear();
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
-        expect(sink.sent, ['+f\n', '+m\n', '+l RFPOWER_METER_WATTS\n']);
+        expect(sink.sent, ['+f\n', '+m\n']);
         session.teardown();
       });
     });
@@ -297,10 +323,10 @@ void main() {
         session.feed('ChkVFO: 1\n');
         sink.sent.clear();
         async.elapse(kPollSlow + const Duration(milliseconds: 10));
-        expect(sink.sent, ['+f currVFO\n', '+m currVFO\n', '+l currVFO RFPOWER_METER_WATTS\n']);
+        expect(sink.sent, ['+f currVFO\n', '+m currVFO\n']);
         session.setFrequency(14250);
         session.setMode('CW-R');
-        expect(sink.sent.sublist(3), ['F currVFO 14250000\n', 'M currVFO CWR -1\n']);
+        expect(sink.sent.sublist(2), ['F currVFO 14250000\n', 'M currVFO CWR -1\n']);
         session.teardown();
       });
     });
@@ -316,6 +342,75 @@ void main() {
         sink.sent.clear();
         session.setFrequency(14250);
         expect(sink.sent, ['F currVFO 14250000\n']);
+        session.teardown();
+      });
+    });
+
+    test('a daemon too old to know the probe answers an error, and is polled plain', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('RPRT -4\n');
+        expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n']);
+        session.teardown();
+      });
+    });
+
+    test('a probe nobody answers still ends in a polled connection', () {
+      // Waiting forever would leave a daemon that drops the probe connected
+      // and never read.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        async.elapse(const Duration(milliseconds: 1900));
+        expect(sink.sent, ['+\\chk_vfo\n']);
+        async.elapse(const Duration(milliseconds: 200));
+        expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n']);
+        session.teardown();
+      });
+    });
+
+    test('no poll of either kind reaches a daemon that has not answered the probe', () {
+      // A real TX watch runs every 200 ms; a probe slower than that would have
+      // the daemon parse a bare `+t` before it says how it wants addressing.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = RigctldSession(sink, const {telemetryIntervalConfigKey: 200});
+        session.startUpdates();
+        async.elapse(const Duration(milliseconds: 1900));
+        expect(sink.sent, ['+\\chk_vfo\n']);
+        session.teardown();
+      });
+    });
+
+    test('an answer after the timeout still corrects the addressing', () {
+      // A slow --vfo daemon is polled plain at first; left that way, every
+      // command for the rest of the connection is misparsed.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        async.elapse(const Duration(seconds: 2));
+        session.feed('ChkVFO: 1\n');
+        sink.sent.clear();
+        session.setFrequency(14250);
+        expect(sink.sent, ['F currVFO 14250000\n']);
+        expect(sink.diagnostics.last, contains('--vfo'));
+        session.teardown();
+      });
+    });
+
+    test('an answer arriving after the session stopped starts nothing', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.stopUpdates();
+        session.feed('ChkVFO: 0\n');
+        async.elapse(const Duration(seconds: 10));
+        expect(sink.sent, ['+\\chk_vfo\n']);
         session.teardown();
       });
     });
@@ -346,7 +441,9 @@ void main() {
         session.stopUpdates();
         sink.sent.clear();
         session.startUpdates();
-        expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n', '+l RFPOWER_METER_WATTS\n']);
+        expect(sink.sent, ['+\\chk_vfo\n'], reason: 'asked again, not assumed from the last connection');
+        session.feed('ChkVFO: 0\n');
+        expect(sink.sent, ['+\\chk_vfo\n', '+f\n', '+m\n']);
         session.teardown();
       });
     });
@@ -371,6 +468,7 @@ void main() {
         final sink = _FakeSink();
         final session = watching(sink);
         session.startUpdates();
+        session.feed('ChkVFO: 0\n');
         sink.sent.clear();
         async.elapse(const Duration(milliseconds: 450));
         expect(sink.sent, ['+t\n', '+t\n']);
@@ -378,11 +476,12 @@ void main() {
       });
     });
 
-    test('a keyed rig has every meter read, and each label is parsed', () {
+    test('a keyed rig has every meter read, and each answer is parsed', () {
       fakeAsync((async) {
         final sink = _FakeSink();
         final session = watching(sink);
         session.startUpdates();
+        session.feed('ChkVFO: 0\n');
         async.elapse(const Duration(milliseconds: 250));
         sink.sent.clear();
 
@@ -399,15 +498,14 @@ void main() {
           '+l VD_METER\n',
         ]);
 
-        session.feed('SWR: 1.400000\n');
-        session.feed('ALC: 0.250000\n');
-        session.feed('VD_METER: 13.600000\n');
-        session.feed('RFPOWER_METER_WATTS: 48.5\n');
+        session.feed('get_level: SWR\n1.400000\nRPRT 0\n');
+        session.feed('get_level: ALC\n0.250000\nRPRT 0\n');
+        session.feed('get_level: VD_METER\n13.600000\nRPRT 0\n');
+        session.feed('get_level: RFPOWER_METER_WATTS\n48.5\nRPRT 0\n');
         expect(sink.meterReports, [(RadioMeter.swr, 1.4), (RadioMeter.alc, 0.25), (RadioMeter.supplyVolts, 13.6), (RadioMeter.powerOut, 48.5)]);
-        // Hamlib is the one protocol here whose "power" IS a measurement,
-        // so the same reading is both the app's power and the meter — see
-        // the note at the parse.
-        expect(sink.powers, [48.5]);
+        // A measurement, never the station's power: reported as power, the
+        // 0 W between overs would replace the operator's on every QSO logged.
+        expect(sink.powers, isEmpty);
         session.teardown();
       });
     });
@@ -482,8 +580,8 @@ void main() {
           // Each meter answered as a real rigctld answers it: header, value,
           // status.
           session.feed('get_ptt:\nPTT: 1\nRPRT 0\n');
-          session.feed('get_level: RFPOWER_METER_WATTS\nRFPOWER_METER_WATTS: 48.5\nRPRT 0\n');
-          session.feed('get_level: SWR\nSWR: 1.4\nRPRT 0\n');
+          session.feed('get_level: RFPOWER_METER_WATTS\n48.5\nRPRT 0\n');
+          session.feed('get_level: SWR\n1.4\nRPRT 0\n');
         }
         expect(sink.sent.where((c) => c == '+f\n'), isNotEmpty, reason: 'the frequency poll was starved while transmitting');
         session.teardown();
@@ -496,9 +594,449 @@ void main() {
       // answers 0 — and a 0.0 SWR on the strip reads as a perfect match.
       final sink = _FakeSink();
       final session = watching(sink);
-      session.feed('SWR: 0.000000\n');
+      session.feed('get_level: SWR\n0.000000\nRPRT 0\n');
       expect(sink.meterReports, isEmpty);
       session.teardown();
+    });
+  });
+
+  group('levels the daemon refuses', () {
+    RigctldSession watching(_FakeSink sink) => RigctldSession(sink, const {telemetryIntervalConfigKey: 200});
+
+    /// The meter reads one keyed poll puts on the wire.
+    List<String> meterReads(_FakeSink sink, void Function() poll) {
+      sink.sent.clear();
+      poll();
+      return sink.sent.where((c) => c.startsWith('+l')).toList();
+    }
+
+    test('a refused meter is not asked for again on every keyed poll', () {
+      // Without this a rig with no ALC meter is asked for one several times
+      // a second for as long as the operator transmits, and answers RPRT -11
+      // every time.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('PTT: 1\n');
+        session.feed('get_level: ALC\nRPRT -11\n');
+        session.feed('get_level: VD_METER\nRPRT -4\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), ['+l RFPOWER_METER_WATTS\n', '+l SWR\n']);
+        session.teardown();
+      });
+    });
+
+    test('a level name the daemon does not know is retired too', () {
+      // An older Hamlib has no RFPOWER_METER_WATTS and answers RPRT -1 for
+      // it — several times a second, for as long as the operator transmits.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 0\n');
+        session.feed('PTT: 1\n');
+        session.feed('get_level: RFPOWER_METER_WATTS\nRPRT -1\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), isNot(contains('+l RFPOWER_METER_WATTS\n')));
+        session.teardown();
+      });
+    });
+
+    test('a failure that could pass is not a refusal', () {
+      // RPRT -5 is a timeout talking to the radio: asked again, it may answer.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('PTT: 1\n');
+        session.feed('get_level: SWR\nRPRT -5\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), contains('+l SWR\n'));
+        session.teardown();
+      });
+    });
+
+    test('a refusal is a fact about this connection, re-learned on the next', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 0\n');
+        session.feed('get_level: SWR\nRPRT -11\n');
+        session.stopUpdates();
+        session.startUpdates();
+        session.feed('ChkVFO: 0\n');
+        session.feed('PTT: 1\n');
+        expect(
+          meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))),
+          contains('+l SWR\n'),
+          reason: 'a reconnect may reach a different daemon or backend',
+        );
+        session.teardown();
+      });
+    });
+
+    test('a refusal of a question the daemon misparsed retires nothing', () {
+      // The reads sent before `\chk_vfo` is answered reach a `--vfo` daemon
+      // with no VFO, and it answers with one of its own making (captured
+      // from rigctld 4.7.2 -o). That RPRT -1 is about the parse, not the
+      // level — retiring on it would lose a meter the rig does have.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 1\n');
+        session.feed('get_level: None:SWR\nRPRT -1\n');
+        session.feed('PTT: 1\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), contains('+l currVFO SWR\n'));
+        session.teardown();
+      });
+    });
+
+    test('what the session negotiated and was refused is one developer diagnostic', () {
+      // The sink keeps a single diagnostic, so separate calls would each hide
+      // the last — "why no SWR through rigctld?" needs the mode and the
+      // refusals together.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 1\n');
+        session.feed('get_level: currVFO:SWR\nRPRT -11\n');
+        session.feed('get_level: currVFO:ALC\nRPRT -4\n');
+        expect(sink.diagnostics.last, '--vfo · refused SWR -11, ALC -4');
+        session.teardown();
+      });
+    });
+
+    test('an RPRT that answers something else retires nothing', () {
+      // `RPRT -11` after a refused `F` or `T` is not about any level.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('PTT: 1\n');
+        session.feed('get_level: SWR\n1.2\nRPRT 0\nRPRT -11\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), contains('+l SWR\n'));
+        session.teardown();
+      });
+    });
+  });
+
+  group('CW', () {
+    final registry = EquipmentRegistry();
+
+    test('offered on the SOTAcat entry, and on a generic rigctld only when a developer says', () {
+      // Whether the backend behind a daemon keys Morse cannot be asked
+      // without keying it, and most answer `send_morse` with RPRT -4.
+      const driver = RigctldDriver();
+      expect(driver.canKeyCwWith(const {}), isFalse);
+      expect(driver.canKeyCwWith(const {cwKeyerConfigKey: true}), isTrue);
+      final sotacat = registry.typeFor('sotacat-tcp')!;
+      expect(sotacat.driver.canKeyCwWith(sotacat.driverConfig(const {})), isTrue);
+      final generic = registry.typeFor('rigctld-tcp')!;
+      expect(generic.driver.canKeyCwWith(generic.driverConfig(const {})), isFalse);
+    });
+
+    test('a message goes out with b, never naming a VFO, even to a --vfo daemon', () {
+      // `send_morse` takes the rest of the line as its text: a `currVFO`
+      // there is keyed as Morse (captured against rigctld 4.7.2 -o).
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 1\n');
+        sink.sent.clear();
+        session.sendCw('cq test');
+        expect(sink.sent, ['+b CQ TEST\n']);
+        session.teardown();
+      });
+    });
+
+    test('a long message is paced out in Elecraft-buffer chunks', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        sink.sent.clear();
+        session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+        expect(sink.sent.single.length, lessThanOrEqualTo('+b \n'.length + rigctldMorseChunkChars));
+        async.elapse(const Duration(minutes: 1));
+        expect(sink.sent.where((c) => c.startsWith('+b ')), hasLength(2));
+        session.teardown();
+      });
+    });
+
+    test('stop abandons the queue and tells the daemon to stop keying, with no VFO', () {
+      // A --vfo daemon reads a VFO after `\stop_morse` as a further command.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 1\n');
+        session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+        sink.sent.clear();
+        session.stopCw();
+        expect(sink.sent, ['+\\stop_morse\n']);
+        expect(session.cwSending, isFalse);
+        async.elapse(const Duration(minutes: 1));
+        expect(sink.sent.where((c) => c.startsWith('+b ')), isEmpty, reason: 'the rest of the message must not follow the stop');
+        session.teardown();
+      });
+    });
+
+    test('the keyer speed is read once the probe is answered, never in the connect burst', () {
+      // Sent blind, `+l KEYSPD` reaches a `--vfo` daemon behind a level read
+      // that swallows its `+l`, and the daemon then runs `KEYSPD` as one-letter
+      // commands — `E` is set_mem, `Y` set_ant (rigctld 4.7.2 -o, captured).
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = RigctldSession(sink, const {telemetryIntervalConfigKey: 600000, cwKeyerConfigKey: true});
+        session.startUpdates();
+        expect(sink.sent.where((c) => c.contains('KEYSPD')), isEmpty);
+        session.feed('ChkVFO: 1\n');
+        expect(sink.sent.where((c) => c.contains('KEYSPD')), ['+l currVFO KEYSPD\n']);
+        session.feed('ChkVFO: 1\n');
+        expect(sink.sent.where((c) => c.contains('KEYSPD')), hasLength(1), reason: 'once per connection');
+        session.teardown();
+      });
+    });
+
+    test('a plain daemon is asked bare, and a node that does not key is not asked', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final keys = RigctldSession(sink, const {telemetryIntervalConfigKey: 600000, cwKeyerConfigKey: true});
+        keys.startUpdates();
+        keys.feed('ChkVFO: 0\n');
+        expect(sink.sent, contains('+l KEYSPD\n'));
+        keys.teardown();
+
+        final quiet = _FakeSink();
+        final plain = _stateOnlySession(quiet);
+        plain.startUpdates();
+        plain.feed('ChkVFO: 0\n');
+        expect(quiet.sent.where((c) => c.contains('KEYSPD')), isEmpty, reason: 'a daemon with no keyer would only refuse it');
+        plain.teardown();
+      });
+    });
+
+    test('the keyer speed is set on the VFO, clamped, then read back', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 1\n');
+        sink.sent.clear();
+        session.setKeyerSpeed(99);
+        expect(sink.sent, ['L currVFO KEYSPD ${rigctldKeyerSpeedRange.max}\n', '+l currVFO KEYSPD\n']);
+        session.feed('get_level: currVFO:KEYSPD\n25\nRPRT 0\n');
+        expect(sink.keyerSpeeds, [25]);
+        session.teardown();
+      });
+    });
+
+    test('an entry\'s pinned range is what the speed control offers and the set clamps to', () {
+      // The SOTAcat's KX2/KX3 take 8-50; offered the generic 4-60, the control
+      // shows speeds the radio silently refuses.
+      final sotacat = EquipmentRegistry().typeFor('sotacat-tcp')!;
+      final sink = _FakeSink();
+      final session = sotacat.driver.createSession(sink, sotacat.driverConfig(const {})) as RigctldSession;
+      expect(session.keyerSpeedRange, (min: 8, max: 50));
+      session.setKeyerSpeed(60);
+      expect(sink.sent.first, 'L KEYSPD 50\n');
+      session.teardown();
+    });
+
+    test('where the speed cannot be read back, the set speed paces the queue', () {
+      // Paced at the 20 WPM default instead, a 12 WPM keyer is handed its next
+      // chunk while the last is still going out, and overruns its buffer.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('get_level: KEYSPD\nRPRT -11\n');
+        session.setKeyerSpeed(12);
+        expect(sink.keyerSpeeds, isEmpty, reason: 'never reported as the radio\'s');
+        sink.sent.clear();
+        session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+        // The first chunk's duration at 12 WPM is well past its duration at 20.
+        final firstChunk = sink.sent.single.substring(3).trim();
+        async.elapse(cwDuration(firstChunk, defaultCwSpeedWpm) + const Duration(milliseconds: 50));
+        expect(sink.sent.where((c) => c.startsWith('+b ')), hasLength(1), reason: 'the second chunk waits for the 12 WPM keyer');
+        async.elapse(const Duration(minutes: 1));
+        expect(sink.sent.where((c) => c.startsWith('+b ')), hasLength(2));
+        session.teardown();
+      });
+    });
+
+    test('a refused send keys nothing, so the strip stops showing it and the developer is told', () {
+      // A backend without Morse answers `send_morse` with RPRT -4. Paced on
+      // regardless, the strip animates a message nobody hears.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 0\n');
+        session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+        session.feed('send_morse: CQ CQ CQ DE N0DEV N0DEV\nRPRT -4\n');
+        expect(session.cwSending, isFalse);
+        expect(sink.diagnostics.last, contains('send_morse -4'));
+        async.elapse(const Duration(minutes: 1));
+        expect(sink.sent.where((c) => c.startsWith('+b ')), hasLength(1), reason: 'the rest of the message must not follow');
+        session.teardown();
+      });
+    });
+
+    test('a refused stop is told to the developer: the chunk on the radio plays out', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 1\n');
+        session.stopCw();
+        session.feed('stop_morse: currVFO\nRPRT -11\n');
+        expect(sink.diagnostics.last, contains('stop_morse -11'));
+        session.teardown();
+      });
+    });
+
+    test('a read-back of zero leaves the asked speed pacing the queue', () {
+      // A backend that sets KEYSPD but reads it back as 0: ignoring the 0 is
+      // right for the speed control, and pacing must not fall back to 20 WPM.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed('ChkVFO: 0\n');
+        session.setKeyerSpeed(12);
+        session.feed('get_level: KEYSPD\n0\nRPRT 0\n');
+        sink.sent.clear();
+        session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+        final firstChunk = sink.sent.single.substring(3).trim();
+        async.elapse(cwDuration(firstChunk, defaultCwSpeedWpm) + const Duration(milliseconds: 50));
+        expect(sink.sent.where((c) => c.startsWith('+b ')), hasLength(1), reason: 'the second chunk waits for the 12 WPM keyer');
+        session.teardown();
+      });
+    });
+
+    test('a keyer speed of zero is a backend without one, not a stopped keyer', () {
+      // The dummy backend answers 0 until a speed is set. Reported, the
+      // speed control would show 0 WPM and the queue would pace at it.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.feed('get_level: KEYSPD\n0\nRPRT 0\n');
+      expect(sink.keyerSpeeds, isEmpty);
+      session.teardown();
+    });
+  });
+
+  group('voice', () {
+    final registry = EquipmentRegistry();
+
+    /// The SOTAcat entry's session, already answered as a plain or `--vfo`
+    /// daemon.
+    RigctldSession sotacat(_FakeSink sink, {bool vfoMode = false}) {
+      final type = registry.typeFor('sotacat-tcp')!;
+      final session = type.driver.createSession(sink, {...type.driverConfig(const {}), telemetryIntervalConfigKey: 600000}) as RigctldSession;
+      session.startUpdates();
+      session.feed('ChkVFO: ${vfoMode ? 1 : 0}\n');
+      sink.sent.clear();
+      return session;
+    }
+
+    test('offered on the SOTAcat entry with the KX DVR\'s two memories, and nowhere it is not pinned', () {
+      final sotacatType = registry.typeFor('sotacat-tcp')!;
+      expect(sotacatType.driver.voiceMemoryCountWith(sotacatType.driverConfig(const {})), 2);
+      final generic = registry.typeFor('rigctld-tcp')!;
+      expect(generic.driver.voiceMemoryCountWith(generic.driverConfig(const {})), 0);
+      final session = sotacat(_FakeSink());
+      expect(session.voiceMemoryCount, 2);
+      expect(session.canRecordVoice, isFalse, reason: 'Hamlib has no command that records');
+      expect(session.voiceMemoryCeiling, const Duration(seconds: 15));
+      session.teardown();
+    });
+
+    test('a memory plays with send_voice_mem, never naming a VFO, even to a --vfo daemon', () {
+      // The `+` form on a `--vfo` daemon waits for an argument it never gets,
+      // and a VFO there is read as the memory (rigctld 4.7.2 -o, captured).
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = sotacat(sink, vfoMode: true);
+        session.playVoiceMemory(2);
+        expect(sink.sent, ['\\send_voice_mem 2\n']);
+        expect(sink.voiceActivity, [const VoiceActivity(memory: 2)]);
+        session.teardown();
+      });
+    });
+
+    test('a memory the radio does not have is not sent', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = sotacat(sink);
+        session.playVoiceMemory(3);
+        session.playVoiceMemory(0);
+        expect(sink.sent, isEmpty);
+        expect(sink.voiceActivity, isEmpty);
+        session.teardown();
+      });
+    });
+
+    test('the memory is over when the radio stops transmitting', () {
+      // Hamlib has no "still playing?", so the transmitter is the answer —
+      // what the KX's own TQ; is on the Kenwood driver.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = sotacat(sink);
+        session.playVoiceMemory(1);
+        async.elapse(voiceActivityPollInterval);
+        expect(sink.sent, contains('+t\n'), reason: 'asked while it plays, not left to the slow PTT watch');
+        session.feed('get_ptt:\nPTT: 1\nRPRT 0\n');
+        session.feed('get_ptt:\nPTT: 0\nRPRT 0\n');
+        expect(sink.voiceActivity, [const VoiceActivity(memory: 1), null]);
+        session.teardown();
+      });
+    });
+
+    test('a memory the radio never keys for is shown doubtful, not as a short play', () {
+      // An empty memory, or the rig not in a voice mode: refused with an
+      // unlabeled RPRT nothing ties back to the play.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = sotacat(sink);
+        session.playVoiceMemory(1);
+        // Past the radio's chance to key up, which the tracker waits out.
+        async.elapse(voiceActivityPollInterval);
+        session.feed('get_ptt:\nPTT: 0\nRPRT 0\n');
+        expect(sink.voiceActivity.last, const VoiceActivity(memory: 1, doubtful: true));
+        session.teardown();
+      });
+    });
+
+    test('stop tells the daemon, with no VFO, and clears what showed', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = sotacat(sink, vfoMode: true);
+        session.playVoiceMemory(1);
+        sink.sent.clear();
+        session.stopVoice();
+        expect(sink.sent, ['\\stop_voice_mem\n']);
+        expect(sink.voiceActivity.last, isNull);
+        session.teardown();
+      });
+    });
+
+    test('a memory still showing at its 15 s length is stopped on the air', () {
+      // A rig whose PTT read never comes back would otherwise show the message
+      // playing forever — and one the app stops showing must not still be
+      // transmitting.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = sotacat(sink);
+        session.playVoiceMemory(1);
+        session.feed('get_ptt:\nPTT: 1\nRPRT 0\n');
+        async.elapse(const Duration(seconds: 16));
+        expect(sink.sent, contains('\\stop_voice_mem\n'));
+        expect(sink.voiceActivity.last, isNull);
+        session.teardown();
+      });
     });
   });
 }

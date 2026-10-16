@@ -300,7 +300,7 @@ abstract class AntennaTunerSession implements EquipmentSession {
 ///
 /// A capability of its own rather than three more methods on
 /// [TransceiverSession], for the same reason [AntennaSwitchSession] is:
-/// most radio protocols here (flrig, rigctld, Kenwood…) have no such
+/// most radio protocols here (flrig, HRD, N3FJP, Commander) have no such
 /// command, and "this radio ignores sendCw" must not look like "this radio
 /// keyed nothing because the text was empty" — and a keyer has no VFO to be
 /// a transceiver with at all. A transceiver that keys implements both.
@@ -392,8 +392,9 @@ const maxVoiceMemories = 8;
 
 /// The config key under which a catalogue entry says whether the radio's
 /// CAT keys CW — `true`/`false` on a driver that keys by default (Icom,
-/// Yaesu), where absent means it does; the Kenwood driver keys only with a
-/// dialect named (`cwDialect`, kenwood_driver.dart). Like
+/// Yaesu), where absent means it does, and on rigctld, where absent means it
+/// does not; the Kenwood driver keys only with a dialect named (`cwDialect`,
+/// kenwood_driver.dart). Like
 /// [voiceMemoriesConfigKey]: pinned on the named entries, asked under
 /// developer mode on the generics.
 const cwKeyerConfigKey = 'cwKeyer';

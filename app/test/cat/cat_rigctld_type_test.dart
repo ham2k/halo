@@ -7,6 +7,7 @@
 // tests is that nothing rigctld-specific leaked into connection handling.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/rigctld_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
@@ -37,8 +38,12 @@ void main() {
     ];
     // Plus the meter and poll cadences, which are how often to ask the
     // daemon rather than where it is — the driver's questions, not the
-    // transport's.
-    expect(keys, ['host', 'port', telemetryIntervalConfigKey, pollIntervalConfigKey]);
+    // transport's — and what it keys, which only a developer is asked.
+    expect(keys, ['host', 'port', telemetryIntervalConfigKey, pollIntervalConfigKey, cwKeyerConfigKey, voiceMemoriesConfigKey]);
+    for (final key in [cwKeyerConfigKey, voiceMemoriesConfigKey]) {
+      final field = type.configElements().firstWhere((e) => e['key'] == key);
+      expect(field['devMode'], isTrue, reason: 'an operator on a generic entry is not asked what the backend behind their daemon can do');
+    }
   });
 
   test('and tells the operator the daemon is theirs to run', () {

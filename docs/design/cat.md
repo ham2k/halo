@@ -1126,10 +1126,13 @@ writing it:
   answer bare text, so the driver reads XML-RPC values in both forms. flrig answers 0 with no rig
   behind it, and the driver reads that as no reading — passed on, it would reset the operator's
   power on every poll.
-- **rigctld** reads real watts (Hamlib's `RFPOWER_METER_WATTS`), but that level is read-only in
-  Hamlib — a `set_level` against it is rejected by every correct backend. Writing goes through
-  `RFPOWER` instead, a 0.0-1.0 fraction of the rig's own maximum with no command that states what
-  that maximum is, so the write path carries the same assumed-ceiling guess as the four below it.
+- **rigctld** reports no power reading. Hamlib's watts level, `RFPOWER_METER_WATTS`, is a measured
+  output meter — 0 W between overs, a speech sample on SSB — so it fills the meter strip while the
+  radio is keyed and never the station's power: reported as power, the 0 W between overs would replace
+  the operator's on every QSO logged. It is read-only too — a `set_level` against it is rejected by
+  every correct backend. Writing goes through `RFPOWER` instead, a 0.0-1.0 fraction of the rig's own
+  maximum with no command that states what that maximum is, so the write path carries the same
+  assumed-ceiling guess as the four below it.
 - **The K4** is the exception on the Kenwood driver: `PCX` reads real watts in explicit L/H/X ranges
   ([k4-cat.md](k4-cat.md)).
 - **Kenwood, FT-891, Icom CI-V, FlexRadio** represent power as a relative scale (Kenwood/FT-891's
@@ -1174,7 +1177,7 @@ and a row of its own in Settings → Radio; the settings it edits stay declared 
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
 `AntennaSwitchSession` rather than adding three methods to `TransceiverSession`, because most
-protocols in this layer (flrig, rigctld, Kenwood) have no such command, "this radio ignores sendCw"
+protocols in this layer (flrig, HRD, N3FJP, Commander) have no such command, "this radio ignores sendCw"
 must never look like "the text was empty" — and a keyer of its own (a K1EL WinKeyer,
 `kCategoryKeyer`) has no VFO to be a transceiver with. A transceiver that keys implements both.
 
@@ -1203,15 +1206,24 @@ button says why in `Semantics` or nowhere — the app has no hover tooltips
 FlexRadio's and the WinKeyer's — so the IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, the
 FLEX-6000 line and a K1EL WinKeyer — plus the placeholder radio, which keys nothing but remembers a
 speed, so the surfaces can be driven on a web build with no rig. A fifth, the Kenwood driver, keys
-through `KY` on the entries that name a dialect (below).
+through `KY` on the entries that name a dialect (below). A sixth, rigctld, keys through Hamlib's `+b`
+(`send_morse`), stops with `+\stop_morse` and sets the speed as the `KEYSPD` level — on the entries
+that pin `cwKeyer` (the SOTAcat). Neither takes a VFO argument even on a `--vfo` daemon:
+`send_morse` reads the rest of the line as its text, so a `currVFO` there is keyed. Both go out in
+the extended form so a refusal comes back under its own header: a refused `send_morse` keyed
+nothing, so the queue is dropped and the strip stops showing it, and either refusal is left as a
+developer diagnostic.
 
 **Whether a radio keys is a fact about its entry, asked of its node.** `EquipmentDriver.canKeyCw` is
 the driver's word, but a driver serves a line — the CI-V driver an IC-706 as much as an IC-7300, the
 Kenwood driver a QMX as much as a K4 — so what the service reads is `canKeyCwWith(config)`, the
 driver's answer for THAT node's merged config (`CatService._radioKeysCw`): `cwKeyer` on Icom and
-Yaesu (absent means yes, the line's documented default), `cwDialect` on Kenwood (absent means no).
-The named entries pin these as overrides, the way the IC-705 pins its addresses; the four GENERIC
-entries prefill them off and, under developer mode, show them as fields (keyer_config.dart; the
+Yaesu (absent means yes, the line's documented default), `cwDialect` on Kenwood (absent means no),
+`cwKeyer` on rigctld (absent means no: which backend is behind a daemon cannot be asked without keying
+it, and most answer `send_morse` with `RPRT -4`).
+The named entries pin these as overrides, the way the IC-705 pins its addresses; the GENERIC entries
+(and rigctld, whose absent `cwKeyer` already means no) prefill them off and, under developer mode,
+show them as fields (keyer_config.dart; the
 Kenwood driver's own dialect pickers) — the catalogue does not know which rig is behind a generic,
 and a rig with no keyer offered as the key in use keys nothing while the strip shows a message going
 out. A node stored before the field existed has no key and keys as it always did.
@@ -1481,6 +1493,15 @@ Three consequences that bit during the build, all worth keeping:
   fires, so the frequency is read only on the 9-second staleness ceiling. The driver therefore keeps
   an allow-list of the state answers (`Frequency:`, `Mode:`). A deny-list of telemetry lines is
   starved again by the next line a new question brings.
+- **A level's value is unlabeled.** Hamlib labels `+f`'s answer (`Frequency: …`) but not `+l`'s:
+  `get_level: SWR`, then a bare `1.5`, then `RPRT 0` (`get_level: currVFO:SWR` on a `--vfo` daemon;
+  captured from rigctld 4.7.2, the same in 4.5). The level is named only by the header line before
+  it, so that is what the driver reads it by.
+- **Nothing goes out before `\chk_vfo` is answered.** A read sent ahead of the probe reaches a
+  `--vfo` daemon with no VFO; it takes the next line it is sent as the missing argument and runs what
+  is left of that line as one-letter commands (`get_level: None:+l`, captured from 4.7.2 `-o`). So
+  the session sends the probe alone and starts polling from its answer: `ChkVFO: 0/1`, an `RPRT` from
+  a daemon too old to know it (plain), or two seconds of silence (plain).
 - **The transition burst fires from inside a response.** The meter read that matters most is the one
   triggered by the PTT answer saying the rig has just been keyed — and at that moment the request
   being answered is still the outstanding one. A driver that guarded the burst on "nothing
@@ -1541,7 +1562,7 @@ generic Yaesu entry names none.
 |---|---|---|
 | Icom CI-V | `0x1C 0x00`, polled | power out, SWR, ALC (`0x15`, Icom's own published breakpoints) |
 | flrig | `rig.get_ptt` | `get_pwrmeter` (watts outright), `get_swrmeter` (a ratio); flrig 2.0.12 has no ALC or voltage method |
-| rigctld | `+t` | `RFPOWER_METER_WATTS`, `SWR`, `ALC`, `VD_METER` |
+| rigctld | `+t` | `RFPOWER_METER_WATTS`, `SWR`, `ALC`, `VD_METER`; a level refused with `RPRT -1`/`-4`/`-11` is not asked again on that connection |
 | Ham Radio Deluxe | `get button-select TX`, where `get buttons` lists a TX button; slowed after two unanswered | none: HRD's meters are per-radio sliders in unstated units |
 | DXLab Commander | `CmdSendTX`, slowed after two unanswered | none: Commander publishes no meter message |
 | N3FJP | none: the API has no PTT read | none |
@@ -1639,15 +1660,18 @@ driver, says so (`voiceDialect`/`voiceMemories` overrides, the way `ifModeOffset
 TS-590SG and TS-480 pin zero too: their memories need an optional voice unit the app cannot detect.
 The Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706, IC-7100, X6100 and G90
 pin zero), and the generic entries prefill zero and ask under developer mode — see § CW keying on why
-a generic asks.
+a generic asks. rigctld is the same, with `voiceMemories` absent meaning none: Hamlib's
+`\send_voice_mem N` and `\stop_voice_mem`, plain and with no VFO argument even on a `--vfo` daemon
+(the `+` form there waits for an argument it never gets), on the entries that pin a count — the
+SOTAcat's two. Hamlib has no command that records.
 
 **The radio says when it is done, or the ceiling does.** No protocol here reports a memory's
 progress, and only some answer "still playing?", so a session reports `VoiceActivity` (memory,
 playing or recording — `EquipmentSink.reportVoiceActivity`, `CatService.voiceActivity`) as it sends
 the command and then asks its own question every second (voice_activity_tracker.dart): Yaesu's `PB0;`
 answers the channel playing, the K4's `DA;` answers `DA0;` when idle, Icom and the KX line have no
-such read so they are asked whether they are transmitting (`0x1C 0x00`, `TQ;`) — a voice memory
-transmits. Past the radio's own memory length — `VoiceKeyerSession.voiceMemoryCeiling`, pinned per
+such read so they are asked whether they are transmitting (`0x1C 0x00`, `TQ;`, and rigctld's `+t`) —
+a voice memory transmits. Past the radio's own memory length — `VoiceKeyerSession.voiceMemoryCeiling`, pinned per
 named entry from its manual (`voiceCeilingSeconds`: an Icom's 90, the FT-891's 20, the FTDX10's 90,
 a KX2/KX3's 15) and `voiceActivityCeiling` (15 s) on a generic entry or a radio whose manual has not
 been read for it — the session STOPS it on the radio through its own stop and clears what it showed,

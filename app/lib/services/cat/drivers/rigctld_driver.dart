@@ -16,6 +16,12 @@
 // for the life of the connection. `+f` answers with a self-labeling
 // `Frequency: 14250000` line, so every line parses on its own.
 //
+// Levels are the exception: `+l SWR` answers a `get_level: SWR` header and
+// then the BARE value (`1.5`), unlabeled — so a level reading is told apart
+// by the header line before it, and a level the daemon refuses (`RPRT -1`
+// unknown name, `-4` not implemented, `-11` not available) is not asked for
+// again on this connection.
+//
 // Writes are plain commands (`F`, `M`); their `RPRT n` acknowledgements are
 // deliberately ignored. A rejected set needs no handling of its own — the
 // next poll reports the unchanged state, which is the truth on the dial.
@@ -26,9 +32,13 @@
 // `--vfo` mode every command must name one, or the parser consumes the
 // next command as the name (a `+f\n+m\n` burst loses the `+m`). The two
 // forms are mutually unintelligible, so startUpdates asks `\chk_vfo`
-// first and the session adapts — the same negotiation rigctl's own NET
-// backend performs.
+// and sends nothing else until it is answered — the same negotiation
+// rigctl's own NET backend performs. Not even the first reads go out ahead
+// of it: a blind `+l` leaves a `--vfo` daemon waiting for a level name, and
+// it takes the next line it is sent as one, running what is left of that
+// line as one-letter commands.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -36,8 +46,11 @@ import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import 'cw_send_queue.dart';
+import 'keyer_config.dart';
 import 'poll_config.dart';
 import 'telemetry_config.dart';
+import 'voice_activity_tracker.dart';
 
 const _lineFeed = 0x0a;
 const _carriageReturn = 0x0d;
@@ -107,25 +120,50 @@ class RigctldDriver extends EquipmentDriver {
   @override
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder(['LSB', 'USB', 'CW', 'AM', 'FM', ...hamlibModesByAppMode.keys]);
 
+  @override
+  bool get canKeyCw => true;
+
+  /// Off unless the entry says otherwise: which backend is behind the daemon
+  /// is not something the app can ask without keying it, and many Hamlib
+  /// backends answer `send_morse` with `RPRT -4`. A named entry for a device
+  /// that keys (SOTAcat) pins [cwKeyerConfigKey]; on the generic one a
+  /// developer says.
+  @override
+  bool canKeyCwWith(Map<String, dynamic> config) => cwKeyerFromConfig(config, fallback: false);
+
+  /// None unless the entry says, for the reason [canKeyCwWith] gives: the
+  /// SOTAcat pins its KX2/KX3's two; on the generic entry a developer says.
+  @override
+  int voiceMemoryCountWith(Map<String, dynamic> config) => voiceMemoriesFromConfig(config, fallback: 0);
+
   /// The levels Hamlib defines for these, all of them read-only meters. No
   /// ALC-free or SWR-free backend is excluded by declaring them: a level a
-  /// backend does not implement answers `RPRT -11`, which this driver
-  /// ignores like every other error, and the slot simply stays empty.
+  /// backend does not implement answers `RPRT -11`, after which this driver
+  /// stops asking for it, and the slot simply stays empty.
   @override
   Set<RadioMeter> get telemetryMeters => const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
 
-  /// The meter cadence, and nothing else: where the daemon is listening is
-  /// the TCP transport's question.
+  /// The meter cadence, and what the backend behind the daemon can key —
+  /// asked only under developer mode. Where the daemon is listening is the
+  /// TCP transport's question.
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
     telemetryConfigElement(),
     pollConfigElement(),
+    ...keyerConfigElements(overrides),
   ];
+
+  /// The keyer range and memory length a named entry pins are read in
+  /// [createSession] and never shown as fields — see
+  /// [rigctldKeyerSpeedMinConfigKey].
+  @override
+  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, rigctldKeyerSpeedMinConfigKey, rigctldKeyerSpeedMaxConfigKey, voiceCeilingConfigKey};
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
     pollIntervalConfigKey => validatePollInterval(value),
+    voiceMemoriesConfigKey => validateVoiceMemories(value),
     _ => null,
   };
 
@@ -140,12 +178,57 @@ class RigctldDriver extends EquipmentDriver {
 /// conversions do; wrong for a QRP or a high-power station.
 const _assumedMaxWatts = 100;
 
-class RigctldSession implements TransceiverSession, PttSession {
+/// How much of a message one `b` carries. Hamlib hands the whole line to the
+/// backend, which splits it for the radio's own buffer — but the queue paces
+/// and reports by chunk, and a long message sent whole could only be
+/// abandoned by a `\stop_morse` the backend may not have. 24 is the Elecraft
+/// `KY` buffer, the radio a SOTAcat drives.
+const rigctldMorseChunkChars = 24;
+
+/// The speeds asked of `KEYSPD` when the entry pins none. rigctld has no
+/// command that states a backend's range, so this is the widest any family
+/// here accepts (Kenwood's 4-60); a radio that takes less clamps, and the
+/// read-back after every set shows what it took.
+const rigctldKeyerSpeedRange = (min: 4, max: 60);
+
+/// Config keys an entry pins its radio's keyer range under, from the radio's
+/// CAT manual — the SOTAcat's KX2/KX3 take 8-50. Never fields: the range is
+/// a fact about the radio behind the daemon, which only a named entry knows.
+const rigctldKeyerSpeedMinConfigKey = 'keyerSpeedMin';
+const rigctldKeyerSpeedMaxConfigKey = 'keyerSpeedMax';
+
+/// The `RPRT` codes after which a level is not asked for again on this
+/// connection: Hamlib's EINVAL (a level name the daemon does not know — an
+/// older Hamlib asked for `RFPOWER_METER_WATTS`), ENIMPL and ENAVAIL. A read
+/// with fixed arguments refused for any of these is refused every time.
+const _retiringLevelErrors = {-1, -4, -11};
+
+class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
 
   RigctldSession(this._sink, [this._config = const {}]);
 
   final Map<String, dynamic> _config;
+
+  /// Whether this node keys CW ([RigctldDriver.canKeyCwWith]) — and so
+  /// whether connecting reads the keyer speed at all, which a daemon without
+  /// a keyer would only refuse.
+  late final bool _keysCw = const RigctldDriver().canKeyCwWith(_config);
+
+  late final ({int min, int max}) _keyerSpeedRange = (
+    min: (_config[rigctldKeyerSpeedMinConfigKey] as num?)?.toInt() ?? rigctldKeyerSpeedRange.min,
+    max: (_config[rigctldKeyerSpeedMaxConfigKey] as num?)?.toInt() ?? rigctldKeyerSpeedRange.max,
+  );
+
+  /// Whether this connection is still waiting for its `\chk_vfo` answer,
+  /// before which nothing is polled — see this file's header.
+  bool _awaitingProbe = false;
+
+  /// Starts the connection plain if the probe is never answered at all,
+  /// rather than leaving a daemon that ignores it unpolled.
+  Timer? _probeTimeout;
+
+  static const _probeWait = Duration(seconds: 2);
 
   late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode, slow: idlePollIntervalFor(_config));
 
@@ -170,48 +253,114 @@ class RigctldSession implements TransceiverSession, PttSession {
   final _residual = <int>[];
 
   /// Whether the daemon parses a VFO name on every command (`--vfo` mode),
-  /// per its `\chk_vfo` answer. Until that answer lands, commands go out
-  /// plain: a `--vfo` daemon still answers a plain `+f` (it loses the `+m`
-  /// riding behind it, recovered on the next poll), whereas `currVFO` sent
-  /// to a plain daemon is read as further commands and executes garbage.
+  /// per its `\chk_vfo` answer. Until that answer lands, nothing is polled,
+  /// and a set the operator makes goes out plain: `currVFO` sent to a plain
+  /// daemon is read as further commands and executes garbage.
   bool _vfoMode = false;
 
   /// The cadence the poller has settled on — for tests, which otherwise
   /// could only infer it from timing.
   Duration get pollInterval => _poller.interval;
 
+  /// The level whose `get_level:` header was the last line, so the bare
+  /// value after it can be read as that level. Null between answers.
+  String? _pendingLevel;
+
+  /// Levels this daemon refused on this connection — see
+  /// [_retiringLevelErrors]. Re-learned per connection, like [_vfoMode]: a
+  /// reconnect may reach a different daemon or backend.
+  final _refusedLevels = <String, int>{};
+
+  /// How the probe came out — `--vfo`, plain, or plain because nothing
+  /// answered it — for the developer diagnostic ([_reportDiagnostic]).
+  String? _probeOutcome;
+
+  /// The last CW command the daemon refused, as `send_morse -4` — see
+  /// [_pendingCommand].
+  String? _refusedCommand;
+
+  /// The CW command whose extended header was the last line, so the `RPRT`
+  /// after it can be told apart from a plain write's.
+  String? _pendingCommand;
+
+  /// What the radio last said its keyer runs at — the pace [_cwQueue]
+  /// spaces chunks by.
+  int? _keyerSpeed;
+
+  /// "Still playing?" is "still transmitting?" — `+t`, as the KX's own
+  /// `TQ;` is on the Kenwood driver: Hamlib has no voice-memory status.
+  late final VoiceActivityTracker _voice = VoiceActivityTracker(
+    report: _sink.reportVoiceActivity,
+    stop: stopVoice,
+    ceiling: () => voiceMemoryCeiling,
+    onCeiling: (limit) {
+      _ceilingNote = 'voice memory stopped at the ${limit.inSeconds} s ceiling';
+      _reportDiagnostic();
+    },
+    poll: () => _send('+t$_vfo'),
+  );
+
+  String? _ceilingNote;
+
+  /// One line for everything this session learned that no surface shows:
+  /// the probe's outcome, the levels refused, the last refused CW command,
+  /// the voice ceiling. One because the sink keeps a single diagnostic, and
+  /// a second call would hide the first.
+  void _reportDiagnostic() {
+    final refused = _refusedLevels.entries.map((e) => '${e.key} ${e.value}').join(', ');
+    _sink.reportDiagnostic(
+      [
+        if (_probeOutcome != null) _probeOutcome,
+        if (refused.isNotEmpty) 'refused $refused',
+        if (_refusedCommand != null) 'refused $_refusedCommand',
+        if (_ceilingNote != null) _ceilingNote,
+      ].join(' · '),
+    );
+  }
+
+  late final _cwQueue = CwSendQueue(
+    maxChunkLength: rigctldMorseChunkChars,
+    // No VFO argument in either mode: `send_morse` takes the rest of the
+    // line as its text, so a `currVFO` here would be keyed. Extended, so a
+    // refusal comes back under a `send_morse:` header rather than as an
+    // RPRT nothing ties to it.
+    send: (chunk) => _send('+b $chunk'),
+    speedWpm: () => _keyerSpeed,
+    onProgress: _sink.reportCwProgress,
+  );
+
   void _send(String command) => _sink.send(ascii.encode('$command\n'));
+
+  /// Asks for [level] unless this daemon has already refused it.
+  void _readLevel(String level) {
+    if (!_refusedLevels.containsKey(level)) _send('+l$_vfo $level');
+  }
 
   /// The VFO argument this daemon's parser requires, `currVFO` meaning
   /// "whatever the rig has selected" — the same addressing plain mode gets
   /// by leaving it off.
   String get _vfo => _vfoMode ? ' currVFO' : '';
 
+  /// No power read: Hamlib's watts level is a measured meter, 0 between
+  /// overs and following the operator's voice on SSB, so the station's power
+  /// stays what the operator set — see [_handleLevel].
   void _requestFrequencyAndMode() {
     _send('+f$_vfo');
     _send('+m$_vfo');
-    // Absolute watts, not Hamlib's older 0.0-1.0 RFPOWER fraction of an
-    // unknown maximum — this level exists precisely so a front-end can deal
-    // in watts without knowing the radio's ceiling. Silently unanswered on
-    // a daemon/backend that predates it, same as any other RPRT error this
-    // driver ignores; the field just never receives a reading.
-    _send('+l$_vfo RFPOWER_METER_WATTS');
   }
 
   /// One turn of the telemetry cadence. No backlog guard, unlike flrig's:
-  /// rigctld labels every extended answer, so a question asked twice is
-  /// answered twice and read correctly both times — there is no positional
-  /// correlation to fall out of step.
+  /// every extended answer names its question — a label on the value, or for
+  /// a level the `get_level:` header just before it — so a question asked
+  /// twice is answered twice and read correctly both times, with nothing
+  /// counted across answers to fall out of step.
   void _pollTelemetry(bool transmitting) {
     _send('+t$_vfo');
     if (!transmitting) return;
-    // RFPOWER_METER_WATTS is already on the state poll (see
-    // [_requestFrequencyAndMode]) — it is asked again here because that
-    // poll runs at seconds and a transmission is measured in them.
-    _send('+l$_vfo RFPOWER_METER_WATTS');
-    _send('+l$_vfo SWR');
-    _send('+l$_vfo ALC');
-    _send('+l$_vfo VD_METER');
+    _readLevel('RFPOWER_METER_WATTS');
+    _readLevel('SWR');
+    _readLevel('ALC');
+    _readLevel('VD_METER');
   }
 
   @override
@@ -242,16 +391,71 @@ class RigctldSession implements TransceiverSession, PttSession {
     // would repeat a question we hold the answer to.
     if (_stateLabels.any(line.startsWith)) _poller.noteData();
 
-    // Extended responses label every value; anything else on the stream —
-    // `get_freq:` headers, `Passband:`, `RPRT n` acknowledgements — asks
-    // nothing of us.
+    // The line after a `get_level:` header is that level's value or its
+    // refusal; the header is consumed by exactly one line either way.
+    final pending = _pendingLevel;
+    _pendingLevel = null;
+    final command = _pendingCommand;
+    _pendingCommand = null;
+    if (command != null && line.startsWith('RPRT ')) {
+      final code = int.tryParse(line.substring('RPRT '.length).trim());
+      if (code != null && code != 0) _commandRefused(command, code);
+      return;
+    }
+    if (pending != null) {
+      if (line.startsWith('RPRT ')) {
+        final code = int.tryParse(line.substring('RPRT '.length).trim());
+        if (code != null && _retiringLevelErrors.contains(code)) {
+          _refusedLevels[pending] = code;
+          _reportDiagnostic();
+        }
+        return;
+      }
+      // Bare, as Hamlib prints it; also read past a label, for a server
+      // that adds one anyway (`Level Value: 1.5`, `SWR: 1.5`).
+      final value = double.tryParse(line.substring(line.lastIndexOf(':') + 1).trim());
+      if (value != null) {
+        _handleLevel(pending, value);
+        return;
+      }
+    }
+
+    // A daemon too old to know the probe answers it with an error alone,
+    // which is the plain parser's answer.
+    if (_awaitingProbe && line.startsWith('RPRT ')) {
+      _learnVfoMode(false, outcome: 'plain (probe refused)');
+      return;
+    }
+
+    if (line.startsWith('send_morse:') || line.startsWith('stop_morse:')) {
+      _pendingCommand = line.substring(0, line.indexOf(':'));
+      return;
+    }
+
+    // `get_level: SWR`, or `get_level: currVFO:SWR` from a `--vfo` daemon.
+    // Any other VFO is a question the daemon misparsed — a read that reached
+    // a `--vfo` daemon unaddressed (after an unanswered probe, or an
+    // operator's set inside the probe's round trip), which it answers as
+    // `get_level: None:+l` — and its refusal says nothing about the level.
+    if (line.startsWith('get_level:')) {
+      final args = line.substring('get_level:'.length).trim();
+      final split = args.lastIndexOf(':');
+      final vfo = split < 0 ? '' : args.substring(0, split).trim();
+      final level = args.substring(split + 1).trim().toUpperCase();
+      if (level.isNotEmpty && (vfo.isEmpty || vfo == 'currVFO')) _pendingLevel = level;
+      return;
+    }
+
+    // Extended responses label every other value; anything else on the
+    // stream — `get_freq:` headers, `Passband:`, `RPRT n` acknowledgements —
+    // asks nothing of us.
     // Both spellings of the probe answer: `ChkVFO: 1` is 4.7's extended
     // form, `CHKVFO 1` the older daemons' — netrigctl accepts both, so
     // must we, or an old `--vfo` daemon reads as plain and loses its mode.
     if (line.startsWith('ChkVFO: ')) {
-      _vfoMode = line.substring('ChkVFO: '.length).trim() == '1';
+      _learnVfoMode(line.substring('ChkVFO: '.length).trim() == '1');
     } else if (line.startsWith('CHKVFO ')) {
-      _vfoMode = line.substring('CHKVFO '.length).trim() == '1';
+      _learnVfoMode(line.substring('CHKVFO '.length).trim() == '1');
     } else if (line.startsWith('Frequency: ')) {
       final hz = double.tryParse(line.substring('Frequency: '.length).trim());
       // The daemon reports Hz; everything above here speaks kHz.
@@ -261,39 +465,64 @@ class RigctldSession implements TransceiverSession, PttSession {
     } else if (line.startsWith('Mode: ')) {
       final token = line.substring('Mode: '.length).trim();
       if (token.isNotEmpty) _report(VfoReading(mode: appModeForHamlibMode(token)));
-    } else if (line.startsWith('RFPOWER_METER_WATTS: ')) {
-      final watts = double.tryParse(line.substring('RFPOWER_METER_WATTS: '.length).trim());
-      if (watts != null) {
-        // Both, from the one reading, and they are not the same claim: the
-        // app's power is what the station is running at, and the meter is
-        // what left the radio a moment ago. Hamlib happens to answer the
-        // second everywhere else's protocol answers the first.
-        _sink.reportPower(watts);
-        // As a METER, only while the radio is actually keyed. This level is
-        // also on the state poll, where it reads 0 — and a measured "0 W" on
-        // the strip is a different statement from an empty slot: one says
-        // the radio put out nothing, the other that there was nothing to
-        // measure. The second is what is true between overs.
-        if (_telemetry.transmitting) _sink.reportMeter(RadioMeter.powerOut, watts);
-      }
     } else if (line.startsWith('PTT: ')) {
       final ptt = int.tryParse(line.substring('PTT: '.length).trim());
       // Anything else is a backend that does not implement it, and is left
       // as "nobody knows" rather than read as receiving.
       if (ptt != null && _telemetry.noteTransmitting(ptt != 0)) _sink.reportTransmitting(ptt != 0);
-    } else if (line.startsWith('SWR: ')) {
-      final swr = double.tryParse(line.substring('SWR: '.length).trim());
-      // Below 1 is physically impossible, so it is a backend answering
-      // zero for a meter it does not have — and a 0.0 on the strip reads as
-      // a perfect match, the most reassuring way available to be wrong.
-      if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
-    } else if (line.startsWith('ALC: ')) {
-      final alc = double.tryParse(line.substring('ALC: '.length).trim());
-      // Hamlib's ALC is already a fraction of the backend's own scale.
-      if (alc != null) _sink.reportMeter(RadioMeter.alc, alc.clamp(0.0, 1.0));
-    } else if (line.startsWith('VD_METER: ')) {
-      final volts = double.tryParse(line.substring('VD_METER: '.length).trim());
-      if (volts != null) _sink.reportMeter(RadioMeter.supplyVolts, volts);
+      if (ptt != null && _voice.active) {
+        if (ptt != 0) {
+          _voice.confirm();
+        } else {
+          _voice.endFromPoll();
+        }
+      }
+    }
+  }
+
+  void _learnVfoMode(bool vfoMode, {String? outcome}) {
+    // Before the guard: an answer that arrives after the timeout started the
+    // session plain still corrects the addressing of every later command.
+    _vfoMode = vfoMode;
+    _probeOutcome = outcome ?? (vfoMode ? '--vfo' : 'plain');
+    _reportDiagnostic();
+    if (!_awaitingProbe) return;
+    _awaitingProbe = false;
+    _probeTimeout?.cancel();
+    _probeTimeout = null;
+    _requestFrequencyAndMode();
+    if (_keysCw) refreshKeyerSpeed();
+    _poller.start();
+    _telemetry.start();
+  }
+
+  void _handleLevel(String level, double value) {
+    switch (level) {
+      case 'RFPOWER_METER_WATTS':
+        // A meter, never the station's power: it is what left the radio a
+        // moment ago — 0 W between overs, a speech sample on SSB — and
+        // reported as power it would replace the operator's on every QSO
+        // logged after an over. Only while keyed: a measured "0 W" on the
+        // strip says the radio put out nothing, where an empty slot says
+        // there was nothing to measure.
+        if (_telemetry.transmitting) _sink.reportMeter(RadioMeter.powerOut, value);
+      case 'SWR':
+        // Below 1 is physically impossible, so it is a backend answering
+        // zero for a meter it does not have — and a 0.0 on the strip reads as
+        // a perfect match, the most reassuring way available to be wrong.
+        if (value >= 1) _sink.reportMeter(RadioMeter.swr, value);
+      case 'ALC':
+        // Hamlib's ALC is already a fraction of the backend's own scale.
+        _sink.reportMeter(RadioMeter.alc, value.clamp(0.0, 1.0));
+      case 'VD_METER':
+        _sink.reportMeter(RadioMeter.supplyVolts, value);
+      case 'KEYSPD':
+        // Zero is a backend with no keyer speed to report, not a keyer
+        // stopped: pacing keeps its default rather than computing at 0 WPM.
+        if (value >= 1) {
+          _keyerSpeed = value.round();
+          _sink.reportKeyerSpeed(_keyerSpeed!);
+        }
     }
   }
 
@@ -343,21 +572,111 @@ class RigctldSession implements TransceiverSession, PttSession {
   }
 
   @override
+  void sendCw(String text) => _cwQueue.enqueue(text);
+
+  /// A refused `b` keyed nothing, so the rest of the message is dropped and
+  /// the strip stops showing it going out; a refused `\stop_morse` means the
+  /// chunk on the radio plays out. Either way the diagnostic says so — the
+  /// strip cannot.
+  void _commandRefused(String command, int code) {
+    if (command == 'send_morse') _cwQueue.clear();
+    _refusedCommand = '$command $code';
+    _reportDiagnostic();
+  }
+
+  /// `\stop_morse` aborts what the radio is keying, where the backend can
+  /// (Hamlib's `Can stop Morse`); one that cannot answers an error and
+  /// finishes the current chunk ([_commandRefused]). No VFO argument in
+  /// either mode — a `--vfo` daemon reads one as a further command.
+  @override
+  void stopCw() {
+    _cwQueue.clear();
+    _send('+\\stop_morse');
+  }
+
+  @override
+  bool get cwSending => _cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => _keyerSpeedRange;
+
+  /// Sets, then reads back, so the value shown is what the radio took. The
+  /// asked speed paces the queue until a read-back says otherwise — some
+  /// backends set a level they cannot read, or read it as 0 — though it is
+  /// never reported as the radio's. Pacing at the default instead would send
+  /// a slow keyer its next chunk while the last is still going out.
+  @override
+  void setKeyerSpeed(int wpm) {
+    final clamped = wpm.clamp(_keyerSpeedRange.min, _keyerSpeedRange.max);
+    _send('L$_vfo KEYSPD $clamped');
+    _keyerSpeed = clamped;
+    refreshKeyerSpeed();
+  }
+
+  @override
+  void refreshKeyerSpeed() => _readLevel('KEYSPD');
+
+  @override
+  int get voiceMemoryCount => voiceMemoriesFromConfig(_config, fallback: 0);
+
+  /// Hamlib has `send_voice_mem` and `stop_voice_mem`, and nothing that
+  /// records.
+  @override
+  bool get canRecordVoice => false;
+
+  @override
+  Duration get voiceMemoryCeiling => voiceCeilingFromConfig(_config);
+
+  /// Plain, with no VFO argument even to a `--vfo` daemon: the `+` form
+  /// there waits for a further argument, and a VFO is read as the memory
+  /// (rigctld 4.7.2 -o, captured). A refusal comes back as an unlabeled
+  /// `RPRT`, so it shows as the tracker's doubt — the radio never keying.
+  @override
+  void playVoiceMemory(int n) {
+    if (n < 1 || n > voiceMemoryCount) return;
+    _send('\\send_voice_mem $n');
+    _voice.start(VoiceActivity(memory: n));
+  }
+
+  @override
+  void recordVoiceMemory(int n) {}
+
+  @override
+  void stopVoice() {
+    if (_voice.activity == null) return;
+    _send('\\stop_voice_mem');
+    _voice.end();
+  }
+
+  @override
   void startUpdates() {
     _residual.clear();
+    _pendingLevel = null;
+    _pendingCommand = null;
+    _refusedLevels.clear();
+    _probeOutcome = null;
+    _refusedCommand = null;
+    _ceilingNote = null;
     // Re-learned per connection — a reconnect may reach a daemon restarted
     // the other way. The extended `+` form makes the answer self-labeling
     // (`ChkVFO: 0/1`) in both modes; a daemon too old to know the command
-    // answers an unlabeled complaint, which reads as plain mode.
+    // answers an unlabeled complaint, which reads as plain mode. The polls
+    // start from the answer, in [_learnVfoMode].
     _vfoMode = false;
+    _awaitingProbe = true;
     _send('+\\chk_vfo');
-    _requestFrequencyAndMode();
-    _poller.start();
-    _telemetry.start();
+    _probeTimeout?.cancel();
+    _probeTimeout = Timer(_probeWait, () => _learnVfoMode(false, outcome: 'plain (probe unanswered)'));
   }
 
   @override
   void stopUpdates() {
+    _awaitingProbe = false;
+    _probeTimeout?.cancel();
+    _probeTimeout = null;
     _poller.stop();
     _telemetry.stop();
   }
@@ -378,6 +697,8 @@ class RigctldSession implements TransceiverSession, PttSession {
     }
     // rigctld holds no per-client state, so past the unkey, stopping the
     // poll is the whole farewell.
+    _cwQueue.clear();
+    _voice.dispose();
     stopUpdates();
     _telemetry.dispose();
   }
