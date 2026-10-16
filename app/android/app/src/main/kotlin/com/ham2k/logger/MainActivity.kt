@@ -3,9 +3,13 @@ package com.ham2k.logger
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.hardware.input.InputManager
 import android.view.InputDevice
+import android.view.View
+import android.view.WindowInsets
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterView
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
@@ -170,6 +174,47 @@ class MainActivity : FlutterActivity() {
     channel.invokeMethod("openFiles", mapOf("paths" to paths))
   }
 
+  // The engine's IME-inset deferral (ImeSyncDeferringInsetsCallback) holds
+  // every inset that arrives while a keyboard animation runs and, when the
+  // animation ends, re-applies the one it saved as that animation began. On
+  // Samsung's One UI 9 the keyboard comes back for an instant when the app
+  // regains focus and goes away again; a hide that lands inside that show
+  // animation has its insets swallowed, the saved "shown" ones win, and
+  // Flutter keeps a keyboard-tall inset with no keyboard — a blank band the
+  // status bar overlay holds open. So once the keyboard has had time to settle
+  // after a refocus, insets that say it is gone go to the FlutterView
+  // directly, past the deferral — the path the engine's own onProgress takes.
+  // Where the inset is already right this re-sends identical metrics.
+  //
+  // Android 15 and later only: the root insets equal the ones the FlutterView
+  // is dispatched only under enforced edge-to-edge. This app does not opt into
+  // edge-to-edge, so on 11–14 the DecorView consumes the navigation bar before
+  // the FlutterView sees the insets, and sending the root insets there would
+  // add a navigation-bar-tall gap of its own.
+  private val imeInsetsResync = Runnable { resyncHiddenImeInsets() }
+
+  override fun onWindowFocusChanged(hasFocus: Boolean) {
+    super.onWindowFocusChanged(hasFocus)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+    val view = findViewById<View>(FlutterActivity.FLUTTER_VIEW_ID) ?: return
+    view.removeCallbacks(imeInsetsResync)
+    if (hasFocus) view.postDelayed(imeInsetsResync, IME_SETTLE_MILLIS)
+  }
+
+  private fun resyncHiddenImeInsets() {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) return
+    val found = findViewById<View>(FlutterActivity.FLUTTER_VIEW_ID) ?: return
+    // A plain View under that id would take the insets and never pass them to
+    // Flutter, so the workaround would stop working with nothing to show it.
+    val view = found as? FlutterView ?: run {
+      android.util.Log.w("ham2k", "IME inset resync: view is not a FlutterView")
+      return
+    }
+    val insets = view.rootWindowInsets ?: return
+    if (insets.isVisible(WindowInsets.Type.ime())) return
+    view.onApplyWindowInsets(insets)
+  }
+
   override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     // Ours first: the picker results belong to no plugin, and forwarding them
     // on would have every registered plugin inspect a request code it doesn't
@@ -190,4 +235,10 @@ class MainActivity : FlutterActivity() {
         device.supportsSource(InputDevice.SOURCE_KEYBOARD) &&
         device.keyboardType == InputDevice.KEYBOARD_TYPE_ALPHABETIC
     }
+
+  private companion object {
+    // Longer than a keyboard show plus hide, so the resync lands after the
+    // deferral has re-applied its stale insets rather than before.
+    const val IME_SETTLE_MILLIS = 1000L
+  }
 }
