@@ -8,9 +8,9 @@
     },
     {
       "key": "ham2k-arrl-vhf-tests",
-      "version": "0.2.5",
-      "file": "ham2k-arrl-vhf-tests-0.2.5.h2kext",
-      "sha256": "b4693ab894ab387fc271885f736456eb42fb770cde1b73661ffa026c00c1ea3a"
+      "version": "0.2.6",
+      "file": "ham2k-arrl-vhf-tests-0.2.6.h2kext",
+      "sha256": "e23fa609ceede503d3653a6498b501a4afbe8f1db3d205afac98ccf92c092430"
     },
     {
       "key": "ham2k-bca",
