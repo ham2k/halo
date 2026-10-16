@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-"upcoming":
+"180":
   changes:
     - "New Show idle metrics developer setting: extension engine headroom in the status bar"
     - "New Import QSON Operation developer setting, or drop a .qson on the list"
