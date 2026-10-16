@@ -41,6 +41,8 @@ import 'operation/operation_export_panel.dart';
 import 'operation/operation_import_panel.dart';
 import 'operation/operation_runtime_state.dart';
 import 'operation/spots_panel.dart';
+import 'operation/summaries/operation_summaries_panel.dart';
+import 'operation/summaries/operation_summaries_settings.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation/positions_panel.dart';
 import 'operation/read_only_while_deleted.dart';

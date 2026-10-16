@@ -251,6 +251,20 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         views: const {PanelViews.operation},
       ),
     );
+    service.registerNative(
+      PanelDefinition(
+        id: operationSummariesPanelId,
+        title: t.tabs.summaries,
+        description: t.layout.panels.summariesDescription,
+        icon: 'trophy-outline',
+        source: PanelSource.native,
+        views: const {PanelViews.operation},
+        // Several, each with its own picks: a contest's score in one pane
+        // and the states grid in another.
+        multiple: true,
+        formFields: operationSummariesFields,
+      ),
+    );
     registerSharedDashboardPanels();
   }
 
@@ -308,20 +322,33 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         'logging': (context) => _buildLoggingSettingsButton(qsos, context: context),
         'map': (context) => _buildMapSettingsButton(context: context),
       },
-      extraChildren: (inLayout) => sharedDashboardPanes(
-        inLayout,
-        // The saved operation's grid, not the draft's: the pane refetches
-        // when this changes, and a half-typed grid square would send a
-        // request per keystroke. The DISPLAY grid, so a pane reading it gets
-        // the operation's real position where one is stored.
-        operationGrid: _operationForPanels?.displayGrid,
-        // From `_callInfo`, which this view keeps current unconditionally —
-        // NOT from the QSO draft, which is only produced when a panel
-        // declares `qso` and costs a rebuild plus a deep compare on every
-        // keystroke. A pull-only question asked once a minute must not put
-        // the whole view on the typing path to answer it.
-        isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
-      ),
+      extraChildren: (inLayout) => {
+        for (final id in inLayout)
+          if (PanelDefinition.descriptorIdOf(id) == operationSummariesPanelId)
+            id: OperationSummariesPanel(
+              key: ValueKey('panel-$id'),
+              panelId: id,
+              panels: widget.services.panels,
+              operation: operation,
+              qsos: qsos,
+              activityControls: _runtime.loggingControls,
+              write: summariesConfigWriter(widget.services, id),
+            ),
+        ...sharedDashboardPanes(
+          inLayout,
+          // The saved operation's grid, not the draft's: the pane refetches
+          // when this changes, and a half-typed grid square would send a
+          // request per keystroke. The DISPLAY grid, so a pane reading it gets
+          // the operation's real position where one is stored.
+          operationGrid: _operationForPanels?.displayGrid,
+          // From `_callInfo`, which this view keeps current unconditionally —
+          // NOT from the QSO draft, which is only produced when a panel
+          // declares `qso` and costs a rebuild plus a deep compare on every
+          // keystroke. A pull-only question asked once a minute must not put
+          // the whole view on the typing path to answer it.
+          isEnteringQso: () => (_callInfo?.call ?? '').isNotEmpty,
+        ),
+      },
     );
   }
 
@@ -338,6 +365,15 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   WidgetBuilder? nativePanelSettingsForm(BuildContext context, String id) => switch (id) {
     'logging' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'logging'),
     'map' => (builderContext) => settingsFormForTarget(services: widget.services, target: 'map'),
+    _ when PanelDefinition.descriptorIdOf(id) == operationSummariesPanelId => switch (_operationForPanels) {
+      final operation? => (builderContext) => OperationSummariesSettings(
+        panelId: id,
+        panels: widget.services.panels,
+        sections: operationSummarySections(builderContext, operation: operation, qsos: _logForPanels ?? const [], activityControls: _runtime.loggingControls),
+        write: summariesConfigWriter(widget.services, id),
+      ),
+      null => null,
+    },
     _ => null,
   };
 }

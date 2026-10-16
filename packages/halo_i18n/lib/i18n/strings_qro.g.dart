@@ -1549,6 +1549,7 @@ class _Translations$operation$tabs$qro extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'REMOTE SCREEN';
 	@override String get solar => 'SOLAR';
 	@override String get radio => 'RADIO';
+	@override String get summaries => 'OPERATION SUMMARIES';
 }
 
 // Path: operation.positions
@@ -3044,6 +3045,11 @@ class _Translations$operation$layout$panels$qro extends Translations$operation$l
 	@override String get infoDescription => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED';
 	@override String get spotsDescription => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS';
 	@override String get mapDescription => 'WHERE THE CONTACTS ARE';
+	@override String get summariesDescription => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK';
+	@override String get summariesSections => 'SECTIONS AND ORDER';
+	@override String get summariesDays => 'EACH DAY';
+	@override String get summariesReset => 'SHOW ALL';
+	@override String get summariesAllHidden => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.';
 	@override String get clockDescription => 'A CLOCK FACE, IN ANY TIME ZONE';
 	@override String get clockFace => 'FACE';
 	@override String get clockFaceLcd => 'LCD';
@@ -4238,6 +4244,7 @@ extension on TranslationsQro {
 			'operation.tabs.remoteScreen' => 'REMOTE SCREEN',
 			'operation.tabs.solar' => 'SOLAR',
 			'operation.tabs.radio' => 'RADIO',
+			'operation.tabs.summaries' => 'OPERATION SUMMARIES',
 			'operation.positions.nobodyYet' => 'NO OTHER OPERATING POSITIONS ARE SHARING THIS OPERATION YET.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'POS: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'OP: ${call}',
@@ -4306,6 +4313,11 @@ extension on TranslationsQro {
 			'operation.layout.panels.infoDescription' => 'WHAT WE KNOW ABOUT THE STATION BEING WORKED',
 			'operation.layout.panels.spotsDescription' => 'SPOTS FROM THE CLUSTERS AND ACTIVITY PROGRAMS',
 			'operation.layout.panels.mapDescription' => 'WHERE THE CONTACTS ARE',
+			'operation.layout.panels.summariesDescription' => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK',
+			'operation.layout.panels.summariesSections' => 'SECTIONS AND ORDER',
+			'operation.layout.panels.summariesDays' => 'EACH DAY',
+			'operation.layout.panels.summariesReset' => 'SHOW ALL',
+			'operation.layout.panels.summariesAllHidden' => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.',
 			'operation.layout.panels.clockDescription' => 'A CLOCK FACE, IN ANY TIME ZONE',
 			'operation.layout.panels.clockFace' => 'FACE',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -4401,14 +4413,14 @@ extension on TranslationsQro {
 			'operation.layout.panels.solarUnreachable' => 'COULDN\'T REACH HAMQSL.COM — NO NETWORK? WILL TRY AGAIN SHORTLY.',
 			'operation.layout.panels.solarUnreadable' => 'HAMQSL.COM RESPONDED, BUT NOT WITH A READING WE COULD USE. WILL TRY AGAIN SHORTLY.',
 			'operation.layout.panels.solarAIndex' => 'A',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.solarKIndex' => 'KP',
 			'operation.layout.panels.solarBandDay' => 'DAY',
 			'operation.layout.panels.solarBandNight' => 'NIGHT',
 			'operation.layout.panels.solarBandGood' => 'GOOD',
 			'operation.layout.panels.solarBandFair' => 'FAIR',
 			'operation.layout.panels.solarBandPoor' => 'POOR',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'SOURCES: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'THE CONNECTION IS STRUGGLING — SKIPPING FRAMES.',
 			'operation.layout.panels.remoteScreenStalled' => 'FRAMES STOPPED GETTING THROUGH — THIS CONNECTION MAY BE TOO SLOW.',
@@ -4915,14 +4927,14 @@ extension on TranslationsQro {
 			'settings.layoutDensityOpts.densest' => 'DENSEST',
 			'settings.layoutDensityOpts.dense' => 'DENSE',
 			'settings.layoutDensityOpts.normal' => 'NORMAL',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.sparse' => 'SPARSE',
 			'settings.layoutDensityOpts.sparsest' => 'SPARSEST',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'THE WINDOW IS TOO SHORT, USING ${effective}',
 			'settings.layoutDensityAtLimit' => 'AS FAR AS IT GOES',
 			'settings.distanceUnits' => 'DISTANCE UNITS',
 			'settings.distanceUnitsOpts.kilometers' => 'KILOMETERS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.distanceUnitsOpts.miles' => 'MILES',
 			'settings.userInterface' => 'USER INTERFACE',
 			'settings.logging.title' => 'LOGGING',
@@ -5429,14 +5441,14 @@ extension on TranslationsQro {
 			'settings.station.winkeyerKeyPort' => 'KEY OUTPUT',
 			'settings.station.winkeyerKeyPortDescription' => 'WHICH OF THE KEYER\'S TWO OUTPUT JACKS YOUR RADIO IS PLUGGED INTO.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'PORT ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.winkeyerPtt' => 'USE THE KEYER\'S PTT',
 			'settings.station.winkeyerPttDescription' => 'KEY THE PTT LINE ON THE SAME JACK, FOR AN AMPLIFIER OR A RADIO THAT NEEDS IT. LEAVE OFF FOR A RADIO KEYED ON ITS KEY JACK.',
 			'settings.station.winkeyerNoAnswer' => 'NO WINKEYER RESPONDED ON THIS PORT',
 			'settings.station.winkeyerStoppedAnswering' => 'THE WINKEYER STOPPED RESPONDING WHILE SENDING; THE MESSAGE WAS DROPPED',
 			'settings.station.radioUser' => 'RADIO USERNAME',
 			'settings.station.radioPass' => 'RADIO PASSWORD',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioLoginDescription' => 'THE RADIO\'S NETWORK → REMOTE LOGIN, NOT YOUR WIFI PASSWORD.',
 			'settings.station.radioUserRequired' => 'THE RADIO\'S REMOTE-CONTROL USERNAME IS REQUIRED',
 			'settings.station.connectFailedBusy' => 'DEVICE IS IN USE',
@@ -5943,14 +5955,14 @@ extension on TranslationsQro {
 			'notices.webStorageInMemory' => 'THIS BROWSER COULD NOT PROVIDE PERSISTENT STORAGE — THE LOG LIVES IN MEMORY ONLY AND WILL BE LOST WHEN THIS TAB CLOSES. USE A CURRENT CHROME, FIREFOX, SAFARI OR EDGE.',
 			'notices.webStorageUnreliable' => 'THIS BROWSER IS USING FALLBACK STORAGE THAT IS NOT SAFE WITH MULTIPLE TABS — KEEP A SINGLE TAB OPEN, AND KEEP SYNC ON.',
 			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
+			_ => null,
+		} ?? switch (path) {
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. INSTALL THE NEWER VERSION AGAIN — OR, IF YOU MEANT TO RUN THIS BUILD, POINT IT AT A DIFFERENT DATA FOLDER. THE LOG IS IN ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. OPEN THIS LOG WITH THAT NEWER VERSION INSTEAD.',
 			'notices.preferencesRestoredTitle' => 'SETTINGS RESTORED FROM A BACKUP',
 			'notices.preferencesRestored' => 'THE SETTINGS FILE COULD NOT BE READ, SO HALO RESTORED THE LAST GOOD COPY OF IT. ANYTHING YOU CHANGED IN YOUR PREVIOUS SESSION MAY NEED SETTING AGAIN. THE UNREADABLE FILE IS KEPT ALONGSIDE IT, NAMED SHARED_PREFERENCES.CORRUPT-….JSON.',
 			'notices.preferencesResetTitle' => 'SETTINGS RESET',
 			'notices.preferencesReset' => 'THE SETTINGS FILE COULD NOT BE READ AND THERE WAS NO BACKUP TO FALL BACK ON, SO HALO STARTED WITH ITS DEFAULTS. THE UNREADABLE FILE IS KEPT IN THE APP\'S DATA FOLDER, NAMED SHARED_PREFERENCES.CORRUPT-….JSON.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} WAS NOT CONNECTED AUTOMATICALLY',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HALO STOPPED RESPONDING THE LAST TIME IT STARTED CONNECTING TO ${name}, SO IT LEFT IT ALONE THIS TIME RATHER THAN RISK DOING IT AGAIN. CHECK THAT THE RADIO IS SWITCHED ON AND ITS CABLE IS PLUGGED IN, THEN PRESS CONNECT ON IT IN SETTINGS.',
 			'syncAccount.anonymous' => ({required Object id}) => 'ANONYMOUS ACCOUNT (#${id})',

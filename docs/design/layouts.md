@@ -523,7 +523,7 @@ registry — `PanelService` (`app/lib/services/panel_service.dart`) — not a
 constant in the view. Two sources write into it:
 
 - **Native panels.** Each view registers its own (Operation: QSOs, Info,
-  Spots, Map; Home: Operation List, Current Version; the Logs view: QSOs,
+  Spots, Map, Operation Summaries; Home: Operation List, Current Version; the Logs view: QSOs,
   Info, Map) with their title, description, icon and, where they have any,
   the settings *target* whose declared settings make up their settings
   dialog. The service holds identity only: the widget stays with the view
@@ -674,13 +674,19 @@ nowhere else — outside edit mode there is no layout to have options about.
   than a form (logging, map) embeds `settingsFormForTarget` — the same
   target-scoped settings widget a standalone dialog would otherwise show.
 
-  A shared dashboard panel may answer for its own settings instead, through
-  `DockHost.sharedDashboardPanelSettings`, and then that ONE widget serves
-  both routes — this embed and the tab's own settings button. Required, not
+  A native panel may answer for its own settings instead — a shared
+  dashboard panel through `DockHost.sharedDashboardPanelSettings`, a view's
+  own through its `nativePanelSettingsForm` — and then that ONE widget serves
+  both routes: this embed, and the tab's own settings button, which shows it
+  in a dialog of its own. Required, not
   a preference, for a panel whose real control is an action: the embed
   strips every `type: 'action'` element (an action here has no route of its
   own to close on), which would otherwise leave such a panel showing
-  nothing but its stored value with no way to change it. Serving both routes
+  nothing but its stored value with no way to change it — and for one whose
+  settings are no form at all: Operation Summaries' sections are a
+  drag-to-reorder list with a tick per section, saved per placement under
+  declared but never-rendered fields so `forgetInstanceConfig` still clears
+  them. Serving both routes
   from one widget is the point — the same panel offering two different
   settings surfaces depending on which way in the operator took is worse
   than either.

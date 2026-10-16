@@ -1549,6 +1549,7 @@ class _Translations$operation$tabs$qrp extends Translations$operation$tabs$en {
 	@override String get remoteScreen => 'remote screen';
 	@override String get solar => 'solar';
 	@override String get radio => 'radio';
+	@override String get summaries => 'operation summaries';
 }
 
 // Path: operation.positions
@@ -3044,6 +3045,11 @@ class _Translations$operation$layout$panels$qrp extends Translations$operation$l
 	@override String get infoDescription => 'what we know about the station being worked';
 	@override String get spotsDescription => 'spots from the clusters and activity programs';
 	@override String get mapDescription => 'where the contacts are';
+	@override String get summariesDescription => 'the operation\'s stats and scores, in the sections and order you pick';
+	@override String get summariesSections => 'sections and order';
+	@override String get summariesDays => 'each day';
+	@override String get summariesReset => 'show all';
+	@override String get summariesAllHidden => 'every section is hidden. pick the ones to show in this panel\'s settings.';
 	@override String get clockDescription => 'a clock face, in any time zone';
 	@override String get clockFace => 'face';
 	@override String get clockFaceLcd => 'lcd';
@@ -4238,6 +4244,7 @@ extension on TranslationsQrp {
 			'operation.tabs.remoteScreen' => 'remote screen',
 			'operation.tabs.solar' => 'solar',
 			'operation.tabs.radio' => 'radio',
+			'operation.tabs.summaries' => 'operation summaries',
 			'operation.positions.nobodyYet' => 'no other operating positions are sharing this operation yet.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'pos: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'op: ${call}',
@@ -4306,6 +4313,11 @@ extension on TranslationsQrp {
 			'operation.layout.panels.infoDescription' => 'what we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'where the contacts are',
+			'operation.layout.panels.summariesDescription' => 'the operation\'s stats and scores, in the sections and order you pick',
+			'operation.layout.panels.summariesSections' => 'sections and order',
+			'operation.layout.panels.summariesDays' => 'each day',
+			'operation.layout.panels.summariesReset' => 'show all',
+			'operation.layout.panels.summariesAllHidden' => 'every section is hidden. pick the ones to show in this panel\'s settings.',
 			'operation.layout.panels.clockDescription' => 'a clock face, in any time zone',
 			'operation.layout.panels.clockFace' => 'face',
 			'operation.layout.panels.clockFaceLcd' => 'lcd',
@@ -4401,14 +4413,14 @@ extension on TranslationsQrp {
 			'operation.layout.panels.solarUnreachable' => 'couldn\'t reach hamqsl.com — no network? will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. will try again shortly.',
 			'operation.layout.panels.solarAIndex' => 'a',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.solarKIndex' => 'kp',
 			'operation.layout.panels.solarBandDay' => 'day',
 			'operation.layout.panels.solarBandNight' => 'night',
 			'operation.layout.panels.solarBandGood' => 'good',
 			'operation.layout.panels.solarBandFair' => 'fair',
 			'operation.layout.panels.solarBandPoor' => 'poor',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'sources: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'the connection is struggling — skipping frames.',
 			'operation.layout.panels.remoteScreenStalled' => 'frames stopped getting through — this connection may be too slow.',
@@ -4915,14 +4927,14 @@ extension on TranslationsQrp {
 			'settings.layoutDensityOpts.densest' => 'densest',
 			'settings.layoutDensityOpts.dense' => 'dense',
 			'settings.layoutDensityOpts.normal' => 'normal',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.sparse' => 'sparse',
 			'settings.layoutDensityOpts.sparsest' => 'sparsest',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'distance units',
 			'settings.distanceUnitsOpts.kilometers' => 'kilometers',
-			_ => null,
-		} ?? switch (path) {
 			'settings.distanceUnitsOpts.miles' => 'miles',
 			'settings.userInterface' => 'user interface',
 			'settings.logging.title' => 'logging',
@@ -5429,14 +5441,14 @@ extension on TranslationsQrp {
 			'settings.station.winkeyerKeyPort' => 'key output',
 			'settings.station.winkeyerKeyPortDescription' => 'which of the keyer\'s two output jacks your radio is plugged into.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'port ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.winkeyerPtt' => 'use the keyer\'s ptt',
 			'settings.station.winkeyerPttDescription' => 'key the ptt line on the same jack, for an amplifier or a radio that needs it. leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'no winkeyer responded on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'the winkeyer stopped responding while sending; the message was dropped',
 			'settings.station.radioUser' => 'radio username',
 			'settings.station.radioPass' => 'radio password',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
 			'settings.station.radioUserRequired' => 'the radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'device is in use',
@@ -5943,14 +5955,14 @@ extension on TranslationsQrp {
 			'notices.webStorageInMemory' => 'this browser could not provide persistent storage — the log lives in memory only and will be lost when this tab closes. use a current chrome, firefox, safari or edge.',
 			'notices.webStorageUnreliable' => 'this browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
 			'notices.logFromNewerBuildTitle' => 'this log needs a newer version',
+			_ => null,
+		} ?? switch (path) {
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'your log was written by a newer version of halo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. install the newer version again — or, if you meant to run this build, point it at a different data folder. the log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'your log was written by a newer version of halo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'settings restored from a backup',
 			'notices.preferencesRestored' => 'the settings file could not be read, so halo restored the last good copy of it. anything you changed in your previous session may need setting again. the unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'settings reset',
 			'notices.preferencesReset' => 'the settings file could not be read and there was no backup to fall back on, so halo started with its defaults. the unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'anonymous account (#${id})',

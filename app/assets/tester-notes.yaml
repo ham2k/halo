@@ -14,6 +14,7 @@
     - "New Spotting settings: auto-respot interval, and auto-respot by default"
     - "SPOTLAST now takes a comment, like `SPOTTHEM nice signal`"
     - "Added SOTAcat to the radio list, found automatically on your network"
+    - "New Operation Summaries panel: scoring sections you pick, order and fold"
 
 "179":
   changes:

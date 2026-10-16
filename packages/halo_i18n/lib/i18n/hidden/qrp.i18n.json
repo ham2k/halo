@@ -419,7 +419,8 @@
       "website": "web site",
       "remoteScreen": "remote screen",
       "solar": "solar",
-      "radio": "radio"
+      "radio": "radio",
+      "summaries": "operation summaries"
     },
     "positions": {
       "nobodyYet": "no other operating positions are sharing this operation yet.",
@@ -495,6 +496,11 @@
         "infoDescription": "what we know about the station being worked",
         "spotsDescription": "spots from the clusters and activity programs",
         "mapDescription": "where the contacts are",
+        "summariesDescription": "the operation's stats and scores, in the sections and order you pick",
+        "summariesSections": "sections and order",
+        "summariesDays": "each day",
+        "summariesReset": "show all",
+        "summariesAllHidden": "every section is hidden. pick the ones to show in this panel's settings.",
         "clockDescription": "a clock face, in any time zone",
         "clockFace": "face",
         "clockFaceLcd": "lcd",

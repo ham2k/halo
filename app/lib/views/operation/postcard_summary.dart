@@ -24,7 +24,7 @@ import 'package:intl/intl.dart' show DateFormat;
 
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
-import 'information_panel.dart' show scorerIconColor;
+import 'information_panel.dart' show scorerIconColor, summaryTallies;
 import 'operation_postcard.dart' show PostcardOverlay, PostcardShape, PostcardText, postcardFooterRoom;
 
 /// A stretch of summary text in one weight.
@@ -157,7 +157,7 @@ List<PostcardSummarySection> postcardSummarySections(
         trailing: count == 1 ? info.qsoCountOne : info.qsoCountOther(count: count),
       ),
       [
-        for (final (key: _, :tally) in _tallies(tallies)) ...[_tallyHeading(tally, major: false), ..._tallyDetail(tally)],
+        for (final (key: _, :tally) in summaryTallies(tallies)) ...[_tallyHeading(tally, major: false), ..._tallyDetail(tally)],
       ],
       key: PostcardSummarySection.daysKey,
     );
@@ -171,23 +171,13 @@ List<PostcardSummarySection> postcardSummarySections(
     if (days.length > 1)
       for (final section in days) day(section),
     for (final scorerKey in orderedScorerKeys(scoring))
-      for (final (:key, :tally) in _tallies(operationSummaryFor(scoring, scorerKey)))
+      for (final (:key, :tally) in summaryTallies(operationSummaryFor(scoring, scorerKey)))
         PostcardSummarySection(
           _tallyHeading(tally, color: scorerIconColor(operation, scorerKey, activityControls)),
           _tallyDetail(tally),
           key: '$scorerKey.$key',
         ),
   ];
-}
-
-/// The tallies the Info pane lists: every one with a label but the QSO
-/// count, which the stats already give.
-Iterable<({String key, Map<dynamic, dynamic> tally})> _tallies(Map<String, dynamic>? summary) sync* {
-  for (final MapEntry(:key, :value) in (summary ?? const <String, dynamic>{}).entries) {
-    if (key == 'qsoCount' || value is! Map) continue;
-    final label = value['label'];
-    if (label is String && label.isNotEmpty) yield (key: key, tally: value);
-  }
 }
 
 /// A tally's short `summary` only stands beside it when there is no detail

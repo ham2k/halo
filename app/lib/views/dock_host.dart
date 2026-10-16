@@ -1158,20 +1158,25 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
           semanticLabel: _t.panelSettings(panel: panel.title),
         ),
         onPressed: () => unawaited(
-          // The shared-dashboard panels that answer for their own settings
-          // do so from BOTH routes — this button and the pane layout
-          // options' embed — or the same panel would offer two different
-          // settings surfaces depending on which way in the operator took.
-          PanelDefinition.descriptorIdOf(panel.id) == remoteScreenPanelId
-              ? showHaloDialog<void>(
-                  context: buttonContext,
-                  builder: (dialogContext) => HaloDialog(
-                    title: Text(panel.title),
-                    content: RemoteScreenSettingsRow(panelId: panel.id, services: dockServices),
-                    cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
-                  ),
-                )
-              : showPanelSettings(buttonContext, services: dockServices, panel: panel),
+          // The panels that answer for their own settings do so from BOTH
+          // routes — this button and the pane layout options' embed — or the
+          // same panel would offer two different settings surfaces depending
+          // on which way in the operator took.
+          switch (_panelSettingsOverride(buttonContext, panel.id)) {
+            final override? => showHaloDialog<void>(
+              context: buttonContext,
+              builder: (dialogContext) => HaloDialog(
+                title: Text(panel.title),
+                // An override scrolls itself, as the pane layout options'
+                // embed already requires of it; a second scroll view around a
+                // reorderable list would leave a drag nothing to auto-scroll.
+                scrollable: false,
+                content: Builder(builder: override),
+                cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(dialogContext.t.common.done)),
+              ),
+            ),
+            null => showPanelSettings(buttonContext, services: dockServices, panel: panel),
+          },
         ),
       ),
     );
@@ -1549,7 +1554,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// other devices offer, which is a dialog rather than a form field.
   WidgetBuilder? sharedDashboardPanelSettings(BuildContext context, String id) {
     if (PanelDefinition.descriptorIdOf(id) != remoteScreenPanelId) return null;
-    return (builderContext) => RemoteScreenSettingsRow(panelId: id, services: dockServices);
+    return (builderContext) => SingleChildScrollView(
+      child: RemoteScreenSettingsRow(panelId: id, services: dockServices),
+    );
   }
 
   /// Clock, Weather, Solar, Web Site, Radio and Remote Screen: the native

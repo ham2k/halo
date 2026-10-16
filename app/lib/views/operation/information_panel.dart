@@ -116,7 +116,7 @@ class InformationPanel extends StatelessWidget {
           for (final summary in chaseSummaries)
             ..._checklistRows(context, summary.tallies, resolveExtensionColor(summary.program.color) ?? theme.colorScheme.onSurfaceVariant),
         ],
-        if (daySections.length > 1) ..._daySummaries(context, daySections),
+        if (daySections.length > 1) ...summaryDayBlocks(context, daySections),
         if (scoringWidgets.isNotEmpty) ...[
           const SizedBox(height: Space.xl),
           Text(context.t.loggingPanel.scoring, style: theme.textTheme.titleSmall),
@@ -127,55 +127,8 @@ class InformationPanel extends StatelessWidget {
     );
   }
 
-  /// One block per calendar day the operation spans: the date, that day's QSO
-  /// count, then each scorer's DAY-scoped tallies (`for: 'day'`) — an
-  /// activity's activation progress resets with the day it's scoped to, while
-  /// carry-over tallies like DXCC or bands/modes stay in the operation totals
-  /// below rather than repeating unchanged under every day.
-  List<Widget> _daySummaries(BuildContext context, List<Map<String, dynamic>> daySections) {
-    final theme = Theme.of(context);
-    final t = context.t.loggingControls.info;
-    // Per-locale, not a bare `DateFormat(...)`: weekday/month names are
-    // locale text (halo_widgets' DayHeaderRow localizes the same day-header
-    // vocabulary the same way).
-    final dayFormat = DateFormat.yMMMMEEEEd(Localizations.localeOf(context).toLanguageTag());
-    final widgets = <Widget>[];
-    for (final section in daySections) {
-      final dayMillis = (section['day'] as num).toInt();
-      final scores = (section['scores'] as Map?)?.cast<String, dynamic>() ?? const {};
-      final count = ((scores['core.qsoCount'] as Map?)?['count'] as num?)?.toInt() ?? 0;
-
-      widgets.add(
-        Padding(
-          padding: const EdgeInsets.only(top: Space.xl, bottom: Space.sm),
-          child: Text.rich(
-            TextSpan(
-              style: theme.textTheme.bodyMedium,
-              children: [
-                TextSpan(
-                  text: '${dayFormat.format(DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true))}: ',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                TextSpan(text: count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count)),
-              ],
-            ),
-          ),
-        ),
-      );
-
-      final dayTallies = Map<String, dynamic>.fromEntries(
-        scores.entries.where((entry) {
-          final tally = entry.value;
-          return tally is Map && tally['key'] != 'qsoCount' && tally['for'] == 'day';
-        }),
-      );
-      widgets.addAll(_tallyRows(context, dayTallies, theme.colorScheme.onSurfaceVariant));
-    }
-    return widgets;
-  }
-
   /// One scorer's tallies — no heading of its own; each tally's `label` IS
-  /// its section's title (`_tallyRows`), so a scorer with several tallies
+  /// its section's title (`summaryTallyRows`), so a scorer with several tallies
   /// (core's DXCC/states/bands) reads as several titled sections in a row
   /// rather than one heading followed by an undifferentiated list.
   List<Widget> _scorerSummary(BuildContext context, String scorerKey, Map<String, dynamic>? scoring) {
@@ -185,62 +138,7 @@ class InformationPanel extends StatelessWidget {
 
     final iconColor = scorerIconColor(operation, scorerKey, activityControls) ?? theme.colorScheme.onSurfaceVariant;
 
-    return _tallyRows(context, summary, iconColor);
-  }
-
-  /// One titled section per tally: its icon, label (as the section's own
-  /// heading) and score, then its `longSummary` markdown in full underneath
-  /// — shared by core's own operation and per-day summaries (plain
-  /// `onSurfaceVariant` icons) and every other scorer's (`_scorerSummary`,
-  /// tinted with its own accent color). `qsoCount` is always skipped: its
-  /// count is already the "N QSOs" line in the stats block above.
-  List<Widget> _tallyRows(BuildContext context, Map<String, dynamic> summary, Color iconColor) {
-    final theme = Theme.of(context);
-    final widgets = <Widget>[];
-    for (final entry in summary.entries) {
-      if (entry.key == 'qsoCount') continue;
-      final tally = entry.value;
-      if (tally is! Map) continue;
-      final label = tally['label'] as String?;
-      final detail = tally['longSummary'] as String?;
-      // `summary` is a short number restating what `longSummary` already
-      // says in full ("5" beside "5 DXCC Entities" whose flags list is right
-      // below it) — only worth its own column when there's no detail to
-      // carry it instead.
-      final score = (detail == null || detail.isEmpty) ? tally['summary'] as String? : null;
-
-      if (label == null || label.isEmpty) continue;
-
-      widgets.add(
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (tally['icon'] is String) ...[
-              // `titleSmall`'s cap-height sits a couple of pixels below the
-              // icon's own top edge — nudged down so the icon's optical center
-              // lines up with the title's baseline instead of its bounding box.
-              Padding(
-                padding: const EdgeInsets.only(top: Space.xxs),
-                child: Icon(resolveIconName(tally['icon'] as String), size: 16, color: iconColor),
-              ),
-              const SizedBox(width: Space.sm),
-            ],
-            Expanded(child: Text(label, style: theme.textTheme.titleSmall)),
-            if (score != null && score.isNotEmpty) Text(score, style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoMono')),
-          ],
-        ),
-      );
-
-      if (detail != null && detail.isNotEmpty) {
-        widgets.add(_tallyDetail(context, detail, isGrid: tally['grid'] == true));
-      }
-      // Breathing room after the section, not just before the next one's
-      // title — otherwise the last section in a list runs straight into
-      // whatever follows it (the duplicates line, the next day, the end of
-      // the pane).
-      widgets.add(const SizedBox(height: Space.xl));
-    }
-    return widgets;
+    return summaryTallyRows(context, summary, iconColor);
   }
 
   /// A chasing program's tallies, each one sentence of body text beside its
@@ -275,49 +173,162 @@ class InformationPanel extends StatelessWidget {
           ),
     ];
   }
+}
 
-  /// A tally's `longSummary` markdown — a DXCC entities list or a band
-  /// breakdown reads as prose, in the pane's ordinary proportional font. A
-  /// tally that opts in with `grid: true` (any scorer's own fixed-set
-  /// checklist — states/provinces today, a contest's multiplier list or an
-  /// activity's award grid tomorrow) gets the monospace checklist treatment
-  /// instead. Rows are separated by single newlines, which Markdown would
-  /// otherwise fold into one run-on paragraph.
-  Widget _tallyDetail(BuildContext context, String detail, {required bool isGrid}) {
-    final theme = Theme.of(context);
-    final bodyStyle = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-    final styleSheet = withEmojiFallback(
-      MarkdownStyleSheet.fromTheme(theme).copyWith(
-        p: isGrid
-            ? bodyStyle.copyWith(
-                fontFamily: 'RobotoMono',
-                fontSize: 12,
-                // Dimmer than onSurfaceVariant alone — a code still open should
-                // all but recede next to a worked one's full-strength strikethrough.
-                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              )
-            : bodyStyle,
-        // The codes still open are the default paragraph color, dimmed above;
-        // a worked one is struck through AND set back to full strength, so the
-        // grid reads at a glance as done versus still needed rather than
-        // everything competing at the same weight. `null` when not a grid
-        // leaves the theme's own `del` style alone (`copyWith`'s `del ?? this.del`).
-        del: isGrid
-            ? bodyStyle.copyWith(
-                fontFamily: 'RobotoMono',
-                fontSize: 12,
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.lineThrough,
-              )
-            : null,
+/// One block per calendar day the operation spans: the date, that day's QSO
+/// count, then each scorer's DAY-scoped tallies (`for: 'day'`) — an
+/// activity's activation progress resets with the day it's scoped to, while
+/// carry-over tallies like DXCC or bands/modes stay in the operation totals
+/// below rather than repeating unchanged under every day.
+List<Widget> summaryDayBlocks(BuildContext context, List<Map<String, dynamic>> daySections) {
+  final theme = Theme.of(context);
+  final t = context.t.loggingControls.info;
+  // Per-locale, not a bare `DateFormat(...)`: weekday/month names are
+  // locale text (halo_widgets' DayHeaderRow localizes the same day-header
+  // vocabulary the same way).
+  final dayFormat = DateFormat.yMMMMEEEEd(Localizations.localeOf(context).toLanguageTag());
+  final widgets = <Widget>[];
+  for (final section in daySections) {
+    final dayMillis = (section['day'] as num).toInt();
+    final scores = (section['scores'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final count = ((scores['core.qsoCount'] as Map?)?['count'] as num?)?.toInt() ?? 0;
+
+    widgets.add(
+      Padding(
+        padding: const EdgeInsets.only(top: Space.xl, bottom: Space.sm),
+        child: Text.rich(
+          TextSpan(
+            style: theme.textTheme.bodyMedium,
+            children: [
+              TextSpan(
+                text: '${dayFormat.format(DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true))}: ',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              TextSpan(text: count == 1 ? t.qsoCountOne : t.qsoCountOther(count: count)),
+            ],
+          ),
+        ),
       ),
     );
-    return Padding(
-      padding: const EdgeInsets.only(top: Space.xs),
-      child: MarkdownBody(data: detail, softLineBreak: true, styleSheet: styleSheet),
+
+    final dayTallies = Map<String, dynamic>.fromEntries(
+      scores.entries.where((entry) {
+        final tally = entry.value;
+        return tally is Map && tally['key'] != 'qsoCount' && tally['for'] == 'day';
+      }),
     );
+    widgets.addAll(summaryTallyRows(context, dayTallies, theme.colorScheme.onSurfaceVariant));
   }
+  return widgets;
+}
+
+/// The tallies a summary lists: every one with a label but the QSO count,
+/// which the stats already give.
+Iterable<({String key, Map<dynamic, dynamic> tally})> summaryTallies(Map<String, dynamic>? summary) sync* {
+  for (final MapEntry(:key, :value) in (summary ?? const <String, dynamic>{}).entries) {
+    if (key == 'qsoCount' || value is! Map) continue;
+    final label = value['label'];
+    if (label is String && label.isNotEmpty) yield (key: key, tally: value);
+  }
+}
+
+/// One titled section per tally: its icon, label (as the section's own
+/// heading) and score, then its `longSummary` markdown in full underneath
+/// — shared by core's own operation and per-day summaries (plain
+/// `onSurfaceVariant` icons) and every other scorer's (`_scorerSummary`,
+/// tinted with its own accent color). `qsoCount` is always skipped: its
+/// count is already the "N QSOs" line in the stats block above.
+List<Widget> summaryTallyRows(BuildContext context, Map<String, dynamic> summary, Color iconColor) {
+  final widgets = <Widget>[];
+  for (final (key: _, :tally) in summaryTallies(summary)) {
+    final label = tally['label'] as String;
+    final detail = tally['longSummary'] as String?;
+    // `summary` is a short number restating what `longSummary` already
+    // says in full ("5" beside "5 DXCC Entities" whose flags list is right
+    // below it) — only worth its own column when there's no detail to
+    // carry it instead.
+    final score = (detail == null || detail.isEmpty) ? tally['summary'] as String? : null;
+
+    widgets.add(summaryHeading(context, title: label, icon: tally['icon'] is String ? tally['icon'] as String : null, iconColor: iconColor, score: score));
+
+    if (detail != null && detail.isNotEmpty) {
+      widgets.add(summaryTallyDetail(context, detail, isGrid: tally['grid'] == true));
+    }
+    // Breathing room after the section, not just before the next one's
+    // title — otherwise the last section in a list runs straight into
+    // whatever follows it (the duplicates line, the next day, the end of
+    // the pane).
+    widgets.add(const SizedBox(height: Space.xl));
+  }
+  return widgets;
+}
+
+/// A summary section's title row: the tally's icon, its label, and a score
+/// at the end of the line. [trailing] goes after the score — the Summaries
+/// pane's fold chevron.
+Widget summaryHeading(BuildContext context, {required String title, String? icon, Color? iconColor, String? score, Widget? trailing}) {
+  final theme = Theme.of(context);
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (icon != null) ...[
+        // `titleSmall`'s cap-height sits a couple of pixels below the
+        // icon's own top edge — nudged down so the icon's optical center
+        // lines up with the title's baseline instead of its bounding box.
+        Padding(
+          padding: const EdgeInsets.only(top: Space.xxs),
+          child: Icon(resolveIconName(icon), size: 16, color: iconColor ?? theme.colorScheme.onSurfaceVariant),
+        ),
+        const SizedBox(width: Space.sm),
+      ],
+      Expanded(child: Text(title, style: theme.textTheme.titleSmall)),
+      if (score != null && score.isNotEmpty) Text(score, style: theme.textTheme.titleMedium?.copyWith(fontFamily: 'RobotoMono')),
+      ?trailing,
+    ],
+  );
+}
+
+/// A tally's `longSummary` markdown — a DXCC entities list or a band
+/// breakdown reads as prose, in the pane's ordinary proportional font. A
+/// tally that opts in with `grid: true` (any scorer's own fixed-set
+/// checklist — states/provinces today, a contest's multiplier list or an
+/// activity's award grid tomorrow) gets the monospace checklist treatment
+/// instead. Rows are separated by single newlines, which Markdown would
+/// otherwise fold into one run-on paragraph.
+Widget summaryTallyDetail(BuildContext context, String detail, {required bool isGrid}) {
+  final theme = Theme.of(context);
+  final bodyStyle = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
+  final styleSheet = withEmojiFallback(
+    MarkdownStyleSheet.fromTheme(theme).copyWith(
+      p: isGrid
+          ? bodyStyle.copyWith(
+              fontFamily: 'RobotoMono',
+              fontSize: 12,
+              // Dimmer than onSurfaceVariant alone — a code still open should
+              // all but recede next to a worked one's full-strength strikethrough.
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            )
+          : bodyStyle,
+      // The codes still open are the default paragraph color, dimmed above;
+      // a worked one is struck through AND set back to full strength, so the
+      // grid reads at a glance as done versus still needed rather than
+      // everything competing at the same weight. `null` when not a grid
+      // leaves the theme's own `del` style alone (`copyWith`'s `del ?? this.del`).
+      del: isGrid
+          ? bodyStyle.copyWith(
+              fontFamily: 'RobotoMono',
+              fontSize: 12,
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w700,
+              decoration: TextDecoration.lineThrough,
+            )
+          : null,
+    ),
+  );
+  return Padding(
+    padding: const EdgeInsets.only(top: Space.xs),
+    child: MarkdownBody(data: detail, softLineBreak: true, styleSheet: styleSheet),
+  );
 }
 
 /// The accent a scorer's tallies wear: its extension's own declared color,

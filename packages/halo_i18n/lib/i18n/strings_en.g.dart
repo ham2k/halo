@@ -3265,6 +3265,9 @@ class Translations$operation$tabs$en {
 
 	/// en: 'Radio'
 	String get radio => 'Radio';
+
+	/// en: 'Operation Summaries'
+	String get summaries => 'Operation Summaries';
 }
 
 // Path: operation.positions
@@ -6631,6 +6634,21 @@ class Translations$operation$layout$panels$en {
 	/// en: 'Where the contacts are'
 	String get mapDescription => 'Where the contacts are';
 
+	/// en: 'The operation's stats and scores, in the sections and order you pick'
+	String get summariesDescription => 'The operation\'s stats and scores, in the sections and order you pick';
+
+	/// en: 'Sections and Order'
+	String get summariesSections => 'Sections and Order';
+
+	/// en: 'Each day'
+	String get summariesDays => 'Each day';
+
+	/// en: 'Show all'
+	String get summariesReset => 'Show all';
+
+	/// en: 'Every section is hidden. Pick the ones to show in this panel's settings.'
+	String get summariesAllHidden => 'Every section is hidden. Pick the ones to show in this panel\'s settings.';
+
 	/// en: 'A clock face, in any time zone'
 	String get clockDescription => 'A clock face, in any time zone';
 
@@ -8683,6 +8701,7 @@ extension on Translations {
 			'operation.tabs.remoteScreen' => 'Remote Screen',
 			'operation.tabs.solar' => 'Solar',
 			'operation.tabs.radio' => 'Radio',
+			'operation.tabs.summaries' => 'Operation Summaries',
 			'operation.positions.nobodyYet' => 'No other operating positions are sharing this operation yet.',
 			'operation.positions.positionLabel' => ({required Object number}) => 'Pos: ${number}',
 			'operation.positions.operatorLabel' => ({required Object call}) => 'Op: ${call}',
@@ -8751,6 +8770,11 @@ extension on Translations {
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
 			'operation.layout.panels.mapDescription' => 'Where the contacts are',
+			'operation.layout.panels.summariesDescription' => 'The operation\'s stats and scores, in the sections and order you pick',
+			'operation.layout.panels.summariesSections' => 'Sections and Order',
+			'operation.layout.panels.summariesDays' => 'Each day',
+			'operation.layout.panels.summariesReset' => 'Show all',
+			'operation.layout.panels.summariesAllHidden' => 'Every section is hidden. Pick the ones to show in this panel\'s settings.',
 			'operation.layout.panels.clockDescription' => 'A clock face, in any time zone',
 			'operation.layout.panels.clockFace' => 'Face',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
@@ -8846,14 +8870,14 @@ extension on Translations {
 			'operation.layout.panels.solarUnreachable' => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. Will try again shortly.',
 			'operation.layout.panels.solarAIndex' => 'A',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.solarKIndex' => 'Kp',
 			'operation.layout.panels.solarBandDay' => 'Day',
 			'operation.layout.panels.solarBandNight' => 'Night',
 			'operation.layout.panels.solarBandGood' => 'Good',
 			'operation.layout.panels.solarBandFair' => 'Fair',
 			'operation.layout.panels.solarBandPoor' => 'Poor',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.solarSources' => ({required Object primary, required Object secondary}) => 'Sources: ${primary}, ${secondary}',
 			'operation.layout.panels.remoteScreenDegraded' => 'The connection is struggling — skipping frames.',
 			'operation.layout.panels.remoteScreenStalled' => 'Frames stopped getting through — this connection may be too slow.',
@@ -9360,14 +9384,14 @@ extension on Translations {
 			'settings.layoutDensityOpts.densest' => 'Densest',
 			'settings.layoutDensityOpts.dense' => 'Dense',
 			'settings.layoutDensityOpts.normal' => 'Normal',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.sparse' => 'Sparse',
 			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
 			'settings.layoutDensityAtLimit' => 'as far as it goes',
 			'settings.distanceUnits' => 'Distance Units',
 			'settings.distanceUnitsOpts.kilometers' => 'Kilometers',
-			_ => null,
-		} ?? switch (path) {
 			'settings.distanceUnitsOpts.miles' => 'Miles',
 			'settings.userInterface' => 'User Interface',
 			'settings.logging.title' => 'Logging',
@@ -9874,14 +9898,14 @@ extension on Translations {
 			'settings.station.winkeyerKeyPort' => 'Key output',
 			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
 			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer responded on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'Device is in use',
@@ -10388,14 +10412,14 @@ extension on Translations {
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
 			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
 			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
+			_ => null,
+		} ?? switch (path) {
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
