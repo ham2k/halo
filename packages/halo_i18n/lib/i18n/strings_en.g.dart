@@ -1278,29 +1278,29 @@ class Translations$loggingControls$en {
 	/// en: 'Comment'
 	String get spotComment => 'Comment';
 
-	/// en: 'Auto spots'
-	String get spottingAutoControl => 'Auto spots';
+	/// en: 'Auto re-spot'
+	String get spottingAutoControl => 'Auto re-spot';
 
 	/// en: 'Re-spot every ${minutes} min'
 	String spotAutoEvery({required Object minutes}) => 'Re-spot every ${minutes} min';
 
-	/// en: 'Stop auto spots'
-	String get spotAutoStop => 'Stop auto spots';
+	/// en: 'Auto in ${time}. Stop?'
+	String spotAutoNext({required Object time}) => 'Auto in ${time}. Stop?';
 
-	/// en: 'Auto spots not started: the spot did not go through'
-	String get spotAutoNotStarted => 'Auto spots not started: the spot did not go through';
+	/// en: 'Auto re-spot not started: the spot did not go through'
+	String get spotAutoNotStarted => 'Auto re-spot not started: the spot did not go through';
 
-	/// en: 'Auto spots not started: the frequency changed while spotting'
-	String get spotAutoMoved => 'Auto spots not started: the frequency changed while spotting';
+	/// en: 'Auto re-spot not started: the frequency changed while spotting'
+	String get spotAutoMoved => 'Auto re-spot not started: the frequency changed while spotting';
 
-	/// en: 'Auto spots stopped'
-	String get spotAutoStopped => 'Auto spots stopped';
+	/// en: 'Auto re-spot stopped'
+	String get spotAutoStopped => 'Auto re-spot stopped';
 
-	/// en: 'Auto spots stopped: the frequency changed'
-	String get spotAutoLeftFreq => 'Auto spots stopped: the frequency changed';
+	/// en: 'Auto re-spot stopped: the frequency changed'
+	String get spotAutoLeftFreq => 'Auto re-spot stopped: the frequency changed';
 
-	/// en: 'Auto spots stopped: the radio reports no frequency'
-	String get spotAutoNoFreq => 'Auto spots stopped: the radio reports no frequency';
+	/// en: 'Auto re-spot stopped: the radio reports no frequency'
+	String get spotAutoNoFreq => 'Auto re-spot stopped: the radio reports no frequency';
 
 	/// en: 'Another spot is still being sent'
 	String get spotBusy => 'Another spot is still being sent';
@@ -1631,6 +1631,7 @@ class Translations$settings$en {
 	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
 	late final Translations$settings$catServer$en catServer = Translations$settings$catServer$en.internal(_root);
 	late final Translations$settings$cluster$en cluster = Translations$settings$cluster$en.internal(_root);
+	late final Translations$settings$spotting$en spotting = Translations$settings$spotting$en.internal(_root);
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
 	late final Translations$settings$help$en help = Translations$settings$help$en.internal(_root);
 	late final Translations$settings$exports$en exports = Translations$settings$exports$en.internal(_root);
@@ -4377,6 +4378,42 @@ class Translations$settings$cluster$en {
 	String get statusUnsupported => 'Not available in the web version.';
 
 	late final Translations$settings$cluster$errors$en errors = Translations$settings$cluster$errors$en.internal(_root);
+}
+
+// Path: settings.spotting
+class Translations$settings$spotting$en {
+	Translations$settings$spotting$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Spotting'
+	String get title => 'Spotting';
+
+	/// en: 'Auto re-spot every'
+	String get respotInterval => 'Auto re-spot every';
+
+	/// en: '${minutes} min'
+	String minutes({required Object minutes}) => '${minutes} min';
+
+	/// en: 'Auto re-spot by default'
+	String get autoRespotByDefault => 'Auto re-spot by default';
+
+	/// en: 'Enable auto re-spot after any spot is posted'
+	String get autoRespotByDefaultOn => 'Enable auto re-spot after any spot is posted';
+
+	/// en: 'Require user action to enable auto re-spotting'
+	String get autoRespotByDefaultOff => 'Require user action to enable auto re-spotting';
+
+	/// en: 'Pulse before each auto re-spot'
+	String get pulseBeforeRespot => 'Pulse before each auto re-spot';
+
+	/// en: 'The Spotting chip pulses blue for the ${seconds} seconds before each re-spot'
+	String pulseBeforeRespotOn({required Object seconds}) => 'The Spotting chip pulses blue for the ${seconds} seconds before each re-spot';
+
+	/// en: 'No pulsing before an auto re-spot'
+	String get pulseBeforeRespotOff => 'No pulsing before an auto re-spot';
 }
 
 // Path: settings.radio
@@ -9118,14 +9155,14 @@ extension on Translations {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
 			'loggingControls.spotComment' => 'Comment',
-			'loggingControls.spottingAutoControl' => 'Auto spots',
+			'loggingControls.spottingAutoControl' => 'Auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot every ${minutes} min',
-			'loggingControls.spotAutoStop' => 'Stop auto spots',
-			'loggingControls.spotAutoNotStarted' => 'Auto spots not started: the spot did not go through',
-			'loggingControls.spotAutoMoved' => 'Auto spots not started: the frequency changed while spotting',
-			'loggingControls.spotAutoStopped' => 'Auto spots stopped',
-			'loggingControls.spotAutoLeftFreq' => 'Auto spots stopped: the frequency changed',
-			'loggingControls.spotAutoNoFreq' => 'Auto spots stopped: the radio reports no frequency',
+			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto in ${time}. Stop?',
+			'loggingControls.spotAutoNotStarted' => 'Auto re-spot not started: the spot did not go through',
+			'loggingControls.spotAutoMoved' => 'Auto re-spot not started: the frequency changed while spotting',
+			'loggingControls.spotAutoStopped' => 'Auto re-spot stopped',
+			'loggingControls.spotAutoLeftFreq' => 'Auto re-spot stopped: the frequency changed',
+			'loggingControls.spotAutoNoFreq' => 'Auto re-spot stopped: the radio reports no frequency',
 			'loggingControls.spotBusy' => 'Another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
 			'loggingControls.missingBand' => 'No Band',
@@ -9368,6 +9405,15 @@ extension on Translations {
 			'settings.cluster.errors.loginFailed' => 'the node did not accept the login',
 			'settings.cluster.errors.disconnected' => 'the node closed the connection',
 			'settings.cluster.errors.timeout' => 'the node did not answer',
+			'settings.spotting.title' => 'Spotting',
+			'settings.spotting.respotInterval' => 'Auto re-spot every',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
+			'settings.spotting.autoRespotByDefault' => 'Auto re-spot by default',
+			'settings.spotting.autoRespotByDefaultOn' => 'Enable auto re-spot after any spot is posted',
+			'settings.spotting.autoRespotByDefaultOff' => 'Require user action to enable auto re-spotting',
+			'settings.spotting.pulseBeforeRespot' => 'Pulse before each auto re-spot',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'The Spotting chip pulses blue for the ${seconds} seconds before each re-spot',
+			'settings.spotting.pulseBeforeRespotOff' => 'No pulsing before an auto re-spot',
 			'settings.radio.title' => 'CAT Control',
 			'settings.radio.loggingAndCat' => 'Logging & CAT',
 			'settings.radio.tuningSection' => 'Tuning',
@@ -9785,6 +9831,8 @@ extension on Translations {
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'Device is in use',
 			'settings.station.connectFailedDenied' => 'Access denied',
@@ -9794,8 +9842,6 @@ extension on Translations {
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ft991a' => 'Yaesu FT-991/A',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
@@ -10299,6 +10345,8 @@ extension on Translations {
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
@@ -10308,8 +10356,6 @@ extension on Translations {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again',
 			'confirmDevice.title' => 'Confirm a Device',
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',

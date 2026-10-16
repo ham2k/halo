@@ -579,14 +579,14 @@ class _Translations$loggingControls$qrp extends Translations$loggingControls$en 
 	@override String spotTooLate({required Object call}) => 'too late to spot ${call}';
 	@override String get spotNoFreq => 'first set a frequency to spot';
 	@override String get spotComment => 'comment';
-	@override String get spottingAutoControl => 'auto spots';
+	@override String get spottingAutoControl => 'auto re-spot';
 	@override String spotAutoEvery({required Object minutes}) => 're-spot every ${minutes} min';
-	@override String get spotAutoStop => 'stop auto spots';
-	@override String get spotAutoNotStarted => 'auto spots not started: the spot did not go through';
-	@override String get spotAutoMoved => 'auto spots not started: the frequency changed while spotting';
-	@override String get spotAutoStopped => 'auto spots stopped';
-	@override String get spotAutoLeftFreq => 'auto spots stopped: the frequency changed';
-	@override String get spotAutoNoFreq => 'auto spots stopped: the radio reports no frequency';
+	@override String spotAutoNext({required Object time}) => 'auto in ${time}. stop?';
+	@override String get spotAutoNotStarted => 'auto re-spot not started: the spot did not go through';
+	@override String get spotAutoMoved => 'auto re-spot not started: the frequency changed while spotting';
+	@override String get spotAutoStopped => 'auto re-spot stopped';
+	@override String get spotAutoLeftFreq => 'auto re-spot stopped: the frequency changed';
+	@override String get spotAutoNoFreq => 'auto re-spot stopped: the radio reports no frequency';
 	@override String get spotBusy => 'another spot is still being sent';
 	@override String get bandOrFreqRequired => 'set a frequency or band before logging';
 	@override String get missingBand => 'no band';
@@ -738,6 +738,7 @@ class _Translations$settings$qrp extends Translations$settings$en {
 	@override late final _Translations$settings$logging$qrp logging = _Translations$settings$logging$qrp._(_root);
 	@override late final _Translations$settings$catServer$qrp catServer = _Translations$settings$catServer$qrp._(_root);
 	@override late final _Translations$settings$cluster$qrp cluster = _Translations$settings$cluster$qrp._(_root);
+	@override late final _Translations$settings$spotting$qrp spotting = _Translations$settings$spotting$qrp._(_root);
 	@override late final _Translations$settings$radio$qrp radio = _Translations$settings$radio$qrp._(_root);
 	@override late final _Translations$settings$help$qrp help = _Translations$settings$help$qrp._(_root);
 	@override late final _Translations$settings$exports$qrp exports = _Translations$settings$exports$qrp._(_root);
@@ -2075,6 +2076,24 @@ class _Translations$settings$cluster$qrp extends Translations$settings$cluster$e
 	@override String statusFailed({required Object node, required Object reason}) => 'could not connect to ${node}: ${reason}';
 	@override String get statusUnsupported => 'not available in the web version.';
 	@override late final _Translations$settings$cluster$errors$qrp errors = _Translations$settings$cluster$errors$qrp._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$qrp extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'spotting';
+	@override String get respotInterval => 'auto re-spot every';
+	@override String minutes({required Object minutes}) => '${minutes} min';
+	@override String get autoRespotByDefault => 'auto re-spot by default';
+	@override String get autoRespotByDefaultOn => 'enable auto re-spot after any spot is posted';
+	@override String get autoRespotByDefaultOff => 'require user action to enable auto re-spotting';
+	@override String get pulseBeforeRespot => 'pulse before each auto re-spot';
+	@override String pulseBeforeRespotOn({required Object seconds}) => 'the spotting chip pulses blue for the ${seconds} seconds before each re-spot';
+	@override String get pulseBeforeRespotOff => 'no pulsing before an auto re-spot';
 }
 
 // Path: settings.radio
@@ -4717,14 +4736,14 @@ extension on TranslationsQrp {
 			'loggingControls.spotTooLate' => ({required Object call}) => 'too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'first set a frequency to spot',
 			'loggingControls.spotComment' => 'comment',
-			'loggingControls.spottingAutoControl' => 'auto spots',
+			'loggingControls.spottingAutoControl' => 'auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 're-spot every ${minutes} min',
-			'loggingControls.spotAutoStop' => 'stop auto spots',
-			'loggingControls.spotAutoNotStarted' => 'auto spots not started: the spot did not go through',
-			'loggingControls.spotAutoMoved' => 'auto spots not started: the frequency changed while spotting',
-			'loggingControls.spotAutoStopped' => 'auto spots stopped',
-			'loggingControls.spotAutoLeftFreq' => 'auto spots stopped: the frequency changed',
-			'loggingControls.spotAutoNoFreq' => 'auto spots stopped: the radio reports no frequency',
+			'loggingControls.spotAutoNext' => ({required Object time}) => 'auto in ${time}. stop?',
+			'loggingControls.spotAutoNotStarted' => 'auto re-spot not started: the spot did not go through',
+			'loggingControls.spotAutoMoved' => 'auto re-spot not started: the frequency changed while spotting',
+			'loggingControls.spotAutoStopped' => 'auto re-spot stopped',
+			'loggingControls.spotAutoLeftFreq' => 'auto re-spot stopped: the frequency changed',
+			'loggingControls.spotAutoNoFreq' => 'auto re-spot stopped: the radio reports no frequency',
 			'loggingControls.spotBusy' => 'another spot is still being sent',
 			'loggingControls.bandOrFreqRequired' => 'set a frequency or band before logging',
 			'loggingControls.missingBand' => 'no band',
@@ -4967,6 +4986,15 @@ extension on TranslationsQrp {
 			'settings.cluster.errors.loginFailed' => 'the node did not accept the login',
 			'settings.cluster.errors.disconnected' => 'the node closed the connection',
 			'settings.cluster.errors.timeout' => 'the node did not answer',
+			'settings.spotting.title' => 'spotting',
+			'settings.spotting.respotInterval' => 'auto re-spot every',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
+			'settings.spotting.autoRespotByDefault' => 'auto re-spot by default',
+			'settings.spotting.autoRespotByDefaultOn' => 'enable auto re-spot after any spot is posted',
+			'settings.spotting.autoRespotByDefaultOff' => 'require user action to enable auto re-spotting',
+			'settings.spotting.pulseBeforeRespot' => 'pulse before each auto re-spot',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => 'the spotting chip pulses blue for the ${seconds} seconds before each re-spot',
+			'settings.spotting.pulseBeforeRespotOff' => 'no pulsing before an auto re-spot',
 			'settings.radio.title' => 'cat control',
 			'settings.radio.loggingAndCat' => 'logging & cat',
 			'settings.radio.tuningSection' => 'tuning',
@@ -5384,6 +5412,8 @@ extension on TranslationsQrp {
 			'settings.station.radioUser' => 'radio username',
 			'settings.station.radioPass' => 'radio password',
 			'settings.station.radioLoginDescription' => 'the radio\'s network → remote login, not your wifi password.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioUserRequired' => 'the radio\'s remote-control username is required',
 			'settings.station.connectFailedBusy' => 'device is in use',
 			'settings.station.connectFailedDenied' => 'access denied',
@@ -5393,8 +5423,6 @@ extension on TranslationsQrp {
 			'settings.station.connectFailedTimeout' => 'the radio didn\'t respond in time. check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'flexradio (smartsdr)',
 			'settings.station.models.ft891' => 'yaesu ft-891',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ft991a' => 'yaesu ft-991/a',
 			'settings.station.models.ft710' => 'yaesu ft-710',
 			'settings.station.models.ftdx10' => 'yaesu ftdx10',
@@ -5898,6 +5926,8 @@ extension on TranslationsQrp {
 			'notices.preferencesReset' => 'the settings file could not be read and there was no backup to fall back on, so halo started with its defaults. the unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'halo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. check that the radio is switched on and its cable is plugged in, then press connect on it in settings.',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.anonymous' => ({required Object id}) => 'anonymous account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
@@ -5907,8 +5937,6 @@ extension on TranslationsQrp {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'could not reach your activities, so ${refs} was left off — try that link again',
 			'confirmDevice.title' => 'confirm a device',
 			'confirmDevice.codePrompt' => 'enter the code shown on the device that wants to join this account.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.code' => 'code',
 			'confirmDevice.lookUp' => 'look up',
 			'confirmDevice.codeNotFound' => 'no request matches that code. codes expire after 10 minutes — ask the other device for a fresh one.',

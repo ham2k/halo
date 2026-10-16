@@ -36,23 +36,22 @@ export function parseLastSpotCommand(input: string): { comment: string } | null 
   return { comment: rest ? rest.slice(1).trim() : "" }
 }
 
-/// RESPOT's defaults: the same ten minutes the Spotting control offers, a
-/// floor that keeps a public spot cluster from being flooded, and a ceiling
-/// past which a spot has aged off the clusters anyway. The app holds to the
-/// same bounds whatever an action asks for.
-export const RESPOT_DEFAULT_MINUTES = 10
+/// RESPOT's bounds: a floor that keeps a public spot cluster from being
+/// flooded, and a ceiling past which a spot has aged off the clusters anyway.
+/// The app holds to the same bounds whatever an action asks for.
 export const RESPOT_MIN_MINUTES = 5
 export const RESPOT_MAX_MINUTES = 60
 
-/// What RESPOT asks for: auto-respotting every `minutes` (bare RESPOT is the
-/// default; outside the bounds is the nearest bound), or `off` (RESPOT OFF,
-/// RESPOT 0). `invalid` for a parameter that is neither, `null` for input
-/// that isn't RESPOT at all.
-export function parseRespotCommand(input: string): { minutes: number } | { off: true } | { invalid: true } | null {
+/// What RESPOT asks for: auto-respotting every `minutes` (outside the bounds
+/// is the nearest bound), with no `minutes` at all for bare RESPOT — the
+/// operator's own interval, a setting only the app knows — or `off` (RESPOT
+/// OFF, RESPOT 0). `invalid` for a parameter that is neither, `null` for
+/// input that isn't RESPOT at all.
+export function parseRespotCommand(input: string): { minutes?: number } | { off: true } | { invalid: true } | null {
   const match = RESPOT_MATCH.exec(input.trim())
   if (!match) return null
   const param = (match[1] ?? "").trim()
-  if (!param) return { minutes: RESPOT_DEFAULT_MINUTES }
+  if (!param) return {}
   if (/^OFF$/i.test(param)) return { off: true }
   if (!/^\d+$/.test(param)) return { invalid: true }
   const minutes = Number(param)

@@ -62,8 +62,10 @@ test("parseLastSpotCommand: a call that merely starts with the word is not the c
   assert.equal(parseLastSpotCommand("K1ABC"), null)
 })
 
-test("parseRespotCommand: bare RESPOT is every ten minutes, a number is that many", () => {
-  assert.deepEqual(parseRespotCommand("RESPOT"), { minutes: 10 })
+// Bare RESPOT leaves the interval to the app: a number here would override
+// the operator's own setting, which only the app can read.
+test("parseRespotCommand: bare RESPOT names no interval, a number is that many", () => {
+  assert.deepEqual(parseRespotCommand("RESPOT"), {})
   assert.deepEqual(parseRespotCommand("respot 7"), { minutes: 7 })
   assert.deepEqual(parseRespotCommand("RESPOT 30"), { minutes: 30 })
 })

@@ -775,13 +775,36 @@ class ControlStripSettings {
 
 /// The Spotting control's way out to the spotting networks.
 class SpottingHooks {
-  const SpottingHooks({this.suggestSpotSources, this.sendSpot});
+  const SpottingHooks({
+    this.suggestSpotSources,
+    this.sendSpot,
+    this.respotInterval = defaultRespotInterval,
+    this.autoRespotByDefault = false,
+    this.pulseBeforeRespot = true,
+    this.onOpenSettings,
+  });
 
   /// Spotting control (ham2k/halo-dist#10) — null (either) disables the
   /// control's icon-row/send-button UI, matching how a null
   /// [RadioHookup.radioService] degrades the Radio control.
   final SuggestSpotSources? suggestSpotSources;
   final SendSpot? sendSpot;
+
+  /// The operator's Spotting settings: how often auto-respotting repeats a
+  /// self-spot, unless RESPOT names its own interval, whether a self-spot
+  /// every source took starts it without offering first, and whether the
+  /// chip pulses in the seconds before each respot.
+  final Duration respotInterval;
+  final bool autoRespotByDefault;
+  final bool pulseBeforeRespot;
+
+  /// The interval with no setting saying otherwise — the app's Spotting
+  /// settings default to it too.
+  static const defaultRespotInterval = Duration(minutes: 10);
+
+  /// Opens those settings — the tune button at the end of the control's
+  /// row, shown only when this is set.
+  final VoidCallback? onOpenSettings;
 }
 
 /// The operator's logging preferences — which fields the row shows, what an

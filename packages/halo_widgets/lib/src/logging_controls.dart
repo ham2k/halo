@@ -265,6 +265,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       editingQso: widget.session.editingQso,
       operation: widget.log.operation,
       notice: _command.showError,
+      respotInterval: widget.spotting.respotInterval,
+      autoRespotByDefault: widget.spotting.autoRespotByDefault,
+      pulseBeforeRespot: widget.spotting.pulseBeforeRespot,
+      onOpenSettings: widget.spotting.onOpenSettings,
     ),
   );
 
@@ -800,6 +804,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _syncSerialSource(oldWidget);
     _syncController(oldWidget);
     _syncRadioUpdates(oldWidget);
+    if (widget.spotting.respotInterval != oldWidget.spotting.respotInterval) _spotting.followIntervalSetting();
     if (_syncEditingQso(oldWidget)) return;
     // Nothing below applies while editing an existing QSO — a suggestion or
     // a refs change must never clobber an in-progress edit.
@@ -1857,7 +1862,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         case 'power':
           specs.add(powerControlSpec(_radio, keyboardType: _decimalKeyboardType));
         case 'spotting':
-          specs.add(spottingControlSpec(_spotting, theme, poloColors));
+          specs.add(spottingControlSpec(_spotting, theme, selected: _selectedControlKey == 'spotting'));
         case 'notes':
           specs.add(notesControlSpec(theme, controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
         case 'more':

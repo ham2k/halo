@@ -92,6 +92,7 @@ import '../settings/core_settings_groups.dart';
 import '../settings/settings_command.dart';
 import '../settings/settings_registry.dart';
 import '../settings/settings_target_dialog.dart';
+import '../settings/spotting_settings_group.dart';
 import '../settings/system_lists.dart';
 import 'update_check_service.dart';
 import 'staleness_service.dart';
@@ -696,6 +697,7 @@ class HaLoServices {
   late final SettingsRegistry settingsRegistry = SettingsRegistry()
     ..register(GeneralSettingsGroup(settings, extensions))
     ..register(LoggingSettingsGroup(settings))
+    ..register(SpottingSettingsGroup(settings))
     ..register(
       RadioSettingsGroup(
         settings,

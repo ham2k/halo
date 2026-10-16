@@ -27,6 +27,7 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
+import 'package:flutter/scheduler.dart' show Ticker;
 
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -40,6 +41,14 @@ import 'wall_clock.dart';
 /// One run of a chip's summary: [text], and the color it paints in — null
 /// keeps the chip's own foreground, which is what all but one run ever wants.
 typedef SummaryPart = ({String text, Color? color});
+
+/// [SecondaryControlSpec.liveIconColor]: the icon's color now, given the
+/// one it would otherwise have.
+typedef LiveIconColor = Color Function(Color base);
+
+/// [SecondaryControlSpec.liveTint]: a [color] the icon and label are drawn
+/// toward, by [strength] (0 none, 1 all of it), re-read every frame.
+typedef LiveTint = ({Color color, ValueGetter<double> strength});
 
 /// One control the row can show. Built by the screen/panel that owns the
 /// relevant state — some specs wrap a built-in Dart widget (Time, Radio),
@@ -85,6 +94,21 @@ class SecondaryControlSpec {
   /// seen.
   final ValueGetter<double>? liveIconGlow;
 
+  /// The icon's color, re-evaluated once per second like [liveIconGlow],
+  /// given the color it would otherwise have ([iconColor], or the chip's
+  /// foreground): for a status that fades back to normal on its own — the
+  /// Spotting chip's last self-spot. Ignored while disabled or alerting, as
+  /// [iconColor] is.
+  final LiveIconColor? liveIconColor;
+
+  /// Draws the icon and the label toward a color, re-evaluated every frame
+  /// rather than every second: for a pulse that has to move smoothly — the
+  /// Spotting chip's last seconds before an auto-respot. While set, the icon
+  /// ignores [liveIconColor] and the label is plain [summary], without
+  /// [liveSummary] or [summaryParts]; ignored itself while disabled or
+  /// alerting, as they are.
+  final LiveTint? liveTint;
+
   /// The node the caller uses to put the keyboard on this chip, and to hang
   /// its key handling off (APP-19's focus ladder: arrows walk the strip, Up
   /// leaves for the QSO list, Down returns to the main fields). Owned by the
@@ -120,6 +144,8 @@ class SecondaryControlSpec {
     this.summaryParts,
     this.iconColor,
     this.liveIconGlow,
+    this.liveIconColor,
+    this.liveTint,
     this.focusNode,
     this.enabled = true,
     this.alert = false,
@@ -146,6 +172,8 @@ class SecondaryControlSpec {
     List<SummaryPart>? summaryParts,
     Color? iconColor,
     ValueGetter<double>? liveIconGlow,
+    LiveIconColor? liveIconColor,
+    LiveTint? liveTint,
     FocusNode? focusNode,
     bool? enabled,
     bool? alert,
@@ -158,6 +186,8 @@ class SecondaryControlSpec {
     summaryParts: summaryParts ?? this.summaryParts,
     iconColor: iconColor ?? this.iconColor,
     liveIconGlow: liveIconGlow ?? this.liveIconGlow,
+    liveIconColor: liveIconColor ?? this.liveIconColor,
+    liveTint: liveTint ?? this.liveTint,
     focusNode: focusNode ?? this.focusNode,
     enabled: enabled ?? this.enabled,
     alert: alert ?? this.alert,
@@ -868,43 +898,55 @@ class _ControlChip extends StatelessWidget {
       selectedColor = selectedColor.withValues(alpha: 0.5);
     }
 
-    Widget icon({List<Shadow>? shadows}) => Icon(
-      control.icon,
-      size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
-      // The accent shows whenever the field holds a reference — open
-      // (selected, solid tertiary fill) or closed (tertiaryLight fill).
-      // Holding one is all it means: a reference the control's pattern
-      // rejects is kept like any other, and says so through [alert] below
-      // rather than by withholding the accent. Contrast against the selected fill isn't
-      // guaranteed for an arbitrary extension color, but that's on the
-      // extension to pick a color that works — same as the unselected case.
-      // An alerting chip drops the accent entirely (see [alert]).
-      color: control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground,
-      shadows: shadows,
-    );
+    final liveColor = control.enabled && !control.alert ? control.liveIconColor : null;
+    final tint = control.enabled && !control.alert ? control.liveTint : null;
+    Color tinted(Color color) => tint == null ? color : Color.lerp(color, tint.color, tint.strength().clamp(0.0, 1.0))!;
+    Widget icon({List<Shadow>? shadows}) {
+      final base = control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground;
+      return Icon(
+        control.icon,
+        size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
+        // The accent shows whenever the field holds a reference — open
+        // (selected, solid tertiary fill) or closed (tertiaryLight fill).
+        // Holding one is all it means: a reference the control's pattern
+        // rejects is kept like any other, and says so through [alert] below
+        // rather than by withholding the accent. Contrast against the selected fill isn't
+        // guaranteed for an arbitrary extension color, but that's on the
+        // extension to pick a color that works — same as the unselected case.
+        // An alerting chip drops the accent entirely (see [alert]).
+        color: tint != null ? tinted(base) : (liveColor == null ? base : liveColor(base)),
+        shadows: shadows,
+      );
+    }
+
+    Widget glowingIcon() {
+      final glow = (control.liveIconGlow?.call() ?? 0).clamp(0.0, 1.0);
+      return icon(
+        shadows: glow == 0
+            ? null
+            : [
+                Shadow(
+                  // Up to twice a static glyph's halo: a glow
+                  // that only matched it would not read as rising.
+                  color: glyphGlowColor(Theme.of(context)).withValues(alpha: glyphGlowColor(Theme.of(context)).a * 2 * glow),
+                  blurRadius: 4 + 8 * glow,
+                ),
+              ],
+      );
+    }
 
     return ChoiceChip(
       focusNode: control.focusNode,
-      avatar: control.liveIconGlow != null
-          ? OncePerSecond(
-              builder: (_, _) {
-                final glow = control.liveIconGlow!().clamp(0.0, 1.0);
-                return icon(
-                  shadows: glow == 0
-                      ? null
-                      : [
-                          Shadow(
-                            // Up to twice a static glyph's halo: a glow
-                            // that only matched it would not read as rising.
-                            color: glyphGlowColor(Theme.of(context)).withValues(alpha: glyphGlowColor(Theme.of(context)).a * 2 * glow),
-                            blurRadius: 4 + 8 * glow,
-                          ),
-                        ],
-                );
-              },
-            )
+      avatar: tint != null
+          ? _EveryFrame(builder: (_) => glowingIcon())
+          : control.liveIconGlow != null || liveColor != null
+          ? OncePerSecond(builder: (_, _) => glowingIcon())
           : icon(),
-      label: control.liveSummary != null
+      label: tint != null
+          ? _EveryFrame(
+              builder: (_) => Text(control.summary, style: TextStyle(color: tinted(foreground))),
+            )
+          : control.liveSummary != null
           ? OncePerSecond(
               builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)),
             )
@@ -940,6 +982,37 @@ class _ControlChip extends StatelessWidget {
       mouseCursor: control.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
     );
   }
+}
+
+/// Rebuilds [builder] every frame while mounted — for a chip's
+/// [SecondaryControlSpec.liveTint], which has to move smoothly. Only ever in
+/// the tree for the few seconds a tint is set.
+class _EveryFrame extends StatefulWidget {
+  const _EveryFrame({required this.builder});
+
+  final WidgetBuilder builder;
+
+  @override
+  State<_EveryFrame> createState() => _EveryFrameState();
+}
+
+class _EveryFrameState extends State<_EveryFrame> with SingleTickerProviderStateMixin {
+  late final Ticker _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker((_) => setState(() {}))..start();
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context);
 }
 
 /// Opens the show/hide + reorder settings dialog. Same pill shape/fill as

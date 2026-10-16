@@ -11,6 +11,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/src/logging_controls_spotting.dart';
+import 'package:halo_widgets/src/icon_resolver.dart';
+import 'package:halo_widgets/src/mdi_icons.g.dart';
+import 'package:halo_widgets/src/secondary_control_row.dart' show SecondaryControlSpec;
+import 'package:halo_widgets/src/theme.dart';
 
 class _FakeVfoStore implements VfoStore {
   _FakeVfoStore(this.vfoA);
@@ -19,6 +23,9 @@ class _FakeVfoStore implements VfoStore {
   @override
   void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {}
 }
+
+/// The harness's auto-respot interval: the Spotting setting's default.
+const _every = Duration(minutes: 10);
 
 class _Harness {
   Qso? editingQso;
@@ -33,6 +40,9 @@ class _Harness {
   /// Holds every spot in flight until it completes.
   Completer<void>? hold;
 
+  /// Holds every ask for the sources on offer until it completes.
+  Completer<void>? holdSources;
+
   /// The spotting extensions went away under the panel.
   bool hooksGone = false;
 
@@ -45,6 +55,15 @@ class _Harness {
   String operationUuid = 'op';
   final notices = <String>[];
 
+  /// The operator's Spotting settings.
+  Duration respotInterval = _every;
+  bool autoRespotByDefault = false;
+  bool pulseBeforeRespot = true;
+
+  /// How far a test has pumped the clock since the spot, for tests that step
+  /// to set points.
+  int elapsedMs = 0;
+
   late final model = SpottingControlModel(
     config: () => (
       sendSpot: hooksGone
@@ -56,16 +75,23 @@ class _Harness {
               if (throwOnSend) throw StateError('hook failed');
               return answer;
             },
-      suggestSpotSources: ({required operation, qso}) async => noSources
-          ? const []
-          : [
-              {'hookKey': 'pota', 'icon': 'pine-tree'},
-              {'hookKey': 'sota', 'icon': 'image-filter-hdr'},
-            ],
+      suggestSpotSources: ({required operation, qso}) async {
+        await holdSources?.future;
+        return noSources
+            ? const []
+            : [
+                {'hookKey': 'pota', 'icon': 'pine-tree'},
+                {'hookKey': 'sota', 'icon': 'image-filter-hdr'},
+              ];
+      },
       radioService: _FakeVfoStore(vfo),
       editingQso: editingQso,
       operation: Operation(uuid: operationUuid, data: const {'refs': []}, localData: const {'multiIdentifier': 'OP1'}),
       notice: notices.add,
+      respotInterval: respotInterval,
+      autoRespotByDefault: autoRespotByDefault,
+      pulseBeforeRespot: pulseBeforeRespot,
+      onOpenSettings: null,
     ),
   )..addListener(() => notifications++);
 }
@@ -245,11 +271,13 @@ void main() {
       final h = await spotted(tester);
       await h.model.press();
       expect(h.model.autoRespotting, isTrue);
-      expect(h.model.state.summary, 'Auto spots');
-      expect(h.model.state.buttonLabel, 'Stop auto spots');
+      expect(h.model.state.summary, 'Auto re-spot');
+      expect(h.model.state.buttonLabel, 'Auto in 10:00. Stop?');
       expect(h.sent, hasLength(1));
+      await tester.pump(const Duration(minutes: 6, seconds: 15));
+      expect(h.model.state.buttonLabel, 'Auto in 3:45. Stop?', reason: 'counts down to the next respot');
 
-      await tester.pump(SpottingControlModel.respotInterval - const Duration(seconds: 5));
+      await tester.pump(_every - const Duration(minutes: 6, seconds: 20));
       expect(h.sent, hasLength(1), reason: 'not due yet');
       await tester.pump(const Duration(seconds: 10));
       expect(h.sent, hasLength(2));
@@ -257,12 +285,12 @@ void main() {
       expect(h.sent.last['comment'], 'CQ POTA', reason: 'the comment cleared from the field after the first send is still the one repeated');
       expect((h.sent.last['sources'] as List).length, 2);
 
-      await tester.pump(SpottingControlModel.respotInterval);
+      await tester.pump(_every);
       expect(h.sent, hasLength(3));
 
       await h.model.press();
       expect(h.model.autoRespotting, isFalse);
-      await tester.pump(SpottingControlModel.respotInterval * 2);
+      await tester.pump(_every * 2);
       expect(h.sent, hasLength(3), reason: 'stopped means no more spots');
       h.model.dispose();
     });
@@ -270,6 +298,44 @@ void main() {
     // Retrying every source would put a spot on the one that took it every
     // thirty seconds, far under the floor the interval exists to keep; and a
     // source retried until it gives in is asked 120 times an hour.
+    // The row is built from a state resolved once; without its own
+    // per-second refresh the countdown would sit at whatever it read then.
+    testWidgets('the stop button counts down on its own', (tester) async {
+      final h = await spotted(tester);
+      await h.model.press();
+      final theme = buildHaLoTheme(Brightness.light);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SpottingControlFields(model: h.model, state: h.model.state, theme: theme),
+          ),
+        ),
+      );
+      expect(find.text('Auto in 10:00. Stop?'), findsOneWidget);
+      await tester.pump(const Duration(minutes: 6, seconds: 15));
+      expect(find.text('Auto in 3:45. Stop?'), findsOneWidget);
+      h.model.dispose();
+    });
+
+    // The comment field goes blank after a send; without this the operator
+    // has no way to see what the respots announce.
+    testWidgets('the row shows the comment it repeats, and takes no new one', (tester) async {
+      final h = await spotted(tester);
+      await h.model.press();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SpottingControlFields(model: h.model, state: h.model.state, theme: buildHaLoTheme(Brightness.light)),
+          ),
+        ),
+      );
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'CQ POTA');
+      expect(field.enabled, isFalse);
+      expect(h.model.state.showComment, isFalse, reason: 'the focus ladder must not land on a field that takes no input');
+      h.model.dispose();
+    });
+
     testWidgets('a source that refuses a round gets one retry of its own; then it waits for the next round', (tester) async {
       final h = await spotted(tester);
       await h.model.press();
@@ -277,7 +343,7 @@ void main() {
         'pota': {'ok': false},
         'sota': {'ok': true},
       };
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.sent, hasLength(2));
       await tester.pump(SpottingControlModel.respotRetry);
       expect(h.sent, hasLength(3), reason: 'a refusal is retried soon, not in ten minutes');
@@ -285,7 +351,7 @@ void main() {
       await tester.pump(SpottingControlModel.respotRetry * 4);
       expect(h.sent, hasLength(3), reason: 'once: refusing again waits for the next round');
       expect(h.model.autoRespotting, isTrue);
-      await tester.pump(SpottingControlModel.respotInterval - SpottingControlModel.respotRetry * 5);
+      await tester.pump(_every - SpottingControlModel.respotRetry * 5);
       expect(h.sent, hasLength(4));
       expect(keysOf(h.sent.last), ['pota', 'sota'], reason: 'the next round goes to every source');
       h.model.dispose();
@@ -300,13 +366,13 @@ void main() {
       h.vfo = const Vfo(freq: 14290, mode: 'SSB');
       h.model.followVfo();
       expect(h.model.autoRespotting, isFalse);
-      expect(h.notices.single, 'Auto spots stopped: the frequency changed');
+      expect(h.notices.single, 'Auto re-spot stopped: the frequency changed');
       expect(h.model.state.buttonLabel, startsWith('Self-spot at'));
       // Back where it was: still off — a respot is armed by the operator, not
       // by the dial passing through.
       h.vfo = const Vfo(freq: 14285, mode: 'SSB');
       h.model.followVfo();
-      await tester.pump(SpottingControlModel.respotInterval * 2);
+      await tester.pump(_every * 2);
       expect(h.sent, hasLength(1));
       h.model.dispose();
     });
@@ -323,7 +389,7 @@ void main() {
       h.model.followVfo();
       expect(h.model.autoRespotting, isTrue);
       h.vfo = const Vfo(freq: 14285.2, mode: 'SSB');
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.sent, hasLength(2));
       expect(h.sent.last['freq'], 14285, reason: 'the spotted frequency, not the nudged one');
       h.model.dispose();
@@ -344,12 +410,12 @@ void main() {
     });
 
     // Without this the timer stops without stopping auto-respotting: the chip
-    // says "Auto spots", glowing at full strength, and nothing goes out.
+    // says "Auto re-spot", glowing at full strength, and nothing goes out.
     testWidgets('stops when the spotting extensions are gone', (tester) async {
       final h = await spotted(tester);
       await h.model.press();
       h.hooksGone = true;
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.model.autoRespotting, isFalse);
       expect(h.model.respotGlow, 0);
       expect(h.notices.single, contains('Nothing to spot'));
@@ -360,10 +426,10 @@ void main() {
       final h = await spotted(tester);
       await h.model.press();
       h.noSources = true;
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.model.autoRespotting, isFalse);
       expect(h.notices.single, contains('Nothing to spot'));
-      await tester.pump(SpottingControlModel.respotInterval);
+      await tester.pump(_every);
       expect(h.sent, hasLength(1));
       h.model.dispose();
     });
@@ -377,10 +443,10 @@ void main() {
       // its unawaited send throws — land here rather than failing the test.
       await runZonedGuarded(h.model.press, (error, _) => errors.add(error));
       h.throwOnSend = true;
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.model.autoRespotting, isFalse);
-      expect(h.notices.single, 'Auto spots stopped');
-      await tester.pump(SpottingControlModel.respotInterval);
+      expect(h.notices.single, 'Auto re-spot stopped');
+      await tester.pump(_every);
       expect(h.sent, hasLength(2));
       expect(errors.single, isA<StateError>(), reason: 'the error itself still goes on to the zone');
       h.model.dispose();
@@ -390,7 +456,7 @@ void main() {
       final h = await spotted(tester);
       await h.model.press();
       h.operationUuid = 'other';
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.model.autoRespotting, isFalse);
       expect(h.sent, hasLength(1), reason: "the old activation's spot is not announced as the new one's");
       h.model.dispose();
@@ -427,16 +493,16 @@ void main() {
 
     // A radio off CAT leaves nothing to say where the station is: a retry
     // every thirty seconds forever would keep the chip glowing and saying
-    // "Auto spots" while no spot goes out.
+    // "Auto re-spot" while no spot goes out.
     testWidgets('a radio with no frequency gets one retry, then it stops and says so', (tester) async {
       final h = await spotted(tester);
       await h.model.press();
       h.vfo = const Vfo();
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.model.autoRespotting, isTrue);
       await tester.pump(SpottingControlModel.respotRetry);
       expect(h.model.autoRespotting, isFalse);
-      expect(h.notices.single, 'Auto spots stopped: the radio reports no frequency');
+      expect(h.notices.single, 'Auto re-spot stopped: the radio reports no frequency');
       expect(h.sent, hasLength(1));
       h.model.dispose();
     });
@@ -445,7 +511,7 @@ void main() {
       final h = await spotted(tester);
       await h.model.press();
       h.vfo = const Vfo();
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       h.vfo = const Vfo(freq: 14285, mode: 'SSB');
       await tester.pump(SpottingControlModel.respotRetry);
       expect(h.sent, hasLength(2));
@@ -463,11 +529,11 @@ void main() {
         'pota': {'ok': false, 'message': 'no alert'},
         'sota': {'ok': true},
       };
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.notices, isEmpty, reason: 'the retry may yet take it');
       await tester.pump(SpottingControlModel.respotRetry);
       expect(h.notices, ['pota failed: no alert']);
-      await tester.pump(SpottingControlModel.respotInterval);
+      await tester.pump(_every);
       await tester.pump(SpottingControlModel.respotRetry);
       expect(h.notices, hasLength(2));
       h.model.dispose();
@@ -489,7 +555,7 @@ void main() {
         'pota': {'ok': false},
         'sota': {'ok': true},
       };
-      await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+      await tester.pump(_every + const Duration(seconds: 1));
       expect(h.sent, hasLength(2));
       expect(h.model.statusOf('pota'), isNull, reason: "red would read as W1AW's spot failing");
       expect(h.model.statusOf('sota'), isNull);
@@ -509,7 +575,7 @@ void main() {
       h.model.commentFocus.requestFocus();
       await tester.pump();
       h.hold = Completer();
-      await tester.pump(SpottingControlModel.respotInterval);
+      await tester.pump(_every);
       expect(h.model.sending, isTrue, reason: 'the respot is in flight');
       h.editingQso = Qso(
         uuid: 'q1',
@@ -587,7 +653,7 @@ void main() {
         await typed(h, 'QRT thanks all');
         expect(h.model.autoRespotting, isFalse);
         expect(h.sent.last['comment'], 'QRT thanks all');
-        await tester.pump(SpottingControlModel.respotInterval * 2);
+        await tester.pump(_every * 2);
         expect(h.sent, hasLength(2));
         h.model.dispose();
       });
@@ -650,7 +716,7 @@ void main() {
         await h.model.press();
         await typed(h, null, target: 'last');
         expect(forwarded.single!['target'], 'last');
-        await tester.pump(SpottingControlModel.respotInterval + const Duration(seconds: 1));
+        await tester.pump(_every + const Duration(seconds: 1));
         expect(h.sent.last['comment'], 'CQ POTA');
         h.model.dispose();
       });
@@ -665,7 +731,7 @@ void main() {
       final h = await spotted(tester);
       await h.model.press();
       expect(h.model.respotGlow, 0);
-      await tester.pump(SpottingControlModel.respotInterval - const Duration(seconds: 90));
+      await tester.pump(_every - const Duration(seconds: 90));
       expect(h.model.respotGlow, 0);
       // Travel moves the app clock past the glow lead; the respot timer counts
       // real time, so a glow read off the app clock would announce a send
@@ -685,7 +751,7 @@ void main() {
     testWidgets('flags the glow only in the last minute', (tester) async {
       final h = await spotted(tester);
       await h.model.press();
-      await tester.pump(SpottingControlModel.respotInterval - const Duration(seconds: 61));
+      await tester.pump(_every - const Duration(seconds: 61));
       expect(h.model.respotGlowing, isFalse);
       await tester.pump(const Duration(seconds: 2));
       expect(h.model.respotGlowing, isTrue);
@@ -820,6 +886,483 @@ void main() {
         expect(h.sent, hasLength(2));
         h.model.dispose();
       });
+    });
+  });
+
+  group('chip feedback', () {
+    // Faded on the real clock, which the widget-test zone only moves when
+    // followed.
+    setUp(() => AppClock.followZoneClock = true);
+    tearDown(() => AppClock.followZoneClock = false);
+
+    Future<_Harness> selfSpot(WidgetTester tester, {required bool pota, required bool sota}) async {
+      final h = _Harness();
+      h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+      await h.model.refreshSources();
+      h.answer = {
+        'pota': {'ok': pota},
+        'sota': {'ok': sota},
+      };
+      await h.model.press();
+      return h;
+    }
+
+    testWidgets('a self-spot shows on the chip as every, some or no source taking it', (tester) async {
+      for (final (pota, sota, outcome) in [(true, true, SpotOutcome.allTook), (true, false, SpotOutcome.someTook), (false, false, SpotOutcome.noneTook)]) {
+        final h = await selfSpot(tester, pota: pota, sota: sota);
+        expect(h.model.outcome, outcome, reason: 'pota $pota, sota $sota');
+        expect(h.model.outcomeStrength, 1);
+        h.model.dispose();
+      }
+    });
+
+    testWidgets('a source that never answers counts as one that did not take it', (tester) async {
+      final h = _Harness();
+      h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+      h.answer = {
+        'pota': {'ok': true},
+      };
+      await h.model.press();
+      expect(h.model.outcome, SpotOutcome.someTook);
+      h.model.dispose();
+    });
+
+    testWidgets('fades over three minutes, then is gone', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await tester.pump(const Duration(seconds: 90));
+      expect(h.model.outcomeStrength, closeTo(0.5, 0.01));
+      final before = h.notifications;
+      await tester.pump(const Duration(seconds: 91));
+      expect(h.model.outcome, isNull);
+      expect(h.notifications, greaterThan(before), reason: 'the chip stops redrawing every second only once told');
+      h.model.dispose();
+    });
+
+    testWidgets('a typed SPOT shows on the chip too', (tester) async {
+      final h = _Harness();
+      h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+      h.answer = {
+        'pota': {'ok': false},
+        'sota': {'ok': false},
+      };
+      await h.model.runCommandAction(
+        {
+          'sendSpots': {'comment': 'CQ'},
+        },
+        qsos: const [],
+        forward: null,
+      );
+      expect(h.model.outcome, SpotOutcome.noneTook);
+      h.model.dispose();
+    });
+
+    // The chip speaks for the station's own spot: green for a hunter spot of
+    // someone else would read as the station being spotted.
+    // Editing a logged QSO turns the chip into spotting that QSO's station:
+    // the station's own respot coloring it would read as that spot's answer.
+    testWidgets('a respot while a QSO is open leaves the chip alone', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      await tester.pump(SpottingControlModel.resultShownFor + const Duration(seconds: 1));
+      expect(h.model.outcome, isNull);
+      h.editingQso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': nowMillis(),
+        },
+      );
+      await tester.pump(_every - SpottingControlModel.resultShownFor);
+      expect(h.sent, hasLength(2), reason: 'the respot went out a second ago, well inside the fade');
+      expect(h.model.outcome, isNull);
+      h.model.dispose();
+    });
+
+    // Left on past the due moment, the tint would have the chip redraw every
+    // frame for as long as the round's hooks take, showing nothing.
+    testWidgets('the pulse and glow end when the respot goes out, not when it lands', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      h.hold = Completer();
+      await tester.pump(_every - const Duration(seconds: 5));
+      expect(h.model.respotSoon, isTrue);
+      expect(h.model.respotGlowing, isTrue);
+      await tester.pump(const Duration(seconds: 6));
+      expect(h.sent, hasLength(2), reason: 'out, its answer held');
+      expect(h.model.respotSoon, isFalse);
+      expect(h.model.respotGlowing, isFalse);
+      h.hold!.complete();
+      await tester.pump();
+      h.model.dispose();
+    });
+
+    testWidgets("a spot of another station's QSO leaves the chip alone", (tester) async {
+      final h = _Harness();
+      h.editingQso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': nowMillis(),
+        },
+      );
+      await h.model.refreshSources();
+      h.answer = {
+        'pota': {'ok': true},
+        'sota': {'ok': true},
+      };
+      await h.model.press();
+      expect(h.sent, hasLength(1));
+      expect(h.model.outcome, isNull);
+      h.model.dispose();
+    });
+
+    testWidgets('each auto-respot shows how its round went, its retry included', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      h.answer = {
+        'pota': {'ok': false},
+        'sota': {'ok': true},
+      };
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.model.outcome, SpotOutcome.someTook);
+      expect(h.model.outcomeStrength, closeTo(1, 0.01), reason: 'a new round shows afresh');
+      h.answer = {
+        'pota': {'ok': true},
+      };
+      await tester.pump(SpottingControlModel.respotRetry);
+      expect(h.model.outcome, SpotOutcome.allTook, reason: 'the retry took it: every source has this round');
+      h.model.dispose();
+    });
+
+    // A retry is only the sources that refused: judged alone, one refused
+    // again would read as no source taking the round.
+    testWidgets('a retry refused again is still only some, not none', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      h.answer = {
+        'pota': {'ok': false},
+        'sota': {'ok': true},
+      };
+      await tester.pump(_every + const Duration(seconds: 1));
+      await tester.pump(SpottingControlModel.respotRetry);
+      expect(h.sent, hasLength(3));
+      expect(h.model.outcome, SpotOutcome.someTook);
+      h.model.dispose();
+    });
+
+    // The row is painted on the open chip's fill: the theme's own error red
+    // and the `important` green fall under 3:1 on some of them.
+    testWidgets("each source's icon takes the open chip's colors", (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: false);
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SpottingControlFields(model: h.model, state: h.model.state, theme: theme),
+            ),
+          ),
+        );
+        Color? colorOf(String icon) => tester.widget<Icon>(find.byIcon(resolveIconName(icon, fallback: MdiIcons.radioTower))).color;
+        expect(colorOf('pine-tree'), spotOutcomeColor(theme, SpotOutcome.allTook, selected: true), reason: '$brightness');
+        expect(colorOf('image-filter-hdr'), spotOutcomeColor(theme, SpotOutcome.noneTook, selected: true), reason: '$brightness');
+      }
+      h.model.dispose();
+    });
+
+    testWidgets('pulses blue in the last twenty seconds before an auto-respot, over any outcome', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      final theme = buildHaLoTheme(Brightness.light);
+      SecondaryControlSpec spec() => spottingControlSpec(h.model, theme, selected: false);
+      await tester.pump(_every - const Duration(milliseconds: 20500)); // 20.5 s left
+      expect(h.model.respotSoon, isFalse);
+      expect(spec().liveTint, isNull);
+      await tester.pump(const Duration(milliseconds: 500)); // 20 s left
+      expect(h.model.respotSoon, isTrue);
+      expect(h.model.respotPulse, closeTo(0, 0.01), reason: "starts from the chip's own colors, with no jump");
+      expect(spec().liveTint!.color, respotSoonColor(theme, selected: false));
+      expect(spec().liveIconColor, isNull, reason: 'a fading outcome would paint over the pulse');
+      h.model.dispose();
+    });
+
+    // Each stage's pace is pinned by where its pulses peak and rest: half a
+    // pulse in is all blue, a whole pulse in is back at rest.
+    testWidgets('pulses slowly from twenty seconds out, once a second from seven, twice a second from three', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      await h.model.press();
+      Future<double> at(int msLeft) async {
+        await tester.pump(Duration(milliseconds: (_every.inMilliseconds - msLeft) - h.elapsedMs));
+        h.elapsedMs = _every.inMilliseconds - msLeft;
+        return h.model.respotPulse;
+      }
+
+      // Six pulses over the 13 s from 20 to 7: a half pulse is 13/12 s.
+      expect(await at(20000 - 1083), closeTo(1, 0.01));
+      expect(await at(20000 - 2167), closeTo(0, 0.01));
+      expect(await at(7000), closeTo(0, 0.01), reason: 'at rest as the pace changes');
+      expect(await at(6500), closeTo(1, 0.01));
+      expect(await at(6000), closeTo(0, 0.01));
+      expect(await at(3000), closeTo(0, 0.01));
+      expect(await at(2750), closeTo(1, 0.01));
+      expect(await at(2500), closeTo(0, 0.01));
+      expect(await at(1), closeTo(0, 0.01), reason: 'at rest as the spot goes out');
+      h.model.dispose();
+    });
+
+    testWidgets('does not pulse with the setting off', (tester) async {
+      final h = await selfSpot(tester, pota: true, sota: true);
+      h.pulseBeforeRespot = false;
+      await h.model.press();
+      await tester.pump(_every - const Duration(seconds: 10));
+      expect(h.model.respotSoon, isFalse);
+      expect(spottingControlSpec(h.model, buildHaLoTheme(Brightness.light), selected: false).liveTint, isNull);
+      h.model.dispose();
+    });
+
+    // It colors the label as well as the icon, so it is held to the text
+    // threshold, on every fill the chip can have: editing a logged QSO swaps
+    // in the blue secondary pair, where a careless blue would vanish.
+    test('the blue clears 4.5:1 on every fill the chip can have', () {
+      double contrast(Color a, Color b) {
+        final (hi, lo) = a.computeLuminance() > b.computeLuminance() ? (a, b) : (b, a);
+        return (hi.computeLuminance() + 0.05) / (lo.computeLuminance() + 0.05);
+      }
+
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final colors = brightness == Brightness.dark ? HaLoColors.dark : HaLoColors.light;
+        for (final (selected, fill) in [
+          (true, theme.colorScheme.tertiary),
+          (false, colors.tertiaryLight),
+          (true, theme.colorScheme.secondary),
+          (false, colors.secondaryLight),
+        ]) {
+          expect(contrast(respotSoonColor(theme, selected: selected), fill), greaterThanOrEqualTo(4.5), reason: '$brightness, selected $selected, on $fill');
+        }
+      }
+    });
+
+    // Each pair must read on the fill it is drawn on; a color that only
+    // clears 3:1 on some fills vanishes on the others.
+    // Editing a logged QSO swaps the chip onto the blue secondary pair: a
+    // color tuned only for the amber fills fades to 2.5:1 there.
+    test('every outcome color clears 3:1 on every fill the chip can have', () {
+      double luminance(Color c) => c.computeLuminance();
+      double contrast(Color a, Color b) {
+        final (hi, lo) = luminance(a) > luminance(b) ? (a, b) : (b, a);
+        return (luminance(hi) + 0.05) / (luminance(lo) + 0.05);
+      }
+
+      for (final brightness in Brightness.values) {
+        final theme = buildHaLoTheme(brightness);
+        final colors = brightness == Brightness.dark ? HaLoColors.dark : HaLoColors.light;
+        for (final (selected, fill) in [
+          (true, theme.colorScheme.tertiary),
+          (false, colors.tertiaryLight),
+          (true, theme.colorScheme.secondary),
+          (false, colors.secondaryLight),
+        ]) {
+          final drawn = {for (final o in SpotOutcome.values) o: spotOutcomeColor(theme, o, selected: selected)};
+          expect(drawn.values.toSet(), hasLength(3), reason: '$brightness selected $selected: three outcomes, three colors');
+          for (final MapEntry(key: outcome, value: color) in drawn.entries) {
+            expect(contrast(color, fill), greaterThanOrEqualTo(3), reason: '$outcome on $brightness, selected $selected, on $fill');
+          }
+        }
+      }
+    });
+  });
+
+  group('settings', () {
+    setUp(() => AppClock.followZoneClock = true);
+    tearDown(() => AppClock.followZoneClock = false);
+
+    Future<_Harness> ready() async {
+      final h = _Harness();
+      h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+      await h.model.refreshSources();
+      h.answer = {
+        'pota': {'ok': true},
+        'sota': {'ok': true},
+      };
+      return h;
+    }
+
+    testWidgets("the offer, and accepting it, use the operator's interval", (tester) async {
+      final h = await ready();
+      h.respotInterval = const Duration(minutes: 20);
+      await h.model.press();
+      expect(h.model.state.buttonLabel, 'Re-spot every 20 min');
+      await h.model.press();
+      await tester.pump(const Duration(minutes: 19, seconds: 50));
+      expect(h.sent, hasLength(1));
+      await tester.pump(const Duration(seconds: 20));
+      expect(h.sent, hasLength(2));
+      h.model.dispose();
+    });
+
+    // RESPOT's hook cannot read the setting, so it names no interval and
+    // leaves it to the panel; a fixed fallback here would ignore the operator.
+    testWidgets("a RESPOT naming no interval uses the operator's", (tester) async {
+      final h = await ready();
+      h.respotInterval = const Duration(minutes: 15);
+      await h.model.runCommandAction({'autoRespot': <String, dynamic>{}}, qsos: const [], forward: null);
+      expect(h.sent, hasLength(1));
+      await tester.pump(const Duration(minutes: 14, seconds: 50));
+      expect(h.sent, hasLength(1));
+      await tester.pump(const Duration(seconds: 20));
+      expect(h.sent, hasLength(2));
+      h.model.dispose();
+    });
+
+    testWidgets('an interval below five minutes is held at five', (tester) async {
+      final h = await ready();
+      h.respotInterval = const Duration(minutes: 1);
+      await h.model.press();
+      expect(h.model.state.buttonLabel, 'Re-spot every 5 min');
+      h.model.dispose();
+    });
+
+    testWidgets('auto-respot by default starts it without offering', (tester) async {
+      final h = await ready();
+      h.autoRespotByDefault = true;
+      await h.model.press();
+      expect(h.model.autoRespotting, isTrue);
+      expect(h.model.state.buttonLabel, 'Auto in 10:00. Stop?');
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.sent, hasLength(2));
+      h.model.dispose();
+    });
+
+    // Repeating a QRT, or a spot some source refused, is wrong whether the
+    // operator was asked first or not.
+    testWidgets('auto-respot by default still never starts on a one-off or a partial spot', (tester) async {
+      var h = await ready();
+      h.autoRespotByDefault = true;
+      h.model.commentController.text = 'QRT 73';
+      await h.model.press();
+      expect(h.model.autoRespotting, isFalse);
+      h.model.dispose();
+
+      h = await ready();
+      h.autoRespotByDefault = true;
+      h.answer = {
+        'pota': {'ok': true},
+        'sota': {'ok': false},
+      };
+      await h.model.press();
+      expect(h.model.autoRespotting, isFalse);
+      expect(
+        h.notices.single,
+        'Auto re-spot not started: the spot did not go through',
+        reason: 'the setting promised a repeat: the operator is told why there is none',
+      );
+      h.model.dispose();
+    });
+
+    testWidgets('auto-respot by default says so when the VFO moved during the spot', (tester) async {
+      final h = await ready();
+      h.autoRespotByDefault = true;
+      h.duringSend = () => h.vfo = const Vfo(freq: 7200, mode: 'SSB');
+      await h.model.press();
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices.single, 'Auto re-spot not started: the frequency changed while spotting');
+      h.model.dispose();
+    });
+
+    Future<List<Map<String, dynamic>?>> typed(_Harness h, String? comment) async {
+      final forwarded = <Map<String, dynamic>?>[];
+      await h.model.runCommandAction(
+        {
+          'sendSpots': {'comment': ?comment},
+        },
+        qsos: const [],
+        forward: (action, [params]) async => forwarded.add(params),
+      );
+      return forwarded;
+    }
+
+    testWidgets('auto-respot by default starts on a typed SPOT too', (tester) async {
+      final h = await ready();
+      h.autoRespotByDefault = true;
+      expect(await typed(h, 'CQ POTA'), [
+        {'target': 'self'},
+      ]);
+      expect(h.model.autoRespotting, isTrue);
+      h.model.dispose();
+    });
+
+    // QRV, QRT, QSY and QRX send their own code as the comment's start: an
+    // announcement, which repeating would make false.
+    testWidgets('auto-respot by default never starts on a Q-code command', (tester) async {
+      final h = await ready();
+      h.autoRespotByDefault = true;
+      expect(await typed(h, 'QRV 20m SSB'), [
+        {'target': 'self'},
+      ], reason: 'nothing went wrong, so nothing to say');
+      expect(h.model.autoRespotting, isFalse);
+      h.model.dispose();
+    });
+
+    testWidgets('a typed SPOT that cannot start it says why, where it was typed', (tester) async {
+      final h = await ready();
+      h.autoRespotByDefault = true;
+      h.duringSend = () => h.vfo = const Vfo(freq: 7200, mode: 'SSB');
+      expect(await typed(h, 'CQ POTA'), [
+        {'target': 'self', 'failure': 'Auto re-spot not started: the frequency changed while spotting'},
+      ]);
+      h.model.dispose();
+    });
+
+    // Without it, the picker says 20 minutes while respots go out every 10.
+    // Rescheduled under a round still waiting on its hooks, a shorter
+    // interval would start a second round beside it: a duplicate spot.
+    testWidgets('an interval change during a round waits for that round', (tester) async {
+      final h = await ready();
+      await h.model.press();
+      await h.model.press();
+      h.holdSources = Completer();
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.sent, hasLength(1), reason: 'the round is waiting on its sources');
+      h.respotInterval = const Duration(minutes: 5);
+      h.model.followIntervalSetting();
+      await tester.pump(const Duration(seconds: 1));
+      h.holdSources!.complete();
+      h.holdSources = null;
+      await tester.pump();
+      await tester.pump();
+      expect(h.sent, hasLength(2), reason: 'one round, not a second beside it');
+      await tester.pump(const Duration(minutes: 4, seconds: 50));
+      expect(h.sent, hasLength(2));
+      await tester.pump(const Duration(seconds: 20));
+      expect(h.sent, hasLength(3), reason: 'five minutes after the round, at the new interval');
+      h.model.dispose();
+    });
+
+    testWidgets('a running auto re-spot follows a change to the interval setting', (tester) async {
+      final h = await ready();
+      await h.model.press();
+      await h.model.press();
+      await tester.pump(const Duration(minutes: 8));
+      h.respotInterval = const Duration(minutes: 20);
+      h.model.followIntervalSetting();
+      await tester.pump(const Duration(minutes: 3));
+      expect(h.sent, hasLength(1), reason: 'no longer due at ten');
+      await tester.pump(const Duration(minutes: 9, seconds: 1));
+      expect(h.sent, hasLength(2), reason: 'twenty minutes after the spot');
+      h.model.dispose();
+    });
+
+    testWidgets('an interval RESPOT named stands when the setting changes', (tester) async {
+      final h = await ready();
+      expect(await h.model.respotEvery(7), isNull);
+      h.respotInterval = const Duration(minutes: 20);
+      h.model.followIntervalSetting();
+      await tester.pump(const Duration(minutes: 7, seconds: 1));
+      expect(h.sent, hasLength(2));
+      h.model.dispose();
     });
   });
 }

@@ -1675,7 +1675,8 @@ export interface CommandAction {
   /// RESPOT: auto-respotting every `minutes` — the self-spot just taken at the
   /// current VFO, or one sent now when there is none to repeat — or `off`
   /// to stop it, as `minutes` of 0 or less does too. The app holds `minutes`
-  /// between 5 and 60 and defaults it to 10. Panel-only, like `sendSpots`;
+  /// between 5 and 60; without it, the operator's own auto-respot interval
+  /// (their Spotting settings) applies. Panel-only, like `sendSpots`;
   /// the app answers with an error when the spot it would repeat can't be
   /// sent.
   autoRespot?: { minutes?: number; off?: boolean }

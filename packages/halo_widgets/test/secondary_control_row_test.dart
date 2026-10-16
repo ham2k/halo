@@ -31,6 +31,57 @@ void main() {
     spec(targetKey),
   ];
 
+  // The Spotting chip's color fades from a send's outcome back to the
+  // chip's own: built once, it would stay at full strength until something
+  // else happened to rebuild the row.
+  testWidgets('a live icon color is applied over the base color and re-read every second', (tester) async {
+    var strength = 1.0;
+    Color? base;
+    final live = SecondaryControlSpec(
+      key: 'live',
+      icon: MdiIcons.handWave,
+      summary: 'live',
+      expandedBuilder: (_) => const SizedBox(),
+      liveIconColor: (b) => Color.lerp(base = b, const Color(0xFF00FF00), strength)!,
+    );
+    Color? iconColor() => tester.widget<Icon>(find.byIcon(MdiIcons.handWave)).color;
+    await tester.pumpWidget(host(controls: [live], selectedKey: ''));
+    await tester.pumpAndSettle();
+    expect(iconColor(), const Color(0xFF00FF00));
+    strength = 0;
+    await tester.pump(const Duration(seconds: 1));
+    expect(iconColor(), base, reason: 'faded back to the color the chip would otherwise have');
+
+    strength = 1;
+    await tester.pumpWidget(host(controls: [live.copyWith(alert: true)], selectedKey: ''));
+    await tester.pump(const Duration(seconds: 1));
+    expect(iconColor(), isNot(const Color(0xFF00FF00)), reason: 'an alerting chip drops any accent, as it does iconColor');
+  });
+
+  // A pulse moved once a second would step, not glow: the tint is re-read
+  // every frame, and colors the label as well as the icon.
+  testWidgets('a live tint draws icon and label toward its color, frame by frame', (tester) async {
+    var strength = 0.0;
+    const tint = Color(0xFF0000FF);
+    final control = SecondaryControlSpec(
+      key: 'tinted',
+      icon: MdiIcons.handWave,
+      summary: 'tinted',
+      expandedBuilder: (_) => const SizedBox(),
+      liveTint: (color: tint, strength: () => strength),
+    );
+    Color? iconColor() => tester.widget<Icon>(find.byIcon(MdiIcons.handWave)).color;
+    Color? labelColor() => tester.widget<Text>(find.text('tinted')).style?.color;
+    await tester.pumpWidget(host(controls: [control], selectedKey: ''));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(iconColor(), isNot(tint));
+    expect(labelColor(), isNot(tint));
+    strength = 1;
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(iconColor(), tint, reason: 'the next frame, not the next second');
+    expect(labelColor(), tint);
+  });
+
   testWidgets('a chip in the left quarter aligns its expanded panel left', (tester) async {
     await tester.pumpWidget(host(controls: controlsWithTargetAt('target', fillersBefore: 0), selectedKey: 'target'));
     // Chips play a brief entrance animation on first appearance — settle it

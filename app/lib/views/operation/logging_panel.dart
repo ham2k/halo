@@ -18,6 +18,8 @@ import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/logging_scope.dart';
 import '../../services/settings_service.dart';
+import '../../services/spotting_settings.dart';
+import '../../settings/settings_target_dialog.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
@@ -249,6 +251,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late bool _showExtraInNumbersRow = widget.services.settings.showExtraInNumbersRow;
   late bool _vibrateNumbersRow = widget.services.settings.vibrateNumbersRow;
   late bool _leftieMode = widget.services.settings.leftieMode;
+  late var _spottingSettings = SpottingSettings.read(widget.services.settings);
 
   // Whether the QSO list's empty state should warn to check the radio
   // — mirrors LoggingControls' own `_vfoIsUnset`: no band *and* no
@@ -670,6 +673,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
         _leftieMode = s.leftieMode;
       });
     }
+    final spotting = SpottingSettings.read(s);
+    if (spotting != _spottingSettings) setState(() => _spottingSettings = spotting);
   }
 
   /// Rebuilds the QSO list's empty-state warning the moment the operator
@@ -1004,6 +1009,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
           comment: comment,
           spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
         ),
+        respotInterval: _spottingSettings.respotInterval,
+        autoRespotByDefault: _spottingSettings.autoRespotByDefault,
+        pulseBeforeRespot: _spottingSettings.pulseBeforeRespot,
+        onOpenSettings: () => showSettingsForTarget(context, services: widget.services, target: 'spotting', title: t.settings.spotting.title),
       ),
       prefs: LoggingPreferences(
         // Leftie Mode is a one-handed-phone layout; a desktop or web session

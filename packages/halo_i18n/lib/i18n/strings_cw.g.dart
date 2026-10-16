@@ -579,14 +579,14 @@ class _Translations$loggingControls$cw extends Translations$loggingControls$en {
 	@override String spotTooLate({required Object call}) => '— ——— ——— / ·—·· ·— — · / — ——— / ··· ·——· ——— — / ${call}';
 	@override String get spotNoFreq => '··—· ·· ·—· ··· — / ··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / ··· ·——· ——— —';
 	@override String get spotComment => '—·—· ——— —— —— · —· —';
-	@override String get spottingAutoControl => '·— ··— — ——— / ··· ·——· ——— — ···';
+	@override String get spottingAutoControl => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— —';
 	@override String spotAutoEvery({required Object minutes}) => '·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·—— / ${minutes} / —— ·· —·';
-	@override String get spotAutoStop => '··· — ——— ·——· / ·— ··— — ——— / ··· ·——· ——— — ···';
-	@override String get spotAutoNotStarted => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····';
-	@override String get spotAutoMoved => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·';
-	@override String get spotAutoStopped => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —··';
-	@override String get spotAutoLeftFreq => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —··';
-	@override String get spotAutoNoFreq => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——';
+	@override String spotAutoNext({required Object time}) => '·— ··— — ——— / ·· —· / ${time} ·—·—·— / ··· — ——— ·——· ··——··';
+	@override String get spotAutoNotStarted => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····';
+	@override String get spotAutoMoved => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·';
+	@override String get spotAutoStopped => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —··';
+	@override String get spotAutoLeftFreq => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —··';
+	@override String get spotAutoNoFreq => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——';
 	@override String get spotBusy => '·— —· ——— — ···· · ·—· / ··· ·——· ——— — / ·· ··· / ··· — ·· ·—·· ·—·· / —··· · ·· —· ——· / ··· · —· —';
 	@override String get bandOrFreqRequired => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ·—· / —··· ·— —· —·· / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·';
 	@override String get missingBand => '—· ——— / —··· ·— —· —··';
@@ -738,6 +738,7 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override late final _Translations$settings$logging$cw logging = _Translations$settings$logging$cw._(_root);
 	@override late final _Translations$settings$catServer$cw catServer = _Translations$settings$catServer$cw._(_root);
 	@override late final _Translations$settings$cluster$cw cluster = _Translations$settings$cluster$cw._(_root);
+	@override late final _Translations$settings$spotting$cw spotting = _Translations$settings$spotting$cw._(_root);
 	@override late final _Translations$settings$radio$cw radio = _Translations$settings$radio$cw._(_root);
 	@override late final _Translations$settings$help$cw help = _Translations$settings$help$cw._(_root);
 	@override late final _Translations$settings$exports$cw exports = _Translations$settings$exports$cw._(_root);
@@ -2075,6 +2076,24 @@ class _Translations$settings$cluster$cw extends Translations$settings$cluster$en
 	@override String statusFailed({required Object node, required Object reason}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / — ——— / ${node} ———··· / ${reason}';
 	@override String get statusUnsupported => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· ·—·—·—';
 	@override late final _Translations$settings$cluster$errors$cw errors = _Translations$settings$cluster$errors$cw._(_root);
+}
+
+// Path: settings.spotting
+class _Translations$settings$spotting$cw extends Translations$settings$spotting$en {
+	_Translations$settings$spotting$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '··· ·——· ——— — — ·· —· ——·';
+	@override String get respotInterval => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·——';
+	@override String minutes({required Object minutes}) => '${minutes} / —— ·· —·';
+	@override String get autoRespotByDefault => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —··· —·—— / —·· · ··—· ·— ··— ·—·· —';
+	@override String get autoRespotByDefaultOn => '· —· ·— —··· ·—·· · / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ·— ··—· — · ·—· / ·— —· —·—— / ··· ·——· ——— — / ·· ··· / ·——· ——— ··· — · —··';
+	@override String get autoRespotByDefaultOff => '·—· · ——·— ··— ·· ·—· · / ··— ··· · ·—· / ·— —·—· — ·· ——— —· / — ——— / · —· ·— —··· ·—·· · / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — — ·· —· ——·';
+	@override String get pulseBeforeRespot => '·——· ··— ·—·· ··· · / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —';
+	@override String pulseBeforeRespotOn({required Object seconds}) => '— ···· · / ··· ·——· ——— — — ·· —· ——· / —·—· ···· ·· ·——· / ·——· ··— ·—·· ··· · ··· / —··· ·—·· ··— · / ··—· ——— ·—· / — ···· · / ${seconds} / ··· · —·—· ——— —· —·· ··· / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·—· · —····— ··· ·——· ——— —';
+	@override String get pulseBeforeRespotOff => '—· ——— / ·——· ··— ·—·· ··· ·· —· ——· / —··· · ··—· ——— ·—· · / ·— —· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —';
 }
 
 // Path: settings.radio
@@ -4717,14 +4736,14 @@ extension on TranslationsCw {
 			'loggingControls.spotTooLate' => ({required Object call}) => '— ——— ——— / ·—·· ·— — · / — ——— / ··· ·——· ——— — / ${call}',
 			'loggingControls.spotNoFreq' => '··—· ·· ·—· ··· — / ··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ——— / ··· ·——· ——— —',
 			'loggingControls.spotComment' => '—·—· ——— —— —— · —· —',
-			'loggingControls.spottingAutoControl' => '·— ··— — ——— / ··· ·——· ——— — ···',
+			'loggingControls.spottingAutoControl' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— —',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => '·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·—— / ${minutes} / —— ·· —·',
-			'loggingControls.spotAutoStop' => '··· — ——— ·——· / ·— ··— — ——— / ··· ·——· ——— — ···',
-			'loggingControls.spotAutoNotStarted' => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····',
-			'loggingControls.spotAutoMoved' => '·— ··— — ——— / ··· ·——· ——— — ··· / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·',
-			'loggingControls.spotAutoStopped' => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —··',
-			'loggingControls.spotAutoLeftFreq' => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —··',
-			'loggingControls.spotAutoNoFreq' => '·— ··— — ——— / ··· ·——· ——— — ··· / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——',
+			'loggingControls.spotAutoNext' => ({required Object time}) => '·— ··— — ——— / ·· —· / ${time} ·—·—·— / ··· — ——— ·——· ··——··',
+			'loggingControls.spotAutoNotStarted' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··· ·——· ——— — / —·· ·· —·· / —· ——— — / ——· ——— / — ···· ·—· ——— ··— ——· ····',
+			'loggingControls.spotAutoMoved' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —· ——— — / ··· — ·— ·—· — · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —·· / ·—— ···· ·· ·—·· · / ··· ·——· ——— — — ·· —· ——·',
+			'loggingControls.spotAutoStopped' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —··',
+			'loggingControls.spotAutoLeftFreq' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ···· ·— —· ——· · —··',
+			'loggingControls.spotAutoNoFreq' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ··· — ——— ·——· ·——· · —·· ———··· / — ···· · / ·—· ·— —·· ·· ——— / ·—· · ·——· ——— ·—· — ··· / —· ——— / ··—· ·—· · ——·— ··— · —· —·—· —·——',
 			'loggingControls.spotBusy' => '·— —· ——— — ···· · ·—· / ··· ·——· ——— — / ·· ··· / ··· — ·· ·—·· ·—·· / —··· · ·· —· ——· / ··· · —· —',
 			'loggingControls.bandOrFreqRequired' => '··· · — / ·— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ·—· / —··· ·— —· —·· / —··· · ··—· ——— ·—· · / ·—·· ——— ——· ——· ·· —· ——·',
 			'loggingControls.missingBand' => '—· ——— / —··· ·— —· —··',
@@ -4967,6 +4986,15 @@ extension on TranslationsCw {
 			'settings.cluster.errors.loginFailed' => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / ·—·· ——— ——· ·· —·',
 			'settings.cluster.errors.disconnected' => '— ···· · / —· ——— —·· · / —·—· ·—·· ——— ··· · —·· / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·',
 			'settings.cluster.errors.timeout' => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —· ··· ·—— · ·—·',
+			'settings.spotting.title' => '··· ·——· ——— — — ·· —· ——·',
+			'settings.spotting.respotInterval' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·——',
+			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} / —— ·· —·',
+			'settings.spotting.autoRespotByDefault' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / —··· —·—— / —·· · ··—· ·— ··— ·—·· —',
+			'settings.spotting.autoRespotByDefaultOn' => '· —· ·— —··· ·—·· · / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / ·— ··—· — · ·—· / ·— —· —·—— / ··· ·——· ——— — / ·· ··· / ·——· ——— ··· — · —··',
+			'settings.spotting.autoRespotByDefaultOff' => '·—· · ——·— ··— ·· ·—· · / ··— ··· · ·—· / ·— —·—· — ·· ——— —· / — ——— / · —· ·— —··· ·—·· · / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— — — ·· —· ——·',
+			'settings.spotting.pulseBeforeRespot' => '·——· ··— ·—·· ··· · / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —',
+			'settings.spotting.pulseBeforeRespotOn' => ({required Object seconds}) => '— ···· · / ··· ·——· ——— — — ·· —· ——· / —·—· ···· ·· ·——· / ·——· ··— ·—·· ··· · ··· / —··· ·—·· ··— · / ··—· ——— ·—· / — ···· · / ${seconds} / ··· · —·—· ——— —· —·· ··· / —··· · ··—· ——— ·—· · / · ·— —·—· ···· / ·—· · —····— ··· ·——· ——— —',
+			'settings.spotting.pulseBeforeRespotOff' => '—· ——— / ·——· ··— ·—·· ··· ·· —· ——· / —··· · ··—· ——— ·—· · / ·— —· / ·— ··— — ——— / ·—· · —····— ··· ·——· ——— —',
 			'settings.radio.title' => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—··',
 			'settings.radio.loggingAndCat' => '·—·· ——— ——· ——· ·· —· ——· / ·—··· / —·—· ·— —',
 			'settings.radio.tuningSection' => '— ··— —· ·· —· ——·',
@@ -5384,6 +5412,8 @@ extension on TranslationsCw {
 			'settings.station.radioUser' => '·—· ·— —·· ·· ——— / ··— ··· · ·—· —· ·— —— ·',
 			'settings.station.radioPass' => '·—· ·— —·· ·· ——— / ·——· ·— ··· ··· ·—— ——— ·—· —··',
 			'settings.station.radioLoginDescription' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —· · — ·—— ——— ·—· —·— / → / ·—· · —— ——— — · / ·—·· ——— ——· ·· —· ——··—— / —· ——— — / —·—— ——— ··— ·—· / ·—— ·· ··—· ·· / ·——· ·— ··· ··· ·—— ——— ·—· —·· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioUserRequired' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·—· · —— ——— — · —····— —·—· ——— —· — ·—· ——— ·—·· / ··— ··· · ·—· —· ·— —— · / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.connectFailedBusy' => '—·· · ···— ·· —·—· · / ·· ··· / ·· —· / ··— ··· ·',
 			'settings.station.connectFailedDenied' => '·— —·—· —·—· · ··· ··· / —·· · —· ·· · —··',
@@ -5393,8 +5423,6 @@ extension on TranslationsCw {
 			'settings.station.connectFailedTimeout' => '— ···· · / ·—· ·— —·· ·· ——— / —·· ·· —·· —· ·————· — / ·—· · ··· ·——· ——— —· —·· / ·· —· / — ·· —— · ·—·—·— / —·—· ···· · —·—· —·— / ·· — ·————· ··· / ·——· ——— ·—— · ·—· · —·· / ——— —· / ·— —· —·· / ·—· · ·— —·—· ···· ·— —··· ·—·· · ·—·—·—',
 			'settings.station.models.flexRadio' => '··—· ·—·· · —··— ·—· ·— —·· ·· ——— / —·——· ··· —— ·— ·—· — ··· —·· ·—· —·——·—',
 			'settings.station.models.ft891' => '—·—— ·— · ··· ··— / ··—· — —····— ———·· ————· ·————',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ft991a' => '—·—— ·— · ··· ··— / ··—· — —····— ————· ————· ·———— —··—· ·—',
 			'settings.station.models.ft710' => '—·—— ·— · ··· ··— / ··—· — —····— ——··· ·———— —————',
 			'settings.station.models.ftdx10' => '—·—— ·— · ··· ··— / ··—· — —·· —··— ·———— —————',
@@ -5898,6 +5926,8 @@ extension on TranslationsCw {
 			'notices.preferencesReset' => '— ···· · / ··· · — — ·· —· ——· ··· / ··—· ·· ·—·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· / ·— —· —·· / — ···· · ·—· · / ·—— ·— ··· / —· ——— / —··· ·— —·—· —·— ··— ·——· / — ——— / ··—· ·— ·—·· ·—·· / —··· ·— —·—· —·— / ——— —· ——··—— / ··· ——— / ···· ·— ·—·· ——— / ··· — ·— ·—· — · —·· / ·—— ·· — ···· / ·· — ··· / —·· · ··—· ·— ··— ·—·· — ··· ·—·—·— / — ···· · / ··— —· ·—· · ·— —·· ·— —··· ·—·· · / ··—· ·· ·—·· · / ·· ··· / —·— · ·——· — / ·· —· / — ···· · / ·— ·——· ·——· ·————· ··· / —·· ·— — ·— / ··—· ——— ·—·· —·· · ·—· ——··—— / —· ·— —— · —·· / ··· ···· ·— ·—· · —·· ··——·— ·——· ·—· · ··—· · ·—· · —· —·—· · ··· ·—·—·— —·—· ——— ·—· ·—· ··— ·——· — —····— … ·—·—·— ·——— ··· ——— —· ·—·—·—',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} / ·—— ·— ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —·· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'notices.autoConnectHeld' => ({required Object name}) => '···· ·— ·—·· ——— / ··· — ——— ·——· ·——· · —·· / ·—· · ··· ·——· ——— —· —·· ·· —· ——· / — ···· · / ·—·· ·— ··· — / — ·· —— · / ·· — / ··· — ·— ·—· — · —·· / —·—· ——— —· —· · —·—· — ·· —· ——· / — ——— / ${name} ——··—— / ··· ——— / ·· — / ·—·· · ··—· — / ·· — / ·— ·—·· ——— —· · / — ···· ·· ··· / — ·· —— · / ·—· ·— — ···· · ·—· / — ···· ·— —· / ·—· ·· ··· —·— / —·· ——— ·· —· ——· / ·· — / ·— ——· ·— ·· —· ·—·—·— / —·—· ···· · —·—· —·— / — ···· ·— — / — ···· · / ·—· ·— —·· ·· ——— / ·· ··· / ··· ·—— ·· — —·—· ···· · —·· / ——— —· / ·— —· —·· / ·· — ··· / —·—· ·— —··· ·—·· · / ·· ··· / ·——· ·—·· ··— ——· ——· · —·· / ·· —· ——··—— / — ···· · —· / ·——· ·—· · ··· ··· / —·—· ——— —· —· · —·—· — / ——— —· / ·· — / ·· —· / ··· · — — ·· —· ——· ··· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.anonymous' => ({required Object id}) => '·— —· ——— —· —·—— —— ——— ··— ··· / ·— —·—· —·—· ——— ··— —· — / —·——· # ${id} —·——·—',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· —·——·—',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} / —·——· ·——· · —· —·· ·· —· ——· / —·—· ——— —· ··—· ·· ·—· —— ·— — ·· ——— —· / —····— / # ${id} —·——·—',
@@ -5907,8 +5937,6 @@ extension on TranslationsCw {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / ·—· · ·— —·—· ···· / —·—— ——— ··— ·—· / ·— —·—· — ·· ···— ·· — ·· · ··· ——··—— / ··· ——— / ${refs} / ·—— ·— ··· / ·—·· · ··—· — / ——— ··—· ··—· / — / — ·—· —·—— / — ···· ·— — / ·—·· ·· —· —·— / ·— ——· ·— ·· —·',
 			'confirmDevice.title' => '—·—· ——— —· ··—· ·· ·—· —— / ·— / —·· · ···— ·· —·—· ·',
 			'confirmDevice.codePrompt' => '· —· — · ·—· / — ···· · / —·—· ——— —·· · / ··· ···· ——— ·—— —· / ——— —· / — ···· · / —·· · ···— ·· —·—· · / — ···· ·— — / ·—— ·— —· — ··· / — ——— / ·——— ——— ·· —· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.code' => '—·—· ——— —·· ·',
 			'confirmDevice.lookUp' => '·—·· ——— ——— —·— / ··— ·——·',
 			'confirmDevice.codeNotFound' => '—· ——— / ·—· · ——·— ··— · ··· — / —— ·— — —·—· ···· · ··· / — ···· ·— — / —·—· ——— —·· · ·—·—·— / —·—· ——— —·· · ··· / · —··— ·——· ·· ·—· · / ·— ··—· — · ·—· / ·———— ————— / —— ·· —· ··— — · ··· / — / ·— ··· —·— / — ···· · / ——— — ···· · ·—· / —·· · ···— ·· —·—· · / ··—· ——— ·—· / ·— / ··—· ·—· · ··· ···· / ——— —· · ·—·—·—',

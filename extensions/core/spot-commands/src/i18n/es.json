@@ -11,6 +11,8 @@
   "catalogCategory": "Spots",
   "catalogSelfSpot": "Publicar tu propio spot",
   "catalogSpotLast": "Publicar un spot del último QSO",
+  "respotDefault": "¿Repetir el auto-spot?",
+  "respotting": "Repitiendo el auto-spot",
   "respotEvery": "¿Repetir el auto-spot cada {{minutes}} min?",
   "respottingEvery": "Repitiendo el auto-spot cada {{minutes}} min",
   "respotOff": "¿Dejar de repetir el auto-spot?",

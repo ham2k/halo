@@ -197,16 +197,21 @@ void main() {
     // a second one beside it: otherwise the chip would not say so, its Stop
     // button would not stop it, and a QSY would leave it spotting a
     // frequency the operator has left.
-    testWidgets('spots now and turns the Spotting chip to auto spots; moving the VFO stops it', (tester) async {
+    testWidgets('spots now and turns the Spotting chip to auto re-spot; moving the VFO stops it', (tester) async {
       await runRespot(tester);
       expect(sent, [14285]);
-      expect(find.text('Auto spots'), findsOneWidget);
-      await tester.pump(const Duration(minutes: 5, seconds: 1));
+      expect(find.text('Auto re-spot'), findsOneWidget);
+      await tester.tap(find.text('Auto re-spot'));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('Auto in 5:00. Stop?'), findsOneWidget);
+      await tester.pump(const Duration(minutes: 1, seconds: 15));
+      expect(find.text('Auto in 3:45. Stop?'), findsOneWidget);
+      await tester.pump(const Duration(minutes: 3, seconds: 46));
       expect(sent, [14285, 14285], reason: 'five minutes, as asked');
 
       tunedRadio.setVfo('vfoA', freq: 7200);
       await tester.pump();
-      expect(find.text('Auto spots'), findsNothing);
+      expect(find.text('Auto re-spot'), findsNothing);
       await tester.pump(const Duration(minutes: 11));
       expect(sent, hasLength(2));
     });
@@ -215,9 +220,41 @@ void main() {
       accept = false;
       await runRespot(tester);
       expect(find.textContaining('pota failed'), findsOneWidget);
-      expect(find.text('Auto spots'), findsNothing);
+      expect(find.text('Auto re-spot'), findsNothing);
       await tester.pump(const Duration(minutes: 11));
       expect(sent, hasLength(1), reason: 'nothing to repeat');
+    });
+
+    // The setting reaches the panel as a new widget; a running auto re-spot
+    // that only read it on starting would go on at the old interval.
+    testWidgets('a bare RESPOT follows the interval setting, changed while it runs', (tester) async {
+      Future<Map<String, dynamic>?> bareRespot(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async =>
+          input.trim().toUpperCase() != 'RESPOT'
+          ? null
+          : {
+              'commands': [
+                {'autoRespot': <String, dynamic>{}},
+              ],
+            };
+      Widget panel(int minutes) => host(
+        commands: CommandHooks(interpretCommand: bareRespot),
+        spotting: SpottingHooks(
+          suggestSpotSources: oneSource,
+          sendSpot: recordingSend,
+          respotInterval: Duration(minutes: minutes),
+        ),
+      );
+      await tester.pumpWidget(panel(10));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RESPOT');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(sent, [14285]);
+      await tester.pumpWidget(panel(20));
+      await tester.pump(const Duration(minutes: 11));
+      expect(sent, hasLength(1), reason: 'twenty minutes now, not ten');
+      await tester.pump(const Duration(minutes: 9, seconds: 1));
+      expect(sent, hasLength(2));
     });
 
     // The app answers a command where it was typed: from the palette, a
@@ -230,6 +267,40 @@ void main() {
       expect(dispatched.single.key, 'autoRespot');
       expect(dispatched.single.value!['failure'], contains('pota failed'));
       expect(find.textContaining('pota failed'), findsNothing);
+    });
+  });
+
+  group('Spotting settings button', () {
+    Future<List<Map<String, dynamic>>> noSources({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async => [];
+    Future<Map<String, Map<String, dynamic>>> noopSend({
+      required List<Map<String, dynamic>> sources,
+      required Map<String, dynamic> operation,
+      Map<String, dynamic>? qso,
+      double? freq,
+      String? mode,
+      String? comment,
+      String? spotterCall,
+    }) async => {};
+
+    Future<void> openSpotting(WidgetTester tester, SpottingHooks spotting) async {
+      await tester.pumpWidget(host(spotting: spotting));
+      await tester.pump();
+      await tester.tap(find.text('Self-spotting'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('opens the Spotting settings from the end of the row', (tester) async {
+      var opened = 0;
+      await openSpotting(tester, SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend, onOpenSettings: () => opened++));
+      await tester.tap(find.byKey(const ValueKey('spottingSettingsButton')));
+      expect(opened, 1);
+    });
+
+    // A host with nowhere to keep the settings must not offer a button that
+    // does nothing.
+    testWidgets('is not there without settings to open', (tester) async {
+      await openSpotting(tester, SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend));
+      expect(find.byKey(const ValueKey('spottingSettingsButton')), findsNothing);
     });
   });
 

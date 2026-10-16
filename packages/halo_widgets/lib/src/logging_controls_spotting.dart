@@ -10,6 +10,7 @@
 // [SpottingControlFields] draws the expanded row.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,6 +27,7 @@ import 'panel_model.dart';
 import 'secondary_control_row.dart' show SecondaryControlSpec;
 import 'spacing.dart';
 import 'theme.dart';
+import 'wall_clock.dart' show OncePerSecond;
 
 /// What the model reads from the panel's live configuration — re-read on
 /// every use, because the hooks, the edited QSO and the operation all change
@@ -33,7 +35,8 @@ import 'theme.dart';
 ///
 /// `notice` tells the operator why a spot or auto-respotting did not go ahead
 /// when nothing on screen would: a typed command's, or auto-respotting
-/// stopping on its own.
+/// stopping on its own. The rest are the operator's Spotting settings
+/// ([SpottingHooks]).
 typedef SpottingConfig = ({
   SendSpot? sendSpot,
   SuggestSpotSources? suggestSpotSources,
@@ -41,7 +44,14 @@ typedef SpottingConfig = ({
   Qso? editingQso,
   Operation operation,
   ValueChanged<String>? notice,
+  Duration respotInterval,
+  bool autoRespotByDefault,
+  bool pulseBeforeRespot,
+  VoidCallback? onOpenSettings,
 });
+
+/// How a self-spot went: every source took it, some did, or none did.
+enum SpotOutcome { allTook, someTook, noneTook }
 
 /// The Spotting control's summary, button text and enabled state, resolved
 /// once per build from the state machine in [SpottingControlModel.state].
@@ -89,10 +99,6 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// source ever needs its own window.
   static const Duration staleAfter = Duration(minutes: 5);
 
-  /// How often auto-respotting repeats a self-spot, unless RESPOT asked for
-  /// another interval.
-  static const Duration respotInterval = Duration(minutes: 10);
-
   /// The shortest interval RESPOT may ask for: the spots go to public
   /// clusters, and an extension's action is held to it like a typed one.
   static const Duration minRespotInterval = Duration(minutes: 5);
@@ -115,8 +121,24 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// goes back to offering a plain one (app-polo's window).
   static const Duration respotOfferWindow = Duration(seconds: 10);
 
+  /// How long a send's answers show: on the source icons, and fading from
+  /// the chip's icon for a self-spot. Neither has an app-polo equivalent to
+  /// diverge from — its SpotterControl only resets colors on the next send.
+  static const Duration resultShownFor = Duration(minutes: 3);
+
   /// How long before a respot the chip's icon starts to glow.
   static const Duration respotGlowLead = Duration(minutes: 1);
+
+  /// The pulse's stages, nearest the respot first: each runs until [left]
+  /// remains, with that many [pulses] over its span — slow from twenty
+  /// seconds out (about 2.2 s each), then one a second, then two a second
+  /// for the last three. Whole pulses per stage keep the color at rest
+  /// wherever the pace changes, and as the spot goes out: no jump.
+  static const respotPulseStages = [(left: Duration(seconds: 3), pulses: 6), (left: Duration(seconds: 7), pulses: 4), (left: Duration(seconds: 20), pulses: 6)];
+
+  /// How long before a respot the chip's icon and label pulse blue: the last
+  /// moment to stop it, or to change frequency, before it goes out.
+  static final Duration respotSoonLead = respotPulseStages.last.left;
 
   /// Comments that announce a one-off change rather than an ongoing
   /// activation, by their leading Q-code (`QRT`, `QRT, 73`, `QSY/40m`):
@@ -148,7 +170,14 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   Timer? _offerTimer;
 
   bool _autoRespotting = false;
-  Duration _respotEvery = respotInterval;
+  late Duration _respotEvery;
+
+  /// Whether [_respotEvery] is one RESPOT named, rather than the operator's
+  /// setting.
+  bool _intervalChosen = false;
+
+  /// Whether a round is between its timer and its answers.
+  bool _roundInFlight = false;
   Timer? _respotTimer;
 
   /// Fires as the next auto-respot comes within [respotGlowLead], so the
@@ -158,6 +187,31 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
 
   /// Whether the next auto-respot is close enough for the chip to glow.
   bool get respotGlowing => _glowing;
+
+  /// Fires as the next auto-respot comes within [respotSoonLead].
+  Timer? _soonTimer;
+  bool _soon = false;
+
+  /// Whether the chip pulses now: the next auto-respot is within
+  /// [respotSoonLead], and the operator has not turned the pulse off.
+  bool get respotSoon => _soon && config().pulseBeforeRespot;
+
+  /// The pulse in [respotSoonLead]: 0 the chip's own colors, 1 all blue,
+  /// eased between. Read off the time left on the real clock, so the icon
+  /// and the label — drawn separately — stay in step.
+  double get respotPulse {
+    final due = _respotDueRealMillis;
+    if (!_soon || due == null) return 0;
+    final left = due - realNowMillis();
+    if (left <= 0) return 0;
+    var from = 0;
+    for (final stage in respotPulseStages) {
+      final to = stage.left.inMilliseconds;
+      if (left <= to) return (1 - math.cos(2 * math.pi * stage.pulses * (left - from) / (to - from))) / 2;
+      from = to;
+    }
+    return 0;
+  }
 
   /// When the next auto-respot is due, on the real clock: it paces a real
   /// request, and [_respotTimer] counts real time whatever the app clock is
@@ -173,17 +227,68 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// out its one retry for the radio to come back.
   bool _awaitingVfo = false;
 
+  /// The comment auto-respotting repeats, while it runs — the row shows it,
+  /// in place of the comment field it cannot take.
+  String? get respotComment => _autoRespotting ? _selfSpot?.comment : null;
+
   /// Whether auto-respotting is on. The panel ends it when the VFO leaves the
   /// spotted frequency ([followVfo]); disposing the panel (leaving the
   /// operation) ends it too, and nothing about it persists.
   bool get autoRespotting => _autoRespotting;
 
+  /// How the last self-spot went, and when (real clock) — the chip's icon
+  /// shows it for [resultShownFor], fading back to normal.
+  SpotOutcome? _outcome;
+  int _outcomeAtRealMillis = 0;
+  Timer? _outcomeTimer;
+
+  /// How the last self-spot went, while the chip still shows it.
+  SpotOutcome? get outcome => _outcome;
+
+  /// How strongly the chip shows [outcome]: 1 as it lands, fading to 0 over
+  /// [resultShownFor].
+  double get outcomeStrength {
+    if (_outcome == null) return 0;
+    return (1 - (realNowMillis() - _outcomeAtRealMillis) / resultShownFor.inMilliseconds).clamp(0.0, 1.0);
+  }
+
+  /// Shows [outcome] on the chip — except while a QSO is open for editing,
+  /// when the chip stands for spotting that QSO's station, and the station's
+  /// own self-spot coloring it would read as that spot's answer. The source
+  /// icons hold back for the same reason ([_post]).
+  void _showOutcome(SpotOutcome outcome) {
+    if (config().editingQso != null) return;
+    _outcome = outcome;
+    _outcomeAtRealMillis = realNowMillis();
+    _outcomeTimer?.cancel();
+    _outcomeTimer = Timer(resultShownFor, () {
+      _outcome = null;
+      notify();
+    });
+    notify();
+  }
+
+  static SpotOutcome _outcomeOf(List<Map<String, dynamic>> sources, Map<String, Map<String, dynamic>> results) {
+    final refused = _refusedBy(sources, results).length;
+    if (refused == 0) return SpotOutcome.allTook;
+    return refused < sources.length ? SpotOutcome.someTook : SpotOutcome.noneTook;
+  }
+
+  /// The operator's auto-respot interval, held to what RESPOT may ask for.
+  Duration get _interval {
+    final every = config().respotInterval;
+    if (every < minRespotInterval) return minRespotInterval;
+    return every > maxRespotInterval ? maxRespotInterval : every;
+  }
+
   @override
   void dispose() {
     _statusClearTimer?.cancel();
+    _outcomeTimer?.cancel();
     _offerTimer?.cancel();
     _respotTimer?.cancel();
     _glowTimer?.cancel();
+    _soonTimer?.cancel();
     commentController.dispose();
     commentFocus.dispose();
     super.dispose();
@@ -218,14 +323,19 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
 
     final vfoFreq = cfg.radioService?.vfoA.freq;
     if (_autoRespotting) {
-      return (summary: t.loggingControls.spottingAutoControl, buttonLabel: t.loggingControls.spotAutoStop, enabled: true, showComment: false);
+      return (
+        summary: t.loggingControls.spottingAutoControl,
+        buttonLabel: t.loggingControls.spotAutoNext(time: _untilNextRespot()),
+        enabled: true,
+        showComment: false,
+      );
     }
     final summary = t.loggingControls.spottingSelfControl;
     if (vfoFreq == null) {
       return (summary: summary, buttonLabel: t.loggingControls.spotNoFreq, enabled: false, showComment: false);
     }
     if (_offeringRespot) {
-      return (summary: summary, buttonLabel: t.loggingControls.spotAutoEvery(minutes: respotInterval.inMinutes), enabled: true, showComment: true);
+      return (summary: summary, buttonLabel: t.loggingControls.spotAutoEvery(minutes: _interval.inMinutes), enabled: true, showComment: true);
     }
     final freqLabel = fmtFreq(vfoFreq);
     return (summary: summary, buttonLabel: t.loggingControls.spotSelfAt(freq: freqLabel), enabled: true, showComment: true);
@@ -288,13 +398,15 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       // 0 is RESPOT 0: off, as OFF is.
       final off = params['off'] == true || (minutes is num && minutes <= 0);
       if (off) stopAutoRespotting();
-      final failure = off ? null : await respotEvery(minutes is num ? minutes : respotInterval.inMinutes);
+      final failure = off ? null : await respotEvery(minutes is num ? minutes : null);
       return _reportRan('autoRespot', {'failure': ?failure}, forward);
     }
     final params = (action['sendSpots'] as Map).cast<String, dynamic>();
     final comment = params['comment'] as String?;
     if (params['target'] != 'last') {
-      final failure = (await _spotSelf(comment)).failure;
+      final freq = config().radioService?.vfoA.freq;
+      final spotted = await _spotSelf(comment);
+      final failure = spotted.failure ?? _autoStartAfter(spotted, comment, freq);
       return _reportRan('sendSpots', {'target': 'self', 'failure': ?failure}, forward);
     }
     final qso = qsos.cast<Qso?>().lastWhere((q) => q!.isRealContact, orElse: () => null);
@@ -340,22 +452,28 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       if (_autoRespotting) return stopAutoRespotting();
       // A comment typed while it is on offer is a new spot, not a yes to
       // repeating the last one.
-      if (_offeringRespot && commentController.text.trim().isEmpty) return _repeatSelfSpot(respotInterval);
+      if (_offeringRespot && commentController.text.trim().isEmpty) return _repeatSelfSpot(_interval);
     }
     await send();
   }
 
   /// Posts the spot. A self-spot every source took is offered for
-  /// auto-respotting for [respotOfferWindow], unless it announces a one-off
-  /// change ([oneOffQCode]).
+  /// auto-respotting for [respotOfferWindow] — or, with the operator's
+  /// auto-respot-by-default setting, starts it — unless it announces a
+  /// one-off change ([oneOffQCode]).
   Future<void> send() async {
     final cfg = config();
     if (cfg.sendSpot == null || _sending) return;
     final comment = commentController.text.trim();
     final editingQso = cfg.editingQso;
     if (editingQso == null) {
+      final freq = cfg.radioService?.vfoA.freq;
       final spotted = await _spotSelf(comment.isEmpty ? null : comment, onAnswered: commentController.clear);
-      if (isDisposed || spotted.spot == null) return;
+      if (isDisposed) return;
+      // Why it did not start, not why the spot failed: a button spot's
+      // failure shows on its source icons whatever this setting says.
+      if (config().autoRespotByDefault) return _notice(_autoStartAfter(spotted, comment, freq));
+      if (spotted.spot == null) return;
       _offeringRespot = true;
       _offerTimer?.cancel();
       _offerTimer = Timer(respotOfferWindow, () {
@@ -400,6 +518,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final results = await _post(sources: sources, freq: freq, mode: vfo?.mode, comment: comment, onAnswered: onAnswered);
     if (isDisposed) return (failure: null, spot: null);
     if (results == null) return (failure: t.loggingControls.spotBusy, spot: null);
+    _showOutcome(_outcomeOf(sources, results));
     final failure = spotFailureText(sources, results);
     if (failure != null || _refusedBy(sources, results).isNotEmpty || _isOneOff(comment) || !_onFrequency(freq)) {
       return (failure: failure, spot: null);
@@ -415,14 +534,28 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     return (failure: null, spot: spot);
   }
 
+  /// With the auto-respot-by-default setting, starts auto-respotting on the
+  /// self-spot just [spotted] — the button's, or a typed SPOT's — taken at
+  /// [freq]. Returns why it did not start, which the operator is told: the
+  /// setting promised it would. A one-off ([oneOffQCode]) is never expected
+  /// to, and one already running was re-timed by the spot itself.
+  String? _autoStartAfter(({String? failure, _SelfSpot? spot}) spotted, String? comment, double? freq) {
+    if (isDisposed || !config().autoRespotByDefault || _isOneOff(comment) || _autoRespotting) return null;
+    if (spotted.spot != null) {
+      _repeatSelfSpot(_interval);
+      return null;
+    }
+    return freq != null && !_onFrequency(freq) ? t.loggingControls.spotAutoMoved : t.loggingControls.spotAutoNotStarted;
+  }
+
   /// RESPOT: repeats the self-spot at the VFO every [minutes] (held between
   /// [minRespotInterval] and [maxRespotInterval], whatever an extension's
-  /// action asks for) — the one taken there already when there is one, timed
-  /// from when it went out, or else one sent now. Returns why it could not
-  /// start, or null.
-  Future<String?> respotEvery(num minutes) async {
+  /// action asks for), or at the operator's own interval with none — the one
+  /// taken there already when there is one, timed from when it went out, or
+  /// else one sent now. Returns why it could not start, or null.
+  Future<String?> respotEvery([num? minutes]) async {
     // Clamped before it becomes a Duration: a huge number overflows one.
-    final every = Duration(seconds: (minutes.clamp(minRespotInterval.inMinutes, maxRespotInterval.inMinutes) * 60).round());
+    final every = minutes == null ? _interval : Duration(seconds: (minutes.clamp(minRespotInterval.inMinutes, maxRespotInterval.inMinutes) * 60).round());
     final freq = config().radioService?.vfoA.freq;
     if (freq == null) return t.spotting.setFrequencyFirst;
     final spot = _ownSelfSpot;
@@ -432,13 +565,15 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       if (spotted.failure != null) return spotted.failure;
       if (spotted.spot == null) return _onFrequency(freq) ? t.loggingControls.spotAutoNotStarted : t.loggingControls.spotAutoMoved;
     }
-    _repeatSelfSpot(every);
+    _repeatSelfSpot(every, chosen: minutes != null);
     return null;
   }
 
   /// Turns auto-respotting on for [_selfSpot], the first round falling
   /// [every] after it went out — or, already on, re-times it to [every].
-  void _repeatSelfSpot(Duration every) {
+  /// [chosen] is an interval RESPOT named, which a change to the operator's
+  /// setting leaves alone ([followIntervalSetting]).
+  void _repeatSelfSpot(Duration every, {bool chosen = false}) {
     final spot = _ownSelfSpot;
     if (spot == null) return;
     _withdrawOffer();
@@ -449,7 +584,21 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     }
     _autoRespotting = true;
     _respotEvery = every;
+    _intervalChosen = chosen;
     _scheduleNext();
+    notify();
+  }
+
+  /// The operator's interval setting changed: a running auto-respot follows
+  /// it at once, timed from its last round — the setting would otherwise
+  /// show one interval while respots go out on another — unless RESPOT
+  /// named its own. An owed retry or a wait for the radio keeps its 30 s,
+  /// and a round still in flight schedules the next itself: rescheduled
+  /// under it, a shorter interval would start a second round beside it.
+  void followIntervalSetting() {
+    if (!_autoRespotting || _intervalChosen || _respotEvery == _interval) return;
+    _respotEvery = _interval;
+    if (_retry.isEmpty && !_awaitingVfo && !_roundInFlight) _scheduleNext();
     notify();
   }
 
@@ -458,6 +607,8 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     _respotTimer = null;
     _glowTimer?.cancel();
     _glowing = false;
+    _soonTimer?.cancel();
+    _soon = false;
     _respotDueRealMillis = null;
     _retry.clear();
     _awaitingVfo = false;
@@ -505,6 +656,14 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     }
   }
 
+  /// How long until the next auto-respot, as `m:ss` — the button counts it
+  /// down. Rounded up, so it reads 0:01 rather than 0:00 until it goes.
+  String _untilNextRespot() {
+    final due = _respotDueRealMillis;
+    final seconds = due == null ? 0 : ((due - realNowMillis()) / 1000).ceil().clamp(0, 1 << 30);
+    return '${seconds ~/ 60}:${'${seconds % 60}'.padLeft(2, '0')}';
+  }
+
   /// The chip icon's glow: none until [respotGlowLead] before the next
   /// auto-respot, then rising to full strength as it comes due.
   double get respotGlow {
@@ -519,12 +678,26 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   void _scheduleRespot(Duration after) {
     _respotTimer?.cancel();
     _respotDueRealMillis = realNowMillis() + after.inMilliseconds;
-    _respotTimer = Timer(after, () => unawaited(_respot()));
+    _respotTimer = Timer(after, () {
+      // Due: the warning is over. Left on, the chip would redraw every
+      // frame, showing nothing, for as long as the round's hooks take.
+      _glowing = false;
+      _soon = false;
+      notify();
+      unawaited(_respot());
+    });
     _glowTimer?.cancel();
     _glowing = false;
     final untilGlow = after - respotGlowLead;
     _glowTimer = Timer(untilGlow.isNegative ? Duration.zero : untilGlow, () {
       _glowing = true;
+      notify();
+    });
+    _soonTimer?.cancel();
+    _soon = false;
+    final untilSoon = after - respotSoonLead;
+    _soonTimer = Timer(untilSoon.isNegative ? Duration.zero : untilSoon, () {
+      _soon = true;
       notify();
     });
   }
@@ -550,7 +723,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     if (vfoFreq != null && !_onFrequency(spot.freq)) return followVfo();
     // A reconnecting radio says nothing about where it is: it gets one retry
     // to come back, and then the operator is told — spots that silently
-    // stop going out are what the chip saying "Auto spots" must not hide.
+    // stop going out are what the chip saying "Auto re-spot" must not hide.
     if (vfoFreq == null) {
       if (_awaitingVfo) return _stopWith(t.loggingControls.spotAutoNoFreq);
       _awaitingVfo = true;
@@ -560,6 +733,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     // A manual send in flight: try again shortly.
     if (_sending) return _scheduleRespot(respotRetry);
     var finished = false;
+    _roundInFlight = true;
     try {
       // Asked afresh, with no QSO: the panel's own [sources] are another
       // spot's while a QSO is open for editing.
@@ -582,7 +756,12 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
           _retry.addAll(targets.map(_hookKey));
         } else if (!retrying) {
           _retry.addAll(_refusedBy(targets, results));
+          _showOutcome(_outcomeOf(targets, results));
         } else {
+          // The round as a whole: the sources that took it the first time
+          // count, so a retry refused again is never worse than "some".
+          final retried = _outcomeOf(targets, results);
+          _showOutcome(retried == SpotOutcome.allTook || _outcome != SpotOutcome.someTook ? retried : SpotOutcome.someTook);
           // Refused twice, the round is lost for those sources: said once a
           // round, since the source icons alone are easy to miss.
           _notice(spotFailureText(targets, results));
@@ -590,9 +769,10 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       }
       finished = true;
     } finally {
+      _roundInFlight = false;
       // A hook that threw has no answer to retry on: stopping, and saying so,
       // beats a loop that keeps calling it or a chip that keeps saying "Auto
-      // spots". The error itself goes on to the zone.
+      // re-spot". The error itself goes on to the zone.
       if (!isDisposed && _autoRespotting) {
         if (finished) {
           _scheduleNext();
@@ -654,10 +834,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       onAnswered?.call();
       notify();
       _statusClearTimer?.cancel();
-      // Explicit 3-minute color-clear (no app-polo equivalent to diverge
-      // from — its own SpotterControl only resets colors on the next
-      // attempt).
-      _statusClearTimer = Timer(const Duration(minutes: 3), () {
+      _statusClearTimer = Timer(resultShownFor, () {
         if (isDisposed) return;
         _status.clear();
         notify();
@@ -698,7 +875,7 @@ String? spotFailureText(List<Map<String, dynamic>> sources, Map<String, Map<Stri
 /// The Spotting control's expanded row: the comment field, the send button,
 /// and one status icon per source on offer.
 class SpottingControlFields extends StatelessWidget {
-  const SpottingControlFields({super.key, required this.model, required this.state, required this.theme, required this.colors});
+  const SpottingControlFields({super.key, required this.model, required this.state, required this.theme});
 
   final SpottingControlModel model;
 
@@ -708,7 +885,6 @@ class SpottingControlFields extends StatelessWidget {
 
   /// The panel's accent theme — the row is painted on it.
   final ThemeData theme;
-  final HaLoColors colors;
 
   @override
   Widget build(BuildContext context) {
@@ -717,6 +893,23 @@ class SpottingControlFields extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        // What the respots say, shown where the comment goes but not
+        // editable: a new comment is a new spot, which this row cannot send
+        // while auto-respotting holds the button. Not [state.showComment],
+        // so the focus ladder never lands on a field that takes no input.
+        if (model.autoRespotting && model.config().editingQso == null)
+          SizedBox(
+            width: 160,
+            child: TextFormField(
+              // Keyed by the comment: the field holds its initial value, and
+              // a respot of a newer spot must show that one's.
+              key: ValueKey(('respotComment', model.respotComment)),
+              initialValue: model.respotComment ?? '',
+              enabled: false,
+              style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: poloFieldDecoration(context, t.loggingControls.spotComment, labelColor: theme.colorScheme.onTertiaryContainer),
+            ),
+          ),
         if (state.showComment)
           SizedBox(
             width: 160,
@@ -738,7 +931,8 @@ class SpottingControlFields extends StatelessWidget {
           ),
           onPressed: state.enabled && !model.sending ? model.press : null,
           icon: model.sending ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(MdiIcons.handWave),
-          label: Text(state.buttonLabel),
+          // Counting down to the next auto-respot: re-read every second.
+          label: model.autoRespotting ? OncePerSecond(builder: (_, _) => Text(model.state.buttonLabel)) : Text(state.buttonLabel),
         ),
         // Two source-status icons per column, wrapping into another column
         // to the right once a column fills up.
@@ -754,9 +948,11 @@ class SpottingControlFields extends StatelessWidget {
                     child: Icon(
                       resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
                       size: 16,
+                      // The open chip's colors: this row is painted on its
+                      // fill, and they are the ones chosen to read on it.
                       color: switch (model.statusOf(source['hookKey'] as String? ?? '')) {
-                        true => colors.important,
-                        false => theme.colorScheme.error,
+                        true => spotOutcomeColor(theme, SpotOutcome.allTook, selected: true),
+                        false => spotOutcomeColor(theme, SpotOutcome.noneTook, selected: true),
                         null => theme.colorScheme.onTertiaryContainer,
                       },
                       shadows: glyphGlow(theme),
@@ -765,22 +961,85 @@ class SpottingControlFields extends StatelessWidget {
                 ),
             ],
           ),
+        if (model.config().onOpenSettings case final onOpenSettings?) ...[
+          const SizedBox(width: Space.sm),
+          Semantics(
+            identifier: 'action.spottingSettings',
+            // Icon-only, and the app shows no hover tooltips: this label is
+            // the only accessible name it has.
+            label: t.settings.spotting.title,
+            button: true,
+            child: InkWell(
+              key: const ValueKey('spottingSettingsButton'),
+              // Not one of the control's fields: a click's focus grab would
+              // leave Tab with nowhere in the control to go from.
+              canRequestFocus: false,
+              onTap: onOpenSettings,
+              child: Padding(
+                padding: const EdgeInsets.all(Space.xs),
+                child: Icon(MdiIcons.tune, size: 20, color: theme.colorScheme.onTertiaryContainer, shadows: glyphGlow(theme)),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
+/// The Spotting chip's icon color for a self-spot's [outcome]: green when
+/// every source took it, amber when some did, red when none did.
+///
+/// [selected] is the chip's own, for the same reason as `radioStatusColor`'s:
+/// one color sits on two fills, and which of them is the darker flips between
+/// light and dark mode. Every color here clears 3:1 on each fill its branch
+/// paints on — the amber pair, and the blue pair editing a logged QSO swaps
+/// in. No single yellow does on all of them, and the Radio chip's own pairs
+/// fall under 3:1 on some.
+Color spotOutcomeColor(ThemeData theme, SpotOutcome outcome, {required bool selected}) {
+  if ((theme.brightness == Brightness.dark) != selected) {
+    // light+selected or dark+unselected: the darker fills — light pastels.
+    return switch (outcome) {
+      SpotOutcome.allTook => const Color(0xFF81C784),
+      SpotOutcome.someTook => const Color(0xFFFFD54F),
+      SpotOutcome.noneTook => const Color(0xFFFF9E9E),
+    };
+  }
+  // dark+selected or light+unselected: the lighter fills — dark, saturated.
+  return switch (outcome) {
+    SpotOutcome.allTook => const Color(0xFF005000),
+    SpotOutcome.someTook => const Color(0xFF553F00),
+    SpotOutcome.noneTook => const Color(0xFF900000),
+  };
+}
+
+/// The color the Spotting chip's icon and label pulse toward in the last
+/// [SpottingControlModel.respotSoonLead] before an auto-respot: an electric blue on the darker fills, a deep vivid
+/// one on the lighter. Both clear 4.5:1 — it colors text, not just a glyph —
+/// on every fill, the blue ones editing a logged QSO swaps in included.
+Color respotSoonColor(ThemeData theme, {required bool selected}) =>
+    (theme.brightness == Brightness.dark) != selected ? const Color(0xFF7DF9FF) : const Color(0xFF001C99);
+
 /// The Spotting chip's glyph — the settings dialog's entry reads this too.
 const spottingChipIcon = MdiIcons.handWave;
 
-/// The Spotting chip and its expanded fields, read from [model].
-SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData theme, HaLoColors colors) {
+/// The Spotting chip and its expanded fields, read from [model]. [selected]
+/// is the chip's own; see [spotOutcomeColor].
+SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData theme, {required bool selected}) {
   final state = model.state;
+  final outcome = model.outcome;
+  final soon = model.respotSoon ? respotSoonColor(theme, selected: selected) : null;
   return SecondaryControlSpec(
     key: 'spotting',
     icon: spottingChipIcon,
     summary: state.summary,
+    liveTint: soon == null ? null : (color: soon, strength: () => model.respotPulse),
     liveIconGlow: model.respotGlowing ? () => model.respotGlow : null,
-    expandedBuilder: (context) => SpottingControlFields(model: model, state: state, theme: theme, colors: colors),
+    // The pulse outranks a fading outcome: it is the news that is about to
+    // happen, not the one that already did.
+    liveIconColor: soon != null || outcome == null
+        ? null
+        : (base) => Color.lerp(base, spotOutcomeColor(theme, outcome, selected: selected), model.outcomeStrength)!,
+    expandedBuilder: (context) => SpottingControlFields(model: model, state: state, theme: theme),
   );
 }

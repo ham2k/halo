@@ -13,7 +13,8 @@
 //                                       behavior for app-halo)
 //   RESPOT [minutes|OFF]             — auto-respotting, HaLo's own: the
 //                                       Spotting control's "Re-spot every
-//                                       10 min" with a chosen interval
+//                                       N min", at the operator's interval
+//                                       or a chosen one
 // Neither command resolves *who* gets spotted or *how* — that's Dart's job
 // (it owns the QSO list and the extension-hook fan-out); this just parses
 // text into a `sendSpots` or `autoRespot` CommandAction. Parsing itself lives in
@@ -114,6 +115,9 @@ const RespotCommand = {
       return { mixedCase: true, describe: t("respotOff"), confirm: t("respotStopped"), commands: [{ autoRespot: { off: true } }] }
     }
     const { minutes } = parsed
+    if (minutes === undefined) {
+      return { mixedCase: true, describe: t("respotDefault"), confirm: t("respotting"), commands: [{ autoRespot: {} }] }
+    }
     return {
       mixedCase: true,
       describe: t("respotEvery", { minutes }),

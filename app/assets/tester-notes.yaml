@@ -9,6 +9,8 @@
     - "New Show idle metrics developer setting: extension engine headroom in the status bar"
     - "Calls you didn't fully copy can be logged with a `?`, like `K1A?C`"
     - "New auto-respotting: after a self-spot, or with the RESPOT command"
+    - "Spotting chip turns green, amber or red after a self-spot"
+    - "New Spotting settings: auto-respot interval, and auto-respot by default"
     - "SPOTLAST now takes a comment, like `SPOTTHEM nice signal`"
     - "Added SOTAcat to the radio list, found automatically on your network"
 
