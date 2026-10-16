@@ -263,8 +263,11 @@ void main() {
   test('a restore asked for while a catalog pass runs is busy, not a failure of every extension', () async {
     final extensions = _HeldPreload();
     SharedPreferences.setMockInitialValues(const {});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    // Onboarded: until then a catch-up installs nothing, and never gets here.
+    await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     extensions
-      ..settings = SettingsService(await SharedPreferences.getInstance())
+      ..settings = settings
       ..catalog = _Catalog(const {});
     final catchUp = catchUpOnCatalogExtensions(extensions);
     await extensions.entered.future;
@@ -282,6 +285,7 @@ void main() {
       final extensions = _ReentersOnRestart();
       SharedPreferences.setMockInitialValues(const {});
       extensions.settings = SettingsService(await SharedPreferences.getInstance());
+      await extensions.settings!.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
       var settledDuringRestart = true;
       extensions.onRestart = () async {
         expect(await catchUpOnCatalogExtensions(extensions), isFalse, reason: 'the premise: it steps aside');

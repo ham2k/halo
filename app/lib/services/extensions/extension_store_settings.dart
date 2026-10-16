@@ -94,6 +94,19 @@ mixin ExtensionStoreSettings on ChangeNotifier {
 
   bool get defaultProfileCallsignDefined;
 
+  /// Whether this install has had the pre-loaded bundles and built-ins'
+  /// twins it held switched off taken out of the store, once
+  /// (`catchUpOnCatalogExtensions`). An install can hold every one the app
+  /// ships, whatever its switch, and nothing else removes them.
+  static const _extensionsSwitchedOffRemovedKey = 'extensionsSwitchedOffRemoved';
+
+  bool get extensionsSwitchedOffRemoved => prefs.getBool(_extensionsSwitchedOffRemovedKey) ?? false;
+
+  Future<void> setExtensionsSwitchedOffRemoved(bool removed) async {
+    await prefs.setBool(_extensionsSwitchedOffRemovedKey, removed);
+    notifyListeners();
+  }
+
   /// Which catalog twins this app has already fetched for a retired built-in
   /// the operator had switched on ({key: version}).
   ///
@@ -283,28 +296,53 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     if (disabledSince.remove(key) != null) {
       await prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
     }
+    await _dropInstallRecords({key});
+  }
+
+  /// Drops what records [keys] as installed, and keeps what the operator set
+  /// for each — its override and disabled-since stamp here, its settings and
+  /// credentials elsewhere — for bundles taken out of the store that are not
+  /// being uninstalled: should one come back, it comes back as they left it.
+  /// Where each came from goes too, its release track with it: left behind,
+  /// the record waives the `ham2k-` refusal for a file claiming the key.
+  /// Each record is written once, and listeners told once, however many go.
+  Future<void> forgetExtensionInstalls(Set<String> keys) async {
+    await _dropInstallRecords(keys);
+    notifyListeners();
+  }
+
+  Future<void> _dropInstallRecords(Set<String> keys) async {
+    // Every key, not `keys.any`: that stops at the first one it removes.
+    bool dropped(Map<String, Object?> records) {
+      var changed = false;
+      for (final key in keys) {
+        if (records.remove(key) != null) changed = true;
+      }
+      return changed;
+    }
+
     // Otherwise a reinstall of the same version lands inert, and
     // uninstall-and-reinstall is the operator's only repair for the corrupt
     // download the attempt limit exists to absorb.
     final refused = extensionRefused;
-    if (refused.remove(key) != null) {
+    if (dropped(refused)) {
       await prefs.setString(_extensionRefusedKey, jsonEncode(refused));
     }
     // Left behind, the record would waive the `ham2k-` refusal for whatever
     // bundle next claims this key from a file.
     final installedFrom = extensionInstalledFrom;
-    if (installedFrom.remove(key) != null) {
+    if (dropped(installedFrom)) {
       await prefs.setString(_extensionInstalledFromKey, jsonEncode(installedFrom));
     }
     // Otherwise the next launch reads it as missing and offers it back.
     final installed = extensionsInstalled;
-    if (installed.remove(key) != null) {
+    if (dropped(installed)) {
       await prefs.setString(_extensionsInstalledKey, jsonEncode(installed));
     }
     // The revocation was of a version that is no longer here; kept, it would
     // silently refuse a reinstall of that version with nothing to say why.
     final revoked = extensionRevoked;
-    if (revoked.remove(key) != null) {
+    if (dropped(revoked)) {
       await prefs.setString(_extensionRevokedKey, jsonEncode(revoked));
     }
   }

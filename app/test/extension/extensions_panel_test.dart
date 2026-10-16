@@ -258,7 +258,8 @@ void main() {
     // switch shares its trailing with the line under it.
     await tester.tap(find.byKey(const ValueKey('extension-sota')));
     await tester.pumpAndSettle();
-    expect(settings.extensionOverrides, {'sota': false});
+    // Under its twin's name too, which is what the pre-load asks.
+    expect(settings.extensionOverrides, {'sota': false, 'ham2k-sota': false});
     expect(settings.extensionSettingsGroups(), isEmpty);
     expect(switchValue('sota'), isFalse);
   });

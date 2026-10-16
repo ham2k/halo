@@ -25,6 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
 import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
+import '../services/extensions/extension_catalog_migration.dart' show settleOnboardingExtensions;
 import '../services/settings_service.dart';
 import '../services/sibling_apps_service.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
@@ -193,9 +194,15 @@ class _OnboardingContentState extends State<_OnboardingContent> {
   bool _consentAppData = true;
   bool _consentOpData = false;
 
+  /// Whether this is the install's first onboarding rather than a DEVONBOARD
+  /// replay over an install already in use — decided as it opens, before the
+  /// callsign step answers it.
+  late final bool _firstRun;
+
   @override
   void initState() {
     super.initState();
+    _firstRun = !widget.services.settings.defaultProfileCallsignDefined;
     // Seed from any values already saved in settings, so a re-shown flow (a
     // DEVONBOARD preview, or onboarding reached with a callsign/activities
     // already set) reflects the current state instead of resetting to the
@@ -246,6 +253,8 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     if (!widget.services.settings.defaultProfileCallsignDefined) {
       await widget.services.settings.setProfileOperatorCall(SettingsService.defaultProfileId, '');
     }
+    // Answered now, so the shipped extensions on by default are due.
+    unawaited(settleOnboardingExtensions(widget.services.extensions, firstRun: _firstRun));
     widget.onDone();
   }
 
@@ -309,6 +318,9 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     setState(() => _finishingSetup = true);
     try {
       await _persistChoices();
+      // The pre-load waits for onboarding, so this is what installs the
+      // activities just picked — before the sync below asks them for data.
+      await settleOnboardingExtensions(widget.services.extensions, firstRun: _firstRun);
       // Waits for call-notes' data file and any now-enabled extension's own
       // (POTA/SOTA parks/summits) to finish downloading —
       // already a no-op for anything fresh (see syncAllDataFiles' staleness

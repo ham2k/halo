@@ -47,8 +47,18 @@ Future<void> updateExtensionDisabledSince({
   // back switched on — or SOTA and WWFF, off by default — once it is restored.
   // And with the retired built-ins: their choices are what a twin inherits
   // when it arrives, which for one the app does not pre-load is whenever the
-  // catalog is next reachable.
-  final knownKeys = {for (final info in available) info.key, ...settings.extensionsInstalled.keys, ...kRetiredBuiltIns.keys};
+  // catalog is next reachable. And with the bundles the app has pre-loaded
+  // and the built-ins' twins, which leave the store switched off with their
+  // state kept: one pre-loaded comes back with an app update carrying a newer
+  // copy unless its switch says off, and pruning the switch says on; and a
+  // stamp pruned is downloaded data the purge never clears.
+  final knownKeys = {
+    for (final info in available) info.key,
+    ...settings.extensionsInstalled.keys,
+    ...kRetiredBuiltIns.keys,
+    for (final builtIn in kRetiredBuiltIns.keys) twinOf(builtIn),
+    ...settings.extensionPreloaded.keys,
+  };
   final canPrune = available.isNotEmpty;
   // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
   // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real

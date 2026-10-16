@@ -5,8 +5,8 @@
 //
 // The app builds in only its core extensions. Everything else is a catalog
 // bundle: some shipped as `.h2kext` files under `assets/preloaded-extensions/`
-// and installed into the ordinary store on first run, the rest fetched from
-// the catalog. Once installed they are ordinary installed extensions: the
+// and installed into the ordinary store once switched on, the rest fetched
+// from the catalog. Once installed they are ordinary installed extensions: the
 // same panel rows, the same update check, the same Update and uninstall.
 
 import 'dart:convert';
@@ -35,6 +35,17 @@ String twinOf(String builtIn) => '$kReservedKeyPrefix$builtIn';
 /// Whether the operator had the retired built-in [builtIn] switched on: their
 /// own choice where they made one, else its default.
 bool retiredBuiltInWasOn(SettingsService settings, String builtIn) => settings.extensionOverrides[builtIn] ?? kRetiredBuiltIns[builtIn] ?? false;
+
+/// Whether the operator has the shipped bundle [key] switched on, asked
+/// before it is installed: their choice under its own key, else its retired
+/// built-in's, else on — an installed extension runs unless switched off.
+///
+/// Its own key first: once installed, that is the switch the operator turns,
+/// and a built-in's choice can be older than it.
+bool shippedBundleSwitchedOn(SettingsService settings, String key) {
+  final builtIn = predecessorBuiltInKey(key);
+  return settings.extensionOverrides[key] ?? (builtIn == null || retiredBuiltInWasOn(settings, builtIn));
+}
 
 /// Retired built-ins the catalog deliberately serves no twin of: nothing
 /// replaces them when they go.
@@ -180,6 +191,11 @@ Version? _parse(String? raw) {
 /// carrying a predecessor's over them, or dropping the choice as stale, would
 /// undo what they set.
 ///
+/// A bundle that is not installed is installed only while the operator has
+/// it switched on ([shippedBundleSwitchedOn]) — one switched off is a dead
+/// row in the Extensions panel, and an update to it nobody runs. Skipped, it
+/// is not recorded as offered, so switching it on later still brings it in.
+///
 /// Every failure is per-bundle and reported, never fatal. Every other
 /// extension working and one that says why beats a boot that stops on the
 /// first bad zip; a bundle the store refuses is not tried again, and anything
@@ -212,6 +228,7 @@ Future<bool> installShippedExtensions({
     if (!restore && !shouldPreload(bundle, preloadedVersion: preloaded[bundle.key], installedVersion: installedVersions[bundle.key])) {
       continue;
     }
+    if (!restore && !installedVersions.containsKey(bundle.key) && !shippedBundleSwitchedOn(settings, bundle.key)) continue;
     final first = !restore && !preloaded.containsKey(bundle.key) && !installedVersions.containsKey(bundle.key);
     try {
       // Through the view's own offset and length: a ByteData from the bundle
@@ -233,15 +250,6 @@ Future<bool> installShippedExtensions({
       if (carried) {
         await settings.copyExtensionRecords(from: replaces, to: bundle.key);
         await copySecrets(from: replaces, to: bundle.key);
-        // No choice to carry is still a state to carry: the built-in's own
-        // default. An installed extension is on unless switched off, so
-        // without this SOTA and WWFF, off by default as built-ins, arrive on
-        // — for a moving install and for a new one that skips onboarding alike.
-        final overrides = settings.extensionOverrides;
-        final fallback = kRetiredBuiltIns[replaces];
-        if (!overrides.containsKey(bundle.key) && fallback != null) {
-          await settings.setExtensionOverrides({...overrides, bundle.key: fallback});
-        }
       }
       // A choice already under this very key is the operator's too:
       // `ham2k-lookup` was built in under the name its pre-load has, so its
@@ -261,8 +269,7 @@ Future<bool> installShippedExtensions({
       // be refused on every launch, and retrying it costs a zip parse and the
       // same report forever. Anything else — a keychain that would not open, a
       // full disk — may pass next launch, and recorded as offered it never
-      // would: the pre-load is the only thing that installs an extension the
-      // operator had switched off.
+      // would: the adoption does not fetch a twin the pre-load has offered.
       if (e is BundleException) preloaded[bundle.key] = bundle.version;
       ErrorReportingService.report(e, stack, context: 'extensions:preload:${bundle.key}');
     }

@@ -13,12 +13,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
+import 'package:ham2k_logger/services/extensions/preloaded_extensions.dart';
 
 /// Pre-loads the shipped bundles into a temporary store for [extensions],
 /// without starting its runtime — for a test that times or races the start.
 /// [extensions] needs its `settings` set: the pre-load records what it
-/// installed there, and carries a built-in's on/off choice (`sota: true`) onto
-/// its twin.
+/// installed there. Every shipped bundle is installed, each switched as its
+/// overrides say — a built-in's choice (`sota: true`) carried onto its twin —
+/// though the real pre-load installs only those switched on.
 Future<void> preloadShippedExtensionsForTest(ExtensionService extensions) async {
   final root = Directory.systemTemp.createTempSync('halo-shipped-extensions');
   addTearDown(() => root.deleteSync(recursive: true));
@@ -30,12 +32,21 @@ Future<void> preloadShippedExtensionsForTest(ExtensionService extensions) async 
     // The provenance the pre-load writes is what waives the reserved prefix.
     reservedPrefixAllowed: (_) => true,
   );
+  final shipped = [
+    for (final entry in jsonDecode(File('assets/preloaded-extensions/index.json').readAsStringSync())['preloaded'] as List) (entry as Map)['key'] as String,
+  ];
+  final settings = extensions.settings!;
+  final switches = {for (final key in shipped) key: shippedBundleSwitchedOn(settings, key)};
+  await settings.setExtensionOverrides({...settings.extensionOverrides, for (final key in shipped) key: true});
   await extensions.loadAvailableExtensions(force: true);
   await extensions.preloadShippedExtensions();
+  await settings.setExtensionOverrides({...settings.extensionOverrides, ...switches});
+  // Or the first catch-up takes the ones switched off back out of the store,
+  // under whatever the test is doing.
+  await settings.setExtensionsSwitchedOffRemoved(true);
   await extensions.reloadAvailableExtensions();
   // A bundle that failed to pre-load is only reported, and its absence would
   // let a test of something else pass without it.
-  final shipped = (jsonDecode(File('assets/preloaded-extensions/index.json').readAsStringSync())['preloaded'] as List).map((entry) => (entry as Map)['key']);
   expect(
     {
       for (final info in extensions.availableExtensions)

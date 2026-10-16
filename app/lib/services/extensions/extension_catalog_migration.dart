@@ -10,6 +10,10 @@
 // without them — unasked, since there is nothing left to run instead —
 // carrying each one's settings, credentials and on/off choice across.
 // `SettingsService.extensionsMigrated` records that the move is done.
+//
+// An install can hold every bundle the app ships, switched on or not. Those
+// switched off are taken out of the store once, their settings kept
+// (`SettingsService.extensionsSwitchedOffRemoved`).
 
 import 'dart:async';
 
@@ -20,7 +24,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'catalog_service.dart';
 import '../error_reporting_service.dart';
 import 'extension_service.dart';
-import 'installed_extensions.dart' show CatalogChannel;
+import 'installed_extensions.dart' show BundleProvenance, CatalogChannel;
 import 'preloaded_extensions.dart';
 import '../settings_service.dart';
 
@@ -68,7 +72,24 @@ class UpgradeLeftNoRuntime implements Exception {
 /// restart during the downloads begins a second pass over the same
 /// `extensionAdopted` snapshot: the same keys fetched and installed twice, and
 /// whichever pass writes its records last discards the other's.
-bool _inFlight = false;
+///
+/// Completed as the pass ends, for a caller that must run one of its own
+/// rather than step aside ([settleOnboardingExtensions]).
+Completer<void>? _pass;
+
+bool get _inFlight => _pass != null;
+
+/// The services whose launch has already tried the one-time removal over a
+/// store it could read. One that would not come out is tried again next
+/// launch, not on every restart — each of which runs a catch-up.
+final _sweepTried = Expando<bool>('sweepTried');
+
+void _hold() => _pass = Completer<void>();
+
+void _release() {
+  _pass?.complete();
+  _pass = null;
+}
 
 /// Records [key] as a bundle that will not evaluate, and answers whether that
 /// is news — a key already refused at this version was tried before, and
@@ -141,8 +162,17 @@ List<String> _names(ExtensionService service, bool Function(ExtensionInfo) inclu
 }
 
 /// Whatever the install is owed at boot: the move off the built-ins, if it has
-/// not happened; a pre-load the app update brought; and the twin of any retired
-/// built-in the operator had on that is not installed yet.
+/// not happened; a pre-load the app update brought; the twin of any retired
+/// built-in the operator had on that is not installed yet; and, once, the
+/// pre-loaded bundles and built-ins' twins they have switched off taken out
+/// of the store — every time when [removeSwitchedOff]. Without [fetch], the
+/// adoption, the one step that waits on the catalog, is skipped.
+///
+/// Nothing is installed until onboarding has been answered: the bundles to
+/// pre-load are the activities it asks about, and installing on their
+/// defaults first leaves whichever the operator then turns down installed
+/// and switched off. Onboarding settles them when it is done
+/// ([settleOnboardingExtensions]).
 ///
 /// Never throws into the caller — this is fire-and-forget off the end of a
 /// boot, and an exception escaping here has no one left to catch it.
@@ -153,27 +183,35 @@ List<String> _names(ExtensionService service, bool Function(ExtensionInfo) inclu
 /// settings yet, which the boot wires in only after starting the runtime.
 /// Without them nothing can be carried or recorded, so that one does not
 /// count: wiring them runs it again (`HaLoServices`).
-Future<bool> catchUpOnCatalogExtensions(ExtensionService service) async {
+Future<bool> catchUpOnCatalogExtensions(ExtensionService service, {bool removeSwitchedOff = false, bool fetch = true}) async {
   if (_inFlight) return false;
   final settings = service.settings;
   if (settings == null) {
     debugPrint('[extensions] catch-up waits for settings to be wired');
     return false;
   }
-  _inFlight = true;
+  _hold();
   try {
-    final moving = !settings.extensionsMigrated;
+    final answered = settings.defaultProfileCallsignDefined;
+    // Not before onboarding is answered: the move is recorded done once the
+    // pre-load has run, and until then the pre-load installs nothing.
+    final moving = answered && !settings.extensionsMigrated;
     if (moving) await carryBuiltInChoicesToTwins(settings);
     final refusedBefore = settings.extensionRefused;
-    final landed = await service.preloadShippedExtensions();
+    final landed = answered && await service.preloadShippedExtensions();
     // Re-read before the adoption looks, or "after the pre-load" is not true
     // of the list it reads: what the pre-load just installed would be fetched
     // from the catalog as well.
     if (landed) await service.reloadAvailableExtensions();
-    final adopted = (await service.adoptTwins()).landed;
+    final adopted = answered && fetch && (await service.adoptTwins()).landed;
     if (adopted) await service.reloadAvailableExtensions();
+    final sweeping = removeSwitchedOff || (!settings.extensionsSwitchedOffRemoved && _sweepTried[service] != true);
+    final swept = sweeping ? await _removeSwitchedOff(service, settings) : (removed: false, complete: false);
+    if (sweeping && service.installed?.storedKeys != null) _sweepTried[service] = true;
+    final removed = swept.removed;
+    if (removed) await service.reloadAvailableExtensions();
     var dead = false;
-    if (landed || adopted) {
+    if (landed || adopted || removed) {
       // Fresh: this runs unawaited from inside `_start`, so the replacement
       // that boot came through is still in flight and would be handed back —
       // leaving what was just installed unloaded until the next launch.
@@ -184,15 +222,66 @@ Future<bool> catchUpOnCatalogExtensions(ExtensionService service) async {
     // choices again next time, which is harmless, while a flag written first
     // would leave the twins it never installed without them.
     if (moving) await settings.setExtensionsMigrated(true);
+    // Only once it saw the whole store and cleared it: a store that would not
+    // read lists nothing installed, and recorded done, what it holds stays.
+    if (swept.complete) await settings.setExtensionsSwitchedOffRemoved(true);
     final newlyRefused = !mapEquals(refusedBefore, settings.extensionRefused);
     if (moving || dead || newlyRefused) _announce(service, settings, moved: moving, dead: dead);
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'extensions:preload');
   } finally {
-    _inFlight = false;
+    _release();
     service.markFirstCatchUpDone();
   }
   return true;
+}
+
+/// Brings the installed extensions in line with what onboarding just
+/// recorded: the shipped bundles it switched on installed and, on a
+/// [firstRun], any it switched off taken back out — a catch-up that ran
+/// between the callsign step and the last one installed on the defaults.
+/// Not on a replay (DEVONBOARD): the install is the operator's own, and what
+/// they keep switched off is theirs.
+///
+/// Waits out a pass already running rather than stepping aside: onboarding
+/// happens once, and its choices would otherwise wait for the next launch.
+/// Fetches nothing — what onboarding offers ships with the app — so the
+/// operator is not kept waiting on the catalog.
+///
+/// Nothing before the store has been read — `ONBOARD_AS`, or a Skip, as the
+/// app comes up: the boot's own catch-up is still to come, and finds
+/// onboarding answered. Run now, it would settle that first catch-up early.
+Future<void> settleOnboardingExtensions(ExtensionService service, {required bool firstRun}) async {
+  if (service.installed == null) return;
+  for (var pass = _pass; pass != null; pass = _pass) {
+    await pass.future;
+  }
+  await catchUpOnCatalogExtensions(service, removeSwitchedOff: firstRun, fetch: false);
+}
+
+/// Takes out of the store every pre-loaded bundle and built-in's twin that
+/// is switched off, keeping what the operator set for each. Answers whether
+/// any went, and whether the job is complete: the store was read, and
+/// everything due came out.
+///
+/// Only those: the app put them there, whatever their switch. Any other
+/// catalog extension the operator went and got, and keeps switched off
+/// between the events it is for; a file install, nothing could bring back.
+///
+/// By the operator's own switch, not by whether it runs: one revoked,
+/// refused or behind an experiment that they have on comes back to life with
+/// an update or the experiment, and is theirs to keep.
+Future<({bool removed, bool complete})> _removeSwitchedOff(ExtensionService service, SettingsService settings) async {
+  if (service.installed?.storedKeys == null) return (removed: false, complete: false);
+  final records = settings.extensionInstalledFrom;
+  final keys = {
+    for (final info in service.availableExtensions)
+      if (info.isInstalled && !service.isExtensionSwitchedOn(info))
+        if (BundleProvenance.fromJson(records[info.key]) case final from? when from.isPreloaded || predecessorBuiltInKey(info.key) != null) info.key,
+  };
+  if (keys.isEmpty) return (removed: false, complete: true);
+  final removed = await service.removeKeepingSettings(keys);
+  return (removed: removed.isNotEmpty, complete: removed.length == keys.length);
 }
 
 /// Tells the operator what a catch-up changed that they would otherwise only
@@ -293,7 +382,7 @@ Future<RestoreResult> restoreMissingExtensions(ExtensionService service, List<Mi
     ErrorReportingService.report(const CatalogNotWired(), StackTrace.current, context: 'extensions:restore');
     return RestoreResult(failed: names.values.toList());
   }
-  _inFlight = true;
+  _hold();
   try {
     // Each on the track it followed — its record outlives the store — with
     // one listing per track in use. Forced: the operator is watching this,
@@ -350,6 +439,6 @@ Future<RestoreResult> restoreMissingExtensions(ExtensionService service, List<Mi
       runtimeDead: runtimeDead,
     );
   } finally {
-    _inFlight = false;
+    _release();
   }
 }

@@ -117,9 +117,11 @@ mixin _ExtensionInstalls {
       installCatalogEntry(store: _requireInstalledStore(), catalog: catalog!, entry: entry, recordInstall: _recordInstall);
 
   /// Drops a missing extension from what the operator has installed, with
-  /// everything it stored — the uninstall of one that is already gone.
+  /// everything it stored — the uninstall of one that is already gone, and
+  /// like one, it leaves a shipped bundle switched off.
   Future<void> forgetMissingExtension(String key) async {
     await settings?.forgetExtension(key);
+    await _leaveShippedSwitchedOff(key);
     await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
   }
 
@@ -159,6 +161,14 @@ mixin _ExtensionInstalls {
     await store.install(bundle);
     // `fresh` drops a stale on/off choice; one just carried is not stale.
     await _recordInstall(bundle, fresh: fresh && !carried);
+    // But the operator just chose to install it from the catalog, which is
+    // choosing to run it: a switch carried from a built-in they had off, or
+    // kept from a removal that left their settings in place, would land it
+    // switched off.
+    final currentSettings = settings;
+    if (fresh && bundle.provenance != null && currentSettings != null && currentSettings.extensionOverrides[bundle.key] == false) {
+      await currentSettings.setExtensionOverrides({...currentSettings.extensionOverrides, bundle.key: true});
+    }
     // Re-read, not merely dropped: an empty list for the length of the
     // restart is every panel reading it losing all its rows until the new
     // generation is up, and the restart's own sweep deciding which
@@ -222,14 +232,59 @@ mixin _ExtensionInstalls {
   /// than an update. Left behind, they come back silently on a reinstall: old
   /// credentials, and an extension that lands disabled with nothing to say
   /// why.
+  ///
+  /// Except a bundle the app ships, whose switch is left off
+  /// ([_leaveShippedSwitchedOff]). A catalog reinstall still lands on
+  /// ([installBundle]).
   Future<void> uninstallExtension(String key) async {
     await _requireInstalledStore().uninstall(key);
-    await settings?.forgetExtension(key);
-    await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
-    // Re-read, not merely dropped — see [installBundle].
+    final currentSettings = settings;
+    // At once: recorded as installed and gone from the store, it is missing,
+    // and a catch-up a restart starts meanwhile puts it back.
+    await currentSettings?.forgetExtensionInstalls({key});
+    // Re-read, not merely dropped — see [installBundle]. And BEFORE its
+    // override goes: forgetting it notifies the panel, and a row still listed
+    // with no override reads as on — its switch flipping on for as long as
+    // the keychain takes to clear.
     await _reloadBeforeRestart();
+    await currentSettings?.forgetExtension(key);
+    await _leaveShippedSwitchedOff(key);
+    await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
     statusBar?.clearNamespace(key);
     await restartRuntime(fresh: true);
+  }
+
+  /// Records [key] switched off when it is a bundle the app pre-loads or a
+  /// retired built-in's twin. The pre-load reads no switch as on — falling
+  /// back to the built-in's, for a twin — so without it an app update
+  /// carrying a newer copy, or the next launch for a twin the pre-load never
+  /// recorded, installs again what the operator removed.
+  Future<void> _leaveShippedSwitchedOff(String key) async {
+    final currentSettings = settings;
+    if (currentSettings == null) return;
+    if (!currentSettings.extensionPreloaded.containsKey(key) && predecessorBuiltInKey(key) == null) return;
+    await currentSettings.setExtensionOverrides({...currentSettings.extensionOverrides, key: false});
+  }
+
+  /// Takes [keys]' bundles out of the store, keeping the operator's settings,
+  /// credentials and switch for each for whenever it comes back — but not
+  /// where it came from ([SettingsService.forgetExtensionInstalls]) — and
+  /// answers which came out. One that will not costs only
+  /// itself, and is reported. Neither re-reads the list nor restarts: the
+  /// caller does both, once.
+  Future<Set<String>> removeKeepingSettings(Set<String> keys) async {
+    final store = _requireInstalledStore();
+    final removed = <String>{};
+    for (final key in keys) {
+      try {
+        await store.uninstall(key);
+        removed.add(key);
+      } catch (e, stack) {
+        ErrorReportingService.report(e, stack, context: 'extensions:remove-keeping-settings');
+      }
+    }
+    if (removed.isNotEmpty) await settings?.forgetExtensionInstalls(removed);
+    return removed;
   }
 
   /// The installed store, or a failure that names what was missing. A bare `!`
@@ -431,10 +486,9 @@ mixin _ExtensionInstalls {
   /// restart, so a quit mid-apply loses nothing.
   ///
   /// A retired built-in's key is written as given AND under [offeredKeyFor]'s
-  /// twin. Both, because the twin may not be installed yet: its override is
-  /// then pruned as an unknown key (updateExtensionDisabledSince), and the
-  /// built-in's, which is never pruned, is what the pre-load or the adoption
-  /// carries across when the twin lands.
+  /// twin. Both, because the twin may not be installed yet: its own is what
+  /// the pre-load asks first (`shippedBundleSwitchedOn`), and the built-in's
+  /// is what the adoption asks and the move carries across.
   Future<void> setExtensionsEnabled(Map<String, bool> changes) async {
     final currentSettings = settings;
     if (currentSettings == null || changes.isEmpty) return;

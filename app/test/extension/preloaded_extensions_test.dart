@@ -392,11 +392,52 @@ void main() {
     });
     tearDown(() => root.deleteSync(recursive: true));
 
-    test('every shipped bundle lands, at the version the index names', () async {
+    final shipped = parsePreloadIndex(jsonDecode(File('${assetDir.path}/index.json').readAsStringSync()));
+
+    Future<void> switchAllOn() => settings.setExtensionOverrides({for (final entry in shipped) entry.key: true});
+
+    Future<Set<String>> listed() async => {for (final info in await store.list()) info.key};
+
+    test('every shipped bundle switched on lands, at the version the index names', () async {
+      await switchAllOn();
       expect(await runPreload(), isTrue);
-      final listed = {for (final info in await store.list()) info.key: info.version};
-      final index = parsePreloadIndex(jsonDecode(File('${assetDir.path}/index.json').readAsStringSync()));
-      expect(listed, {for (final entry in index) entry.key: entry.version});
+      final versions = {for (final info in await store.list()) info.key: info.version};
+      expect(versions, {for (final entry in shipped) entry.key: entry.version});
+    });
+
+    test('only what is switched on lands, by the operator\'s choice else the built-in\'s default', () async {
+      // Installed whatever its switch, an extension switched off is a dead row
+      // in the Extensions panel and an update nobody runs — for a new install
+      // most of the thirty-odd bundles the app ships.
+      await settings.setExtensionOverrides({'wwff': true, 'pota': false});
+      await runPreload();
+      final keys = await listed();
+      expect(keys, containsAll(['ham2k-qrz', 'ham2k-lookup', 'ham2k-wwff']));
+      expect(keys, isNot(contains('ham2k-sota')), reason: 'off by default as a built-in');
+      expect(keys, isNot(contains('ham2k-pota')), reason: 'the operator switched POTA off');
+    });
+
+    test('one skipped while switched off lands once it is switched on', () async {
+      // Recorded as offered, it never would: the record is what stops a
+      // pre-load installing a key again, and onboarding switches SOTA on only
+      // after the first boot's pre-load has been and gone.
+      await runPreload();
+      expect(settings.extensionPreloaded.containsKey('ham2k-sota'), isFalse);
+      await settings.setExtensionOverrides({...settings.extensionOverrides, 'sota': true});
+      expect(await runPreload(), isTrue);
+      expect(await listed(), contains('ham2k-sota'));
+    });
+
+    test('one removed while switched off stays out when the app ships a newer copy', () async {
+      // The one-time removal keeps the switch and the pre-load record. Read
+      // as on, the next app update carrying a newer bundle installs it again.
+      await settings.setExtensionOverrides({'wwff': true});
+      await runPreload();
+      await store.uninstall('ham2k-wwff');
+      await settings.setExtensionOverrides({...settings.extensionOverrides, 'ham2k-wwff': false});
+      await settings.setExtensionPreloaded({...settings.extensionPreloaded, 'ham2k-wwff': '0.0.1'});
+      await runPreload();
+      expect(await listed(), isNot(contains('ham2k-wwff')));
     });
 
     test('a pre-load that carried a predecessor\'s state does not then throw it away', () async {
@@ -428,18 +469,6 @@ void main() {
       expect(freshness, {'ham2k-lookup': false});
     });
 
-    test('a built-in nobody switched arrives in its own default state, and a choice still beats it', () async {
-      // An installed extension is on unless switched off. Carrying only
-      // explicit choices turns SOTA and WWFF — off by default as built-ins —
-      // on for every moving install and every new one that skips onboarding.
-      await settings.setExtensionOverrides({'wwff': true});
-      await runPreload();
-      final overrides = settings.extensionOverrides;
-      expect(overrides['ham2k-sota'], isFalse);
-      expect(overrides['ham2k-pota'], isTrue);
-      expect(overrides['ham2k-wwff'], isTrue, reason: 'the operator switched WWFF on');
-    });
-
     test('a choice made before the twin lands still reaches it', () async {
       // Onboarding can finish before the pre-load: the twin's override is
       // pruned as an unknown key, and only the built-in's — which the pre-load
@@ -449,20 +478,20 @@ void main() {
       expect(settings.extensionOverrides['ham2k-sota'], isTrue);
     });
 
-    test('a choice already under the pre-load\'s own name is kept', () async {
+    test('a choice already under the pre-load\'s own name decides it', () async {
       // `ham2k-lookup` was built in under that very name, so nothing carries
-      // its choice — it is already where the twin reads it. Recorded fresh,
-      // the install drops it, and a lookup the operator had switched off
-      // starts sending their contacts' calls to the service.
+      // its choice — it is already where the twin reads it. Read past, a
+      // lookup the operator had switched off is installed, and on.
       await settings.setExtensionOverrides({'ham2k-lookup': false});
       await runPreload();
-      expect(freshness['ham2k-lookup'], isFalse);
+      expect(await listed(), isNot(contains('ham2k-lookup')));
       expect(settings.extensionOverrides['ham2k-lookup'], isFalse);
     });
 
     test('a pre-load that failed for a reason that may pass is tried again', () async {
-      // Recorded as offered, it never would be: for one the operator had
-      // switched off, the pre-load is the only thing that installs it.
+      // Recorded as offered, it never would be, and the adoption does not
+      // fetch a twin the pre-load has offered.
+      await settings.setExtensionOverrides({'sota': true});
       await withErrorHooks(() async {
         await runPreload(copySecrets: ({required from, required to}) async => from == 'sota' ? throw StateError('the keychain is locked') : null);
       });
@@ -472,8 +501,9 @@ void main() {
     });
 
     test('a second run installs nothing, because the record says they were offered', () async {
+      await switchAllOn();
       await runPreload();
-      expect(settings.extensionPreloaded.length, parsePreloadIndex(jsonDecode(File('${assetDir.path}/index.json').readAsStringSync())).length);
+      expect(settings.extensionPreloaded.length, shipped.length);
       expect(await runPreload(), isFalse, reason: 'every launch would reinstall over the operator');
     });
 
@@ -485,6 +515,7 @@ void main() {
     });
 
     test('a catalog release ahead of the shipped one is left where it is', () async {
+      await switchAllOn();
       expect(await runPreload(installed: const {'ham2k-pota': '9.9.9'}), isTrue);
       final listed = (await store.list()).map((i) => i.key).toSet();
       expect(listed, isNot(contains('ham2k-pota')), reason: 'the shipped bundle overwrote a newer release');

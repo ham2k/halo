@@ -388,7 +388,7 @@ The app builds in only its **core** extensions — the ones that are the app
 itself: `adif`, `scoring`, `lookups`, `templates`, the command sets and
 `ham2k-lofi` sync. Every other extension is a catalog bundle, and the app ships
 some of them already packaged under `app/assets/preloaded-extensions/`,
-installing them into the ordinary store on first run. Afterwards they are
+installing the ones the operator has switched on into the ordinary store. Afterwards they are
 ordinary installed extensions — the same rows, the same update check, the same
 Update and uninstall — so an operator starts with a working app and the catalog
 can move it forward from there.
@@ -416,7 +416,30 @@ ship pre-loads that fail the check ([releases.md §6.4](../releases.md)).
 They are installed once, not every launch. A record of the highest version
 ever pre-loaded per key is what makes that true: an app update carrying a
 newer bundle installs it, a catalog release already ahead of it is left
-alone, and a key the operator uninstalled stays gone.
+alone, and a key the operator uninstalled stays gone — its uninstall leaves
+its switch off, which is what the pre-load asks before installing a newer copy.
+
+**Only what is switched on is installed** — by the operator's choice for the
+key, else its built-in's, else on. One switched off would be a dead row in the
+Extensions panel, and for a new install that is most of them. Skipped, it is
+not recorded as offered, so switching on one never offered brings it in; one
+already offered comes back from the catalog. A shipped key's switch is kept
+after it leaves the store, and an uninstall or a Forget leaves it off, so an
+app update carrying a newer copy does not bring back one the operator
+removed. Nothing is
+installed until onboarding has been answered, since the activities it asks
+about are pre-loads: installed on their defaults first, whichever the operator
+then turns down would stay installed and switched off. Onboarding settles them
+as it finishes (`settleOnboardingExtensions`), as `ONBOARD_AS` does.
+
+An install can hold every bundle the app ships, whatever its switch. It takes
+the pre-loaded bundles and built-ins' twins it holds switched off out of the
+store once (`extensionsSwitchedOffRemoved`), keeping their settings,
+credentials and switch for a reinstall, and records that done only once it has
+read the whole store. Other catalog extensions are the operator's own and stay,
+as do file installs. A replayed onboarding (DEVONBOARD) removes nothing. A
+catalog install the operator makes is always switched on, whatever switch it
+inherits.
 
 An installed bundle may not claim a key the app builds in, and a pre-load is
 no exception: it goes through the same door as any other install.
@@ -445,8 +468,8 @@ a callsign before its extension state was first recorded
 a build without them, unasked: there is nothing left to run instead. The boot's
 catch-up (`catchUpOnCatalogExtensions`) carries each built-in's on/off choice
 onto its twin, over whatever an earlier attempt left there; installs the
-pre-loads, which carry the built-in's settings, panel values and credentials on
-a twin's first install, and its default where the operator never chose; then
+pre-loads switched on, which carry the built-in's settings, panel values and
+credentials on a twin's first install; then
 fetches the twin of any other built-in the operator had switched on. It records
 the move done once the pre-load has run, so a boot killed half way carries the
 choices again next time. It needs no network while every twin is pre-loaded.
@@ -469,8 +492,8 @@ refuses the bundle itself: a keychain that would not open or a full disk is
 tried again next launch, and meanwhile the adoption fetches the catalog's copy
 if the operator had it on. A twin the pre-load did install is never fetched
 back after the operator uninstalls it. A choice stored under the pre-load's own
-name — `ham2k-lookup`'s, which kept its name — is kept rather than dropped as
-stale.
+name — `ham2k-lookup`'s, which kept its name — decides whether it is installed,
+and is kept rather than dropped as stale.
 
 **What does not come along.** A few built-ins have no twin on purpose — `qp`,
 which the catalog carries as one extension per party instead, and `stateparks`,

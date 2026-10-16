@@ -9,10 +9,13 @@
 // twin that will not run costs only itself, never the rest.
 
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_catalog_migration.dart';
 import 'package:ham2k_logger/services/extensions/extension_disabled_since.dart';
@@ -104,6 +107,14 @@ class _StillRunning extends ExtensionServiceWithFakeHost {
   Future<void> restartRuntime({bool fresh = false}) async {}
 }
 
+/// A catch-up through the real pre-load, whose runtime always comes back.
+class _RealPreload extends ExtensionServiceWithFakeHost {
+  _RealPreload() : super(FakeExtensionHost({}));
+
+  @override
+  Future<void> restartRuntime({bool fresh = false}) async {}
+}
+
 class _PreloadThrows extends ExtensionServiceWithFakeHost {
   _PreloadThrows() : super(FakeExtensionHost({}));
 
@@ -142,10 +153,12 @@ class _Catalog extends CatalogService {
   }
 }
 
-Future<SettingsService> _settings({bool migrated = false}) async {
+/// Onboarded unless told otherwise: until it is, a catch-up installs nothing.
+Future<SettingsService> _settings({bool migrated = false, bool onboarded = true}) async {
   SharedPreferences.setMockInitialValues(const {});
   final settings = SettingsService(await SharedPreferences.getInstance());
   if (migrated) await settings.setExtensionsMigrated(true);
+  if (onboarded) await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
   return settings;
 }
 
@@ -154,7 +167,7 @@ void main() {
 
   group('which installs have a move to make', () {
     test('a new install has none', () async {
-      final settings = await _settings();
+      final settings = await _settings(onboarded: false);
       await settings.seedExtensionsMigratedDefault();
       expect(settings.extensionsMigrated, isTrue);
     });
@@ -164,7 +177,7 @@ void main() {
       // would skip the move and its twins would arrive without the choices it
       // made. A skipped onboarding writes an empty callsign, and counts.
       for (final call in ['KI2D', '']) {
-        final settings = await _settings();
+        final settings = await _settings(onboarded: false);
         await settings.setProfileOperatorCall(SettingsService.defaultProfileId, call);
         await settings.seedExtensionsMigratedDefault();
         expect(settings.extensionsMigrated, isFalse, reason: 'callsign "$call"');
@@ -175,7 +188,7 @@ void main() {
       // Onboarding sets a callsign after the first boot's seed; a second boot
       // re-deciding from that would put a new install through a move it has
       // nothing to carry for.
-      final settings = await _settings();
+      final settings = await _settings(onboarded: false);
       await settings.seedExtensionsMigratedDefault();
       await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
       await settings.seedExtensionsMigratedDefault();
@@ -203,6 +216,49 @@ void main() {
       await settings.setExtensionOverrides({'sota': true, 'ham2k-sota': false});
       await catchUpOnCatalogExtensions(_CatchUp()..settings = settings);
       expect(settings.extensionOverrides['ham2k-sota'], isFalse);
+    });
+
+    test('installs only the twins of the built-ins the operator had on', () async {
+      // Through the real pre-load, over the bundles the app ships. Installed
+      // whatever their switch, every twin lands — thirty-odd extensions, most
+      // switched off, for an install that ran a handful.
+      final settings = await _settings();
+      await settings.setExtensionOverrides({'sota': true, 'pota': false});
+      final root = Directory.systemTemp.createTempSync('moving-install');
+      addTearDown(() => root.deleteSync(recursive: true));
+      final index = jsonDecode(File('assets/extensions/index.json').readAsStringSync()) as Map<String, dynamic>;
+      final extensions = _RealPreload()
+        ..settings = settings
+        ..debugInstalledStore = InstalledExtensions(
+          builtInKeys: () => {for (final entry in (index['extensions'] as List).cast<Map<String, dynamic>>()) entry['key'] as String},
+          hostSharedModules: ((index['sharedModules'] as Map?) ?? const {}).cast<String, String>(),
+          storage: FileBundleStorage(root: root),
+          reservedPrefixAllowed: (_) => true,
+        );
+      await extensions.loadAvailableExtensions(force: true);
+
+      await withErrorHooks(() async => catchUpOnCatalogExtensions(extensions));
+
+      expect(
+        {
+          for (final info in extensions.availableExtensions)
+            if (info.isInstalled) info.key,
+        },
+        {
+          for (final MapEntry(key: builtIn, value: on) in kRetiredBuiltIns.entries)
+            if (builtIn != 'pota' && (on || builtIn == 'sota')) twinOf(builtIn),
+          'ham2k-lookup',
+        },
+      );
+      expect(settings.extensionsMigrated, isTrue);
+    });
+
+    test('waits for onboarding to be answered', () async {
+      // Recorded done before the pre-load has run, the install is told its
+      // extensions now come from the catalog while it runs on core alone.
+      final settings = await _settings(onboarded: false);
+      await catchUpOnCatalogExtensions(_CatchUp(preloaded: true)..settings = settings);
+      expect(settings.extensionsMigrated, isFalse);
     });
 
     test('completes with no catalog to reach', () async {
@@ -551,6 +607,26 @@ void main() {
       final settings = await _settings();
       await updateExtensionDisabledSince(settings: settings, available: const [installed], isActive: (_) => true);
       expect(settings.extensionDisabledSince.keys, containsAll(['pota', 'wca', 'qp']));
+    });
+
+    test('a pre-loaded bundle no longer installed keeps its switch', () async {
+      // Pruned, it reads as on, and the next app update carrying a newer copy
+      // installs again the extension the operator had switched off.
+      final settings = await _settings();
+      await settings.setExtensionPreloaded({'ham2k-wwff': '0.2.0'});
+      await settings.setExtensionOverrides({'ham2k-wwff': false, 'ki2d-gone': false});
+      await updateExtensionDisabledSince(settings: settings, available: const [asset], isActive: (_) => true);
+      expect(settings.extensionOverrides, {'ham2k-wwff': false}, reason: 'pruning still runs for the rest');
+    });
+
+    test('a twin no longer installed keeps its stamp, so the purge still clears its data', () async {
+      // One fetched from the catalog rather than pre-loaded, then taken out
+      // switched off. Pruned, the stamp is gone before the grace period ends,
+      // and the purge never visits its downloaded data.
+      final settings = await _settings();
+      await settings.setExtensionDisabledSince({'ham2k-wca': 1000});
+      await updateExtensionDisabledSince(settings: settings, available: const [asset], isActive: (_) => true);
+      expect(settings.extensionDisabledSince['ham2k-wca'], 1000);
     });
   });
 }

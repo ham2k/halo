@@ -13,6 +13,7 @@ import '../../config/dev_flags.dart';
 import '../../config/release_notes.dart';
 import '../../config/version.dart';
 
+import '../../services/extensions/extension_catalog_migration.dart' show settleOnboardingExtensions;
 import '../../services/settings_service.dart';
 
 import '../../services/halo_services.dart';
@@ -43,12 +44,16 @@ Future<void> applyOnboardAsSpec(HaLoServices services, String spec) async {
   final parts = spec.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   if (parts.isEmpty) return;
   final call = parts.first.toUpperCase();
+  final firstRun = !services.settings.defaultProfileCallsignDefined;
   final activities = parts.skip(1).map((s) => s.toLowerCase()).toList();
   debugPrint('[onboarding] ONBOARD_AS: callsign=$call activities=$activities');
   await services.setOperatorCall(call);
   if (activities.isNotEmpty) {
     await services.extensions.setExtensionsEnabled({for (final a in activities) a: true});
   }
+  // As onboarding does when it finishes: a boot catch-up that ran before the
+  // callsign was written installed nothing.
+  await settleOnboardingExtensions(services.extensions, firstRun: firstRun);
 }
 
 /// First-run onboarding: wraps the release overlay gate so the
