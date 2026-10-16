@@ -17,6 +17,8 @@
 //   - extended (`+`, `;`, `|` or `,` first): `<long name>: <args>`, then
 //     `Label: value` lines, then `RPRT n`, joined by `\n` for `+` and by the
 //     character itself otherwise. HaLo's own rigctld driver reads this form.
+//     A level is the exception: its value is bare (`get_level: KEYSPD`, `0`),
+//     the header line being all that names it.
 //
 // `\chk_vfo` answers 0: commands carry no VFO argument, whatever the client
 // could send, because there is one VFO to address.
@@ -234,7 +236,7 @@ class RigctldServerConnection implements CatServerConnection {
         return const _Result.status(_notAvailable);
       case 'get_level':
         // Asked for on open; any other level is one HaLo does not know.
-        if (args.isNotEmpty && args.first.toUpperCase() == 'KEYSPD') return const _Result([('Level Value', '0')]);
+        if (args.isNotEmpty && args.first.toUpperCase() == 'KEYSPD') return const _Result([('Level Value', '0')], bare: true);
         return const _Result.status(_notAvailable);
     }
 
@@ -270,14 +272,19 @@ class RigctldServerConnection implements CatServerConnection {
   }
 
   String _format(String name, List<String> args, _Result result, String? separator) {
-    if (result.raw != null) return '${result.raw!.join('\n')}\n';
+    final header = args.isEmpty ? '$name:' : '$name: ${args.join(' ')}';
+    if (result.raw != null) {
+      final body = result.raw!.join('\n');
+      // Extended, the block keeps its own newlines whatever the separator:
+      // only the header is joined by it (`dump_state:;1\n1\n…\nRPRT 0`).
+      return separator == null ? '$body\n' : '$header$separator$body\nRPRT ${result.status}\n';
+    }
     if (separator == null || result.plainOnly) {
       if (result.values.isEmpty) return 'RPRT ${result.status}\n';
       final values = result.plainOnly && separator != null ? result.values.map((v) => '${v.$1}: ${v.$2}') : result.values.map((v) => v.$2);
       return [...values, if (result.plainStatus) 'RPRT ${result.status}'].map((l) => '$l\n').join();
     }
-    final header = args.isEmpty ? '$name:' : '$name: ${args.join(' ')}';
-    return '${[header, for (final v in result.values) '${v.$1}: ${v.$2}', 'RPRT ${result.status}'].join(separator)}\n';
+    return '${[header, for (final v in result.values) result.bare ? v.$2 : '${v.$1}: ${v.$2}', 'RPRT ${result.status}'].join(separator)}\n';
   }
 }
 
@@ -286,7 +293,8 @@ class _Result {
   final List<(String, String)> values;
   final int status;
 
-  /// Answered verbatim in either form.
+  /// Lines answered verbatim — bare in the plain form, and inside the header
+  /// and status in the extended one.
   final List<String>? raw;
 
   /// A reply with no extended form: `\chk_vfo` answers `ChkVFO: 0` alone
@@ -296,9 +304,14 @@ class _Result {
   /// Whether the plain form still ends in `RPRT n`.
   final bool plainStatus;
 
-  const _Result(this.values, {this.plainOnly = false, this.plainStatus = false}) : status = _ok, raw = null;
+  /// Whether the extended form prints the values unlabeled too — a level's
+  /// (`get_level: KEYSPD`, then `0`). A client reading Hamlib's form takes
+  /// the line after the header as the number; a label there is not one.
+  final bool bare;
 
-  const _Result.status(this.status) : values = const [], raw = null, plainOnly = false, plainStatus = false;
+  const _Result(this.values, {this.plainOnly = false, this.plainStatus = false, this.bare = false}) : status = _ok, raw = null;
 
-  const _Result.raw(this.raw) : values = const [], status = _ok, plainOnly = false, plainStatus = false;
+  const _Result.status(this.status) : values = const [], raw = null, plainOnly = false, plainStatus = false, bare = false;
+
+  const _Result.raw(this.raw) : values = const [], status = _ok, plainOnly = false, plainStatus = false, bare = false;
 }

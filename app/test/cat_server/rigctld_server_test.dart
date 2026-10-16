@@ -53,6 +53,18 @@ void main() {
       expect(mask & (1 << 2), isNonZero, reason: 'USB');
     });
 
+    test('dump_state in the extended form is framed by its header and a status', () {
+      // Pinned against `rigctld -m 1` (Hamlib 4.7.2): the separator joins only
+      // the header to the block, which keeps its own newlines. A client reading
+      // the extended form waits for the RPRT line; without it, it reads the
+      // next reply as this one's status.
+      final plain = ask(r'\dump_state');
+      expect(ask(r'+\dump_state'), 'dump_state:\n${plain}RPRT 0\n');
+      expect(ask(r';\dump_state'), 'dump_state:;${plain}RPRT 0\n');
+      expect(ask(r'|\dump_state'), 'dump_state:|${plain}RPRT 0\n');
+      expect(plain, startsWith('1\n'), reason: 'the plain form stays bare');
+    });
+
     test('dump_state offers no CAT PTT, which HaLo cannot do', () {
       expect(ask(r'\dump_state'), contains('ptt_type=0x0\n'));
     });
@@ -87,6 +99,17 @@ void main() {
       expect(ask('+m'), 'get_mode:\nMode: USB\nPassband: 3000\nRPRT 0\n');
       expect(ask(';f'), 'get_freq:;Frequency: 14074000;RPRT 0\n');
       expect(ask(r'+\get_mode'), 'get_mode:\nMode: USB\nPassband: 3000\nRPRT 0\n');
+    });
+
+    test('but a level\'s value is bare in every extended form, the header naming it', () {
+      // Pinned against `rigctld -m 1` (Hamlib 4.7.2). A client reading the
+      // extended form takes the line after `get_level:` as the number, and
+      // `Level Value: 0` is not one.
+      expect(ask('+l KEYSPD'), 'get_level: KEYSPD\n0\nRPRT 0\n');
+      expect(ask(';l KEYSPD'), 'get_level: KEYSPD;0;RPRT 0\n');
+      expect(ask('|l KEYSPD'), 'get_level: KEYSPD|0|RPRT 0\n');
+      expect(ask(',l KEYSPD'), 'get_level: KEYSPD,0,RPRT 0\n');
+      expect(ask(r'+\get_level KEYSPD'), 'get_level: KEYSPD\n0\nRPRT 0\n');
     });
 
     test('with no radio connected, a read is an IO error rather than a stale frequency', () {
