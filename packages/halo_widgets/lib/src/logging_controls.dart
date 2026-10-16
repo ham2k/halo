@@ -601,6 +601,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // the ⌘K dialog lands on THIS logging panel's state.
     widget.commands.onDispatcherChanged?.call(_dispatchActions);
     _focusBackstop.attach();
+    FocusManager.instance.addListener(_rebuildForNumbersRow);
     // Observe metrics so the numbers row appears/disappears with the on-screen
     // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
     // `virtualKeyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
@@ -711,8 +712,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final expanded = expandRST(controller.text, _radio.mode);
           if (expanded != controller.text) controller.text = expanded;
         }
-        // Keep the mobile numbers row in sync with which field has focus.
-        _rebuildForNumbersRow();
       });
     }
     // Tab's walk, the arrow keys' end-of-value traversal, and Arrow Up out
@@ -1477,6 +1476,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // (dispose runs inside `finalizeTree`) — and `deactivate` is no better,
     // since that runs during build.
     widget.prefs.keyboardAccessory?.clearIfOwner(this);
+    FocusManager.instance.removeListener(_rebuildForNumbersRow);
     widget.commands.onDispatcherChanged?.call(null);
     widget.session.controller?.detach();
     widget.radio.radioUpdates?.removeListener(_onRadioVfoChanged);
@@ -1639,13 +1639,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// one just typed, or one loaded from a saved QSO — must not throw the
   /// operator out of the field on their first character.
   ///
-  /// Hung off the controller rather than the field's `onChanged` for the
-  /// mobile numbers row, which writes the controller directly
-  /// ([_handleNumberKey]) and never reaches `onChanged` — and that row is
-  /// where a setting saving a keypress earns its keep. `hasFocus` is what
-  /// keeps this to real typing: every programmatic write (a wipe, a
-  /// suggestion, the blur-time [expandRST]) happens to a field the operator
-  /// is not in.
+  /// Hung off the controller because the report fields carry no `onChanged`.
+  /// `hasFocus` is what keeps this to real typing: every programmatic write
+  /// (a wipe, a suggestion, the blur-time [expandRST]) happens to a field the
+  /// operator is not in.
   void _maybeJumpAfterRST(FocusNode focus, TextEditingController controller) {
     final length = controller.text.trim().length;
     final previous = _rstLengthSeen[focus] ?? 0;
@@ -2061,13 +2058,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// clearing it (rather than leaving whatever the platform last reported)
   /// avoids carrying over a stale composing range from unrelated typing.
   void _insertAtCursor(TextEditingController controller, String text) {
-    final value = controller.value;
+    controller.value = _typedAtCursor(controller.value, text);
+  }
+
+  /// [value] with [text] replacing its selection, the caret after it.
+  static TextEditingValue _typedAtCursor(TextEditingValue value, String text) {
     final selection = value.selection;
     final start = selection.start < 0 ? value.text.length : selection.start;
     final end = selection.end < 0 ? value.text.length : selection.end;
-    final newText = value.text.replaceRange(start, end, text);
-    controller.value = value.copyWith(
-      text: newText,
+    return value.copyWith(
+      text: value.text.replaceRange(start, end, text),
       selection: TextSelection.collapsed(offset: start + text.length),
       composing: TextRange.empty,
     );
@@ -2075,34 +2075,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ── Mobile numbers row (issue #27) ──────────────────────────────────────
 
-  /// The logging fields the numbers row can type into, each paired with its
-  /// controller. The primary text fields only — Freq/Time (behind the
-  /// secondary control row) already raise their own numeric keyboards, where
-  /// a digits row would be redundant. Fields that aren't currently shown
-  /// never hold focus (their TextField isn't built), so listing them all
-  /// unconditionally is safe. Built once — the FocusNode/controller
-  /// references are stable; focus is read live via `.hasFocus`.
-  late final List<(FocusNode, TextEditingController)> _numberKeyFields = [
-    (_callFocus, _callController),
-    (_sentFocus, _sentController),
-    (_rcvdFocus, _rcvdController),
-    (_stateFocus, _stateController),
-    (_gridFocus, _gridController),
-  ];
-
-  /// Whichever numbers-row field currently holds focus, or null — the target
-  /// for an inserted key and the gate for showing the bar at all.
-  (FocusNode, TextEditingController)? get _focusedNumberField {
-    for (final field in _numberKeyFields) {
-      if (field.$1.hasFocus) return field;
-    }
-    return null;
+  /// The field the numbers row types into: whichever editable text field
+  /// inside this panel holds the focus — the main fields, the exchange, and
+  /// every secondary control's (Freq, Time, Notes, refs, the event text…).
+  /// Null when focus is elsewhere or on a read-only field, which is also the
+  /// gate for showing the row at all.
+  EditableTextState? get _focusedNumberField {
+    final primary = FocusManager.instance.primaryFocus;
+    if (primary == null || !primary.ancestors.contains(_focusBackstop.panelScope)) return null;
+    final field = primary.context?.findAncestorStateOfType<EditableTextState>();
+    return field == null || field.widget.readOnly ? null : field;
   }
 
   /// The contextual extra key: "/" only while the call field holds a partial
   /// callsign (a letter present, not a bare number — a serial being typed
   /// ahead of letters still reads as numeric), the operator's own decimal
-  /// separator for every numeric field. Null when the extra key is turned
+  /// separator in every other field — offered even where a field's filter
+  /// drops it (Time, the reports, a numeric exchange). Null when the extra key is turned
   /// off. Mirrors app-polo's callsign vs numbers mode split
   /// (H2kCallsignInput / H2kRSTInput).
   ///
@@ -2131,30 +2120,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// real value.
   String? get _guessStateHint => _currentGuess?['state'] as String?;
 
-  /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`
-  /// writes the controller value directly, which fires the controller
-  /// listeners (lookup/dupe/rebuild) but NOT the TextField's `onChanged` — so
-  /// the "touched" flags those onChanged handlers set are replicated here,
-  /// else a tapped digit wouldn't mark Grid/State as user-edited.
+  /// Inserts a numbers-row key at the focused field's cursor as a keystroke
+  /// would: through the field's input formatters and its `onChanged`, so
+  /// every field reacts to a tapped digit exactly as to a typed one (the
+  /// call's [LoggingSession.onCallTyped], Grid/State's "touched" marks, the
+  /// note reaching the draft…) without this panel listing what each one does.
   void _handleNumberKey(String key) {
     final field = _focusedNumberField;
     if (field == null || _fieldsLocked) return;
-    final (focus, controller) = field;
-    _insertAtCursor(controller, key);
-    if (identical(focus, _callFocus)) {
-      widget.session.onCallTyped?.call();
-    } else if (identical(focus, _gridFocus)) {
-      _draft.markGridTouched();
-    } else if (identical(focus, _stateFocus)) {
-      _draft.stateTouched = true;
-    }
+    field.userUpdateTextEditingValue(_typedAtCursor(field.textEditingValue, key), SelectionChangedCause.keyboard);
   }
 
   /// Rebuilds so the bar's visibility and contextual "/"→"." key track the
-  /// focused field. Only runs while the feature is on, so it costs nothing
-  /// otherwise.
+  /// focused field. Hears every primary-focus change, since a move between
+  /// two of the panel's fields notifies neither the panel's scope nor any
+  /// node it could list. Only runs while the feature is on, on mobile, so it
+  /// costs nothing otherwise.
   void _rebuildForNumbersRow() {
-    if (!widget.prefs.showNumbersRow) return;
+    if (!widget.prefs.showNumbersRow || !isMobilePlatform) return;
     rebuildBetweenFrames();
   }
 

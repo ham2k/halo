@@ -351,11 +351,9 @@ a QSO populates before the trigger is attached, and gaining focus is itself a
 value change (it collapses the selection), so an unseeded field jumps on the
 tap that arrives in it — and then again out of the next one.
 
-The trigger hangs off the text controller rather than the field's `onChanged`,
-which is what makes it work for the mobile numbers row (that row writes the
-controller directly and never reaches `onChanged`, and it is where saving a
-keypress matters most); a focus check is what keeps it to real typing, since
-every programmatic write happens to a field the operator isn't in.
+The trigger hangs off the text controller, since the report fields carry no
+`onChanged`; a focus check is what keeps it to real typing, since every
+programmatic write happens to a field the operator isn't in.
 
 **USB and LSB count as phone here**, not as data. No CAT protocol has an "SSB"
 mode, so a connected rig reports the concrete sideband and nothing maps it

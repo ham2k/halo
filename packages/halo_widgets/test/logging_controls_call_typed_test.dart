@@ -67,7 +67,7 @@ void main() {
     expect(typed, 0);
   });
 
-  testWidgets('the mobile numbers row fires it, though it never reaches onChanged', (tester) async {
+  testWidgets('the mobile numbers row fires it, as a typed key would', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
       var typed = 0;

@@ -267,6 +267,118 @@ void main() {
       }
     });
 
+    testWidgets('a secondary field gets the row too, and a tapped digit is typed, not just written', (tester) async {
+      // Notes reaches the draft only through its own `onChanged`. A row that
+      // wrote the field's controller directly — or that only knew the main
+      // fields — would leave the digits on screen and off the logged QSO.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(
+          host(
+            prefs: LoggingPreferences(showNumbersRow: true),
+            strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+          ),
+        );
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+
+        await openControl(tester, MdiIcons.noteOutline);
+        await tester.tap(find.widgetWithText(TextField, 'Notes'));
+        await pumpRow(tester);
+        expect(find.byType(NumberKeys), findsOneWidget);
+        expect(keyInRow('.'), findsOneWidget, reason: 'only the call field offers "/"');
+
+        await tester.tap(keyInRow('5'));
+        await tester.pump();
+        await tester.tap(keyInRow('0'));
+        await tester.pump();
+        expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, '50');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await settleControl(tester);
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 1);
+        expect(logged.single.data['notes'], '50');
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('a read-only field gets no row, since a tap would still write into it', (tester) async {
+      // EditableText's own user-edit path does not check `readOnly`, so the
+      // row's gate is the only thing keeping digits out of a serial the
+      // contest numbers itself.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(
+          host(
+            prefs: LoggingPreferences(showNumbersRow: true),
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+            activities: ActivityHooks(
+              activityControls: const [
+                {
+                  'key': 'cqwpx/ourSerial',
+                  'label': 'Our #',
+                  'icon': 'flag-checkered',
+                  'input': {
+                    'kind': 'serial',
+                    'refType': 'cqwpx',
+                    'field': 'ourSerial',
+                    'editable': false,
+                    'sequence': {'key': 'serial'},
+                  },
+                },
+              ],
+            ),
+          ),
+        );
+        await tester.tap(find.widgetWithText(TextField, 'Their call'));
+        await pumpRow(tester);
+        expect(find.byType(NumberKeys), findsOneWidget, reason: 'guard the premise: the row is up for an editable field');
+
+        final serial = tester.widget<TextField>(find.widgetWithText(TextField, 'Our #'));
+        serial.focusNode!.requestFocus();
+        await pumpRow(tester);
+        expect(serial.focusNode!.hasFocus, isTrue);
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('a field outside the panel gets no row', (tester) async {
+      // The row is the panel's: without the scope check, focus anywhere else
+      // in the app would leave it up, typing into a field the panel knows
+      // nothing about.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        final elsewhere = FocusNode();
+        addTearDown(elsewhere.dispose);
+        await tester.pumpWidget(
+          host(
+            prefs: LoggingPreferences(showNumbersRow: true),
+            trailing: TextField(
+              focusNode: elsewhere,
+              decoration: const InputDecoration(labelText: 'Elsewhere'),
+            ),
+          ),
+        );
+        await tester.tap(find.widgetWithText(TextField, 'Their call'));
+        await pumpRow(tester);
+        expect(find.byType(NumberKeys), findsOneWidget, reason: 'guard the premise: the row is up for a panel field');
+
+        await tester.tap(find.widgetWithText(TextField, 'Elsewhere'));
+        await pumpRow(tester);
+        expect(elsewhere.hasFocus, isTrue);
+        expect(find.byType(NumberKeys), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     testWidgets('the extra key can be turned off', (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
