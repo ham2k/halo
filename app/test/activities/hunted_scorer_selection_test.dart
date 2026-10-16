@@ -1,24 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Which scorers an operation gets. The case these exist for is the ordinary
-// POTA chaser: an operation that ACTIVATES nothing names no activity on its
-// own refs, so before this it selected only the core scorer — and core's rule
-// is call+band+mode, which knows nothing about references. A station worked at
-// one park then read as a duplicate when spotted at another, in the spot list
-// and in the call-info pills alike.
-//
-// The other half of the contract is priority, not selection: core is selected
-// for every operation, flagged `fallback`, and the merge sites drop its verdict
-// per QSO. `scorer_priority_test.dart` covers that half.
+// The app adapts its segments and Qso models to the shared scorer selector.
+// The selection matrix lives in halo_extension_host's scoring_priority_test;
+// these checks hold the app's argument forwarding and model conversion to it.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show Scorer;
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
-/// The scopes a runtime reports: core applies to everything, POTA and SOTA are
-/// gated on their own activation and hunting ref types.
 /// The scopes a runtime reports. Activities name a hunting type; a contest
 /// names none, because its ref type rides its QSOs as exchange data rather
 /// than as something the contact hunted.
@@ -43,93 +34,59 @@ Qso _qso({List<Map<String, dynamic>> refs = const []}) => Qso(uuid: 'q', operati
 
 void main() {
   group('scorersFor', () {
-    test('an operation that activates a park selects that scorer, as before', () {
-      final scorers = ExtensionService.scorersFor({
-        'refs': [
-          {'type': 'potaActivation', 'ref': 'US-0001'},
-        ],
-      }, _scopes);
-      expect(_keys(scorers), {'core', 'pota'});
-      // Paired with the ref that named it — the activation's own reference,
-      // which is what earns activation credit.
-      expect(scorers.firstWhere((s) => s.key == 'pota').ref?['ref'], 'US-0001');
-    });
-
-    // The whole point. A chaser's operation carries no refs at all.
-    test('a hunted ref type selects the scorer the operation never names', () {
-      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'});
-      expect(_keys(scorers), {'core', 'pota'});
-    });
-
-    // Null, not a synthetic {'type': 'pota'}: an activity reads the references
-    // it is ACTIVATING off the operation, not off this ref, so inventing one
-    // here would not grant activation credit anyway — but it would misreport
-    // what selected the scorer.
-    test('a hunt-only selection carries no ref', () {
-      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'pota'});
-      expect(scorers.firstWhere((s) => s.key == 'pota').ref, isNull);
-    });
-
-    // An operation that activates AND hunts the same program must not select
-    // its scorer twice — the second selection would carry a null ref and could
-    // shadow the activation's own.
-    test('activating and hunting the same program selects it once, with its ref', () {
+    test('forwards the operation, scopes and hunted types to the shared selector', () {
       final scorers = ExtensionService.scorersFor(
         {
           'refs': [
-            {'type': 'potaActivation', 'ref': 'US-0001'},
+            {'type': 'customActivation', 'ref': 'A-1'},
           ],
         },
-        _scopes,
-        alsoRefTypes: const {'pota'},
+        const {
+          'fallback': 'always',
+          'activation': {
+            'refTypes': ['customActivation'],
+          },
+          'hunting': {
+            'refTypes': ['customHunt'],
+            'huntingRefTypes': ['customHunt'],
+          },
+        },
+        alsoRefTypes: const {'customHunt'},
       );
-      expect(scorers.where((s) => s.key == 'pota').length, 1);
-      expect(scorers.firstWhere((s) => s.key == 'pota').ref?['ref'], 'US-0001');
+      expect(_keys(scorers), {'activation', 'hunting', 'fallback'});
+      expect(scorers.firstWhere((s) => s.key == 'activation').ref?['ref'], 'A-1');
     });
 
-    // Precision is what makes this affordable: each scorer is a bridge crossing
-    // carrying the log, so selecting every installed activity — app-polo's
-    // `generalHuntingType` — is what this deliberately does NOT do.
-    test('only the programs actually hunted are selected', () {
-      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'sota'});
-      expect(_keys(scorers), {'core', 'sota'});
-    });
-
-    // Core is not displaced — it is the only thing covering a QSO the contest
-    // skips — but it is marked and sorted LAST, which is what the merge sites
-    // read to drop its verdict for a QSO another scorer scored.
-    test('the always scorer is selected last and flagged as the fallback', () {
-      final scorers = ExtensionService.scorersFor({
+    test('converts every segment to refs while retaining hunted types', () {
+      const operation = {
         'refs': [
           {'type': 'potaActivation', 'ref': 'US-0001'},
-          {'type': 'cqww'},
         ],
-      }, _scopes);
-      expect(_keys(scorers), {'core', 'pota', 'cqww'});
-      expect(scorers.last.key, 'core');
-      expect(scorers.last.fallback, isTrue);
-      // Ref-gated scorers do not yield to each other: an operator running a
-      // park during a contest wants both scored.
-      expect(scorers.where((s) => s.fallback), hasLength(1));
-    });
-
-    // The trap this whole `huntingRefTypes` split exists for. A contest writes
-    // its ref type onto every QSO it scores — `{type: 'cqww', theirZone}` is
-    // exchange data, not something the contact hunted. Matching a scorer's
-    // plain `refTypes` against the log would therefore resurrect a contest the
-    // operator has ENDED at a break: the entry-row pills and the spot list
-    // would go on applying contest rules all the next day, which is exactly
-    // what segments exist to prevent. StateParks is louder still — with no ref
-    // to name its event, every spot and every pill would carry
-    // `alerts: ['unknownEvent']`.
-    test('a contest is never resurrected by its ref type in the log', () {
-      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'cqww'});
-      expect(_keys(scorers), {'core'});
-    });
-
-    test('an unrelated hunted type selects nothing extra', () {
-      final scorers = ExtensionService.scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'wwff'});
-      expect(_keys(scorers), {'core'});
+      };
+      final segments = SegmentedOperation.from(
+        operation: operation,
+        qsos: [
+          Qso(
+            uuid: 'break',
+            operationUuid: 'op-1',
+            data: {
+              'band': 'event',
+              'startAtMillis': 1000,
+              'event': {
+                'event': 'break',
+                'operation': {
+                  'refs': [
+                    {'type': 'cqww'},
+                  ],
+                },
+              },
+            },
+          ),
+        ],
+      );
+      final scorers = ExtensionService.scorersFor(operation, _scopes, segments: segments, alsoRefTypes: const {'sota'});
+      expect(_keys(scorers), {'core', 'pota', 'cqww', 'sota'});
+      expect(scorers.firstWhere((s) => s.key == 'pota').ref?['ref'], 'US-0001');
     });
   });
 

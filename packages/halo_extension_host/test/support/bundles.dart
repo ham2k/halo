@@ -162,17 +162,25 @@ void _checkBundlesAreFresh() {
 DateTime? newestExtensionSource(Directory root) {
   final prefix = root.path.length + 1;
   DateTime? newest;
-  for (final entry in root.listSync(recursive: true)) {
-    if (entry is! File) continue;
-    final path = entry.path;
-    if (!path.endsWith('.ts') && !path.endsWith('.json')) continue;
-    final parts = path.substring(prefix).split(Platform.pathSeparator);
-    // node_modules is vendored input, not our source, and dwarfs everything
-    // else in the walk.
-    if (parts.contains('node_modules') || parts.contains('build')) continue;
-    if (parts.first == 'sdk' && parts.length > 1 && const {'dist', 'samples', 'docs'}.contains(parts[1])) continue;
-    final at = entry.statSync().modified;
-    if (newest == null || at.isAfter(newest)) newest = at;
+  final pending = [root];
+  final visited = <String>{};
+  while (pending.isNotEmpty) {
+    final directory = pending.removeLast();
+    // Follow source links without revisiting a directory through a cycle.
+    if (!visited.add(directory.resolveSymbolicLinksSync())) continue;
+    for (final entry in directory.listSync()) {
+      final path = entry.path;
+      final parts = path.substring(prefix).split(Platform.pathSeparator);
+      // Prune outputs and dependencies before enumerating their contents.
+      if (parts.contains('node_modules') || parts.contains('build')) continue;
+      if (parts.first == 'sdk' && parts.length > 1 && const {'dist', 'samples', 'docs'}.contains(parts[1])) continue;
+      if (entry is Directory) {
+        pending.add(entry);
+      } else if (entry is File && (path.endsWith('.ts') || path.endsWith('.json'))) {
+        final at = entry.statSync().modified;
+        if (newest == null || at.isAfter(newest)) newest = at;
+      }
+    }
   }
   return newest;
 }

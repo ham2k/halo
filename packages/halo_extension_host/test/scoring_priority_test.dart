@@ -16,6 +16,10 @@ const _scopes = {
     'refTypes': ['potaActivation', 'pota'],
     'huntingRefTypes': ['pota'],
   },
+  'sota': {
+    'refTypes': ['sotaActivation', 'sota'],
+    'huntingRefTypes': ['sota'],
+  },
   'cqww': {
     'refTypes': ['cqww'],
   },
@@ -27,9 +31,11 @@ void main() {
       final scorers = scorersFor({
         'refs': [
           {'type': 'potaActivation', 'ref': 'US-0001'},
+          {'type': 'cqww'},
         ],
       }, _scopes);
-      expect(scorers.map((s) => s.key), ['pota', 'core']);
+      expect(scorers.map((s) => s.key), ['pota', 'cqww', 'core']);
+      expect(scorers.where((s) => s.fallback), hasLength(1));
       expect(scorers.last.fallback, isTrue);
       expect(scorers.first.ref?['ref'], 'US-0001');
     });
@@ -64,6 +70,30 @@ void main() {
     test('a contest is never resurrected by its ref type in the log', () {
       final scorers = scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'cqww'});
       expect(scorers.map((s) => s.key), ['core']);
+    });
+
+    test('activating and hunting the same program selects it once, with its ref', () {
+      final scorers = scorersFor(
+        {
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0001'},
+          ],
+        },
+        _scopes,
+        alsoRefTypes: const {'pota'},
+      );
+      expect(scorers.where((s) => s.key == 'pota').length, 1);
+      expect(scorers.firstWhere((s) => s.key == 'pota').ref?['ref'], 'US-0001');
+    });
+
+    test('only the programs actually hunted are selected', () {
+      final scorers = scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'sota'});
+      expect(scorers.map((s) => s.key).toSet(), {'core', 'sota'});
+    });
+
+    test('an unrelated hunted type selects nothing extra', () {
+      final scorers = scorersFor(const {'refs': []}, _scopes, alsoRefTypes: const {'wwff'});
+      expect(scorers.map((s) => s.key).toSet(), {'core'});
     });
   });
 

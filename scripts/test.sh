@@ -37,6 +37,9 @@
 #   test.sh --browser        the browser-platform tests alone, fatal rather
 #                            than skipped when no Chrome is present. Part of
 #                            the full gate; nothing on GitHub runs it.
+#   test.sh --benchmark-scoring
+#                            scoring timings through the real JS engine,
+#                            with fresh bundles; outside the correctness gate.
 #
 # Subset runs trade coverage for speed on purpose: they do not run analyze,
 # do not run dependent packages (a halo_core change can break app tests that
@@ -554,7 +557,6 @@ run_subset() {
         if ! is_app_group "$g"; then
           echo "internal error: group '$g' has no runner" >&2; exit 2
         fi
-        need_bundles=1; need_hostlib=1; need_i18n=1
         files=$(app_group_files "$g")
         if [[ -z "$files" ]]; then
           echo "⚠️  group '$g' matches no test files" >&2
@@ -568,10 +570,21 @@ $files"
 
   # --changed hands over specific files outside any named group
   if [[ -n "${EXTRA_APP_FILES// /}" ]]; then
-    need_bundles=1; need_hostlib=1
     app_files="$app_files
 $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
   fi
+
+  # Guards read source and preloaded catalog assets, never the built bundles
+  # or native engine. Keep their localized-label check's strings fresh even
+  # when --changed selects a guard by filename rather than by group.
+  local app_file
+  for app_file in $app_files; do
+    need_i18n=1
+    case "$app_file" in
+      guards/*) ;;
+      *) need_bundles=1; need_hostlib=1 ;;
+    esac
+  done
 
   # Every subset run, whatever it selected — a package-only subset can introduce
   # a violation just as easily as an app one.
@@ -864,12 +877,22 @@ case "${1:-}" in
     changed_subset
     exit 0
     ;;
+  --benchmark-scoring)
+    if [[ $# -gt 1 ]]; then
+      echo "--benchmark-scoring takes no further arguments" >&2; exit 2
+    fi
+    ensure_bundles
+    ensure_hostlib
+    ensure_pub packages/halo_extension_host
+    (cd "$ROOT_DIR/packages/halo_extension_host" && flutter test test/scoring_bench.dart)
+    exit 0
+    ;;
   --help | -h)
-    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --list [group] | <group>...]"
+    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --benchmark-scoring | --list [group] | <group>...]"
     exit 0
     ;;
   -*)
-    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --list [group] | <group>...]" >&2
+    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --benchmark-scoring | --list [group] | <group>...]" >&2
     exit 2
     ;;
   "") ;;

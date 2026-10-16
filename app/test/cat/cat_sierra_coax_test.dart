@@ -514,11 +514,6 @@ void main() {
   group('driver', () {
     const driver = SierraCoaxDriver();
 
-    test('it is hardware-verified', () {
-      // Every payload shape in the codec is bytes a real CX-1 sent, including
-      // the two the manuals get wrong.
-    });
-
     test('a device address outside 1-99 is refused', () {
       // 0 is the master — ours. A node addressed there talks to itself and
       // the module never hears a word, which on screen is indistinguishable

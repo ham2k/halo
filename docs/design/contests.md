@@ -2078,7 +2078,7 @@ recorded where they belong (§5.3, §5.4) rather than only here:
   machinery, with the core owning the loop, checkpointing and live path. The
   resumable-batch alternative was rejected (§5.2).
 - **Checkpoint granularity → day boundaries only. Measured, M1.** A benchmark
-  through the real JS engine (`halo_extension_host/test/scoring_benchmark_test.dart`)
+  through the real JS engine (`halo_extension_host/test/scoring_bench.dart`)
   puts a full pass at 6ms for 1,000 QSOs and 31ms for 5,000, so a worst-case
   mid-log replay is imperceptible and a per-*K*-QSO axis buys nothing. Resuming
   from the cached end-scoresheet still makes an append ~6x cheaper at 5,000

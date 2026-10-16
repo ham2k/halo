@@ -739,14 +739,6 @@ void main() {
     expect(Ft891Driver.matchesUsbIds(), isFalse);
   });
 
-  test('the driver claims hardware verification, because it has met a radio', () {
-    // app-polo shipped this untested. It has since been run against a real
-    // FT-891 at 4800 baud over the radio's own CP2105 bridge, in BOTH
-    // directions: reading (including the IF packets transceive pushes) and
-    // writing (a spot click in the app retuned the rig, exercising the
-    // whole suggestion -> RadioService -> CatService -> driver chain).
-  });
-
   test('a noise byte in front of a command does not take the command with it', () {
     // handleData decodes with allowInvalid, so one bad byte on the wire
     // becomes U+FFFD sitting IN FRONT of a perfectly good reading. An

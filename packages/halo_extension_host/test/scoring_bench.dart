@@ -13,9 +13,9 @@
 //     a resume checkpoint this should be O(1); without one it re-folds the log.
 //
 // Run with:
-//   flutter test test/scoring_benchmark_test.dart --plain-name benchmark
-// It asserts only generous ceilings — the point is the printed table, not a
-// pass/fail gate, so this stays useful without becoming a flaky perf test.
+//   ./scripts/test.sh --benchmark-scoring
+// The printed table is the result; the `_bench.dart` suffix keeps these
+// measurements outside the normal correctness suite.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
@@ -110,8 +110,5 @@ void main() {
       '\n  QSOs |  full pass | append(ckpt) | append(full)\n'
       '  -----+------------+--------------+-------------\n  ${rows.join('\n  ')}\n',
     );
-
-    // Deliberately loose: this documents cost, it isn't a perf gate.
-    expect(true, isTrue);
   }, timeout: const Timeout(Duration(minutes: 5)));
 }

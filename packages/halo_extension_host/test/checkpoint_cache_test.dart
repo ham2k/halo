@@ -39,6 +39,35 @@ void main() {
   Future<dynamic> core(String method, Map<String, dynamic> args) =>
       host.invokeHook('scoring', key: 'core', method: method, args: args, timeout: const Duration(seconds: 20));
 
+  test('appending to a returned scoresheet agrees with folding the whole log', () async {
+    final first = qso('W1AW');
+    final extra = qso('K1ABC');
+    final folded =
+        await core('scoreQsos', {
+              'operation': operation,
+              'qsos': [first],
+            })
+            as Map;
+    expect(folded['scoresheet'], isNotNull);
+    final resumed =
+        await core('scoreQsos', {
+              'operation': operation,
+              'qsos': [extra],
+              'resumeFrom': folded['scoresheet'],
+              'resumeDay': folded['scoresheetDay'],
+            })
+            as Map;
+    final full =
+        await core('scoreQsos', {
+              'operation': operation,
+              'qsos': [first, extra],
+            })
+            as Map;
+    expect(resumed['scoresheet'], full['scoresheet']);
+    expect(resumed['operationSummary'], full['operationSummary']);
+    expect((resumed['operationSummary'] as Map)['qsoCount']['total'], 2);
+  });
+
   test('a pass names its checkpoint, and a board named the checkpoint is judged through views on the engine', () async {
     final folded =
         await core('scoreQsos', {

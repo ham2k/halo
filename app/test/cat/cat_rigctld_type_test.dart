@@ -59,11 +59,6 @@ void main() {
     expect(type.discoverer, isNull);
   });
 
-  test('ships verified: a real radio has answered it', () {
-    // A real IC-705 behind a real backend has answered this driver; the
-    // type picker must not tag it Unverified.
-  });
-
   test('hands the transport exactly what it needs to connect', () {
     expect(type.targetFor({'host': ' 10.0.0.5 ', 'port': 4532}), {'host': '10.0.0.5', 'port': 4532});
   });

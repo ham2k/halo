@@ -195,6 +195,16 @@ a loud "run the full gate". Subset runs are a convenience, **not** the gate:
 they skip analyze, dependent packages, and the browser-platform step. The full
 `./scripts/test.sh` is still what counts before a merge.
 
+The `guards` subset, including guards selected by `--changed`, keeps the
+localized-label check's strings fresh without building extension bundles or
+the native JS engine. Other selected groups still prepare their dependencies.
+
+Run `./scripts/test.sh --benchmark-scoring` for the real-engine scoring timing
+table (full passes and resumed appends at several log sizes). It prepares the
+bundles and host library, then runs `scoring_bench.dart` explicitly. Benchmark
+files use a `_bench.dart` suffix so normal test discovery excludes them;
+scoring correctness and checkpoint behavior remain in the regular suite.
+
 ### Writing an app test
 
 An app test lives in the `app/test/<group>/` directory of the feature it

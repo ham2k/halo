@@ -55,13 +55,12 @@ String _blankNonCode(String source) {
   final out = source.split('');
   var i = 0;
   while (i < out.length) {
-    final rest = source.substring(i);
-    if (rest.startsWith('//')) {
+    if (source.startsWith('//', i)) {
       while (i < out.length && out[i] != '\n') {
         out[i] = ' ';
         i++;
       }
-    } else if (rest.startsWith('/*')) {
+    } else if (source.startsWith('/*', i)) {
       final end = source.indexOf('*/', i + 2);
       final stop = end == -1 ? out.length : end + 2;
       for (var j = i; j < stop; j++) {
