@@ -60,6 +60,7 @@ void main() {
     await ErrorReportingService.run(() {}, backend: backend);
     extensions = ExtensionService();
     harness = await makeHaLoServices(extensions: extensions);
+    await preloadShippedExtensionsForTest(extensions);
   });
 
   tearDown(ErrorReportingService.resetForTesting);

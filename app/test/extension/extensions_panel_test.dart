@@ -964,9 +964,10 @@ void main() {
     // nothing installed to update.
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}));
     extensions.debugSetAvailableExtensions(_testExtensions);
+    prepareExtensionServiceForTest(extensions);
     final reload = extensions.reloadAvailableExtensions();
     expect(extensions.availableExtensions, isNotEmpty);
-    await reload.catchError((_) {});
+    await reload;
   });
 
   group('Update all with nothing it can take', () {

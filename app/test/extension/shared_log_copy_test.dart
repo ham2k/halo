@@ -76,8 +76,7 @@ void main() {
     extensions
       ..operations = harness.services.operations
       ..qsos = harness.services.qsos;
-    await extensions.start();
-    addTearDown(() async => extensions.host?.dispose());
+    await startWithShippedExtensions(extensions);
     await extensions.host!.reloadBundle(ExtensionBundle(key: 'dev-older', source: _probe('dev-older'), api: 8));
     await extensions.host!.reloadBundle(ExtensionBundle(key: 'dev-newer', source: _probe('dev-newer'), api: 9));
     operation = await harness.services.operations.create(stationCall: 'KI2D');

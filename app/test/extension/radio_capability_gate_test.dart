@@ -15,6 +15,8 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/panel_radio_service.dart';
 
+import '../support/shipped_extensions.dart';
+
 String probe(String key) =>
     '''
   globalThis.__polo.defineExtension({
@@ -98,6 +100,7 @@ void main() {
     final radio = FakeRadio();
     commands = radio.commands;
     extensions = ExtensionService()..radioCalls.radio = radio;
+    prepareExtensionServiceForTest(extensions);
     await extensions.setDevBundles({
       'reader': bundle('reader', read: true),
       'writer': bundle('writer', write: true),

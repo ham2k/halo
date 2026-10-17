@@ -3,6 +3,7 @@
 
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 /// In-memory stand-in for the keychain: `read`/`write`/`delete` served from a map via
 /// noSuchMethod (the real signatures carry per-platform options params not
@@ -39,5 +40,38 @@ class FakeSecureStorage implements FlutterSecureStorage {
       return Future<void>.value();
     }
     return super.noSuchMethod(invocation);
+  }
+}
+
+/// Supplies the native keychain channel for real-service integration tests.
+/// A test-specific handler wins, so locked or unavailable storage stays testable.
+void useInMemoryKeychain() {
+  const channel = MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+  if (messenger.checkMockMessageHandler(channel.name, null)) {
+    final keychain = <String, String>{};
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      final args = call.arguments as Map;
+      switch (call.method) {
+        case 'read':
+          return keychain[args['key']];
+        case 'readAll':
+          return Map<String, String>.of(keychain);
+        case 'write':
+          keychain[args['key'] as String] = args['value'] as String;
+          return null;
+        case 'delete':
+          keychain.remove(args['key']);
+          return null;
+        case 'deleteAll':
+          keychain.clear();
+          return null;
+        case 'containsKey':
+          return keychain.containsKey(args['key']);
+        default:
+          throw UnsupportedError('test keychain: ${call.method}');
+      }
+    });
+    addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
   }
 }

@@ -99,24 +99,25 @@ void main() {
 
   setUp(() => requested = []);
 
-  /// Answers each of the three URLs from its own body, so a test can fail one
-  /// service while the others succeed. A null body throws instead — a
-  /// transport failure, which is what [_Failure.transport] is drawn from.
-  SolarFetch answering({String? solar, String? flux, String? kp, String? wind, String? windHistoryBody, int status = 200}) => (url) async {
-    requested.add(url);
-    // Matched on the PATH, not the host: on web the conditions URL is
-    // proxied through services.ham2k.net, so a host match would silently
-    // route it to the Kp branch there.
-    final body = switch (url.path) {
-      final path when path.contains('solarxml') => solar,
-      final path when path.contains('f107') => flux,
-      final path when path.contains('propagated-solar-wind-1-hour') => wind,
-      final path when path.contains('propagated-solar-wind') => windHistoryBody ?? wind,
-      _ => kp,
-    };
-    if (body == null) throw const SocketishFailure();
-    return (status: status, body: body);
-  };
+  /// Answers each URL independently. Missing conditions, flux or Kp bodies
+  /// simulate transport failures. Wind defaults to one valid point, enough
+  /// for a successful response without adding a chart to layout-only tests.
+  SolarFetch answering({String? solar, String? flux, String? kp, String? wind, String? windHistoryBody, bool failWindHistory = false, int status = 200}) =>
+      (url) async {
+        requested.add(url);
+        // Matched on the PATH, not the host: on web the conditions URL is
+        // proxied through services.ham2k.net, so a host match would silently
+        // route it to the Kp branch there.
+        final body = switch (url.path) {
+          final path when path.contains('solarxml') => solar,
+          final path when path.contains('f107') => flux,
+          final path when path.contains('propagated-solar-wind-1-hour') => wind ?? windSeries(minutes: 1),
+          final path when path.contains('propagated-solar-wind') => failWindHistory ? null : windHistoryBody ?? wind ?? windSeries(minutes: 1),
+          _ => kp,
+        };
+        if (body == null) throw const SocketishFailure();
+        return (status: status, body: body);
+      };
 
   Future<void> pump(WidgetTester tester, {required SolarFetch fetch, bool dockVisible = true, Size size = const Size(440, 420), double textScale = 1.0}) async {
     tester.view.devicePixelRatio = 1;
@@ -575,12 +576,22 @@ void main() {
       // with it or be re-asked inside it.
       await pump(
         tester,
-        fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: null),
+        fetch: answering(
+          solar: conditions(),
+          flux: fluxSeries(),
+          kp: kpSeries(),
+          wind: windSeries(minutes: 1),
+          windHistoryBody: windHistory(),
+          failWindHistory: true,
+        ),
+        size: const Size(440, 700),
       );
 
       expect(requested.where((url) => url == solarWindHistoryUrl()), hasLength(1));
       expect(find.text('SFI 143'), findsOneWidget, reason: 'the round still landed');
       expect(fluxChart(), findsOneWidget, reason: 'and the other series still drew');
+      expect(kpChart(), findsOneWidget);
+      expect(windChart(), findsNothing, reason: 'the failed history leaves too few points for its chart');
       await endOfTest(tester);
     });
 

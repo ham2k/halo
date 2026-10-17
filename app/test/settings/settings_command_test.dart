@@ -34,7 +34,7 @@ void main() {
     final harness = await makeHaLoServices(extensions: extensions);
     services = harness.services;
     settings = harness.settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
   });
 
   Future<Map<String, dynamic>?> interpret(String input) async {

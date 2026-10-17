@@ -10,6 +10,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
+import '../support/shipped_extensions.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -17,6 +19,7 @@ void main() {
 
   setUp(() async {
     extensions = ExtensionService();
+    prepareExtensionServiceForTest(extensions);
     await extensions.start();
   });
 

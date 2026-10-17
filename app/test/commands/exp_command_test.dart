@@ -15,6 +15,8 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/halo_test_support.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -28,7 +30,7 @@ void main() {
       ExperimentDefinition(key: 'layouts', name: 'Layouts', aliases: ['lay']),
     ]);
     extensions = ExtensionService()..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
   });
 
   Future<Map<String, dynamic>?> interpret(String input) async {

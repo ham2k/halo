@@ -25,6 +25,7 @@ void main() {
 
   test('"DEVMAPINFO" (any case) dispatches a devMapInfo action', () async {
     final extensions = ExtensionService();
+    prepareExtensionServiceForTest(extensions);
     await extensions.start();
     for (final input in ['DEVMAPINFO', 'devmapinfo']) {
       final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': input});
@@ -37,7 +38,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final extensions = ExtensionService()..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
     Future<String> describe() async {
       final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': 'DEVMAPINFO'});
       return (entries.firstWhere((e) => e['ok'] == true && e['value'] is Map)['value'] as Map)['describe'] as String;

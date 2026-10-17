@@ -21,6 +21,8 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/hook_payloads.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
+import '../support/shipped_extensions.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -1176,6 +1178,7 @@ void main() {
 
     setUpAll(() async {
       extensions = ExtensionService();
+      prepareExtensionServiceForTest(extensions);
       await extensions.start();
     });
 

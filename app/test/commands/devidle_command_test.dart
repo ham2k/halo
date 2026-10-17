@@ -18,6 +18,7 @@ void main() {
 
   test('"DEVIDLE" (any case) dispatches a devIdle action', () async {
     final extensions = ExtensionService();
+    prepareExtensionServiceForTest(extensions);
     await extensions.start();
     for (final input in ['DEVIDLE', 'devidle']) {
       final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': input});
@@ -32,7 +33,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final extensions = ExtensionService()..settings = settings;
-    await extensions.start();
+    await startWithShippedExtensions(extensions);
     Future<String> describe() async {
       final entries = await extensions.host!.invokeHookAll('command', method: 'interpret', args: {'input': 'DEVIDLE'});
       return (entries.firstWhere((e) => e['ok'] == true && e['value'] is Map)['value'] as Map)['describe'] as String;

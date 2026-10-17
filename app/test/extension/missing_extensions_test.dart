@@ -36,6 +36,7 @@ void main() {
   late List<int> clock;
 
   setUp(() {
+    useInMemoryKeychain();
     root = Directory.systemTemp.createTempSync('missing-extensions');
     clock = File('test/fixtures/ki2d-my-clock.h2kext').readAsBytesSync();
   });

@@ -16,6 +16,8 @@ import 'package:ham2k_logger/services/cluster/cluster_service.dart';
 import 'package:ham2k_logger/services/cluster/cluster_settings.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
+import '../support/shipped_extensions.dart';
+
 String probe(String key) =>
     '''
   globalThis.__polo.defineExtension({
@@ -100,6 +102,7 @@ void main() {
   setUp(() async {
     cluster = FakeCluster();
     extensions = ExtensionService()..clusterCalls.cluster = () => cluster;
+    prepareExtensionServiceForTest(extensions);
     await extensions.setDevBundles({
       'reader': bundle('reader', read: true),
       'spotter': bundle('spotter', spot: true),

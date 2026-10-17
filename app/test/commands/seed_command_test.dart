@@ -25,6 +25,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
+import '../support/shipped_extensions.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -41,6 +43,7 @@ void main() {
       ..lookups = LookupRepository(db)
       ..operations = operations
       ..qsos = qsos;
+    prepareExtensionServiceForTest(extensions);
     await extensions.start();
   });
 

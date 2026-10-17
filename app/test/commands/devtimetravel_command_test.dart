@@ -265,8 +265,7 @@ void main() {
       settings = SettingsService(await SharedPreferences.getInstance());
       await settings.setDeveloperMode(developerMode);
       extensions = ExtensionService()..settings = settings;
-      await extensions.start();
-      addTearDown(() => extensions.host?.dispose());
+      await startWithShippedExtensions(extensions);
     }
 
     Future<Map<String, dynamic>?> interpret(String input) async {

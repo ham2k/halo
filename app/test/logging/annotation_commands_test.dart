@@ -25,6 +25,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
+import '../support/shipped_extensions.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -36,6 +38,7 @@ void main() {
     db = HaLoDatabase(NativeDatabase.memory());
     lookups = LookupRepository(db);
     extensions = ExtensionService()..lookups = lookups;
+    prepareExtensionServiceForTest(extensions);
     await extensions.start();
   });
 
