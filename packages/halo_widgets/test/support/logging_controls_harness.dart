@@ -181,6 +181,29 @@ Widget host({
   );
   return MaterialApp(
     theme: appTheme,
+    // The panel does not draw the numbers row — it publishes it, and the
+    // app's StatusBarOverlay draws it below the status footer and directly on
+    // the keyboard, OUTSIDE the Navigator, so a pane the panel opens stays
+    // above it rather than over it. This stands in for that, so the tests
+    // still exercise the row end to end (publish → render → tap) rather than
+    // asserting on the spec and calling it covered.
+    builder: (context, child) => Column(
+      children: [
+        Expanded(child: child!),
+        ValueListenableBuilder<KeyboardAccessorySpec?>(
+          valueListenable: keyboardAccessory,
+          builder: (context, spec, _) => spec == null
+              ? const SizedBox.shrink()
+              : NumberKeys(
+                  onKey: spec.onKey,
+                  extraKey: spec.extraKey,
+                  vibrate: spec.vibrate,
+                  backgroundColor: Color(spec.backgroundColor),
+                  foregroundColor: Color(spec.foregroundColor),
+                ),
+        ),
+      ],
+    ),
     home: Scaffold(
       // Matches the operation view: the Scaffold doesn't resize for the
       // keyboard (LoggingControls reserves its own bottom spacer), and the
@@ -196,23 +219,6 @@ Widget host({
           controls,
           ?trailing,
           if (prefs?.aboveLog == true) const Expanded(child: SizedBox.shrink()),
-          // The panel no longer draws the numbers row — it publishes it, and
-          // the app's StatusBarOverlay draws it below the status footer and
-          // directly on the keyboard. This stands in for that, so the tests
-          // still exercise the row end to end (publish → render → tap)
-          // rather than asserting on the spec and calling it covered.
-          ValueListenableBuilder<KeyboardAccessorySpec?>(
-            valueListenable: keyboardAccessory,
-            builder: (context, spec, _) => spec == null
-                ? const SizedBox.shrink()
-                : NumberKeys(
-                    onKey: spec.onKey,
-                    extraKey: spec.extraKey,
-                    vibrate: spec.vibrate,
-                    backgroundColor: Color(spec.backgroundColor),
-                    foregroundColor: Color(spec.foregroundColor),
-                  ),
-          ),
         ],
       ),
     ),

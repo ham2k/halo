@@ -305,6 +305,133 @@ void main() {
       }
     });
 
+    testWidgets('the More pane gets the row too, though it is a route of its own', (tester) async {
+      // The pane's fields sit outside the panel's focus scope, so a row gated
+      // on that scope alone vanishes the moment the pane opens.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+
+        await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        // Far down the pane, which the raised keyboard has shortened.
+        await tester.ensureVisible(find.widgetWithText(TextField, 'CQ Zone'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextField, 'CQ Zone'));
+        await pumpRow(tester);
+        expect(find.byType(NumberKeys), findsOneWidget);
+
+        await tester.tap(keyInRow('1'));
+        await tester.pump();
+        await tester.tap(keyInRow('4'));
+        await tester.pump();
+        expect(tester.widget<TextField>(find.widgetWithText(TextField, 'CQ Zone')).controller!.text, '14');
+
+        await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextField, 'Their call'));
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 1);
+        expect((logged.single.data['their'] as Map)['cqZone'], 14);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets("the More pane's callsign field declares its own \"/\", and it leaves with the field", (tester) async {
+      // The extra key comes from the focused field, not from which of the
+      // panel's own nodes has focus — a rule keyed on the panel's call field
+      // never sees the pane's.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+
+        await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+        await tester.pumpAndSettle();
+        final paneCall = find.descendant(of: find.byType(FormRenderer), matching: find.widgetWithText(TextField, 'Their call'));
+        await tester.ensureVisible(paneCall);
+        await tester.pumpAndSettle();
+        await tester.tap(paneCall);
+        await pumpRow(tester);
+        expect(keyInRow('/'), findsOneWidget);
+
+        await tester.ensureVisible(find.widgetWithText(TextField, 'CQ Zone'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextField, 'CQ Zone'));
+        await pumpRow(tester);
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('/'), findsNothing);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('an extension field offers the extra key it declares, and only a single character', (tester) async {
+      // The key is read off the descriptor the extension sent; a panel that
+      // dropped `numbersRowKey` anywhere between the descriptor and the field
+      // would offer the decimal separator in its place.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(
+          host(
+            prefs: LoggingPreferences(showNumbersRow: true),
+            log: LogHooks(operation: running(['cqwpx']), qsosRepository: qsos),
+            activities: ActivityHooks(
+              activityControls: const [
+                {
+                  'key': 'cqwpx/theirZone',
+                  'label': 'Zone',
+                  'icon': 'flag-checkered',
+                  'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirZone', 'numbersRowKey': '-'},
+                },
+                {
+                  'key': 'cqwpx/theirName',
+                  'label': 'Name',
+                  'icon': 'flag-checkered',
+                  // Too long for a key the row sizes like a digit.
+                  'input': {'kind': 'text', 'refType': 'cqwpx', 'field': 'theirName', 'numbersRowKey': 'AB'},
+                },
+                {
+                  'key': 'pota/hunter',
+                  'label': 'POTA',
+                  'icon': 'pine-tree',
+                  // Declares nothing: a reference field's own default.
+                  'input': {'kind': 'refList', 'refType': 'pota'},
+                },
+              ],
+            ),
+          ),
+        );
+
+        Future<void> focus(String label) async {
+          tester.widget<TextField>(find.widgetWithText(TextField, label)).focusNode!.requestFocus();
+          await pumpRow(tester);
+        }
+
+        await focus('Zone');
+        expect(keyInRow('-'), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+
+        await focus('Name');
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow('AB'), findsNothing);
+
+        await openControl(tester, MdiIcons.pineTree);
+        await focus('POTA');
+        expect(keyInRow('-'), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
     testWidgets('a read-only field gets no row, since a tap would still write into it', (tester) async {
       // EditableText's own user-edit path does not check `readOnly`, so the
       // row's gate is the only thing keeping digits out of a serial the

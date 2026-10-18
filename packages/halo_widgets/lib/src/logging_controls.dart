@@ -2075,39 +2075,39 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ── Mobile numbers row (issue #27) ──────────────────────────────────────
 
+  /// Whether this panel's More pane is open. The pane is a route of its own,
+  /// outside [DefaultFocusBackstop.panelScope], and modal over the panel — so
+  /// while it is up, any focused field is the pane's (or something the pane
+  /// opened), and the row keeps typing into it.
+  bool _editPaneOpen = false;
+
   /// The field the numbers row types into: whichever editable text field
   /// inside this panel holds the focus — the main fields, the exchange, and
-  /// every secondary control's (Freq, Time, Notes, refs, the event text…).
-  /// Null when focus is elsewhere or on a read-only field, which is also the
-  /// gate for showing the row at all.
+  /// every secondary control's (Freq, Time, Notes, refs, the event text…) —
+  /// or, while the More pane is open, inside the pane. Null when focus is
+  /// elsewhere or on a read-only field, which is also the gate for showing
+  /// the row at all.
   EditableTextState? get _focusedNumberField {
     final primary = FocusManager.instance.primaryFocus;
-    if (primary == null || !primary.ancestors.contains(_focusBackstop.panelScope)) return null;
+    if (primary == null || !(_editPaneOpen || primary.ancestors.contains(_focusBackstop.panelScope))) return null;
     final field = primary.context?.findAncestorStateOfType<EditableTextState>();
     return field == null || field.widget.readOnly ? null : field;
   }
 
-  /// The contextual extra key: "/" only while the call field holds a partial
-  /// callsign (a letter present, not a bare number — a serial being typed
-  /// ahead of letters still reads as numeric), the operator's own decimal
-  /// separator in every other field — offered even where a field's filter
-  /// drops it (Time, the reports, a numeric exchange). Null when the extra key is turned
-  /// off. Mirrors app-polo's callsign vs numbers mode split
-  /// (H2kCallsignInput / H2kRSTInput).
+  /// The contextual extra key: whatever the focused field declares through
+  /// [NumbersRowExtraKey] (the call field's "/" while it holds a partial
+  /// callsign), the operator's own decimal separator in every other field —
+  /// offered even where a field's filter drops it (Time, the reports, a
+  /// numeric exchange). Null when the extra key is turned off.
   ///
-  /// It types whatever [parseFreq] will read back as a decimal point: a key
-  /// that inserted a fixed "." under comma conventions would produce a
-  /// frequency the field beneath it parses as grouping, silently landing the
-  /// operator on a different band.
+  /// The fallback types whatever [parseFreq] will read back as a decimal
+  /// point: a key that inserted a fixed "." under comma conventions would
+  /// produce a frequency the field beneath it parses as grouping, silently
+  /// landing the operator on a different band.
   String? get _numbersRowExtraKey {
     if (!widget.prefs.showExtraInNumbersRow) return null;
-    if (_callFocus.hasFocus) {
-      final text = _callController.text;
-      final hasLetter = RegExp(r'[A-Za-z]').hasMatch(text);
-      final onlyDigits = RegExp(r'^[0-9]+$').hasMatch(text);
-      if (hasLetter && !onlyDigits) return '/';
-    }
-    return NumberFormatting.instance.decimalSeparator;
+    final field = _focusedNumberField;
+    return (field == null ? null : NumbersRowExtraKey.of(field.context)) ?? NumberFormatting.instance.decimalSeparator;
   }
 
   /// The Grid field's hint — see [guessGridDisplay], which the More pane's
@@ -2336,7 +2336,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final theirBeforePane = {...?asQsonMap(widget.session.editingQso?.data['their']), ..._draft.theirExtra};
     final theirValuesBeforePane = theirPaneValues(theirBeforePane);
 
-    final result = await showQsoEditPane(
+    _editPaneOpen = true;
+    final pane = showQsoEditPane(
       context,
       gridBeforePane: gridBeforePane,
       formDefinition: buildQsoEditFormDefinition(
@@ -2377,6 +2378,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'theirEntity': theirEntityDisplay(asQsonMap(widget.session.editingQso?.data['their']), _currentGuess) ?? '',
       },
     );
+    final result = await pane.whenComplete(() {
+      _editPaneOpen = false;
+      _rebuildForNumbersRow();
+    });
     if (result == null || !mounted) return;
 
     // Same as the setVfo command dispatch: a deliberate pane Save, not
@@ -3590,30 +3595,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// `build` but never mutates during it — the notifier is only written after
   /// the frame, since the overlay that listens sits above this widget and
   /// rebuilding it mid-build would throw.
+  ///
+  /// The extra key is resolved after the frame too: the focused field's
+  /// [NumbersRowExtraKey] sits below this widget (or in the More pane's
+  /// route), so during this build it still holds the previous keystroke's
+  /// answer.
   void _syncNumbersRow(BuildContext context, ThemeData theme) {
     final accessory = widget.prefs.keyboardAccessory;
     if (accessory == null) return;
-    final spec = _shouldShowNumbersRow(context)
-        ? KeyboardAccessorySpec(
-            onKey: _handleNumberKey,
-            extraKey: _numbersRowExtraKey,
-            vibrate: widget.prefs.vibrateNumbersRow,
-            // The AppBar/footer colour — the app's chrome — deliberately NOT
-            // the editing-swappable tertiary/secondary accent, so the row
-            // reads as chrome in every mode. (appBarTheme isn't remapped by
-            // the editing accent, so `theme` here being the accent theme is
-            // fine.)
-            backgroundColor: (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary).toARGB32(),
-            foregroundColor: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).toARGB32(),
-          )
-        : null;
+    final show = _shouldShowNumbersRow(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (spec == null) {
+      if (!show) {
         accessory.clearIfOwner(this);
-      } else {
-        accessory.publish(this, spec);
+        return;
       }
+      accessory.publish(
+        this,
+        KeyboardAccessorySpec(
+          onKey: _handleNumberKey,
+          extraKey: _numbersRowExtraKey,
+          vibrate: widget.prefs.vibrateNumbersRow,
+          // The AppBar/footer colour — the app's chrome — deliberately NOT
+          // the editing-swappable tertiary/secondary accent, so the row
+          // reads as chrome in every mode. (appBarTheme isn't remapped by
+          // the editing accent, so `theme` here being the accent theme is
+          // fine.)
+          backgroundColor: (theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary).toARGB32(),
+          foregroundColor: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).toARGB32(),
+        ),
+      );
     });
   }
 

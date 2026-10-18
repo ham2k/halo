@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'icon_resolver.dart';
+import 'keyboard_accessory.dart';
 import 'logging_controls_draft.dart';
 import 'panel_model.dart';
 import 'ref_text_input.dart';
@@ -453,25 +454,33 @@ SecondaryControlSpec activityControlSpec(
     alert: anyRefFailsPattern(refs, (control['input'] as Map?)?['pattern'] as String?),
     expandedBuilder: (context) => SizedBox(
       width: 160,
-      child: RefTextInput(
-        focusNode: model.focusFor(key),
-        controller: model.controllerFor(key),
-        refType: (control['input'] as Map)['refType'] as String,
-        label: (control['label'] as String?) ?? '',
-        placeholder: (control['input'] as Map)['placeholder'] as String?,
-        pattern: (control['input'] as Map)['pattern'] as String?,
-        transforms: [for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const []) RefTransform.fromMap((t as Map).cast<String, dynamic>())],
-        // Not the `refs` captured above for the chip: that one is spec-time,
-        // and the row can build an expanded field from an earlier spec. A
-        // snapshot would hand the field refs it has since moved past — which
-        // it answers with a controller write in the middle of a build.
-        refs: model.refsFor(key),
-        onChanged: (refs) {
-          model.setRefs(key, refs);
-          onRefsChanged();
-        },
-        decorate: decorate,
-        labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+      // "-" unless the control says otherwise: nearly every program's codes
+      // join a prefix to digits with one (US-1234, KFF-0001, W4C/CM-001,
+      // G-00123), and on a phone it sits a keyboard layer down.
+      child: NumbersRowExtraKey(
+        extraKey: NumbersRowExtraKey.declared((control['input'] as Map)['numbersRowKey']) ?? '-',
+        child: RefTextInput(
+          focusNode: model.focusFor(key),
+          controller: model.controllerFor(key),
+          refType: (control['input'] as Map)['refType'] as String,
+          label: (control['label'] as String?) ?? '',
+          placeholder: (control['input'] as Map)['placeholder'] as String?,
+          pattern: (control['input'] as Map)['pattern'] as String?,
+          transforms: [
+            for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const []) RefTransform.fromMap((t as Map).cast<String, dynamic>()),
+          ],
+          // Not the `refs` captured above for the chip: that one is spec-time,
+          // and the row can build an expanded field from an earlier spec. A
+          // snapshot would hand the field refs it has since moved past — which
+          // it answers with a controller write in the middle of a build.
+          refs: model.refsFor(key),
+          onChanged: (refs) {
+            model.setRefs(key, refs);
+            onRefsChanged();
+          },
+          decorate: decorate,
+          labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+        ),
       ),
     ),
   );

@@ -21,6 +21,7 @@ import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
 
+import 'keyboard_accessory.dart';
 import 'logging_controls_metrics.dart';
 import 'option_matching.dart';
 import 'panel_model.dart';
@@ -986,44 +987,47 @@ class ExchangeField extends StatelessWidget {
       // it (RSTs on or off, a state field, several exchanges).
       child: CompositedTransformTarget(
         link: model.linkFor(key),
-        child: TextField(
-          controller: model.controllerFor(key),
-          focusNode: model.focusFor(key),
-          selectAllOnFocus: false,
-          enabled: enabled,
-          readOnly: isSerial && input['editable'] == false,
-          style: mainFieldStyle(context, fontWeight: FontWeight.w500),
-          keyboardType: numeric ? numericKeyboardType : null,
-          textCapitalization: TextCapitalization.characters,
-          // Codes, not prose — the same four refusals as every other main
-          // field. `autocorrect: false` alone leaves Android's suggestion
-          // strip over a county field and lets iOS turn a typed `-` into a
-          // dash the formatters below never undo.
-          autocorrect: false,
-          enableSuggestions: false,
-          smartDashesType: SmartDashesType.disabled,
-          smartQuotesType: SmartQuotesType.disabled,
-          inputFormatters: [
-            // FIRST — see [virtualSpace].
-            virtualSpace,
-            // Ahead of the digits filter, which would drop the keystroke.
-            if (steps) const SerialStepFormatter(),
-            if (numeric) FilteringTextInputFormatter.digitsOnly,
-            if (uppercase) const UpperCaseTextFormatter(),
-            if (transforms.isNotEmpty) RefTransformFormatter(transforms),
-            if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
-          ],
-          // An unrecognized value tints the field's own underline rather than
-          // going through `errorText` — see [haloInvalidInputBorder] for why
-          // the error slot is not an option in this row.
-          decoration: mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(
-            hintText: input['placeholder'] as String?,
-            enabledBorder: isInvalid ? haloInvalidInputBorder(context, width: 1) : null,
-            focusedBorder: isInvalid ? haloInvalidInputBorder(context, width: 2) : null,
+        child: NumbersRowExtraKey(
+          extraKey: NumbersRowExtraKey.declared(input['numbersRowKey']),
+          child: TextField(
+            controller: model.controllerFor(key),
+            focusNode: model.focusFor(key),
+            selectAllOnFocus: false,
+            enabled: enabled,
+            readOnly: isSerial && input['editable'] == false,
+            style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+            keyboardType: numeric ? numericKeyboardType : null,
+            textCapitalization: TextCapitalization.characters,
+            // Codes, not prose — the same four refusals as every other main
+            // field. `autocorrect: false` alone leaves Android's suggestion
+            // strip over a county field and lets iOS turn a typed `-` into a
+            // dash the formatters below never undo.
+            autocorrect: false,
+            enableSuggestions: false,
+            smartDashesType: SmartDashesType.disabled,
+            smartQuotesType: SmartQuotesType.disabled,
+            inputFormatters: [
+              // FIRST — see [virtualSpace].
+              virtualSpace,
+              // Ahead of the digits filter, which would drop the keystroke.
+              if (steps) const SerialStepFormatter(),
+              if (numeric) FilteringTextInputFormatter.digitsOnly,
+              if (uppercase) const UpperCaseTextFormatter(),
+              if (transforms.isNotEmpty) RefTransformFormatter(transforms),
+              if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
+            ],
+            // An unrecognized value tints the field's own underline rather than
+            // going through `errorText` — see [haloInvalidInputBorder] for why
+            // the error slot is not an option in this row.
+            decoration: mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(
+              hintText: input['placeholder'] as String?,
+              enabledBorder: isInvalid ? haloInvalidInputBorder(context, width: 1) : null,
+              focusedBorder: isInvalid ? haloInvalidInputBorder(context, width: 2) : null,
+            ),
+            onChanged: (text) => model.typed(key, text),
+            onEditingComplete: () => finishEditingWithoutBlur(model.controllerFor(key)),
+            onSubmitted: (_) => onSubmitted(),
           ),
-          onChanged: (text) => model.typed(key, text),
-          onEditingComplete: () => finishEditingWithoutBlur(model.controllerFor(key)),
-          onSubmitted: (_) => onSubmitted(),
         ),
       ),
     );

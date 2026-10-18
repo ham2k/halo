@@ -925,6 +925,7 @@ interface TextInputDescriptor {
   transforms?: {…}[]       // the live-reformat passes refList already supports
   numeric?: boolean        // numeric keyboard (CQ zone)
   uppercase?: boolean      // DEFAULT true — see below
+  numbersRowKey?: string   // the mobile numbers row's extra key, e.g. '-'
   maxLength?: number
   suggestedValue?: string  // lookup-derived prefill; never overwrites typing
 }

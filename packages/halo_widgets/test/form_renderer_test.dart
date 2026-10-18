@@ -144,6 +144,51 @@ void main() {
       expect(tester.testTextInput.log.where((call) => call.method == 'TextInput.finishAutofillContext'), isEmpty);
     });
 
+    testWidgets("each field declares the numbers row's extra key, the row dialog's editor included", (tester) async {
+      // The row reads the key from above the FOCUSED field, and a row's
+      // dialog is a route of its own: without its own declaration there, a
+      // callsign edited through it gets the decimal separator.
+      String? declaredFor(Finder field) => NumbersRowExtraKey.of(tester.element(find.descendant(of: field, matching: find.byType(EditableText))));
+      final settingsList = ValueNotifier(false);
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: ValueListenableBuilder<bool>(
+                valueListenable: settingsList,
+                builder: (context, rows, _) => FormRenderer(
+                  formDefinition: const {
+                    'elements': [
+                      {'type': 'field', 'fieldType': 'text', 'key': 'ref', 'label': 'Ref', 'numbersRowKey': '-'},
+                      {'type': 'field', 'fieldType': 'callsign', 'key': 'call', 'label': 'Call'},
+                      {'type': 'field', 'fieldType': 'callsign', 'key': 'grid', 'label': 'Their Call', 'numbersRowKey': '#'},
+                      {'type': 'field', 'fieldType': 'number', 'key': 'power', 'label': 'Power'},
+                    ],
+                  },
+                  initialState: const {},
+                  settingsList: rows,
+                  showActions: false,
+                  showTitle: false,
+                  onSubmit: (_) {},
+                  onCancel: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(declaredFor(find.widgetWithText(TextField, 'Ref')), '-');
+      expect(declaredFor(find.widgetWithText(TextField, 'Call')), '/');
+      expect(declaredFor(find.widgetWithText(TextField, 'Their Call')), '#', reason: 'a declared key outranks the callsign default');
+      expect(declaredFor(find.widgetWithText(TextField, 'Power')), isNull, reason: 'null leaves the row its decimal separator');
+
+      settingsList.value = true;
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Call'));
+      await tester.pumpAndSettle();
+      expect(declaredFor(find.descendant(of: find.byType(Dialog), matching: find.byType(TextField))), '/');
+    });
+
     testWidgets('disposing an inline text form still commits its autofill context', (tester) async {
       await tester.pumpWidget(
         MaterialApp(

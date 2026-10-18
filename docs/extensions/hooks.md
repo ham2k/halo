@@ -696,14 +696,15 @@ interface ActivityHook {
 // The input catalog. A new kind is earned by a different WIDGET, never by
 // different validation — so a pattern-constrained field is `text` with a
 // `pattern`, not a kind of its own (docs/design/contests.md §5.3).
-//   {kind: 'refList', refType, placeholder?, pattern?, transforms?}
+//   {kind: 'refList', refType, placeholder?, pattern?, transforms?,
+//                     numbersRowKey?}
 //   {kind: 'text',    refType, field, placeholder?, pattern?, transforms?,
-//                     numeric?, uppercase? /* default true */, maxLength?,
-//                     suggestedValue?}
+//                     numeric?, uppercase? /* default true */, numbersRowKey?,
+//                     maxLength?, suggestedValue?}
 //   {kind: 'options', refType, field, options: [{code, name?}], matchOn?,
 //                     allowFreeform?, preferredCodes?, minCharsForSuggestions?,
 //                     placeholder?, pattern?, transforms?, numeric?, uppercase?,
-//                     maxLength?, suggestedValue?}
+//                     numbersRowKey?, maxLength?, suggestedValue?}
 //   {kind: 'serial',  refType, field, sequence: {key, scope?, start?, padTo?},
 //                     editable?}
 //   {kind: 'form',    refType, form}   // operationControls only
@@ -714,6 +715,12 @@ interface ActivityHook {
 // that fails it becomes a ref like any other, and reaches the log and the
 // exports as typed. The pattern is HaLo's idea of the program rather than the
 // program's own, so it may never cost the operator a reference.
+//
+// `numbersRowKey` is the one character the mobile numbers row offers after
+// its digits while the field has focus, where the operator would otherwise
+// switch keyboard layers for it. Without it a `refList` field offers `'-'`,
+// which joins most programs' prefixes to their digits, and the other kinds
+// the operator's decimal separator.
 //
 // `text`, `options` and `serial` values round-trip onto a ref of `refType` under
 // `field`, through the same core-owned path refList writes refs — several may

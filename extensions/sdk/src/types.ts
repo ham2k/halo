@@ -765,6 +765,11 @@ export interface TextInputDescriptor {
   /// (`FormField.uppercase` documents the same rule). Set `false` for genuinely
   /// mixed-case exchange data, such as NAQP's operator name.
   uppercase?: boolean
+  /// The extra key the mobile numbers row offers after its digits while this
+  /// field has focus: one character, such as "-" or "/" (a longer value is
+  /// ignored). Without it, or on a host that predates it, the row offers the
+  /// operator's decimal separator.
+  numbersRowKey?: string
   maxLength?: number
   /// Pre-filled into the field and flagged as a guess: the core writes it only
   /// while the field is empty or still holds a previous suggestion, so a
@@ -838,6 +843,8 @@ export interface OptionsInputDescriptor {
   placeholder?: string
   /// As `text` — uppercase is the default.
   uppercase?: boolean
+  /// As `text`.
+  numbersRowKey?: string
   maxLength?: number
   suggestedValue?: string
   /// The same three modifiers `text` takes, honoured identically here because the
@@ -867,6 +874,10 @@ export interface RefListInputDescriptor {
   /// "US1234" into "US-1234"), but declared once per `loggingControls`/
   /// `operationControls` call instead of executed in the runtime per keypress.
   transforms?: { pattern: string; replacement: string; flags?: string }[]
+  /// As `TextInputDescriptor.numbersRowKey`, except that a reference field
+  /// offers "-" without it, since nearly every program's codes join a prefix
+  /// to digits with one. Declare another character for codes that don't.
+  numbersRowKey?: string
 }
 
 /// A candidate activity/reference offered to the user while adding an

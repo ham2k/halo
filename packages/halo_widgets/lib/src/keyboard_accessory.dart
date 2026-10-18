@@ -38,6 +38,35 @@ class KeyboardAccessoryVisibility extends InheritedWidget {
   bool updateShouldNotify(KeyboardAccessoryVisibility oldWidget) => oldWidget.visible != visible;
 }
 
+/// The extra key a field wants after the numbers row's digits — "/" for a
+/// callsign, "-" for a reference, any single character it takes. Wrap the
+/// field (or any ancestor of it short of the route) in one; the nearest wins.
+///
+/// Absent, or with a null [extraKey], the row offers the operator's own
+/// decimal separator, which every numeric field wants.
+///
+/// Read from the focused field's context after the frame, not depended on:
+/// the row's publisher is another widget entirely, often in another route,
+/// and a field whose key follows its text rebuilds the hint after the
+/// publisher's own build has run.
+class NumbersRowExtraKey extends StatelessWidget {
+  final String? extraKey;
+  final Widget child;
+
+  const NumbersRowExtraKey({super.key, required this.extraKey, required this.child});
+
+  /// The extra key declared for the field at [fieldContext], or null.
+  static String? of(BuildContext fieldContext) => fieldContext.findAncestorWidgetOfExactType<NumbersRowExtraKey>()?.extraKey;
+
+  /// An extension's `numbersRowKey`, or null when it declares none or
+  /// declares something that is not one character — the row's keys share its
+  /// width evenly, so a longer label would not fit its key.
+  static String? declared(Object? value) => value is String && value.characters.length == 1 ? value : null;
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
 /// What a focused field wants the numbers row to look like right now.
 ///
 /// Deliberately data, not a widget: a published widget would close over the
@@ -49,8 +78,9 @@ class KeyboardAccessorySpec {
   /// Fired with the tapped character: '0'–'9', or [extraKey].
   final ValueChanged<String> onKey;
 
-  /// The contextual extra key after the digits — "/" while composing a
-  /// callsign, "." in numeric fields — or null to omit it.
+  /// The contextual extra key after the digits — whatever the focused field
+  /// declares through [NumbersRowExtraKey], else the decimal separator — or
+  /// null to omit it.
   final String? extraKey;
 
   final bool vibrate;

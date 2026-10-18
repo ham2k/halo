@@ -14,6 +14,7 @@ import 'category_band.dart';
 import 'collapsible_section.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
+import 'keyboard_accessory.dart';
 import 'list_contents_key.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
@@ -847,7 +848,7 @@ class FormRendererState extends State<FormRenderer> with _ListFields {
         'divider' => _buildDivider(el, theme),
         'markdown' => _buildMarkdown(el, theme),
         'disclosure' => _buildDisclosure(el, theme),
-        'field' => _buildField(el, theme),
+        'field' => NumbersRowExtraKey(extraKey: _numbersRowKeyFor(el), child: _buildField(el, theme)),
         'link' => _buildLink(el, theme),
         'action' => _buildActionElement(el, theme),
         _ => const SizedBox.shrink(),
@@ -1552,21 +1553,24 @@ class FormRendererState extends State<FormRenderer> with _ListFields {
 
     await showHaloDialog<void>(
       context: context,
-      builder: (dialogContext) => _TextEditDialog(
-        label: el['label'] as String? ?? '',
-        placeholder: el['placeholder'] as String?,
-        fieldType: fieldType,
-        initialText: _controllerTextFor(key, _values[key]),
-        // Localized like every other text this dialog shows: the Defaults
-        // button assigns straight to the controller, bypassing the input
-        // formatter, so a raw `1.5` under comma conventions would be read
-        // back as 15.
-        defaultText: el.containsKey('defaultValue') ? _controllerTextFor(key, el['defaultValue']) : null,
-        keyboardType: _keyboardTypeFor(fieldType),
-        textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
-        inputFormatters: _inputFormattersFor(fieldType, el),
-        autofillHints: _getAutofillHints(key, fieldType),
-        onClosed: (text) => _commitTextEdit(el, fieldType, text),
+      builder: (dialogContext) => NumbersRowExtraKey(
+        extraKey: _numbersRowKeyFor(el),
+        child: _TextEditDialog(
+          label: el['label'] as String? ?? '',
+          placeholder: el['placeholder'] as String?,
+          fieldType: fieldType,
+          initialText: _controllerTextFor(key, _values[key]),
+          // Localized like every other text this dialog shows: the Defaults
+          // button assigns straight to the controller, bypassing the input
+          // formatter, so a raw `1.5` under comma conventions would be read
+          // back as 15.
+          defaultText: el.containsKey('defaultValue') ? _controllerTextFor(key, el['defaultValue']) : null,
+          keyboardType: _keyboardTypeFor(fieldType),
+          textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
+          inputFormatters: _inputFormattersFor(fieldType, el),
+          autofillHints: _getAutofillHints(key, fieldType),
+          onClosed: (text) => _commitTextEdit(el, fieldType, text),
+        ),
       ),
     );
   }
@@ -1649,6 +1653,15 @@ class FormRendererState extends State<FormRenderer> with _ListFields {
     final field = _fields.firstWhere((f) => f['key'] == key, orElse: () => const {});
     return field['fieldType'] == 'number' ? _numberText(value) : (value?.toString() ?? '');
   }
+
+  /// The mobile numbers row's extra key for [el] (see [NumbersRowExtraKey]):
+  /// the field's own `numbersRowKey`, else "/" in a callsign field and the
+  /// row's decimal default elsewhere. The dialog editor gets it too — it is a
+  /// route of its own, outside the field's ancestors.
+  ///
+  /// Not in the SDK's `FormField`: the row only shows over the logging panel
+  /// and its More pane, and no extension form opens there.
+  String? _numbersRowKeyFor(Map<String, dynamic> el) => NumbersRowExtraKey.declared(el['numbersRowKey']) ?? (el['fieldType'] == 'callsign' ? '/' : null);
 
   TextInputType? _keyboardTypeFor(String fieldType) => switch (fieldType) {
     'email' => TextInputType.emailAddress,
