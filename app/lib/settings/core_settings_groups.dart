@@ -20,6 +20,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/cat_server/cat_server_service.dart';
 import '../services/extensions/extension_service.dart';
 import '../services/logging_scope.dart';
+import '../services/map_preferences.dart';
 import '../services/settings_service.dart';
 import '../tools/sync_account_identity.dart';
 import 'cat_server_dialog.dart';
@@ -1040,7 +1041,8 @@ String _numText(double value) => value == value.roundToDouble() ? value.toInt().
 /// The Map tab's basemap picker (see map_panel.dart / map_gl_script.dart's
 /// `mapLibreStyleUrl`) — the OSM backend has no equivalent choice to offer,
 /// but that only matters on Linux, where this group still shows the field
-/// (it just goes unused there). `target: 'map'` is what the tab's own
+/// (it just goes unused there) — and its Show Callsigns toggle, which every
+/// backend honors. `target: 'map'` is what the tab's own
 /// settings button (operation/operation_view_dock.dart) opens; the field is also reachable
 /// from Settings, same as every other target-scoped field.
 class MapSettingsGroup extends SettingsGroup {
@@ -1072,14 +1074,26 @@ class MapSettingsGroup extends SettingsGroup {
         options: [for (final style in MapStyle.values) (label: t['settings.map.styleOpts.${style.name}'] as String, value: style.name)],
         target: 'map',
       ),
+      _toggle(
+        key: 'mapShowCallsigns',
+        label: s.showCallsigns.title,
+        description: s.showCallsigns.description,
+        icon: 'label-outline',
+        value: settings.mapShowCallsigns,
+        target: 'map',
+      ),
     ];
   }
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
-    if (fieldKey != 'mapStyle' || value is! String) return;
-    final style = MapStyle.values.firstWhere((e) => e.name == value, orElse: () => MapStyle.automatic);
-    await settings.setMapStyle(style);
+    switch (fieldKey) {
+      case 'mapStyle' when value is String:
+        final style = MapStyle.values.firstWhere((e) => e.name == value, orElse: () => MapStyle.automatic);
+        await settings.setMapStyle(style);
+      case 'mapShowCallsigns' when value is bool:
+        await settings.setMapShowCallsigns(value);
+    }
   }
 }
 

@@ -3,7 +3,8 @@
 //
 // The Map tab facade: builds the backend-agnostic
 // marker and line lists once — a band-colored circle per QSO with any
-// location (grid square, or guessed from state / DXCC entity prefix), a
+// location (grid square, or guessed from state / DXCC entity prefix), or a
+// band-colored pill with its callsign under the Show Callsigns setting, a
 // black circle per station QTH, and a great-circle line connecting each QSO
 // back to its QTH — then picks a rendering backend:
 //   - macOS/Windows/iOS/Android: MapboxWebviewMapView (MapLibre GL JS in a
@@ -28,6 +29,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/geoshape_service.dart';
+import '../../services/map_preferences.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
@@ -616,6 +618,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       colors: HaLoColors.of(context),
       locale: LocaleSettings.currentLocale,
       dark: isDark,
+      callsigns: widget.settings.mapShowCallsigns,
     );
     if (identical(_builtQsos, widget.qsos) && _builtWith == shared) return;
     if (_builtWith != shared) _contacts.clear();
@@ -666,7 +669,16 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       // time. Synced records from before stamps existed arrive that way, and a
       // peer's edit to one arrives stamp-less too.
       if (entry == null || entry.stamp == null || entry.stamp != qso.updatedAtMillis) {
-        entry = _derive(qso, qthGrids, operationGrid, shared.colors, miles: shared.miles, lineColor: lineColor, strokeColor: qsoStroke);
+        entry = _derive(
+          qso,
+          qthGrids,
+          operationGrid,
+          shared.colors,
+          miles: shared.miles,
+          callsigns: shared.callsigns,
+          lineColor: lineColor,
+          strokeColor: qsoStroke,
+        );
         _contacts[qso.uuid] = entry;
       }
       if (entry.marker case final marker?) qsoMarkers.add(marker);
@@ -708,6 +720,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     String? operationGrid,
     HaLoColors colors, {
     required bool miles,
+    required bool callsigns,
     required Color lineColor,
     required Color strokeColor,
   }) {
@@ -715,7 +728,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     if (location == null) return _ContactOnMap(stamp: qso.updatedAtMillis, marker: null, lines: const []);
     final qthGrid = qso.ourDisplayGrid ?? operationGrid;
     final qth = qthGrid == null ? null : qthGrids[qthGrid.toUpperCase()]?.location ?? qso.ourLocation;
-    final marker = _markerForQso(qso, location, qth, colors, miles: miles, strokeColor: strokeColor);
+    final marker = _markerForQso(qso, location, qth, colors, miles: miles, callsigns: callsigns, strokeColor: strokeColor);
     if (qth == null) return _ContactOnMap(stamp: qso.updatedAtMillis, marker: marker, lines: const []);
     final segments = greatCirclePoints(location, qth);
     return _ContactOnMap(
@@ -735,7 +748,15 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     strokeColor: isDark ? _qsoStrokeDark : _qsoStrokeLight,
   );
 
-  MapMarkerData _markerForQso(Qso qso, GridLocation location, GridLocation? qth, HaLoColors poloColors, {required bool miles, required Color strokeColor}) {
+  MapMarkerData _markerForQso(
+    Qso qso,
+    GridLocation location,
+    GridLocation? qth,
+    HaLoColors poloColors, {
+    required bool miles,
+    required bool callsigns,
+    required Color strokeColor,
+  }) {
     final distanceStr = qth == null ? null : fmtDistance(distanceOnEarthKm(location, qth), miles: miles);
 
     final startAt = qso.startAt;
@@ -751,13 +772,15 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     final prefix = leadParts.isEmpty ? '' : leadParts.join(' • ') + (band.isEmpty ? '' : ' • ');
     final suffix = timeStr == null ? '' : (band.isEmpty && leadParts.isEmpty ? timeStr : ' • $timeStr');
 
+    final color = poloColors.bands[qso.band] ?? mapUnknownBandColor;
     return MapMarkerData(
       id: qso.uuid,
       latitude: location.latitude,
       longitude: location.longitude,
       label: qso.theirCall,
       kind: MapMarkerKind.qso,
-      color: poloColors.bands[qso.band] ?? mapUnknownBandColor,
+      color: color,
+      labelColor: callsigns ? mapPillLabelColor(color) : null,
       strokeColor: strokeColor,
       sizeFactor: _sizeFactorForQso(qso),
       popupTitle: distanceStr == null ? qso.theirCall : '${qso.theirCall} • $distanceStr',
@@ -828,6 +851,9 @@ class _MapProjectionButton extends StatelessWidget {
   }
 }
 
+/// Black or white, whichever reads on a pill of [fill].
+Color mapPillLabelColor(Color fill) => ThemeData.estimateBrightnessForColor(fill) == Brightness.dark ? Colors.white : Colors.black;
+
 /// A brighter, more vivid take on [base] for the map highlight: same hue,
 /// pushed to full saturation and a punchy mid lightness so it pops over the
 /// map tiles, rather than the theme's muted tertiary/secondary (light-mode
@@ -843,8 +869,10 @@ Color mapHighlightColor(Color base) {
 /// [editingColor] when editing one (`CallInfoData.isEditing`) — the caller
 /// passes `colorScheme.tertiary` / `.secondary` to match LoggingControls' own
 /// accent. Both items are flagged `highlight: true` so each backend draws them
-/// last, on top. Extracted (and public) so the colour/location logic is unit
-/// testable without a live map backend.
+/// last, on top. The marker is a pill with the call whether or not the log's
+/// contacts are: it is the one call on the map not yet in the log, and the
+/// operator is checking where it lands. Extracted (and public) so the
+/// colour/location logic is unit testable without a live map backend.
 ({List<MapMarkerData> markers, List<MapLineData> lines}) buildHighlightData({
   required CallInfoData? callInfo,
   required GridLocation? operationLocation,
@@ -873,9 +901,8 @@ Color mapHighlightColor(Color base) {
     label: callInfo.call,
     kind: MapMarkerKind.qso,
     color: accent,
+    labelColor: mapPillLabelColor(accent),
     strokeColor: strokeColor,
-    // Largest size, so it reads as the one you're working on.
-    sizeFactor: 1.3,
     highlight: true,
     popupTitle: callInfo.call,
   );
@@ -912,7 +939,16 @@ class _SharedMapInputs {
   final HaLoColors colors;
   final AppLocale locale;
   final bool dark;
-  const _SharedMapInputs({required this.grid, required this.qth, required this.miles, required this.colors, required this.locale, required this.dark});
+  final bool callsigns;
+  const _SharedMapInputs({
+    required this.grid,
+    required this.qth,
+    required this.miles,
+    required this.colors,
+    required this.locale,
+    required this.dark,
+    required this.callsigns,
+  });
 
   @override
   bool operator ==(Object other) =>
@@ -922,8 +958,9 @@ class _SharedMapInputs {
       miles == other.miles &&
       colors == other.colors &&
       locale == other.locale &&
-      dark == other.dark;
+      dark == other.dark &&
+      callsigns == other.callsigns;
 
   @override
-  int get hashCode => Object.hash(grid, qth, miles, colors, locale, dark);
+  int get hashCode => Object.hash(grid, qth, miles, colors, locale, dark, callsigns);
 }

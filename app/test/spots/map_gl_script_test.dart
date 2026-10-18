@@ -9,6 +9,7 @@
 
 import 'dart:convert';
 
+import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapGlScript;
@@ -265,6 +266,122 @@ void main() {
       expect(jsonDecode(page.run('JSON.stringify(window.lastFitPoints)')), [
         [-74, 40],
       ]);
+    });
+  });
+
+  group('Show Callsigns pills', () {
+    MapMarkerData qso(String id, {bool highlight = false, bool pill = true}) => MapMarkerData(
+      id: id,
+      latitude: 40,
+      longitude: -74,
+      label: id.toUpperCase(),
+      kind: MapMarkerKind.qso,
+      color: const Color(0xFF2196F3),
+      labelColor: pill ? const Color(0xFFFFFFFF) : null,
+      strokeColor: const Color(0xFF1A1A1A),
+      highlight: highlight,
+    );
+    const qth = MapMarkerData(
+      id: 'qth-FN20',
+      latitude: 41,
+      longitude: -73,
+      label: 'FN20',
+      kind: MapMarkerKind.qth,
+      color: Color(0xFF000000),
+      strokeColor: Color(0xFFFFFFFF),
+    );
+    void setMarkers(List<MapMarkerData> markers) => page.run('handle.setMarkers(${jsonEncode(mapMarkersPayload(markers))})');
+    List<dynamic> features(String source) => (jsonDecode(page.run("JSON.stringify(fakeMap.getSource('$source').data.features)")) as List);
+
+    // Each pill is one picture with its call in it. Drawn as a symbol's
+    // text over a pill icon instead, the calls of a stack of pills — a
+    // country's contacts on its centre — all show through the top one:
+    // MapLibre draws a layer's icons, then all of its text.
+    test('a contact with a label colour is a pill image carrying its call, and no dot under it', () {
+      page = GlPage(framed: false);
+      setMarkers([qso('k1abc'), qso('w2xyz', pill: false), qth]);
+      final pill = features('polo-marker-pills').single['properties'] as Map;
+      expect(pill['id'], 'k1abc');
+      final drawn = jsonDecode(page.run("JSON.stringify(fakeMap.images['${pill['image']}'].image.texts)")) as List;
+      expect(drawn, [
+        {'text': 'K1ABC', 'fillStyle': '#ffffff'},
+      ]);
+      expect(page.run("String(fakeMap.getLayer('polo-marker-pills').layout['text-field'])"), 'undefined', reason: 'no text drawn apart from its pill');
+      // A pill drawn over its own circle would show the circle's ring at
+      // both ends of a short call.
+      expect([for (final f in features('polo-markers')) f['properties']['id']], ['w2xyz', 'qth-FN20']);
+    });
+
+    test('a call no longer on the map gives its pill image back', () {
+      page = GlPage(framed: false);
+      // The current QSO's call, as it is typed.
+      setMarkers([qso('a'), qso('k1', highlight: true)]);
+      setMarkers([qso('a'), qso('k1a', highlight: true)]);
+      final images = (jsonDecode(page.run('JSON.stringify(Object.keys(fakeMap.images))')) as List).cast<String>();
+      expect(images.where((id) => id.endsWith('-K1')), isEmpty, reason: 'one image per keystroke would stay registered');
+      expect(images.where((id) => id.endsWith('-K1A')), hasLength(1));
+      expect(images.where((id) => id.endsWith('-A')), hasLength(1), reason: 'a pill still drawn keeps its image');
+    });
+
+    // MapLibre copies every image a tile names each time it parses it, and
+    // zoomed out one tile holds the whole log: resent with each keystroke,
+    // a long log's pills are megabytes copied per letter typed.
+    test("a keystroke resends the current QSO's pill and leaves the log's alone", () {
+      page = GlPage(framed: false);
+      setMarkers([qso('a'), qso('b'), qso('k1', highlight: true)]);
+      int sets(String source) => int.parse(page.run("String(fakeMap.getSource('$source').sets)"));
+      final logSets = sets('polo-marker-pills');
+      setMarkers([qso('a'), qso('b'), qso('k1a', highlight: true)]);
+      expect(sets('polo-marker-pills'), logSets);
+      expect(features('polo-marker-pills-highlight').single['properties']['id'], 'k1a');
+
+      setMarkers([qso('a'), qso('b'), qso('c'), qso('k1a', highlight: true)]);
+      expect(sets('polo-marker-pills'), logSets + 1, reason: 'a logged contact still reaches the map');
+    });
+
+    // A basemap or light/dark swap throws every registered image away with
+    // the style, and puts the markers back through setMarkers: a script that
+    // trusted its own record of what it registered would draw no pills.
+    test('pills are drawn again after a style swap drops their images', () {
+      page = GlPage(framed: false);
+      setMarkers([qso('a')]);
+      final image = features('polo-marker-pills').single['properties']['image'] as String;
+      page.run('Object.keys(fakeMap.images).forEach(function (id) { delete fakeMap.images[id]; });');
+      setMarkers([qso('a')]);
+      expect(page.run("String(!!fakeMap.images['$image'])"), 'true');
+    });
+
+    test('pills sit under the QTH dots, and the current QSO over the log and its own line', () {
+      page = GlPage(framed: false);
+      setMarkers([qso('a')]);
+      final order = (jsonDecode(page.run('JSON.stringify(fakeMap.layerOrder)')) as List).cast<String>();
+      expect(order.indexOf('polo-marker-pills'), lessThan(order.indexOf('polo-markers')));
+      expect(order.indexOf('polo-marker-pills-highlight'), greaterThan(order.indexOf('polo-lines-highlight')));
+    });
+
+    test("the log's pills step back behind the current QSO", () {
+      page = GlPage(framed: false);
+      setMarkers([qso('a'), qso('current', highlight: true)]);
+      expect(jsonDecode(page.run("JSON.stringify(fakeMap.getLayer('polo-marker-pills').paint['icon-opacity'])")), isNot(1));
+      expect(page.run("String(fakeMap.getLayer('polo-marker-pills-highlight').paint)"), 'undefined', reason: 'the current QSO is never dimmed');
+    });
+
+    test('shrink with the zoom, less than a dot', () {
+      page = GlPage(framed: false);
+      setMarkers([qso('a')]);
+      final size = jsonDecode(page.run("JSON.stringify(fakeMap.getLayer('polo-marker-pills').layout['icon-size'])")) as List;
+      expect([size[3], size[4], size[5], size[6]], [mapMarkerSmallAtZoom, mapPillSmallScale, mapMarkerFullAtZoom, 1]);
+      expect(mapPillSmallScale, greaterThan(mapMarkerSmallScale));
+    });
+
+    test('a tap on a pill opens its popup', () {
+      page = GlPage(framed: false);
+      setMarkers([qso('a')]);
+      page.run("window.hits = [{ properties: { id: 'a' } }]; fakeMap.fire('click');");
+      // The fake answers any query with its hits; leaving the pill layers out
+      // of the query is what would make a real tap on a pill land on nothing.
+      expect(jsonDecode(page.run('JSON.stringify(window.lastQueryLayers)')), containsAll(['polo-marker-pills', 'polo-marker-pills-highlight']));
+      expect(page.run('handle.camera().popup'), 'a');
     });
   });
 

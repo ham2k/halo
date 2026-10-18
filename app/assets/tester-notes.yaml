@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New Show Callsigns map setting: each contact a pill with its call"
+
 "180":
   changes:
     - "New Show idle metrics developer setting: extension engine headroom in the status bar"

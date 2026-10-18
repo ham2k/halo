@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Flutter-rendered pieces for the OSM map backend: the circle marker
-// glyph and the tap callout card (callsign • distance / report • mode •
+// The Flutter-rendered pieces for the OSM map backend: the circle and pill
+// markers and the tap callout card (callsign • distance / report • mode •
 // band • time, with the band in its band color — same layout as
 // app-polo's map callout). The webview backend re-creates the same look in
 // HTML/CSS instead (see mapbox_webview_map_view.dart).
@@ -68,6 +68,44 @@ class MapCircleMarker extends StatelessWidget {
             ),
     );
   }
+}
+
+/// A marker with a [MapMarkerData.labelColor]: its label on a pill of its
+/// colour — the same geometry as the pill the GL script draws
+/// (map_gl_pill_script.dart's `ensurePillImage`), so the two read alike.
+class MapPillMarker extends StatelessWidget {
+  final MapMarkerData marker;
+
+  /// Its size against the full one, as the map's zoom sets it — see
+  /// [mapPillScaleAt].
+  final double scale;
+
+  const MapPillMarker({super.key, required this.marker, this.scale = 1});
+
+  // The GL script's PILL_TEXT_SIZE, PILL_PAD_X, PILL_PAD_Y and PILL_RING.
+  static const _textSize = 12.0;
+  static const _padX = 6.0;
+  static const _padY = 2.0;
+  static const _ring = 1.5;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    // Less the ring, which a ShapeDecoration adds to the padding: the GL
+    // pill's ring sits inside its padding.
+    padding: EdgeInsets.symmetric(horizontal: (_padX - _ring) * scale, vertical: (_padY - _ring) * scale),
+    decoration: ShapeDecoration(
+      color: marker.color,
+      shape: StadiumBorder(
+        side: BorderSide(color: marker.strokeColor, width: _ring * scale),
+      ),
+    ),
+    child: Text(
+      marker.label,
+      maxLines: 1,
+      softWrap: false,
+      style: TextStyle(fontSize: _textSize * scale, height: 1.2, fontWeight: FontWeight.w700, color: marker.labelColor),
+    ),
+  );
 }
 
 /// The callout shown when a circle is tapped.

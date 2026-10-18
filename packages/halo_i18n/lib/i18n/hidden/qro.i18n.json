@@ -1563,6 +1563,10 @@
       "style": {
         "title": "MAP STYLE"
       },
+      "showCallsigns": {
+        "title": "SHOW CALLSIGNS",
+        "description": "EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND'S COLOR"
+      },
       "styleOpts": {
         "automatic": "AUTOMATIC",
         "liberty": "LIBERTY",

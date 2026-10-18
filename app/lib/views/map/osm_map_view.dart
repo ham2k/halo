@@ -6,9 +6,10 @@
 // facade routing). Has no globe — flutter_map is a 2D tile compositor, not
 // a 3D renderer.
 //
-// QSOs are band-colored circles, the QTH a black one, connected by
-// great-circle polylines (pre-densified by the facade); tapping a circle
-// opens a callout with the QSO's details, tapping anywhere else closes it.
+// QSOs are band-colored circles, or pills with their calls, the QTH a black
+// circle, connected by great-circle polylines (pre-densified by the facade);
+// tapping a marker opens a callout with the QSO's details, tapping anywhere
+// else closes it.
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -538,6 +539,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   Marker _markerFor(MapMarkerData marker, double scale) {
     final cached = _markerWidgets[marker.id];
     if (cached != null && cached.data == marker && cached.scale == scale) return cached.marker;
+    if (marker.labelColor != null) return (_markerWidgets[marker.id] = (data: marker, scale: scale, marker: _pillMarkerFor(marker, scale))).marker;
     final built = Marker(
       point: LatLng(marker.latitude, marker.longitude),
       // A generous transparent hit area around the small circle.
@@ -564,6 +566,21 @@ class _OsmMapViewState extends State<OsmMapView> {
     return built;
   }
 
+  /// Wide enough for any call: the box is laid out around the pill, and only
+  /// the pill itself takes a tap — the rest of the box passes it through to
+  /// whatever is under it.
+  Marker _pillMarkerFor(MapMarkerData marker, double scale) => Marker(
+    point: LatLng(marker.latitude, marker.longitude),
+    width: 160,
+    height: 28,
+    child: Center(
+      child: GestureDetector(
+        onTap: () => widget.onMarkerTap != null ? widget.onMarkerTap!(marker.id) : setState(() => _selectedMarkerId = marker.id),
+        child: MapPillMarker(marker: marker, scale: scale),
+      ),
+    ),
+  );
+
   /// Drops cache entries for ids no longer drawn, so a long session does not
   /// hold every contact ever deleted.
   void _pruneCaches() {
@@ -583,12 +600,15 @@ class _OsmMapViewState extends State<OsmMapView> {
   );
 
   /// Under a builder reading the camera, so the markers shrink with the zoom
-  /// ([mapMarkerScaleAt]). The scale is rounded to a twentieth: each step
-  /// rebuilds every marker, and a pinch would otherwise do it every frame.
+  /// ([mapMarkerScaleAt], [mapPillScaleAt] for a pill). The scale is rounded
+  /// to a twentieth: each step rebuilds every marker, and a pinch would
+  /// otherwise do it every frame.
   Widget _markerLayer(List<MapMarkerData> markers) => Builder(
     builder: (context) {
-      final scale = (mapMarkerScaleAt(_glZoom(context)) * 20).round() / 20;
-      return MarkerLayer(markers: [for (final marker in markers) _markerFor(marker, scale)]);
+      final zoom = _glZoom(context);
+      final scale = (mapMarkerScaleAt(zoom) * 20).round() / 20;
+      final pillScale = (mapPillScaleAt(zoom) * 20).round() / 20;
+      return MarkerLayer(markers: [for (final marker in markers) _markerFor(marker, marker.labelColor != null ? pillScale : scale)]);
     },
   );
 }

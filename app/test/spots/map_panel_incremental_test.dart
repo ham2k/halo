@@ -20,8 +20,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/geoshape_service.dart';
+import 'package:ham2k_logger/services/map_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
+import 'package:ham2k_logger/views/map/map_popup.dart' show MapPillMarker;
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/map_panel.dart';
 
@@ -109,6 +111,30 @@ void main() {
       expect(identical(again[0], lines[0]) && identical(again[1], lines[1]), isTrue, reason: 'nothing re-derived');
       final markersAgain = qsoMarkersOf(tester);
       expect(markersAgain.every((m) => markers.any((was) => identical(was, m))), isTrue);
+    }),
+  );
+
+  // The contacts are cached by stamp, and turning Show Callsigns on stamps
+  // none of them: without the setting among the cache's shared inputs, the
+  // map would keep its dots until each contact happened to be edited.
+  testWidgets(
+    'turning Show Callsigns on turns every cached contact into a pill with its call, and off again',
+    (tester) => onLinux(() async {
+      await tester.pumpWidget(host([_contact('a', stamp: 1), _contact('b', stamp: 2, call: 'G4AAA')]));
+      await tester.pumpAndSettle();
+      expect(qsoMarkersOf(tester).map((m) => m.labelColor), everyElement(isNull));
+
+      await settings.setMapShowCallsigns(true);
+      await tester.pumpAndSettle();
+      final pills = qsoMarkersOf(tester);
+      expect(pills.map((m) => m.labelColor), everyElement(isNotNull));
+      expect(pills.map((m) => m.label).toSet(), {'G0AAA', 'G4AAA'});
+      expect(find.byType(MapPillMarker), findsNWidgets(2));
+
+      await settings.setMapShowCallsigns(false);
+      await tester.pumpAndSettle();
+      expect(qsoMarkersOf(tester).map((m) => m.labelColor), everyElement(isNull));
+      expect(find.byType(MapPillMarker), findsNothing);
     }),
   );
 

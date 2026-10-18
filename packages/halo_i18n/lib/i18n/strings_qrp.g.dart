@@ -2191,6 +2191,7 @@ class _Translations$settings$map$qrp extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'maps';
 	@override late final _Translations$settings$map$style$qrp style = _Translations$settings$map$style$qrp._(_root);
+	@override late final _Translations$settings$map$showCallsigns$qrp showCallsigns = _Translations$settings$map$showCallsigns$qrp._(_root);
 	@override late final _Translations$settings$map$styleOpts$qrp styleOpts = _Translations$settings$map$styleOpts$qrp._(_root);
 }
 
@@ -3706,6 +3707,17 @@ class _Translations$settings$map$style$qrp extends Translations$settings$map$sty
 	@override String get title => 'map style';
 }
 
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$qrp extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'show callsigns';
+	@override String get description => 'each contact is a pill with its callsign, in its band\'s color';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$qrp extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -5175,6 +5187,8 @@ extension on TranslationsQrp {
 			'settings.exports.title' => 'exports',
 			'settings.map.title' => 'maps',
 			'settings.map.style.title' => 'map style',
+			'settings.map.showCallsigns.title' => 'show callsigns',
+			'settings.map.showCallsigns.description' => 'each contact is a pill with its callsign, in its band\'s color',
 			'settings.map.styleOpts.automatic' => 'automatic',
 			'settings.map.styleOpts.liberty' => 'liberty',
 			'settings.map.styleOpts.bright' => 'bright',
@@ -5439,10 +5453,10 @@ extension on TranslationsQrp {
 			'settings.station.rspTcpNotes' => 'this connects to an **rsp_tcp server you run yourself** on the computer the rsp is plugged into, with sdrplay\'s api installed there.\n\n- **start it** with `rsp_tcp -a 0.0.0.0`.\n- **port** is 1234 unless you started it with `-p`.\n- **one program at a time:** the server takes a single client. the app connects only while a spectrum display is showing.',
 			'settings.station.n3fjpNoRig' => 'n3fjp has no radio interface set up, so this follows what is typed into n3fjp, not a radio',
 			'settings.station.winkeyerKeyPort' => 'key output',
-			'settings.station.winkeyerKeyPortDescription' => 'which of the keyer\'s two output jacks your radio is plugged into.',
-			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'port ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.winkeyerKeyPortDescription' => 'which of the keyer\'s two output jacks your radio is plugged into.',
+			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'port ${n}',
 			'settings.station.winkeyerPtt' => 'use the keyer\'s ptt',
 			'settings.station.winkeyerPttDescription' => 'key the ptt line on the same jack, for an amplifier or a radio that needs it. leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'no winkeyer responded on this port',
@@ -5953,10 +5967,10 @@ extension on TranslationsQrp {
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'no notices yet',
 			'notices.webStorageInMemory' => 'this browser could not provide persistent storage — the log lives in memory only and will be lost when this tab closes. use a current chrome, firefox, safari or edge.',
-			'notices.webStorageUnreliable' => 'this browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
-			'notices.logFromNewerBuildTitle' => 'this log needs a newer version',
 			_ => null,
 		} ?? switch (path) {
+			'notices.webStorageUnreliable' => 'this browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
+			'notices.logFromNewerBuildTitle' => 'this log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'your log was written by a newer version of halo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. install the newer version again — or, if you meant to run this build, point it at a different data folder. the log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'your log was written by a newer version of halo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'settings restored from a backup',

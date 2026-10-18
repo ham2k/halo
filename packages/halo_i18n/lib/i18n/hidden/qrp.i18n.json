@@ -1563,6 +1563,10 @@
       "style": {
         "title": "map style"
       },
+      "showCallsigns": {
+        "title": "show callsigns",
+        "description": "each contact is a pill with its callsign, in its band's color"
+      },
       "styleOpts": {
         "automatic": "automatic",
         "liberty": "liberty",

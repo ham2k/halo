@@ -6,7 +6,8 @@
 // (map_panel.dart) from `Qso`/`Operation` domain objects via halo_core's
 // location resolution and great-circle math, so no backend widget touches
 // halo_core's QSO shape directly or re-derives geo math. Markers are plain
-// circles (band-colored for QSOs, black for the QTH); lines are
+// circles (band-colored for QSOs, black for the QTH) or, with a
+// [MapMarkerData.labelColor], pills holding their label; lines are
 // pre-densified great-circle polylines, already split at the antimeridian.
 
 import 'dart:convert';
@@ -149,6 +150,12 @@ class MapMarkerData {
   /// dots that make up every QSO map.
   final MapMarkerGlyph? glyph;
 
+  /// When set, the marker is a pill holding [label] in this colour over
+  /// [color], ringed in [strokeColor], rather than a circle — and
+  /// [sizeFactor] is not read. The facade picks it to contrast with [color],
+  /// which no backend could do as well from a hex string.
+  final Color? labelColor;
+
   /// Whether the camera's fit-to-markers counts this one. Off for a marker
   /// that arrives BECAUSE the operator moved the map (the Activities map's
   /// references found by panning): counted, each arrival would refit the
@@ -189,6 +196,7 @@ class MapMarkerData {
     this.popupDetailSuffix = '',
     this.highlight = false,
     this.glyph,
+    this.labelColor,
     this.fitsCamera = true,
     this.fitKey,
     this.fadesWithZoom = false,
@@ -212,6 +220,7 @@ class MapMarkerData {
     popupDetailSuffix: popupDetailSuffix,
     highlight: highlight,
     glyph: glyph,
+    labelColor: labelColor,
     fitsCamera: fitsCamera,
     fitKey: fitKey,
     fadesWithZoom: fadesWithZoom,
@@ -236,6 +245,7 @@ class MapMarkerData {
     popupDetailSuffix: popupDetailSuffix,
     highlight: highlight,
     glyph: glyph ?? this.glyph,
+    labelColor: labelColor,
     fitsCamera: fitsCamera,
     fitKey: fitKey,
     // The chosen one stays at full strength whatever the zoom: its card is
@@ -260,6 +270,7 @@ class MapMarkerData {
     popupDetailSuffix: popupDetailSuffix,
     highlight: highlight,
     glyph: glyph,
+    labelColor: labelColor,
     fitsCamera: fitsCamera ?? this.fitsCamera,
     fitKey: fitKey ?? this.fitKey,
     fadesWithZoom: fadesWithZoom ?? this.fadesWithZoom,
@@ -287,6 +298,7 @@ class MapMarkerData {
           popupDetailSuffix == other.popupDetailSuffix &&
           highlight == other.highlight &&
           glyph == other.glyph &&
+          labelColor == other.labelColor &&
           fitsCamera == other.fitsCamera &&
           fitKey == other.fitKey &&
           fadesWithZoom == other.fadesWithZoom);
@@ -308,6 +320,7 @@ class MapMarkerData {
     popupDetailSuffix,
     highlight,
     glyph,
+    labelColor,
     fitsCamera,
     fitKey,
     fadesWithZoom,
@@ -378,6 +391,7 @@ List<Map<String, dynamic>> mapMarkersPayload(List<MapMarkerData> markers) => [
       'fitKey': ?m.fitKey,
       if (m.fadesWithZoom) 'fades': true,
       if (!m.dimsBehindHighlight) 'steady': true,
+      if (m.labelColor case final labelColor?) 'labelColor': mapColorToHex(labelColor),
       // Base64 rather than a byte list: both bridges (the webview's
       // string-only channel and the web view's JS interop) carry a
       // string unchanged, while a 9KB list would be walked element by
@@ -423,6 +437,11 @@ const mapMarkerSmallAtZoom = 3.0;
 const mapMarkerFullAtZoom = 8.0;
 const mapMarkerSmallScale = 0.5;
 
+/// What a pill ([MapMarkerData.labelColor]) shrinks to over the same band:
+/// less than a dot, since a callsign at half size is no longer one anyone
+/// can read.
+const mapPillSmallScale = 0.75;
+
 /// Fill for a QSO whose band isn't in the theme's band table — app-polo's
 /// '#FF0000' fallback. Deliberately NOT bandColor's own 'other' fallback
 /// (black): that's the QTH circle's color, and an unknown-band QSO must not
@@ -442,6 +461,12 @@ const mapDimmedOpacity = 0.2;
 double mapMarkerScaleAt(double glZoom) {
   final t = ((glZoom - mapMarkerSmallAtZoom) / (mapMarkerFullAtZoom - mapMarkerSmallAtZoom)).clamp(0.0, 1.0);
   return mapMarkerSmallScale + (1 - mapMarkerSmallScale) * t;
+}
+
+/// A pill's size at [glZoom] against its full size — see [mapPillSmallScale].
+double mapPillScaleAt(double glZoom) {
+  final t = ((glZoom - mapMarkerSmallAtZoom) / (mapMarkerFullAtZoom - mapMarkerSmallAtZoom)).clamp(0.0, 1.0);
+  return mapPillSmallScale + (1 - mapPillSmallScale) * t;
 }
 
 /// A band of zoom, on the GL scale, over which something fades in: invisible

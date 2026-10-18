@@ -2191,6 +2191,7 @@ class _Translations$settings$map$qro extends Translations$settings$map$en {
 	// Translations
 	@override String get title => 'MAPS';
 	@override late final _Translations$settings$map$style$qro style = _Translations$settings$map$style$qro._(_root);
+	@override late final _Translations$settings$map$showCallsigns$qro showCallsigns = _Translations$settings$map$showCallsigns$qro._(_root);
 	@override late final _Translations$settings$map$styleOpts$qro styleOpts = _Translations$settings$map$styleOpts$qro._(_root);
 }
 
@@ -3706,6 +3707,17 @@ class _Translations$settings$map$style$qro extends Translations$settings$map$sty
 	@override String get title => 'MAP STYLE';
 }
 
+// Path: settings.map.showCallsigns
+class _Translations$settings$map$showCallsigns$qro extends Translations$settings$map$showCallsigns$en {
+	_Translations$settings$map$showCallsigns$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'SHOW CALLSIGNS';
+	@override String get description => 'EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND\'S COLOR';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$qro extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -5175,6 +5187,8 @@ extension on TranslationsQro {
 			'settings.exports.title' => 'EXPORTS',
 			'settings.map.title' => 'MAPS',
 			'settings.map.style.title' => 'MAP STYLE',
+			'settings.map.showCallsigns.title' => 'SHOW CALLSIGNS',
+			'settings.map.showCallsigns.description' => 'EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND\'S COLOR',
 			'settings.map.styleOpts.automatic' => 'AUTOMATIC',
 			'settings.map.styleOpts.liberty' => 'LIBERTY',
 			'settings.map.styleOpts.bright' => 'BRIGHT',
@@ -5439,10 +5453,10 @@ extension on TranslationsQro {
 			'settings.station.rspTcpNotes' => 'THIS CONNECTS TO AN **RSP_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE RSP IS PLUGGED INTO, WITH SDRPLAY\'S API INSTALLED THERE.\n\n- **START IT** WITH `rsp_tcp -a 0.0.0.0`.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** THE SERVER TAKES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING.',
 			'settings.station.n3fjpNoRig' => 'N3FJP HAS NO RADIO INTERFACE SET UP, SO THIS FOLLOWS WHAT IS TYPED INTO N3FJP, NOT A RADIO',
 			'settings.station.winkeyerKeyPort' => 'KEY OUTPUT',
-			'settings.station.winkeyerKeyPortDescription' => 'WHICH OF THE KEYER\'S TWO OUTPUT JACKS YOUR RADIO IS PLUGGED INTO.',
-			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'PORT ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.winkeyerKeyPortDescription' => 'WHICH OF THE KEYER\'S TWO OUTPUT JACKS YOUR RADIO IS PLUGGED INTO.',
+			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'PORT ${n}',
 			'settings.station.winkeyerPtt' => 'USE THE KEYER\'S PTT',
 			'settings.station.winkeyerPttDescription' => 'KEY THE PTT LINE ON THE SAME JACK, FOR AN AMPLIFIER OR A RADIO THAT NEEDS IT. LEAVE OFF FOR A RADIO KEYED ON ITS KEY JACK.',
 			'settings.station.winkeyerNoAnswer' => 'NO WINKEYER RESPONDED ON THIS PORT',
@@ -5953,10 +5967,10 @@ extension on TranslationsQro {
 			'versionLabel.build' => ({required Object build}) => 'BUILD ${build}',
 			'notices.emptyHistory' => 'NO NOTICES YET',
 			'notices.webStorageInMemory' => 'THIS BROWSER COULD NOT PROVIDE PERSISTENT STORAGE — THE LOG LIVES IN MEMORY ONLY AND WILL BE LOST WHEN THIS TAB CLOSES. USE A CURRENT CHROME, FIREFOX, SAFARI OR EDGE.',
-			'notices.webStorageUnreliable' => 'THIS BROWSER IS USING FALLBACK STORAGE THAT IS NOT SAFE WITH MULTIPLE TABS — KEEP A SINGLE TAB OPEN, AND KEEP SYNC ON.',
-			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
 			_ => null,
 		} ?? switch (path) {
+			'notices.webStorageUnreliable' => 'THIS BROWSER IS USING FALLBACK STORAGE THAT IS NOT SAFE WITH MULTIPLE TABS — KEEP A SINGLE TAB OPEN, AND KEEP SYNC ON.',
+			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. INSTALL THE NEWER VERSION AGAIN — OR, IF YOU MEANT TO RUN THIS BUILD, POINT IT AT A DIFFERENT DATA FOLDER. THE LOG IS IN ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. OPEN THIS LOG WITH THAT NEWER VERSION INSTEAD.',
 			'notices.preferencesRestoredTitle' => 'SETTINGS RESTORED FROM A BACKUP',

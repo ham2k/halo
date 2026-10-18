@@ -56,7 +56,22 @@ void main() {
     expect(marker.color, composing, reason: 'composing a new QSO uses the orange/tertiary accent');
     expect(marker.label, 'W1AW');
     expect(marker.kind, MapMarkerKind.qso);
-    expect(marker.sizeFactor, greaterThan(1.0), reason: 'drawn larger so it reads as the current QSO');
+    // buildHighlightData has no say in the Show Callsigns setting: the call
+    // being typed is a pill even on a map of plain dots.
+    expect(marker.labelColor, isNotNull, reason: 'drawn as a pill with its call, so it reads as the current QSO');
+  });
+
+  test("the pill's call is legible on either accent", () {
+    ({List<MapMarkerData> markers, List<MapLineData> lines}) onAccents(bool isEditing) => buildHighlightData(
+      callInfo: CallInfoData(call: 'W1AW', guess: {'grid': 'FN31pr'}, isEditing: isEditing),
+      operationLocation: gridToLocation('CM87'),
+      composingColor: const Color(0xFFFFEE58),
+      editingColor: const Color(0xFF0D47A1),
+      strokeColor: stroke,
+    );
+    // A fixed label colour would pass one of these and fail the other.
+    expect(onAccents(false).markers.single.labelColor, const Color(0xFF000000), reason: 'black on a pale yellow accent');
+    expect(onAccents(true).markers.single.labelColor, const Color(0xFFFFFFFF), reason: 'white on a deep blue one');
   });
 
   // The guess carries a coordinate whenever the lookup knew one (QRZ reports
@@ -103,10 +118,12 @@ void main() {
 
     expect(added, [
       'polo-lines',
+      'polo-marker-pills',
       'polo-markers',
       'polo-lines-highlight',
       'polo-markers-highlight',
-    ], reason: "the current QSO's line has to come after the base markers, or it passes under their dots");
+      'polo-marker-pills-highlight',
+    ], reason: "the current QSO's line has to come after the base markers, dots and pills, or it passes under them");
   });
 
   // A maplibregl.Marker is a DOM element above the canvas, which no layer can

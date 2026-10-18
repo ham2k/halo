@@ -57,6 +57,7 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import '../../services/settings_service.dart' show MapStyle;
 import 'map_gl_overlays_script.dart';
+import 'map_gl_pill_script.dart';
 import 'map_gl_spread_script.dart';
 import 'map_marker_data.dart' show mapDimmedOpacity, mapMarkerFullAtZoom, mapMarkerSmallAtZoom, mapMarkerSmallScale;
 import 'map_zoom_controller.dart' show MapZoomController, mapSnapshotRemovedMessage, mapSnapshotTimeoutMessage, mapSnapshotTimeoutMs;
@@ -362,7 +363,7 @@ window.poloMapGl = {
     map.on('load', applySky);
 
     const EMPTY = { type: 'FeatureCollection', features: [] };
-    const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight', 'polo-marker-icons'];
+    const MARKER_LAYERS = ['polo-markers', 'polo-markers-highlight', 'polo-marker-icons', 'polo-marker-pills', 'polo-marker-pills-highlight'];
     const FIT_MAX_ZOOM = ${MapZoomController.fitMaxZoom};
 
     // The marker data behind the rendered circles, by feature id — a click
@@ -841,6 +842,7 @@ $mapGlOverlaysScript
       };
     }
 
+$mapGlPillScript
     // setStyle throws away registered images along with sources and layers,
     // so this re-registers rather than trusting a flag: hasImage is the only
     // honest answer after a dark-mode swap.
@@ -897,6 +899,11 @@ $mapGlOverlaysScript
         if (!map.getSource('polo-lines')) map.addSource('polo-lines', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-markers')) map.addSource('polo-markers', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-marker-icons')) map.addSource('polo-marker-icons', { type: 'geojson', data: EMPTY });
+        if (!map.getSource('polo-marker-pills')) {
+          map.addSource('polo-marker-pills', { type: 'geojson', data: EMPTY });
+          basePillsSent = null;
+        }
+        if (!map.getSource('polo-marker-pills-highlight')) map.addSource('polo-marker-pills-highlight', { type: 'geojson', data: EMPTY });
         if (!map.getSource('polo-leaders')) map.addSource('polo-leaders', { type: 'geojson', data: EMPTY });
       } catch (err) {
         return false;
@@ -906,9 +913,12 @@ $mapGlOverlaysScript
       ensureLayer(lineLayer('polo-lines', false, 1.5));
       // Under every marker, so a spread marker covers the end of its own line.
       leaderLayers().forEach(ensureLayer);
+      // Under the dots, so a QTH is never buried under the contacts' pills.
+      ensureLayer(pillLayer('polo-marker-pills', false));
       ensureLayer(circleLayer('polo-markers', false));
       ensureLayer(lineLayer('polo-lines-highlight', true, 6));
       ensureLayer(circleLayer('polo-markers-highlight', true));
+      ensureLayer(pillLayer('polo-marker-pills-highlight', true));
       // Last, so a glyph marker is never buried under a plain dot that
       // happens to share its spot. Also what says the layers are fresh: the
       // paint below is the layers' own, set once when they are made, not on
@@ -941,7 +951,7 @@ $mapGlOverlaysScript
     // The highlight layers are never touched here: they keep the full
     // strength they were built with.
     function applyOpacities() {
-      if (!map.getLayer('polo-lines') || !map.getLayer('polo-markers') || !map.getLayer('polo-marker-icons') || !map.getLayer('polo-shapes-dashed') || !map.getLayer('polo-shapes-fill')) return;
+      if (!map.getLayer('polo-lines') || !map.getLayer('polo-markers') || !map.getLayer('polo-marker-icons') || !map.getLayer('polo-marker-pills') || !map.getLayer('polo-shapes-dashed') || !map.getLayer('polo-shapes-fill')) return;
       function fading(band, full) {
         return band ? ['interpolate', ['linear'], ['zoom'], band.from, 0, band.to, full] : full;
       }
@@ -958,6 +968,7 @@ $mapGlOverlaysScript
       // A glyph marker fades like a dot: a map drawing every suggestion in
       // its program's icon would otherwise be a carpet of them zoomed out.
       map.setPaintProperty('polo-marker-icons', 'icon-opacity', markerOpacity);
+      map.setPaintProperty('polo-marker-pills', 'icon-opacity', markerOpacity);
       map.setPaintProperty('polo-markers', 'circle-opacity', markerOpacity);
       map.setPaintProperty('polo-markers', 'circle-stroke-opacity', markerOpacity);
       map.setPaintProperty('polo-shapes-dashed', 'line-opacity', fading(zoomFades && zoomFades.dashedShapes, DASHED_OPACITY));
@@ -1100,6 +1111,8 @@ $mapGlSpreadScript
       const baseSig = [];
       let fitKey = null;
       const iconFeatures = [];
+      const pillFeatures = [];
+      const usedPills = new Set();
       const features = [];
       const spreading = [];
       let anyHighlighted = false;
@@ -1144,6 +1157,11 @@ $mapGlSpreadScript
           });
           return;
         }
+        const pill = m.labelColor ? pillFeature(m, geometry, usedPills) : null;
+        if (pill) {
+          pillFeatures.push(pill);
+          return;
+        }
         features.push({
           type: 'Feature',
           properties: {
@@ -1183,6 +1201,8 @@ $mapGlSpreadScript
       lastIconFeatures = iconFeatures;
       map.getSource('polo-markers').setData({ type: 'FeatureCollection', features: features });
       map.getSource('polo-marker-icons').setData({ type: 'FeatureCollection', features: iconFeatures });
+      setPills(pillFeatures);
+      releasePillImages(usedPills);
       if (anyHighlighted !== highlighted) {
         highlighted = anyHighlighted;
         applyOpacities();
@@ -1239,7 +1259,7 @@ $mapGlSpreadScript
       // popup describes the dot the operator can actually see.
       // Querying a layer that does not exist yet fires a map error rather than
       // returning nothing.
-      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight') && map.getLayer('polo-marker-icons');
+      const ready = MARKER_LAYERS.every(function (id) { return map.getLayer(id); });
       const hits = ready ? map.queryRenderedFeatures(e.point, { layers: MARKER_LAYERS }) : [];
       const marker = hits.length ? markersById[hits[0].properties.id] : null;
       if (marker) {
@@ -1262,7 +1282,7 @@ $mapGlSpreadScript
     // mousemove anyway, and their leave/enter can arrive in an order that
     // leaves the cursor wrong over a live dot.
     map.on('mousemove', function (e) {
-      const ready = map.getLayer('polo-markers') && map.getLayer('polo-markers-highlight') && map.getLayer('polo-marker-icons');
+      const ready = MARKER_LAYERS.every(function (id) { return map.getLayer(id); });
       const hits = ready ? map.queryRenderedFeatures(e.point, { layers: MARKER_LAYERS }) : [];
       map.getCanvas().style.cursor = hits.length ? 'pointer' : '';
     });

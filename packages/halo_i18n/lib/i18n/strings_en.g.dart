@@ -4587,6 +4587,7 @@ class Translations$settings$map$en {
 	String get title => 'Maps';
 
 	late final Translations$settings$map$style$en style = Translations$settings$map$style$en.internal(_root);
+	late final Translations$settings$map$showCallsigns$en showCallsigns = Translations$settings$map$showCallsigns$en.internal(_root);
 	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
 }
 
@@ -7933,6 +7934,21 @@ class Translations$settings$map$style$en {
 	String get title => 'Map Style';
 }
 
+// Path: settings.map.showCallsigns
+class Translations$settings$map$showCallsigns$en {
+	Translations$settings$map$showCallsigns$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Show Callsigns'
+	String get title => 'Show Callsigns';
+
+	/// en: 'Each contact is a pill with its callsign, in its band's color'
+	String get description => 'Each contact is a pill with its callsign, in its band\'s color';
+}
+
 // Path: settings.map.styleOpts
 class Translations$settings$map$styleOpts$en {
 	Translations$settings$map$styleOpts$en.internal(this._root);
@@ -9632,6 +9648,8 @@ extension on Translations {
 			'settings.exports.title' => 'Exports',
 			'settings.map.title' => 'Maps',
 			'settings.map.style.title' => 'Map Style',
+			'settings.map.showCallsigns.title' => 'Show Callsigns',
+			'settings.map.showCallsigns.description' => 'Each contact is a pill with its callsign, in its band\'s color',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
@@ -9896,10 +9914,10 @@ extension on Translations {
 			'settings.station.rspTcpNotes' => 'This connects to an **rsp_tcp server you run yourself** on the computer the RSP is plugged into, with SDRplay\'s API installed there.\n\n- **Start it** with `rsp_tcp -a 0.0.0.0`.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** the server takes a single client. The app connects only while a spectrum display is showing.',
 			'settings.station.n3fjpNoRig' => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio',
 			'settings.station.winkeyerKeyPort' => 'Key output',
-			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
-			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
+			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
 			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
 			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer responded on this port',
@@ -10410,10 +10428,10 @@ extension on Translations {
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
-			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
-			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
 			_ => null,
 		} ?? switch (path) {
+			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
+			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',

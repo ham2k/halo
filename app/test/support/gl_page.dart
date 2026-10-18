@@ -45,11 +45,25 @@ ResizeObserver.prototype.disconnect = function () {};
 var document = {
   // No MapLibre control is ever in one: querySelector finds nothing, as a
   // framed map's, which draws no attribution, finds no credits to tend.
-  createElement: function () {
+  createElement: function (tag) {
+    if (tag === 'canvas') return new FakeCanvas();
     return { style: {}, children: [], appendChild: function (c) { this.children.push(c); }, querySelector: function () { return null; } };
   },
   createTextNode: function (text) { return { text: text }; },
 };
+// A 2D canvas that keeps what was drawn on it as calls rather than pixels:
+// each text with the fill it was drawn in, for a test to read back.
+function FakeCanvas() {
+  var canvas = this;
+  canvas.width = 0;
+  canvas.height = 0;
+  var ctx = { texts: [] };
+  ['setTransform', 'beginPath', 'moveTo', 'lineTo', 'arc', 'closePath', 'fill', 'stroke'].forEach(function (name) { ctx[name] = function () {}; });
+  ctx.measureText = function (text) { return { width: text.length * 8, actualBoundingBoxAscent: 9, actualBoundingBoxDescent: 0 }; };
+  ctx.fillText = function (text) { ctx.texts.push({ text: text, fillStyle: ctx.fillStyle }); };
+  ctx.getImageData = function (x, y, w, h) { return { width: w, height: h, data: [], texts: ctx.texts.splice(0) }; };
+  canvas.getContext = function () { return ctx; };
+}
 function LngLatBounds() { this.n = 0; this.points = []; }
 LngLatBounds.prototype.extend = function (p) { this.n++; this.points.push(p); };
 LngLatBounds.prototype.isEmpty = function () { return this.n === 0; };
@@ -58,6 +72,8 @@ function FakeMap(options) {
   var listeners = {};
   var sources = {};
   var layers = {};
+  var layerOrder = [];
+  var images = {};
   var pixelRatio = null;
   this.options = options;
   this.on = function (type, fn) { (listeners[type] = listeners[type] || []).push({ fn: fn }); };
@@ -68,9 +84,14 @@ function FakeMap(options) {
     ls.forEach(function (l) { l.fn({}); });
   };
   this.getSource = function (id) { return sources[id]; };
-  this.addSource = function (id) { sources[id] = { setData: function () {} }; };
+  this.addSource = function (id) { sources[id] = { data: null, sets: 0, setData: function (data) { this.data = data; this.sets++; } }; };
   this.getLayer = function (id) { return layers[id]; };
-  this.addLayer = function (layer) { layers[layer.id] = layer; };
+  this.addLayer = function (layer) { layers[layer.id] = layer; layerOrder.push(layer.id); };
+  this.layerOrder = layerOrder;
+  this.hasImage = function (id) { return !!images[id]; };
+  this.addImage = function (id, image, options) { images[id] = { image: image, options: options }; };
+  this.removeImage = function (id) { delete images[id]; };
+  this.images = images;
   this.setPaintProperty = function (id, name, value) { layers[id].paint = Object.assign({}, layers[id].paint, { [name]: value }); };
   this.setLayoutProperty = function (id, name, value) { layers[id].layout = Object.assign({}, layers[id].layout, { [name]: value }); };
   this.fitBounds = function (bounds, options) { calls.push('fitBounds'); window.lastFitOptions = options; window.lastFitPoints = bounds.points; };
@@ -85,7 +106,7 @@ function FakeMap(options) {
   this.getBearing = function () { return options.bearing || 0; };
   this.getPitch = function () { return options.pitch || 0; };
   this.getContainer = function () { return options.container; };
-  this.queryRenderedFeatures = function () { return window.hits || []; };
+  this.queryRenderedFeatures = function (point, options) { window.lastQueryLayers = options && options.layers; return window.hits || []; };
   this.remove = function () {};
   window.fakeMap = this;
 }
