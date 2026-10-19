@@ -29,7 +29,6 @@ import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
 import 'extensions_panel.dart';
 import 'home_navigation_rail.dart';
-import 'app_shell/home_rail_state.dart';
 import 'chase_import_flow.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
@@ -668,9 +667,11 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
-        leadingWidth: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: homeRail.expanded)),
+        leadingWidth: HomeRailLogo.headerReserveOf(context),
         leading: const SizedBox.shrink(),
-        titleSpacing: Space.xl,
+        // None: the title opens with the sheet's dots, whose own padding is
+        // the gap after the mark.
+        titleSpacing: 0,
         // Rebuilt with the sheet's slide on its own — the dots and the gap
         // follow it frame by frame, and nothing else in the view does.
         title: AnimatedBuilder(animation: _sheetAnimation ?? kAlwaysDismissedAnimation, builder: (context, _) => _buildTitle(context, operation, goals)),
@@ -680,33 +681,35 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
           windowsCaptionSpacer(context),
         ],
       ),
-      body: PaneSafeArea.root(
-        context,
-        child: withViewOverrides(
-          ChaseImportDropTarget(
-            onFile: (file) => importDroppedChaseFile(context, widget.services, file, station: stationOfOperation(_operation)),
-            child: buildDock(
-              children: {
-                ChaseView.loggingPanelId: KeyedSubtree(
-                  key: _loggingKey,
-                  child: Builder(
-                    builder: (context) => KeyboardAccessoryVisibility(visible: DockPaneVisibility.of(context), child: loggingPanel),
+      body: BesideRail(
+        child: PaneSafeArea.root(
+          context,
+          child: withViewOverrides(
+            ChaseImportDropTarget(
+              onFile: (file) => importDroppedChaseFile(context, widget.services, file, station: stationOfOperation(_operation)),
+              child: buildDock(
+                children: {
+                  ChaseView.loggingPanelId: KeyedSubtree(
+                    key: _loggingKey,
+                    child: Builder(
+                      builder: (context) => KeyboardAccessoryVisibility(visible: DockPaneVisibility.of(context), child: loggingPanel),
+                    ),
                   ),
-                ),
-                ChaseView.spotsPanelId: KeyedSubtree(key: _spotsKey, child: spotsPanel),
-                ChaseView.infoPanelId: infoPanel,
-                ChaseView.mapPanelId: KeyedSubtree(key: _mapKey, child: mapPanel),
-              },
-              tabActions: {
-                ChaseView.loggingPanelId: (context) => buildTargetSettingsButton(
-                  context,
-                  target: 'logging',
-                  title: context.t.operation.menu.loggingSettingsTitle,
-                  groupOverrides: _loggingSettings,
-                ),
-                ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
-              },
-              extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
+                  ChaseView.spotsPanelId: KeyedSubtree(key: _spotsKey, child: spotsPanel),
+                  ChaseView.infoPanelId: infoPanel,
+                  ChaseView.mapPanelId: KeyedSubtree(key: _mapKey, child: mapPanel),
+                },
+                tabActions: {
+                  ChaseView.loggingPanelId: (context) => buildTargetSettingsButton(
+                    context,
+                    target: 'logging',
+                    title: context.t.operation.menu.loggingSettingsTitle,
+                    groupOverrides: _loggingSettings,
+                  ),
+                  ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
+                },
+                extraChildren: (inLayout) => sharedDashboardPanes(inLayout, operationGrid: operation.displayGrid),
+              ),
             ),
           ),
         ),

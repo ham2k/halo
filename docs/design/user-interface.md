@@ -436,8 +436,8 @@ the sheet on every click there.
 
 **A covered pane leaves the semantics tree.** Painted over, a widget still
 answers to its semantics, and on web its tappable nodes go on taking clicks
-through whatever covers them. Home is excluded while Logs or Settings rides
-over it (`HomeView`); left in, a click on any empty stretch of those panes
+through whatever covers them. Home is excluded while any other destination is
+up (`HomeView`); left in, a click on any empty stretch of that destination
 opens the operation card underneath.
 
 ### Links leave the app

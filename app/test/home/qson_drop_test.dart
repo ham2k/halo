@@ -51,8 +51,14 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   }
 
-  bool dropEnabled(WidgetTester tester) =>
-      tester.widget<DropTarget>(find.descendant(of: find.byType(QsonDropTarget), matching: find.byType(DropTarget))).enable;
+  // Offstage included: Home is hidden, not torn down, while another
+  // destination is up, and its drop target is still laid out under the one on
+  // screen — `enable` is all that keeps it from taking that view's drops.
+  bool dropEnabled(WidgetTester tester) => tester
+      .widget<DropTarget>(
+        find.descendant(of: find.byType(QsonDropTarget, skipOffstage: false), matching: find.byType(DropTarget, skipOffstage: false), skipOffstage: false),
+      )
+      .enable;
 
   testWidgets('takes a drop only in Developer Mode, and only while the list is what shows', (tester) async {
     final services = await pumpHome(tester);

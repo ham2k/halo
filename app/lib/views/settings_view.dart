@@ -17,7 +17,9 @@ import '../services/halo_services.dart';
 import 'panel_use_tracker.dart';
 import '../services/link_opener.dart';
 import '../services/settings_service.dart';
+import 'app_shell/home_rail_state.dart';
 import 'header_profile_label.dart';
+import 'home_navigation_rail.dart';
 import 'help_panel.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
@@ -133,9 +135,8 @@ class SettingsView extends StatefulWidget {
   final VoidCallback? onBack;
 
   /// Space held at the leading edge for the app's mark, which the window draws
-  /// over that corner (see `HomeRailLogo`). Zero where a rail sits under the
-  /// mark and this view starts beside it — only the railless arrangement has
-  /// this view and the mark reaching for the same corner.
+  /// over that corner (see `HomeRailLogo`) — embedded, this view's header
+  /// spans the window above the rail and shares that corner with it.
   final double leadingInset;
 
   const SettingsView({super.key, required this.services, this.initialPanel, this.embedded = false, this.onBack, this.leadingInset = 0});
@@ -150,7 +151,7 @@ class _SettingsViewState extends State<SettingsView> {
   /// plain back button is the right one here.
   Widget _leading(BuildContext context) {
     if (!widget.embedded) return macOSAwareBackButton(context);
-    if (widget.onBack == null) return const SizedBox.shrink();
+    if (!_showsBack()) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.only(left: widget.leadingInset),
       child: BackButton(onPressed: widget.onBack),
@@ -159,9 +160,20 @@ class _SettingsViewState extends State<SettingsView> {
 
   double? _leadingWidth(BuildContext context) {
     if (!widget.embedded) return macOSAwareLeadingWidth(context);
-    if (widget.onBack == null) return 0;
-    return widget.leadingInset == 0 ? null : widget.leadingInset + 48;
+    return widget.leadingInset + (_showsBack() ? 48 : 0);
   }
+
+  /// Beside the mark with no back button between, the same gap the other
+  /// destinations' titles keep from it; after a back button, the theme's.
+  double? _titleSpacing() => widget.embedded && !_showsBack() ? Space.xl : null;
+
+  /// Embedded, only while the rail is hidden: beside a rail, its own Settings
+  /// entry is the way back, and a second one in the header is redundant.
+  bool _showsBack() => widget.onBack != null && !HomeNavigationRail.presentIn(context, expanded: homeRail.expanded);
+
+  /// Embedded, the body sits beside the rail while the header spans the
+  /// window above it.
+  Widget _besideRail(Widget body) => widget.embedded ? BesideRail(child: body) : body;
 
   late String _selectedPanel;
   List<Map<String, dynamic>> _extensionPanels = [];
@@ -317,84 +329,91 @@ class _SettingsViewState extends State<SettingsView> {
       // splits at the same draggable divider as the body. Only the LEFT
       // pane's AppBar reserves macOS traffic-light clearance — the right
       // one sits mid-window (layouts.md rule 5).
-      return ResizableSplitView(
-        // Settings is ViewLayoutPolicy.fixed and opts into the "surfaces"
-        // divider: the selected panel reads as a surface under the sidebar's
-        // shadow. See docs/design/layouts.md.
-        dividerStyle: SplitDividerStyle.surfaces,
-        // Fixed at 40% of the split's width — the sidebar isn't
-        // user-resizable.
-        resizable: false,
-        primaryFraction: 0.4,
-        minPrimaryWidth: 240,
-        maxPrimaryWidth: idealPaneWidth,
-        // Each pane owns its ScaffoldMessenger so a SnackBar (e.g. the
-        // copy-version toast) shows only in the pane that raised it. Sharing
-        // the root messenger — which both pane Scaffolds otherwise register
-        // with — makes one SnackBar appear in both halves of the split.
-        primary: ScaffoldMessenger(
-          child: Scaffold(
-            appBar: AppBar(
-              flexibleSpace: windowHeaderGestureArea(),
-              leadingWidth: _leadingWidth(context),
-              leading: _leading(context),
-              title: shrinkToFitText(Text(context.t.settings.title)),
-            ),
-            body: _buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key),
-          ),
-        ),
-        // The LayoutBuilder gets a context under the split's PaneSafeArea
-        // (for `safeLeft`) and reports the pane's own true width — the
-        // whole right panel, title included, shifts right by the grab
-        // strip's clearance and its title lines up with the panel elements
-        // below it.
-        secondary: LayoutBuilder(
-          builder: (context, constraints) {
-            final safeLeft = PaneSafeArea.leftOf(context);
-            final paneWidth = constraints.maxWidth;
-            // The rows below span the pane and inset their CONTENTS by the
-            // centering offset plus 24 + safeLeft (_buildPanelContent's
-            // ListTileTheme merge over the one below). Replicate both parts to
-            // get the title's left edge to the same absolute x, measured from
-            // the pane's true left edge.
-            final centeringOffset = settingsRowCentering(paneWidth);
-            final targetLeft = centeringOffset + settingsRowInset + safeLeft;
-            // NavigationToolbar (which AppBar's title slot layouts through)
-            // starts the title at `titleSpacing` from the toolbar's left edge
-            // when centerTitle is false — see _ToolbarLayout.performLayout in
-            // navigation_toolbar.dart (`middleStart = leadingWidth +
-            // middleSpacing`; leadingWidth is 0, there's no leading widget
-            // here) — subtract it back out so a plain Padding (not a second,
-            // re-centered ConstrainedBox inside that already-narrower-than-
-            // the-pane slot, which drifted left by half the trailing actions'
-            // width) lands exactly on `targetLeft`.
-            final titleSpacing = Theme.of(context).appBarTheme.titleSpacing ?? NavigationToolbar.kMiddleSpacing;
-            return ScaffoldMessenger(
-              child: Scaffold(
-                appBar: AppBar(
-                  flexibleSpace: windowHeaderGestureArea(),
-                  centerTitle: false,
-                  title: Padding(
-                    padding: EdgeInsets.only(left: targetLeft - titleSpacing),
-                    child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
-                  ),
-                  automaticallyImplyLeading: false,
-                  actions: [
-                    HeaderProfileLabel(settings: widget.services.settings),
-                    windowsCaptionSpacer(context),
-                  ],
-                ),
-                // No ambient left Padding here: it would inset the whole body,
-                // row backgrounds and dividers included. Each panel insets its
-                // own row CONTENT instead, via this ListTileTheme default
-                // (ListTile-based panels) or its own explicit padding (panels
-                // that aren't ListTile-based) — so row backgrounds and
-                // dividers still reach the pane's true edge, right up to the
-                // grab-strip clearance this cancels.
-                body: SettingsList(extraLeft: safeLeft, child: _buildPanelContent(effectivePanel, widget.services, _panels, _openPanel)),
+      // Embedded, the sidebar's column runs on under the rail, its header
+      // spanning above it: the sidebar's share is reckoned without the rail,
+      // and the rail added back on.
+      final rail = widget.embedded ? HomeNavigationRail.widthFor(context, expanded: homeRail.expanded) : 0.0;
+      return LayoutBuilder(
+        builder: (context, constraints) => ResizableSplitView(
+          // Settings is ViewLayoutPolicy.fixed and opts into the "surfaces"
+          // divider: the selected panel reads as a surface under the sidebar's
+          // shadow. See docs/design/layouts.md.
+          dividerStyle: SplitDividerStyle.surfaces,
+          // Fixed at 40% of the split's width — the sidebar isn't
+          // user-resizable.
+          resizable: false,
+          primaryFraction: (0.4 * (constraints.maxWidth - rail) + rail) / constraints.maxWidth,
+          minPrimaryWidth: 240 + rail,
+          maxPrimaryWidth: idealPaneWidth + rail,
+          // Each pane owns its ScaffoldMessenger so a SnackBar (e.g. the
+          // copy-version toast) shows only in the pane that raised it. Sharing
+          // the root messenger — which both pane Scaffolds otherwise register
+          // with — makes one SnackBar appear in both halves of the split.
+          primary: ScaffoldMessenger(
+            child: Scaffold(
+              appBar: AppBar(
+                flexibleSpace: windowHeaderGestureArea(),
+                leadingWidth: _leadingWidth(context),
+                leading: _leading(context),
+                titleSpacing: _titleSpacing(),
+                title: shrinkToFitText(Text(context.t.settings.title)),
               ),
-            );
-          },
+              body: _besideRail(_buildSidebar(context, isWide: true, panels: panels, selectedKey: effectivePanel.key)),
+            ),
+          ),
+          // The LayoutBuilder gets a context under the split's PaneSafeArea
+          // (for `safeLeft`) and reports the pane's own true width — the
+          // whole right panel, title included, shifts right by the grab
+          // strip's clearance and its title lines up with the panel elements
+          // below it.
+          secondary: LayoutBuilder(
+            builder: (context, constraints) {
+              final safeLeft = PaneSafeArea.leftOf(context);
+              final paneWidth = constraints.maxWidth;
+              // The rows below span the pane and inset their CONTENTS by the
+              // centering offset plus 24 + safeLeft (_buildPanelContent's
+              // ListTileTheme merge over the one below). Replicate both parts to
+              // get the title's left edge to the same absolute x, measured from
+              // the pane's true left edge.
+              final centeringOffset = settingsRowCentering(paneWidth);
+              final targetLeft = centeringOffset + settingsRowInset + safeLeft;
+              // NavigationToolbar (which AppBar's title slot layouts through)
+              // starts the title at `titleSpacing` from the toolbar's left edge
+              // when centerTitle is false — see _ToolbarLayout.performLayout in
+              // navigation_toolbar.dart (`middleStart = leadingWidth +
+              // middleSpacing`; leadingWidth is 0, there's no leading widget
+              // here) — subtract it back out so a plain Padding (not a second,
+              // re-centered ConstrainedBox inside that already-narrower-than-
+              // the-pane slot, which drifted left by half the trailing actions'
+              // width) lands exactly on `targetLeft`.
+              final titleSpacing = Theme.of(context).appBarTheme.titleSpacing ?? NavigationToolbar.kMiddleSpacing;
+              return ScaffoldMessenger(
+                child: Scaffold(
+                  appBar: AppBar(
+                    flexibleSpace: windowHeaderGestureArea(),
+                    centerTitle: false,
+                    title: Padding(
+                      padding: EdgeInsets.only(left: targetLeft - titleSpacing),
+                      child: shrinkToFitText(Text(effectivePanel.effectiveScreenTitle)),
+                    ),
+                    automaticallyImplyLeading: false,
+                    actions: [
+                      HeaderProfileLabel(settings: widget.services.settings),
+                      windowsCaptionSpacer(context),
+                    ],
+                  ),
+                  // No ambient left Padding here: it would inset the whole body,
+                  // row backgrounds and dividers included. Each panel insets its
+                  // own row CONTENT instead, via this ListTileTheme default
+                  // (ListTile-based panels) or its own explicit padding (panels
+                  // that aren't ListTile-based) — so row backgrounds and
+                  // dividers still reach the pane's true edge, right up to the
+                  // grab-strip clearance this cancels.
+                  body: SettingsList(extraLeft: safeLeft, child: _buildPanelContent(effectivePanel, widget.services, _panels, _openPanel)),
+                ),
+              );
+            },
+          ),
         ),
       );
     } else {
@@ -403,13 +422,14 @@ class _SettingsViewState extends State<SettingsView> {
           flexibleSpace: windowHeaderGestureArea(),
           leadingWidth: _leadingWidth(context),
           leading: _leading(context),
+          titleSpacing: _titleSpacing(),
           title: shrinkToFitText(Text(context.t.settings.title)),
           actions: [
             HeaderProfileLabel(settings: widget.services.settings),
             windowsCaptionSpacer(context),
           ],
         ),
-        body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
+        body: _besideRail(_buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key)),
       );
     }
   }

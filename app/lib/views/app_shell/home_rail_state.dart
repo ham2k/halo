@@ -100,8 +100,8 @@ class HomeRailState extends ChangeNotifier {
 
   /// Moves to [value] once the destination on screen agrees to be left —
   /// how the operator navigates, by the rail or the back key. Only the one
-  /// being LEFT is asked: a view still sliding out after being left has
-  /// already had its say. Setting [destination] directly skips the guard,
+  /// being LEFT is asked: a view still on screen while the next one covers
+  /// it has already had its say. Setting [destination] directly skips the guard,
   /// which is right only for moves the operator didn't make.
   Future<void> leaveTo(HomeDestination value) async {
     if (value == _destination) return;

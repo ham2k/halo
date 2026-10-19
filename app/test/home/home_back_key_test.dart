@@ -2,15 +2,15 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Android back key/gesture on the panes Home shows IN PLACE — Settings
-// and Logs. Each rides over Home inside HOME's route, so an unclaimed press
+// and Logs. Each is a layer inside HOME's route, so an unclaimed press
 // pops that route and backgrounds the app, with the pane still the
 // destination waiting on the way back in. What proves the press was handled
 // is therefore not the widget tree (which is identical either way: the first
 // route's `maybePop` bubbles, pops nothing, and asks the platform to leave)
 // but whether `SystemNavigator.pop` reached the platform channel.
 //
-// The claim is also scoped: while a pane slides back OUT it is still mounted,
-// and a press absorbed there would do nothing at all rather than
+// The claim is also scoped: while Home slides in over a pane it is still
+// mounted, and a press absorbed there would do nothing at all rather than
 // backgrounding the app the way a press on Home does.
 
 import 'package:flutter/material.dart';
@@ -127,7 +127,7 @@ void main() {
     await _endOfTest(tester);
   });
 
-  testWidgets('a press while Settings slides out is not swallowed by it', (tester) async {
+  testWidgets('a press while Home covers Settings is not swallowed by it', (tester) async {
     final services = await _services(tester);
     await _pumpHome(tester, services, size: const Size(400, 800));
     await _openSettings(tester);
@@ -196,7 +196,7 @@ void main() {
     await _endOfTest(tester);
   });
 
-  testWidgets('a press while Logs slides out is not swallowed by it', (tester) async {
+  testWidgets('a press while Home covers Logs is not swallowed by it', (tester) async {
     final services = await _services(tester);
     await services.settings.setExperimentEnabled('logs', true) /* stored key, see experiments.yaml */;
     addTearDown(() => homeRail.destination = HomeDestination.operations);
@@ -227,7 +227,7 @@ void main() {
     homeRail.destination = HomeDestination.logs;
     await _settle(tester);
     homeRail.destination = HomeDestination.settings;
-    // Mid-slide, with BOTH panes mounted: Settings arriving, Logs leaving.
+    // Mid-slide, with BOTH panes mounted: Settings arriving over Logs.
     await tester.pump(const Duration(milliseconds: 50));
     expect(find.byType(LogsView), findsOneWidget);
     expect(find.byType(SettingsView), findsOneWidget);

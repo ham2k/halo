@@ -11,6 +11,8 @@
 // it everywhere costs a 360px phone a third of its width silently — the labels
 // simply appear, and nothing throws.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -72,6 +74,10 @@ Future<void> _settle(WidgetTester tester) => settleFrames(tester);
 /// so measuring the widget reports the same number in every state, including
 /// the state where the rail is not on screen at all.
 double _railWidth(WidgetTester tester) => tester.getSize(find.ancestor(of: find.byType(HomeNavigationRail), matching: find.byType(ClipRect)).first).width;
+
+/// Home's own layer, found by the Quick Lookup bar only it carries — HomeView
+/// also holds every other destination's Scaffold.
+final _homeScaffold = find.ancestor(of: find.byType(HomeQuickLookup), matching: find.byType(Scaffold)).first;
 
 /// Unmounts the tree and lets Home's timers run out.
 ///
@@ -373,10 +379,8 @@ void main() {
 
     await tester.tap(find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.notebookMultiple)));
     await _settle(tester);
-    // Settings rides over Home on an AnimationController, and the slide OUT
-    // ends with no rebuild of its own. Left mounted, it goes on laying itself
-    // out against a pane it no longer occupies — which is a negative padding
-    // and a caught assertion, not merely a wasted subtree.
+    // Settings is put away once Home has covered it, with no rebuild of its
+    // own. Left mounted, it goes on laying itself out under Home for nothing.
     expect(find.byType(SettingsView), findsNothing, reason: 'going back must UNMOUNT Settings, not park it off-screen');
 
     // The cog is a TOGGLE, where Operations is inert on its own screen: the
@@ -403,7 +407,7 @@ void main() {
     // measure itself (a dense decoration, a prefix icon) lands a few pixels
     // off that, and the cap beside it then reads as misaligned rather than as
     // the bar being an odd height.
-    final cap = find.ancestor(of: find.byIcon(MdiIcons.cog), matching: find.byType(ColoredBox)).first;
+    final cap = find.ancestor(of: find.byIcon(MdiIcons.cog), matching: find.byWidgetPredicate((w) => w is SizedBox && w.child is Padding)).first;
     final context = tester.element(find.byType(HomeQuickLookup));
     expect(tester.getSize(find.byType(HomeQuickLookup)).height, HomeQuickLookup.heightOf(context));
     expect(tester.getSize(cap).height, tester.getSize(find.byType(HomeQuickLookup)).height);
@@ -482,6 +486,8 @@ void main() {
       HomeDestination.operations,
       reason: 'a dialog dims the window; the rail must not float over it taking taps meant for the barrier',
     );
+
+    await _endOfTest(tester);
   });
 
   testWidgets('chrome handed to the shell after the first build reaches the screen', (tester) async {
@@ -511,6 +517,164 @@ void main() {
     await _settle(tester);
     expect(find.text('sync failed'), findsOneWidget, reason: 'a notice raised while the app runs must appear now');
     expect(find.text('nothing to report'), findsNothing, reason: 'and a dismissed one must go away');
+  });
+
+  testWidgets('a view pushed over Home slides over the rail rather than hiding it first', (tester) async {
+    final services = await _services(tester);
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          // Its own observer: the app's is a global that holds the first route it
+          // ever saw as Home, and an earlier test's app already took that.
+          navigatorObservers: [HomeRailRouteObserver()],
+          builder: (context, child) => HomeRailShell(services: services, routes: child!),
+          home: HomeView(services: services),
+        ),
+      ),
+    );
+    await _settle(tester);
+    final standIn = find.descendant(of: find.byType(HomeView), matching: find.byType(HomeNavigationRail));
+    expect(standIn, findsNothing, reason: 'uncovered, the real rail is on top and needs no stand-in');
+    final railRect = tester.getRect(find.byType(HomeNavigationRail));
+
+    unawaited(Navigator.of(tester.element(find.byType(HomeView))).push(slideInFromRight<void>((_) => const Scaffold(body: Text('over')))));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Covered, the real rail goes UNDER the routes so it cannot take a press
+    // meant for the arriving view — and Home spans the window, so painted over
+    // the real rail it would hide it the moment the push begins. The rail has
+    // to ride in Home's own layer, covered as the view slides across.
+    expect(standIn, findsOneWidget, reason: 'mid-push, the rail is still on screen inside the home layer');
+    // Exactly where the real one stood: any drift between the two shows as
+    // the rail jumping the moment a push starts, and again as it ends.
+    expect(tester.getRect(standIn), railRect);
+
+    // An experiment flipped while covered — the Experiments pane is itself a
+    // view over Home — must reach the stand-in, not wait for the real rail.
+    await services.settings.setExperimentEnabled('logs', true) /* stored key, see experiments.yaml */;
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(find.descendant(of: standIn, matching: find.byIcon(MdiIcons.fileCabinet)), findsOneWidget);
+
+    await _settle(tester);
+    Navigator.of(tester.element(find.text('over'))).pop();
+    await _settle(tester);
+    expect(standIn, findsNothing, reason: 'and gives way to the real one once the view is gone');
+    await _endOfTest(tester);
+  });
+
+  testWidgets('a destination slides in over the one it replaces, which stands still until covered', (tester) async {
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(1000, 800));
+    final rail = find.byType(HomeNavigationRail);
+
+    await tester.tap(find.descendant(of: rail, matching: find.byIcon(MdiIcons.cog)));
+    await _settle(tester);
+    final settingsLeft = tester.getTopLeft(find.byType(SettingsView)).dx;
+
+    await tester.tap(find.descendant(of: rail, matching: find.byIcon(MdiIcons.notebookMultiple)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // Every destination arrives from the left edge, Home included — and the
+    // one it replaces does NOT slide out: a view leaving leftward while another
+    // arrives from the left reads as the two colliding.
+    expect(find.byType(SettingsView), findsOneWidget, reason: 'covered, not yet put away');
+    expect(tester.getTopLeft(find.byType(SettingsView)).dx, settingsLeft, reason: 'the view being replaced stands still');
+    expect(tester.getTopLeft(_homeScaffold).dx, lessThan(0), reason: 'Home arrives from the left edge');
+
+    await _settle(tester);
+    expect(tester.getTopLeft(_homeScaffold).dx, 0);
+    expect(find.byType(SettingsView), findsNothing, reason: 'put away once covered');
+    await _endOfTest(tester);
+  });
+
+  testWidgets('a quick return to the view still standing underneath leaves no gap', (tester) async {
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(1000, 800));
+    final rail = find.byType(HomeNavigationRail);
+
+    // A double press on the cog: Settings is only part-way in when the second
+    // press asks for Home back. Home has not been put away yet — it is still
+    // standing, whole, under the arriving Settings.
+    await tester.tap(find.descendant(of: rail, matching: find.byIcon(MdiIcons.cog)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.tap(find.descendant(of: rail, matching: find.byIcon(MdiIcons.cog)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+
+    // Restarted from the edge instead, Home would sit off-screen on top while
+    // the half-arrived Settings covers only part of the window — and the rest
+    // shows nothing at all until both slides finish.
+    expect(tester.getTopLeft(_homeScaffold).dx, 0, reason: 'Home comes back on top from where it stands');
+
+    await _settle(tester);
+    expect(find.byType(SettingsView), findsNothing);
+    await _endOfTest(tester);
+  });
+
+  testWidgets('beside a rail, Settings has no back arrow: the rail is the way back', (tester) async {
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(1000, 800));
+
+    await tester.tap(find.descendant(of: find.byType(HomeNavigationRail), matching: find.byIcon(MdiIcons.cog)));
+    await _settle(tester);
+
+    // Two ways back to the same place, one of them a permanent fixture beside
+    // the other — the railless arrangement is the only one that needs it.
+    expect(find.descendant(of: find.byType(SettingsView), matching: find.byType(BackButton)), findsNothing);
+    await _endOfTest(tester);
+  });
+
+  testWidgets('a press on or between rail entries never toggles the rail', (tester) async {
+    final services = await _services(tester);
+    await services.settings.setExperimentEnabled('logs', true) /* stored key, see experiments.yaml */;
+    addTearDown(() => homeRail.destination = HomeDestination.operations);
+    await _pumpHome(tester, services, size: const Size(1000, 800));
+    final rail = find.byType(HomeNavigationRail);
+    final expandedBefore = homeRail.expanded;
+
+    // Operations names where we already are, so it does nothing — but it must
+    // still TAKE the press. Let through, the press reaches the rail's ground,
+    // which is the toggle, and pressing the screen you are on puts the
+    // navigation away.
+    await tester.tap(find.descendant(of: rail, matching: find.byIcon(MdiIcons.notebookMultiple)));
+    await _settle(tester);
+    expect(homeRail.expanded, expandedBefore, reason: 'the inert entry absorbs the press');
+
+    // Just above the Logs glyph's own ink — in the gap between two entries,
+    // where a press meant for Logs lands when it misses by a hair.
+    final logsInk = find
+        .ancestor(
+          of: find.descendant(of: rail, matching: find.byIcon(MdiIcons.fileCabinet)),
+          matching: find.byType(InkWell),
+        )
+        .first;
+    await tester.tapAt(tester.getRect(logsInk).topCenter.translate(0, -3));
+    await _settle(tester);
+    expect(homeRail.destination, HomeDestination.logs, reason: 'the gap belongs to the entries, not to the ground');
+    expect(homeRail.expanded, expandedBefore);
+    await _endOfTest(tester);
+  });
+
+  testWidgets('the header title stands still while the rail comes and goes', (tester) async {
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(400, 800));
+    final title = find.descendant(of: find.byType(AppBar), matching: find.text(ham2kProductName));
+    final before = tester.getTopLeft(title);
+
+    await tester.tap(find.bySemanticsLabel('Show or hide the navigation labels'));
+    await _settle(tester);
+    expect(_railWidth(tester), HomeNavigationRail.collapsedWidth, reason: 'the rail is out now');
+
+    // The header spans the window above the rail; only the panes make room
+    // for it. A header held beside the rail jumps sideways on every toggle.
+    expect(tester.getTopLeft(title), before);
+    await _endOfTest(tester);
   });
 }
 

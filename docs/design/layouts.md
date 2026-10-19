@@ -66,8 +66,9 @@ still tolerate them; users just can't *drag* a window below it.
 
 ### The navigation rail
 
-The rail runs down the left edge of the **window**, not of a view — it is a
-sibling of the routes and of the status chrome, so a status item shortens the
+The rail runs down the left edge of the **window**, not of a view, starting
+**below the header line** — it is a sibling of the routes and of the status
+chrome, so a status item shortens the
 views beside it and never the navigation, and Settings can be shown in Home's
 place with the rail standing still. It sits outside the dock, so rearranging
 can neither move it nor delete it.
@@ -94,36 +95,26 @@ exception is an edit already in progress — once editing, the layout controls
 are Save and Discard, so they stay through a rail toggled away mid-edit rather
 than leaving the edit with no way to end.
 
+**Headers span the window and never answer to the rail.** Every destination's
+header runs the full width above it, holding the same leading gap for the mark
+(`HomeRailLogo.headerReserveOf`) whether the rail is out, labelled or gone, so
+toggling the rail never moves a title. Only the BODIES sit beside the rail
+(`BesideRail`). The header's *contents* may still follow the rail — the cog
+above, and embedded Settings showing a back arrow only while there is no rail,
+since beside one the rail's own Settings entry is the way back.
+
 **The mark is drawn by the window**, at a fixed position, rather than by the
-rail or by the header. It has to be: the operator's own gesture is what moves
-the rail out from under it, so on a narrow window it starts over the header and
-ends over a rail that has just appeared beneath it. A mark belonging to either
-one would jump between them, or be clipped in as the rail widens. Its box is
-the same in every state — the icon column's width, the header's height — and
-it sits on the header's own LINE, never below it. On a chromeless macOS window
-that means after the native window buttons rather than under them: the mark
-takes the next place along that line, the rail below keeps its own width
-rather than growing to hold both, and a header beside it holds open only the
-part the mark overhangs the rail by. It belongs to the rail and travels with
-it: a view that covers the rail covers
-the mark too, and neither needs telling. It is never taken down for a view
-that does NOT cover it — those hold a gap for it instead, as Home's header
-does, and as embedded Settings does in the railless arrangement where it would
-otherwise put its back button in the mark's corner.
+rail or by the header. Its box is the same in every state — the icon column's
+width, the header's height — and it sits on the header's own LINE, never below
+it. On a chromeless macOS window that means after the native window buttons
+rather than under them: the mark takes the next place along that line, and the
+headers hold open the whole of it. It belongs to the rail and travels with it:
+a view that covers the rail covers the mark too, and neither needs telling.
 
-**The chrome continues through the rail.** The mark's slot at the top and the
-Settings destination at the bottom sit on the header's own colour, at the
-header's own height, so each end of the window reads as one unbroken band
-rather than as a header with a notch cut out of it. Settings takes the
-chrome's foreground there — the muted surface colours the other destinations
-use are unreadable on it — and marks selection by full strength against a
-dimmed rest, the same distinction the surface destinations draw with hue.
-
-Between those two caps the rail is a **well**: the chrome above, the chrome
-below, and the panes to the right all cast inward onto it. All three shadows
-are drawn by the RAIL, not by any of the casters — one painted by the caster
-would fall on the caster's own side of the boundary — and they are paint-only,
-so every destination under them stays pressable. Dark mode swaps the black for
+The rail is a **well**: the header above and the panes to the right cast
+inward onto it. Both shadows are drawn by the RAIL, not by the casters — one
+painted by the caster would fall on the caster's own side of the boundary —
+and they are paint-only, so every destination under them stays pressable. Dark mode swaps the black for
 a white glow, the same rule and the same numbers as the `surfaces` split
 divider.
 
@@ -151,10 +142,15 @@ was wherever there is room.
 Its destinations are **Operations** (`notebook-multiple`) at the top, then
 **Chasing** (`binoculars`) and **Logs** (`file-cabinet`) while their
 experiments (`chase`, `logs`) are on, then **Maps** (`map`), with **Settings**
-(`cog`) pinned to the bottom. Each of the column's destinations is inert while
-it names the screen the operator is already on — it renders selected and
-announces itself, but a control that reloads the screen you are on is a
-control that does nothing — and takes them there from anywhere else. They all
+(`cog`) pinned to the bottom, on the rail's own surface like the rest. Each of
+the column's destinations is inert while it names the screen the operator is
+already on — it renders selected and announces itself, but a control that
+reloads the screen you are on is a control that does nothing — and takes them
+there from anywhere else. Inert, it still TAKES the press rather than letting
+it through to the rail's ground. Each one's press target also reaches halfway
+into the gap on either side, the first one up to the header: the gaps belong
+to the entries, so a press landing just off a glyph navigates instead of
+toggling the rail. Only the stretch below the last entry is ground. They all
 draw the muted solid glyph: MDI has no outline for most of them, and the
 column must read as one tone, so Maps passes over the `map-outline` it does
 have. Settings, unlike them, is a **toggle** — whoever opened it from the rail
@@ -167,24 +163,32 @@ experiment meanwhile.
 The rail never hides, narrows, or animates for navigation. What changes is
 which side of the routes it is painted on:
 
-- **Home and the other destinations sit beside it**, each holding its own
-  column open by the rail's width, and the rail is painted *over* them. That
-  is forced rather than chosen: the overlay a route lives in takes every
-  pointer that lands in it, so a rail painted underneath is a rail nothing can
-  press. Settings, Chasing, Logs and Maps each slide in from the window's
-  edge, passing *under* the rail, and come to rest beside it in Home's place;
-  the same will hold for alternate home layouts. Chasing and Maps stay mounted
-  once first shown, offstage while another destination is up, so coming back
-  finds them as they were left, the map's camera and what it had loaded
-  included — Maps keeps the device's location fix running only while it is the one on
-  screen.
+- **Home and the other destinations sit beside it**, each spanning the
+  window with its body held clear of the rail, and the rail is painted *over*
+  them. That is forced rather than chosen: the overlay a route lives in takes
+  every pointer that lands in it, so a rail painted underneath is a rail
+  nothing can press. **Every destination arrives the same way, Home
+  included**: it comes to the top and slides in from the window's left edge,
+  passing *under* the rail, OVER the one it replaces — which stays exactly
+  where it is until covered, and only then is put away. Nothing slides out: a
+  view leaving to the left as another arrives from the left reads as the two
+  colliding. The one exception is launch, where Home is simply there. Home,
+  Chasing and Maps stay mounted once first shown, offstage while another
+  destination is up, so coming back finds them as they were left, the map's
+  camera and what it had loaded included — Maps keeps the device's location
+  fix running only while it is the one on screen.
 - **The operation view owns the whole window**, so the rail is painted *under*
   that one and the view simply covers it on the way in. Losing the rail's taps
-  while it is buried costs nothing, which is what makes the flip safe. It
-  arrives from the RIGHT, away from the rail's edge — a view that covers the
-  navigation should not read as having come out of it — and its header carries
-  a cross rather than a back arrow, because a view over the top of everything
-  has no trail behind it to step back along. It travels over **400ms**, longer
+  while it is buried costs nothing, which is what makes the flip safe. Home
+  spans the window, though, so the real rail under it would vanish the moment
+  a push begins — and under a dialog that only dims Home. While anything
+  covers it, Home's own layer paints a stand-in of the rail and the mark
+  (`HomeRailStandIn`, paint only), which the arriving view covers as it covers
+  the rest of Home. The operation view arrives from the RIGHT, away from the
+  rail's edge — a view that covers the navigation should not read as having
+  come out of it — and its header carries a cross rather than a back arrow,
+  because a view over the top of everything has no trail behind it to step
+  back along. It travels over **400ms**, longer
   than the 300ms that paces pane widths and the rail's toggle: a whole view
   crossing a whole window covers far more ground, and the shorter duration
   over that distance reads as a snap. Out matches in.
@@ -194,13 +198,13 @@ framework matches children by position, finds a `Positioned` in each slot, and
 updates each element with the other one's widget — re-inflating the whole route
 tree on every push, at exactly the moment a view is trying to animate in.
 
-Views take **no inset from the rail's animating width**: one inset by it would
-re-lay itself out on every frame. Home's inset comes off the rail's *resting*
-width, which changes only on the toggle, and animates for that alone — in step
-with the rail, same duration and curve.
+Bodies take **no inset from the rail's animating width**: one inset by it
+would re-lay itself out on every frame. Their inset comes off the rail's
+*resting* width, which changes only on the toggle, and animates for that
+alone — in step with the rail, same duration and curve.
 
 **The foot of the window is two rows, and they belong to different owners.**
-Nearest the panes, Quick Lookup with the rail's Settings cap beside it: that
+Nearest the panes, Quick Lookup with the rail's Settings entry beside it: that
 row is the HOME layer's, drawn inside the routes, so an operation covers it by
 covering the window and Settings shown in Home's place slides over the field
 it replaces — neither is told to hide it. Below that, notices, the status

@@ -1077,9 +1077,11 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     return Scaffold(
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
-        leadingWidth: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: homeRail.expanded)),
+        leadingWidth: HomeRailLogo.headerReserveOf(context),
         leading: const SizedBox.shrink(),
-        titleSpacing: Space.xl,
+        // None: the title opens with the sheet's dots, whose own padding is
+        // the gap after the mark.
+        titleSpacing: 0,
         // Rebuilt with the sheet's slide on its own — the dots and the gap
         // follow it frame by frame.
         title: AnimatedBuilder(
@@ -1096,17 +1098,19 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
       ),
       // AdifDropTarget over the whole body: a drop anywhere on the Logs view
       // imports, not just over the QSO table.
-      body: AdifDropTarget(
-        onFile: _handleAdifDrop,
-        child: withViewOverrides(
-          buildDock(
-            children: {
-              LogsView.qsoTablePanelId: qsoListPane,
-              LogsView.infoPanelId: _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
-              LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
-            },
-            tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
-            extraChildren: sharedDashboardPanes,
+      body: BesideRail(
+        child: AdifDropTarget(
+          onFile: _handleAdifDrop,
+          child: withViewOverrides(
+            buildDock(
+              children: {
+                LogsView.qsoTablePanelId: qsoListPane,
+                LogsView.infoPanelId: _LogsInfoPanel(services: widget.services, totalCount: filtered?.length ?? 0, selected: selected),
+                LogsView.mapPanelId: _LogsMapPanel(services: widget.services, selected: selected),
+              },
+              tabActions: {LogsView.mapPanelId: (context) => _buildMapSettingsButton(context)},
+              extraChildren: sharedDashboardPanes,
+            ),
           ),
         ),
       ),
@@ -1128,9 +1132,13 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     const height = 48.0;
     return PreferredSize(
       preferredSize: const Size.fromHeight(height),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.xl, 0, Space.lg, Space.sm),
-        child: SizedBox(height: 36, child: _searchField(context)),
+      // Below the header's own line, where the rail starts — so held
+      // clear of it like the body.
+      child: BesideRail(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Space.xl, 0, Space.lg, Space.sm),
+          child: SizedBox(height: 36, child: _searchField(context)),
+        ),
       ),
     );
   }

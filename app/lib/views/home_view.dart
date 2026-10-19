@@ -498,10 +498,9 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     // design — the window draws the rail, not Home — and every field it holds
     // is re-seeded by the next `initState`. Writing to it from a `dispose`
     // would also notify an ancestor already being torn down.
-    _settingsSlide.dispose();
-    _logsSlide.dispose();
-    _chaseSlide.dispose();
-    _mapsSlide.dispose();
+    for (final slide in _slides.values) {
+      slide.dispose();
+    }
     homeRail.removeListener(_onRailChanged);
     widget.services.settings.removeListener(_onSettingsChanged);
     homeRouteObserver.unsubscribe(this);
@@ -607,46 +606,21 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   /// visit reloads its style and loses where the operator had taken it.
   bool _mapsMounted = false;
 
-  /// Drives Settings on and off OVER Home. An explicit controller rather than
-  /// an AnimatedSwitcher: a switcher animates both children, and coming back
-  /// has to leave Home exactly where it is so that it is REVEALED rather than
-  /// slid in behind.
-  late final AnimationController _settingsSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
+  /// Slides each destination in from the window's left edge, over whichever
+  /// one it replaces (see [_reveal]). Explicit controllers rather than an
+  /// AnimatedSwitcher: a switcher animates both children, and the destination
+  /// being replaced has to stay exactly where it is while the new one slides in
+  /// over it. Home's starts in place: the app opens on Home, and nothing moves
+  /// as it does.
+  late final Map<HomeDestination, AnimationController> _slides = {
+    for (final destination in HomeDestination.values)
+      destination: AnimationController(vsync: this, duration: layoutAnimationDuration, value: destination == HomeDestination.operations ? 1 : 0),
+  };
 
-  late final Animation<Offset> _settingsOffset = Tween<Offset>(
-    begin: const Offset(-1, 0),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _settingsSlide, curve: layoutAnimationCurve));
-
-  /// Same as [_settingsSlide], for the Logs destination.
-  late final AnimationController _logsSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
-
-  late final Animation<Offset> _logsOffset = Tween<Offset>(
-    begin: const Offset(-1, 0),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _logsSlide, curve: layoutAnimationCurve));
-
-  /// Same as [_settingsSlide], for the Chasing destination.
-  late final AnimationController _chaseSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
-
-  late final Animation<Offset> _chaseOffset = Tween<Offset>(
-    begin: const Offset(-1, 0),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _chaseSlide, curve: layoutAnimationCurve));
-
-  /// Same as [_settingsSlide], for the Maps destination.
-  late final AnimationController _mapsSlide = AnimationController(vsync: this, duration: layoutAnimationDuration);
-
-  late final Animation<Offset> _mapsOffset = Tween<Offset>(
-    begin: const Offset(-1, 0),
-    end: Offset.zero,
-  ).animate(CurvedAnimation(parent: _mapsSlide, curve: layoutAnimationCurve));
-
-  void _showSettings(bool showing) {
-    if (_showingSettings == showing) return;
-    setState(() => _showingSettings = showing);
-    showing ? _settingsSlide.forward() : _settingsSlide.reverse();
-  }
+  late final Map<HomeDestination, Animation<Offset>> _offsets = {
+    for (final MapEntry(key: destination, value: slide) in _slides.entries)
+      destination: Tween<Offset>(begin: const Offset(-1, 0), end: Offset.zero).animate(CurvedAnimation(parent: slide, curve: layoutAnimationCurve)),
+  };
 
   /// Takes the embedded Settings down. The header's back button and the
   /// system back press both come here, so the two cannot drift apart.
@@ -663,31 +637,52 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     homeRail.destination = offered ? last : HomeDestination.operations;
   }
 
-  /// Same as [_showSettings], for the Logs destination.
-  void _showLogsView(bool showing) {
-    if (_showingLogs == showing) return;
-    setState(() => _showingLogs = showing);
-    showing ? _logsSlide.forward() : _logsSlide.reverse();
-  }
+  /// The destinations bottom to top. The one on screen is last, sliding in
+  /// over the one it replaces; once a destination has been shown it keeps its
+  /// place here, so Chasing and Maps stay mounted.
+  final List<HomeDestination> _stacking = [HomeDestination.operations];
 
-  /// Same as [_showSettings], for the Chasing destination.
-  void _showChaseView(bool showing) {
-    if (_showingChase == showing) return;
-    setState(() {
-      _showingChase = showing;
-      if (showing) _chaseMounted = true;
-    });
-    showing ? _chaseSlide.forward() : _chaseSlide.reverse();
-  }
+  /// The destination last revealed — the one on screen, or sliding in.
+  HomeDestination _revealed = HomeDestination.operations;
 
-  /// Same as [_showChaseView], for the Maps destination.
-  void _showMapsView(bool showing) {
-    if (_showingMaps == showing) return;
+  AnimationController _slideOf(HomeDestination destination) => _slides[destination]!;
+
+  /// Brings [destination] to the top and slides it in from the window's left
+  /// edge, OVER the one it replaces — which stays exactly where it is until it
+  /// is covered, and only then is put away. Every destination arrives this
+  /// way, Home included, and none ever slides out: a view leaving to the left
+  /// as another arrives from the left reads as the two colliding.
+  void _reveal(HomeDestination destination) {
+    if (destination == _revealed) return;
+    _revealed = destination;
     setState(() {
-      _showingMaps = showing;
-      if (showing) _mapsMounted = true;
+      _showingSettings = destination == HomeDestination.settings;
+      _showingLogs = destination == HomeDestination.logs;
+      _showingChase = destination == HomeDestination.chase;
+      _showingMaps = destination == HomeDestination.maps;
+      if (_showingChase) _chaseMounted = true;
+      if (_showingMaps) _mapsMounted = true;
+      _stacking
+        ..remove(destination)
+        ..add(destination);
     });
-    showing ? _mapsSlide.forward() : _mapsSlide.reverse();
+    // Only the LATEST reveal puts the others away: an earlier one's slide
+    // either completes after it was overtaken, and stands down, or is cut
+    // short by its own controller restarting, and never completes.
+    //
+    // A destination not yet put away is still standing under the one that
+    // replaced it — a quick return. It comes back to the top from where it
+    // stands; restarted from the edge, it would leave the window bare
+    // between it and the half-arrived view it now covers.
+    final slide = _slideOf(destination);
+    unawaited(
+      (slide.isDismissed ? slide.forward(from: 0) : slide.forward()).then((_) {
+        if (!mounted || _revealed != destination) return;
+        for (final other in HomeDestination.values) {
+          if (other != destination) _slideOf(other).value = 0;
+        }
+      }),
+    );
   }
 
   /// Which destination [_onRailChanged] last tracked a visit for — set to
@@ -702,10 +697,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
   void _onRailChanged() {
     if (!mounted) return;
     final destination = homeRail.destination;
-    _showSettings(destination == HomeDestination.settings);
-    _showLogsView(destination == HomeDestination.logs);
-    _showChaseView(destination == HomeDestination.chase);
-    _showMapsView(destination == HomeDestination.maps);
+    _reveal(destination);
     // Settings/Logs shown IN PLACE is navigation without a route, so
     // `didPopNext` never fires for it. Settings and Logs track their own
     // `screen_viewed` in `initState` (embedded panes get freshly remounted
@@ -726,159 +718,156 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
     // Which arrangement the dock below draws. Assigned before it is built:
     // every accessor the mixin offers reads this field.
     dockLayoutClass = isTwoPane ? DockLayoutClass.wide : DockLayoutClass.narrow;
-    // Home and Settings both sit BESIDE the rail (drawn by the window — see
-    // `HomeRailState`), so each holds its own column open by the rail's width.
+    // Every destination spans the WINDOW, its header above the rail (drawn by
+    // the window — see `HomeRailState`) and its body held clear of it by
+    // [BesideRail]. So Settings and the rest SLIDE from the window's edge,
+    // passing under the rail on their way, rather than out of the panes.
     //
-    // Off the rail's RESTING width — what it measures with the labels out or
-    // not — which changes only when the operator toggles it. Animated for
-    // exactly that reason and no other, in step with the rail: same duration
-    // and curve, both started by the same notification. Home does not move for
-    // anything else, and never for navigation.
-    //
-    // The padding goes on each child rather than around the Stack so that
-    // Settings SLIDES from the window's edge, passing under the rail on its
-    // way, and only comes to rest beside it. Around the Stack it would start
-    // at the rail's inner edge instead, which reads as sliding out of the
-    // panes rather than out of the destination that was pressed.
-    Widget besideRail(Widget child) => AnimatedPadding(
-      duration: layoutAnimationDuration,
-      curve: layoutAnimationCurve,
-      padding: EdgeInsets.only(left: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting)),
-      child: child,
-    );
-
-    // Settings rides OVER Home rather than swapping with it: both directions
-    // travel leftward — in from the left edge, out to it — and on the way out
-    // Home has to be sitting there unmoved to be revealed.
+    // Stacked in [_stacking] order, the one on screen on top, and KEYED: the
+    // order changes with every reveal, and unkeyed the framework would match
+    // the layers by position and remount each one into another's place.
+    final layers = <HomeDestination, Widget>{
+      // Once covered and put away, hidden the way Chasing is below rather
+      // than torn down: Home holds the operator's place in the list.
+      HomeDestination.operations: ListenableBuilder(
+        listenable: _slideOf(HomeDestination.operations),
+        builder: (context, child) {
+          final hidden = _slideOf(HomeDestination.operations).isDismissed;
+          return Offstage(
+            offstage: hidden,
+            child: TickerMode(
+              enabled: !hidden,
+              child: ExcludeFocus(
+                excluding: hidden,
+                child: SlideTransition(position: _offsets[HomeDestination.operations]!, child: child!),
+              ),
+            ),
+          );
+        },
+        // Out of the semantics tree while another destination is up. Painted
+        // over, Home still answers to its semantics: on web those are DOM
+        // nodes that take clicks, so a click on an empty stretch of Logs or
+        // Settings would open the operation card beneath it, and a screen
+        // reader would read a list nobody can see.
+        child: ExcludeSemantics(excluding: _revealed != HomeDestination.operations, child: _homeScaffold(context, theme, isTwoPane)),
+      ),
+      // Listening to the controller, not just to `setState`: being put away
+      // once covered comes with no rebuild of its own, and a Settings left
+      // mounted under another destination keeps laying itself out for
+      // nothing.
+      HomeDestination.settings: ListenableBuilder(
+        listenable: _slideOf(HomeDestination.settings),
+        builder: (context, child) => _slideOf(HomeDestination.settings).isDismissed
+            ? const SizedBox.shrink()
+            // Settings has no route of its own for the system back key or
+            // gesture to pop — it is a layer inside Home's — so unclaimed,
+            // the press reaches Home's route and leaves the app. Claimed only
+            // while Settings is the live destination: mounted but being
+            // covered it is already gone as far as the operator is concerned, and a press absorbed there does nothing at all
+            // instead of backgrounding the app the way a press on Home does.
+            //
+            // `canPop` scopes the VETO only: a route hands the press to
+            // every PopScope registered on it, whichever one refused it. So
+            // the pane that is leaving has to decline the callback too, or
+            // switching between the two panes gives one press two answers.
+            : PopScope(
+                canPop: !_showingSettings,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop && _showingSettings) _leaveSettings();
+                },
+                child: SlideTransition(position: _offsets[HomeDestination.settings]!, child: child!),
+              ),
+        // Its header and the app's mark share the window's corner, so the
+        // back button lands beside the mark rather than under it.
+        child: SettingsView(services: widget.services, embedded: true, onBack: _leaveSettings, leadingInset: HomeRailLogo.headerReserveOf(context)),
+      ),
+      // Same arrangement as Settings above, for the Logs destination —
+      // including its claim on the system back press, and the same reason
+      // for only claiming it while Logs is the live destination.
+      HomeDestination.logs: ListenableBuilder(
+        listenable: _slideOf(HomeDestination.logs),
+        builder: (context, child) => _slideOf(HomeDestination.logs).isDismissed
+            ? const SizedBox.shrink()
+            : PopScope(
+                canPop: !_showingLogs,
+                onPopInvokedWithResult: (didPop, _) {
+                  if (!didPop && _showingLogs) unawaited(homeRail.leaveTo(HomeDestination.operations));
+                },
+                child: SlideTransition(position: _offsets[HomeDestination.logs]!, child: child!),
+              ),
+        child: LogsView(services: widget.services),
+      ),
+      // Same arrangement again, for the Chasing destination — except that
+      // once shown it is only ever HIDDEN (see [_chaseMounted]): offstage,
+      // its tickers stopped, and out of the focus tree, so nothing it holds
+      // takes a key while another destination is up.
+      HomeDestination.chase: ListenableBuilder(
+        listenable: _slideOf(HomeDestination.chase),
+        builder: (context, child) {
+          if (!_chaseMounted) return const SizedBox.shrink();
+          final hidden = _slideOf(HomeDestination.chase).isDismissed;
+          return Offstage(
+            offstage: hidden,
+            child: TickerMode(
+              enabled: !hidden,
+              child: ExcludeFocus(
+                excluding: hidden,
+                child: PopScope(
+                  canPop: !_showingChase,
+                  onPopInvokedWithResult: (didPop, _) {
+                    if (!didPop && _showingChase) unawaited(homeRail.leaveTo(HomeDestination.operations));
+                  },
+                  child: SlideTransition(position: _offsets[HomeDestination.chase]!, child: child!),
+                ),
+              ),
+            ),
+          );
+        },
+        child: ChaseView(services: widget.services, visible: _showingChase),
+      ),
+      // Same arrangement as Chasing, for the Maps destination.
+      HomeDestination.maps: ListenableBuilder(
+        listenable: _slideOf(HomeDestination.maps),
+        builder: (context, child) {
+          if (!_mapsMounted) return const SizedBox.shrink();
+          final hidden = _slideOf(HomeDestination.maps).isDismissed;
+          return Offstage(
+            offstage: hidden,
+            child: TickerMode(
+              enabled: !hidden,
+              child: ExcludeFocus(
+                excluding: hidden,
+                child: PopScope(
+                  canPop: !_showingMaps,
+                  onPopInvokedWithResult: (didPop, _) {
+                    if (!didPop && _showingMaps) unawaited(homeRail.leaveTo(HomeDestination.operations));
+                  },
+                  child: SlideTransition(position: _offsets[HomeDestination.maps]!, child: child!),
+                ),
+              ),
+            ),
+          );
+        },
+        child: MapsView(services: widget.services, visible: _showingMaps),
+      ),
+    };
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Out of the semantics tree while a pane covers it. Painted over, Home
-        // still answers to its semantics: on web those are DOM nodes that take
-        // clicks, so a click on an empty stretch of Logs or Settings would
-        // open the operation card beneath it, and a screen reader would read
-        // a list nobody can see.
-        ExcludeSemantics(
-          excluding: _showingSettings || _showingLogs || _showingChase || _showingMaps,
-          child: besideRail(_homeScaffold(context, theme, isTwoPane)),
-        ),
-        // Listening to the controller, not just to `setState`: the slide OUT
-        // ends without any rebuild of its own, and a Settings left mounted
-        // off-screen keeps laying itself out against a pane it no longer has —
-        // which is a negative padding, not merely wasted work.
-        ListenableBuilder(
-          listenable: _settingsSlide,
-          builder: (context, child) => _settingsSlide.isDismissed
-              ? const SizedBox.shrink()
-              // Settings has no route of its own for the system back key or
-              // gesture to pop — it rides over Home inside Home's — so
-              // unclaimed, the press reaches Home's route and leaves the app.
-              // Claimed only while Settings is the live destination: mounted
-              // but sliding OUT it is already gone as far as the operator is
-              // concerned, and a press absorbed there does nothing at all
-              // instead of backgrounding the app the way a press on Home does.
-              //
-              // `canPop` scopes the VETO only: a route hands the press to
-              // every PopScope registered on it, whichever one refused it. So
-              // the pane that is leaving has to decline the callback too, or
-              // switching between the two panes gives one press two answers.
-              : PopScope(
-                  canPop: !_showingSettings,
-                  onPopInvokedWithResult: (didPop, _) {
-                    if (!didPop && _showingSettings) _leaveSettings();
-                  },
-                  child: SlideTransition(position: _settingsOffset, child: child!),
-                ),
-          child: besideRail(
-            SettingsView(
-              services: widget.services,
-              embedded: true,
-              onBack: _leaveSettings,
-              // Where this view and the app's mark reach for the same corner —
-              // no rail at all, or a Mac window where the buttons have pushed
-              // the mark off the rail's column — hold what the mark overhangs
-              // by, so the back button lands beside it rather than under it.
-              leadingInset: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting)),
-            ),
-          ),
-        ),
-        // Same arrangement as Settings above, for the Logs destination —
-        // including its claim on the system back press, and the same reason
-        // for only claiming it while Logs is the live destination.
-        ListenableBuilder(
-          listenable: _logsSlide,
-          builder: (context, child) => _logsSlide.isDismissed
-              ? const SizedBox.shrink()
-              : PopScope(
-                  canPop: !_showingLogs,
-                  onPopInvokedWithResult: (didPop, _) {
-                    if (!didPop && _showingLogs) unawaited(homeRail.leaveTo(HomeDestination.operations));
-                  },
-                  child: SlideTransition(position: _logsOffset, child: child!),
-                ),
-          child: besideRail(LogsView(services: widget.services)),
-        ),
-        // Same arrangement again, for the Chasing destination — except that
-        // once shown it is only ever HIDDEN (see [_chaseMounted]): offstage,
-        // its tickers stopped, and out of the focus tree, so nothing it holds
-        // takes a key while another destination is up.
-        ListenableBuilder(
-          listenable: _chaseSlide,
-          builder: (context, child) {
-            if (!_chaseMounted) return const SizedBox.shrink();
-            final hidden = _chaseSlide.isDismissed;
-            return Offstage(
-              offstage: hidden,
-              child: TickerMode(
-                enabled: !hidden,
-                child: ExcludeFocus(
-                  excluding: hidden,
-                  child: PopScope(
-                    canPop: !_showingChase,
-                    onPopInvokedWithResult: (didPop, _) {
-                      if (!didPop && _showingChase) unawaited(homeRail.leaveTo(HomeDestination.operations));
-                    },
-                    child: SlideTransition(position: _chaseOffset, child: child!),
-                  ),
-                ),
-              ),
-            );
-          },
-          child: besideRail(ChaseView(services: widget.services, visible: _showingChase)),
-        ),
-        // Same arrangement as Chasing, for the Maps destination.
-        ListenableBuilder(
-          listenable: _mapsSlide,
-          builder: (context, child) {
-            if (!_mapsMounted) return const SizedBox.shrink();
-            final hidden = _mapsSlide.isDismissed;
-            return Offstage(
-              offstage: hidden,
-              child: TickerMode(
-                enabled: !hidden,
-                child: ExcludeFocus(
-                  excluding: hidden,
-                  child: PopScope(
-                    canPop: !_showingMaps,
-                    onPopInvokedWithResult: (didPop, _) {
-                      if (!didPop && _showingMaps) unawaited(homeRail.leaveTo(HomeDestination.operations));
-                    },
-                    child: SlideTransition(position: _mapsOffset, child: child!),
-                  ),
-                ),
-              ),
-            );
-          },
-          child: besideRail(MapsView(services: widget.services, visible: _showingMaps)),
-        ),
+        for (final destination in _stacking) KeyedSubtree(key: ValueKey(destination), child: layers[destination]!),
+        HomeRailStandIn(services: widget.services),
       ],
     );
   }
 
   /// The dev label's own style — shared by the label and by the measurement
   /// that decides whether the header still fits on one line.
-  TextStyle _headerDevLabelStyle(ThemeData theme) =>
-      TextStyle(fontSize: 13, fontStyle: FontStyle.italic, color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8));
+  TextStyle _headerDevLabelStyle(ThemeData theme) => TextStyle(
+    fontSize: 13,
+    height: 1,
+    fontStyle: FontStyle.italic,
+    color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8),
+  );
 
   /// What sits beside (or under) the product name, or null when there is
   /// nothing: a free-form dev label (DEV_LABEL) marking which dev
@@ -924,13 +913,10 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
         // Room for the mark, which the WINDOW draws over this corner (see
-        // [HomeRailLogo]) — only for the part of it the rail is not already
-        // holding open, which is nothing at all in the common case.
-        leadingWidth: HomeRailLogo.headerReserveOf(context, railWidth: HomeNavigationRail.widthFor(context, expanded: _navExpandedSetting)),
-        // Matches the inset of an operation row's text
-        // (`PaneSafeArea.symmetricOf(context, horizontal: 16)` in
-        // [_OperationRow]), so the product name and the callsigns below it
-        // start on the same vertical line rather than a few pixels apart.
+        // [HomeRailLogo]) — the same with the rail out or not.
+        leadingWidth: HomeRailLogo.headerReserveOf(context),
+        // The same gap from the mark as every destination's title, so a
+        // header's title stands in one place whichever destination is up.
         titleSpacing: Space.xl,
         leading: const SizedBox.shrink(),
         // "Power Logger" / "Portable Logger" is the in-app main-screen
@@ -959,11 +945,15 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
             final trailingHeight = devLabel.isNotEmpty
                 ? spansHeight(context, [TextSpan(text: devLabel)], _headerDevLabelStyle(theme))
                 : _headerEditionBadgeHeight;
-            final stackedHeight = spansHeight(context, [TextSpan(text: ham2kProductName)], const TextStyle()) + _headerStackGap + trailingHeight;
+            final stackedHeight = spansHeight(context, [TextSpan(text: ham2kProductName)], _headerStackedNameStyle) + _headerStackGap + trailingHeight;
+            // A dev label always goes UNDER the name — it names the session,
+            // and reads as a subtitle rather than as part of the product name.
+            // The edition badge only stacks when the line runs out of room.
             final stacked =
                 _headerTrailing(theme, inline: true) != null &&
-                constraints.maxWidth.isFinite &&
-                textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth > constraints.maxWidth &&
+                (devLabel.isNotEmpty ||
+                    constraints.maxWidth.isFinite &&
+                        textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth > constraints.maxWidth) &&
                 stackedHeight <= (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
 
             if (stacked) {
@@ -974,7 +964,7 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  shrinkToFitText(Text(ham2kProductName)),
+                  shrinkToFitText(Text(ham2kProductName, style: _headerStackedNameStyle)),
                   const SizedBox(height: _headerStackGap),
                   shrinkToFit(_headerTrailing(theme, inline: false)!),
                 ],
@@ -1064,41 +1054,43 @@ class _HomeViewState extends State<HomeView> with WidgetsBindingObserver, RouteA
       // — on a landscape phone with no rail, which is the shipped default
       // there and the one arrangement where this view really does touch that
       // edge.
-      body: PaneSafeArea.root(
-        context,
-        // Real device safe-area insets (notch, home indicator) bubble in from
-        // here; PaneSafeArea's own divider-clearance role composes with it
-        // further down.
-        //
-        // Except the LEFT one WHERE THERE IS A RAIL: the rail touches that
-        // edge and takes the cutout by widening itself, so the panes never
-        // reach it and republishing it here would indent every operation row
-        // and the lookup field by a cutout nothing is avoiding. With no rail
-        // this view does touch that edge, and has to take the cutout itself or
-        // a notch lands on the list.
-        left: railPresent ? 0 : null,
-        child: Column(
-          children: [
-            Expanded(
-              // A dock at every width. The tree names no widths — it is the
-              // same splits and weights wherever it is drawn, so ONE of them
-              // drawn at 360 logical pixels would give a two-thirds list and a
-              // 120px branding column. Hence two arrangements rather than one
-              // that reflows: narrow ships as the list alone, which is what a
-              // phone drew before this view had a narrow arrangement at all.
-              // Quick Lookup is below either of them, as chrome.
-              child: withViewOverrides(buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes)),
-            ),
-            // Pointer-down rather than a gesture, exactly as the operations
-            // pane does it: this only OBSERVES, so it neither competes with
-            // the field's own taps nor changes hit testing. Quick Lookup is
-            // chrome rather than a pane, but it is still one of the two things
-            // the home screen offers, and telemetry.md counts it.
-            Listener(
-              onPointerDown: (_) => _panels.used('quick_lookup'),
-              child: HomeQuickLookup(services: widget.services),
-            ),
-          ],
+      body: BesideRail(
+        child: PaneSafeArea.root(
+          context,
+          // Real device safe-area insets (notch, home indicator) bubble in from
+          // here; PaneSafeArea's own divider-clearance role composes with it
+          // further down.
+          //
+          // Except the LEFT one WHERE THERE IS A RAIL: the rail touches that
+          // edge and takes the cutout by widening itself, so the panes never
+          // reach it and republishing it here would indent every operation row
+          // and the lookup field by a cutout nothing is avoiding. With no rail
+          // this view does touch that edge, and has to take the cutout itself or
+          // a notch lands on the list.
+          left: railPresent ? 0 : null,
+          child: Column(
+            children: [
+              Expanded(
+                // A dock at every width. The tree names no widths — it is the
+                // same splits and weights wherever it is drawn, so ONE of them
+                // drawn at 360 logical pixels would give a two-thirds list and a
+                // 120px branding column. Hence two arrangements rather than one
+                // that reflows: narrow ships as the list alone, which is what a
+                // phone drew before this view had a narrow arrangement at all.
+                // Quick Lookup is below either of them, as chrome.
+                child: withViewOverrides(buildDock(children: _panes(context, theme), extraChildren: sharedDashboardPanes)),
+              ),
+              // Pointer-down rather than a gesture, exactly as the operations
+              // pane does it: this only OBSERVES, so it neither competes with
+              // the field's own taps nor changes hit testing. Quick Lookup is
+              // chrome rather than a pane, but it is still one of the two things
+              // the home screen offers, and telemetry.md counts it.
+              Listener(
+                onPointerDown: (_) => _panels.used('quick_lookup'),
+                child: HomeQuickLookup(services: widget.services),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1380,7 +1372,11 @@ class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTicke
 }
 
 /// The gap between the header's two lines when it stacks.
-const double _headerStackGap = 2;
+const double _headerStackGap = 0;
+
+/// The product name when the header stacks: a line box of the em alone, so
+/// the font's own leading does not open a gap between the two lines.
+const TextStyle _headerStackedNameStyle = TextStyle(height: 1);
 
 /// The height the header's edition wordmark is drawn at.
 const double _headerEditionBadgeHeight = 15;
