@@ -1398,6 +1398,17 @@ not a getter. A chain ends on Escape or a stop, on a tap of the countdown, on an
 call entered, on the setting going to No, and in any case after five minutes — an unattended CQ that
 keys forever is a transmitter nobody is watching. A keypress by itself stops nothing.
 
+**A chain also ends when the VFO leaves its frequency**: more than 50 Hz for CW, 300 Hz for voice,
+or onto another band, measured from where the LAST repeat went out (`KeyerRepeat.noteVfo`). Any move
+counts — the radio's own knob as much as a frequency typed, a band picked, or a spot tapped in the
+app — since the operator has gone to chase a caller or dodge QRM, and the next CQ would call where
+nobody answered. Re-measured at every send, so a few hertz of nudging per repeat never adds up to a
+stop. The band is what a station with no frequency to read goes on; a frequency that merely goes
+missing on the same band — an emptied Frequency field — is no move. The radio's own readings while it
+transmits are skipped: working split, a rig may report its transmit frequency while keyed, and every
+split CQ would end at its first send. Like a keypress, a QSY leaves a message already keying to play
+out — and a repeat that was mid-render when its chain ended keys nothing.
+
 What stops is decided by what the operator did, the same for CW and voice:
 
 - **Escape** stops every message, Enter Sends Messages chain and repeat (`CatService.stopKeying`),

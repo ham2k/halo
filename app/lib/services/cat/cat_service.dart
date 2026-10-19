@@ -816,7 +816,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
 
   /// The repeat chain (keyer_repeat.dart) — one engine for both keyers,
   /// since a message and a memory differ only in what is sent again.
-  final _repeat = KeyerRepeat();
+  late final _repeat = KeyerRepeat(vfo: () => _radio?.vfoA);
 
   /// The wait between message 1 finishing and it being keyed again — non-null
   /// only while that wait is running, so the keyer area's countdown bar is
@@ -2448,6 +2448,13 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
   void _onVfoChanged() {
     final radio = _radio;
     if (radio == null) return;
+    // Ahead of the echo check below: the radio's own knob moving off the CQ
+    // frequency ends a repeat as surely as a frequency typed in the app. But
+    // not the radio's reading while it transmits: working split, a rig may
+    // report the frequency it is transmitting on, which is no QSY — and would
+    // end every split CQ at its first send. The reading after it unkeys is
+    // the one that says where it went.
+    if (radio.lastVfoOrigin != VfoOrigin.radio || !radio1IsTransmitting) _repeat.noteVfo(radio.vfoA);
     // Our own write, coming back around. Forwarding it would tell the radio
     // to go where it already is, and its confirmation would arrive as
     // another notification.

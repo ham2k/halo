@@ -40,7 +40,21 @@ class KeyerRepeatWait {
 /// unattended CQ that keys forever is a transmitter nobody is watching.
 const keyerRepeatLimit = Duration(minutes: 5);
 
+/// How far the VFO may move from where a CW repeat went out before the chain
+/// stops: further than a CQ's own caller can be zero-beat to, and the CQ is
+/// going out somewhere it was never called.
+const keyerRepeatCwToleranceHz = 50;
+
+/// The same for a voice repeat, wider because a phone signal is: a few
+/// hundred hertz is still the same CQ to anyone listening.
+const keyerRepeatVoiceToleranceHz = 300;
+
 class KeyerRepeat {
+  /// The VFO now, or null when there is none to read.
+  final Vfo? Function()? vfo;
+
+  KeyerRepeat({this.vfo});
+
   /// The wait now running, or null — non-null only while it is, so the keyer
   /// area's countdown bar is mounted exactly then.
   final wait = ValueNotifier<KeyerRepeatWait?>(null);
@@ -63,6 +77,11 @@ class KeyerRepeat {
 
   Timer? _timer;
 
+  /// Where the VFO was when the last repeat went out — what a move is
+  /// measured from, re-based at every send, so a slow walk across the band
+  /// between repeats is a series of small moves rather than one big one.
+  Vfo? _sentAt;
+
   /// When the repeats stop whatever else happens, as real milliseconds: a
   /// deadline whose remainder becomes a Timer duration must not travel with
   /// the app clock (docs/design/time.md).
@@ -78,11 +97,13 @@ class KeyerRepeat {
   /// testable.
   int? get deadlineMillis => _until;
 
-  /// Every stop is one the operator makes in the app — an entered call,
-  /// Escape, a tap, the setting. The radio keying on its own (a mic or a paddle during the
-  /// wait) does NOT stop the chain, because nothing reports transmit state
-  /// upward: no driver has a TX read wired to a sink, so there is no signal
-  /// to listen to. Adding one is a driver capability, not a check here.
+  /// Every stop is one the operator makes — an entered call, Escape, a tap,
+  /// the setting, or the VFO moving ([noteVfo]), whether in the app or
+  /// on the radio's own knob. The radio keying on its own (a mic or a paddle
+  /// during the wait) does NOT stop the chain, because nothing reports
+  /// transmit state upward: no driver has a TX read wired to a sink, so there
+  /// is no signal to listen to. Adding one is a driver capability, not a
+  /// check here.
 
   /// Arms message 1 to go again [delay] after the one now keying finishes.
   /// Re-arming inside a chain keeps the deadline the chain started with, so
@@ -96,6 +117,7 @@ class KeyerRepeat {
     _delay = delay;
     _text = text;
     this.memory = memory;
+    _sentAt = vfo?.call();
     _until ??= realNowMillis() + keyerRepeatLimit.inMilliseconds;
     wait.value = null;
     active.value = true;
@@ -107,6 +129,7 @@ class KeyerRepeat {
     _timer = null;
     _send = null;
     memory = null;
+    _sentAt = null;
     _until = null;
     if (wait.value != null) wait.value = null;
     active.value = false;
@@ -134,6 +157,27 @@ class KeyerRepeat {
       }
       send();
     });
+  }
+
+  /// The VFO is now [now]. On another band, or further from where the last
+  /// repeat went out than its keyer's tolerance, and the operator has left
+  /// the frequency the CQ is calling on: the chain ends. The band is what a
+  /// station with no frequency to read — a keyer without CAT, a log kept by
+  /// band — has to go on. A frequency gone missing on the same band, an
+  /// emptied Frequency field, is not a move: the radio has not gone anywhere.
+  /// A message keying now plays out — the same as a keypress, which stops
+  /// nothing either.
+  void noteVfo(Vfo? now) {
+    final sentAt = _sentAt;
+    if (_send == null || sentAt == null || now == null) return;
+    if (sentAt.band != null && now.band != null && now.band != sentAt.band) return cancel();
+    final from = sentAt.freq;
+    final to = now.freq;
+    if (from == null || to == null) return;
+    final tolerance = memory != null ? keyerRepeatVoiceToleranceHz : keyerRepeatCwToleranceHz;
+    // In whole hertz: a kHz difference of exactly 0.05 can come out a hair
+    // over it in floating point.
+    if (((to - from) * 1000).abs().round() > tolerance) cancel();
   }
 
   void dispose() {

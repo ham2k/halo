@@ -18,6 +18,7 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/keyer_repeat.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/radio_service.dart';
 
 import '../support/fake_clock.dart';
 import '../support/halo_test_support.dart';
@@ -420,6 +421,127 @@ void main() {
         expect(cat.keyerRepeating, isTrue);
         cat.stopVoice();
         expect(cat.keyerRepeating, isFalse);
+      }),
+    );
+  });
+
+  // A repeat is a CQ on one frequency. Once the operator has tuned off it —
+  // to chase a caller, clear QRM, or move band — every further repeat calls
+  // somewhere nobody was answering.
+  group('the VFO moving', () {
+    void tuneTo(double kHz, {VfoOrigin origin = VfoOrigin.user}) => services.radio.setVfo('vfoA', freq: kHz, origin: origin);
+
+    test(
+      'a CW repeat survives 50 Hz, and ends past it',
+      () => runOnFakeClock((_) async {
+        await connectPlaceholder();
+        tuneTo(14025.0);
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+
+        tuneTo(14025.05);
+        expect(cat.keyerRepeating, isTrue, reason: 'still zero-beat with whoever answers');
+        tuneTo(14024.94);
+        expect(cat.keyerRepeating, isFalse);
+        cat.stopCw();
+      }),
+    );
+
+    test(
+      'a move is measured from where the LAST repeat went out',
+      () => runOnFakeClock((_) async {
+        await connectPlaceholder();
+        tuneTo(14025.0);
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        tuneTo(14025.04);
+        // The next repeat goes out here, and is what the next move is
+        // measured from: 80 Hz from the first, 40 from this one.
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        tuneTo(14025.08);
+        expect(cat.keyerRepeating, isTrue);
+        cat.stopCw();
+      }),
+    );
+
+    test(
+      'a voice repeat survives 300 Hz, and ends past it',
+      () => runOnFakeClock((_) async {
+        await connectPlaceholder();
+        await services.settings.setVoiceRepeatDelay(3);
+        tuneTo(14250.0);
+        cat.playVoiceMemory(1);
+
+        tuneTo(14250.3);
+        expect(cat.keyerRepeating, isTrue, reason: 'a phone CQ 300 Hz off is still the same CQ');
+        tuneTo(14250.31);
+        expect(cat.keyerRepeating, isFalse);
+        cat.stopVoice();
+      }),
+    );
+
+    test(
+      "the radio's own knob ends it too, not only a move made in the app",
+      () => runOnFakeClock((_) async {
+        await connectPlaceholder();
+        tuneTo(14025.0);
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        // A reading the radio reports is the change most QSYs are, and the
+        // one the VFO listener otherwise treats as an echo and ignores.
+        tuneTo(14025.2, origin: VfoOrigin.radio);
+        expect(cat.keyerRepeating, isFalse);
+        cat.stopCw();
+      }),
+    );
+
+    test(
+      "the radio's reading while it transmits is not a move, but one made in the app is",
+      () => runOnFakeClock((_) async {
+        await connectPlaceholder();
+        tuneTo(14025.0);
+        cat.sendCw('CQ CQ TEST');
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        await pumpEventQueue();
+        expect(cat.radio1IsTransmitting, isTrue);
+        // Working split, a rig reports the frequency it transmits on while
+        // keyed. Read as a QSY, every split CQ ends at its first send.
+        tuneTo(14027.0, origin: VfoOrigin.radio);
+        expect(cat.keyerRepeating, isTrue);
+        tuneTo(14030.0);
+        expect(cat.keyerRepeating, isFalse, reason: 'a frequency the operator typed is a QSY, keyed or not');
+        expect(cat.cwSending, isTrue, reason: 'the message on the air plays out; only the repeats stop');
+        cat.stopCw();
+      }),
+    );
+
+    test(
+      'with no frequency to read, a band change still ends it — but an emptied field does not',
+      () => runOnFakeClock((_) async {
+        // No radio at all — a keyer without CAT, or a log kept by band: the
+        // band is all a move can be measured by. (A connected rig restates
+        // its own frequency the moment the field empties.)
+        services.radio.setVfo('vfoA', clearFreq: true, band: '20m');
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        services.radio.setVfo('vfoA', band: '40m');
+        expect(cat.keyerRepeating, isFalse);
+
+        // Emptying the Frequency field tunes nothing: a radio is still on the
+        // CQ frequency, and its next reading puts it back.
+        tuneTo(14025.0);
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        services.radio.setVfo('vfoA', clearFreq: true, band: '20m');
+        expect(cat.keyerRepeating, isTrue);
+        cat.stopCw();
+      }),
+    );
+
+    test(
+      'a band picked without a frequency ends it',
+      () => runOnFakeClock((_) async {
+        await connectPlaceholder();
+        tuneTo(14025.0);
+        cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+        services.radio.setVfo('vfoA', band: '40m');
+        expect(cat.keyerRepeating, isFalse);
+        cat.stopCw();
       }),
     );
   });

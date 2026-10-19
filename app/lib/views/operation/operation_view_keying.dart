@@ -201,10 +201,11 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   }
 
   /// The keyer area's message buttons: the same send the function keys make.
-  void _sendCwMessageNumber(int n) {
+  /// [repeat] is a repeat chain's own send — see [_sendCwMessages].
+  void _sendCwMessageNumber(int n, {bool repeat = false}) {
     final template = widget.services.settings.cwMessage(n);
     if (template.trim().isEmpty) return;
-    unawaited(_sendCwMessage(n, template));
+    unawaited(_sendCwMessages([(n: n, template: template)], repeat: repeat));
   }
 
   /// A message other than 1 ends a repeat: the operator has moved on to the
@@ -238,7 +239,11 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// Answers false when they failed — a notice already says so — or the key
   /// did not take them, so a caller keying more after them can hold back.
   /// Rendering to nothing is not a failure: there was nothing to send.
-  Future<bool> _sendCwMessages(List<({int n, String template})> messages, {Map<String, dynamic>? qso, bool once = false}) async {
+  ///
+  /// [repeat] is a repeat chain's own send, which keys nothing if the chain
+  /// ended while it rendered: an Escape, a tap or a QSY landing in that gap
+  /// would otherwise key the CQ anyway and arm a fresh chain behind it.
+  Future<bool> _sendCwMessages(List<({int n, String template})> messages, {Map<String, dynamic>? qso, bool once = false, bool repeat = false}) async {
     final services = widget.services;
     final ctx = panelRenderContext;
     final parts = <String>[];
@@ -292,6 +297,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       }
       if (text.trim().isNotEmpty) parts.add(text.trim());
     }
+    if (repeat && !services.cat.keyerRepeating) return true;
     final text = parts.join(' ');
     // A chain waits for the message to STOP keying before its next send, so
     // a send that keys nothing — a failed render, a dead runtime, a message
@@ -321,7 +327,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // it there cancelled the chain it belonged to.
     final delay = services.settings.cwRepeatDelay;
     if (messages.length == 1 && messages.single.n == 1 && delay > Duration.zero) {
-      services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1));
+      services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1, repeat: true));
     }
     return true;
   }

@@ -32,6 +32,11 @@ class _TemplateExtensions extends ExtensionService {
   /// The `keyer` argument of the last render — which message is being sent.
   Map<String, dynamic>? lastKeyer;
 
+  /// Holds every render until completed, so a test can act while one is in
+  /// flight; and how many have started.
+  Completer<void>? hold;
+  int renders = 0;
+
   @override
   Future<void> start() async {}
 
@@ -43,16 +48,22 @@ class _TemplateExtensions extends ExtensionService {
     int? qsoCount,
     Map<String, dynamic>? log,
     Map<String, dynamic>? keyer,
-  }) async => template.contains('{%bad%}')
-      ? throw const TemplateError('bad')
-      : (lastKeyer = keyer, template).$2.replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '').replaceAll('{{op.call}}', 'KI2D');
+  }) async {
+    renders++;
+    await hold?.future;
+    return template.contains('{%bad%}')
+        ? throw const TemplateError('bad')
+        : (lastKeyer = keyer, template).$2.replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '').replaceAll('{{op.call}}', 'KI2D');
+  }
 }
 
 void main() {
   late HaLoServices services;
+  late _TemplateExtensions extensions;
 
   setUp(() async {
-    final harness = await makeHaLoServices(extensions: _TemplateExtensions());
+    extensions = _TemplateExtensions();
+    final harness = await makeHaLoServices(extensions: extensions);
     services = harness.services;
     await harness.settings.setExperimentEnabled('keyer', true);
     await harness.settings.setExperimentEnabled('esm', true);
@@ -310,6 +321,35 @@ void main() {
     await tester.pump();
     expect(services.cat.cwProgress.value?.pending, isEmpty);
     expect(services.cat.keyerRepeatActive.value, isTrue);
+    await unmount(tester);
+  });
+
+  // A repeat's send renders first and keys after. A chain ended in between —
+  // an Escape, a tap, the VFO moving off the CQ — would otherwise key the CQ
+  // anyway and arm a fresh chain, five minutes and all, behind it.
+  testWidgets('a repeat whose chain ended while it rendered keys nothing', (tester) async {
+    await services.settings.setCwRepeatDelay(1);
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    enterSends(tester)!.send([EsmMessage.cq], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.keyerRepeating, isTrue);
+
+    final firstRenders = extensions.renders;
+    extensions.hold = Completer<void>();
+    for (var i = 0; i < 120 && extensions.renders == firstRenders; i++) {
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+    expect(extensions.renders, firstRenders + 1, reason: 'the repeat has started rendering its next CQ');
+    expect(services.cat.cwSending, isFalse);
+
+    services.cat.cancelKeyerRepeat();
+    extensions.hold!.complete();
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwSending, isFalse);
+    expect(services.cat.keyerRepeating, isFalse);
     await unmount(tester);
   });
 
