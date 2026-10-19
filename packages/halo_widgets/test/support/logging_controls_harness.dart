@@ -126,7 +126,7 @@ Operation running(List<String> refTypes) => Operation(
   },
 );
 
-/// The panel under test, wired with the same nine groups the app wires it
+/// The panel under test, wired with the same ten groups the app wires it
 /// with — a test names the group it varies and nothing else. [log] and
 /// [radio] default to the fixtures every test shares; a radio passed
 /// without its own [RadioHookup.radioUpdates] gets the store as its
@@ -150,6 +150,7 @@ Widget host({
   ControlStripSettings? strip,
   SpottingHooks? spotting,
   LoggingPreferences? prefs,
+  ManualTimeHooks? manualTime,
   Widget? trailing,
   ThemeData? appTheme,
 }) {
@@ -178,6 +179,7 @@ Widget host({
     strip: strip ?? const ControlStripSettings(),
     spotting: spotting ?? const SpottingHooks(),
     prefs: (prefs ?? const LoggingPreferences()).copyWith(keyboardAccessory: keyboardAccessory),
+    manualTime: manualTime ?? const ManualTimeHooks(),
   );
   return MaterialApp(
     theme: appTheme,

@@ -547,6 +547,13 @@ class _Translations$loggingControls$qro extends Translations$loggingControls$en 
 	@override String get timeUtc => 'TIME (UTC)';
 	@override String get date => 'DATE';
 	@override String get now => 'NOW';
+	@override String get manualTimeSettings => 'MANUAL TIME';
+	@override String get manualTimeIncrement => 'INCREMENT PER QSO';
+	@override String get manualTimeIncrementNone => 'NONE';
+	@override String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
+		one: '${count} MINUTE',
+		other: '${count} MINUTES',
+	);
 	@override String get frequency => 'FREQUENCY';
 	@override String get mode => 'MODE';
 	@override String get theirCall => 'THEIR CALL';
@@ -4750,6 +4757,10 @@ extension on TranslationsQro {
 			'loggingControls.timeUtc' => 'TIME (UTC)',
 			'loggingControls.date' => 'DATE',
 			'loggingControls.now' => 'NOW',
+			'loggingControls.manualTimeSettings' => 'MANUAL TIME',
+			'loggingControls.manualTimeIncrement' => 'INCREMENT PER QSO',
+			'loggingControls.manualTimeIncrementNone' => 'NONE',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} MINUTE', other: '${count} MINUTES', ), 
 			'loggingControls.frequency' => 'FREQUENCY',
 			'loggingControls.mode' => 'MODE',
 			'loggingControls.theirCall' => 'THEIR CALL',
@@ -4935,12 +4946,12 @@ extension on TranslationsQro {
 			'settings.keepDeviceAwake.descriptionOn' => 'STAYING AWAKE WHILE YOU ARE ON THE LOGGING VIEW OR A SYNC IS IN PROGRESS',
 			'settings.keepDeviceAwake.descriptionOff' => 'SLEEPING AS USUAL',
 			'settings.layoutDensity' => 'LAYOUT DENSITY',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.auto' => 'AUTOMATIC',
 			'settings.layoutDensityOpts.densest' => 'DENSEST',
 			'settings.layoutDensityOpts.dense' => 'DENSE',
 			'settings.layoutDensityOpts.normal' => 'NORMAL',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityOpts.sparse' => 'SPARSE',
 			'settings.layoutDensityOpts.sparsest' => 'SPARSEST',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'THE WINDOW IS TOO SHORT, USING ${effective}',
@@ -5449,12 +5460,12 @@ extension on TranslationsQro {
 			'settings.station.rtlDirectSamplingI' => 'I BRANCH',
 			'settings.station.rtlDirectSamplingQ' => 'Q BRANCH',
 			'settings.station.rtlTcpNotAServer' => 'THIS IS NOT AN RTL_TCP SERVER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlTcpNotes' => 'THIS CONNECTS TO AN **RTL_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE DONGLE IS PLUGGED INTO.\n\n- **START IT** WITH `rtl_tcp -a 0.0.0.0` SO OTHER MACHINES CAN REACH IT; ON THE SAME MACHINE, `rtl_tcp` ALONE WILL DO.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** RTL_TCP SERVES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING, AND LETS GO A FEW SECONDS AFTER IT CLOSES.\n- **ON ANDROID**, THE *SDR DRIVER* APP RUNS THE SAME SERVER ON THE PHONE.',
 			'settings.station.rspTcpNotes' => 'THIS CONNECTS TO AN **RSP_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE RSP IS PLUGGED INTO, WITH SDRPLAY\'S API INSTALLED THERE.\n\n- **START IT** WITH `rsp_tcp -a 0.0.0.0`.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** THE SERVER TAKES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING.',
 			'settings.station.n3fjpNoRig' => 'N3FJP HAS NO RADIO INTERFACE SET UP, SO THIS FOLLOWS WHAT IS TYPED INTO N3FJP, NOT A RADIO',
 			'settings.station.winkeyerKeyPort' => 'KEY OUTPUT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.winkeyerKeyPortDescription' => 'WHICH OF THE KEYER\'S TWO OUTPUT JACKS YOUR RADIO IS PLUGGED INTO.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'PORT ${n}',
 			'settings.station.winkeyerPtt' => 'USE THE KEYER\'S PTT',
@@ -5963,12 +5974,12 @@ extension on TranslationsQro {
 			'operationLocationScreen.controlsUnavailableRetry' => 'RETRY',
 			'operationLocationScreen.county' => 'COUNTY (OPTIONAL)',
 			'versionLabel.version' => ({required Object version}) => 'VERSION ${version}',
+			_ => null,
+		} ?? switch (path) {
 			'versionLabel.patch' => ({required Object patch}) => 'PATCH ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'BUILD ${build}',
 			'notices.emptyHistory' => 'NO NOTICES YET',
 			'notices.webStorageInMemory' => 'THIS BROWSER COULD NOT PROVIDE PERSISTENT STORAGE — THE LOG LIVES IN MEMORY ONLY AND WILL BE LOST WHEN THIS TAB CLOSES. USE A CURRENT CHROME, FIREFOX, SAFARI OR EDGE.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.webStorageUnreliable' => 'THIS BROWSER IS USING FALLBACK STORAGE THAT IS NOT SAFE WITH MULTIPLE TABS — KEEP A SINGLE TAB OPEN, AND KEEP SYNC ON.',
 			'notices.logFromNewerBuildTitle' => 'THIS LOG NEEDS A NEWER VERSION',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'YOUR LOG WAS WRITTEN BY A NEWER VERSION OF HALO (STORAGE VERSION ${storage}; THIS ONE UNDERSTANDS ${understood}), SO IT CANNOT BE OPENED, AND NEW CONTACTS WILL NOT BE SAVED. INSTALL THE NEWER VERSION AGAIN — OR, IF YOU MEANT TO RUN THIS BUILD, POINT IT AT A DIFFERENT DATA FOLDER. THE LOG IS IN ${location}',

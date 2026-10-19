@@ -1,0 +1,8 @@
+{
+  "key": "time-commands",
+  "name": "Time Commands",
+  "version": "0.0.1",
+  "description": "Set the contact's time from the call field: +1m, -1h, 12:33, :34, 3/18, NOW",
+  "keywords": ["time", "date", "manual", "now"],
+  "hooks": ["command"]
+}

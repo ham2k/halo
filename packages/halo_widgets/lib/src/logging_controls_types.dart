@@ -807,6 +807,33 @@ class SpottingHooks {
   final VoidCallback? onOpenSettings;
 }
 
+/// Manual time entry (docs/design/logging-fields.md § Manual time entry): the
+/// time the next new contact is stamped with while the operator enters times
+/// by hand, and how far it moves after each one.
+class ManualTimeHooks {
+  const ManualTimeHooks({this.startAtMillis, this.onChanged, this.increment = defaultIncrement, this.onIncrementChanged});
+
+  /// The operation's manual time as last stored, or null for live time. Read
+  /// once, when the panel is built — the panel owns it from then on and
+  /// reports every change through [onChanged].
+  final int? startAtMillis;
+
+  /// Stores the manual time for the operation; null leaves manual entry.
+  final ValueChanged<int?>? onChanged;
+
+  /// How far the manual time moves on after each logged contact.
+  final Duration increment;
+
+  /// Stores a new [increment] — the settings button in the Time control is
+  /// offered only when this is set.
+  final ValueChanged<Duration>? onIncrementChanged;
+
+  /// The choices the settings dialog offers, [Duration.zero] being "None".
+  static const increments = [Duration.zero, Duration(minutes: 1), Duration(minutes: 2), Duration(minutes: 5), Duration(minutes: 10)];
+
+  static const defaultIncrement = Duration(minutes: 1);
+}
+
 /// The operator's logging preferences — which fields the row shows, what an
 /// untouched report stands for, how the keyboard moves, and the mobile
 /// affordances.

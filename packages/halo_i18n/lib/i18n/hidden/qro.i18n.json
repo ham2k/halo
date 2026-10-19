@@ -1022,6 +1022,13 @@
     "timeUtc": "TIME (UTC)",
     "date": "DATE",
     "now": "NOW",
+    "manualTimeSettings": "MANUAL TIME",
+    "manualTimeIncrement": "INCREMENT PER QSO",
+    "manualTimeIncrementNone": "NONE",
+    "manualTimeIncrementMinutes": {
+      "one": "${count} MINUTE",
+      "other": "${count} MINUTES"
+    },
     "frequency": "FREQUENCY",
     "mode": "MODE",
     "theirCall": "THEIR CALL",

@@ -1180,6 +1180,21 @@ class Translations$loggingControls$en {
 	/// en: 'Now'
 	String get now => 'Now';
 
+	/// en: 'Manual Time'
+	String get manualTimeSettings => 'Manual Time';
+
+	/// en: 'Increment per QSO'
+	String get manualTimeIncrement => 'Increment per QSO';
+
+	/// en: 'None'
+	String get manualTimeIncrementNone => 'None';
+
+	/// en: '(one) {${count} minute} (other) {${count} minutes}'
+	String manualTimeIncrementMinutes({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} minute',
+		other: '${count} minutes',
+	);
+
 	/// en: 'Frequency'
 	String get frequency => 'Frequency';
 
@@ -9211,6 +9226,10 @@ extension on Translations {
 			'loggingControls.timeUtc' => 'Time (UTC)',
 			'loggingControls.date' => 'Date',
 			'loggingControls.now' => 'Now',
+			'loggingControls.manualTimeSettings' => 'Manual Time',
+			'loggingControls.manualTimeIncrement' => 'Increment per QSO',
+			'loggingControls.manualTimeIncrementNone' => 'None',
+			'loggingControls.manualTimeIncrementMinutes' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} minute', other: '${count} minutes', ), 
 			'loggingControls.frequency' => 'Frequency',
 			'loggingControls.mode' => 'Mode',
 			'loggingControls.theirCall' => 'Their call',
@@ -9396,12 +9415,12 @@ extension on Translations {
 			'settings.keepDeviceAwake.descriptionOn' => 'Staying awake while you are on the logging view or a sync is in progress',
 			'settings.keepDeviceAwake.descriptionOff' => 'Sleeping as usual',
 			'settings.layoutDensity' => 'Layout Density',
+			_ => null,
+		} ?? switch (path) {
 			'settings.layoutDensityOpts.auto' => 'Automatic',
 			'settings.layoutDensityOpts.densest' => 'Densest',
 			'settings.layoutDensityOpts.dense' => 'Dense',
 			'settings.layoutDensityOpts.normal' => 'Normal',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityOpts.sparse' => 'Sparse',
 			'settings.layoutDensityOpts.sparsest' => 'Sparsest',
 			'settings.layoutDensityClamped' => ({required Object effective}) => 'the window is too short, using ${effective}',
@@ -9910,12 +9929,12 @@ extension on Translations {
 			'settings.station.rtlDirectSamplingI' => 'I branch',
 			'settings.station.rtlDirectSamplingQ' => 'Q branch',
 			'settings.station.rtlTcpNotAServer' => 'This is not an rtl_tcp server',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlTcpNotes' => 'This connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into.\n\n- **Start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** rtl_tcp serves a single client. The app connects only while a spectrum display is showing, and lets go a few seconds after it closes.\n- **On Android**, the *SDR driver* app runs the same server on the phone.',
 			'settings.station.rspTcpNotes' => 'This connects to an **rsp_tcp server you run yourself** on the computer the RSP is plugged into, with SDRplay\'s API installed there.\n\n- **Start it** with `rsp_tcp -a 0.0.0.0`.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** the server takes a single client. The app connects only while a spectrum display is showing.',
 			'settings.station.n3fjpNoRig' => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio',
 			'settings.station.winkeyerKeyPort' => 'Key output',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
 			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
 			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
@@ -10424,12 +10443,12 @@ extension on Translations {
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
+			_ => null,
+		} ?? switch (path) {
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
 			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',

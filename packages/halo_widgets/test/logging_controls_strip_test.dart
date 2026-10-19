@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:halo_widgets/src/logging_controls_time.dart' show TimeControlModel, manualTimeChipColor;
 
 import 'support/logging_controls_harness.dart';
 
@@ -450,7 +451,7 @@ void main() {
     final manualDt = DateTime.now().toUtc().add(const Duration(hours: 6));
     final manualTime = '${manualDt.hour.toString().padLeft(2, '0')}:${manualDt.minute.toString().padLeft(2, '0')}';
 
-    testWidgets('Time control sets a manual timestamp used at log time; Now resets it', (tester) async {
+    testWidgets('a typed time stamps the contact, and the next one follows it rather than the clock', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
@@ -463,47 +464,49 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
 
       final logged = await waitForQsos(tester, 1);
-      expect(DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true), DateTime.utc(2026, 1, 2, manualDt.hour, manualDt.minute));
+      final stamped = DateTime.utc(2026, 1, 2, manualDt.hour, manualDt.minute);
+      expect(DateTime.fromMillisecondsSinceEpoch(logged.single.startAtMillis!, isUtc: true), stamped);
 
-      // Wipe resets to automatic timestamping for the next QSO.
-      await openControl(tester, MdiIcons.clockOutline);
-      expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
-      final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
-      expect(timeField.controller!.text, isNot(manualTime));
+      // Still manual after the log, one default increment on.
+      await openControl(tester, MdiIcons.pause);
+      final next = stamped.add(ManualTimeHooks.defaultIncrement);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).controller!.text, TimeControlModel.fmtTime(next));
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Date')).controller!.text, TimeControlModel.fmtDate(next));
     });
 
-    testWidgets('Now button clears a manual time override', (tester) async {
+    testWidgets('Return to now clears a manual time', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manualTime);
       await tester.pump();
-      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget); // chip still rendered
+      expect(find.byIcon(MdiIcons.pause), findsOneWidget, reason: 'the chip says the clock is stopped');
 
-      await tester.tap(find.widgetWithText(TextButton, 'Now'));
+      await tester.tap(find.byKey(const ValueKey('returnToNowButton')));
       await tester.pump();
 
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, isNot(manualTime));
+      expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
     });
 
-    testWidgets('Now actually restores automatic timestamping — the reseed must not re-freeze it', (tester) async {
+    testWidgets('Return to now actually restores automatic timestamping — the reseed must not re-freeze it', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
-      // A date that can never be "today", so Now's reseed always rewrites the
+      // A date that can never be "today", so Return to now's reseed always rewrites the
       // field text — which used to re-fire the manual-override listener and
       // silently re-freeze the clock the button had just released.
       await tester.enterText(find.widgetWithText(TextField, 'Date'), '2020-01-02');
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '03:15');
       await tester.pump();
-      expect(find.widgetWithText(TextButton, 'Now'), findsOneWidget);
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(TextButton, 'Now'));
+      await tester.tap(find.byKey(const ValueKey('returnToNowButton')));
       await tester.pump();
 
-      // Now's visibility mirrors the override itself — gone means cleared.
-      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+      // Return to now's visibility mirrors the override itself — gone means cleared.
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsNothing);
     });
 
     testWidgets('saving the More pane without editing date/time keeps automatic timestamping', (tester) async {
@@ -517,7 +520,7 @@ void main() {
       // The dialog merely displayed the live clock; saving it untouched must
       // not convert that snapshot into a manual override.
       await openControl(tester, MdiIcons.clockOutline);
-      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsNothing);
     });
 
     ChoiceChip timeChip(WidgetTester tester) =>
@@ -544,19 +547,19 @@ void main() {
       expect(summary(), matches(RegExp(r'^\d{2}:\d{2}:\d{2}z$')));
     });
 
-    testWidgets('Now button stays hidden until a manual time override is actually set', (tester) async {
+    testWidgets('Return to now stays hidden until a manual time override is actually set', (tester) async {
       await tester.pumpWidget(host());
       await openControl(tester, MdiIcons.clockOutline);
 
-      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsNothing);
 
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), manualTime);
       await tester.pump();
 
-      expect(find.widgetWithText(TextButton, 'Now'), findsOneWidget);
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsOneWidget);
     });
 
-    testWidgets('editing an existing QSO shows its recorded time and never offers Now', (tester) async {
+    testWidgets('editing an existing QSO shows its recorded time and never offers Return to now', (tester) async {
       final existingQso = Qso(
         uuid: 'existing-uuid',
         operationUuid: operation.uuid,
@@ -587,13 +590,188 @@ void main() {
       await openControl(tester, MdiIcons.clockOutline);
       final timeField = tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)'));
       expect(timeField.controller!.text, '12:30');
-      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsNothing);
 
-      // Even after editing away from the original recorded time, Now never
+      // Even after editing away from the original recorded time, Return to now never
       // appears — there's no "automatic" to reset a historical entry to.
       await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '05:00');
       await tester.pump();
-      expect(find.widgetWithText(TextButton, 'Now'), findsNothing);
+      expect(find.byKey(const ValueKey('returnToNowButton')), findsNothing);
+    });
+
+    group('manual time entry', () {
+      final pausedAt = DateTime.utc(2024, 5, 6, 7, 8).millisecondsSinceEpoch;
+      const minute = 60000;
+
+      /// A panel resumed in manual time entry, recording what it stores.
+      Future<List<int?>> hostPaused(WidgetTester tester, {Duration increment = ManualTimeHooks.defaultIncrement, List<Duration>? increments}) async {
+        final stored = <int?>[];
+        await tester.pumpWidget(
+          host(
+            manualTime: ManualTimeHooks(startAtMillis: pausedAt, onChanged: stored.add, increment: increment, onIncrementChanged: increments?.add),
+          ),
+        );
+        return stored;
+      }
+
+      ChoiceChip pausedChip(WidgetTester tester) =>
+          tester.widget<ChoiceChip>(find.ancestor(of: find.byIcon(MdiIcons.pause), matching: find.byType(ChoiceChip)));
+
+      testWidgets('an operation resumed in it stamps its time, shows a stopped clock, and moves on once per Enter', (tester) async {
+        final stored = await hostPaused(tester, increment: const Duration(minutes: 5));
+        // Static, not a live clock: a ticking label here would say the
+        // contact is stamped with the time it is logged.
+        expect(pausedChip(tester).label, isA<Text>());
+        expect((pausedChip(tester).label as Text).data, '07:08:00z');
+        expect(pausedChip(tester).backgroundColor, manualTimeChipColor);
+
+        // A list is one moment: its calls keep their usual spacing, and the
+        // clock moves on once, from the first.
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW,K1ABC');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = [...await waitForQsos(tester, 2)]..sort((a, b) => a.startAtMillis!.compareTo(b.startAtMillis!));
+        expect(logged.first.startAtMillis, pausedAt);
+        expect(stored, [pausedAt + 5 * minute]);
+        expect((pausedChip(tester).label as Text).data, '07:13:00z', reason: 'the wipe after a log is not the operator leaving manual time entry');
+      });
+
+      testWidgets('an increment of None stamps the next contact with the same time', (tester) async {
+        final stored = await hostPaused(tester, increment: Duration.zero);
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await waitForQsos(tester, 1);
+        expect(stored, isEmpty, reason: 'nothing moved, so nothing is stored');
+        expect((pausedChip(tester).label as Text).data, '07:08:00z');
+      });
+
+      testWidgets('the operator\'s wipe leaves it, and undoing the wipe goes back into it', (tester) async {
+        final stored = await hostPaused(tester);
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+
+        await tester.tap(find.byIcon(MdiIcons.backspaceOutline));
+        await tester.pump();
+        expect(stored, [null]);
+        expect(find.byIcon(MdiIcons.pause), findsNothing);
+        expect(find.byIcon(MdiIcons.clockOutline), findsOneWidget);
+
+        await tester.tap(find.byIcon(MdiIcons.undo));
+        await tester.pump();
+        expect(stored, [null, pausedAt]);
+        expect((pausedChip(tester).label as Text).data, '07:08:00z');
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 1);
+        expect(logged.single.startAtMillis, pausedAt);
+        expect(stored, [null, pausedAt, pausedAt + minute]);
+      });
+
+      testWidgets('editing an existing QSO shows its own time, and coming back resumes manual time entry', (tester) async {
+        final existing = Qso(
+          uuid: 'existing-uuid',
+          operationUuid: operation.uuid,
+          data: {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': DateTime.utc(2020, 3, 4, 12, 30).millisecondsSinceEpoch,
+          },
+        );
+        final stored = <int?>[];
+        final manualTime = ManualTimeHooks(startAtMillis: pausedAt, onChanged: stored.add);
+        await tester.pumpWidget(
+          host(
+            manualTime: manualTime,
+            session: LoggingSession(editingQso: existing),
+          ),
+        );
+        expect(find.byIcon(MdiIcons.pause), findsNothing);
+
+        // A time typed for an existing contact is that contact's.
+        await openControl(tester, MdiIcons.clockOutline);
+        await tester.enterText(find.widgetWithText(TextField, 'Time (UTC)'), '05:00');
+        await tester.pump();
+        expect(stored, isEmpty);
+
+        await tester.pumpWidget(host(manualTime: manualTime));
+        expect((pausedChip(tester).label as Text).data, '07:08:00z');
+      });
+
+      testWidgets('its settings button opens the increment choices, and a pick is stored at once', (tester) async {
+        final increments = <Duration>[];
+        await hostPaused(tester, increments: increments);
+        await openControl(tester, MdiIcons.pause);
+        await tester.tap(find.byKey(const ValueKey('manualTimeSettingsButton')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Increment per QSO'), findsOneWidget);
+        for (final label in ['None', '1 minute', '2 minutes', '5 minutes', '10 minutes']) {
+          expect(find.widgetWithText(RadioListTile<Duration>, label), findsOneWidget);
+        }
+        await tester.tap(find.widgetWithText(RadioListTile<Duration>, '5 minutes'));
+        await tester.pump();
+        expect(increments, [const Duration(minutes: 5)]);
+      });
+
+      testWidgets('the settings button is not offered on a live clock', (tester) async {
+        await tester.pumpWidget(host(manualTime: ManualTimeHooks(onIncrementChanged: (_) {})));
+        await openControl(tester, MdiIcons.clockOutline);
+        expect(find.byKey(const ValueKey('manualTimeSettingsButton')), findsNothing);
+      });
+
+      testWidgets('a time command typed into the call field sets the time instead of logging', (tester) async {
+        final stored = <int?>[];
+        Future<Map<String, dynamic>?> interpret(String input, [Map<String, dynamic>? operation, Map<String, dynamic>? qso, bool execute = false]) async =>
+            input == '12:33'
+            ? {
+                'describe': 'Set the time to 12:33z?',
+                'commands': [
+                  {
+                    'setTime': {'hour': 12, 'minute': 33},
+                  },
+                ],
+              }
+            : null;
+        await tester.pumpWidget(
+          host(
+            manualTime: ManualTimeHooks(startAtMillis: pausedAt, onChanged: stored.add),
+            commands: CommandHooks(interpretCommand: interpret),
+          ),
+        );
+        // The colon has to survive the call field's character filter.
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), '12:33');
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+
+        expect(stored, [DateTime.utc(2024, 5, 6, 12, 33).millisecondsSinceEpoch]);
+        expect((pausedChip(tester).label as Text).data, '12:33:00z');
+        expect(await qsosAfterWaiting(tester), isEmpty);
+      });
+
+      testWidgets('a deep link\'s time stamps that one contact without entering manual time entry', (tester) async {
+        final stored = <int?>[];
+        final linkedAt = DateTime.utc(2024, 1, 1, 1, 1).millisecondsSinceEpoch;
+        await tester.pumpWidget(
+          host(
+            manualTime: ManualTimeHooks(onChanged: stored.add),
+            session: LoggingSession(
+              suggestedQso: {
+                'their': {'call': 'W1AW'},
+                'freq': 14285,
+                'mode': 'SSB',
+                'startAtMillis': linkedAt,
+              },
+            ),
+          ),
+        );
+        expect(find.byIcon(MdiIcons.pause), findsNothing);
+        await tester.showKeyboard(find.widgetWithText(TextField, 'Their call'));
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 1);
+        expect(logged.single.startAtMillis, linkedAt);
+        expect(stored, isEmpty);
+      });
     });
 
     testWidgets('activity control chip has no border, before or after a ref is entered', (tester) async {

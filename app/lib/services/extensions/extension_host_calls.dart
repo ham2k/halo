@@ -138,6 +138,9 @@ class _ExtensionHostCalls {
       // reads, so a hook and the field beside it cannot disagree.
       'decimalSeparator': NumberFormatting.instance.decimalSeparator,
       'groupingSeparator': NumberFormatting.instance.groupingSeparator,
+      // The device's region, not the app's language: English on a British
+      // device writes 18/3.
+      'dateOrder': dateOrderFor(),
       // Resolved the same way, and for the same reason: a hook writing a
       // locator needs a number of characters, and "six" is not one.
       'gridPrecision': GridPrecision.current.digits,

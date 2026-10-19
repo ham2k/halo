@@ -1022,6 +1022,13 @@
     "timeUtc": "time (utc)",
     "date": "date",
     "now": "now",
+    "manualTimeSettings": "manual time",
+    "manualTimeIncrement": "increment per qso",
+    "manualTimeIncrementNone": "none",
+    "manualTimeIncrementMinutes": {
+      "one": "${count} minute",
+      "other": "${count} minutes"
+    },
     "frequency": "frequency",
     "mode": "mode",
     "theirCall": "their call",

@@ -37,6 +37,13 @@ export interface HookContext {
   /// before using it as a delimiter, since `split('')` splits everywhere.
   decimalSeparator?: string
   groupingSeparator?: string
+  /// The order the device's region writes a numeric date in — `'mdy'` for
+  /// 3/18 in the US, `'dmy'` for 18/3 in most of the world, `'ymd'` where
+  /// the year leads (and the month then comes before the day). Resolved
+  /// app-side from the device locale, not the app's language: an app in
+  /// English on a British device writes 18/3. For a hook that parses a date
+  /// someone typed.
+  dateOrder?: "mdy" | "dmy" | "ymd"
   /// How many characters the operator's Grid Precision setting shows a
   /// Maidenhead locator with — 6 or 8. A locator's length is a claim about
   /// how well a location is known, so a hook that WRITES one for a human or
@@ -1754,6 +1761,26 @@ export interface CommandAction {
   /// through the same change path as typing, so lookups, dupe checks and
   /// comma-list handling all apply to it normally.
   setCallField?: { text: string }
+  /// The new contact's time (`time-commands`): `now: true` returns to live
+  /// time; otherwise the fields apply in order to the contact's current
+  /// time — its manual time, or now — and the result is set as if typed
+  /// into the Time control (docs/design/logging-fields.md § Manual time
+  /// entry). `deltaMillis` moves it, by at most a century;
+  /// `hour`/`minute`/`second` replace those given, and the seconds become 0
+  /// when an hour or minute comes without them; `month`/`day` replace the
+  /// date, keeping the year, and `day` needs `month`. All UTC. An action
+  /// with none of these, or a value out of range (hour 0–23, month 1–12…),
+  /// is refused as an error, never rolled over. The app owns the clock, so
+  /// a hook never reads "now" to build one of these.
+  setTime?: {
+    now?: boolean
+    deltaMillis?: number
+    hour?: number
+    minute?: number
+    second?: number
+    month?: number
+    day?: number
+  }
   /// Forces a fresh fetch+reprocess of `dataFile`s (see RELOAD), bypassing
   /// ETag caching — a manual reload is usually because our own mapping
   /// logic changed, not the source data. `target` is `'ALL'` or a

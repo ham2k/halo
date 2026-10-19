@@ -50,7 +50,7 @@ class _Harness {
     draft: draft,
     onRescore: () {},
   )..bind();
-  late final TimeControlModel time = TimeControlModel(config: () => (editingQso: editingQso), draft: draft)..bind();
+  late final TimeControlModel time = TimeControlModel(config: () => (editingQso: editingQso, manualTime: const ManualTimeHooks()), draft: draft)..bind();
   late final ExchangeFieldsModel exchange = ExchangeFieldsModel(
     config: () => (
       textControls: () => const <Map<String, dynamic>>[],

@@ -722,8 +722,9 @@ the cursor is in, or, when that isn't a callsign yet, the first one to its
 left that is. An incomplete call under the cursor is picked, not skipped —
 skipping it would log the station before it instead. The rest stay in the field for the next contact. Nothing
 carries over between them — logging one wipes the entry fully (refs, notes,
-overrides, reports, manual time) before restoring the remainder, exactly as
-if the operator had just typed it.
+overrides, reports, a suggestion's time) before restoring the remainder, exactly as
+if the operator had just typed it. Manual time entry is not the entry's, and
+stays (§ "Manual time entry").
 
 A stacked segment may itself be a comma list, and then every call in it logs.
 That shape is what a mid-stack note expansion leaves behind, so treating it
@@ -939,6 +940,56 @@ lands as surely as a single step does.
 
 Still to come: a "goto" search (Cmd/Ctrl-G) for jumping to a QSO by number or
 callsign — see [backlog.md](../backlog.md).
+
+## Manual time entry
+
+A new contact is stamped at the moment it is logged — until the operator
+changes the Time control's time or date (or the More pane's) while
+composing one. That enters **manual time entry**, for an operator
+transcribing a paper log or catching up after the fact:
+
+- The chip shows the stopped clock — a pause glyph on a dark red fill, the
+  same in both themes — and the expanded control offers a filled **Now**
+  button (a reset glyph) that returns to live time, plus a settings button whose dialog picks the **Increment per QSO**: None,
+  or 1, 2, 5 or 10 minutes (a global logging setting, 1 minute unless
+  changed).
+- Logging does not hand the time back. Each Enter moves it on once by the
+  increment, from the time just logged — a comma list is one moment, its
+  calls keeping their usual five-second spacing.
+- It is a mode, not part of the draft: the wipe after a log, a spot filling
+  the fields, and editing another QSO all leave it in place, and an empty
+  entry in it is not "composed" (the wipe button and a slid spot's prompt
+  ignore it). The operator's own wipe — the button, or Alt+W — leaves it,
+  and that wipe's undo goes back into it.
+- It is the operation's: stored in its device-local `localData` and resumed
+  when the operation is opened again, on this device only.
+
+The same can be typed into the call field (the `time-commands` core
+extension, which parses and leaves the clock to the panel's `setTime`
+action):
+
+| Typed | Does |
+|---|---|
+| `+1m`, `+30s`, `-1h`, `+3d` | Moves the time; a bare `+1` is minutes |
+| `12:33`, `12:33:30` | Sets the time (UTC), keeping the date; seconds are `:00` unless given |
+| `:34` | Sets the minutes only, and the seconds to `:00` |
+| `::30` | Sets the seconds only |
+| `3/18` | Sets the date, keeping the year — read in the device region's order, so `18/3` in most of the world (`HookContext.dateOrder`) |
+| `NOW` | The **Now** button |
+
+Each applies to the new contact's current time — the manual time, or now —
+and lands as if typed into the Time control, entering manual time entry.
+Like every call-field command, none runs while an existing QSO is being
+edited; its time is the Time control's. An impossible value (`25:00`,
+`4/31`) answers with an error rather than falling through to log as a
+callsign, and the app refuses a `setTime` action out of range rather than
+rolling it over. A Feb 29 in a common year — the contact's year — lands
+on, and previews as, the 28th.
+
+Two things set a time without entering it. Editing an existing QSO's time
+changes that QSO alone. A suggestion's `startAtMillis` (a `/qso` deep link
+reporting a contact already made) stamps that one contact, and the next
+spot or wipe drops it.
 
 ## The More pane
 

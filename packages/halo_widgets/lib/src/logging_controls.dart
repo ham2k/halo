@@ -72,15 +72,15 @@ import 'theme.dart';
 import 'wall_clock.dart';
 
 /// The logging panel: the entry row, the information area and the secondary
-/// control strip. Wired up through nine groups, one per concern — the log it
+/// control strip. Wired up through ten groups, one per concern — the log it
 /// writes to and reads ([LogHooks]), what the app is doing with it right now
 /// ([LoggingSession]), the rig it mirrors ([RadioHookup]), where it learns
 /// about a callsign ([LookupHooks]), the activities' controls
 /// ([ActivityHooks]), the command shortcuts ([CommandHooks]), the strip as
 /// the operator arranged it ([ControlStripSettings]), the spotting networks
-/// ([SpottingHooks]) and the operator's preferences ([LoggingPreferences]).
-/// Only the log is required; a caller names the groups it has something to
-/// say about.
+/// ([SpottingHooks]), the operator's preferences ([LoggingPreferences]) and
+/// manual time entry ([ManualTimeHooks]). Only the log is required; a caller
+/// names the groups it has something to say about.
 class LoggingControls extends StatefulWidget {
   /// See [LogHooks].
   final LogHooks log;
@@ -109,6 +109,9 @@ class LoggingControls extends StatefulWidget {
   /// See [LoggingPreferences].
   final LoggingPreferences prefs;
 
+  /// See [ManualTimeHooks].
+  final ManualTimeHooks manualTime;
+
   const LoggingControls({
     super.key,
     required this.log,
@@ -120,6 +123,7 @@ class LoggingControls extends StatefulWidget {
     this.strip = const ControlStripSettings(),
     this.spotting = const SpottingHooks(),
     this.prefs = const LoggingPreferences(),
+    this.manualTime = const ManualTimeHooks(),
   });
 
   @override
@@ -195,7 +199,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   );
 
   /// The Time control — when the entry is stamped. See [TimeControlModel].
-  late final TimeControlModel _time = TimeControlModel(config: () => (editingQso: widget.session.editingQso), draft: _draft);
+  late final TimeControlModel _time = TimeControlModel(config: () => (editingQso: widget.session.editingQso, manualTime: widget.manualTime), draft: _draft);
 
   /// The contest exchange fields — see [ExchangeFieldsModel]. What stays
   /// here is WHICH controls are exchange fields ([_textControls]), and when
@@ -1241,6 +1245,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // cannot drift apart: provenance outliving the draft it belongs to is
     // the shape of the bug this whole pairing exists to prevent.
     _undoGuesses = null;
+    _time.forgetWipe();
     _draft.resetSession();
   }
 
@@ -2218,6 +2223,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           selection: TextSelection.collapsed(offset: text.length),
         );
         _callFocus.requestFocus();
+      } else if (map['setTime'] is Map) {
+        _time.applyCommand((map['setTime'] as Map).cast<String, dynamic>());
       } else if (map.containsKey('syncAll')) {
         await widget.commands.onCommandAction?.call('syncAll');
       } else if (map['purgeTests'] is Map) {
@@ -2305,19 +2312,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   // override maps.
 
   Future<void> _openMoreEditor() async {
-    final millis = _time.effectiveStartAtMillis;
-    final dt = millis != null ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true) : nowUtc();
     // Captured so the Save handler below can tell "the user actually edited
     // Grid/State in this pane" from "the pane merely displayed whatever
     // was already there" — the latter must not turn a passive lookup guess
     // into a deliberately-touched, sticky value (see _draft.gridTouched's doc).
     final gridBeforePane = _gridController.text.trim();
     final stateBeforePane = _stateController.text.trim();
-    // Same displayed-vs-edited distinction for date/time: while composing,
-    // the pane shows the live clock, and saving an untouched value must
-    // not turn it into a manual override that freezes auto-timestamping.
-    final dateBeforePane = TimeControlModel.fmtDate(dt);
-    final timeBeforePane = TimeControlModel.fmtTime(dt);
+    // Same for date/time: saving the live clock the pane merely showed must
+    // not stop it in manual time entry.
+    final (dateBeforePane, timeBeforePane) = _time.shownFields;
     // What the contact itself says, override included — never the operation's
     // stand-in, which is only ever a placeholder here.
     final ourBeforePane = {...?asQsonMap(widget.session.editingQso?.data['our']), ..._draft.ourExtra};
@@ -2361,8 +2364,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'band': _radio.band ?? '',
         'mode': _radio.modeForEditing,
         'power': _draft.powerWatts,
-        'date': TimeControlModel.fmtDate(dt),
-        'time': TimeControlModel.fmtTime(dt),
+        'date': dateBeforePane,
+        'time': timeBeforePane,
         'notes': (_draft.extra['notes'] as String?) ?? '',
         'operatorCall': operatorBeforePane,
         if (widget.prefs.showPositionField) 'multiIdentifier': positionBeforePane,
@@ -2434,7 +2437,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         }
 
         final stamped = paneStartAtMillis(result, dateBeforePane, timeBeforePane);
-        if (stamped != null) _time.manualStartAtMillis = stamped;
+        if (stamped != null) _time.takeTime(stamped);
 
         final notes = ((result['notes'] as String?) ?? '').trim();
         _draft.setNote(notes);
@@ -2678,6 +2681,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (_draft.hasComposedValues) {
           _handleWipeTap();
         } else {
+          _time.leaveForWipe();
           _wipe();
         }
       }
@@ -2759,9 +2763,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _draft.toData(),
       onExpire: () {
         _undoGuesses = null;
+        _time.forgetWipe();
         if (mounted) setState(() {});
       },
     );
+    _time.leaveForWipe();
     _wipe();
   }
 
@@ -2770,6 +2776,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (data == null) return;
     final guesses = _undoGuesses;
     _undoGuesses = null;
+    _time.undoWipe();
     _restoreDraft(data, guesses: guesses);
   }
 
@@ -3282,6 +3289,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           widget.log.onLogged?.call(qso);
           widget.lookups.enqueueLookup?.call(qso);
         }
+        _time.advancePast(baseStartAtMillis);
         _wipe(focusCall: focusCall);
         // The un-logged rest of the stack goes straight back into the
         // now-empty field — whole, so its pills are not held as being typed.

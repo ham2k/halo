@@ -135,6 +135,13 @@ class SecondaryControlSpec {
   /// accent has no guaranteed contrast against the error fill.
   final bool alert;
 
+  /// Paints the chip's ground in this color, open or shut, with white
+  /// content — for a control in a mode the operator has to see from across
+  /// the panel (the Time chip in manual time entry). The open chip is drawn
+  /// darker, so it still reads as open. Outranks [iconColor]; [alert]
+  /// outranks it.
+  final Color? fill;
+
   const SecondaryControlSpec({
     required this.key,
     required this.icon,
@@ -149,6 +156,7 @@ class SecondaryControlSpec {
     this.focusNode,
     this.enabled = true,
     this.alert = false,
+    this.fill,
   });
 
   /// A copy with the given fields replaced.
@@ -177,6 +185,7 @@ class SecondaryControlSpec {
     FocusNode? focusNode,
     bool? enabled,
     bool? alert,
+    Color? fill,
   }) => SecondaryControlSpec(
     key: key ?? this.key,
     icon: icon ?? this.icon,
@@ -191,6 +200,7 @@ class SecondaryControlSpec {
     focusNode: focusNode ?? this.focusNode,
     enabled: enabled ?? this.enabled,
     alert: alert ?? this.alert,
+    fill: fill ?? this.fill,
   );
 }
 
@@ -886,6 +896,10 @@ class _ControlChip extends StatelessWidget {
       foreground = selected ? theme.colorScheme.onError : theme.colorScheme.onErrorContainer;
       background = theme.colorScheme.errorContainer;
       selectedColor = theme.colorScheme.error;
+    } else if (control.fill case final fill?) {
+      foreground = Colors.white;
+      background = fill;
+      selectedColor = Color.lerp(fill, Colors.black, 0.35)!;
     }
     // Every color here is pinned explicitly (below), which bypasses
     // ChoiceChip's own built-in disabled treatment — fade everything by
@@ -898,11 +912,12 @@ class _ControlChip extends StatelessWidget {
       selectedColor = selectedColor.withValues(alpha: 0.5);
     }
 
-    final liveColor = control.enabled && !control.alert ? control.liveIconColor : null;
-    final tint = control.enabled && !control.alert ? control.liveTint : null;
+    final painted = control.alert || control.fill != null;
+    final liveColor = control.enabled && !painted ? control.liveIconColor : null;
+    final tint = control.enabled && !painted ? control.liveTint : null;
     Color tinted(Color color) => tint == null ? color : Color.lerp(color, tint.color, tint.strength().clamp(0.0, 1.0))!;
     Widget icon({List<Shadow>? shadows}) {
-      final base = control.enabled && !control.alert ? (control.iconColor ?? foreground) : foreground;
+      final base = control.enabled && !painted ? (control.iconColor ?? foreground) : foreground;
       return Icon(
         control.icon,
         size: 16 * MediaQuery.textScalerOf(context).scale(1.0),

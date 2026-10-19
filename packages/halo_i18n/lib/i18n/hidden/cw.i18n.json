@@ -1022,6 +1022,13 @@
     "timeUtc": "— ·· —— · / —·——· ··— — —·—· —·——·—",
     "date": "—·· ·— — ·",
     "now": "—· ——— ·——",
+    "manualTimeSettings": "—— ·— —· ··— ·— ·—·· / — ·· —— ·",
+    "manualTimeIncrement": "·· —· —·—· ·—· · —— · —· — / ·——· · ·—· / ——·— ··· ———",
+    "manualTimeIncrementNone": "—· ——— —· ·",
+    "manualTimeIncrementMinutes": {
+      "one": "${count} / —— ·· —· ··— — ·",
+      "other": "${count} / —— ·· —· ··— — · ···"
+    },
     "frequency": "··—· ·—· · ——·— ··— · —· —·—· —·——",
     "mode": "—— ——— —·· ·",
     "theirCall": "— ···· · ·· ·—· / —·—· ·— ·—·· ·—··",

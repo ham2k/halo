@@ -18,6 +18,7 @@ import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/logging_scope.dart';
 import '../../services/settings_service.dart';
+import '../../services/manual_time_settings.dart';
 import '../../services/spotting_settings.dart';
 import '../../settings/settings_target_dialog.dart';
 import '../../tools/call_location_line.dart';
@@ -252,6 +253,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
   late bool _vibrateNumbersRow = widget.services.settings.vibrateNumbersRow;
   late bool _leftieMode = widget.services.settings.leftieMode;
   late var _spottingSettings = SpottingSettings.read(widget.services.settings);
+  late var _manualTimeIncrement = widget.services.settings.manualTimeIncrement;
+
+  /// The manual time this panel last stored. Compared rather than
+  /// `widget.operation.localData`, which lags a write until the operation
+  /// re-emits: a wipe and its quick undo would otherwise skip the second
+  /// write and reopen the operation in the wrong mode.
+  late int? _storedManualTime = widget.operation.localData[_manualTimeKey] as int?;
 
   // Whether the QSO list's empty state should warn to check the radio
   // — mirrors LoggingControls' own `_vfoIsUnset`: no band *and* no
@@ -675,6 +683,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
     final spotting = SpottingSettings.read(s);
     if (spotting != _spottingSettings) setState(() => _spottingSettings = spotting);
+    final increment = s.manualTimeIncrement;
+    if (increment != _manualTimeIncrement) setState(() => _manualTimeIncrement = increment);
   }
 
   /// Rebuilds the QSO list's empty-state warning the moment the operator
@@ -1038,6 +1048,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
         showPositionField: operationHasPositions(widget.operation),
         aboveLog: widget.controlsAboveLog,
       ),
+      manualTime: ManualTimeHooks(
+        startAtMillis: _storedManualTime,
+        onChanged: (millis) {
+          // Compared first: every write rebuilds the Operation View.
+          if (_storedManualTime == millis) return;
+          _storedManualTime = millis;
+          unawaited(widget.services.operations.updateLocalData(widget.operation.uuid, {_manualTimeKey: millis}));
+        },
+        increment: _manualTimeIncrement,
+        onIncrementChanged: (increment) => unawaited(widget.services.settings.setManualTimeIncrement(increment)),
+      ),
     );
     final panel = CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handlePanelEscape},
@@ -1055,6 +1076,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// or any other identifying detail.
   Map<String, Object?> _qsoTrackProps(Qso qso) => {'their_prefix': qso.theirEntityPrefix, 'refs': qso.refs.map((r) => r['type']).join(',')};
 }
+
+/// Where the operation keeps manual time entry's clock — device-local, like
+/// the rest of `localData`: it describes this operator's session at the
+/// keyboard, not the log.
+const _manualTimeKey = 'manualTimeMillis';
 
 /// Below this QSO count, [QsoList]'s first build is cheap enough that
 /// [_LazyQsoList]'s spinner isn't worth showing at all — see its call site.
