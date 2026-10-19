@@ -11,6 +11,8 @@
 // sources' INDEPENDENCE is the other thing only an injected fetch can show:
 // SWPC failing must cost a chart and nothing else.
 
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -86,8 +88,8 @@ void main() {
   }
 
   /// A week of wind at ten-minute cadence — what the big file looks like once
-  /// the panel buckets it. The hourly feed alone is ONE three-hour bucket, and
-  /// a chart needs two marks to be a line.
+  /// the panel buckets it. The hourly feed alone is one three-hour bucket, or
+  /// two when the hour straddles a bucket boundary — never more.
   String windHistory({int days = 7}) {
     final now = nowUtc();
     final readings = days * 24 * 6;
@@ -598,8 +600,63 @@ void main() {
     // NOT covered here, and worth knowing: that a SECOND round does not ask
     // for the megabyte again. `_windHistoryAtReal` is private to the State
     // and the retry floor runs on the real clock, so no widget test can reach
-    // the second round. What holds it is that the stamp is written
-    // unconditionally, before the await — see `_fetchIfDue`.
+    // the second round. What holds it is that the stamp is written before
+    // the await, whatever the answer — see `_fetchWindHistory`.
+
+    testWidgets('the week waits until hamqsl has answered', (tester) async {
+      // Asked beside hamqsl, the megabyte shares a slow link with the one
+      // request the pane cannot draw without, inside that request's eight
+      // seconds — and the operator is told "no network" while the network is
+      // busy fetching for them.
+      final hamqsl = Completer<({int status, String body})>();
+      final others = answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: windHistory());
+      await pump(
+        tester,
+        fetch: (url) {
+          if (url != solarConditionsUrl()) return others(url);
+          requested.add(url);
+          return hamqsl.future;
+        },
+        size: const Size(900, 700),
+      );
+      expect(requested, isNot(contains(solarWindHistoryUrl())));
+
+      hamqsl.complete((status: 200, body: conditions()));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+
+      expect(requested.where((url) => url == solarWindHistoryUrl()), hasLength(1));
+      // More marks than the hourly feed can make, so these are the week's —
+      // which reach the screen only through a rebuild after the round's own.
+      final wind = tester.widget<CustomPaint>(windChart().last).painter! as SolarLineChartPainter;
+      expect(wind.values.length, greaterThan(2));
+      await endOfTest(tester);
+    });
+
+    testWidgets('a pane hidden while hamqsl answers does not ask for the week', (tester) async {
+      // A tab switched or an app backgrounded mid-round would otherwise pull
+      // the megabyte for a chart nobody sees — and on a suspended app spend
+      // the six-hour stamp on a request that cannot finish.
+      final hamqsl = Completer<({int status, String body})>();
+      final others = answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries(), windHistoryBody: windHistory());
+      Future<({int status, String body})> fetch(Uri url) {
+        if (url != solarConditionsUrl()) return others(url);
+        requested.add(url);
+        return hamqsl.future;
+      }
+
+      await pump(tester, fetch: fetch);
+      await pump(tester, fetch: fetch, dockVisible: false);
+      hamqsl.complete((status: 200, body: conditions()));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+
+      expect(requested, contains(solarConditionsUrl()), reason: 'the round itself did run');
+      expect(requested, isNot(contains(solarWindHistoryUrl())));
+      await endOfTest(tester);
+    });
 
     testWidgets('asks all five on the first round, once each', (tester) async {
       await pump(
@@ -607,8 +664,8 @@ void main() {
         fetch: answering(solar: conditions(), flux: fluxSeries(), kp: kpSeries(), wind: windSeries()),
       );
 
-      // Five: hamqsl, the flux, the Kp, the wind hour, and — on the first
-      // round only — the wind WEEK.
+      // Five: hamqsl, the flux, the Kp, the wind hour, and — once the first
+      // round has landed — the wind WEEK.
       expect(requested, hasLength(5));
       expect(requested.map((u) => u.host), containsAll(['www.hamqsl.com', 'services.swpc.noaa.gov']));
       await endOfTest(tester);
@@ -637,6 +694,10 @@ void main() {
       // only two SWPC curves would be a solar panel with no solar reading on
       // it.
       expect(find.text(t.solarUnreachable), findsOneWidget);
+      // Nor is the megabyte asked for: there is no reading to draw it on, and
+      // on the slow link most likely to have failed hamqsl it is the most
+      // expensive thing the pane could do next.
+      expect(requested, isNot(contains(solarWindHistoryUrl())));
       await endOfTest(tester);
     });
   });

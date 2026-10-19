@@ -149,8 +149,8 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
   /// Raw one-minute readings gathered since that big fetch, from the hourly
   /// feed. Kept RAW rather than bucketed: the newest bucket is still filling,
   /// and averaging an average as each round adds to it would weight the first
-  /// readings of the period far above the last. Bounded by
-  /// [solarWindHistoryInterval] — the next big fetch clears it.
+  /// readings of the period far above the last. The big fetch drops every
+  /// reading it covers, and each round drops any older than the chart draws.
   List<SolarPoint> _windRecent = const [];
 
   SolarReading? _reading;
@@ -254,36 +254,44 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
     // throw before the `finally` is armed — `setState` during build reaches
     // here through `didChangeDependencies` — would strand it true, and every
     // later refresh returns at the door for the life of the pane.
+    //
+    // It spans the week's fetch as well as the round, so no round's hamqsl
+    // request shares the link with the megabyte — the reason the week is a
+    // follow-up at all.
+    try {
+      _inFlight = true;
+      _attemptedAtReal = realNowUtc();
+      final fetch = widget.fetch ?? _httpFetch;
+      final landed = await _fetchRound(fetch);
+      // Not for a pane hidden while the round was out: the megabyte is for a
+      // chart someone can see, and a backgrounded app's request can fail or
+      // time out with the six-hour stamp already spent on it. A hidden pane
+      // leaves the stamp alone, so the next round once it is back asks.
+      if (landed && mounted && _visible && solarWindHistoryIsDue(fetchedAtReal: _windHistoryAtReal, realNow: realNowUtc())) {
+        await _fetchWindHistory(fetch);
+      }
+    } finally {
+      _inFlight = false;
+    }
+  }
+
+  /// hamqsl and the three small series, all at once. True when it put a
+  /// reading on screen.
+  Future<bool> _fetchRound(SolarFetch fetch) async {
     SolarReading? reading;
     _Failure? failure;
     List<Object?>? answers;
     try {
-      _inFlight = true;
-      _attemptedAtReal = realNowUtc();
       if (mounted) setState(() => _fetching = true);
-      final fetch = widget.fetch ?? _httpFetch;
-      // All four at once. The three series are additive — [_series] answers
-      // with the previous one rather than throwing — so only hamqsl can fail
-      // this round, and the charts survive a SWPC outage.
-      // The big wind file only when it is due — everything else every round.
-      final historyDue = solarWindHistoryIsDue(fetchedAtReal: _windHistoryAtReal, realNow: realNowUtc());
-      // Stamped on the ATTEMPT and BEFORE the await, which is the whole
-      // pacing guarantee. Stamped on the result instead, every way this round
-      // can fail asks for the megabyte again on the next one: hamqsl throwing
-      // takes `Future.wait` down before any result is read, and a history
-      // fetch that times out on a slow link answers with the previous series
-      // rather than an error. Either way the bytes were already pulled — a
-      // timeout does not abort the request underneath it — so the retry is
-      // pure cost, every 15 minutes, on the metered link that caused it.
-      if (historyDue) _windHistoryAtReal = realNowUtc();
-      final results = await Future.wait([
+      // The three series are additive — [_series] answers with the previous
+      // one rather than throwing — so only hamqsl can fail this round, and the
+      // charts survive a SWPC outage.
+      answers = await Future.wait([
         _conditions(fetch),
         _series(fetch, solarFluxSeriesUrl(), parseFluxSeries, _flux),
         _series(fetch, solarKpSeriesUrl(), parseKpSeries, _kp),
         _series(fetch, solarWindSeriesUrl(), parseSolarWindSeries, const []),
-        if (historyDue) _series(fetch, solarWindHistoryUrl(), parseSolarWindSeries, const []) else Future.value(const <SolarPoint>[]),
       ]);
-      answers = results;
     } catch (e, stack) {
       // `parseSolarReading` is total, so what reaches here that is not a
       // [_BadAnswer] is the fetch — which makes "not a bad answer" a sound
@@ -293,39 +301,34 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
       // network path in the app uses, stack included, because a reshaped feed
       // is otherwise undebuggable.
       debugPrint('[solar] fetch failed: $e\n$stack');
-    } finally {
-      _inFlight = false;
     }
 
     // Outside the try, deliberately, the way `weather_panel.dart` puts its own
     // state update outside its: none of this touches the network, so a fault
     // here caught by that `catch` would be told to the operator as "no
-    // network" and logged against the wrong subsystem — for five fetches that
-    // all succeeded. It also has to be all-or-nothing, which inside the try it
-    // was not: a throw halfway left `_windRecent` cleared and `_windHistory`
-    // stamped fresh against a `_wind` that had not been rebuilt, and nothing
-    // repaired that for six hours.
+    // network" and logged against the wrong subsystem — for four fetches that
+    // all succeeded. It also has to be all-or-nothing: a throw halfway leaves
+    // `_windRecent` merged against a `_wind` that was not rebuilt.
     if (answers != null) {
       _flux = answers[1] as List<SolarPoint>;
       _kp = answers[2] as List<SolarPoint>;
-
-      // The week, bucketed on arrival: nine thousand one-minute readings is a
-      // megabyte held for a chart a few hundred marks wide, and the buckets
-      // are what gets drawn anyway.
-      final windHistory = answers[4] as List<SolarPoint>;
-      if (windHistory.isNotEmpty) {
-        _windHistory = averageIntoBuckets(windHistory);
-        _windRecent = const [];
-      }
       // The hourly feed accumulates raw between big fetches, so the bucket
       // still filling is the mean of every reading seen for it rather than of
       // the last hour's alone.
-      _windRecent = mergeSeries(_windRecent, answers[3] as List<SolarPoint>);
+      // Trimmed to the span the chart draws, on the real clock because this
+      // bounds memory rather than choosing what to show: on a link the week
+      // never fits, no big fetch ever trims it, and it grows for the life of
+      // the pane.
+      final oldest = realNowUtc().subtract(const Duration(days: _SolarReadoutState._chartDays));
+      _windRecent = [
+        for (final point in mergeSeries(_windRecent, answers[3] as List<SolarPoint>))
+          if (point.utc.isAfter(oldest)) point,
+      ];
       _wind = mergeSeries(_windHistory, _windBeyondHistory());
       reading = (answers[0] as SolarReading).withSeries(flux: _flux, kp: _kp, wind: _wind);
     }
 
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() {
       _fetching = false;
       if (reading != null) {
@@ -335,6 +338,43 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
         _failure = failure;
       }
     });
+    return reading != null;
+  }
+
+  /// The week of wind, asked for only AFTER a round has landed, never beside
+  /// one. On a link slow enough to need [_historyFetchTimeout], hamqsl's few
+  /// KB sharing it with a megabyte can miss [_fetchTimeout] — and a pane with
+  /// no reading yet then tells the operator "no network" while the network is
+  /// busy downloading for it. Behind a round that failed it is not asked at
+  /// all, even with an older reading on screen: hamqsl missing its timeout is
+  /// the sign of a slow link, and the megabyte is the most expensive thing the
+  /// pane could put on it next.
+  Future<void> _fetchWindHistory(SolarFetch fetch) async {
+    // Stamped on the ATTEMPT and BEFORE the await, which is the whole pacing
+    // guarantee. A fetch that times out answers with an empty series rather
+    // than an error, and the bytes were already pulled — a timeout does not
+    // abort the request underneath it — so stamped on the result, every round
+    // would ask for the megabyte again, on the metered link that caused it.
+    _windHistoryAtReal = realNowUtc();
+    final history = await _series(fetch, solarWindHistoryUrl(), parseSolarWindSeries, const []);
+    if (history.isEmpty) return;
+
+    // The week, bucketed on arrival: nine thousand one-minute readings is a
+    // megabyte held for a chart a few hundred marks wide, and the buckets are
+    // what gets drawn anyway. Of the hourly readings already held, only those
+    // newer than the week's last reading are kept; see [_windBeyondHistory]
+    // for when they are drawn.
+    final covered = history.last.utc;
+    _windHistory = averageIntoBuckets(history);
+    _windRecent = [
+      for (final point in _windRecent)
+        if (point.utc.isAfter(covered)) point,
+    ];
+    _wind = mergeSeries(_windHistory, _windBeyondHistory());
+
+    final reading = _reading;
+    if (!mounted || reading == null) return;
+    setState(() => _reading = reading.withSeries(wind: _wind));
   }
 
   /// hamqsl's document, or a throw. The one fetch that decides the round.
@@ -381,14 +421,15 @@ class _SolarPanelState extends State<SolarPanel> with WidgetsBindingObserver {
     }
   }
 
-  /// The recent buckets the week's own does not already cover, better.
+  /// The recent buckets that start after the week's last one.
   ///
-  /// A bucket the history file already averaged over three hours is not
-  /// improved by the same period recomputed from the one hour of readings
-  /// held since — and right after a big fetch that is exactly what
-  /// [_windRecent] holds, because the fetch clears it. Letting that win drew
-  /// a one-hour mean under a label naming three, which is the plausible curve
-  /// of the wrong quantity this panel keeps having to avoid.
+  /// The week's last bucket stands as the file averaged it, even when the file
+  /// ends minutes into it: a file ending at 09:05 draws the 09:00 bucket from
+  /// five minutes of readings, until the next big fetch. The hourly readings
+  /// held for the rest of that period do not replace it, because right after
+  /// a big fetch they are a mean of minutes too, and a mark built from them
+  /// would sit under the same three-hour label. Only the readings in later
+  /// buckets are drawn.
   List<SolarPoint> _windBeyondHistory() {
     final buckets = averageIntoBuckets(_windRecent);
     if (_windHistory.isEmpty) return buckets;
