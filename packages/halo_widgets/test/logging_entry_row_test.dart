@@ -67,6 +67,7 @@ class _Harness {
     draftQsoData: () => const {},
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) {},
+    onEdited: () {},
   );
 
   late final virtualSpace = VirtualSpaceFormatter(() {});

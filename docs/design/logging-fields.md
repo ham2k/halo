@@ -665,6 +665,36 @@ It still counts as a contact everywhere else — numbering, the QSO count,
 exports, which write the call as typed — and the QSO list paints its call in
 the theme's orange, so the operator can find and fix it.
 
+## When the info area's pills appear
+
+The candidate is scored as the call is typed, again as each lookup pass
+lands, and again after every exchange edit — an exchange the scorer never
+sees is a county mult it never announces. Painting each verdict as it
+arrives makes the pill row jump, so appearing is held back
+(`CallLookupModel`) while disappearing never is:
+
+- **A typed call settles for 600ms** before any scored pill or the
+  worked-before count shows; each keystroke restarts the clock. Both are
+  fetched meanwhile, so they arrive together. Only a keystroke that changes
+  the call field's text holds anything. A call that arrives whole — a spot,
+  a QSO opened for editing, a restored draft, a stack's remainder after a
+  log — is not held, nor is a caret move, nor any call while the field
+  holds a `,` list or a `//` stack.
+- **An exchange complaint** (`missingExchange`, `invalidExchange`,
+  `shortGrid`) also waits until the lookup finishes, since the lookup often
+  fills the field it complains about — or 2s, for a lookup that never
+  answers — and until 500ms after the last keystroke in an exchange field
+  (the State and Grid fields count as exchange fields here).
+  Each of these ends on the verdict scored *after* it, not on the event: the
+  verdict in hand when a lookup lands, an exchange is typed or a lookup's
+  suggestion fills a field was scored without it, and showing its complaint
+  shows the one the rescore is about to withdraw. Other alerts, a dupe among
+  them, show as soon as the call settles and are corrected if the exchange
+  changes the verdict.
+- **The worked-before count stays beside a dupe**, where app-polo drops it:
+  for a call that is not held the count can show first, and withdrawing it
+  when the dupe lands reads as the history being taken back.
+
 ## More than one call in the field
 
 The callsign field takes three multi-call syntaxes. They are separate

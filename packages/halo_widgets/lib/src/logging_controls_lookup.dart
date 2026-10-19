@@ -26,6 +26,24 @@ import 'panel_model.dart';
 /// operation all change under a mounted panel.
 typedef CallLookupConfig = ({CallLookup? lookup, WorkedBefore? workedBefore, ScoreQso? scoreQso, Qso? editingQso, Operation operation});
 
+/// Scoring keys that complain about the EXCHANGE — which, until the lookup
+/// lands, is often only what the lookup is about to supply (a US station's
+/// state), and until the operator stops typing, only half of what they mean.
+/// Held back by [CallLookupModel] until both have had their chance; every
+/// other key, an extension's own included, shows as soon as it is scored.
+const kExchangeComplaintKeys = {'missingExchange', 'invalidExchange', 'shortGrid'};
+
+/// How long a typed call must stand unchanged before any pill shows for it,
+/// so the partial calls on the way to it (`KB2`, `KB2S`) never flash a set.
+const kCallSettleDelay = Duration(milliseconds: 600);
+
+/// How long after an exchange keystroke an exchange complaint may show.
+const kExchangeTypingDelay = Duration(milliseconds: 500);
+
+/// How long after the call last changed an exchange complaint stops waiting
+/// for a lookup that has not finished.
+const kExchangeLookupTimeout = Duration(seconds: 2);
+
 /// Which pass of a lookup just landed — the panel applies a result's
 /// proposed references off every pass, and only the [online] one may
 /// re-trigger a lookup for them (see `LoggingControls._onLookupResolved`).
@@ -106,6 +124,34 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   List<String> _noticeKeys = const [];
   Map<String, List<String>> _scoreSources = const {};
 
+  /// When the scored keys may show — see [currentAlertKeys]. Each names the
+  /// call it applies to, so a call that moves on leaves its holds behind.
+  ///
+  /// [_settlingCall]: the call the operator last typed, until it has stood
+  /// for [kCallSettleDelay]. [_lookupDoneFor]: the call whose lookup has
+  /// finished. [_complaintClockFor]: the call whose [kExchangeLookupTimeout]
+  /// has run out.
+  ///
+  /// The lookup and exchange holds end on a VERDICT, not on the event: the
+  /// verdict held when a lookup lands or an exchange changes was scored
+  /// without it, and releasing on the event shows the very complaint the
+  /// rescore is about to withdraw. Scores are numbered as they are issued
+  /// ([_scoresIssued]); [_verdictIssue] is the number of the one held, and
+  /// [_lookupDoneAt] / [_exchangeChangedAt] the count when each event came.
+  Timer? _settleTimer;
+  String? _settlingCall;
+  String? _typedCall;
+  Timer? _exchangeTypingTimer;
+  bool _exchangeTyping = false;
+  String? _lookupDoneFor;
+  int _scoresIssued = 0;
+  int _verdictIssue = 0;
+  int _lookupDoneAt = 0;
+  int _exchangeChangedAt = 0;
+  Timer? _complaintClock;
+  String? _complaintClockCall;
+  String? _complaintClockFor;
+
   // ---- What the panel reads ----
 
   /// The call the current [result] is for, or null while nothing is shown.
@@ -122,9 +168,38 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   /// Whether the notices belong to the call at the cursor — stale keys would
   /// paint the previous callsign's DUPE against this one.
   bool get scoreIsCurrent => _scoreFor == activeCall();
-  List<String> get currentAlertKeys => scoreIsCurrent ? _alertKeys : const [];
-  List<String> get currentNoticeKeys => scoreIsCurrent ? _noticeKeys : const [];
-  Map<String, List<String>> get currentScoreSources => scoreIsCurrent ? _scoreSources : const {};
+
+  /// The scored keys that may show right now. A score lands up to three times
+  /// for one call (as typed, then as each lookup pass lands) and once more per
+  /// exchange edit, and repainting each verdict as it arrives is what makes
+  /// the pills jump. So nothing shows while the typed call is still settling,
+  /// and an exchange complaint ([kExchangeComplaintKeys]) also waits out the
+  /// exchange typing and the lookup, and then the verdict scored on what they
+  /// brought — or [kExchangeLookupTimeout], for a lookup that never
+  /// finishes. A key a newer verdict drops goes at once:
+  /// only appearing is held, never correcting.
+  List<String> get currentAlertKeys => _shown(_alertKeys);
+  List<String> get currentNoticeKeys => _shown(_noticeKeys);
+  Map<String, List<String>> get currentScoreSources => scoreIsCurrent && !_callSettling ? _scoreSources : const {};
+
+  bool get _callSettling => _settlingCall != null && _settlingCall == activeCall();
+
+  bool get _complaintsMayShow {
+    if (_exchangeTyping || _verdictIssue <= _exchangeChangedAt) return false;
+    final call = activeCall();
+    final cfg = config();
+    final lookupDone = cfg.lookup == null || cfg.editingQso != null || (_lookupDoneFor == call && _verdictIssue > _lookupDoneAt);
+    return lookupDone || _complaintClockFor == call;
+  }
+
+  List<String> _shown(List<String> keys) {
+    if (!scoreIsCurrent || _callSettling) return const [];
+    if (!keys.any(kExchangeComplaintKeys.contains) || _complaintsMayShow) return keys;
+    return [
+      for (final key in keys)
+        if (!kExchangeComplaintKeys.contains(key)) key,
+    ];
+  }
 
   /// What a worked-before answer is FOR: the call at the cursor AND the QSO
   /// left out of it. Both, because opening that same callsign's own QSO for
@@ -133,8 +208,10 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   String get workedBeforeKey => '${activeCall()}|${config().editingQso?.uuid ?? ''}';
 
   /// The worked-before times for the call at the cursor, or null while they
-  /// are unknown or belong to another key.
-  List<int>? get workedBefore => _workedBeforeFor == workedBeforeKey ? _workedBefore : null;
+  /// are unknown, belong to another key, or the typed call is still settling:
+  /// the count sits in the pill row, and a partial call's history painting at
+  /// every pause flashes it the way a partial call's score would.
+  List<int>? get workedBefore => _workedBeforeFor == workedBeforeKey && !_callSettling ? _workedBefore : null;
 
   // ---- Lifecycle ----
 
@@ -142,7 +219,61 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   void dispose() {
     _lookupDebounce?.cancel();
     _scoreDebounce?.cancel();
+    _settleTimer?.cancel();
+    _exchangeTypingTimer?.cancel();
+    _complaintClock?.cancel();
     super.dispose();
+  }
+
+  // ---- What the operator typed ----
+
+  /// The operator typed in the call field. A call reached any other way — a
+  /// spot, a QSO opened for editing, a restored draft — is not on its way to
+  /// another one, and shows its pills as soon as they are scored. The caller
+  /// schedules the score.
+  ///
+  /// [settles] false skips the hold: the field holds a list or a stack, and
+  /// the cursor moving onto a call already entered is no keystroke towards
+  /// another one.
+  void callTyped({bool settles = true}) {
+    final call = activeCall();
+    // The field's listener also hears edits that leave the call at the cursor
+    // as it was (a second call added to a list); restarting the clock for one
+    // would blank pills that have already settled.
+    if (call == _typedCall) return;
+    _typedCall = call;
+    _settleTimer?.cancel();
+    if (!settles) {
+      _settlingCall = null;
+      return;
+    }
+    _settlingCall = call;
+    _settleTimer = Timer(kCallSettleDelay, () {
+      _settlingCall = null;
+      notify();
+    });
+  }
+
+  /// The operator typed, or picked a value, in an exchange field: the
+  /// candidate is scored on it, so it is scored again — without this a
+  /// county typed after the call never reaches the scorer, and its New Mult
+  /// never shows.
+  void exchangeEdited() {
+    _exchangeTyping = true;
+    _exchangeTypingTimer?.cancel();
+    _exchangeTypingTimer = Timer(kExchangeTypingDelay, () {
+      _exchangeTyping = false;
+      notify();
+    });
+    exchangePrefilled();
+  }
+
+  /// A lookup's suggestion filled an exchange field. Nobody is typing, so
+  /// there is no keystroke pause to wait out — only the verdict on the new
+  /// value.
+  void exchangePrefilled() {
+    _exchangeChangedAt = _scoresIssued;
+    scheduleScore();
   }
 
   // ---- Forgetting ----
@@ -185,6 +316,15 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     _forgetWorkedBefore();
     _clearScoreNotices();
     _cache.clear();
+    _settleTimer?.cancel();
+    _settlingCall = null;
+    _typedCall = null;
+    _exchangeTypingTimer?.cancel();
+    _exchangeTyping = false;
+    _lookupDoneFor = null;
+    _complaintClock?.cancel();
+    _complaintClockCall = null;
+    _complaintClockFor = null;
   }
 
   // ---- The lookup ----
@@ -246,8 +386,14 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       final onlineResult = await _fetch(lookup, call, online: true);
       if (isDisposed || activeCall() != call) return; // stale — the active call changed
       // A failed/timed-out online pass (host down, network error) must not
-      // erase an already-shown, still-valid offline preview — keep it.
-      if (onlineResult == null) return;
+      // erase an already-shown, still-valid offline preview — keep it. It is
+      // still the end of the lookup: there is nothing left to wait for.
+      if (onlineResult == null) {
+        _lookupDone(call);
+        notify();
+        scheduleScore();
+        return;
+      }
       _cache[call] = onlineResult;
       _adopt(call, onlineResult, LookupPhase.online);
     });
@@ -261,10 +407,17 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
   void _adopt(String call, Map<String, dynamic>? result, LookupPhase phase) {
     _lookupFor = call;
     _result = result;
+    if (phase != LookupPhase.offline) _lookupDone(call);
     notify();
     scheduleScore();
     if (phase != LookupPhase.cached) _log(phase.name, call, result);
     onResolved(call, result, phase);
+  }
+
+  /// The lookup for [call] has nothing left to bring; see [_lookupDoneAt].
+  void _lookupDone(String call) {
+    _lookupDoneFor = call;
+    _lookupDoneAt = _scoresIssued;
   }
 
   Future<Map<String, dynamic>?> _fetch(CallLookup lookup, String call, {required bool online}) => lookup(
@@ -294,6 +447,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
     if (!looksLikeCallsign(call)) return;
     _cache.remove(call);
     _lookupFor = null;
+    if (_lookupDoneFor == call) _lookupDoneFor = null;
     scheduleLookup();
   }
 
@@ -380,6 +534,17 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       notify();
       return;
     }
+    if (_complaintClockCall != call) {
+      _complaintClock?.cancel();
+      _complaintClockCall = call;
+      // A clock that ran out for this call before the operator left it does
+      // not excuse the verdicts its return brings.
+      _complaintClockFor = null;
+      _complaintClock = Timer(kExchangeLookupTimeout, () {
+        _complaintClockFor = call;
+        notify();
+      });
+    }
     _scoreDebounce = Timer(const Duration(milliseconds: 300), () async {
       // Scored against the CURRENT segment, matching the entry row's own gate
       // (the panel's `_activeRefTypes`): the pills and the fields have to agree
@@ -388,6 +553,7 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
       // a contest that started at a break calls a pre-contest contact a dupe.
       final cfg = config();
       final segments = segmented();
+      final issue = ++_scoresIssued;
       final result = await scoreFn(
         operation: {...segments.current, 'uuid': cfg.operation.uuid},
         qso: qsoData(call),
@@ -395,6 +561,8 @@ class CallLookupModel extends ChangeNotifier with PanelModel {
         segments: segments.isSegmented ? segments.payload : null,
       );
       if (isDisposed || activeCall() != call) return; // stale — the active call moved on
+      if (issue < _verdictIssue) return; // overtaken by a verdict on newer input
+      _verdictIssue = issue;
       _scoreFor = call;
       _alertKeys = ((result?['alerts'] as List?) ?? const []).whereType<String>().toList();
       _noticeKeys = ((result?['notices'] as List?) ?? const []).whereType<String>().toList();

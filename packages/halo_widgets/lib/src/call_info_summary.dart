@@ -241,13 +241,14 @@ class CallInfoSummary extends StatelessWidget {
     ];
   }
 
-  /// The worked-before pill's text, or null for none. Suppressed beside a
-  /// duplicate alert, as app-polo does: the dupe already says the station
-  /// was worked, and in this very operation.
+  /// The worked-before pill's text, or null for none. It stays beside a
+  /// duplicate alert, where app-polo drops it: for a call that is not held
+  /// (a spot, an opened QSO) the count can land before the verdict, and a
+  /// pill that vanishes when the dupe lands reads as the history being
+  /// withdrawn.
   String? get _workedBeforeText {
     final times = data.workedBefore;
     if (times == null || times.isEmpty || workedBeforeLabel == null) return null;
-    if (data.alertKeys.contains('duplicate')) return null;
     return workedBeforeLabel!(times);
   }
 

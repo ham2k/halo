@@ -64,6 +64,7 @@ class _Harness {
     draftQsoData: () => draft.toData(),
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) {},
+    onEdited: () {},
   );
   late final ActivityRefsModel refs = ActivityRefsModel(
     config: () => (activityControls: controls, refreshActivityControls: null, editingQso: editingQso, fieldsLocked: () => false, callAtCursor: () => callText),

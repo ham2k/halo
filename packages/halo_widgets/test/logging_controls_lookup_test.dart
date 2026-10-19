@@ -80,7 +80,7 @@ void main() {
       final field = find.widgetWithText(TextField, 'Their call');
 
       await tester.enterText(field, 'W1AW');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 600));
       pending['W1AW']!.complete([1, 2, 3]);
       await tester.pump();
       expect(find.text('3 before'), findsOneWidget);
@@ -89,7 +89,7 @@ void main() {
       await tester.enterText(field, 'W1AX');
       await tester.pump(const Duration(milliseconds: 100));
       await tester.enterText(field, 'W1AW');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.text('3 before'), findsOneWidget);
     });
@@ -101,7 +101,7 @@ void main() {
       await tester.enterText(field, 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
       await tester.enterText(field, 'K1ABC');
-      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 600));
       expect(pending.keys, containsAll(['W1AW', 'K1ABC']));
 
       // The first call's answer lands late, after the field moved on.
@@ -400,7 +400,7 @@ void main() {
           ),
         );
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
-        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 600));
         expect(tester.takeException(), isNull);
 
         return (pill: tester.getTopLeft(find.text('newDXCC')), note: tester.getTopLeft(find.byType(InlineMarkdownText)));
@@ -480,7 +480,7 @@ void main() {
       );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'IK1ABC');
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 600));
 
       expect(find.text('New DXCC'), findsOneWidget);
       expect(find.text('New Band'), findsOneWidget);
@@ -509,7 +509,7 @@ void main() {
       );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 600));
 
       // The hook's dupe alert renders as a pill...
       expect(find.text('Dupe!'), findsOneWidget);
@@ -580,7 +580,7 @@ void main() {
       );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1A?');
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pump(const Duration(milliseconds: 600));
       expect(scored, isEmpty);
       expect(looked, isEmpty);
       expect(find.text('Not Scored'), findsOneWidget);
@@ -648,6 +648,48 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       expect(scoredStates.last, 'CT');
+    });
+
+    // A QSO party's county is typed after the call, and its New Mult rides on
+    // it: scored only when the call was typed, an in-state station is judged
+    // on its bare state and the county's multiplier never shows.
+    testWidgets('typing an exchange re-scores', (tester) async {
+      final scoredExchanges = <Object?>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['qp']), qsosRepository: qsos),
+              radio: baseRadio(),
+              activities: const ActivityHooks(
+                activityControls: [
+                  {
+                    'key': 'qp/location',
+                    'label': 'County',
+                    'icon': 'flag-checkered',
+                    'input': {'kind': 'text', 'refType': 'qp', 'field': 'location'},
+                  },
+                ],
+              ),
+              lookups: LookupHooks(
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  final refs = (qso['refs'] as List?) ?? const [];
+                  scoredExchanges.add(refs.whereType<Map>().where((ref) => ref['type'] == 'qp').firstOrNull?['location']);
+                  return {'notices': <String>[], 'alerts': <String>[]};
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KB2SKF');
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(scoredExchanges, [null]);
+      await tester.enterText(find.widgetWithText(TextField, 'County'), 'LEW');
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(scoredExchanges.last, 'LEW');
     });
   });
 
@@ -1246,7 +1288,7 @@ void main() {
     );
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Dupe!'), findsOneWidget);
 
     await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW); // wipes, offers undo
@@ -1259,6 +1301,117 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Dupe!'), findsOneWidget);
+  });
+
+  // A populate leaves the call-typing state blank; a caret move read as a
+  // keystroke then blanks the pills of a call that arrived whole.
+  testWidgets('moving the caret holds nothing back', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                'notices': <String>[],
+                'alerts': ['duplicate'],
+              },
+              scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 600));
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+    await tester.tap(find.byIcon(MdiIcons.undo));
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('Dupe!'), findsOneWidget);
+
+    tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.selection = const TextSelection.collapsed(offset: 2);
+    await tester.pump();
+    expect(find.text('Dupe!'), findsOneWidget);
+  });
+
+  // A party scorer reads the State field as the exchange, and a VHF one the
+  // Grid (`shortGrid`): what is typed there has to reach the scorer, and a
+  // complaint about a half-typed value waits out the typing as an exchange
+  // field's does.
+  testWidgets('typing in State or Grid re-scores, and holds a complaint until the typing pauses', (tester) async {
+    final scored = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            prefs: LoggingPreferences(showStateField: true, showGridField: true),
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                final their = qso['their'] as Map;
+                scored.add('${their['state'] ?? ''}|${their['grid'] ?? ''}');
+                return {
+                  'notices': <String>[],
+                  'alerts': ['invalidExchange'],
+                };
+              },
+              scoreNoticeLabel: (key) => key == 'invalidExchange' ? 'Bad exch' : key,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Bad exch'), findsOneWidget);
+
+    for (final (label, value, expected) in [('State', 'N', 'N|'), ('Grid', 'FN31', 'N|FN31')]) {
+      await tester.enterText(find.widgetWithText(TextField, label), value);
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(scored.last, expected, reason: label);
+      expect(find.text('Bad exch'), findsNothing, reason: '$label: still typing');
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('Bad exch'), findsOneWidget, reason: label);
+    }
+  });
+
+  // Only a lone call is on its way to another one: in a list or a stack the
+  // operator moves between calls already entered, and a hold blanks the pills
+  // of each one the cursor lands on.
+  testWidgets('a call in a list or a stack shows its pills without the settle hold', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: baseLog(),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+                'notices': <String>[],
+                'alerts': ['duplicate'],
+              },
+              scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+            ),
+          ),
+        ),
+      ),
+    );
+    final field = find.widgetWithText(TextField, 'Their call');
+
+    await tester.enterText(field, 'W1AW');
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('Dupe!'), findsNothing, reason: 'a lone call is still settling');
+    await tester.pump(const Duration(milliseconds: 250));
+
+    for (final text in ['K1ABC,W1AW', 'K1ABC//W1AW']) {
+      await tester.enterText(field, '');
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.enterText(field, text);
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.text('Dupe!'), findsOneWidget, reason: text);
+    }
   });
 
   testWidgets('a callsign note takes the name slot on the call-info line', (tester) async {

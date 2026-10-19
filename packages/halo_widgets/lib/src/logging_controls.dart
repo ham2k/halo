@@ -213,6 +213,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     draftQsoData: _draft.toData,
     onPrimaryFieldKeyEvent: _ladder.onPrimaryFieldKeyEvent,
     onFocusChanged: _onExchangeFocusChanged,
+    onEdited: _lookup.exchangeEdited,
   );
 
   /// The activity refs and the controls they belong to — see
@@ -1722,7 +1723,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the refreshed controls may have introduced a serial field, or changed
   /// the band a per-band sequence keys off.
   void _onActivityControlsRefreshed() {
-    _exchange.applySuggestedValues(call: _singleCallInField);
+    if (_exchange.applySuggestedValues(call: _singleCallInField)) _lookup.exchangePrefilled();
     unawaited(_exchange.refreshSerialPreviews());
   }
 
@@ -2494,7 +2495,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   int get _callInfoAlnumLength => _callAtCursor.replaceAll(RegExp('[^A-Z0-9]'), '').length;
   bool get _callInfoActive => _callInfoAlnumLength >= 3;
 
+  /// The call field's text as [_onCallChanged] last heard it, populates
+  /// included — so a caret move after a spot or an opened QSO is seen as one.
+  String _lastCallText = '';
+
   void _onCallChanged() {
+    final textChanged = _callController.text != _lastCallText;
+    _lastCallText = _callController.text;
     if (_draft.isPopulating) return;
     // Past the guard, the change is the operator's own — typing, or the clear
     // that `_wipe` does — which is exactly what the spots list wants to hear
@@ -2514,6 +2521,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     // Live scoring for the call-info notices line — independent of the lookup
     // and command paths below, so schedule it before their early returns.
+    // Only a keystroke is on its way to another call. The listener also
+    // hears the caret move — a click into the field, a step between the calls
+    // of a list — and holding on one blanks pills already showing.
+    _lookup.callTyped(settles: textChanged && !_callController.text.contains(',') && !_isCallStackField);
     _lookup.scheduleScore();
 
     final call = _call;
@@ -3275,8 +3286,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         }
         _wipe(focusCall: focusCall);
         // The un-logged rest of the stack goes straight back into the
-        // now-empty field, as if the operator had just typed it.
-        if (stacked != null) _callController.text = stacked.remainder;
+        // now-empty field — whole, so its pills are not held as being typed.
+        if (stacked != null) _callController.text = _lastCallText = stacked.remainder;
       }
 
       // A single rescoring pass after the whole batch, not a score check per
@@ -3456,14 +3467,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             stateHint: _guessStateHint,
                             onStateChanged: (_) {
                               _draft.stateTouched = true;
-                              // Scored on (New State / New Province), so a typed
-                              // state has to reach the scorer like a band or mode
-                              // change does.
-                              _lookup.scheduleScore();
+                              // Scored on (New State / New Province, and a party's
+                              // exchange), so a typed state reaches the scorer the
+                              // way an exchange field's value does.
+                              _lookup.exchangeEdited();
                             },
                             grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
                             gridHint: _guessGridHint,
-                            onGridChanged: (_) => _draft.markGridTouched(),
+                            onGridChanged: (_) {
+                              _draft.markGridTouched();
+                              // A scorer judges the grid (`shortGrid`).
+                              _lookup.exchangeEdited();
+                            },
                             command: _command,
                             virtualSpace: _virtualSpace,
                             commandVirtualSpace: _commandVirtualSpace,
@@ -3664,7 +3679,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// (`_lookup.scoreFor == _callAtCursor`), so the saved lookup and the pills
   /// appear together in one update — otherwise the lookup text renders first
   /// and the pills pop in a moment later. Composing streams in as the user
-  /// types.
+  /// types, the pills behind [CallLookupModel.currentAlertKeys]' holds.
   CallInfoData? get _callInfoForArea {
     if (!_callInfoActive || _editingEvent) return null;
     final ready = widget.session.editingQso == null || widget.lookups.scoreQso == null || _lookup.scoreIsCurrent;

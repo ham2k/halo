@@ -428,6 +428,52 @@ void main() {
       expect(exch(tester), '', reason: "W6ABC's exchange must not be logged for K2XYZ");
     });
 
+    // The refresh carrying the suggestion is its own round trip after the
+    // lookup, and lands after the lookup's rescore has read the field empty:
+    // without a rescore of its own, the verdict on the empty exchange stands
+    // — a missing-exchange alert under a field that visibly holds one.
+    testWidgets('is scored, even when it lands after the lookup\'s own rescore', (tester) async {
+      final scored = <Object?>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+              radio: baseRadio(),
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': <String, dynamic>{}},
+                scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                  final refs = (qso['refs'] as List?) ?? const [];
+                  scored.add(refs.whereType<Map>().where((ref) => ref['type'] == 'c').firstOrNull?['exchange']);
+                  return {'notices': <String>[], 'alerts': <String>[]};
+                },
+              ),
+              activities: ActivityHooks(
+                activityControls: const [exchange],
+                refreshActivityControls: (qso) async {
+                  await Future<void>.delayed(const Duration(seconds: 1));
+                  return [
+                    {
+                      ...exchange,
+                      'input': {...exchange['input'] as Map, 'suggestedValue': 'CA'},
+                    },
+                  ];
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W6ABC');
+      await tester.pump(const Duration(milliseconds: 900));
+      expect(scored, isNotEmpty);
+      expect(scored.last, isNull, reason: 'the lookup has landed and been scored; the suggestion has not');
+      await tester.pump(const Duration(seconds: 1));
+      expect(exch(tester), 'CA');
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(scored.last, 'CA');
+    });
+
     testWidgets('is never made for a field holding several calls', (tester) async {
       // One exchange field is logged for every call in the list, so one
       // station's exchange in it would be logged for all of them.

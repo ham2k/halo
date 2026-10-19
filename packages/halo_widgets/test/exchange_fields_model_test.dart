@@ -96,6 +96,7 @@ class _Harness {
   Map<String, dynamic> draft = const {};
   int notifications = 0;
   final focusEvents = <FocusNode>[];
+  int edits = 0;
 
   late final model = ExchangeFieldsModel(
     config: () =>
@@ -103,6 +104,7 @@ class _Harness {
     draftQsoData: () => draft,
     onPrimaryFieldKeyEvent: (node, event) => KeyEventResult.ignored,
     onFocusChanged: (node, controller) => focusEvents.add(node),
+    onEdited: () => edits++,
   )..addListener(() => notifications++);
 
   /// The fields, built so their focus nodes are attached.
@@ -364,6 +366,33 @@ void main() {
       expect(h.model.isTouched('qp/county'), isTrue);
       expect(h.notifications, greaterThan(before), reason: 'the field repaints on an accept');
       expect(h.model.acceptSuggestion(index: 0, explicit: true), isFalse, reason: 'accepting the value already in the field is a no-op, not a second write');
+    });
+
+    // The live score reads the exchange. An edit that does not say so leaves the
+    // pills judged on the exchange as it stood when the call was typed — a
+    // county typed after the call never shows its New Mult.
+    testWidgets('a typed value and an accepted suggestion are edits; a lookup prefill is not', (tester) async {
+      final h = _Harness(
+        controls: [
+          {
+            ..._county,
+            'input': {..._county['input'] as Map, 'suggestedValue': 'WAS'},
+          },
+        ],
+      );
+      addTearDown(h.model.dispose);
+      await tester.pumpWidget(h.host());
+      expect(h.model.applySuggestedValues(call: 'W1AW'), isTrue, reason: 'the panel re-scores on a changed value');
+      expect(h.edits, 0, reason: 'nobody typed: no keystroke pause to hold the pills for');
+      expect(h.model.applySuggestedValues(call: 'W1AW'), isFalse, reason: 'the same value again changes nothing to score');
+      h.model.focusFor('qp/county').requestFocus();
+      await tester.pump();
+      await tester.enterText(find.byKey(const ValueKey('qp/county')), 'AS');
+      expect(h.edits, 1);
+      expect(h.model.acceptSuggestion(index: 0, explicit: true), isTrue);
+      expect(h.edits, 2);
+      expect(h.model.acceptSuggestion(index: 0, explicit: true), isFalse);
+      expect(h.edits, 2, reason: 'a no-op accept changed nothing to score');
     });
 
     testWidgets('a walked highlight is taken by Space as-is, and Enter takes it instead of logging', (tester) async {

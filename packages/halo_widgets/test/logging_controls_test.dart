@@ -291,6 +291,31 @@ void main() {
     expect(callField.focusNode!.hasFocus, isTrue);
   });
 
+  // The remainder goes back in whole, at the busiest moment of a pileup; held
+  // as a call still being typed, its dupe and mult pills arrive late.
+  testWidgets('call stacking: the call left in the field shows its pills without the settle hold', (tester) async {
+    await tester.pumpWidget(
+      host(
+        lookups: LookupHooks(
+          scoreQso: ({required operation, required qso, excludeUuid, segments}) async => {
+            'notices': <String>[],
+            'alerts': ['duplicate'],
+          },
+          scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+        ),
+      ),
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await waitForQsos(tester, 1);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
+
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.text('Dupe!'), findsOneWidget);
+  });
+
   testWidgets('call stacking: picks the segment at the cursor, not always the last one', (tester) async {
     await tester.pumpWidget(host());
 

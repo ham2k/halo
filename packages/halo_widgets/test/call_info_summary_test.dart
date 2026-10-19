@@ -3,9 +3,9 @@
 //
 // The compact call-info's worked-before pill, app-polo's way: a grey pill in
 // the scoring-pill row saying how often the station was worked. Its absence
-// is as much the contract as its presence — nothing for a first contact,
-// nothing beside a DUPE (which already says it, and louder), and never a pill
-// the widget worded itself, since it has no clock to bucket the times by.
+// is as much the contract as its presence — nothing for a first contact, and
+// never a pill the widget worded itself, since it has no clock to bucket the
+// times by.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,21 +67,23 @@ void main() {
     expect(find.textContaining('QSO'), findsNothing);
   });
 
-  testWidgets('a duplicate alert takes the pill\'s place', (tester) async {
+  // The history shows before the score resolves; dropping it when the dupe
+  // verdict lands (app-polo's way) makes the row swap one pill for another
+  // under the operator.
+  testWidgets('a duplicate alert joins the pill rather than replacing it', (tester) async {
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', workedBefore: [1000]),
+      ),
+    );
+    expect(find.text('1 QSOs'), findsOneWidget);
+
     await tester.pumpWidget(
       host(
         data: const CallInfoData(call: 'W1AW', alertKeys: ['duplicate'], workedBefore: [1000]),
       ),
     );
     expect(find.text('DUPLICATE'), findsOneWidget);
-    expect(find.text('1 QSOs'), findsNothing);
-
-    // Any other alert leaves it be.
-    await tester.pumpWidget(
-      host(
-        data: const CallInfoData(call: 'W1AW', alertKeys: ['notInLog'], workedBefore: [1000]),
-      ),
-    );
     expect(find.text('1 QSOs'), findsOneWidget);
   });
 

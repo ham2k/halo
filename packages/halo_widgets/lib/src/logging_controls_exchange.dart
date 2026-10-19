@@ -67,7 +67,13 @@ typedef ExchangeMenu = ({Map<String, dynamic> control, List<ExchangeOption> sugg
 
 /// The exchange fields' state. See the file comment.
 class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
-  ExchangeFieldsModel({required this.config, required this.draftQsoData, required this.onPrimaryFieldKeyEvent, required this.onFocusChanged});
+  ExchangeFieldsModel({
+    required this.config,
+    required this.draftQsoData,
+    required this.onPrimaryFieldKeyEvent,
+    required this.onFocusChanged,
+    required this.onEdited,
+  });
 
   /// The panel's configuration as it stands right now.
   final ExchangeFieldsConfig Function() config;
@@ -86,6 +92,12 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// focus, places the caret — the same cursor-at-end-on-focus rule the fixed
   /// primary fields get.
   final void Function(FocusNode node, TextEditingController controller) onFocusChanged;
+
+  /// The operator changed a value — typed it, or took a suggestion. The live
+  /// score reads the exchange, so the panel re-scores. A lookup's prefill
+  /// ([applySuggestedValues]) does not call this: nobody is typing, and the
+  /// panel re-scores on what that returns.
+  final VoidCallback onEdited;
 
   /// Values typed into the exchange controls, keyed by control key. Several
   /// controls can share one `refType` while writing different `field`s of it
@@ -197,6 +209,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     _menuDismissed = false;
     _selection = null;
     notify();
+    onEdited();
   }
 
   /// Puts a value loaded off a saved QSO into [key]'s field. It is what
@@ -317,8 +330,13 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// [call] is empty when the field holds several calls: one exchange field is
   /// logged for every call in the list, and one station's exchange written
   /// into it would be logged for all of them.
-  void applySuggestedValues({required String call}) {
-    if (call.isEmpty) return;
+  ///
+  /// Returns whether any field's value changed. The refresh that brings the
+  /// suggestion lands after the lookup's own rescore may already have read
+  /// the exchange, so a changed value needs scoring again.
+  bool applySuggestedValues({required String call}) {
+    if (call.isEmpty) return false;
+    var changed = false;
     for (final control in config().textControls()) {
       final key = control['key'] as String;
       if (_touched.contains(key)) continue;
@@ -334,7 +352,9 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
       if (suggested == current) continue;
       _values[key] = suggested;
       controllerFor(key).text = suggested;
+      changed = true;
     }
+    return changed;
   }
 
   /// Takes back every prefill made for a callsign other than [call] — the one
@@ -682,6 +702,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     // goes with it.
     _selection = null;
     notify();
+    onEdited();
     return true;
   }
 
