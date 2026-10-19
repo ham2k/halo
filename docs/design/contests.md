@@ -1052,13 +1052,18 @@ A QSO party uses all three mechanisms, each for what it is right about:
   knows their state now, in it (they may have moved). The fallback is
   their state, or `DX` or their prefix for a DX station — the very function
   the scorer and both exports fall back to for an empty
-  exchange (`defaultTheirLocation`), so a prefill left alone scores and files
-  exactly as a blank would have — the operator sees the value the log will
-  carry instead of finding out afterwards. A prefill belongs to the callsign
-  it was made for: the core takes it back as soon as that call leaves the
-  field, whether or not anything is fetched for the next one, and never makes
-  one for a field holding several calls — one exchange field is logged for
-  every call in the list.
+  exchange (`defaultTheirLocation`), so for the call it was made for, a
+  prefill left alone scores and files exactly as a blank would have — the
+  operator sees the value the log will carry instead of finding out
+  afterwards. A prefill belongs to the callsign
+  it was made for — in a comma list or a `//` stack, the call under the
+  cursor, which is what the lookup ran for: the core takes it back as soon as
+  that call leaves the field or the cursor leaves it, whether or not anything
+  is fetched for the next one, and puts it back when the cursor returns. A
+  comma list logs every call with the one exchange field, so a prefill made
+  there — or the operator's edit of it — goes out for all of them, in place of
+  each other call's own fallback. That holds when editing too: a call added to
+  a saved QSO's field shares its exchange with the saved one.
 - **`placeholder`** — only for the one value that is not an exchange: an
   in-party caller's own state. `NY` in the New York QSO Party is the exchange
   nobody sends, so it is not offered and a prefill of it would be logged red

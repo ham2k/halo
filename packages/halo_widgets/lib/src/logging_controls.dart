@@ -1542,13 +1542,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     };
   }
 
-  /// The one call in the field, or empty when there is none or there are
-  /// several — which is when an exchange may be prefilled for it.
-  String get _singleCallInField {
-    final calls = _callText.callsInField.toList();
-    return calls.length == 1 ? calls.single : '';
-  }
-
   /// The operation QSON with `uuid` folded in — same shape as the Dart
   /// side's `qsonPayloadFor` gives every coarse hook call. Command hooks
   /// need the uuid to fetch log data through the runtime's
@@ -1723,7 +1716,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the refreshed controls may have introduced a serial field, or changed
   /// the band a per-band sequence keys off.
   void _onActivityControlsRefreshed() {
-    if (_exchange.applySuggestedValues(call: _singleCallInField)) _lookup.exchangePrefilled();
+    if (_exchange.applySuggestedValues(call: _callAtCursor)) _lookup.exchangePrefilled();
     unawaited(_exchange.refreshSerialPreviews());
   }
 
@@ -2510,7 +2503,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Before anything else reacts: a prefill made for the call that just
     // changed must not outlive it, whether or not the new call's lookup and
     // refresh ever land.
-    _exchange.withdrawSuggestionsExcept(call: _singleCallInField);
+    _exchange.withdrawSuggestionsExcept(call: _callAtCursor);
+    // Back on the call the installed controls were fetched for — the caret
+    // stepped off it and returned before another call's lookup landed — no
+    // lookup or refresh runs again (its lookup is still the current one), so
+    // without this the prefill the step away took back never returns.
+    if (_refs.refreshedFor == _callAtCursor && _exchange.applySuggestedValues(call: _callAtCursor)) _lookup.exchangePrefilled();
     setState(() {});
     // The first character of a call is what takes a serial number.
     unawaited(_exchange.refreshSerialPreviews());

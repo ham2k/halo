@@ -327,9 +327,9 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// changed is a legal option code in an untouched field, which nothing
   /// tints and `refsWithTextValues` files as the new station's exchange.
   ///
-  /// [call] is empty when the field holds several calls: one exchange field is
-  /// logged for every call in the list, and one station's exchange written
-  /// into it would be logged for all of them.
+  /// In a comma list or a `//` stack, [call] is the call under the cursor —
+  /// the one the lookup ran for. A list logs every call with this one field,
+  /// so its prefill goes out for all of them unless the operator changes it.
   ///
   /// Returns whether any field's value changed. The refresh that brings the
   /// suggestion lands after the lookup's own rescore may already have read
@@ -357,13 +357,14 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
     return changed;
   }
 
-  /// Takes back every prefill made for a callsign other than [call] — the one
-  /// call now in the field, or empty when there is none or there are several.
+  /// Takes back every prefill made for a callsign other than [call] — the
+  /// call under the cursor, or empty when there is none.
   ///
-  /// Called on every edit of the call field, so it holds whether or not the
-  /// new callsign's refresh ever succeeds: correcting `W6ABC` to a station
-  /// the lookup has nothing for, clearing the field, or adding a second call
-  /// all leave no earlier station's exchange behind. A value the operator has
+  /// Called on every edit of the call field and every caret move in it, so it
+  /// holds whether or not the new callsign's refresh ever succeeds:
+  /// correcting `W6ABC` to a station the lookup has nothing for, clearing the
+  /// field, or moving to another call in a list or stack all leave no
+  /// earlier station's exchange behind. A value the operator has
   /// typed over, or anything this did not write, is left alone.
   void withdrawSuggestionsExcept({required String call}) {
     for (final entry in _suggestedValues.entries.toList()) {

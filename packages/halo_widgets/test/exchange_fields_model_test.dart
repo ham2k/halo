@@ -284,11 +284,10 @@ void main() {
       expect(h.model.valueOf('cq/zone'), '14', reason: 'same callsign, so the guess still stands');
     });
 
-    test('a field holding several calls is never prefilled', () {
-      // One exchange field is logged for every call in `K2ABC,W1AW`. Filled
-      // with the station at the cursor's exchange, it would be logged as the
-      // other's too — and adding the second call takes back a prefill already
-      // made for the first, for the same reason.
+    test('an empty call makes no prefill and takes back every one made', () {
+      // The panel passes an empty call when the cursor names no station — an
+      // emptied field, or the blank entry after a just-typed comma. A prefill
+      // kept there would be logged for whatever call is typed next.
       final h = _Harness(
         controls: [
           {
@@ -299,12 +298,12 @@ void main() {
       );
       addTearDown(h.model.dispose);
       h.model.applySuggestedValues(call: '');
-      expect(h.model.valueOf('cq/zone'), '', reason: 'the panel passes no call for a multi-call field');
+      expect(h.model.valueOf('cq/zone'), '', reason: 'no station to make it for');
 
       h.model.applySuggestedValues(call: 'K2ABC');
       expect(h.model.valueOf('cq/zone'), '14');
       h.model.withdrawSuggestionsExcept(call: '');
-      expect(h.model.valueOf('cq/zone'), '', reason: 'a second call was added');
+      expect(h.model.valueOf('cq/zone'), '', reason: 'the field no longer names K2ABC');
     });
 
     test('what the operator typed over a prefill is theirs, and never taken back', () {

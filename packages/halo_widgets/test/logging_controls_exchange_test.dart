@@ -474,17 +474,62 @@ void main() {
       expect(scored.last, 'CA');
     });
 
-    testWidgets('is never made for a field holding several calls', (tester) async {
-      // One exchange field is logged for every call in the list, so one
-      // station's exchange in it would be logged for all of them.
+    // A field holding several calls still has one call the lookup ran for;
+    // refusing to prefill there leaves that station's exchange unsuggested.
+    testWidgets('is made for the call under the cursor in a list', (tester) async {
       await pumpPanel(tester);
-      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W6ABC');
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ,W6ABC');
+      await tester.pumpAndSettle();
+      expect(exch(tester), 'CA');
+    });
+
+    testWidgets('is taken back when the cursor moves to another call in a list', (tester) async {
+      await pumpPanel(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ,W6ABC');
       await tester.pumpAndSettle();
       expect(exch(tester), 'CA');
 
+      final call = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!;
+      call.selection = const TextSelection.collapsed(offset: 2);
+      await tester.pumpAndSettle();
+      expect(exch(tester), '', reason: "the lookup now runs for K2XYZ, and W6ABC's exchange must not stand in for it");
+    });
+
+    // Stepping off a call and back before the other call's lookup lands
+    // leaves W6ABC's lookup current, so nothing is fetched again: the prefill
+    // the step away took back has to come back from the controls in force.
+    testWidgets('comes back when the cursor returns before another lookup lands', (tester) async {
+      await pumpPanel(tester);
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ,W6ABC');
       await tester.pumpAndSettle();
-      expect(exch(tester), '', reason: 'a second call joined, and the lookup for W6ABC fills nothing now');
+      expect(exch(tester), 'CA');
+
+      final call = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!;
+      call.selection = const TextSelection.collapsed(offset: 2);
+      await tester.pump();
+      expect(exch(tester), '');
+      call.selection = TextSelection.collapsed(offset: call.text.length);
+      await tester.pumpAndSettle();
+      expect(exch(tester), 'CA');
+    });
+
+    testWidgets('is made for the stacked call Enter would log', (tester) async {
+      await pumpPanel(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ//W6ABC');
+      await tester.pumpAndSettle();
+      expect(exch(tester), 'CA');
+    });
+
+    testWidgets('is taken back when the cursor moves to another stacked call', (tester) async {
+      await pumpPanel(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ//W6ABC');
+      await tester.pumpAndSettle();
+      expect(exch(tester), 'CA');
+
+      final call = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!;
+      call.selection = const TextSelection.collapsed(offset: 2);
+      await tester.pumpAndSettle();
+      expect(exch(tester), '', reason: "Enter now logs K2XYZ, and W6ABC's exchange must not go with it");
     });
   });
 

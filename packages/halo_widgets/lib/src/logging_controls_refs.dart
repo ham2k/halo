@@ -74,6 +74,14 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// onto the next entry.
   List<Map<String, dynamic>>? _refreshedControls;
 
+  /// The call [_refreshedControls] were fetched for, or null while the
+  /// operation's own controls are in force.
+  String? _refreshedFor;
+
+  /// The call the controls in force were fetched for — the only call their
+  /// `suggestedValue`s belong to.
+  String? get refreshedFor => _refreshedFor;
+
   /// Bumped whenever the operation's controls or refs change
   /// ([controlsChanged]) — a per-QSO refresh in flight from BEFORE that
   /// change captures the generation it started against, and drops its own
@@ -171,6 +179,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// happened.
   void controlsChanged() {
     _refreshedControls = null;
+    _refreshedFor = null;
     _generation++;
   }
 
@@ -196,6 +205,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     if (fetched == null) return;
     _appliedTicket = ticket;
     _refreshedControls = fetched;
+    _refreshedFor = activeCall;
     onControlsRefreshed();
     notify();
   }
