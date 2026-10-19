@@ -14,10 +14,10 @@
 // within that kind. The core round-trips both into generateExport and uses the
 // key for independent selection of each reference's file.
 //
-// The QSO set is the core's business, not ours: declaring `refType` makes it
-// hand `generateExport` only the contacts made while this activity was actually
-// running, which is what keeps a park activated after
-// a break from claiming the whole day's log.
+// The QSO set is the core's business, not ours: declaring `refType` and `ref`
+// makes it hand `generateExport` only the contacts made while this reference
+// was actually being activated, which is what keeps a park activated after a
+// break from claiming the whole day's log.
 //
 // Types and `hooks` come in by relative path, not the
 // `@ham2k/extension-sdk` alias, so this module's tests can run under plain
@@ -150,8 +150,10 @@ export function activityExportHook(rules: ActivityExportRules) {
         filename: filenameFor(operation, qsos ?? [], ref.ref, compactFilenames),
         icon: rules.icon,
         selectedByDefault: true,
-        // Segment slicing: only the contacts made while this activity ran.
+        // Segment slicing: only the contacts made while THIS reference was
+        // being activated.
         refType: rules.activationType,
+        ref: ref.ref,
       }))
     },
 

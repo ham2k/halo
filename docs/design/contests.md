@@ -641,11 +641,16 @@ reference, with `refs` reduced to that one — matching polo's POTA, which sets
 
 #### What of this is BUILT
 
-Only the half with consumers: **an export is sliced to the segments carrying
-its own ref type.** `ExportOption.refType` names that type, and the core hands
-`generateExport` only the matching QSOs. All six contest exports set it; core
-ADIF doesn't, because the full ADIF covers the operation rather than one
-activity within it.
+**An export is sliced to the segments carrying its own ref type.**
+`ExportOption.refType` names that type, and the core hands `generateExport`
+only the matching QSOs. All six contest exports set it; core ADIF doesn't,
+because the full ADIF covers the operation rather than one activity within it.
+
+**A per-reference export is sliced to the segments carrying its reference.**
+`ExportOption.ref` names it — `activityExportHook` sets it on each park's
+option — so a park activated after a break claims only the contacts made
+there. An activity bundle built before the field existed names the reference
+only in `templateData.ref`, which the core reads in its place.
 
 That was a live bug, not preparation. M6 gated scoring on segments and left
 exports behind, so a contest that started or ended at a break put contacts made
@@ -656,13 +661,13 @@ in a file the operator submits.
 
 | Piece | Why not yet |
 |---|---|
-| One export **per reference** | The shared `sdk/src/activityExports.ts` helper offers a stable `exportType` (`pota-adif`) and a distinct `exportKey` per reference (`pota-adif:US-1234`), and declares `refType` for QSO slicing. Both type and key round-trip into generation; the panel identifies selections by station callsign, hook key, and export key. The extension interprets the reference in the key. |
+| Asking hooks per reference (`ExportOptionsRequest.ref`) | The shared `sdk/src/activityExports.ts` helper offers a stable `exportType` (`pota-adif`) and a distinct `exportKey` per reference (`pota-adif:US-1234`) from the operation's own refs, and declares `refType` and `ref` for QSO slicing. Both type and key round-trip into generation; the panel identifies selections by station callsign, hook key, and export key. The extension interprets the reference in the key. |
 | `includeAllSegments`, `includeOtherRefHandlers` | **Superseded** — see *The two flags, settled* below. |
 
-Until then, several refs of one type **union**: one export covers the type,
-because quietly dropping half a log would be worse than covering both. And the
-"which segment heads it" question above stays open, since it only arises for a
-per-reference export.
+An export naming a `refType` but no `ref` — a contest's — still takes the
+**union** of that type's refs, because quietly dropping half a log would be
+worse than covering both. The "which segment heads it" question above stays
+open.
 
 The two-pass collection sketched above also needs rethinking before it is
 built. It assumes each hook's own guard decides whether it answers a
@@ -683,7 +688,7 @@ deferred**:
 
 | Question | What answers it |
 |---|---|
-| Whole log, or only the segments carrying my reference? | `ExportOption.refType`. Set it and the core slices the QSOs to the segments carrying that type (§5.1.4); omit it — core ADIF — and the file covers the whole log. Every contest and activity export sets it. Nothing has asked for "my type, but every segment anyway", which is all the flag would have added. |
+| Whole log, or only the segments carrying my reference? | `ExportOption.refType`. Set it and the core slices the QSOs to the segments carrying that type (§5.1.4), narrowed by `ExportOption.ref` to the segments carrying one reference; omit it — core ADIF — and the file covers the whole log. Every contest and activity export sets it. Nothing has asked for "my type, but every segment anyway", which is all the flag would have added. |
 | May other extensions add fields to my records? | `ExportRequest.mainHandler` and `includeFieldsFrom`. An export names itself and LISTS the contributors it accepts — POTA takes `satellites`, because a park worked through a bird is still a park activation. Omitted — the full ADIF — every program the contact carries a reference for contributes, which is polo's `includeOtherRefs` (docs/extensions/hooks.md, `adifFields`). A named list beats the boolean: POTA wants the satellite fields and not the lighthouse ones, and a yes/no cannot say so. |
 | What was true for THIS contact — a rover's county, the grid at the key? | `ExportRequest.segments` and the SDK's `operationForQso` (above). A per-segment *value*, which neither flag expressed. |
 

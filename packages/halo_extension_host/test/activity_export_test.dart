@@ -89,6 +89,10 @@ void main() {
     expect(options[0]['filename'], isNot(options[1]['filename']));
     // Declared so the core slices to segments where POTA was actually running.
     expect(options.every((o) => o['refType'] == 'potaActivation'), isTrue);
+    // And which park, so each file holds only that park's segments. A bundle
+    // built before `ExportOption.ref` names it only here, and the core reads
+    // it in its place — without it every park's file is the whole log.
+    expect(options.map((o) => o['ref'] ?? (o['templateData'] as Map)['ref']), ['US-0001', 'US-0002']);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a per-park export requires a valid instance key', () async {

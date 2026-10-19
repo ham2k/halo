@@ -905,6 +905,196 @@ void main() {
     });
   });
 
+  group("one park's file claims only the segments at that park", () {
+    // Two parks one after the other, across a break: each park's POTA file
+    // must hold only its own contacts. Sliced by type alone, both parks'
+    // segments are POTA's, so each file gets the whole log — a submission
+    // claiming contacts made at the other park.
+    late _CapturingHost host;
+    late ExportService sliced;
+    late Operation twoParks;
+
+    setUp(() async {
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      host = _CapturingHost();
+      sliced = ExportService(extensions: _ExtensionsWithHost(host), qsos: qsos, settings: settings);
+
+      final created = await operations.create(stationCall: 'N0CALL');
+      await operations.saveData(
+        Operation(
+          uuid: created.uuid,
+          data: {
+            ...created.data,
+            'refs': [
+              {'type': 'potaActivation', 'ref': 'US-0001'},
+            ],
+          },
+        ),
+      );
+      final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
+      await qsos.add(created.uuid, {
+        'their': {'call': 'ATFIRST'},
+        'band': '20m',
+        'mode': 'CW',
+        'startAtMillis': start,
+      });
+      await qsos.addEvent(
+        created.uuid,
+        kind: 'break',
+        atMillis: start + 1000,
+        operation: {
+          'refs': [
+            {'type': 'potaActivation', 'ref': 'US-0002'},
+          ],
+        },
+      );
+      await qsos.add(created.uuid, {
+        'their': {'call': 'ATSECOND'},
+        'band': '20m',
+        'mode': 'CW',
+        'startAtMillis': start + 2000,
+      });
+      // And a stretch at no park at all, which no POTA file may claim.
+      await qsos.addEvent(created.uuid, kind: 'break', atMillis: start + 3000, operation: {'refs': <Map>[]});
+      await qsos.add(created.uuid, {
+        'their': {'call': 'NOPARK'},
+        'band': '20m',
+        'mode': 'CW',
+        'startAtMillis': start + 4000,
+      });
+      twoParks = (await operations.get(created.uuid))!;
+    });
+
+    List<String> callsSentTo(int callIndex) => [
+      for (final qso in ((host.calls[callIndex]['args'] as Map)['qsos'] as List)) ((qso as Map)['their'] as Map)['call'] as String,
+    ];
+
+    Map<String, dynamic> parkOption(String park) => {
+      'hookKey': 'pota',
+      'exportType': 'potaActivation-adif',
+      'exportKey': 'pota-adif:$park',
+      'refType': 'potaActivation',
+      'ref': park,
+    };
+
+    test('each park gets only the contacts made there', () async {
+      await sliced.generateExports(twoParks, [parkOption('US-0001'), parkOption('US-0002')]);
+
+      expect(callsSentTo(0), ['ATFIRST']);
+      expect(callsSentTo(1), ['ATSECOND']);
+    });
+
+    test('a bundle that names its park only for the filename is sliced the same way', () async {
+      // An activity bundle built before `ref` existed names the park only in
+      // `templateData.ref`.
+      await sliced.generateExports(twoParks, [
+        {
+          ...parkOption('US-0002')..remove('ref'),
+          'templateData': {'ref': 'US-0002'},
+        },
+      ]);
+
+      expect(callsSentTo(0), ['ATSECOND']);
+    });
+
+    test('an export naming no park, or one the segments never carried, still covers every park', () async {
+      // Narrowed to a reference nothing carries, the slice would come out
+      // empty and fall back to the whole log — the stretch at no park
+      // included.
+      await sliced.generateExports(twoParks, [
+        {...parkOption('US-0001')..remove('ref')},
+        parkOption('US-9999'),
+      ]);
+
+      expect(callsSentTo(0), ['ATFIRST', 'ATSECOND']);
+      expect(callsSentTo(1), ['ATFIRST', 'ATSECOND']);
+    });
+
+    /// HaLo's own shape: a `start` naming [startParks] and one contact there,
+    /// ATFIRST; then, when [breakParks] is given, a break naming those, and a
+    /// contact after it, NOPARK, if [contactAfterBreak]. [baseParks] is what
+    /// the base operation carries — a local save keeps it equal to the latest
+    /// segment's.
+    Future<Operation> startedAt(List<String> baseParks, List<String> startParks, {List<String>? breakParks, bool contactAfterBreak = false}) async {
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL');
+      List<Map<String, dynamic>> parks(List<String> refs) => [
+        for (final ref in refs) {'type': 'potaActivation', 'ref': ref},
+      ];
+      await operations.saveData(Operation(uuid: created.uuid, data: {...created.data, 'refs': parks(baseParks)}));
+      final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
+      await qsos.addEvent(created.uuid, kind: 'start', atMillis: start, operation: {'refs': parks(startParks)});
+      await qsos.add(created.uuid, {
+        'their': {'call': 'ATFIRST'},
+        'band': '20m',
+        'mode': 'CW',
+        'startAtMillis': start + 1000,
+      });
+      if (breakParks != null) {
+        await qsos.addEvent(created.uuid, kind: 'break', atMillis: start + 2000, operation: {'refs': parks(breakParks)});
+      }
+      if (contactAfterBreak) {
+        await qsos.add(created.uuid, {
+          'their': {'call': 'NOPARK'},
+          'band': '20m',
+          'mode': 'CW',
+          'startAtMillis': start + 3000,
+        });
+      }
+      return (await operations.get(created.uuid))!;
+    }
+
+    test('a park switched to before its first contact claims nothing, not the park before it', () async {
+      // Nothing disagrees here: a segment names the new park, it just has no
+      // contacts yet. Falling back to the whole log submits every contact made
+      // at the first park as made at the second.
+      final op = await startedAt(['US-0002'], ['US-0001'], breakParks: ['US-0002']);
+
+      await sliced.generateExports(op, [parkOption('US-0001'), parkOption('US-0002')]);
+
+      expect(callsSentTo(0), ['ATFIRST']);
+      expect(callsSentTo(1), isEmpty);
+    });
+
+    test('a park only the base operation names falls back to every park of its type, not the whole log', () async {
+      // The segments and the operation disagree — a synced edit no segment
+      // followed — and an empty file says less than a full one. But the
+      // stretch at no park is no park's to claim.
+      final op = await startedAt(['US-0001', 'US-0003'], ['US-0001'], breakParks: [], contactAfterBreak: true);
+
+      await sliced.generateExports(op, [parkOption('US-0003')]);
+
+      expect(callsSentTo(0), ['ATFIRST']);
+    });
+
+    test('the one park, added after a break with nothing logged since, still covers the log', () async {
+      // A save restamps only the latest segment, so the break names the park
+      // and the stretch before it does not. The log never moved between
+      // parks: an empty file here would drop the whole activation.
+      final op = await startedAt(['US-0001'], [], breakParks: ['US-0001']);
+
+      await sliced.generateExports(op, [parkOption('US-0001')]);
+
+      expect(callsSentTo(0), ['ATFIRST']);
+    });
+
+    test('a ref that is not a code falls through to the park the filename names', () async {
+      // `ref: ref` for `ref: ref.ref` is an easy slip; read as naming nothing,
+      // it would hand this park's file every park's contacts.
+      await sliced.generateExports(twoParks, [
+        {
+          ...parkOption('US-0002'),
+          'ref': {'type': 'potaActivation', 'ref': 'US-0002'},
+          'templateData': {'ref': 'US-0002'},
+        },
+      ]);
+
+      expect(callsSentTo(0), ['ATSECOND']);
+    });
+  });
+
   // The payload every coarse hook reads an operation through. The operator is
   // RESOLVED into it, because at a position it lives in that position's own
   // slot and nothing in Dart reads it back out — the readers are on the far

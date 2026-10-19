@@ -390,7 +390,7 @@ interface ExportHook {
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
 // ExportOptionsRequest: {operation, qsos, compactFilenames?}
-// ExportOption: {exportType, exportKey?, format, label, filename?, icon?, color?, refType?, priority?, selectedByDefault?}
+// ExportOption: {exportType, exportKey?, format, label, filename?, icon?, color?, refType?, ref?, priority?, selectedByDefault?}
 // ExportRequest: {operation, qsos, segments?, events?, exportType?, exportKey?, compactFilenames?}  — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}
 ```
@@ -486,6 +486,12 @@ whole-log ADIF — asks for a glyph of its own instead of borrowing one. An
 `icon` name that doesn't resolve falls back to the activity's, same as an
 unreadable `color` does.
 
+**One reference's file.** An export claiming one reference of its `refType` —
+one park's log, when the operation activated several — names it in `ref`, and
+the core narrows the slice to the segments carrying that reference. Without
+it, a park activated after a break gets every contact made at the park before
+it. `activityExportHook` sets it for you.
+
 **Filenames.** Build them with the SDK's `exportFilename` rather than
 spelling one out, passing the request's `compactFilenames` straight through —
 that is what makes the user's "Use compact file names" setting apply to your
@@ -506,7 +512,7 @@ filename: exportFilename({
 Set `filename` on the OPTION, not just on the result: the panel shows the
 option's name, and the core writes the file under it. A name computed again
 in `generateExport` sees a different input — that call is handed only the
-QSOs the option's `refType` covers — so the two would otherwise disagree in
+QSOs the option's `refType` (and `ref`) covers — so the two would otherwise disagree in
 front of the user.
 
 ## ✅ `ref:<type>` — reference handlers

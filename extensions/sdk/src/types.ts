@@ -1225,6 +1225,12 @@ export interface ExportOption {
   /// Omit it for an export that genuinely covers the whole log, like the full
   /// ADIF. On an unsegmented operation it changes nothing either way.
   refType?: string
+  /// The one reference of `refType` this export claims — one park's file
+  /// among several. The core then hands `generateExport` only the QSOs from
+  /// segments carrying THAT reference, so a park activated after a break
+  /// doesn't claim the contacts made at the one before it (§5.1.4). Omit it
+  /// for an export covering every reference of the type, like a contest's.
+  ref?: string
 }
 
 export interface ExportHook {

@@ -232,10 +232,15 @@ class ExportService {
   /// an unsegmented operation, where every QSO is in the one segment and this
   /// is identity.
   ///
-  /// Several refs of one type (two parks) union rather than picking one: until
-  /// a per-REFERENCE export exists (§5.1.4's other half, which nothing yet
-  /// needs), one export covers the type, and quietly dropping half the log
-  /// would be worse than covering both.
+  /// An option naming one reference of that type — one park's file — takes
+  /// only the segments carrying THAT reference (§5.1.4): a park activated
+  /// after a break claims none of the contacts made at the park before it.
+  /// `ref` names it; an activity bundle built before the field existed names
+  /// it only as `templateData.ref`, which every per-reference option already
+  /// carries for its filename. One naming none, naming a reference the
+  /// segments never carried, or naming one with no contacts that the log did
+  /// not move to from another, covers every reference of the type rather than
+  /// quietly dropping half the log.
   List<Qso> _qsosForOption(Map<String, dynamic> option, List<Qso> qsoList, SegmentedOperation segmented) {
     final refType = option['refType'];
     if (refType is! String || refType.isEmpty) return qsoList;
@@ -245,27 +250,49 @@ class ExportService {
     // alone rather than writing an empty file over a hook's own judgement.
     if (refs.isEmpty) return qsoList;
 
-    final keep = <String>{
-      for (final ref in refs)
-        for (final qso in segmented.qsosFor(qsoList, ref)) qso.uuid,
-    };
-    final scoped = [
-      for (final qso in qsoList)
-        if (keep.contains(qso.uuid)) qso,
-    ];
+    List<Qso> sliceFor(List<Map<String, dynamic>> carried) {
+      final keep = <String>{
+        for (final ref in carried)
+          for (final qso in segmented.qsosFor(qsoList, ref)) qso.uuid,
+      };
+      return [
+        for (final qso in qsoList)
+          if (keep.contains(qso.uuid)) qso,
+      ];
+    }
 
+    // A `ref` that is not a reference's code — a whole ref map, say — falls
+    // through to `templateData.ref` rather than widening the file to the type.
+    final ownRef = option['ref'];
+    final named = ownRef is String && ownRef.isNotEmpty ? ownRef : asQsonMap(option['templateData'])?['ref'];
+    final one = [
+      for (final ref in refs)
+        if (named is String && ref['ref'] == named) ref,
+    ];
+    if (one.isNotEmpty) {
+      final scoped = sliceFor(one);
+      // The log moved between references of this type, and a segment of its
+      // own names this one: an empty slice is a park switched to with nothing
+      // logged there yet. Widened to the type, it would claim every contact
+      // made at the previous park for this one.
+      final movedHere =
+          refs.length > one.length && segmented.segments.skip(1).any((segment) => segment.refs.any((ref) => ref['type'] == refType && ref['ref'] == named));
+      if (scoped.isNotEmpty || movedHere) return scoped;
+    }
+
+    final scoped = sliceFor(refs);
     // Same promise as the bail-out above, and it has to be made here too: a ref
     // can be on the operation while every segment override omits it, and then
     // the slice comes back EMPTY rather than absent.
     //
     // That state means the segments and the operation disagree, and today it
-    // comes from HaLo itself — the Activities view writes `operation.refs` with
-    // no segment bookkeeping, because there is no segment UI yet (§5.1.3), so
-    // turning an activity on for a polo-synced log produces exactly it. An
-    // empty submission file is the worse failure of the two: the operator gets
-    // a Cabrillo with no QSOs in it and no indication why, while an over-broad
-    // one is visible in the file and can be pruned. So the whole log wins until
-    // segments are something the app maintains rather than only imports.
+    // comes from HaLo itself — a save restamps only the LATEST segment, and
+    // there is no segment UI yet (§5.1.3), so turning an activity on after a
+    // break leaves every earlier stretch without it. An empty submission file
+    // is the worse failure of the two: the operator gets a Cabrillo with no
+    // QSOs in it and no indication why, while an over-broad one is visible in
+    // the file and can be pruned. So the whole log wins until segments are
+    // something the app maintains rather than only imports.
     return scoped.isEmpty ? qsoList : scoped;
   }
 
@@ -558,7 +585,7 @@ class ExportService {
         // The panel already showed the operator a filename — the one the option
         // carried — so that is the name the file gets. A hook recomputing it
         // sees a DIFFERENT input: `generateExport` is handed only the QSOs its
-        // refType covers, so a park activated after a break dates its file from
+        // refType (and ref) covers, so a park activated after a break dates its file from
         // the first contact after the break, while the listing dated it from the
         // start of the log. Both are defensible; disagreeing in front of the
         // user is not.
