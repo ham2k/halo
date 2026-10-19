@@ -145,11 +145,18 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// moment to stop it, or to change frequency, before it goes out.
   static final Duration respotSoonLead = respotPulseStages.last.left;
 
-  /// Comments that announce a one-off change rather than an ongoing
-  /// activation, by their leading Q-code (`QRT`, `QRT, 73`, `QSY/40m`):
+  /// Comments that announce leaving or pausing rather than an ongoing
+  /// activation, by their leading Q-code (`QRT`, `QRT, 73`, `QRX 5`):
   /// repeating one says something false, so a self-spot carrying one is never
   /// repeated, and a typed one ends auto-respotting.
-  static final RegExp oneOffQCode = RegExp(r'^(QRV|QRT|QSY|QRX)\b', caseSensitive: false);
+  static final RegExp oneOffQCode = RegExp(r'^(QRT|QRX)\b', caseSensitive: false);
+
+  /// Comments that announce arriving on a frequency (`QRV 20m`, `QSY/40m`):
+  /// the station is on the air there, so the spot counts as a plain SPOT
+  /// would — offered for, starting, or re-timing auto-respotting — but the
+  /// repeats carry no comment, since "QSY" said again every few minutes is
+  /// false.
+  static final RegExp arrivalQCode = RegExp(r'^(QRV|QSY)\b', caseSensitive: false);
 
   final commentController = TextEditingController();
   final commentFocus = FocusNode();
@@ -321,9 +328,9 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// issue's exact state machine (ham2k/halo-dist#10): no VFO frequency
   /// disables self-spotting; editing a QSO switches to spotting that QSO's
   /// station instead, only while it's recent enough. `summary` (the collapsed
-  /// pill) is always one of the two short, fixed labels —
-  /// "Self-spotting"/"Spotting" — never the longer dynamic messages, which
-  /// are reserved for the button inside the expanded panel.
+  /// pill) stays short — "Self-spotting"/"Spotting", or the coarse
+  /// auto-respot countdown — never the longer dynamic messages, which are
+  /// reserved for the button inside the expanded panel.
   SpottingState get state {
     final cfg = config();
     final editingQso = cfg.editingQso;
@@ -346,12 +353,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
 
     final vfoFreq = cfg.radioService?.vfoA.freq;
     if (_autoRespotting) {
-      return (
-        summary: t.loggingControls.spottingAutoControl,
-        buttonLabel: t.loggingControls.spotAutoNext(time: _untilNextRespot()),
-        enabled: true,
-        showComment: false,
-      );
+      return (summary: _pillCountdown(), buttonLabel: t.loggingControls.spotAutoNext(time: _untilNextRespot()), enabled: true, showComment: false);
     }
     final summary = t.loggingControls.spottingSelfControl;
     if (vfoFreq == null) {
@@ -520,9 +522,10 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   /// to every source offering one.
   ///
   /// A one-off announcement ([oneOffQCode]) ends auto-respotting whether or
-  /// not it goes through: the operator is leaving or moving either way. Any
+  /// not it goes through: the operator is leaving or pausing either way. Any
   /// other that every source took, with the VFO still on its frequency,
-  /// becomes what auto-respotting repeats, a running one re-timed from it.
+  /// becomes what auto-respotting repeats — an arrival ([arrivalQCode])
+  /// without its comment — a running one re-timed from it.
   /// Returns why it did not go through, or the spot it recorded.
   Future<_Spotted> _spotSelf(String? comment, {VoidCallback? onAnswered}) async {
     // An offer standing from an earlier spot would repeat that one, or —
@@ -553,7 +556,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     if (failure != null || _refusedBy(sources, results).isNotEmpty || _isOneOff(comment) || !_onFrequency(freq)) {
       return (failure: failure, spot: null, skipped: false);
     }
-    final spot = (freq: freq, comment: comment, operationUuid: cfg.operation.uuid, atRealMillis: realNowMillis());
+    final spot = (freq: freq, comment: _isArrival(comment) ? null : comment, operationUuid: cfg.operation.uuid, atRealMillis: realNowMillis());
     _selfSpot = spot;
     if (_autoRespotting) {
       _roundAtRealMillis = spot.atRealMillis;
@@ -686,12 +689,31 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     }
   }
 
+  /// Whole seconds until the next auto-respot, rounded up: 0 only once due.
+  int get _secondsToRespot {
+    final due = _respotDueRealMillis;
+    return due == null ? 0 : ((due - realNowMillis()) / 1000).ceil().clamp(0, 1 << 30);
+  }
+
   /// How long until the next auto-respot, as `m:ss` — the button counts it
   /// down. Rounded up, so it reads 0:01 rather than 0:00 until it goes.
   String _untilNextRespot() {
-    final due = _respotDueRealMillis;
-    final seconds = due == null ? 0 : ((due - realNowMillis()) / 1000).ceil().clamp(0, 1 << 30);
+    final seconds = _secondsToRespot;
     return '${seconds ~/ 60}:${'${seconds % 60}'.padLeft(2, '0')}';
+  }
+
+  /// The collapsed chip's countdown, in coarse steps — whole minutes, then
+  /// 30s, 15s, 10s, and the last five seconds one by one — each shown until
+  /// the next step is reached, so the pill stays still and narrow while the
+  /// expanded button carries the exact time. Due, with the round in flight,
+  /// it names what it is doing rather than counting past zero.
+  String _pillCountdown() {
+    final seconds = _secondsToRespot;
+    final l = t.loggingControls;
+    if (seconds == 0) return l.spottingAutoControl;
+    if (seconds > 30) return l.spotAutoInMinutes(minutes: (seconds / 60).ceil());
+    if (seconds > 5) return l.spotAutoInSeconds(seconds: seconds > 15 ? 30 : (seconds > 10 ? 15 : 10));
+    return l.spotAutoInCount(seconds: seconds);
   }
 
   /// The chip icon's glow: none until [respotGlowLead] before the next
@@ -831,6 +853,9 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
 
   /// Whether [comment] announces a one-off change ([oneOffQCode]).
   static bool _isOneOff(String? comment) => comment != null && oneOffQCode.hasMatch(comment.trim());
+
+  /// Whether [comment] announces arriving on a frequency ([arrivalQCode]).
+  static bool _isArrival(String? comment) => comment != null && arrivalQCode.hasMatch(comment.trim());
 
   /// Posts one spot to [sources], and colours each source's icon by its answer
   /// for three minutes — a self-spot's only while the row shows self-spotting,
@@ -1081,6 +1106,7 @@ SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData t
     key: 'spotting',
     icon: spottingChipIcon,
     summary: state.summary,
+    liveSummary: model.autoRespotting ? () => model.state.summary : null,
     liveTint: soon == null ? null : (color: soon, strength: () => model.respotPulse),
     liveIconGlow: model.respotGlowing ? () => model.respotGlow : null,
     // The pulse outranks a fading outcome: it is the news that is about to

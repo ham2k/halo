@@ -1303,6 +1303,15 @@ class Translations$loggingControls$en {
 	/// en: 'Auto in ${time}. Stop?'
 	String spotAutoNext({required Object time}) => 'Auto in ${time}. Stop?';
 
+	/// en: 'Auto in ${minutes}m'
+	String spotAutoInMinutes({required Object minutes}) => 'Auto in ${minutes}m';
+
+	/// en: 'Auto in ${seconds}s'
+	String spotAutoInSeconds({required Object seconds}) => 'Auto in ${seconds}s';
+
+	/// en: 'Auto in ${seconds}'
+	String spotAutoInCount({required Object seconds}) => 'Auto in ${seconds}';
+
 	/// en: 'Auto re-spot not started: the spot did not go through'
 	String get spotAutoNotStarted => 'Auto re-spot not started: the spot did not go through';
 
@@ -9266,6 +9275,9 @@ extension on Translations {
 			'loggingControls.spottingAutoControl' => 'Auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot every ${minutes} min',
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'Auto in ${time}. Stop?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'Auto in ${minutes}m',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'Auto in ${seconds}s',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'Auto in ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'Auto re-spot not started: the spot did not go through',
 			'loggingControls.spotAutoMoved' => 'Auto re-spot not started: the frequency changed while spotting',
 			'loggingControls.spotAutoStopped' => 'Auto re-spot stopped',
@@ -9412,11 +9424,11 @@ extension on Translations {
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
 			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
+			_ => null,
+		} ?? switch (path) {
 			'settings.keepDeviceAwake.descriptionOn' => 'Staying awake while you are on the logging view or a sync is in progress',
 			'settings.keepDeviceAwake.descriptionOff' => 'Sleeping as usual',
 			'settings.layoutDensity' => 'Layout Density',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityOpts.auto' => 'Automatic',
 			'settings.layoutDensityOpts.densest' => 'Densest',
 			'settings.layoutDensityOpts.dense' => 'Dense',
@@ -9926,11 +9938,11 @@ extension on Translations {
 			'settings.station.rtlDirectSampling' => 'Direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.',
 			'settings.station.rtlDirectSamplingOff' => 'Off',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I branch',
 			'settings.station.rtlDirectSamplingQ' => 'Q branch',
 			'settings.station.rtlTcpNotAServer' => 'This is not an rtl_tcp server',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlTcpNotes' => 'This connects to an **rtl_tcp server you run yourself** on the computer the dongle is plugged into.\n\n- **Start it** with `rtl_tcp -a 0.0.0.0` so other machines can reach it; on the same machine, `rtl_tcp` alone will do.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** rtl_tcp serves a single client. The app connects only while a spectrum display is showing, and lets go a few seconds after it closes.\n- **On Android**, the *SDR driver* app runs the same server on the phone.',
 			'settings.station.rspTcpNotes' => 'This connects to an **rsp_tcp server you run yourself** on the computer the RSP is plugged into, with SDRplay\'s API installed there.\n\n- **Start it** with `rsp_tcp -a 0.0.0.0`.\n- **Port** is 1234 unless you started it with `-p`.\n- **One program at a time:** the server takes a single client. The app connects only while a spectrum display is showing.',
 			'settings.station.n3fjpNoRig' => 'N3FJP has no radio interface set up, so this follows what is typed into N3FJP, not a radio',
@@ -10440,11 +10452,11 @@ extension on Translations {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
-			_ => null,
-		} ?? switch (path) {
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',

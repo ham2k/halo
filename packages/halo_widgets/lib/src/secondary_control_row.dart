@@ -62,10 +62,11 @@ class SecondaryControlSpec {
   final String summary;
   final WidgetBuilder expandedBuilder;
 
-  /// For a summary that shows live wall-clock time (the Time chip): when
-  /// set, the chip re-evaluates this once per second via [OncePerSecond] and
-  /// shows its result instead of [summary] — the per-second rebuild stays
-  /// scoped to the chip's label instead of whatever State owns the spec.
+  /// For a summary that follows the wall clock (the Time chip, the Spotting
+  /// chip's countdown): when set, the chip re-evaluates this once per second
+  /// via [OncePerSecond] — every frame under [liveTint] — and shows its
+  /// result instead of [summary]; the rebuild stays scoped to the chip's
+  /// label instead of whatever State owns the spec.
   final ValueGetter<String>? liveSummary;
 
   /// The summary as colored runs, for a chip where one PART of the value is
@@ -104,9 +105,9 @@ class SecondaryControlSpec {
   /// Draws the icon and the label toward a color, re-evaluated every frame
   /// rather than every second: for a pulse that has to move smoothly — the
   /// Spotting chip's last seconds before an auto-respot. While set, the icon
-  /// ignores [liveIconColor] and the label is plain [summary], without
-  /// [liveSummary] or [summaryParts]; ignored itself while disabled or
-  /// alerting, as they are.
+  /// ignores [liveIconColor] and the label is [liveSummary] (else [summary]),
+  /// without [summaryParts]; ignored itself while disabled or alerting, as
+  /// they are.
   final LiveTint? liveTint;
 
   /// The node the caller uses to put the keyboard on this chip, and to hang
@@ -959,7 +960,7 @@ class _ControlChip extends StatelessWidget {
           : icon(),
       label: tint != null
           ? _EveryFrame(
-              builder: (_) => Text(control.summary, style: TextStyle(color: tinted(foreground))),
+              builder: (_) => Text(control.liveSummary?.call() ?? control.summary, style: TextStyle(color: tinted(foreground))),
             )
           : control.liveSummary != null
           ? OncePerSecond(

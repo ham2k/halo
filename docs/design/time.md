@@ -86,7 +86,7 @@ clock is the entire point of the feature.
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
 | `peer_ble_transport.dart` — the link keepalive cutoff, candidate `lastSeenMillis` and dial cooldowns, link uptime | Protocol timeouts and rate limiting a real radio. `peer_ble_transport_test.dart` pins that a travelled clock does not drop a link |
 | `weather_panel.dart` — fetch-attempt throttle | Rate limiting a real request |
-| `logging_controls_spotting.dart` — when the next auto-respot is due | Paces a real request, and its `Timer` counts real time; the chip's pre-respot glow and pulse, and the button's countdown, read it. `spotting_control_model_test.dart` pins that travel does not light the glow |
+| `logging_controls_spotting.dart` — when the next auto-respot is due | Paces a real request, and its `Timer` counts real time; the chip's countdown, pre-respot glow and pulse, and the button's countdown, read it. `spotting_control_model_test.dart` pins that travel does not light the glow |
 | `logging_controls_spotting.dart` — when the last self-spot's outcome landed | The chip's color fades from it over three minutes that a `Timer` ends |
 | `catalog_service.dart` — the listing cache's TTL | A staleness timeout mirroring the catalog's own `max-age`, which is real seconds; travelled, a listing fetched under `DEVTT` would expire at once or never |
 | `map_ready_watchdog.dart` — the visible-time the map's give-up horizon accumulates | Its remainder becomes a `Timer` duration. `map_ready_watchdog_test.dart` pins that travel does not count as time on screen |

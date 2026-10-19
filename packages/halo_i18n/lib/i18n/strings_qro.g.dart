@@ -590,6 +590,9 @@ class _Translations$loggingControls$qro extends Translations$loggingControls$en 
 	@override String get spottingAutoControl => 'AUTO RE-SPOT';
 	@override String spotAutoEvery({required Object minutes}) => 'RE-SPOT EVERY ${minutes} MIN';
 	@override String spotAutoNext({required Object time}) => 'AUTO IN ${time}. STOP?';
+	@override String spotAutoInMinutes({required Object minutes}) => 'AUTO IN ${minutes}M';
+	@override String spotAutoInSeconds({required Object seconds}) => 'AUTO IN ${seconds}S';
+	@override String spotAutoInCount({required Object seconds}) => 'AUTO IN ${seconds}';
 	@override String get spotAutoNotStarted => 'AUTO RE-SPOT NOT STARTED: THE SPOT DID NOT GO THROUGH';
 	@override String get spotAutoMoved => 'AUTO RE-SPOT NOT STARTED: THE FREQUENCY CHANGED WHILE SPOTTING';
 	@override String get spotAutoStopped => 'AUTO RE-SPOT STOPPED';
@@ -4797,6 +4800,9 @@ extension on TranslationsQro {
 			'loggingControls.spottingAutoControl' => 'AUTO RE-SPOT',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'RE-SPOT EVERY ${minutes} MIN',
 			'loggingControls.spotAutoNext' => ({required Object time}) => 'AUTO IN ${time}. STOP?',
+			'loggingControls.spotAutoInMinutes' => ({required Object minutes}) => 'AUTO IN ${minutes}M',
+			'loggingControls.spotAutoInSeconds' => ({required Object seconds}) => 'AUTO IN ${seconds}S',
+			'loggingControls.spotAutoInCount' => ({required Object seconds}) => 'AUTO IN ${seconds}',
 			'loggingControls.spotAutoNotStarted' => 'AUTO RE-SPOT NOT STARTED: THE SPOT DID NOT GO THROUGH',
 			'loggingControls.spotAutoMoved' => 'AUTO RE-SPOT NOT STARTED: THE FREQUENCY CHANGED WHILE SPOTTING',
 			'loggingControls.spotAutoStopped' => 'AUTO RE-SPOT STOPPED',
@@ -4943,11 +4949,11 @@ extension on TranslationsQro {
 			'settings.fontScaleOpts.largestPlus' => 'LARGEST+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'LARGEST++',
 			'settings.keepDeviceAwake.title' => 'KEEP DEVICE AWAKE',
+			_ => null,
+		} ?? switch (path) {
 			'settings.keepDeviceAwake.descriptionOn' => 'STAYING AWAKE WHILE YOU ARE ON THE LOGGING VIEW OR A SYNC IS IN PROGRESS',
 			'settings.keepDeviceAwake.descriptionOff' => 'SLEEPING AS USUAL',
 			'settings.layoutDensity' => 'LAYOUT DENSITY',
-			_ => null,
-		} ?? switch (path) {
 			'settings.layoutDensityOpts.auto' => 'AUTOMATIC',
 			'settings.layoutDensityOpts.densest' => 'DENSEST',
 			'settings.layoutDensityOpts.dense' => 'DENSE',
@@ -5457,11 +5463,11 @@ extension on TranslationsQro {
 			'settings.station.rtlDirectSampling' => 'DIRECT SAMPLING',
 			'settings.station.rtlDirectSamplingDescription' => 'FOR HF ON AN RTL-SDR V3 WITHOUT AN UPCONVERTER. AN RTL-SDR V4 REACHES HF WITHOUT IT.',
 			'settings.station.rtlDirectSamplingOff' => 'OFF',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I BRANCH',
 			'settings.station.rtlDirectSamplingQ' => 'Q BRANCH',
 			'settings.station.rtlTcpNotAServer' => 'THIS IS NOT AN RTL_TCP SERVER',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlTcpNotes' => 'THIS CONNECTS TO AN **RTL_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE DONGLE IS PLUGGED INTO.\n\n- **START IT** WITH `rtl_tcp -a 0.0.0.0` SO OTHER MACHINES CAN REACH IT; ON THE SAME MACHINE, `rtl_tcp` ALONE WILL DO.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** RTL_TCP SERVES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING, AND LETS GO A FEW SECONDS AFTER IT CLOSES.\n- **ON ANDROID**, THE *SDR DRIVER* APP RUNS THE SAME SERVER ON THE PHONE.',
 			'settings.station.rspTcpNotes' => 'THIS CONNECTS TO AN **RSP_TCP SERVER YOU RUN YOURSELF** ON THE COMPUTER THE RSP IS PLUGGED INTO, WITH SDRPLAY\'S API INSTALLED THERE.\n\n- **START IT** WITH `rsp_tcp -a 0.0.0.0`.\n- **PORT** IS 1234 UNLESS YOU STARTED IT WITH `-p`.\n- **ONE PROGRAM AT A TIME:** THE SERVER TAKES A SINGLE CLIENT. THE APP CONNECTS ONLY WHILE A SPECTRUM DISPLAY IS SHOWING.',
 			'settings.station.n3fjpNoRig' => 'N3FJP HAS NO RADIO INTERFACE SET UP, SO THIS FOLLOWS WHAT IS TYPED INTO N3FJP, NOT A RADIO',
@@ -5971,11 +5977,11 @@ extension on TranslationsQro {
 			'operationLocationScreen.stateOrProvince' => 'STATE OR PROVINCE (OPTIONAL)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'ACTIVITY CONTROLS UNAVAILABLE',
 			'operationLocationScreen.controlsUnavailableReason' => 'THESE REFERENCES ARE STILL USABLE; THEIR ACTIVITIES JUST COULD NOT BE REACHED.',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableRetry' => 'RETRY',
 			'operationLocationScreen.county' => 'COUNTY (OPTIONAL)',
 			'versionLabel.version' => ({required Object version}) => 'VERSION ${version}',
-			_ => null,
-		} ?? switch (path) {
 			'versionLabel.patch' => ({required Object patch}) => 'PATCH ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'BUILD ${build}',
 			'notices.emptyHistory' => 'NO NOTICES YET',

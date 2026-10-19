@@ -200,18 +200,26 @@ void main() {
     testWidgets('spots now and turns the Spotting chip to auto re-spot; moving the VFO stops it', (tester) async {
       await runRespot(tester);
       expect(sent, [14285]);
-      expect(find.text('Auto re-spot'), findsOneWidget);
-      await tester.tap(find.text('Auto re-spot'));
+      expect(find.text('Auto in 5m'), findsOneWidget);
+      await tester.tap(find.text('Auto in 5m'));
       await tester.pump(const Duration(milliseconds: 500));
       expect(find.text('Auto in 5:00. Stop?'), findsOneWidget);
       await tester.pump(const Duration(minutes: 1, seconds: 15));
       expect(find.text('Auto in 3:45. Stop?'), findsOneWidget);
-      await tester.pump(const Duration(minutes: 3, seconds: 46));
+      expect(find.text('Auto in 4m'), findsOneWidget);
+      // The last seconds pulse the chip, which redraws it on its own path:
+      // read only from the spec's static summary, the pill would sit on the
+      // step it showed as the pulse began.
+      await tester.pump(const Duration(minutes: 3, seconds: 30));
+      expect(find.text('Auto in 15s'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 12));
+      expect(find.text('Auto in 3'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
       expect(sent, [14285, 14285], reason: 'five minutes, as asked');
 
       tunedRadio.setVfo('vfoA', freq: 7200);
       await tester.pump();
-      expect(find.text('Auto re-spot'), findsNothing);
+      expect(find.textContaining('Auto in'), findsNothing);
       await tester.pump(const Duration(minutes: 11));
       expect(sent, hasLength(2));
     });
@@ -220,7 +228,7 @@ void main() {
       accept = false;
       await runRespot(tester);
       expect(find.textContaining('pota failed'), findsOneWidget);
-      expect(find.text('Auto re-spot'), findsNothing);
+      expect(find.textContaining('Auto in'), findsNothing);
       await tester.pump(const Duration(minutes: 11));
       expect(sent, hasLength(1), reason: 'nothing to repeat');
     });

@@ -275,7 +275,7 @@ void main() {
       var h = await spotted(tester, allOk: false);
       expect(h.model.state.buttonLabel, startsWith('Self-spot at'));
       h.model.dispose();
-      for (final comment in ['QRV 20m', 'qrt thanks all', 'QSY', 'QRX 5', 'QRT, 73 all', 'QSY/40m']) {
+      for (final comment in ['qrt thanks all', 'QRX 5', 'QRT, 73 all']) {
         h = await spotted(tester, comment: comment);
         expect(h.model.state.buttonLabel, startsWith('Self-spot at'), reason: comment);
         h.model.dispose();
@@ -285,11 +285,28 @@ void main() {
       h.model.dispose();
     });
 
+    // QRV and QSY say the station is on the air at this frequency, which is
+    // what a respot keeps saying; the code itself, repeated, would announce
+    // an arrival every ten minutes.
+    testWidgets('an arrival is offered like any spot, and repeats without its comment', (tester) async {
+      for (final comment in ['QRV 20m', 'QSY', 'qsy/40m']) {
+        final h = await spotted(tester, comment: comment);
+        expect(h.model.state.buttonLabel, 'Re-spot every 10 min', reason: comment);
+        await h.model.press();
+        await tester.pump(_every + const Duration(seconds: 1));
+        expect(h.sent, hasLength(2), reason: comment);
+        expect(h.sent.first['comment'], comment, reason: 'the announcement itself goes out as typed');
+        expect(h.sent.last['comment'], isNull, reason: comment);
+        expect(h.model.respotComment, isNull, reason: comment);
+        h.model.dispose();
+      }
+    });
+
     testWidgets('repeats the same spot every ten minutes until stopped', (tester) async {
       final h = await spotted(tester);
       await h.model.press();
       expect(h.model.autoRespotting, isTrue);
-      expect(h.model.state.summary, 'Auto re-spot');
+      expect(h.model.state.summary, 'Auto in 10m');
       expect(h.model.state.buttonLabel, 'Auto in 10:00. Stop?');
       expect(h.sent, hasLength(1));
       await tester.pump(const Duration(minutes: 6, seconds: 15));
@@ -310,6 +327,21 @@ void main() {
       expect(h.model.autoRespotting, isFalse);
       await tester.pump(_every * 2);
       expect(h.sent, hasLength(3), reason: 'stopped means no more spots');
+      h.model.dispose();
+    });
+
+    // The pill sits in a row of chips: a per-second m:ss there would jitter
+    // its width all interval long, so it steps coarsely and only counts
+    // second by second at the very end.
+    testWidgets('the chip counts down in coarse steps', (tester) async {
+      final h = await spotted(tester);
+      await h.model.press();
+      final seen = <String>[h.model.state.summary];
+      for (var i = 0; i < _every.inSeconds - 1; i++) {
+        await tester.pump(const Duration(seconds: 1));
+        if (h.model.state.summary != seen.last) seen.add(h.model.state.summary);
+      }
+      expect(seen, [for (var m = 10; m >= 1; m--) 'Auto in ${m}m', 'Auto in 30s', 'Auto in 15s', 'Auto in 10s', for (var s = 5; s >= 1; s--) 'Auto in $s']);
       h.model.dispose();
     });
 
@@ -676,6 +708,19 @@ void main() {
         h.model.dispose();
       });
 
+      testWidgets('a typed QSY while it runs keeps it running, timed from then, with no comment', (tester) async {
+        final h = await spotted(tester);
+        await h.model.press();
+        await tester.pump(const Duration(minutes: 8));
+        await typed(h, 'QSY up 5');
+        expect(h.model.autoRespotting, isTrue);
+        await tester.pump(const Duration(minutes: 5));
+        expect(h.sent, hasLength(2), reason: 'not two minutes after the typed spot');
+        await tester.pump(const Duration(minutes: 5, seconds: 1));
+        expect(h.sent.map((s) => s['comment']), ['CQ POTA', 'QSY up 5', null]);
+        h.model.dispose();
+      });
+
       testWidgets('RESPOT right after a typed SPOT repeats it rather than spotting again', (tester) async {
         final h = _Harness();
         h.vfo = const Vfo(freq: 14285, mode: 'SSB');
@@ -814,7 +859,7 @@ void main() {
       // Repeating "QRT" every few minutes would say the station is leaving
       // while it is still on the air.
       testWidgets('a one-off announcement is not what it repeats', (tester) async {
-        final h = await spotted(tester, comment: 'QRV 20m');
+        final h = await spotted(tester, comment: 'QRX 5');
         expect(await h.model.respotEvery(5), isNull);
         expect(h.sent, hasLength(2));
         expect(h.sent.last['comment'], isNull);
@@ -1398,16 +1443,35 @@ void main() {
       h.model.dispose();
     });
 
-    // QRV, QRT, QSY and QRX send their own code as the comment's start: an
-    // announcement, which repeating would make false.
-    testWidgets('auto-respot by default never starts on a Q-code command', (tester) async {
-      final h = await ready();
-      h.autoRespotByDefault = true;
-      expect(await typed(h, 'QRV 20m SSB'), [
-        {'target': 'self'},
-      ], reason: 'nothing went wrong, so nothing to say');
-      expect(h.model.autoRespotting, isFalse);
-      h.model.dispose();
+    // QRT and QRX send their own code as the comment's start: the station
+    // leaving or pausing, which no respot should follow.
+    testWidgets('auto-respot by default never starts on a QRT or QRX command', (tester) async {
+      for (final comment in ['QRT 73', 'QRX 5']) {
+        final h = await ready();
+        h.autoRespotByDefault = true;
+        expect(await typed(h, comment), [
+          {'target': 'self'},
+        ], reason: 'nothing went wrong, so nothing to say');
+        expect(h.model.autoRespotting, isFalse, reason: comment);
+        h.model.dispose();
+      }
+    });
+
+    // The operator typed QSY having just moved — which ended the respots at
+    // the old frequency — and is calling CQ at the new one: without this
+    // they would type SPOT straight after it to get them back.
+    testWidgets('auto-respot by default starts on a QRV or QSY command, repeating no comment', (tester) async {
+      for (final comment in ['QRV 20m SSB', 'QSY from 40m']) {
+        final h = await ready();
+        h.autoRespotByDefault = true;
+        expect(await typed(h, comment), [
+          {'target': 'self'},
+        ]);
+        expect(h.model.autoRespotting, isTrue, reason: comment);
+        await tester.pump(_every + const Duration(seconds: 1));
+        expect(h.sent.map((s) => s['comment']), [comment, null]);
+        h.model.dispose();
+      }
     });
 
     testWidgets('a typed SPOT that cannot start it says why, where it was typed', (tester) async {
