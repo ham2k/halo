@@ -262,7 +262,12 @@ The Operation View has four main panels:
 - **Logging Panel** — the QSOs of the current operation, plus logging
   controls to add or edit QSOs.
 - **Spots Panel** — spots relevant to the operation.
-- **Map Panel** — a map of the operation's QSOs.
+- **Map Panel** — a map of the operation's QSOs. With the Show Grayline
+  setting on, it shades the night of the QSO selected in the log, or else
+  of the operation's last, so an operation reopened later shows the night it
+  was worked in. The Operation Postcard shades the last QSO's night, the
+  Logs View's map its selected QSO's, and the Chase View's map the night
+  outside.
 - **Operation Settings Panel** — settings for the current operation.
 
 Normally all four panels display as tabs, with the Logging Panel tab showing

@@ -1877,6 +1877,7 @@ class _Translations$map$postcard$qro extends Translations$map$postcard$en {
 	);
 	@override String get options => 'POSTCARD OPTIONS';
 	@override String get bandLegend => 'SHOW BAND LEGEND';
+	@override String get grayline => 'SHOW GRAYLINE';
 	@override String get sectionsAndOrder => 'SUMMARY SECTIONS AND ORDERING';
 	@override String get sectionDays => 'EACH DAY';
 	@override String get reset => 'RESET';
@@ -2202,6 +2203,7 @@ class _Translations$settings$map$qro extends Translations$settings$map$en {
 	@override String get title => 'MAPS';
 	@override late final _Translations$settings$map$style$qro style = _Translations$settings$map$style$qro._(_root);
 	@override late final _Translations$settings$map$showCallsigns$qro showCallsigns = _Translations$settings$map$showCallsigns$qro._(_root);
+	@override late final _Translations$settings$map$showGrayline$qro showGrayline = _Translations$settings$map$showGrayline$qro._(_root);
 	@override late final _Translations$settings$map$styleOpts$qro styleOpts = _Translations$settings$map$styleOpts$qro._(_root);
 }
 
@@ -3728,6 +3730,17 @@ class _Translations$settings$map$showCallsigns$qro extends Translations$settings
 	@override String get description => 'EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND\'S COLOR';
 }
 
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$qro extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'SHOW GRAYLINE';
+	@override String get description => 'SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$qro extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -4666,6 +4679,7 @@ extension on TranslationsQro {
 			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} Q', other: '${count} QS', ), 
 			'map.postcard.options' => 'POSTCARD OPTIONS',
 			'map.postcard.bandLegend' => 'SHOW BAND LEGEND',
+			'map.postcard.grayline' => 'SHOW GRAYLINE',
 			'map.postcard.sectionsAndOrder' => 'SUMMARY SECTIONS AND ORDERING',
 			'map.postcard.sectionDays' => 'EACH DAY',
 			'map.postcard.reset' => 'RESET',
@@ -4948,9 +4962,9 @@ extension on TranslationsQro {
 			'settings.fontScaleOpts.largest' => 'LARGEST',
 			'settings.fontScaleOpts.largestPlus' => 'LARGEST+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'LARGEST++',
-			'settings.keepDeviceAwake.title' => 'KEEP DEVICE AWAKE',
 			_ => null,
 		} ?? switch (path) {
+			'settings.keepDeviceAwake.title' => 'KEEP DEVICE AWAKE',
 			'settings.keepDeviceAwake.descriptionOn' => 'STAYING AWAKE WHILE YOU ARE ON THE LOGGING VIEW OR A SYNC IS IN PROGRESS',
 			'settings.keepDeviceAwake.descriptionOff' => 'SLEEPING AS USUAL',
 			'settings.layoutDensity' => 'LAYOUT DENSITY',
@@ -5206,6 +5220,8 @@ extension on TranslationsQro {
 			'settings.map.style.title' => 'MAP STYLE',
 			'settings.map.showCallsigns.title' => 'SHOW CALLSIGNS',
 			'settings.map.showCallsigns.description' => 'EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND\'S COLOR',
+			'settings.map.showGrayline.title' => 'SHOW GRAYLINE',
+			'settings.map.showGrayline.description' => 'SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT',
 			'settings.map.styleOpts.automatic' => 'AUTOMATIC',
 			'settings.map.styleOpts.liberty' => 'LIBERTY',
 			'settings.map.styleOpts.bright' => 'BRIGHT',
@@ -5460,11 +5476,11 @@ extension on TranslationsQro {
 			'settings.station.sdrOffsetHz' => 'FREQUENCY OFFSET (HZ)',
 			'settings.station.sdrOffsetHzDescription' => 'ADDED TO EVERY FREQUENCY SENT TO THE RECEIVER, FOR AN UPCONVERTER: 125000000 FOR A HAM IT UP.',
 			'settings.station.sdrPpm' => 'FREQUENCY CORRECTION (PPM)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => 'DIRECT SAMPLING',
 			'settings.station.rtlDirectSamplingDescription' => 'FOR HF ON AN RTL-SDR V3 WITHOUT AN UPCONVERTER. AN RTL-SDR V4 REACHES HF WITHOUT IT.',
 			'settings.station.rtlDirectSamplingOff' => 'OFF',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I BRANCH',
 			'settings.station.rtlDirectSamplingQ' => 'Q BRANCH',
 			'settings.station.rtlTcpNotAServer' => 'THIS IS NOT AN RTL_TCP SERVER',
@@ -5974,11 +5990,11 @@ extension on TranslationsQro {
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
 			'operationLocationScreen.permissionBlocked' => 'LOCATION PERMISSION BLOCKED',
 			'operationLocationScreen.moreDetails' => 'MORE DETAILS',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'STATE OR PROVINCE (OPTIONAL)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'ACTIVITY CONTROLS UNAVAILABLE',
 			'operationLocationScreen.controlsUnavailableReason' => 'THESE REFERENCES ARE STILL USABLE; THEIR ACTIVITIES JUST COULD NOT BE REACHED.',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableRetry' => 'RETRY',
 			'operationLocationScreen.county' => 'COUNTY (OPTIONAL)',
 			'versionLabel.version' => ({required Object version}) => 'VERSION ${version}',

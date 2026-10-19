@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Operation Postcard's options: whether the map page carries its band
-// legend, then which of the summary sections go on the pages after it, and
+// legend and its grayline, then which of the summary sections go on the pages after it, and
 // in what order — the logging panel's own show/hide-and-reorder dialog
 // (showControlSettingsDialog) over the summary's sections instead.
 
@@ -32,18 +32,20 @@ List<PostcardSectionChoice> postcardSectionChoices(List<PostcardSummarySection> 
   return [...choices.values];
 }
 
-/// What the dialog resolved to: whether to draw the legend, and the order and
-/// the hidden keys to keep — or, with [reset], the legend back on, none of
-/// either, and every pick ever made forgotten.
-typedef PostcardOptionsPick = ({bool legend, List<String> order, Set<String> hidden, bool reset});
+/// What the dialog resolved to: whether to draw the legend and the grayline,
+/// and the order and the hidden keys to keep — or, with [reset], the legend
+/// back on, the grayline off, none of either, and every pick ever made
+/// forgotten.
+typedef PostcardOptionsPick = ({bool legend, bool grayline, List<String> order, Set<String> hidden, bool reset});
 
-/// The legend's switch, then the picker over [choices], listed in their order
+/// The legend's and the grayline's switches, then the picker over [choices], listed in their order
 /// with those in [hidden] unticked — the picker left out where there are no
 /// sections. Offers a reset where there are [custom] picks. Resolves to what
 /// to keep, or null when cancelled.
 Future<PostcardOptionsPick?> showPostcardOptionsDialog(
   BuildContext context, {
   required bool legend,
+  required bool grayline,
   required List<PostcardSectionChoice> choices,
   required Set<String> hidden,
   bool custom = false,
@@ -52,6 +54,7 @@ Future<PostcardOptionsPick?> showPostcardOptionsDialog(
   var order = [for (final choice in choices) choice.key];
   var unticked = {...hidden.where(byKey.containsKey)};
   var showLegend = legend;
+  var showGrayline = grayline;
 
   return showHaloDialog<PostcardOptionsPick>(
     context: context,
@@ -78,6 +81,12 @@ Future<PostcardOptionsPick?> showPostcardOptionsDialog(
                     title: Text(t.bandLegend),
                     trailing: Checkbox(value: showLegend, onChanged: (checked) => setDialogState(() => showLegend = checked == true)),
                     onTap: () => setDialogState(() => showLegend = !showLegend),
+                  ),
+                  ListTile(
+                    leading: Icon(MdiIcons.weatherNight),
+                    title: Text(t.grayline),
+                    trailing: Checkbox(value: showGrayline, onChanged: (checked) => setDialogState(() => showGrayline = checked == true)),
+                    onTap: () => setDialogState(() => showGrayline = !showGrayline),
                   ),
                   if (choices.isNotEmpty)
                     Padding(
@@ -120,14 +129,16 @@ Future<PostcardOptionsPick?> showPostcardOptionsDialog(
           tools: Align(
             alignment: Alignment.centerLeft,
             child: TextButton(
-              onPressed: custom ? () => Navigator.of(dialogContext).pop((legend: true, order: const <String>[], hidden: const <String>{}, reset: true)) : null,
+              onPressed: custom
+                  ? () => Navigator.of(dialogContext).pop((legend: true, grayline: false, order: const <String>[], hidden: const <String>{}, reset: true))
+                  : null,
               child: Text(t.reset),
             ),
           ),
           cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.cancel)),
           actions: [
             FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop((legend: showLegend, order: order, hidden: unticked, reset: false)),
+              onPressed: () => Navigator.of(dialogContext).pop((legend: showLegend, grayline: showGrayline, order: order, hidden: unticked, reset: false)),
               child: Text(context.t.common.save),
             ),
           ],

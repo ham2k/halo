@@ -10,7 +10,7 @@
 //
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks, frame)` returning a handle with `setMarkersJson`,
-// `setLinesJson`, `setShapesJson`, `setOverlaysJson`, `setCreditLabelsJson`, `patchMarkersJson`, `patchLinesJson`,
+// `setLinesJson`, `setShapesJson`, `setOverlaysJson`, `setGraylineJson`, `setCreditLabelsJson`, `patchMarkersJson`, `patchLinesJson`,
 // `setProjection`, `moveTo`, `fitToJson`, `refit`, `camera`, `snapshot`, `reload`/`cancelReload`
 // (the host's word that the app is back online, or offline again), and
 // `remove`. Data crosses as JSON strings —
@@ -570,6 +570,10 @@ window.poloMapGl = {
       } catch (err) {
         report('deferred-update', what + ' could not put the map data back: ' + ((err && err.message) || err));
       }
+      // Outside the try: it reports its own failures, and a grayline fixed at
+      // a contact's time is never sent again, so one skipped here for
+      // another part's failure would stay off the map.
+      applyGrayline();
     }
 
     // A pinned-style change (the operator picked a different named basemap,
@@ -1423,6 +1427,8 @@ $mapGlSpreadScript
       setOverlays: setOverlays,
       setSpread: setSpread,
       setOverlaysJson: function (json) { setOverlays(JSON.parse(json)); },
+      setGrayline: setGrayline,
+      setGraylineJson: function (json) { setGrayline(JSON.parse(json)); },
       setZoomFadesJson: function (json) { setZoomFades(JSON.parse(json)); },
       setFocusJson: function (json) { setFocus(JSON.parse(json)); },
       setCreditLabelsJson: function (json) { setCreditLabels(JSON.parse(json)); },

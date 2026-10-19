@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The part of map_gl_script.dart's `create` that lays imagery, boundaries
-// and park facilities over the basemap — spliced into it verbatim, so it runs
+// The part of map_gl_script.dart's `create` that lays imagery, boundaries,
+// park facilities and the grayline over the basemap — spliced into it verbatim, so it runs
 // in the same closure and reads the same `map`, `report` and style state.
 
 /// See map_gl_script.dart's `mapGlScript`, which includes this text whole.
@@ -198,11 +198,11 @@ const mapGlOverlaysScript = '''
       map.addLayer({ id: 'polo-imagery', type: 'raster', source: 'polo-imagery' }, imageryBeforeId());
     }
 
-    // Under the bold boundary lines as well as the labels, whichever comes
-    // first: added after them, the photo would cover them.
+    // Under the bold boundary lines, the grayline and the labels, whichever
+    // comes first: added after them, the photo would cover them.
     function imageryBeforeId() {
       const layer = map.getStyle().layers.find(function (l) {
-        return BOUNDARY_LAYERS.indexOf(l.id) >= 0 || l.id === 'polo-region-counties' || (l.type === 'symbol' && l.id.indexOf('polo-') !== 0);
+        return BOUNDARY_LAYERS.indexOf(l.id) >= 0 || l.id === 'polo-region-counties' || l.id === 'polo-grayline' || (l.type === 'symbol' && l.id.indexOf('polo-') !== 0);
       });
       return layer && layer.id;
     }
@@ -353,10 +353,90 @@ const mapGlOverlaysScript = '''
     // left to its handler (restoreAfterStyle), which runs after this one.
     map.on('style.load', function () {
       try { applyOverlays(); } catch (err) { report('deferred-update', 'overlays failed: ' + ((err && err.message) || err)); }
+      applyGrayline();
     });
 
     function setOverlays(data) {
       overlays = data;
       applyOverlays();
+    }
+
+    // The night side the host shades (map_grayline.dart's
+    // mapGraylinePayload), or null for none. A channel of its own rather than
+    // part of setOverlays: applying those also takes over the basemap's own
+    // boundary lines, which a map that offers no layers leaves as they are.
+    // Under the basemap's labels, so place names stay legible at night, and
+    // over the imagery, so a photo's night is shaded too.
+    //
+    // Drawn as one picture of the world, not as fill polygons: below zoom 1
+    // the globe draws a fill's triangles in the outer quarters of the world's
+    // tile twice, which an opaque basemap never shows and a translucent shade
+    // shows as a darker band from 90° to the antimeridian. A picture lays
+    // each pixel once. It reaches as far north and south as the basemap's
+    // tiles do, so the last few degrees round a pole stay unshaded, as under
+    // a photo layer.
+    let grayline = null;
+    const GRAYLINE_SIZE = 1024;
+    const GRAYLINE_LIMIT = 85.051129;
+
+    // [grayline]'s caps on a Web Mercator picture of the whole world.
+    function graylinePicture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = GRAYLINE_SIZE;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = grayline.color;
+      ctx.globalAlpha = grayline.opacity;
+      function x(lon) { return (lon + 180) / 360 * GRAYLINE_SIZE; }
+      function y(lat) {
+        const r = Math.max(-GRAYLINE_LIMIT, Math.min(GRAYLINE_LIMIT, lat)) * Math.PI / 180;
+        return (0.5 - Math.log(Math.tan(Math.PI / 4 + r / 2)) / (2 * Math.PI)) * GRAYLINE_SIZE;
+      }
+      grayline.rings.forEach(function (ring) {
+        // A ring's longitudes run on past ±180, so it is drawn a world to
+        // either side as well, in one path: the copies of a cap round a pole
+        // meet edge to edge, and a single fill leaves no seam where they do.
+        ctx.beginPath();
+        [-360, 0, 360].forEach(function (shift) {
+          ring.forEach(function (p, i) {
+            if (i === 0) ctx.moveTo(x(p[0] + shift), y(p[1])); else ctx.lineTo(x(p[0] + shift), y(p[1]));
+          });
+          ctx.closePath();
+        });
+        ctx.fill();
+      });
+      return canvas.toDataURL('image/png');
+    }
+
+    // Like applyOverlays, a call before the style has parsed is put up by the
+    // style's own load.
+    function applyGrayline() {
+      if (styleSwapInFlight) return;
+      try {
+        const source = map.getSource('polo-grayline');
+        if (!grayline) {
+          if (map.getLayer('polo-grayline')) map.removeLayer('polo-grayline');
+          if (source) map.removeSource('polo-grayline');
+          return;
+        }
+        const picture = {
+          url: graylinePicture(),
+          coordinates: [[-180, GRAYLINE_LIMIT], [180, GRAYLINE_LIMIT], [180, -GRAYLINE_LIMIT], [-180, -GRAYLINE_LIMIT]],
+        };
+        if (source) {
+          source.updateImage(picture);
+        } else {
+          map.addSource('polo-grayline', Object.assign({ type: 'image' }, picture));
+        }
+        if (!map.getLayer('polo-grayline')) {
+          map.addLayer({ id: 'polo-grayline', type: 'raster', source: 'polo-grayline', paint: { 'raster-fade-duration': 0 } }, firstLabelLayerId() || firstHostLayerId());
+        }
+      } catch (err) {
+        if (styleLoaded) report('deferred-update', 'grayline failed: ' + ((err && err.message) || err));
+      }
+    }
+
+    function setGrayline(data) {
+      grayline = data;
+      applyGrayline();
     }
 ''';

@@ -52,17 +52,24 @@ var document = {
   createTextNode: function (text) { return { text: text }; },
 };
 // A 2D canvas that keeps what was drawn on it as calls rather than pixels:
-// each text with the fill it was drawn in, for a test to read back.
+// each text with the fill it was drawn in, and each shape filled with the
+// fill and alpha it was filled in and the outlines it went round, for a test
+// to read back. Its data URL is those shapes.
 function FakeCanvas() {
   var canvas = this;
   canvas.width = 0;
   canvas.height = 0;
-  var ctx = { texts: [] };
-  ['setTransform', 'beginPath', 'moveTo', 'lineTo', 'arc', 'closePath', 'fill', 'stroke'].forEach(function (name) { ctx[name] = function () {}; });
+  var ctx = { texts: [], shapes: [], outlines: [] };
+  ['setTransform', 'arc', 'closePath', 'stroke'].forEach(function (name) { ctx[name] = function () {}; });
+  ctx.beginPath = function () { ctx.outlines = []; };
+  ctx.moveTo = function (x, y) { ctx.outlines.push([[x, y]]); };
+  ctx.lineTo = function (x, y) { ctx.outlines[ctx.outlines.length - 1].push([x, y]); };
+  ctx.fill = function () { ctx.shapes.push({ fillStyle: ctx.fillStyle, globalAlpha: ctx.globalAlpha, outlines: ctx.outlines }); };
   ctx.measureText = function (text) { return { width: text.length * 8, actualBoundingBoxAscent: 9, actualBoundingBoxDescent: 0 }; };
   ctx.fillText = function (text) { ctx.texts.push({ text: text, fillStyle: ctx.fillStyle }); };
   ctx.getImageData = function (x, y, w, h) { return { width: w, height: h, data: [], texts: ctx.texts.splice(0) }; };
   canvas.getContext = function () { return ctx; };
+  canvas.toDataURL = function () { return JSON.stringify(ctx.shapes); };
 }
 function LngLatBounds() { this.n = 0; this.points = []; }
 LngLatBounds.prototype.extend = function (p) { this.n++; this.points.push(p); };
@@ -84,9 +91,30 @@ function FakeMap(options) {
     ls.forEach(function (l) { l.fn({}); });
   };
   this.getSource = function (id) { return sources[id]; };
-  this.addSource = function (id) { sources[id] = { data: null, sets: 0, setData: function (data) { this.data = data; this.sets++; } }; };
+  this.addSource = function (id, spec) {
+    sources[id] = {
+      spec: spec,
+      data: null,
+      sets: 0,
+      setData: function (data) { this.data = data; this.sets++; },
+      updateImage: function (image) { this.spec = Object.assign({}, this.spec, image); this.sets++; },
+    };
+  };
   this.getLayer = function (id) { return layers[id]; };
-  this.addLayer = function (layer) { layers[layer.id] = layer; layerOrder.push(layer.id); };
+  this.addLayer = function (layer, before) {
+    layers[layer.id] = layer;
+    var at = before ? layerOrder.indexOf(before) : -1;
+    if (at < 0) layerOrder.push(layer.id); else layerOrder.splice(at, 0, layer.id);
+  };
+  this.removeLayer = function (id) { delete layers[id]; layerOrder.splice(layerOrder.indexOf(id), 1); };
+  this.removeSource = function (id) { delete sources[id]; };
+  this.getStyle = function () { return { layers: layerOrder.map(function (id) { return layers[id]; }) }; };
+  // A swap's new style holds none of the host's sources and layers.
+  this.setStyle = function () {
+    Object.keys(sources).forEach(function (id) { delete sources[id]; });
+    Object.keys(layers).forEach(function (id) { delete layers[id]; });
+    layerOrder.length = 0;
+  };
   this.layerOrder = layerOrder;
   this.hasImage = function (id) { return !!images[id]; };
   this.addImage = function (id, image, options) { images[id] = { image: image, options: options }; };

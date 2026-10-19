@@ -9,6 +9,7 @@ upcoming:
     - "New Show Callsigns map setting: each contact a pill with its call"
     - "New manual time entry: set a time, it stays and steps per QSO"
     - "New time commands in the call field: +1m, -1h, 12:33, :34, 3/18, NOW"
+    - "New Show Grayline map setting and postcard option: night and twilight shaded"
 
 "180":
   changes:

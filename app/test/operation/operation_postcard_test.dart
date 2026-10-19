@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:ham2k_logger/services/map_preferences.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
@@ -255,8 +256,10 @@ void main() {
       return SettingsService(await SharedPreferences.getInstance());
     }
 
+    final lastContactAt = DateTime.utc(2026, 9, 21, 2, 55);
+
     /// What the pane asked the Map tab to build, latest last.
-    final built = <({MapFrame frame, MapStyle style})>[];
+    final built = <({MapFrame frame, MapStyle style, DateTime? graylineAt})>[];
 
     Future<void> pumpPanel(
       WidgetTester tester,
@@ -292,15 +295,17 @@ void main() {
                     callout: callout,
                     globe: globe,
                     mapIsFlutter: mapIsFlutter,
-                    mapBuilder: (frame, controller, style) {
-                      built.add((frame: frame, style: style));
+                    mapBuilder: (frame, controller, style, graylineAt) {
+                      built.add((frame: frame, style: style, graylineAt: graylineAt));
                       // What a live backend hooks up as it comes up: an OSM
                       // map that says at once it has all its tiles, unless
                       // the test hooks up something else.
                       (attach ?? (c) => c.onSettled ??= () async {})(controller);
-                      return const ColoredBox(color: Colors.teal);
+                      // A night shaded is a different picture.
+                      return ColoredBox(color: graylineAt == null ? Colors.teal : Colors.indigo);
                     },
                     settings: settings,
+                    graylineAt: lastContactAt,
                   ),
                 ),
               ),
@@ -879,6 +884,49 @@ void main() {
       expect(mark(), isNull);
       // Back on is how a postcard comes: nothing stored, so it keeps following that.
       expect(settings.settingValue(SettingsService.generalGroup, 'postcardBandLegend'), isNull);
+    });
+
+    testWidgets('shades the night once the grayline is turned on, and remembers that', (tester) async {
+      Future<void> toggleGrayline() async {
+        await tester.tap(find.bySemanticsLabel('Postcard Options'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Show grayline'));
+        await tester.pump();
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+      }
+
+      Color? mark() => tester.widget<Icon>(find.byIcon(MdiIcons.formatListBulleted)).color;
+      final settings = await freshSettings();
+      // No sections and no bands: the grayline alone keeps the button live.
+      await pumpPanel(tester, settings, mapIsFlutter: true);
+      expect(built.last.graylineAt, isNull, reason: "off until picked: a postcard's look is its own, not the tab's");
+
+      await toggleGrayline();
+      expect(built.last.graylineAt, lastContactAt, reason: "the operation's night, not the one outside when the postcard is made");
+      expect(settings.postcardGrayline, isTrue);
+      expect(mark(), const Color(0xFF00BFA5), reason: 'a postcard that differs from how it comes');
+
+      await toggleGrayline();
+      expect(built.last.graylineAt, isNull);
+      expect(settings.settingValue(SettingsService.generalGroup, 'postcardGrayline'), isNull, reason: 'off is how a postcard comes: nothing stored');
+    });
+
+    testWidgets('a Copy after the grayline is turned on takes a new picture, not the one it took before', (tester) async {
+      final copies = <Object?>[];
+      mockClipboard(tester, (call) async => copies.add(call.arguments));
+      await pumpPanel(tester, await freshSettings(), mapIsFlutter: true);
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await until(tester, () => copies.length == 1, 'copied without it');
+      await tester.tap(find.bySemanticsLabel('Postcard Options'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Show grayline'));
+      await tester.pump();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Copy'));
+      await until(tester, () => copies.length == 2, 'copied with it');
+      expect(copies.last, isNot(equals(copies.first)), reason: 'a picture kept from before has no night on it');
     });
 
     testWidgets("takes the map's picture only while its page is drawn, bringing it back on show for one", (tester) async {

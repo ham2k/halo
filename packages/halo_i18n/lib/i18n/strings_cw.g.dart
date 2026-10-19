@@ -1877,6 +1877,7 @@ class _Translations$map$postcard$cw extends Translations$map$postcard$en {
 	);
 	@override String get options => '·——· ——— ··· — —·—· ·— ·—· —·· / ——— ·——· — ·· ——— —· ···';
 	@override String get bandLegend => '··· ···· ——— ·—— / —··· ·— —· —·· / ·—·· · ——· · —· —··';
+	@override String get grayline => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·';
 	@override String get sectionsAndOrder => '··· ··— —— —— ·— ·—· —·—— / ··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—· ·· —· ——·';
 	@override String get sectionDays => '· ·— —·—· ···· / —·· ·— —·——';
 	@override String get reset => '·—· · ··· · —';
@@ -2202,6 +2203,7 @@ class _Translations$settings$map$cw extends Translations$settings$map$en {
 	@override String get title => '—— ·— ·——· ···';
 	@override late final _Translations$settings$map$style$cw style = _Translations$settings$map$style$cw._(_root);
 	@override late final _Translations$settings$map$showCallsigns$cw showCallsigns = _Translations$settings$map$showCallsigns$cw._(_root);
+	@override late final _Translations$settings$map$showGrayline$cw showGrayline = _Translations$settings$map$showGrayline$cw._(_root);
 	@override late final _Translations$settings$map$styleOpts$cw styleOpts = _Translations$settings$map$styleOpts$cw._(_root);
 }
 
@@ -3728,6 +3730,17 @@ class _Translations$settings$map$showCallsigns$cw extends Translations$settings$
 	@override String get description => '· ·— —·—· ···· / —·—· ——— —· — ·— —·—· — / ·· ··· / ·— / ·——· ·· ·—·· ·—·· / ·—— ·· — ···· / ·· — ··· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ——··—— / ·· —· / ·· — ··· / —··· ·— —· —·· ·————· ··· / —·—· ——— ·—·· ——— ·—·';
 }
 
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$cw extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·';
+	@override String get description => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$cw extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -4666,6 +4679,7 @@ extension on TranslationsCw {
 			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / ——·—', other: '${count} / ——·— ···', ), 
 			'map.postcard.options' => '·——· ——— ··· — —·—· ·— ·—· —·· / ——— ·——· — ·· ——— —· ···',
 			'map.postcard.bandLegend' => '··· ···· ——— ·—— / —··· ·— —· —·· / ·—·· · ——· · —· —··',
+			'map.postcard.grayline' => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·',
 			'map.postcard.sectionsAndOrder' => '··· ··— —— —— ·— ·—· —·—— / ··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—· ·· —· ——·',
 			'map.postcard.sectionDays' => '· ·— —·—· ···· / —·· ·— —·——',
 			'map.postcard.reset' => '·—· · ··· · —',
@@ -4948,9 +4962,9 @@ extension on TranslationsCw {
 			'settings.fontScaleOpts.largest' => '·—·· ·— ·—· ——· · ··· —',
 			'settings.fontScaleOpts.largestPlus' => '·—·· ·— ·—· ——· · ··· — ·—·—·',
 			'settings.fontScaleOpts.largestPlusPlus' => '·—·· ·— ·—· ——· · ··· — ·—·—· ·—·—·',
-			'settings.keepDeviceAwake.title' => '—·— · · ·——· / —·· · ···— ·· —·—· · / ·— ·—— ·— —·— ·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.keepDeviceAwake.title' => '—·— · · ·——· / —·· · ···— ·· —·—· · / ·— ·—— ·— —·— ·',
 			'settings.keepDeviceAwake.descriptionOn' => '··· — ·— —·—— ·· —· ——· / ·— ·—— ·— —·— · / ·—— ···· ·· ·—·· · / —·—— ——— ··— / ·— ·—· · / ——— —· / — ···· · / ·—·· ——— ——· ——· ·· —· ——· / ···— ·· · ·—— / ——— ·—· / ·— / ··· —·—— —· —·—· / ·· ··· / ·· —· / ·——· ·—· ——— ——· ·—· · ··· ···',
 			'settings.keepDeviceAwake.descriptionOff' => '··· ·—·· · · ·——· ·· —· ——· / ·— ··· / ··— ··· ··— ·— ·—··',
 			'settings.layoutDensity' => '·—·· ·— —·—— ——— ··— — / —·· · —· ··· ·· — —·——',
@@ -5206,6 +5220,8 @@ extension on TranslationsCw {
 			'settings.map.style.title' => '—— ·— ·——· / ··· — —·—— ·—·· ·',
 			'settings.map.showCallsigns.title' => '··· ···· ——— ·—— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
 			'settings.map.showCallsigns.description' => '· ·— —·—· ···· / —·—· ——— —· — ·— —·—· — / ·· ··· / ·— / ·——· ·· ·—·· ·—·· / ·—— ·· — ···· / ·· — ··· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ——··—— / ·· —· / ·· — ··· / —··· ·— —· —·· ·————· ··· / —·—· ——— ·—·· ——— ·—·',
+			'settings.map.showGrayline.title' => '··· ···· ——— ·—— / ——· ·—· ·— —·—— ·—·· ·· —· ·',
+			'settings.map.showGrayline.description' => '··· ···· ·— —·· · ··· / — ···· · / —· ·· ——· ···· — / ··· ·· —·· · / ——— ··—· / — ···· · / · ·— ·—· — ···· ——··—— / ·—— ·· — ···· / — ·—— ·· ·—·· ·· ——· ···· — / ·— ··· / ·— / ——· ·—· ·— —·· ·· · —· —',
 			'settings.map.styleOpts.automatic' => '·— ··— — ——— —— ·— — ·· —·—·',
 			'settings.map.styleOpts.liberty' => '·—·· ·· —··· · ·—· — —·——',
 			'settings.map.styleOpts.bright' => '—··· ·—· ·· ——· ···· —',
@@ -5460,11 +5476,11 @@ extension on TranslationsCw {
 			'settings.station.sdrOffsetHz' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ··—· ··—· ··· · — / —·——· ···· ——·· —·——·—',
 			'settings.station.sdrOffsetHzDescription' => '·— —·· —·· · —·· / — ——— / · ···— · ·—· —·—— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··· · —· — / — ——— / — ···· · / ·—· · —·—· · ·· ···— · ·—· ——··—— / ··—· ——— ·—· / ·— —· / ··— ·——· —·—· ——— —· ···— · ·—· — · ·—· ———··· / ·———— ··——— ····· ————— ————— ————— ————— ————— ————— / ··—· ——— ·—· / ·— / ···· ·— —— / ·· — / ··— ·——· ·—·—·—',
 			'settings.station.sdrPpm' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ——— ·—· ·—· · —·—· — ·· ——— —· / —·——· ·——· ·——· —— —·——·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => '—·· ·· ·—· · —·—· — / ··· ·— —— ·——· ·—·· ·· —· ——·',
 			'settings.station.rtlDirectSamplingDescription' => '··—· ——— ·—· / ···· ··—· / ——— —· / ·— —· / ·—· — ·—·· —····— ··· —·· ·—· / ···— ···—— / ·—— ·· — ···· ——— ··— — / ·— —· / ··— ·——· —·—· ——— —· ···— · ·—· — · ·—· ·—·—·— / ·— —· / ·—· — ·—·· —····— ··· —·· ·—· / ···— ····— / ·—· · ·— —·—· ···· · ··· / ···· ··—· / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—',
 			'settings.station.rtlDirectSamplingOff' => '——— ··—· ··—·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => '·· / —··· ·—· ·— —· —·—· ····',
 			'settings.station.rtlDirectSamplingQ' => '——·— / —··· ·—· ·— —· —·—· ····',
 			'settings.station.rtlTcpNotAServer' => '— ···· ·· ··· / ·· ··· / —· ——— — / ·— —· / ·—· — ·—·· ··——·— — —·—· ·——· / ··· · ·—· ···— · ·—·',
@@ -5974,11 +5990,11 @@ extension on TranslationsCw {
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',
 			'operationLocationScreen.permissionBlocked' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —··· ·—·· ——— —·—· —·— · —··',
 			'operationLocationScreen.moreDetails' => '—— ——— ·—· · / —·· · — ·— ·· ·—·· ···',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => '··· — ·— — · / ——— ·—· / ·——· ·—· ——— ···— ·· —· —·—· · / —·——· ——— ·——· — ·· ——— —· ·— ·—·· —·——·—',
 			'operationLocationScreen.controlsUnavailableTitle' => '·— —·—· — ·· ···— ·· — —·—— / —·—· ——— —· — ·—· ——— ·—·· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.controlsUnavailableReason' => '— ···· · ··· · / ·—· · ··—· · ·—· · —· —·—· · ··· / ·— ·—· · / ··· — ·· ·—·· ·—·· / ··— ··· ·— —··· ·—·· · —·—·—· / — ···· · ·· ·—· / ·— —·—· — ·· ···— ·· — ·· · ··· / ·——— ··— ··· — / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableRetry' => '·—· · — ·—· —·——',
 			'operationLocationScreen.county' => '—·—· ——— ··— —· — —·—— / —·——· ——— ·——· — ·· ——— —· ·— ·—·· —·——·—',
 			'versionLabel.version' => ({required Object version}) => '···— · ·—· ··· ·· ——— —· / ${version}',

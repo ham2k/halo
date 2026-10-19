@@ -29,6 +29,10 @@ class WallClock extends ChangeNotifier {
   /// directly — it scopes the rebuild for you.
   static final WallClock seconds = WallClock._(const Duration(seconds: 1));
 
+  /// The shared once-per-minute clock, for what changes too slowly to be
+  /// worth redrawing every second (the map's grayline).
+  static final WallClock minutes = WallClock._(const Duration(minutes: 1));
+
   final Duration period;
   Timer? _timer;
 

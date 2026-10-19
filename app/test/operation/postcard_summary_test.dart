@@ -224,6 +224,7 @@ void main() {
       WidgetTester tester,
       Future<void> Function() steps, {
       bool legend = true,
+      bool grayline = false,
       List<PostcardSectionChoice> choices = choices,
       bool custom = false,
     }) async {
@@ -233,7 +234,8 @@ void main() {
           child: MaterialApp(
             home: Builder(
               builder: (context) => TextButton(
-                onPressed: () async => result = await showPostcardOptionsDialog(context, legend: legend, choices: choices, hidden: {'days'}, custom: custom),
+                onPressed: () async =>
+                    result = await showPostcardOptionsDialog(context, legend: legend, grayline: grayline, choices: choices, hidden: {'days'}, custom: custom),
                 child: const Text('open'),
               ),
             ),
@@ -300,16 +302,17 @@ void main() {
       expect(result?.hidden, {'days'}, reason: 'the sections as they were');
     });
 
-    testWidgets('with no sections to pick, offers the legend alone', (tester) async {
+    testWidgets('with no sections to pick, offers the legend and the grayline alone', (tester) async {
       await pick(tester, () async {
         expect(find.text('Show band legend'), findsOneWidget);
+        expect(find.text('Show grayline'), findsOneWidget);
         expect(find.text('Summary Sections and Ordering'), findsNothing, reason: 'a heading over nothing');
         await tester.tap(find.text('Cancel'));
         await tester.pumpAndSettle();
       }, choices: const []);
     });
 
-    testWidgets('a reset turns the legend back on with the sections', (tester) async {
+    testWidgets('a reset turns the legend back on and the grayline off, with the sections', (tester) async {
       final result = await pick(
         tester,
         () async {
@@ -317,10 +320,12 @@ void main() {
           await tester.pumpAndSettle();
         },
         legend: false,
+        grayline: true,
         custom: true,
       );
       expect(result?.reset, isTrue);
       expect(result?.legend, isTrue);
+      expect(result?.grayline, isFalse, reason: 'how a postcard comes');
     });
 
     testWidgets('changes nothing when cancelled', (tester) async {

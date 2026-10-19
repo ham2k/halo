@@ -39,6 +39,7 @@ import 'map_gl_script.dart';
 import 'map_ready_watchdog.dart';
 import 'map_unavailable_state.dart';
 import 'map_marker_data.dart';
+import 'map_grayline.dart';
 import 'map_overlays.dart';
 import 'map_zoom_controller.dart';
 
@@ -89,6 +90,11 @@ class MapboxWebviewMapView extends StatefulWidget {
   /// that offers no layers, which then never sends any.
   final MapOverlays? overlays;
 
+  /// The instant whose night side the map shades — see map_grayline.dart.
+  /// Null for none. A new instant is a new payload, so a host hands it
+  /// [graylineInstant]'s minute rather than the clock's every reading.
+  final DateTime? graylineAt;
+
   /// Whether markers that would overlap close in are moved apart, each with
   /// a line back to a dot on its own point — see map_gl_script.dart's
   /// `setSpread`. For a map of places, never one of contacts, where a
@@ -115,6 +121,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     this.zoomFades,
     this.frame,
     this.overlays,
+    this.graylineAt,
     this.spreadOverlaps = false,
     this.focus,
   });
@@ -213,6 +220,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloPatchLines = handle.patchLines;
     window.poloSetShapes = handle.setShapes;
     window.poloSetOverlays = handle.setOverlays;
+    window.poloSetGrayline = handle.setGrayline;
     window.poloSetSpread = handle.setSpread;
     window.poloSetFocus = handle.setFocus;
     window.poloSetCreditLabels = handle.setCreditLabels;
@@ -487,6 +495,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
     if (oldWidget.zoomFades != widget.zoomFades) _applyZoomFades();
     if (oldWidget.overlays != widget.overlays || oldWidget.isDark != widget.isDark) _applyOverlays();
+    if (oldWidget.graylineAt != widget.graylineAt || (widget.graylineAt != null && oldWidget.isDark != widget.isDark)) _applyGrayline();
     if (oldWidget.spreadOverlaps != widget.spreadOverlaps) _applySpread();
     if (oldWidget.focus != widget.focus) _applyFocus();
   }
@@ -554,6 +563,12 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     if (overlays == null) return;
     final data = jsonEncode(mapOverlaysPayload(overlays, dark: widget.isDark, t: context.t));
     await _controller?.evaluateJavascript(source: 'window.poloSetOverlays($data);');
+  }
+
+  Future<void> _applyGrayline() async {
+    final at = widget.graylineAt;
+    final data = at == null ? 'null' : jsonEncode(mapGraylinePayload(at, dark: widget.isDark));
+    await _controller?.evaluateJavascript(source: 'window.poloSetGrayline($data);');
   }
 
   /// A bundle the page's script asked for (see map_gl_script.dart's
@@ -627,6 +642,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
             _applyLines();
             _applyShapes();
             _applyOverlays();
+            if (widget.graylineAt != null) _applyGrayline();
             if (widget.zoomController?.lastFit case final points?) _fitTo(points);
             return null;
           },

@@ -27,6 +27,7 @@ class MapboxWebMapView extends StatelessWidget {
   final MapZoomFades? zoomFades;
   final MapFrame? frame;
   final MapOverlays? overlays;
+  final DateTime? graylineAt;
   final bool spreadOverlaps;
   final MapMarkerFocus? focus;
 
@@ -46,6 +47,7 @@ class MapboxWebMapView extends StatelessWidget {
     this.zoomFades,
     this.frame,
     this.overlays,
+    this.graylineAt,
     this.spreadOverlaps = false,
     this.focus,
   });

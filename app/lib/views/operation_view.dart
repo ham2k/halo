@@ -964,6 +964,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 activityControls: _runtime.mapControls,
                 offersPostcard: true,
                 deviceGrid: widget.services.location.grid,
+                graylineAtContact: true,
               ),
             ),
           ),

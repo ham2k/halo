@@ -13,6 +13,7 @@ import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show GridLocation;
 import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapGlScript;
+import 'package:ham2k_logger/views/map/map_grayline.dart';
 import 'package:ham2k_logger/views/map/map_marker_data.dart';
 import 'package:ham2k_logger/views/map/map_zoom_controller.dart';
 import 'package:ham2k_logger/views/operation/activities_results_map.dart';
@@ -382,6 +383,104 @@ void main() {
       // of the query is what would make a real tap on a pill land on nothing.
       expect(jsonDecode(page.run('JSON.stringify(window.lastQueryLayers)')), containsAll(['polo-marker-pills', 'polo-marker-pills-highlight']));
       expect(page.run('handle.camera().popup'), 'a');
+    });
+  });
+
+  group('the grayline', () {
+    final grayline = jsonEncode(jsonEncode(mapGraylinePayload(DateTime.utc(2026, 6, 21, 12), dark: false)));
+    List<String> order() => (jsonDecode(page.run('JSON.stringify(fakeMap.layerOrder)')) as List).cast<String>();
+
+    /// A basemap of a land fill under a label layer, as every style has.
+    void basemap() => page.run("fakeMap.addLayer({ id: 'land', type: 'fill' }); fakeMap.addLayer({ id: 'place-labels', type: 'symbol' });");
+
+    // Over the labels, the night side dims every place name on it; over the
+    // host's own layers, it dims the contacts the operator is looking at.
+    test('lies under the basemap labels and the contacts, and over the land', () {
+      page = GlPage(framed: false);
+      basemap();
+      page.run('handle.setMarkers([${_marker('a')}])');
+      page.run('handle.setGraylineJson($grayline)');
+      final layers = order();
+      expect(layers.indexOf('polo-grayline'), greaterThan(layers.indexOf('land')));
+      expect(layers.indexOf('polo-grayline'), lessThan(layers.indexOf('place-labels')));
+      expect(layers.indexOf('polo-grayline'), lessThan(layers.indexOf('polo-shapes-dashed')));
+    });
+
+    // A fill layer is drawn twice over the outer quarters of the world on a
+    // zoomed-out globe, which a translucent fill shows: the shading is one
+    // picture, each step laid on it once at the step's alpha.
+    test('is a picture of the world, each step of the night painted on it once', () {
+      page = GlPage(framed: false);
+      basemap();
+      page.run('handle.setGraylineJson($grayline)');
+      expect(page.run("fakeMap.getLayer('polo-grayline').type"), 'raster');
+      final spec = jsonDecode(page.run("JSON.stringify(fakeMap.getSource('polo-grayline').spec)")) as Map<String, dynamic>;
+      expect(spec['type'], 'image');
+      final shapes = (jsonDecode(spec['url'] as String) as List).cast<Map<String, dynamic>>();
+      expect(shapes, hasLength(graylineSunAltitudes.length));
+      for (final shape in shapes) {
+        expect(shape['globalAlpha'], graylineStepOpacity(dark: false));
+        expect(shape['fillStyle'], '#000814');
+      }
+    });
+
+    // At noon UTC the night lies across the antimeridian, which is both the
+    // picture's left and right edge: a cap drawn only where its longitudes
+    // run leaves one of the two edges lit. At an equinox, when no cap holds a
+    // pole — a cap that does runs the whole way round, and hides the trap.
+    test('shades the night across the antimeridian at both edges of the picture', () {
+      page = GlPage(framed: false);
+      basemap();
+      final equinox = jsonEncode(jsonEncode(mapGraylinePayload(DateTime.utc(2026, 3, 20, 12), dark: false)));
+      page.run('handle.setGraylineJson($equinox)');
+      final spec = jsonDecode(page.run("JSON.stringify(fakeMap.getSource('polo-grayline').spec)")) as Map<String, dynamic>;
+      final shapes = (jsonDecode(spec['url'] as String) as List).cast<Map<String, dynamic>>();
+      bool shaded(Map<String, dynamic> shape, double x, double y) {
+        var inside = false;
+        for (final outline in (shape['outlines'] as List).cast<List>()) {
+          final ring = [for (final p in outline.cast<List>()) (x: (p[0] as num).toDouble(), y: (p[1] as num).toDouble())];
+          for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+            final a = ring[i], b = ring[j];
+            if ((a.y > y) != (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+          }
+        }
+        return inside;
+      }
+
+      for (final shape in shapes) {
+        expect(shaded(shape, 2, 512), isTrue, reason: 'the left edge at the equator, 180°W');
+        expect(shaded(shape, 1022, 512), isTrue, reason: 'the right edge at the equator, 180°E');
+        expect(shaded(shape, 512, 512), isFalse, reason: 'noon at Greenwich');
+      }
+    });
+
+    test('a new instant moves the shading it has, and none takes it away', () {
+      page = GlPage(framed: false);
+      basemap();
+      page.run('handle.setGraylineJson($grayline)');
+      final later = jsonEncode(jsonEncode(mapGraylinePayload(DateTime.utc(2026, 6, 21, 13), dark: false)));
+      page.run('handle.setGraylineJson($later)');
+      expect(order().where((id) => id == 'polo-grayline'), hasLength(1));
+      expect(page.run("String(fakeMap.getSource('polo-grayline').sets)"), '1', reason: 'the picture moved on in place, not made again');
+      page.run('handle.setGrayline(null)');
+      expect(order(), isNot(contains('polo-grayline')));
+      expect(page.run("String(!!fakeMap.getSource('polo-grayline'))"), 'false');
+    });
+
+    // A style swap throws away every source and layer the host added: one
+    // the swap does not put back is a setting that silently stops working
+    // the first time the operator changes basemaps.
+    test('comes back after a style swap', () {
+      page = GlPage(framed: false);
+      basemap();
+      page.run('handle.setGraylineJson($grayline)');
+      page.run('handle.setDark(true)');
+      expect(order(), isEmpty);
+      basemap();
+      page.run("fakeMap.fire('style.load')");
+      final layers = order();
+      expect(layers, contains('polo-grayline'));
+      expect(layers.indexOf('polo-grayline'), lessThan(layers.indexOf('place-labels')));
     });
   });
 

@@ -26,6 +26,7 @@ import '../../services/connectivity_service.dart';
 import '../../services/error_policy.dart' show ErrorPolicy;
 import '../../services/map_error_reporter.dart';
 import 'map_marker_data.dart';
+import 'map_grayline.dart';
 import 'map_overlays.dart';
 import 'map_popup.dart';
 import 'map_zoom_controller.dart';
@@ -69,6 +70,9 @@ class OsmMapView extends StatefulWidget {
   /// imagery: the boundaries and facilities are drawn by the GL script alone.
   final MapOverlays? overlays;
 
+  /// See MapboxWebviewMapView's field of the same name.
+  final DateTime? graylineAt;
+
   /// The marker brought forward over the rest, and what steps back behind
   /// it — see [MapMarkerFocus].
   final MapMarkerFocus? focus;
@@ -86,6 +90,7 @@ class OsmMapView extends StatefulWidget {
     this.zoomFades,
     this.frame,
     this.overlays,
+    this.graylineAt,
     this.focus,
   });
 
@@ -356,6 +361,7 @@ class _OsmMapViewState extends State<OsmMapView> {
               stack: stackTrace,
             ),
           ),
+        if (widget.graylineAt case final at?) ..._graylineLayers(at),
         // Base lines, then base markers, then the current QSO's highlight line
         // and marker in layers ABOVE them — flutter_map stacks children in
         // order, so the highlight paints over every base line AND marker.
@@ -435,6 +441,30 @@ class _OsmMapViewState extends State<OsmMapView> {
           _OsmAttribution(isDark: widget.isDark, imagery: widget.overlays?.imagery ?? false, outlines: mapOutlinesCredit(context.t, widget.shapes)),
       ],
     );
+  }
+
+  /// The grayline's layers as last built, and the instant and tone they were
+  /// built for: an instant holds for a minute, and the map rebuilds far more
+  /// often than that.
+  (DateTime, bool)? _graylineFor;
+  List<Widget> _graylineBuilt = const [];
+
+  /// A layer per cap, so that they stack: one layer fills the polygons it
+  /// holds as one path, and the overlaps would show no deeper than the rest.
+  List<Widget> _graylineLayers(DateTime at) {
+    if (_graylineFor == (at, widget.isDark)) return _graylineBuilt;
+    _graylineFor = (at, widget.isDark);
+    final color = graylineColor.withValues(alpha: graylineStepOpacity(dark: widget.isDark));
+    return _graylineBuilt = [
+      for (final ring in graylineCaps(at))
+        PolygonLayer(
+          polygons: [
+            // Each point back within ±180, as LatLng insists: flutter_map
+            // carries a ring across that meridian by itself.
+            Polygon(points: [for (final p in ring) LatLng(p.latitude, (p.longitude + 180) % 360 - 180)], color: color),
+          ],
+        ),
+    ];
   }
 
   /// The footprint layers as last built, and the shapes they were built from.

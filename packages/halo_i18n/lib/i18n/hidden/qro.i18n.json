@@ -918,6 +918,7 @@
       },
       "options": "POSTCARD OPTIONS",
       "bandLegend": "SHOW BAND LEGEND",
+      "grayline": "SHOW GRAYLINE",
       "sectionsAndOrder": "SUMMARY SECTIONS AND ORDERING",
       "sectionDays": "EACH DAY",
       "reset": "RESET",
@@ -1576,6 +1577,10 @@
       "showCallsigns": {
         "title": "SHOW CALLSIGNS",
         "description": "EACH CONTACT IS A PILL WITH ITS CALLSIGN, IN ITS BAND'S COLOR"
+      },
+      "showGrayline": {
+        "title": "SHOW GRAYLINE",
+        "description": "SHADES THE NIGHT SIDE OF THE EARTH, WITH TWILIGHT AS A GRADIENT"
       },
       "styleOpts": {
         "automatic": "AUTOMATIC",

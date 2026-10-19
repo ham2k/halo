@@ -25,6 +25,7 @@ import '../../services/connectivity_service.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
 import 'map_marker_data.dart';
+import 'map_grayline.dart';
 import 'map_overlays.dart';
 import 'map_unavailable_state.dart';
 import 'map_zoom_controller.dart';
@@ -102,6 +103,9 @@ class MapboxWebMapView extends StatefulWidget {
   final MapOverlays? overlays;
 
   /// See MapboxWebviewMapView's field of the same name.
+  final DateTime? graylineAt;
+
+  /// See MapboxWebviewMapView's field of the same name.
   final bool spreadOverlaps;
 
   /// See MapboxWebviewMapView's field of the same name.
@@ -123,6 +127,7 @@ class MapboxWebMapView extends StatefulWidget {
     this.zoomFades,
     this.frame,
     this.overlays,
+    this.graylineAt,
     this.spreadOverlaps = false,
     this.focus,
   });
@@ -285,6 +290,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       _applyLines();
       _applyShapes();
       _applyOverlays();
+      if (widget.graylineAt != null) _applyGrayline();
       _dataApplied = true;
       if (widget.zoomController?.lastFit case final points?) _fitTo(points);
     });
@@ -327,6 +333,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
     if (oldWidget.zoomFades != widget.zoomFades) _applyZoomFades();
     if (oldWidget.overlays != widget.overlays || oldWidget.isDark != widget.isDark) _applyOverlays();
+    if (oldWidget.graylineAt != widget.graylineAt || (widget.graylineAt != null && oldWidget.isDark != widget.isDark)) _applyGrayline();
     if (oldWidget.spreadOverlaps != widget.spreadOverlaps) _applySpread();
     if (oldWidget.focus != widget.focus) _applyFocus();
   }
@@ -378,6 +385,11 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     final overlays = widget.overlays;
     if (overlays == null) return;
     _handle?.callMethod('setOverlaysJson'.toJS, jsonEncode(mapOverlaysPayload(overlays, dark: widget.isDark, t: context.t)).toJS);
+  }
+
+  void _applyGrayline() {
+    final at = widget.graylineAt;
+    _handle?.callMethod('setGraylineJson'.toJS, (at == null ? 'null' : jsonEncode(mapGraylinePayload(at, dark: widget.isDark))).toJS);
   }
 
   void _moveTo(double latitude, double longitude, double zoom) => _handle?.callMethod('moveTo'.toJS, latitude.toJS, longitude.toJS, zoom.toJS);

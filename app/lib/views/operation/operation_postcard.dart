@@ -34,10 +34,12 @@ import 'package:share_plus/share_plus.dart';
 import '../../services/android_file_save.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/image_clipboard.dart';
+import '../../services/map_preferences.dart';
 import '../../services/settings_service.dart';
 import '../../services/web_download.dart';
 import '../../tools/operation_title.dart';
 import '../map/map_gl_script.dart' show mapGlAttribution, mapLibreStyleUrls, mapStyleIsDark, paintMapSpaceBackground;
+import '../map/map_grayline.dart' show graylineAtContact, graylineInstant;
 import '../map/map_marker_data.dart' show MapMarkerData, mapUnknownBandColor;
 import '../map/map_zoom_controller.dart';
 import '../map/osm_map_view.dart' show osmAttribution;
@@ -82,10 +84,11 @@ const _styleWidth = 152.0;
 /// kept at the row's end.
 const _styleShare = 0.8;
 
-/// The live map for [frame] in [style], wired to [controller] — built by the
-/// Map tab with its own backend choice, so the postcard draws with the
-/// renderer the operator framed it in.
-typedef PostcardMapBuilder = Widget Function(MapFrame frame, MapZoomController controller, MapStyle style);
+/// The live map for [frame] in [style], wired to [controller], shading the
+/// night side at [graylineAt] where that is set — built by the Map tab with
+/// its own backend choice, so the postcard draws with the renderer the
+/// operator framed it in.
+typedef PostcardMapBuilder = Widget Function(MapFrame frame, MapZoomController controller, MapStyle style, DateTime? graylineAt);
 
 /// One row of the map postcard's band legend: a band, in its markers'
 /// colour, and how many contacts were made on it.
@@ -177,6 +180,7 @@ Future<void> showOperationPostcard(
       mapIsFlutter: mapIsFlutter,
       mapBuilder: mapBuilder,
       settings: settings,
+      graylineAt: graylineAtContact(qsos) ?? graylineInstant(nowUtc()),
     ),
   );
 }
@@ -215,6 +219,11 @@ class OperationPostcardPanel extends StatefulWidget {
   /// file-name form.
   final SettingsService settings;
 
+  /// The night the map shades when the grayline is picked: the last
+  /// contact's, as the souvenir of the operation it is (see
+  /// [graylineAtContact]).
+  final DateTime graylineAt;
+
   const OperationPostcardPanel({
     super.key,
     required this.operation,
@@ -227,6 +236,7 @@ class OperationPostcardPanel extends StatefulWidget {
     required this.mapIsFlutter,
     required this.mapBuilder,
     required this.settings,
+    required this.graylineAt,
   });
 
   @override
@@ -287,6 +297,10 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
 
   /// Whether the map page carries the band legend, as last picked.
   late var _legend = widget.settings.postcardBandLegend;
+
+  /// Whether the map shades the night side ([OperationPostcardPanel.graylineAt]),
+  /// as last picked.
+  late var _grayline = widget.settings.postcardGrayline;
 
   /// The summary's pages in [shape], once its header has been measured.
   PostcardSummaryLayout? _layout(PostcardShape shape) {
@@ -438,16 +452,17 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
   }
 
   Future<Uint8List> _renderMap(PostcardShape shape, MapStyle style) async {
+    final grayline = _grayline;
     await _mapUp();
     if (!widget.mapIsFlutter) {
       await _showMap();
       final png = await _controller.snapshot(postcardPixelRatio)!;
-      _stillShowing(shape, style);
+      _stillShowing(shape, style, grayline);
       return png;
     }
     await _controller.onSettled!();
     await _showMap();
-    _stillShowing(shape, style);
+    _stillShowing(shape, style, grayline);
     return _png(await _boundary(_mapKey).toImage(pixelRatio: postcardPixelRatio));
   }
 
@@ -468,11 +483,12 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
   /// and otherwise over a map decoded here, or on a summary page, over the
   /// veil alone where the map would not load.
   Future<Uint8List> _render(PostcardShape shape, MapStyle style, int page, {required int generation, ui.Image? map, bool withoutMap = false}) async {
+    final grayline = _grayline;
     final own = map == null && !withoutMap;
     if (own) map = await _mapFor(shape, style, orNone: page > 0);
     if (map == null) _bareRenders = true;
     try {
-      _stillShowing(shape, style);
+      _stillShowing(shape, style, grayline);
       if (page > 0) {
         if (!mounted) throw StateError('the postcard was closed');
         final layout = _layout(shape);
@@ -566,10 +582,11 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
   bool get _mapIsUp => widget.mapIsFlutter ? _controller.onSettled != null : _controller.onSnapshot != null;
 
   /// A render is of whatever map is on show when it reads it; one that
-  /// outlasted a change of shape or style — an early render, which runs with
-  /// the pickers live — would file that picture under the wrong ones.
-  void _stillShowing(PostcardShape shape, MapStyle style) {
-    if (shape != _shape || style != _style) throw const MapSnapshotException(_changed);
+  /// outlasted a change of shape, style or grayline — an early render, which
+  /// runs with the pickers live — would file that picture under the wrong
+  /// ones.
+  void _stillShowing(PostcardShape shape, MapStyle style, bool grayline) {
+    if (shape != _shape || style != _style || grayline != _grayline) throw const MapSnapshotException(_changed);
   }
 
   static const _changed = 'the postcard changed while it was drawn';
@@ -792,6 +809,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
     final picked = await showPostcardOptionsDialog(
       context,
       legend: _legend,
+      grayline: _grayline,
       choices: postcardSectionChoices(postcardSectionsPicked(widget.sections, order: _picks.order), daysLabel: context.t.map.postcard.sectionDays),
       hidden: _picks.hidden,
       custom: _custom,
@@ -809,23 +827,29 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
             listEquals(order, [
               ...{for (final section in widget.sections) section.key},
             ]));
+    // A grayline turned on or off is a new map, as a new style is, and starts
+    // over at it (see _repicked).
+    final regrayed = picked.grayline != _grayline;
     setState(() {
       _legend = picked.legend;
+      _grayline = picked.grayline;
       _picks = plain ? (order: const [], hidden: const {}) : (order: order, hidden: hidden);
       _layouts.clear();
       _generation++;
       _pictures.clear();
+      if (regrayed) _dropAll();
       _status = null;
-      _page = math.min(_page, _pageCount - 1);
+      _page = regrayed ? 0 : math.min(_page, _pageCount - 1);
     });
     if (_pages?.hasClients ?? false) _pages!.jumpToPage(_page);
     unawaited(plain ? widget.settings.clearPostcardSections() : widget.settings.setPostcardSections(order, hidden));
     unawaited(widget.settings.setPostcardBandLegend(picked.legend));
+    unawaited(widget.settings.setPostcardGrayline(picked.grayline));
   }
 
   /// Whether anything differs from how a postcard comes, which the options
   /// button says in teal.
-  bool get _custom => !_legend || _picks.order.isNotEmpty || _picks.hidden.isNotEmpty;
+  bool get _custom => !_legend || _grayline || _picks.order.isNotEmpty || _picks.hidden.isNotEmpty;
 
   /// Bright enough to be seen as a mark, on a light pane and a dark one.
   static const _customColor = Color(0xFF00BFA5);
@@ -900,7 +924,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
       child: Semantics(
         label: t.options,
         child: IconButton(
-          onPressed: _busy || (widget.sections.isEmpty && widget.text.bands.isEmpty) ? null : _pickOptions,
+          onPressed: _busy ? null : _pickOptions,
           icon: Icon(MdiIcons.formatListBulleted, color: _custom ? _customColor : null),
         ),
       ),
@@ -1268,7 +1292,7 @@ class _OperationPostcardPanelState extends State<OperationPostcardPanel> {
       // new style is not a new map — the backends swap styles in place.
       map = KeyedSubtree(
         key: ValueKey(_shape),
-        child: widget.mapBuilder(MapFrame(width: size.width, height: size.height, camera: camera), _controller, _style),
+        child: widget.mapBuilder(MapFrame(width: size.width, height: size.height, camera: camera), _controller, _style, _grayline ? widget.graylineAt : null),
       );
       WidgetsBinding.instance.addPostFrameCallback((_) => _prerender());
     }

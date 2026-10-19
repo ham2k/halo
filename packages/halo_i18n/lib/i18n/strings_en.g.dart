@@ -3989,6 +3989,9 @@ class Translations$map$postcard$en {
 	/// en: 'Show band legend'
 	String get bandLegend => 'Show band legend';
 
+	/// en: 'Show grayline'
+	String get grayline => 'Show grayline';
+
 	/// en: 'Summary Sections and Ordering'
 	String get sectionsAndOrder => 'Summary Sections and Ordering';
 
@@ -4612,6 +4615,7 @@ class Translations$settings$map$en {
 
 	late final Translations$settings$map$style$en style = Translations$settings$map$style$en.internal(_root);
 	late final Translations$settings$map$showCallsigns$en showCallsigns = Translations$settings$map$showCallsigns$en.internal(_root);
+	late final Translations$settings$map$showGrayline$en showGrayline = Translations$settings$map$showGrayline$en.internal(_root);
 	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
 }
 
@@ -7973,6 +7977,21 @@ class Translations$settings$map$showCallsigns$en {
 	String get description => 'Each contact is a pill with its callsign, in its band\'s color';
 }
 
+// Path: settings.map.showGrayline
+class Translations$settings$map$showGrayline$en {
+	Translations$settings$map$showGrayline$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Show Grayline'
+	String get title => 'Show Grayline';
+
+	/// en: 'Shades the night side of the Earth, with twilight as a gradient'
+	String get description => 'Shades the night side of the Earth, with twilight as a gradient';
+}
+
 // Path: settings.map.styleOpts
 class Translations$settings$map$styleOpts$en {
 	Translations$settings$map$styleOpts$en.internal(this._root);
@@ -9141,6 +9160,7 @@ extension on Translations {
 			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Q', other: '${count} Qs', ), 
 			'map.postcard.options' => 'Postcard Options',
 			'map.postcard.bandLegend' => 'Show band legend',
+			'map.postcard.grayline' => 'Show grayline',
 			'map.postcard.sectionsAndOrder' => 'Summary Sections and Ordering',
 			'map.postcard.sectionDays' => 'Each day',
 			'map.postcard.reset' => 'Reset',
@@ -9423,9 +9443,9 @@ extension on Translations {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
-			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
 			_ => null,
 		} ?? switch (path) {
+			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
 			'settings.keepDeviceAwake.descriptionOn' => 'Staying awake while you are on the logging view or a sync is in progress',
 			'settings.keepDeviceAwake.descriptionOff' => 'Sleeping as usual',
 			'settings.layoutDensity' => 'Layout Density',
@@ -9681,6 +9701,8 @@ extension on Translations {
 			'settings.map.style.title' => 'Map Style',
 			'settings.map.showCallsigns.title' => 'Show Callsigns',
 			'settings.map.showCallsigns.description' => 'Each contact is a pill with its callsign, in its band\'s color',
+			'settings.map.showGrayline.title' => 'Show Grayline',
+			'settings.map.showGrayline.description' => 'Shades the night side of the Earth, with twilight as a gradient',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
 			'settings.map.styleOpts.bright' => 'Bright',
@@ -9935,11 +9957,11 @@ extension on Translations {
 			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
 			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
 			'settings.station.sdrPpm' => 'Frequency correction (ppm)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => 'Direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.',
 			'settings.station.rtlDirectSamplingOff' => 'Off',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'I branch',
 			'settings.station.rtlDirectSamplingQ' => 'Q branch',
 			'settings.station.rtlTcpNotAServer' => 'This is not an rtl_tcp server',
@@ -10449,11 +10471,11 @@ extension on Translations {
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',

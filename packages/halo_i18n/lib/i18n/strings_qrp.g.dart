@@ -1877,6 +1877,7 @@ class _Translations$map$postcard$qrp extends Translations$map$postcard$en {
 	);
 	@override String get options => 'postcard options';
 	@override String get bandLegend => 'show band legend';
+	@override String get grayline => 'show grayline';
 	@override String get sectionsAndOrder => 'summary sections and ordering';
 	@override String get sectionDays => 'each day';
 	@override String get reset => 'reset';
@@ -2202,6 +2203,7 @@ class _Translations$settings$map$qrp extends Translations$settings$map$en {
 	@override String get title => 'maps';
 	@override late final _Translations$settings$map$style$qrp style = _Translations$settings$map$style$qrp._(_root);
 	@override late final _Translations$settings$map$showCallsigns$qrp showCallsigns = _Translations$settings$map$showCallsigns$qrp._(_root);
+	@override late final _Translations$settings$map$showGrayline$qrp showGrayline = _Translations$settings$map$showGrayline$qrp._(_root);
 	@override late final _Translations$settings$map$styleOpts$qrp styleOpts = _Translations$settings$map$styleOpts$qrp._(_root);
 }
 
@@ -3728,6 +3730,17 @@ class _Translations$settings$map$showCallsigns$qrp extends Translations$settings
 	@override String get description => 'each contact is a pill with its callsign, in its band\'s color';
 }
 
+// Path: settings.map.showGrayline
+class _Translations$settings$map$showGrayline$qrp extends Translations$settings$map$showGrayline$en {
+	_Translations$settings$map$showGrayline$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'show grayline';
+	@override String get description => 'shades the night side of the earth, with twilight as a gradient';
+}
+
 // Path: settings.map.styleOpts
 class _Translations$settings$map$styleOpts$qrp extends Translations$settings$map$styleOpts$en {
 	_Translations$settings$map$styleOpts$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -4666,6 +4679,7 @@ extension on TranslationsQrp {
 			'map.postcard.bandQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} q', other: '${count} qs', ), 
 			'map.postcard.options' => 'postcard options',
 			'map.postcard.bandLegend' => 'show band legend',
+			'map.postcard.grayline' => 'show grayline',
 			'map.postcard.sectionsAndOrder' => 'summary sections and ordering',
 			'map.postcard.sectionDays' => 'each day',
 			'map.postcard.reset' => 'reset',
@@ -4948,9 +4962,9 @@ extension on TranslationsQrp {
 			'settings.fontScaleOpts.largest' => 'largest',
 			'settings.fontScaleOpts.largestPlus' => 'largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'largest++',
-			'settings.keepDeviceAwake.title' => 'keep device awake',
 			_ => null,
 		} ?? switch (path) {
+			'settings.keepDeviceAwake.title' => 'keep device awake',
 			'settings.keepDeviceAwake.descriptionOn' => 'staying awake while you are on the logging view or a sync is in progress',
 			'settings.keepDeviceAwake.descriptionOff' => 'sleeping as usual',
 			'settings.layoutDensity' => 'layout density',
@@ -5206,6 +5220,8 @@ extension on TranslationsQrp {
 			'settings.map.style.title' => 'map style',
 			'settings.map.showCallsigns.title' => 'show callsigns',
 			'settings.map.showCallsigns.description' => 'each contact is a pill with its callsign, in its band\'s color',
+			'settings.map.showGrayline.title' => 'show grayline',
+			'settings.map.showGrayline.description' => 'shades the night side of the earth, with twilight as a gradient',
 			'settings.map.styleOpts.automatic' => 'automatic',
 			'settings.map.styleOpts.liberty' => 'liberty',
 			'settings.map.styleOpts.bright' => 'bright',
@@ -5460,11 +5476,11 @@ extension on TranslationsQrp {
 			'settings.station.sdrOffsetHz' => 'frequency offset (hz)',
 			'settings.station.sdrOffsetHzDescription' => 'added to every frequency sent to the receiver, for an upconverter: 125000000 for a ham it up.',
 			'settings.station.sdrPpm' => 'frequency correction (ppm)',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => 'direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'for hf on an rtl-sdr v3 without an upconverter. an rtl-sdr v4 reaches hf without it.',
 			'settings.station.rtlDirectSamplingOff' => 'off',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSamplingI' => 'i branch',
 			'settings.station.rtlDirectSamplingQ' => 'q branch',
 			'settings.station.rtlTcpNotAServer' => 'this is not an rtl_tcp server',
@@ -5974,11 +5990,11 @@ extension on TranslationsQrp {
 			'operationLocationScreen.permissionDenied' => 'location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'location permission blocked',
 			'operationLocationScreen.moreDetails' => 'more details',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'state or province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'these references are still usable; their activities just could not be reached.',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableRetry' => 'retry',
 			'operationLocationScreen.county' => 'county (optional)',
 			'versionLabel.version' => ({required Object version}) => 'version ${version}',

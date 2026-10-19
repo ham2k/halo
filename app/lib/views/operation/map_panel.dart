@@ -33,6 +33,7 @@ import '../../services/map_preferences.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';
 import '../map/map_gl_script.dart';
+import '../map/map_grayline.dart';
 import '../map/map_marker_data.dart';
 import '../map/map_zoom_controller.dart';
 import '../map/map_highlight_camera.dart';
@@ -87,6 +88,13 @@ class MapPanel extends StatefulWidget {
   /// pin on the operation's marker — see [operationLocationPin].
   final String? deviceGrid;
 
+  /// Whether the grayline, when shown, shades the night of a contact in
+  /// [qsos] — the one at [selectedQsoUuid], else the last
+  /// ([graylineAtContact]) — rather than the one outside: the Operation
+  /// View's map and the Logs View's. With no contact yet it shades the night
+  /// outside.
+  final bool graylineAtContact;
+
   const MapPanel({
     super.key,
     required this.operation,
@@ -98,6 +106,7 @@ class MapPanel extends StatefulWidget {
     this.activityControls = const [],
     this.offersPostcard = false,
     this.deviceGrid,
+    this.graylineAtContact = false,
   });
 
   @override
@@ -388,20 +397,31 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     //
     // `expand`, not `shrink`: the placeholder stands in a pane sized by the
     // group, and a shrink-wrapping one would resize it.
+    //
+    // The grayline of the night outside moves on once a minute, which
+    // rebuilds the backend alone. Always under the same builder, on or off,
+    // so turning it on keeps the map that is up rather than building a new
+    // one.
+    final grayline = widget.settings.mapShowGrayline;
+    final contactAt = grayline && widget.graylineAtContact ? graylineAtContact(widget.qsos, selected: widget.selectedQsoUuid) : null;
     final map = isMobilePlatform && !paneEverVisible
         ? const SizedBox.expand()
-        : _backendWidget(
-            backend,
-            markers: markers,
-            lines: lines,
-            shapes: shapes,
-            projection: _projection,
-            isDark: isDark,
-            styleUrl: styleUrls.light,
-            styleUrlDark: styleUrls.dark,
-            zoomController: _zoomController,
-            onCameraChanged: _onCameraChanged,
-            zoomFades: _zoomFades,
+        : ListenableBuilder(
+            listenable: grayline && contactAt == null ? WallClock.minutes : _noTicks,
+            builder: (context, _) => _backendWidget(
+              backend,
+              markers: markers,
+              lines: lines,
+              shapes: shapes,
+              projection: _projection,
+              isDark: isDark,
+              styleUrl: styleUrls.light,
+              styleUrlDark: styleUrls.dark,
+              zoomController: _zoomController,
+              onCameraChanged: _onCameraChanged,
+              zoomFades: _zoomFades,
+              graylineAt: grayline ? contactAt ?? graylineInstant(nowUtc()) : null,
+            ),
           );
 
     // Mobile already zooms by pinch with no room to spare in the pane; the
@@ -470,6 +490,9 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     );
   }
 
+  /// What the map's builder listens to while there is no grayline to move on.
+  static final _noTicks = ChangeNotifier();
+
   /// Which renderer this platform draws the map with.
   _MapBackend get _backend {
     // The app already runs in a browser — GL JS mounts directly on a
@@ -505,6 +528,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     MapFrame? frame,
     ValueChanged<MapCameraSettled>? onCameraChanged,
     MapZoomFades? zoomFades,
+    DateTime? graylineAt,
   }) => switch (backend) {
     _MapBackend.web => MapboxWebMapView(
       markers: markers,
@@ -518,6 +542,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       frame: frame,
       onCameraChanged: onCameraChanged,
       zoomFades: zoomFades,
+      graylineAt: graylineAt,
     ),
     // Mobile is handed the controller too, although it shows no zoom buttons
     // (see hasZoomButtons): the Operation Postcard reads the camera through it.
@@ -533,6 +558,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       frame: frame,
       onCameraChanged: onCameraChanged,
       zoomFades: zoomFades,
+      graylineAt: graylineAt,
     ),
     _MapBackend.osm => OsmMapView(
       markers: markers,
@@ -543,6 +569,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       frame: frame,
       onCameraChanged: onCameraChanged,
       zoomFades: zoomFades,
+      graylineAt: graylineAt,
     ),
   };
 
@@ -588,7 +615,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       mapIsFlutter: backend == _MapBackend.osm,
       settings: widget.settings,
       activityControls: widget.activityControls,
-      mapBuilder: (frame, controller, style) {
+      mapBuilder: (frame, controller, style, graylineAt) {
         final urls = mapLibreStyleUrls(style);
         final isDark = mapStyleIsDark(style, appIsDark: appIsDark);
         final retoned = isDark == paneIsDark ? null : retonedData ??= retonedMapData(markers, lines, toDark: isDark);
@@ -605,6 +632,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           frame: frame,
           // The picture shows the outlines as faded as the pane did.
           zoomFades: _zoomFades,
+          graylineAt: graylineAt,
         );
       },
     );

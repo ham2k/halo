@@ -1041,8 +1041,8 @@ String _numText(double value) => value == value.roundToDouble() ? value.toInt().
 /// The Map tab's basemap picker (see map_panel.dart / map_gl_script.dart's
 /// `mapLibreStyleUrl`) — the OSM backend has no equivalent choice to offer,
 /// but that only matters on Linux, where this group still shows the field
-/// (it just goes unused there) — and its Show Callsigns toggle, which every
-/// backend honors. `target: 'map'` is what the tab's own
+/// (it just goes unused there) — and its Show Callsigns and Show Grayline
+/// toggles, which every backend honors. `target: 'map'` is what the tab's own
 /// settings button (operation/operation_view_dock.dart) opens; the field is also reachable
 /// from Settings, same as every other target-scoped field.
 class MapSettingsGroup extends SettingsGroup {
@@ -1082,6 +1082,14 @@ class MapSettingsGroup extends SettingsGroup {
         value: settings.mapShowCallsigns,
         target: 'map',
       ),
+      _toggle(
+        key: 'mapShowGrayline',
+        label: s.showGrayline.title,
+        description: s.showGrayline.description,
+        icon: 'weather-night',
+        value: settings.mapShowGrayline,
+        target: 'map',
+      ),
     ];
   }
 
@@ -1093,6 +1101,8 @@ class MapSettingsGroup extends SettingsGroup {
         await settings.setMapStyle(style);
       case 'mapShowCallsigns' when value is bool:
         await settings.setMapShowCallsigns(value);
+      case 'mapShowGrayline' when value is bool:
+        await settings.setMapShowGrayline(value);
     }
   }
 }

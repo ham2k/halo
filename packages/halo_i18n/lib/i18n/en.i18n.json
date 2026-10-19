@@ -918,6 +918,7 @@
       },
       "options": "Postcard Options",
       "bandLegend": "Show band legend",
+      "grayline": "Show grayline",
       "sectionsAndOrder": "Summary Sections and Ordering",
       "sectionDays": "Each day",
       "reset": "Reset",
@@ -1576,6 +1577,10 @@
       "showCallsigns": {
         "title": "Show Callsigns",
         "description": "Each contact is a pill with its callsign, in its band's color"
+      },
+      "showGrayline": {
+        "title": "Show Grayline",
+        "description": "Shades the night side of the Earth, with twilight as a gradient"
       },
       "styleOpts": {
         "automatic": "Automatic",
