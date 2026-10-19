@@ -24,7 +24,11 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
+import '../support/fake_serial_ports.dart';
+
 void main() {
+  setUp(() => useSerialPortsForTest(const []));
+
   final type = EquipmentRegistry().typeFor('ft891-serial')!;
 
   test('is a transceiver reached over a serial port', () {

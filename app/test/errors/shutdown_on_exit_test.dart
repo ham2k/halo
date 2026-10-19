@@ -165,6 +165,7 @@ void main() {
       // for the VM's teardown — the crash, with nothing left to report it.
       // A REAL boot, so it stays ahead of the asset-counting tests below.
       final service = ExtensionService();
+      prepareExtensionServiceForTest(service);
 
       await tester.runAsync(() async {
         final boot = service.start();

@@ -18,10 +18,12 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport_config.dar
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/equipment_report.dart';
 
+import '../support/fake_serial_ports.dart';
 import '../support/shipped_extensions.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => useSerialPortsForTest(const []));
 
   final registry = EquipmentRegistry();
   // The one shipped pairing with a credential of its own — the case the

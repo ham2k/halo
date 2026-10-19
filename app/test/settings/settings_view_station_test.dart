@@ -19,10 +19,12 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/add_equipment_dialog.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
+import '../support/fake_serial_ports.dart';
 import '../support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => useSerialPortsForTest(const []));
 
   Future<HaLoServices> pumpSettings(
     WidgetTester tester, {
@@ -936,8 +938,7 @@ void main() {
 
   testWidgets('switching transport swaps which pairing the form is describing', (tester) async {
     // Stops at the swap, deliberately: saving the serial pairing needs a
-    // serial port to pick, and a test process has none (libserialport is not
-    // loadable there, and the picker degrades to an empty list by design).
+    // serial port to pick, and this fixture has none.
     // That the re-typed node then persists is cat_service_test's to prove.
     await pumpSettings(
       tester,

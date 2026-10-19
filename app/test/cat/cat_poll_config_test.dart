@@ -15,6 +15,8 @@ import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 
+import '../support/fake_serial_ports.dart';
+
 class _QuietSink implements EquipmentSink {
   @override
   void send(List<int> bytes) {}
@@ -24,6 +26,8 @@ class _QuietSink implements EquipmentSink {
 }
 
 void main() {
+  setUp(() => useSerialPortsForTest(const []));
+
   group('idlePollIntervalFor', () {
     test('blank means the driver default', () {
       expect(idlePollIntervalFor(const {}), kPollSlow);

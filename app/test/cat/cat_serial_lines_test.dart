@@ -14,7 +14,11 @@ import 'package:ham2k_logger/services/cat/transports/bluetooth_serial_transport.
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show serialLinesMismatch;
 
+import '../support/fake_serial_ports.dart';
+
 void main() {
+  setUp(() => useSerialPortsForTest(const []));
+
   final registry = EquipmentRegistry();
   final serialTypes = [
     for (final type in registry.types)

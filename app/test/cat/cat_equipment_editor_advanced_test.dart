@@ -10,12 +10,14 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
+import '../support/fake_serial_ports.dart';
 import '../support/halo_test_support.dart';
 
 void main() {
   late HaLoServices services;
 
   setUp(() async {
+    useSerialPortsForTest(const []);
     services = (await makeHaLoServices()).services;
   });
 

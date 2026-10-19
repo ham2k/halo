@@ -28,6 +28,8 @@ import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 
+import '../support/fake_serial_ports.dart';
+
 class _Sink implements EquipmentSink {
   final sent = <List<int>>[];
   final activities = <VoiceActivity?>[];
@@ -81,6 +83,8 @@ const playing3 = VoiceActivity(memory: 3);
 const recording2 = VoiceActivity(memory: 2, recording: true);
 
 void main() {
+  setUp(() => useSerialPortsForTest(const []));
+
   group('the tracker', () {
     test('reports the start, polls every second, and at the ceiling STOPS the radio and ends', () {
       fakeAsync((async) {

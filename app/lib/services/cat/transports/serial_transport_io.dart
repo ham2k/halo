@@ -207,6 +207,11 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 
   static const transportKey = 'serial';
 
+  /// Supplies ports to catalogue/form tests without scanning local hardware.
+  /// Shared by the catalogue's const instances, including Bluetooth serial.
+  @visibleForTesting
+  static List<SerialPortOption> Function()? debugPortEnumerator;
+
   /// One USB host controller for the whole device, same reasoning as
   /// `serial_transport_web.dart`'s granted-ports cache being static rather
   /// than per-instance.
@@ -217,7 +222,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   String get key => transportKey;
 
   @override
-  List<SerialPortOption> get availablePorts => Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts();
+  List<SerialPortOption> get availablePorts => debugPortEnumerator?.call() ?? (Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts());
 
   /// Android's device list is a MethodChannel round-trip, unlike
   /// libserialport's synchronous FFI scan — so it goes through the same

@@ -18,6 +18,8 @@ import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/fake_serial_ports.dart';
+
 class _Sink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
@@ -81,6 +83,8 @@ KenwoodSession _session(_Sink sink, [String key = 'k4-serial']) {
 }
 
 void main() {
+  setUp(() => useSerialPortsForTest(const []));
+
   test('one K4 model exposes serial and TCP with fixed keyer capabilities', () {
     final registry = EquipmentRegistry();
     final model = registry.models.singleWhere((m) => m.key == 'k4');

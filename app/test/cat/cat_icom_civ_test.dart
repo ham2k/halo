@@ -24,6 +24,8 @@ import 'package:ham2k_logger/services/cat/drivers/poll_config.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
+import '../support/fake_serial_ports.dart';
+
 /// Just long enough for the radio's silence to count as no answer.
 final _pastAnswerTimeout = civAnswerTimeout + const Duration(milliseconds: 10);
 
@@ -101,6 +103,7 @@ void main() {
   late IcomCivSession session;
 
   setUp(() {
+    useSerialPortsForTest(const []);
     sink = _FakeSink();
     session = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us);
     sink.answer = session.handleData;

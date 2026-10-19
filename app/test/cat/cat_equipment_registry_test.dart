@@ -24,9 +24,33 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' as native show SerialTransport;
+
+import '../support/fake_serial_ports.dart';
 
 void main() {
+  setUp(() => useSerialPortsForTest(const []));
+
   final registry = EquipmentRegistry();
+
+  for (final transportKey in ['serial', 'bluetoothSerial']) {
+    test('$transportKey catalogue forms read current fixture ports', () {
+      final previous = native.SerialTransport.debugPortEnumerator;
+      addTearDown(() => expect(native.SerialTransport.debugPortEnumerator, same(previous)));
+      final ports = [const SerialPortOption(name: 'COM8', description: 'Test radio')];
+      useSerialPortsForTest(ports);
+      final type = registry.types.firstWhere((type) => type.transportKey == transportKey);
+
+      List<Object?> offeredPorts() => [
+        for (final option in type.configElements().firstWhere((field) => field['key'] == 'port')['options'] as List) (option as Map)['value'],
+      ];
+
+      expect(offeredPorts(), ['COM8']);
+      // A form opened after an unplug must not reuse its earlier port list.
+      ports.clear();
+      expect(offeredPorts(), isEmpty);
+    });
+  }
 
   test("a baud rate the node's transport has no field for never reaches the driver", () {
     // Left over from a serial pairing the node was switched from, it would
@@ -39,10 +63,8 @@ void main() {
   for (final type in registry.types) {
     group(type.key, () {
       // Every key the transport/driver actually reads — whether or not it
-      // shows a field for it — and, separately, what the fields with
-      // nothing hardcoded or narrowed would offer.
+      // shows a field for it.
       final knownKeys = {...type.transport.recognizedConfigKeys, ...type.driver.recognizedConfigKeys};
-      final unrestrictedFields = [...type.transport.configElements(), ...type.driver.configElements()].where((e) => e['type'] == 'field').toList();
 
       test('every overridden key is a field its transport or driver actually declares', () {
         for (final key in type.overrides.keys) {
@@ -90,6 +112,7 @@ void main() {
       });
 
       test('a restriction only narrows the field\'s own options, never adds to them', () {
+        final unrestrictedFields = [...type.transport.configElements(), ...type.driver.configElements()].where((e) => e['type'] == 'field').toList();
         for (final entry in type.restrictions.entries) {
           final field = unrestrictedFields.where((e) => e['key'] == entry.key);
           if (field.isEmpty) continue; // caught by the test above
