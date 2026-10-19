@@ -758,6 +758,16 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
         `ERROR extension ${def.key} registers adifFields but handles no reference and does not set adifFieldsScope: "always" — the full ADIF export will never ask it`,
       )
     }
+    // The full export asks only `fieldsForOneQSO` — one record per contact —
+    // so a hook answering combinations alone is missing from the operator's
+    // backup, and the file gives no sign of it.
+    for (const h of own.filter((h) => h.category === "adifFields")) {
+      if (typeof h.hook.fieldCombinationsForOneQSO === "function" && typeof h.hook.fieldsForOneQSO !== "function") {
+        log(
+          `ERROR extension ${def.key} adifFields '${h.key}' answers fieldCombinationsForOneQSO without fieldsForOneQSO — the full ADIF export will never ask it`,
+        )
+      }
+    }
     log(`activated extension ${def.key}@${def.version}`)
     // Not if a dev reload unloaded it while it was still activating.
     if (extensions[def.key] === def) {

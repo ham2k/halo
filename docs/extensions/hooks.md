@@ -941,6 +941,14 @@ returning several is describing individual records. Declaring both methods is
 fine and expected — a hook that does is asked only for its combinations, so
 its plain fields aren't written twice. Implemented by: `pota`.
 
+Only a program's **own** export asks for combinations. The full ADIF export is
+one record per contact — the copy the operator keeps, which a reimport or a
+log processor must not read as several contacts — so it asks every hook for
+`fieldsForOneQSO` alone, as app-polo's does. A splitting program answers that
+method too, for the one record — POTA names its first hunted park in `SIG_INFO`
+and every one in `POTA_REF`. A hook answering only combinations is left out of
+the full export, and the kernel logs an error for it as it activates.
+
 **Only the export's OWN hook is asked.** A file submitted to one program is
 that program's log, so an export that delegates the ADIF build names itself as
 `mainHandler` in the `ExportRequest` — app-polo's "main handler"
@@ -1014,9 +1022,9 @@ writes the contact's own operator on every record, falling back to the station
 call's base call or the station call itself. This is a
 deliberate divergence from app-polo, whose contact fields come first and whose
 main handler's are appended unchecked, so a name both answer is written twice. The **full export**, which asks every
-program on the contact, has no such order: hooks answering `fieldCombinationsForOneQSO` are asked as one
-group and hooks answering `fieldsForOneQSO` as another, so which of two programs
-keeps a shared `MY_SIG` there is not something either of them chose.
+program on the contact, has no main handler to order by: hooks are asked in priority order,
+so which of two programs keeps a shared `MY_SIG` there is not something either
+of them chose.
 
 Because the winner is picked per field name, **answer a pair whole or not at
 all**: a hook offering `MY_SIG` without `MY_SIG_INFO` takes the name and leaves

@@ -114,7 +114,8 @@ exporter writes that many, shifting each successive record's
 `pota` implements it. That is per HUNTED reference, WITHIN one file; §3.2's is
 per ACTIVATED reference, ACROSS files. The two compose: activate two parks,
 work a station standing in two others, and you get two files of two records
-each.
+each. The full ADIF export splits neither way: it is one record per contact,
+as app-polo's is.
 
 Each file also carries only its OWN program's fields. `generateExport` names
 the activity as the delegated request's `mainHandler` — app-polo's main handler
@@ -295,7 +296,8 @@ through a bespoke three-field composer with its own add/remove list. HaLo ships
 `FormDefinition` and its renderer, and nothing in the submitted log depends on
 it — `MY_SIG_INFO` carries a single reference in either app. Hunting is
 unaffected; a QSO records as many of the other station's references as it is
-given, and exports one record each.
+given, and its own export writes one record each; the full ADIF names the
+first in its one record, as app-polo's does.
 
 If someone actually needs to activate two unsupported programs at once, the
 repeating group is the fix, and it is worth doing properly rather than

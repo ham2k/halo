@@ -572,13 +572,19 @@ function refsOf(record: Record<string, unknown>): unknown[] {
 /// Each `adifFields` hook's contribution, as a list of field sets — one per
 /// ADIF record that hook wants written. Almost every hook returns exactly one.
 /// An activity whose programs allow several references at once (a POTA n-fer)
-/// returns one set per reference: the contact is submitted as one record each,
-/// which is also why it counts once per reference toward an activation
-/// (docs/design/activities.md §3.2, §4).
+/// returns one set per reference in its OWN file: the contact is submitted as
+/// one record each, which is also why it counts once per reference toward an
+/// activation (docs/design/activities.md §3.2, §4).
 ///
 /// A hook declaring BOTH methods is asked only for its combinations — the same
 /// way app-polo asks only its "main handler" — or its plain fields would be
 /// written a second time into every record.
+///
+/// The full ADIF export asks no hook for combinations: it is one record per
+/// contact, whatever any program submits, as app-polo's is — polo's handler for
+/// that export splits nothing, and every other program contributes plain fields
+/// (`includeOtherRefs`). Split there, the operator's backup reimports as
+/// several contacts and every log processor counts each one.
 ///
 /// [mainHandler] is the extension whose export this file is: named, it is the
 /// only hook asked — plus whatever it listed in [includeFieldsFrom] — because a
@@ -599,12 +605,8 @@ function refsOf(record: Record<string, unknown>): unknown[] {
 /// returning the combinations first would put the included hook ahead of the
 /// file's own program.
 ///
-/// The FULL export has no such order to restore. `invokeForRefs` answers in hook
-/// priority order per method, but the two methods are two calls and a hook
-/// answers only one of them, so the combination-answering hooks come first as a
-/// group and nothing here can interleave them by priority. Which of two
-/// programs keeps a shared MY_SIG is therefore not a decision anyone made — see
-/// the file's own note on what that export cannot represent.
+/// The FULL export asks the one method, so its sets come back in the hook
+/// priority order `invokeForRefs` answers in.
 async function fieldSetsPerHook(
   qso: Record<string, unknown>,
   operation: Record<string, unknown>,
@@ -620,7 +622,7 @@ async function fieldSetsPerHook(
       ? (await Promise.all(keys.map((key) => hooks.invokeOne("adifFields", key, method, { qso, operation, mainHandler: key === mainHandler })))).flat()
       : hooks.invokeForRefs("adifFields", method, { qso, operation }, [...refsOf(operation), ...refsOf(qso)])
 
-  const combined = await invoke("fieldCombinationsForOneQSO")
+  const combined = keys ? await invoke("fieldCombinationsForOneQSO") : []
   for (const entry of combined) {
     if (!entry.ok || !Array.isArray(entry.value)) continue
     const sets = (entry.value as AdifField[][]).filter((set) => Array.isArray(set))
@@ -837,9 +839,10 @@ const ExportHandler = {
       // restate, and a hook handed the base operation would write the last
       // county onto every record of the log.
       const perHook = await fieldSetsPerHook(qso, operationForQso(operation, qso, segments), mainHandler, includeFieldsFrom)
-      // One record per QSO unless a hook expands it. In practice at most one
-      // does — you are not activating an n-fer in two programs at once — so the
-      // record count is simply the largest any hook asked for.
+      // One record per QSO unless a program's own file expands it. In practice
+      // at most one hook does — you are not activating an n-fer in two
+      // programs at once — so the record count is simply the largest any hook
+      // asked for.
       const recordCount = Math.max(1, ...perHook.map((sets) => sets.length))
 
       for (let n = 0; n < recordCount; n++) {

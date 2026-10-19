@@ -61,6 +61,25 @@ __polo.defineExtension({
 })
 ''';
 
+/// An extension answering only `fieldCombinationsForOneQSO`, with two records
+/// for every contact — the split its own file would make, and that the full
+/// export never asks for.
+const _splitOnly = '''
+__polo.defineExtension({
+  key: 'split-only',
+  name: 'split-only',
+  version: '0.0.1',
+  onActivation: function (api) {
+    api.registerHook('ref:splitOnly', { key: 'split-only', hook: { decorateRef: async function (args) { return args.ref } } })
+    api.registerHook('adifFields', { key: 'split-only', hook: {
+      fieldCombinationsForOneQSO: async function () {
+        return [[{ name: 'APP_TEST_SPLIT', value: 'A' }], [{ name: 'APP_TEST_SPLIT', value: 'B' }]]
+      },
+    }})
+  },
+})
+''';
+
 void main() {
   requireBundles();
 
@@ -107,6 +126,7 @@ void main() {
           source: _extension('orphan', field: 'APP_TEST_ORPHAN'),
         ),
         ExtensionBundle(key: 'overreach', source: _overreach),
+        ExtensionBundle(key: 'split-only', source: _splitOnly),
       ],
     );
   });
@@ -251,6 +271,33 @@ void main() {
     expect(content, isNot(contains('APP_TEST_ORPHAN')));
     expect(host.logLines.join('\n'), contains('extension orphan registers adifFields but handles no reference'));
     expect(host.logLines.join('\n'), isNot(contains('extension everywhere registers adifFields but')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // The full export is one record per contact and asks only `fieldsForOneQSO`,
+  // so a hook answering combinations alone is silently absent from the
+  // operator's backup — activation is the one place that can say so.
+  test(
+    'the full export writes one record per contact, and a hook that only splits says as it activates that it is never asked',
+    () async {
+      final content = await export(
+        operationRefs: [
+          {'type': 'splitOnly', 'ref': 'S-1'},
+        ],
+      );
+
+      expect('<EOR>'.allMatches(content).length, 1);
+      expect(content, isNot(contains('APP_TEST_SPLIT')));
+      expect(host.logLines.join('\n'), contains("extension split-only adifFields 'split-only' answers fieldCombinationsForOneQSO without fieldsForOneQSO"));
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test('a program named as the main handler still gets the records it splits a contact into', () async {
+    final content = await export(mainHandler: 'split-only');
+
+    expect('<EOR>'.allMatches(content).length, 2);
+    expect(content, contains('<APP_TEST_SPLIT:1>A'));
+    expect(content, contains('<APP_TEST_SPLIT:1>B'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // A file that claims one program asks that program by name; which references

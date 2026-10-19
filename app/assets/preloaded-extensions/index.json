@@ -50,9 +50,9 @@
     },
     {
       "key": "ham2k-custom",
-      "version": "0.2.2",
-      "file": "ham2k-custom-0.2.2.h2kext",
-      "sha256": "0569021db786c81295a0df0f2ecc11c991bf6e97b56cf8f79fd2a4501946efca"
+      "version": "0.2.3",
+      "file": "ham2k-custom-0.2.3.h2kext",
+      "sha256": "1f8beb1cc05a4dd0727a8604316edc55090150bb33b93dd24a00f1881496286a"
     },
     {
       "key": "ham2k-custom-text",
