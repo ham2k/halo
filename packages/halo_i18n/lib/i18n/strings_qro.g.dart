@@ -680,6 +680,7 @@ class _Translations$qsoList$qro extends Translations$qsoList$en {
 	@override String get today => 'TODAY';
 	@override String get yesterday => 'YESTERDAY';
 	@override String get tomorrow => 'TOMORROW';
+	@override late final _Translations$qsoList$find$qro find = _Translations$qsoList$find$qro._(_root);
 }
 
 // Path: loggingPanel
@@ -1935,6 +1936,18 @@ class _Translations$loggingControls$info$qro extends Translations$loggingControl
 	@override String get noticeRareCounty => 'RARE COUNTY!';
 	@override String get noticeOurLocation => 'SET OUR COUNTY';
 	@override String get noticeShortGrid => 'GRID TOO SHORT';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$qro extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => 'FIND IN LOG (${shortcut})';
+	@override String get hint => 'QSO NUMBER OR CALLSIGN';
+	@override String get noMatches => 'NO MATCH';
 }
 
 // Path: callInfo.history
@@ -4915,6 +4928,9 @@ extension on TranslationsQro {
 			'qsoList.today' => 'TODAY',
 			'qsoList.yesterday' => 'YESTERDAY',
 			'qsoList.tomorrow' => 'TOMORROW',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'FIND IN LOG (${shortcut})',
+			'qsoList.find.hint' => 'QSO NUMBER OR CALLSIGN',
+			'qsoList.find.noMatches' => 'NO MATCH',
 			'loggingPanel.stats' => 'OPERATION STATS',
 			'loggingPanel.scoring' => 'SCORING',
 			'loggingPanel.dxccEntities' => 'DXCC ENTITIES',
@@ -4959,11 +4975,11 @@ extension on TranslationsQro {
 			'settings.fontScaleOpts.smaller' => 'SMALLER',
 			'settings.fontScaleOpts.normal' => 'NORMAL',
 			'settings.fontScaleOpts.larger' => 'LARGER',
+			_ => null,
+		} ?? switch (path) {
 			'settings.fontScaleOpts.largest' => 'LARGEST',
 			'settings.fontScaleOpts.largestPlus' => 'LARGEST+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'LARGEST++',
-			_ => null,
-		} ?? switch (path) {
 			'settings.keepDeviceAwake.title' => 'KEEP DEVICE AWAKE',
 			'settings.keepDeviceAwake.descriptionOn' => 'STAYING AWAKE WHILE YOU ARE ON THE LOGGING VIEW OR A SYNC IS IN PROGRESS',
 			'settings.keepDeviceAwake.descriptionOff' => 'SLEEPING AS USUAL',
@@ -5473,11 +5489,11 @@ extension on TranslationsQro {
 			'settings.station.sdrIfInverted' => 'IF IS INVERTED',
 			'settings.station.sdrGainDb' => 'GAIN (DB)',
 			'settings.station.sdrGainDbDescription' => 'LEAVE BLANK FOR THE RECEIVER\'S AUTOMATIC GAIN.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrOffsetHz' => 'FREQUENCY OFFSET (HZ)',
 			'settings.station.sdrOffsetHzDescription' => 'ADDED TO EVERY FREQUENCY SENT TO THE RECEIVER, FOR AN UPCONVERTER: 125000000 FOR A HAM IT UP.',
 			'settings.station.sdrPpm' => 'FREQUENCY CORRECTION (PPM)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => 'DIRECT SAMPLING',
 			'settings.station.rtlDirectSamplingDescription' => 'FOR HF ON AN RTL-SDR V3 WITHOUT AN UPCONVERTER. AN RTL-SDR V4 REACHES HF WITHOUT IT.',
 			'settings.station.rtlDirectSamplingOff' => 'OFF',
@@ -5987,11 +6003,11 @@ extension on TranslationsQro {
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
 			'operationLocationScreen.permissionBlocked' => 'LOCATION PERMISSION BLOCKED',
 			'operationLocationScreen.moreDetails' => 'MORE DETAILS',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'STATE OR PROVINCE (OPTIONAL)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'ACTIVITY CONTROLS UNAVAILABLE',
 			'operationLocationScreen.controlsUnavailableReason' => 'THESE REFERENCES ARE STILL USABLE; THEIR ACTIVITIES JUST COULD NOT BE REACHED.',

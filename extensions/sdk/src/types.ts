@@ -1756,6 +1756,13 @@ export interface CommandAction {
   /// Location screen, and what it returns becomes the operation's and the
   /// new segment's. The app supplies the operation's `uuid`.
   markSegment?: { kind: "start" | "break" | "stop"; setLocation?: boolean }
+  /// FIND / SEARCH / JUMP / GOTO (`operation-commands`): opens the logging
+  /// panel's Find bar over its QSO list, on `query` when one is given — read
+  /// the way the bar reads what is typed into it: digits alone a QSO number,
+  /// a trailing period an exact callsign, anything else part of one
+  /// (docs/design/logging-fields.md § Find in the log). Panel-only, like
+  /// `sendSpots`: the command reports `needsOperation` without one.
+  findInLog?: { query?: string }
   /// Replaces the call field's entire text, cursor at the end — the
   /// call-notes extension's `//KEY` note expansion. The new text runs
   /// through the same change path as typing, so lookups, dupe checks and

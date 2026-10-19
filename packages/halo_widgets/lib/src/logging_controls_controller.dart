@@ -89,14 +89,12 @@ class LoggingControlsController {
 
   /// Puts the keyboard on the secondary control strip, opening the pill the
   /// operator last used (or the first one) — same as arriving there via Up
-  /// from a main field. The rung between the main fields and the QSO list;
-  /// the list calls this when Down walks off its newest row.
+  /// from a main field.
   void focusSecondaryControls() => _focusSecondaryControls?.call();
 
   /// Puts the keyboard back on the main field the operator was last typing
-  /// in before they arrowed up into the QSO list (Call, if none is
-  /// remembered) — used when Enter selects a row: the operator is picking up
-  /// an edit, not starting a fresh QSO, so the field they left keeps making
-  /// more sense than always landing on Call.
+  /// in (Call, if none is remembered) — used when Up off the pills loads a
+  /// row: the operator is picking up an edit, not starting a fresh QSO, so
+  /// the field they left keeps making more sense than always landing on Call.
   void focusLastPrimaryField() => _focusLastPrimaryField?.call();
 }

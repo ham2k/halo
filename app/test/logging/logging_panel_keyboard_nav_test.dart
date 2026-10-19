@@ -1,18 +1,18 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// APP-19's focus ladder, at the rung only this panel can wire up:
+// APP-19's focus ladder, at the end only this panel can wire up:
 //
 //     QSO list  ──▲──  secondary pills  ──▲──  main logging fields
 //               ──▼──                   ──▼──
 //
-// LoggingControls owns the bottom two rungs (and tests them in halo_widgets);
-// the list is a sibling widget whose selection this panel owns, so walking
-// between the two is only ever exercised here. The point of the rung is that
-// an operator can review and re-open earlier contacts without reaching for
-// the mouse — and, crucially, that arrowing through the log does NOT drag the
-// keyboard out of the list on every step: the row loads into the editor while
-// focus stays put, so the next arrow keeps walking.
+// LoggingControls owns the pills and the fields (and tests them in
+// halo_widgets); the list is a sibling widget whose selection this panel
+// owns, so walking it is only ever exercised here. The point is that an
+// operator can review and re-open earlier contacts without reaching for the
+// mouse — and that walking the log never takes the keyboard out of the field
+// it started in: each row loads into the editor with the keyboard still
+// there, ready to type a correction, and the next arrow keeps walking.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -114,28 +114,35 @@ void main() {
   }
 
   /// Two Arrow Ups from the call field: out of the fields onto the pills, then
-  /// off the pills into the list — the way in for every test below.
-  Future<void> enterList(WidgetTester tester) async {
-    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+  /// off the pills into the list, which hands the keyboard back to the call
+  /// field after a frame — the way in for every test below.
+  Future<void> enterList(WidgetTester tester, {String field = 'Their call'}) async {
+    await tester.tap(find.widgetWithText(TextField, field));
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
     await tester.pump();
   }
 
-  testWidgets('Arrow Up from the pills selects the newest QSO without taking the keyboard into the fields', (tester) async {
+  Future<void> withModifier(WidgetTester tester, LogicalKeyboardKey modifier, LogicalKeyboardKey key) async {
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(key);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pump();
+  }
+
+  testWidgets('Arrow Up from the pills loads the newest QSO with the keyboard back in the call field', (tester) async {
     await pumpPanel(tester, [older, newer]);
     expect(loadedCall(tester), isEmpty);
 
     await enterList(tester);
 
-    // The newest contact is loaded for editing…
     expect(loadedCall(tester), 'K1ABC');
-    // …but the keyboard stayed in the list: the call field must NOT have
-    // taken focus, or the next arrow would move a text cursor instead of
-    // walking to the previous QSO.
-    expect(callField(tester).focusNode?.hasFocus, isFalse);
+    // The keyboard is where the walk started, ready to type a correction to
+    // the call it is looking at — not parked in the list, or on a pill.
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
     expect(focusedPill(tester), isNull);
     await drainLookupQueueTimer(tester);
   });
@@ -157,8 +164,7 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('Up and Down walk the log; Down past the newest row hands the keyboard back to the pills, opening the '
-      'remembered one, and deselects back to the new QSO being composed', (tester) async {
+  testWidgets('Up and Down walk the log from the call field; Down past the newest row is back to composing, still in the call field', (tester) async {
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
@@ -166,31 +172,27 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
     expect(loadedCall(tester), 'W1AW');
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
 
     // The oldest row is the end of the road — Up again stays put rather than
-    // silently wrapping round to the newest.
+    // silently wrapping round to the newest, or climbing to the pills.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
     expect(loadedCall(tester), 'W1AW');
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
     expect(loadedCall(tester), 'K1ABC');
 
-    // Down off the newest row leaves the list entirely, mirroring the Up that
-    // got here — but unlike a mid-list step, it undoes the selection too: the
-    // walk started from a new QSO being composed, so leaving the list the
-    // same way it was entered returns to that, not to whatever row the walk
-    // happened to end on. It also opens the pill it lands on (Time — the one
-    // `enterList`'s own Up remembered), the same way arriving via Up from a
-    // main field does, rather than merely parking the keyboard on its chip.
+    // Off the newest row the walk ends where it began: composing a new QSO,
+    // typing in the call field.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
-    expect(find.widgetWithText(TextField, 'Time (UTC)'), findsOneWidget);
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus, isTrue);
     expect(loadedCall(tester), isEmpty);
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
+    expect(focusedPill(tester), isNull);
     await drainLookupQueueTimer(tester);
   });
 
@@ -206,18 +208,17 @@ void main() {
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
+    await tester.pump();
     expect(loadedCall(tester), 'K1ABC', reason: 'into the list at its top: the newest contact');
-    expect(callField(tester).focusNode?.hasFocus, isFalse, reason: 'the keyboard stays in the list');
+    expect(callField(tester).focusNode?.hasFocus, isTrue, reason: 'the keyboard is back in the call field');
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
     expect(loadedCall(tester), 'W1AW', reason: 'down the screen is back in time');
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.home);
-    await tester.pump();
-    expect(loadedCall(tester), 'K1ABC', reason: 'Home is the top of the list, the newest');
-    await tester.sendKeyEvent(LogicalKeyboardKey.end);
-    await tester.pump();
+    await withModifier(tester, LogicalKeyboardKey.meta, LogicalKeyboardKey.arrowUp);
+    expect(loadedCall(tester), 'K1ABC', reason: 'the top of the list is the newest');
+    await withModifier(tester, LogicalKeyboardKey.meta, LogicalKeyboardKey.arrowDown);
     expect(loadedCall(tester), 'W1AW');
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
@@ -225,10 +226,9 @@ void main() {
     expect(loadedCall(tester), 'K1ABC');
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
-    expect(loadedCall(tester), isEmpty, reason: 'Up past the newest leaves the list for the pills above, back to composing');
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Time (UTC)')).focusNode?.hasFocus, isTrue);
+    expect(loadedCall(tester), isEmpty, reason: 'Up past the newest is back to composing');
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
     await drainLookupQueueTimer(tester);
   });
 
@@ -274,28 +274,20 @@ void main() {
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('a second Down landing before the deferred hand-off fires does not steal focus back to the pills', (tester) async {
+  testWidgets('a second Down past the newest does not walk back in', (tester) async {
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
 
-    // Two Downs back-to-back with no pump in between — key-repeat can
-    // deliver these faster than a frame. The first deselects and queues a
-    // deferred hand-off to the pills; the second, seeing the selection
-    // already cleared, re-selects the newest row before that hand-off ever
-    // runs.
+    // Back-to-back, as key-repeat can deliver them faster than a frame. The
+    // first ends the walk; with nothing loaded the second is the call
+    // field's own, and must not start the walk over at the newest row.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
-
-    // The list re-selected the newest row — the keyboard must stay there,
-    // not jump to the pills (or a pill's own opened field) on the first
-    // Down's now-stale callback.
-    expect(loadedCall(tester), 'K1ABC');
-    expect(focusedPill(tester), isNull);
-    expect(find.widgetWithText(TextField, 'Time (UTC)'), findsNothing, reason: 'the stale callback must not have opened the remembered pill either');
+    expect(loadedCall(tester), isEmpty);
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
     await drainLookupQueueTimer(tester);
   });
 
@@ -308,11 +300,11 @@ void main() {
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
+    await tester.pump();
     expect(loadedCall(tester), 'K1ABC');
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
     await tester.pump();
 
     expect(loadedCall(tester), 'N0DRAFT', reason: 'the draft the operator was composing must come back, not a blank form');
@@ -320,9 +312,9 @@ void main() {
   });
 
   testWidgets('Shift and Ctrl leave the walk alone', (tester) async {
-    // Shift+arrow is a range-selection gesture and Ctrl belongs to the
-    // platform — neither has a meaning in this list, so both pass straight
-    // through. (Cmd and Option DO mean something here; see below.)
+    // Shift+arrow selects text in the field the walk runs from, and Ctrl
+    // belongs to the platform — both pass straight through. (Cmd and Option
+    // DO mean something here; see below.)
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
@@ -359,7 +351,7 @@ void main() {
       return list;
     }
 
-    testWidgets('End and Home go to the newest and oldest contacts', (tester) async {
+    testWidgets('Home and End stay the field\'s, for its caret', (tester) async {
       final list = await longLog();
       await pumpPanel(tester, list);
       await enterList(tester);
@@ -367,22 +359,12 @@ void main() {
 
       await tester.sendKeyEvent(LogicalKeyboardKey.home);
       await tester.pump();
-      expect(loadedCall(tester), 'K1HAM');
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.end);
-      await tester.pump();
       expect(loadedCall(tester), 'K40HAM');
-
-      // At the end already: End again is inert, and must NOT walk off the
-      // list the way a plain Arrow Down does.
-      await tester.sendKeyEvent(LogicalKeyboardKey.end);
-      await tester.pump();
-      expect(loadedCall(tester), 'K40HAM');
-      expect(focusedPill(tester), isNull, reason: 'End never leaves the list');
+      expect(callField(tester).controller?.selection.baseOffset, 0, reason: 'Home moved the caret, not the walk');
       await drainLookupQueueTimer(tester);
     });
 
-    testWidgets('Cmd+Up and Cmd+Down are the same jump, as macOS spells it', (tester) async {
+    testWidgets('Cmd+Up and Cmd+Down go to the oldest and newest, as macOS spells it', (tester) async {
       final list = await longLog();
       await pumpPanel(tester, list);
       await enterList(tester);
@@ -397,6 +379,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.meta);
       await tester.pump();
+      expect(loadedCall(tester), 'K40HAM');
+
+      // At the end already: again is inert, and must NOT end the walk the
+      // way a plain Arrow Down does.
+      await withModifier(tester, LogicalKeyboardKey.meta, LogicalKeyboardKey.arrowDown);
       expect(loadedCall(tester), 'K40HAM');
       await drainLookupQueueTimer(tester);
     });
@@ -429,8 +416,7 @@ void main() {
       final list = await longLog();
       await pumpPanel(tester, list);
       await enterList(tester);
-      await tester.sendKeyEvent(LogicalKeyboardKey.home);
-      await tester.pump();
+      await withModifier(tester, LogicalKeyboardKey.meta, LogicalKeyboardKey.arrowUp);
       expect(loadedCall(tester), 'K1HAM');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
@@ -441,8 +427,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
         await tester.pump();
       }
-      expect(loadedCall(tester), 'K40HAM');
-      expect(focusedPill(tester), isNull, reason: 'Page Down never walks off the end');
+      expect(loadedCall(tester), 'K40HAM', reason: 'Page Down never walks off the end');
       await drainLookupQueueTimer(tester);
     });
 
@@ -455,8 +440,7 @@ void main() {
       await tester.pump();
       final viaPageUp = loadedCall(tester);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.end);
-      await tester.pump();
+      await withModifier(tester, LogicalKeyboardKey.meta, LogicalKeyboardKey.arrowDown);
       await tester.sendKeyDownEvent(LogicalKeyboardKey.alt);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.sendKeyUpEvent(LogicalKeyboardKey.alt);
@@ -467,59 +451,27 @@ void main() {
     });
   });
 
-  testWidgets('Enter moves the keyboard to the callsign field, keeping the row selected for editing', (tester) async {
+  testWidgets('the walk keeps the keyboard in the main field it started from, not always Call', (tester) async {
+    // enterList usually starts from Call, which is also where a fallback
+    // would land — this starts from Sent to tell the two apart.
     await pumpPanel(tester, [older, newer]);
-    await enterList(tester);
+    await enterList(tester, field: 'Sent');
+    expect(loadedCall(tester), 'K1ABC');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isTrue);
+
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
     expect(loadedCall(tester), 'W1AW');
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pump();
-
-    // Now editing for real: the cursor is in the form, still on that QSO.
-    expect(callField(tester).focusNode?.hasFocus, isTrue);
-    expect(loadedCall(tester), 'W1AW');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus, isTrue);
     expect(
       tester.widget<TextField>(find.widgetWithText(TextField, 'Rcvd')).controller?.text,
       '59',
-      reason: 'the selected QSO is loaded, not just its callsign',
+      reason: 'the walked-to QSO is loaded, not just its callsign',
     );
     await drainLookupQueueTimer(tester);
   });
 
-  testWidgets('Enter on a row restores the field the operator was in before arrowing up, not always Call', (tester) async {
-    // enterList always starts from Call, which happens to be Enter's own
-    // fallback too — coincidentally passing even a hardcoded "always Call"
-    // implementation. This starts from a different main field to actually
-    // exercise the "resume where I left off" behavior.
-    await pumpPanel(tester, [older, newer]);
-    await tester.tap(find.widgetWithText(TextField, 'Sent'));
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    expect(loadedCall(tester), 'K1ABC');
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
-    await tester.pump();
-    expect(loadedCall(tester), 'W1AW');
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pump();
-
-    expect(
-      tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).focusNode?.hasFocus,
-      isTrue,
-      reason: 'Enter is "resume editing where I left off", not "start fresh" — that\'s Escape\'s job',
-    );
-    expect(callField(tester).focusNode?.hasFocus, isFalse);
-    expect(loadedCall(tester), 'W1AW');
-    await drainLookupQueueTimer(tester);
-  });
-
-  testWidgets('Escape from the list drops the selection and puts the keyboard back on a fresh QSO', (tester) async {
+  testWidgets('Escape drops the selection and leaves the keyboard on a fresh QSO', (tester) async {
     await pumpPanel(tester, [older, newer]);
     await enterList(tester);
     expect(loadedCall(tester), 'K1ABC');
@@ -527,8 +479,6 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
 
-    // Deselected, back to composing, and the cursor is where the next
-    // callsign goes — no mouse needed to get out of the log.
     expect(loadedCall(tester), isEmpty);
     expect(callField(tester).focusNode?.hasFocus, isTrue);
     await drainLookupQueueTimer(tester);
@@ -550,15 +500,73 @@ void main() {
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
+    await tester.pump();
 
     // One press, one row — lands on the marker, not the older contact.
     expect(find.widgetWithText(TextField, 'Their call'), findsNothing);
     expect(find.text('BREAK'), findsOneWidget);
 
+    // The marker's editor has no call field; the walk goes on from where the
+    // keyboard went instead, rather than stranding it on the marker.
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await tester.pump();
 
     expect(loadedCall(tester), 'W1AW');
+    await drainLookupQueueTimer(tester);
+  });
+
+  testWidgets('after a tap on a row, Up and Down in the call field walk the list and the keyboard stays there', (tester) async {
+    // The operator pointed at a contact and is looking at its call: the
+    // arrows step to its neighbours without dragging the keyboard out of the
+    // field, so typing still corrects the call loaded there.
+    hardwareKeyboardAttached.value = true;
+    addTearDown(() => hardwareKeyboardAttached.value = false);
+    await pumpPanel(tester, [older, newer]);
+
+    await tester.tap(find.text('W1AW'));
+    await tester.pump();
+    expect(loadedCall(tester), 'W1AW');
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(loadedCall(tester), 'K1ABC');
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
+    // Up walks back rather than climbing to the pills.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(loadedCall(tester), 'W1AW');
+    expect(focusedPill(tester), isNull);
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
+
+    // Down past the newest is back to composing — still typing in the call
+    // field, not sent off to the pills.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.pump();
+    expect(loadedCall(tester), isEmpty);
+    expect(callField(tester).focusNode?.hasFocus, isTrue);
+    expect(focusedPill(tester), isNull);
+
+    // And with nothing picked, Up climbs the ladder again: the keyboard
+    // leaves the call field for the pill it opens.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(loadedCall(tester), isEmpty);
+    expect(callField(tester).focusNode?.hasFocus, isFalse);
+    await drainLookupQueueTimer(tester);
+  });
+
+  testWidgets('on a phone with no keyboard a tapped row does not take the call field', (tester) async {
+    // Focusing it would pop the on-screen keyboard over the contact the
+    // operator just tapped to look at.
+    await pumpPanel(tester, [older, newer]);
+    await tester.tap(find.text('W1AW'));
+    await tester.pump();
+    expect(loadedCall(tester), 'W1AW');
+    expect(callField(tester).focusNode?.hasFocus, isFalse);
     await drainLookupQueueTimer(tester);
   });
 }

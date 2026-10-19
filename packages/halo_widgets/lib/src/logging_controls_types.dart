@@ -18,6 +18,7 @@ import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'logging_controls_controller.dart';
 import 'logging_controls_esm.dart';
+import 'qso_list_walk.dart';
 import 'ref_text_input.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources —
@@ -245,6 +246,7 @@ class LoggingSession {
     this.suggestionSettledSerial = 0,
     this.onEditCanceled,
     this.onNavigateToQsoList,
+    this.onWalkQsoList,
     this.escapeClaimed,
     this.enterSends,
     this.onQsoChanged,
@@ -336,13 +338,21 @@ class LoggingSession {
   final VoidCallback? onEditCanceled;
 
   /// Arrow Up on a secondary control pill walks off the top of this panel —
-  /// the caller (which owns the QSO list and its selection) takes the
-  /// keyboard from there. Returns whether it actually did (false when the
-  /// list has nothing navigable — an empty operation, or one holding only
-  /// event markers) so a caller that already gave up its own focus can fall
-  /// back instead of leaving the keyboard stranded. Unset means the panel is
+  /// the caller (which owns the QSO list and its selection) loads a row and
+  /// puts the keyboard back in a main field, or on the list for a locked
+  /// row. Returns whether it actually did (false when the list has nothing
+  /// navigable — an empty operation, or one holding only event markers) so
+  /// a caller that already gave up its own focus can fall back instead of
+  /// leaving the keyboard stranded. Unset means the panel is
   /// the top of the ladder and Up simply stops at the pills. See APP-19.
   final bool Function()? onNavigateToQsoList;
+
+  /// A walk key ([qsoListWalkFor]) in a main field, or an event row's text,
+  /// offered to the caller first: while it has a contact from its list
+  /// loaded, the keys walk that list with the keyboard staying in the field,
+  /// rather than climbing the ladder. Returns whether it took the key;
+  /// unset, or false, leaves the field and the ladder their keys.
+  final bool Function(QsoListWalk walk)? onWalkQsoList;
 
   /// Asked before Escape does anything here. True means the app has just
   /// used the key for something that outranks a wipe — stopping a CW
@@ -556,6 +566,7 @@ class LookupHooks {
     this.workedBeforeLabel,
     this.onCallInfoChanged,
     this.onCallInfoTap,
+    this.onFindCall,
     this.onOperationInfoTap,
     this.onOpenLink,
   });
@@ -621,6 +632,11 @@ class LookupHooks {
   /// focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
 
+  /// Fires when the user taps the call-info's duplicate or worked-before
+  /// pill, with the call they are about — the host finds that callsign in
+  /// its log. Null leaves the pills part of [onCallInfoTap]'s target.
+  final void Function(String call)? onFindCall;
+
   /// Fires when the user taps the info area while it shows anything else —
   /// the statistics, a grid alone, a command's message — the host opens the
   /// operation's own info the same two ways, as it does for a QSO-list day
@@ -651,6 +667,7 @@ class LookupHooks {
     String? Function(List<int> startTimes)? workedBeforeLabel,
     CallInfoChanged? onCallInfoChanged,
     VoidCallback? onCallInfoTap,
+    void Function(String call)? onFindCall,
     VoidCallback? onOperationInfoTap,
     InlineMarkdownOpenLink? onOpenLink,
   }) => LookupHooks(
@@ -665,6 +682,7 @@ class LookupHooks {
     workedBeforeLabel: workedBeforeLabel ?? this.workedBeforeLabel,
     onCallInfoChanged: onCallInfoChanged ?? this.onCallInfoChanged,
     onCallInfoTap: onCallInfoTap ?? this.onCallInfoTap,
+    onFindCall: onFindCall ?? this.onFindCall,
     onOperationInfoTap: onOperationInfoTap ?? this.onOperationInfoTap,
     onOpenLink: onOpenLink ?? this.onOpenLink,
   );

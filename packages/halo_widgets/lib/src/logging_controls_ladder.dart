@@ -33,6 +33,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'logging_controls_metrics.dart';
+import 'qso_list_walk.dart';
 import 'secondary_control_row.dart' show SecondaryControlSpec;
 
 /// What the ladder reads from the panel — re-read on every use rather than
@@ -69,6 +70,10 @@ typedef FocusLadderConfig = ({
   /// Hands the keyboard up to the host's QSO list; true when it took it.
   /// Null when the host has none — then the pills are the top rung.
   bool Function()? navigateToQsoList,
+
+  /// Offers the walk keys in a main field to the host's list walk — see
+  /// `LoggingSession.onWalkQsoList`.
+  bool Function(QsoListWalk walk)? walkQsoList,
 
   /// Whether the panel sits above its QSO list, which turns the ladder
   /// upside down — see the file comment.
@@ -196,6 +201,18 @@ class LoggingFocusLadder {
     node.requestFocus();
   }
 
+  /// An event row's text field, standing in for the callsign field while one
+  /// is loaded: it takes only the list walk, so walking the log onto a NOTE
+  /// or a break doesn't strand it there.
+  KeyEventResult onEventTextKeyEvent(FocusNode node, KeyEvent event) => _walkedQsoList(event) ? KeyEventResult.handled : KeyEventResult.ignored;
+
+  /// A walk key offered to the host's list walk first ([FocusLadderConfig]'s
+  /// `walkQsoList`); true when it took the key.
+  bool _walkedQsoList(KeyEvent event) {
+    final walk = qsoListWalkFor(event);
+    return walk != null && (config().walkQsoList?.call(walk) ?? false);
+  }
+
   /// Tab and the arrow keys inside a main logging field.
   ///
   /// Tab is always ours: it walks the same stops Space does, passing over the
@@ -212,6 +229,7 @@ class LoggingFocusLadder {
     // A node that isn't currently a primary field (its control stopped being
     // rendered, say) keeps whatever the platform would do.
     if (index < 0) return KeyEventResult.ignored;
+    if (_walkedQsoList(event)) return KeyEventResult.handled;
     final key = event.logicalKey;
     final keyboard = HardwareKeyboard.instance;
     final shift = keyboard.isShiftPressed;
@@ -232,7 +250,9 @@ class LoggingFocusLadder {
     // and dimmed, and the keyboard shouldn't reach past that either. (An
     // open options menu keeps Up for its own highlight; the exchange node
     // takes it before it reaches here.)
-    if (key == _outward) {
+    // Not with Shift: Shift+arrow is a text selection, which every rung
+    // stands aside for.
+    if (key == _outward && !shift) {
       if (config().fieldsLocked()) return KeyEventResult.ignored;
       focusPillAndOpen();
       return KeyEventResult.handled;
@@ -296,8 +316,8 @@ class LoggingFocusLadder {
     final config = this.config();
     if (config.editingEvent) {
       // Neither the callsign field nor a remembered primary field exists
-      // while an event is loaded — NOTE/TODO's own text is the only
-      // focusable main field, if this event even has one.
+      // while an event is loaded — the event row's own node stands in: its
+      // text for NOTE/TODO, its read-only value for every other kind.
       if (_isOnScreen(config.eventTextFocus)) config.eventTextFocus.requestFocus();
       return;
     }

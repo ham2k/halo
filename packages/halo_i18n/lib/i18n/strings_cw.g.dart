@@ -680,6 +680,7 @@ class _Translations$qsoList$cw extends Translations$qsoList$en {
 	@override String get today => '— ——— —·· ·— —·——';
 	@override String get yesterday => '—·—— · ··· — · ·—· —·· ·— —·——';
 	@override String get tomorrow => '— ——— —— ——— ·—· ·—· ——— ·——';
+	@override late final _Translations$qsoList$find$cw find = _Translations$qsoList$find$cw._(_root);
 }
 
 // Path: loggingPanel
@@ -1935,6 +1936,18 @@ class _Translations$loggingControls$info$cw extends Translations$loggingControls
 	@override String get noticeRareCounty => '·—· ·— ·—· · / —·—· ——— ··— —· — —·—— —·—·——';
 	@override String get noticeOurLocation => '··· · — / ——— ··— ·—· / —·—· ——— ··— —· — —·——';
 	@override String get noticeShortGrid => '——· ·—· ·· —·· / — ——— ——— / ··· ···· ——— ·—· —';
+}
+
+// Path: qsoList.find
+class _Translations$qsoList$find$cw extends Translations$qsoList$find$en {
+	_Translations$qsoList$find$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String menuItem({required Object shortcut}) => '··—· ·· —· —·· / ·· —· / ·—·· ——— ——· / —·——· ${shortcut} —·——·—';
+	@override String get hint => '——·— ··· ——— / —· ··— —— —··· · ·—· / ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·';
+	@override String get noMatches => '—· ——— / —— ·— — —·—· ····';
 }
 
 // Path: callInfo.history
@@ -4915,6 +4928,9 @@ extension on TranslationsCw {
 			'qsoList.today' => '— ——— —·· ·— —·——',
 			'qsoList.yesterday' => '—·—— · ··· — · ·—· —·· ·— —·——',
 			'qsoList.tomorrow' => '— ——— —— ——— ·—· ·—· ——— ·——',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => '··—· ·· —· —·· / ·· —· / ·—·· ——— ——· / —·——· ${shortcut} —·——·—',
+			'qsoList.find.hint' => '——·— ··· ——— / —· ··— —— —··· · ·—· / ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·',
+			'qsoList.find.noMatches' => '—· ——— / —— ·— — —·—· ····',
 			'loggingPanel.stats' => '——— ·——· · ·—· ·— — ·· ——— —· / ··· — ·— — ···',
 			'loggingPanel.scoring' => '··· —·—· ——— ·—· ·· —· ——·',
 			'loggingPanel.dxccEntities' => '—·· —··— —·—· —·—· / · —· — ·· — ·· · ···',
@@ -4959,11 +4975,11 @@ extension on TranslationsCw {
 			'settings.fontScaleOpts.smaller' => '··· —— ·— ·—·· ·—·· · ·—·',
 			'settings.fontScaleOpts.normal' => '—· ——— ·—· —— ·— ·—··',
 			'settings.fontScaleOpts.larger' => '·—·· ·— ·—· ——· · ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.fontScaleOpts.largest' => '·—·· ·— ·—· ——· · ··· —',
 			'settings.fontScaleOpts.largestPlus' => '·—·· ·— ·—· ——· · ··· — ·—·—·',
 			'settings.fontScaleOpts.largestPlusPlus' => '·—·· ·— ·—· ——· · ··· — ·—·—· ·—·—·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.keepDeviceAwake.title' => '—·— · · ·——· / —·· · ···— ·· —·—· · / ·— ·—— ·— —·— ·',
 			'settings.keepDeviceAwake.descriptionOn' => '··· — ·— —·—— ·· —· ——· / ·— ·—— ·— —·— · / ·—— ···· ·· ·—·· · / —·—— ——— ··— / ·— ·—· · / ——— —· / — ···· · / ·—·· ——— ——· ——· ·· —· ——· / ···— ·· · ·—— / ——— ·—· / ·— / ··· —·—— —· —·—· / ·· ··· / ·· —· / ·——· ·—· ——— ——· ·—· · ··· ···',
 			'settings.keepDeviceAwake.descriptionOff' => '··· ·—·· · · ·——· ·· —· ——· / ·— ··· / ··— ··· ··— ·— ·—··',
@@ -5473,11 +5489,11 @@ extension on TranslationsCw {
 			'settings.station.sdrIfInverted' => '·· ··—· / ·· ··· / ·· —· ···— · ·—· — · —··',
 			'settings.station.sdrGainDb' => '——· ·— ·· —· / —·——· —·· —··· —·——·—',
 			'settings.station.sdrGainDbDescription' => '·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / — ···· · / ·—· · —·—· · ·· ···— · ·—· ·————· ··· / ·— ··— — ——— —— ·— — ·· —·—· / ——· ·— ·· —· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrOffsetHz' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ··—· ··—· ··· · — / —·——· ···· ——·· —·——·—',
 			'settings.station.sdrOffsetHzDescription' => '·— —·· —·· · —·· / — ——— / · ···— · ·—· —·—— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··· · —· — / — ——— / — ···· · / ·—· · —·—· · ·· ···— · ·—· ——··—— / ··—· ——— ·—· / ·— —· / ··— ·——· —·—· ——— —· ···— · ·—· — · ·—· ———··· / ·———— ··——— ····· ————— ————— ————— ————— ————— ————— / ··—· ——— ·—· / ·— / ···· ·— —— / ·· — / ··— ·——· ·—·—·—',
 			'settings.station.sdrPpm' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ——— ·—· ·—· · —·—· — ·· ——— —· / —·——· ·——· ·——· —— —·——·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => '—·· ·· ·—· · —·—· — / ··· ·— —— ·——· ·—·· ·· —· ——·',
 			'settings.station.rtlDirectSamplingDescription' => '··—· ——— ·—· / ···· ··—· / ——— —· / ·— —· / ·—· — ·—·· —····— ··· —·· ·—· / ···— ···—— / ·—— ·· — ···· ——— ··— — / ·— —· / ··— ·——· —·—· ——— —· ···— · ·—· — · ·—· ·—·—·— / ·— —· / ·—· — ·—·· —····— ··· —·· ·—· / ···— ····— / ·—· · ·— —·—· ···· · ··· / ···· ··—· / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—',
 			'settings.station.rtlDirectSamplingOff' => '——— ··—· ··—·',
@@ -5987,11 +6003,11 @@ extension on TranslationsCw {
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
 			'operationLocationScreen.locating' => '·—·· ——— —·—· ·— — ·· —· ——· …',
 			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',
 			'operationLocationScreen.permissionBlocked' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —··· ·—·· ——— —·—· —·— · —··',
 			'operationLocationScreen.moreDetails' => '—— ——— ·—· · / —·· · — ·— ·· ·—·· ···',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => '··· — ·— — · / ——— ·—· / ·——· ·—· ——— ···— ·· —· —·—· · / —·——· ——— ·——· — ·· ——— —· ·— ·—·· —·——·—',
 			'operationLocationScreen.controlsUnavailableTitle' => '·— —·—· — ·· ···— ·· — —·—— / —·—· ——— —· — ·—· ——— ·—·· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.controlsUnavailableReason' => '— ···· · ··· · / ·—· · ··—· · ·—· · —· —·—· · ··· / ·— ·—· · / ··· — ·· ·—·· ·—·· / ··— ··· ·— —··· ·—·· · —·—·—· / — ···· · ·· ·—· / ·— —·—· — ·· ···— ·· — ·· · ··· / ·——— ··— ··· — / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·—',

@@ -1174,7 +1174,12 @@
     "bandOrModeWarning": "please make sure your band and mode are correct",
     "today": "today",
     "yesterday": "yesterday",
-    "tomorrow": "tomorrow"
+    "tomorrow": "tomorrow",
+    "find": {
+      "menuItem": "find in log (${shortcut})",
+      "hint": "qso number or callsign",
+      "noMatches": "no match"
+    }
   },
   "loggingPanel": {
     "stats": "operation stats",

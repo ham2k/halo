@@ -11,6 +11,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   OperationRuntimeState get _runtime;
   CallInfoData? get _callInfo;
   void _republishPeerHeaderIfChanged(Operation operation);
+  void _openFind();
 
   @override
   HaLoServices get dockServices => widget.services;
@@ -135,6 +136,15 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
       // without this Actions section — see [_paneEditControls]'s
       // `panelSettingsBuilder`, which passes none.
       actions: [
+        // ⌘F's twin, for a device with no keyboard to press it on.
+        (
+          icon: 'magnify',
+          label: effectiveContext.t.qsoList.find.menuItem(shortcut: findChordLabel),
+          onTap: () {
+            Navigator.of(effectiveContext).pop();
+            _openFind();
+          },
+        ),
         (
           icon: 'refresh',
           label: effectiveContext.t.operation.menu.lookupAllQsos,

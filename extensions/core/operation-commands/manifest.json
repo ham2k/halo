@@ -2,6 +2,6 @@
   "key": "operation-commands",
   "name": "Operation Commands",
   "version": "0.0.1",
-  "description": "OPER — sets the operator callsign; POSITION — sets this device's multi-station position",
+  "description": "OPER — sets the operator callsign; POSITION — sets this device's multi-station position; FIND — finds a QSO in the log",
   "hooks": ["command"]
 }

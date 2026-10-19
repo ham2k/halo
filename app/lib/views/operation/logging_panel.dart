@@ -3,8 +3,9 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -22,6 +23,7 @@ import '../../services/manual_time_settings.dart';
 import '../../services/spotting_settings.dart';
 import '../../settings/settings_target_dialog.dart';
 import '../../tools/call_location_line.dart';
+import '../../tools/log_find_query.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
@@ -29,6 +31,7 @@ import '../../tools/worked_before_label.dart';
 import '../station_config_dialog.dart';
 import '../keyer_area.dart';
 import 'extension_panel.dart' show PanelRenderContext;
+import 'log_find_bar.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -170,6 +173,11 @@ class LoggingPanel extends StatefulWidget {
   /// keyboard over the view on every visit.
   final int focusRequest;
 
+  /// Bumped to open the Find bar over the QSO list and put the keyboard in it
+  /// — the host's ⌘F/Ctrl+F, or its pane-header button. Bumped while the bar
+  /// is already open, it just takes the keyboard back to it.
+  final int findRequest;
+
   const LoggingPanel({
     super.key,
     required this.operation,
@@ -213,6 +221,7 @@ class LoggingPanel extends StatefulWidget {
     this.stampQso,
     this.scope = LoggingScope.operation,
     this.focusRequest = 0,
+    this.findRequest = 0,
   });
 
   @override
@@ -226,12 +235,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// half a dozen places, and checking at build catches every one.
   String? _reportedSelection;
 
-  /// The QSO list as a rung of the keyboard's focus ladder: Arrow Up
-  /// off the logging controls' pill strip lands here, Up/Down then walk the
-  /// list selecting each row for editing, and Enter/Escape hand the keyboard
-  /// back down. The list's own rows stay plain tap targets — this is one node
-  /// for "the keyboard is in the list", not one per row.
-  final _listFocus = FocusNode(debugLabel: 'qsoList');
+  /// The QSO list's box, for [_pageRows] to measure.
+  final _listBoxKey = GlobalKey();
   // Imperative handle into LoggingControls, used to drive the dev bridge
   // (window.__halo setField/tap) when it's installed (dev/preview web).
   final _loggingController = LoggingControlsController();
@@ -429,6 +434,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         if (mounted) _loggingController.focusLastPrimaryField();
       });
     }
+    if (widget.findRequest != oldWidget.findRequest) _openFind();
   }
 
   @override
@@ -442,14 +448,179 @@ class _LoggingPanelState extends State<LoggingPanel> {
       DevBridge.instance.setFieldHandler = null;
       DevBridge.instance.actionHandler = null;
     }
-    _listFocus.dispose();
+    _findTimer?.cancel();
+    _findController.dispose();
+    _findFocus.dispose();
+    _lockedWalkFocus.dispose();
     super.dispose();
   }
 
-  // ── Keyboard navigation of the QSO list ──────────────────────────────────
+  // ── Find in the log ──────────────────────────────────────────────────────
 
-  /// The rows arrow navigation can land on, and where the current selection
-  /// sits among them.
+  bool _findOpen = false;
+  final _findController = TextEditingController();
+  final _findFocus = FocusNode(debugLabel: 'logFind');
+
+  /// What the list is filtered by or pointed at. Trails the field's text by
+  /// [_findDebounce] for a callsign — see [_findTyped].
+  LogFindQuery? _findQuery;
+  Timer? _findTimer;
+
+  /// A callsign find refilters the whole log and the list re-measures what it
+  /// is left with, so a short pause in the typing comes first. A number only
+  /// scrolls, and follows each keystroke.
+  static const _findDebounce = Duration(milliseconds: 250);
+
+  _LogFindView? _findView;
+
+  /// What the list shows under the find, cached against the log and the
+  /// query by identity: it is a pass over the whole log, and the list keys
+  /// its own measuring pass on the identity of the rows it is handed.
+  _LogFindView get _shown {
+    final cached = _findView;
+    if (cached != null && identical(cached.source, widget.qsos) && identical(cached.query, _findQuery)) return cached;
+    return _findView = _LogFindView.of(widget.qsos, _findQuery);
+  }
+
+  /// Opens the bar — on [query], applied at once, when one is given — and
+  /// puts the keyboard in it, the caret after what it holds. Without [focus]
+  /// the keyboard stays where it is: a pill tapped mid-contact shows the
+  /// station's other contacts without taking the operator out of the call
+  /// field, or popping a phone's keyboard over the log.
+  void _openFind({String? query, bool focus = true}) {
+    if (query != null) {
+      _findController.text = query.toUpperCase();
+      _applyFind(LogFindQuery.parse(query));
+    }
+    if (!_findOpen) setState(() => _findOpen = true);
+    if (!focus) return;
+    // On web the field the request came from lets go first. Otherwise the
+    // frame that builds the bar still reports that field focused, the browser
+    // re-focuses its accessibility input, and that focus arrives after the
+    // bar's and takes the keyboard back — what a FIND typed into the call
+    // field does.
+    if (kIsWeb && !_findFocus.hasFocus) FocusManager.instance.primaryFocus?.unfocus();
+    // After the frame: a bar opened just now has no field to focus yet.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_findOpen) return;
+      _findFocus.requestFocus();
+      _findController.selection = TextSelection.collapsed(offset: _findController.text.length);
+    });
+  }
+
+  /// FIND and its aliases (`operation-commands`): the bar opens on whatever
+  /// followed the word. Every other action is the host's.
+  Future<void> _onCommandAction(String action, [Map<String, dynamic>? params]) async {
+    if (action != 'findInLog') return widget.onCommandAction(action, params);
+    final query = params?['query'];
+    _openFind(query: query is String ? query : null);
+  }
+
+  void _findTyped(String text) {
+    _findTimer?.cancel();
+    final query = LogFindQuery.parse(text);
+    if (query == null || query.number != null) {
+      _applyFind(query);
+    } else {
+      _findTimer = Timer(_findDebounce, () => _applyFind(query));
+    }
+  }
+
+  void _applyFind(LogFindQuery? query) {
+    _findTimer?.cancel();
+    _findTimer = null;
+    if (mounted) setState(() => _findQuery = query);
+  }
+
+  /// Applies what was typed now, if its pause is still running — a key that
+  /// acts on the find must act on the text on screen. Nothing pending
+  /// changes nothing: a new query, even an equal one, would rebuild the list.
+  void _flushFind() {
+    if (_findTimer != null) _applyFind(LogFindQuery.parse(_findController.text));
+  }
+
+  /// Enter: the contact the find landed on — the one a number names, else
+  /// the one already walked to, else the newest match — loads with the
+  /// keyboard in the callsign field, and the walk keys carry on from there.
+  /// A number's bar closes; a callsign's filter stays up. Nothing to land on
+  /// keeps the keyboard in the bar.
+  void _findSubmitted(String text) {
+    _flushFind();
+    final shown = _shown;
+    final query = shown.query;
+    if (query == null) return;
+    final walkedTo = _navigable.slot >= 0 ? _selectedQso : null;
+    final pick = query.number != null ? shown.target : walkedTo ?? shown.qsos.lastOrNull;
+    if (pick == null) return;
+    if (query.number != null) _closeFind(returnFocus: false);
+    setState(() => _selectedQso = pick);
+    _focusFieldsAfterLoad(call: true);
+  }
+
+  /// A walk key in the Find bar: the row it lands on loads with the keyboard
+  /// in the callsign field, as arriving from the pills does, and the walk
+  /// goes on from there — no Enter needed. With no row of the list loaded,
+  /// or a number naming another, only Down starts a walk: on the contact a
+  /// number names, or else on the row nearest the bar — the top one,
+  /// whichever way up the list runs.
+  bool _walkFromFind(QsoListWalk walk) {
+    _flushFind();
+    final named = _shown.query?.number != null ? _shown.target : null;
+    if (_navigable.slot >= 0 && (named == null || named.uuid == _selectedQso?.uuid)) {
+      if (_walkIntoFind(walk)) return true;
+      if (!_walk(walk)) return false;
+    } else {
+      if (walk != QsoListWalk.down) return false;
+      final shown = _shown;
+      final rows = shown.qsos;
+      final pick = shown.target ?? (rows.isEmpty ? null : (widget.controlsAboveLog ? rows.last : rows.first));
+      if (pick == null) return false;
+      setState(() => _selectedQso = pick);
+    }
+    // A step past the newest loads nothing, and leaves the keyboard in the bar.
+    if (_selectedQso != null) _focusFieldsAfterLoad(call: true);
+    return true;
+  }
+
+  /// Escape in the field, or its close button: the find is cleared and the
+  /// bar hidden. A keyboard that was in the bar goes back to the main field
+  /// the operator was last in — not on a phone with no physical keyboard,
+  /// where that would pop the on-screen one (docs/design/logging-fields.md).
+  void _closeFind({bool returnFocus = true}) {
+    _findTimer?.cancel();
+    _findTimer = null;
+    final hadFocus = _findFocus.hasFocus;
+    _findController.clear();
+    setState(() {
+      _findOpen = false;
+      _findQuery = null;
+    });
+    if (returnFocus && hadFocus && (!isMobilePlatform || hardwareKeyboardAttached.value)) _loggingController.focusLastPrimaryField();
+  }
+
+  /// The bar's word on its find: how many contacts a callsign matched, or
+  /// that nothing did. A number that names a contact needs none — the list
+  /// is already showing it.
+  String? _findResult(BuildContext context, _LogFindView shown) {
+    final query = shown.query;
+    if (query == null) return null;
+    final noMatches = context.t.qsoList.find.noMatches;
+    if (query.number != null) return shown.target == null ? noMatches : null;
+    final info = context.t.loggingControls.info;
+    final count = shown.qsos.length;
+    if (count == 0) return noMatches;
+    return count == 1 ? info.qsoCountOne : info.qsoCountOther(count: formatNumber(count));
+  }
+
+  // ── Walking the QSO list ─────────────────────────────────────────────────
+  //
+  // The list never takes the keyboard. Arriving in it — Up off the pills, a
+  // tap on a row, Down or Enter in the Find bar — loads a row, and the walk
+  // keys (qsoListWalkFor) then step through the list from the field the
+  // keyboard is already in: a main logging field, or the Find bar.
+
+  /// The rows the walk can land on, and where the current selection sits
+  /// among them.
   ///
   /// Every row the list shows is navigable, including event and annotation
   /// markers (operation start/break/end, NOTE/TODO/SOLAR/WEATHER) — selecting
@@ -457,100 +628,149 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// does (`Qso.isEvent`), same as any other row.
   ///
   /// `slot` is the selection's position in `indices`, or -1 when nothing is
-  /// selected or the selection has since left the list (deleted, or filtered
-  /// out by the view menu). Found in the same pass that builds the list, since
-  /// this runs on every arrow keypress — including auto-repeat — over a log
-  /// that can hold tens of thousands of contacts.
+  /// selected or the selection has since left the list (deleted, filtered
+  /// out by the view menu, or by the Find bar). Found in the same pass that
+  /// builds the list, since this runs on every walk key — including
+  /// auto-repeat — over a log that can hold tens of thousands of contacts.
   ({List<int> indices, int slot}) get _navigable {
     final selectedUuid = _selectedQso?.uuid;
+    final shown = _shown.qsos;
     final indices = <int>[];
     var slot = -1;
-    for (var i = 0; i < widget.qsos.length; i++) {
-      final qso = widget.qsos[i];
+    for (var i = 0; i < shown.length; i++) {
+      final qso = shown[i];
       if (selectedUuid != null && qso.uuid == selectedUuid) slot = indices.length;
       indices.add(i);
     }
     return (indices: indices, slot: slot);
   }
 
-  /// Selects a row for editing without touching field focus — the keyboard
-  /// stays in the list so the next arrow keeps walking. Unlike a tap
-  /// ([_handleSelectQso]) this never toggles: arrowing onto a row means "this
-  /// one", never "none".
-  void _selectQsoAt(int index) {
-    setState(() => _selectedQso = widget.qsos[index]);
+  /// Holds the keyboard while a locked row is loaded — a deleted contact
+  /// shown for restore, or any row of an operation this device may not write
+  /// to. Its fields take no focus (docs/design/logging-fields.md § When the
+  /// form is read-only), so without this the walk would end on it with the
+  /// keyboard nowhere. A key handler, so the focus backstop reads it as a
+  /// claim.
+  final _lockedWalkFocus = FocusNode(debugLabel: 'lockedRowWalk');
+
+  KeyEventResult _onLockedWalkKey(FocusNode node, KeyEvent event) {
+    if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
+    final walk = qsoListWalkFor(event);
+    return walk != null && _walkFromField(walk) ? KeyEventResult.handled : KeyEventResult.ignored;
   }
 
-  /// Arrow Up walked off the top of the logging controls. Takes the keyboard
-  /// into the list, on the row already being edited or — much more often —
-  /// the newest one. Returns whether it did — nothing navigable (an empty
-  /// operation, or one holding only event markers) leaves focus where it
-  /// was and returns false, so a caller that already gave up its own focus
-  /// (a closing secondary control) knows to fall back instead.
+  /// Loads a row without touching focus. Unlike a tap ([_handleSelectQso])
+  /// this never toggles: walking onto a row means "this one", never "none".
+  void _selectQsoAt(int index) {
+    setState(() => _selectedQso = _shown.qsos[index]);
+  }
+
+  /// Puts the keyboard in the main field the operator was last in — or with
+  /// [call], the callsign field — once the row just loaded has rebuilt the
+  /// fields: an event row swaps the callsign field for its own, which is
+  /// where the keyboard goes while one is loaded.
+  void _focusFieldsAfterLoad({bool call = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (_loggingController.isFieldsLocked) {
+        _lockedWalkFocus.requestFocus();
+      } else if (call && !(_selectedQso?.isEvent ?? false)) {
+        _loggingController.focusCall();
+      } else {
+        _loggingController.focusLastPrimaryField();
+      }
+    });
+  }
+
+  /// Up off the pills: the row already loaded or, much more often, the
+  /// newest, with the keyboard back in the main field the operator was last
+  /// in — the walk goes on from there. Returns whether it landed anywhere:
+  /// nothing navigable (an empty operation) leaves focus where it was and
+  /// returns false, so a caller that already gave up its own focus (a
+  /// closing secondary control) knows to fall back instead.
   bool _handleNavigateToQsoList() {
     final (:indices, :slot) = _navigable;
     if (indices.isEmpty) return false;
     if (slot < 0) _selectQsoAt(indices.last);
-    _listFocus.requestFocus();
+    _focusFieldsAfterLoad();
     return true;
   }
 
-  /// Moves the selection [delta] rows through [_navigable].
-  ///
-  /// [delta] counts toward the newer end, whichever way up the list is
-  /// drawn. Walking a single row past the newest QSO leaves the list entirely
-  /// and hands the keyboard back to the pill strip, mirroring the arrow that
-  /// got here. It also deselects, back to the new QSO being composed — the
-  /// state this walk started from, out through the pills, before that arrow
-  /// ever touched the list. A [jump] — a page or an end key — clamps at that edge instead:
-  /// nobody presses Page Down meaning "and then leave the list".
-  void _moveListSelection(int delta, {bool jump = false}) {
-    final (:indices, :slot) = _navigable;
-    if (indices.isEmpty) return;
-    // Nothing selected, or a selection that has since left the list: start
-    // over at the newest row rather than guessing where the walk had got to.
-    if (slot < 0) {
-      _selectQsoAt(indices.last);
-      return;
-    }
-    final next = slot + delta;
-    if (next >= indices.length && !jump) {
-      setState(() => _selectedQso = null);
-      // Deferred a frame: LoggingControls' own didUpdateWidget reacts to the
-      // deselection above by resetting which pill is open, so opening one
-      // before that reset lands would just have it closed again.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // A second Down — including OS key-repeat — can land before this
-        // frame and re-select the newest row via the `slot < 0` branch
-        // above. When that happens the keyboard belongs back in the list,
-        // not on the pills this now-stale callback was queued for.
-        if (mounted && _selectedQso == null) _loggingController.focusSecondaryControls();
-      });
-      return;
-    }
-    final target = next.clamp(0, indices.length - 1);
-    if (target == slot) return; // already sitting at that end
-    _selectQsoAt(indices[target]);
+  /// A walk key in a main field ([LoggingSession.onWalkQsoList]): only while
+  /// a row of the list is loaded. With nothing loaded the keys are the
+  /// field's, and Up the ladder's.
+  bool _walkFromField(QsoListWalk walk) {
+    final from = _selectedQso;
+    if (from == null) return false;
+    if (_walkIntoFind(walk)) return true;
+    if (!_walk(walk)) return false;
+    // A step between a contact and an event row swaps the field the keyboard
+    // is in for the other kind's. Left alone, focus falls back to whatever
+    // held it before that field — the pill the ladder crossed, as likely as
+    // not. A step onto or off a deleted row locks or unlocks the fields.
+    final to = _selectedQso;
+    if ((to?.isEvent ?? false) != from.isEvent || from.deleted || (to?.deleted ?? false)) _focusFieldsAfterLoad();
+    return true;
   }
 
-  /// Straight to the oldest or newest contact — Home/End, and Cmd+Up/Down on
-  /// macOS. One pass over the log, like every other move.
-  void _selectListEdge({required bool newest}) {
+  /// Up off the row drawn at the top while the Find bar is open: the bar is
+  /// what sits above it, so the keyboard goes there with the caret at the
+  /// end, and the row unloads — Down from the bar comes back onto it rather
+  /// than the one after. This outranks the step past the newest when the
+  /// newest is the top row: either way nothing stays loaded.
+  bool _walkIntoFind(QsoListWalk walk) {
+    if (!_findOpen || walk != QsoListWalk.up) return false;
     final (:indices, :slot) = _navigable;
-    if (indices.isEmpty) return;
-    final target = newest ? indices.length - 1 : 0;
-    if (target == slot) return;
-    _selectQsoAt(indices[target]);
+    if (slot < 0 || slot != (widget.controlsAboveLog ? indices.length - 1 : 0)) return false;
+    setState(() => _selectedQso = null);
+    _findFocus.requestFocus();
+    _findController.selection = TextSelection.collapsed(offset: _findController.text.length);
+    return true;
+  }
+
+  /// One step of the walk; the keyboard stays wherever it is.
+  ///
+  /// Steps come in screen terms and go older or newer by which way up the
+  /// list is drawn. A single step past the newest drops the selection, back
+  /// to the contact being composed — where the walk started from; a page or
+  /// an end key stops at the edge instead, since nobody presses Page Down
+  /// meaning "and then stop editing". A selection the list no longer shows
+  /// starts over at the newest row rather than guessing where it had got to.
+  bool _walk(QsoListWalk walk) {
+    final (:indices, :slot) = _navigable;
+    if (indices.isEmpty) return false;
+    if (slot < 0) {
+      _selectQsoAt(indices.last);
+      return true;
+    }
+    final topIsNewest = widget.controlsAboveLog;
+    // How far toward the newer end [rows] screen rows up (or down) is.
+    int newer(int rows, {required bool up}) => up == topIsNewest ? rows : -rows;
+    final int target;
+    switch (walk) {
+      case QsoListWalk.up || QsoListWalk.down:
+        final next = slot + newer(1, up: walk == QsoListWalk.up);
+        if (next >= indices.length) {
+          setState(() => _selectedQso = null);
+          return true;
+        }
+        target = next < 0 ? 0 : next;
+      case QsoListWalk.pageUp || QsoListWalk.pageDown:
+        target = (slot + newer(_pageRows, up: walk == QsoListWalk.pageUp)).clamp(0, indices.length - 1);
+      case QsoListWalk.top || QsoListWalk.bottom:
+        target = (walk == QsoListWalk.top) == topIsNewest ? indices.length - 1 : 0;
+    }
+    if (target != slot) _selectQsoAt(indices[target]);
+    return true;
   }
 
   /// How many rows a page key moves: as many as the list can show, less one so
   /// a row of context carries over — the convention every list follows.
   ///
-  /// Measured off the list's own box (the Focus wrapping it fills the same
-  /// space), divided by a row's height. Before the first layout there is
-  /// nothing to measure, so a modest jump stands in.
+  /// Measured off the list's own box, divided by a row's height. Before the
+  /// first layout there is nothing to measure, so a modest jump stands in.
   int get _pageRows {
-    final box = _listFocus.context?.findRenderObject() as RenderBox?;
+    final box = _listBoxKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return 10;
     // The cached metrics, not a fresh lookup: this runs from a key handler,
     // and `LayoutDensity.of` depends on an inherited widget, which outside
@@ -559,76 +779,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // page jump stepping by the height the rows really have.
     final rows = (box.size.height / _metrics.qsoRowHeight).floor() - 1;
     return rows < 1 ? 1 : rows;
-  }
-
-  KeyEventResult _onQsoListKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    final keyboard = HardwareKeyboard.instance;
-    // Shift+arrow is a range-selection gesture (this list has no such thing to
-    // extend) and Ctrl belongs to the platform — neither means anything here.
-    // Cmd and Option DO, but only on the arrows: see below.
-    if (keyboard.isShiftPressed || keyboard.isControlPressed) return KeyEventResult.ignored;
-    final meta = keyboard.isMetaPressed;
-    final alt = keyboard.isAltPressed;
-    final key = event.logicalKey;
-    // The keys follow the screen: with the list newest-first under the
-    // controls, the newer rows — and the way back out to the pills — are UP.
-    final newestOnTop = widget.controlsAboveLog;
-
-    // The arrows, with the two modifiers the platform gives them: Cmd+Up/Down
-    // is "to the start/end of the document" and Option+Up/Down is the bigger
-    // step between them — a screenful here, the same as Page Up/Down. Both
-    // together mean nothing, so they're left alone rather than guessed at.
-    if (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) {
-      final newer = (key == LogicalKeyboardKey.arrowDown) != newestOnTop;
-      if (meta && alt) return KeyEventResult.ignored;
-      if (meta) {
-        _selectListEdge(newest: newer);
-      } else if (alt) {
-        _moveListSelection(newer ? _pageRows : -_pageRows, jump: true);
-      } else {
-        _moveListSelection(newer ? 1 : -1);
-      }
-      return KeyEventResult.handled;
-    }
-    // Nothing below takes a modifier.
-    if (meta || alt) return KeyEventResult.ignored;
-
-    switch (key) {
-      case LogicalKeyboardKey.pageUp:
-        _moveListSelection(newestOnTop ? _pageRows : -_pageRows, jump: true);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.pageDown:
-        _moveListSelection(newestOnTop ? -_pageRows : _pageRows, jump: true);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.home:
-        _selectListEdge(newest: newestOnTop);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.end:
-        _selectListEdge(newest: !newestOnTop);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.enter:
-      case LogicalKeyboardKey.numpadEnter:
-        // The row stays selected — this is "now let me edit it", not "open
-        // it": the editor has been loaded with it since the arrow key landed.
-        // The field the operator was last in before arrowing up into the
-        // list (Call, if none is remembered) — not always Call, since Enter
-        // here is "resume editing where I left off", not "start a fresh QSO"
-        // (that's what Escape from the list is for).
-        _loggingController.focusLastPrimaryField();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.escape:
-        // The same deselect Escape makes anywhere else in the panel, plus the
-        // part only the list needs: the keyboard goes back to composing.
-        // Locked QSOs are `_handlePanelEscape`'s own business — it declines,
-        // and the disabled call field declines the focus too, so the keyboard
-        // simply stays here.
-        if (widget.services.cat.escapeStoppedKeying) return KeyEventResult.handled;
-        _handlePanelEscape();
-        _loggingController.focusCall();
-        return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
   }
 
   /// Escape reaching here (not `LoggingControls`' own `CallbackShortcuts`)
@@ -727,10 +877,21 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
   }
 
+  /// A tap on a row: selects it, or deselects it if it was already the one.
+  /// Selecting leaves the keyboard in the callsign field, where the walk keys
+  /// then step through the list — not on a phone with no physical keyboard,
+  /// where focusing it would pop the on-screen one.
   void _handleSelectQso(Qso qso) {
-    setState(() {
-      _selectedQso = _selectedQso?.uuid == qso.uuid ? null : qso;
-    });
+    final selecting = _selectedQso?.uuid != qso.uuid;
+    setState(() => _selectedQso = selecting ? qso : null);
+    if (!selecting || (isMobilePlatform && !hardwareKeyboardAttached.value)) return;
+    // Onto or off a locked row, the fields lock or unlock only once they
+    // rebuild: a request now goes to a disabled field, which ignores it.
+    if (qso.deleted || _loggingController.isFieldsLocked) {
+      _focusFieldsAfterLoad(call: true);
+    } else {
+      _loggingController.focusCall();
+    }
   }
 
   void _handleControlsSettingsChanged(List<String> order, Set<String> hidden) {
@@ -804,10 +965,16 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // active scorer's sections into one day-keyed list (see
     // app/lib/tools/scoring_summaries.dart).
     final daySections = mergedDaySections(scoring);
+    final shown = _shown;
+    final filtering = !identical(shown.qsos, widget.qsos);
     final list = QsoList(
-      qsos: widget.qsos,
-      noQsosLabel: context.t.qsoList.empty,
-      needsBandOrMode: _needsBandOrMode,
+      qsos: shown.qsos,
+      log: filtering ? widget.qsos : null,
+      highlightedUuid: shown.target?.uuid,
+      noQsosLabel: filtering ? context.t.qsoList.find.noMatches : context.t.qsoList.empty,
+      // The warning is about an empty log, and a filter that matches nothing
+      // is not one.
+      needsBandOrMode: !filtering && _needsBandOrMode,
       bandOrModeWarningLabel: context.t.qsoList.bandOrModeWarning,
       selectedUuid: _selectedQso?.uuid,
       onSelect: _handleSelectQso,
@@ -828,14 +995,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // CallbackShortcuts, closer to the compose form's fields, still handles
     // Escape whenever focus IS there (discard-typed-changes) —
     // this one only fires when that inner one doesn't.
-    final listPane = Expanded(
-      // skipTraversal: Tab belongs to the logging controls' own field
-      // rotation; the list is reached with the arrow keys, not
-      // by tabbing into it.
+    final listBox = KeyedSubtree(
+      key: _listBoxKey,
       child: Focus(
-        focusNode: _listFocus,
+        focusNode: _lockedWalkFocus,
         skipTraversal: true,
-        onKeyEvent: _onQsoListKeyEvent,
+        onKeyEvent: _onLockedWalkKey,
         child: _LazyQsoList(
           // Only worth deferring a large log's expensive first build —
           // a short one (including a brand-new, empty operation) is
@@ -850,6 +1015,26 @@ class _LoggingPanelState extends State<LoggingPanel> {
           largeEnough: widget.qsos.length >= _lazyQsoListThreshold,
           child: list,
         ),
+      ),
+    );
+    final listPane = Expanded(
+      child: Column(
+        children: [
+          // At the top of the list whichever way up the panel is drawn: it
+          // is the list's bar, not one of the panel's rungs.
+          if (_findOpen)
+            LogFindBar(
+              controller: _findController,
+              focusNode: _findFocus,
+              onChanged: _findTyped,
+              onSubmitted: _findSubmitted,
+              onClose: _closeFind,
+              onWalk: _walkFromFind,
+              escapeClaimed: () => widget.services.cat.escapeStoppedKeying,
+              result: _findResult(context, shown),
+            ),
+          Expanded(child: listBox),
+        ],
       ),
     );
     final controls = LoggingControls(
@@ -903,8 +1088,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
         suggestedQsoIsTentative: widget.suggestedQsoIsTentative,
         suggestionSettledSerial: widget.suggestionSettledSerial,
         onCallEdited: widget.onCallEdited,
-        onEditCanceled: () => setState(() => _selectedQso = null),
+        onEditCanceled: () {
+          setState(() => _selectedQso = null);
+          // A restored row unloads with the keyboard still on the list, where
+          // nothing loaded leaves the walk keys nothing to step from.
+          if (_lockedWalkFocus.hasPrimaryFocus) _focusFieldsAfterLoad();
+        },
         onNavigateToQsoList: _handleNavigateToQsoList,
+        onWalkQsoList: _walkFromField,
         onQsoChanged: widget.onQsoChanged,
         onPeerDraftChanged: widget.onPeerDraftChanged,
       ),
@@ -969,6 +1160,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
         workedBeforeLabel: (times) => workedBeforeLabel(context, times),
         onCallInfoChanged: widget.onCallInfoChanged,
         onCallInfoTap: widget.onCallInfoTap,
+        // The exact call: the trailing period is the Find bar's "this whole
+        // callsign", so K1AB's history doesn't list K1ABC's contacts too.
+        onFindCall: (call) => _openFind(query: '$call.', focus: false),
         onOperationInfoTap: widget.onOperationInfoTap,
       ),
       activities: ActivityHooks(
@@ -982,7 +1176,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         interpretCommand: widget.services.extensions.interpretCommand,
         interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
         onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
-        onCommandAction: widget.onCommandAction,
+        onCommandAction: _onCommandAction,
         // Lets the ⌘K dialog apply a command to this panel — see
         // HaLoServices.currentCommandDispatch. Attached to this
         // operation's own stack entry, so a disposing panel can't detach a
@@ -1205,4 +1399,35 @@ VoidCallback? radio1ConnectAction(CatService cat, {required bool connected}) {
     return () => unawaited(cat.connect(uuid));
   }
   return null;
+}
+
+/// What the logging panel's QSO list shows under a find — see
+/// `_LoggingPanelState._shown`.
+class _LogFindView {
+  final List<Qso> source;
+  final LogFindQuery? query;
+
+  /// [source] itself, unless a callsign find narrows it to its matches.
+  final List<Qso> qsos;
+
+  /// The contact a number find names, when the log has one by that number.
+  final Qso? target;
+
+  const _LogFindView._(this.source, this.query, this.qsos, {this.target});
+
+  factory _LogFindView.of(List<Qso> source, LogFindQuery? query) {
+    if (query == null) return _LogFindView._(source, query, source);
+    if (query.number case final number?) {
+      final all = qsoListNumbers(source);
+      for (var i = 0; i < source.length; i++) {
+        if (source[i].isRealContact && all[i] == number) return _LogFindView._(source, query, source, target: source[i]);
+      }
+      return _LogFindView._(source, query, source);
+    }
+    final qsos = [
+      for (final qso in source)
+        if (!qso.isEvent && query.matchesCall(qso.theirCall)) qso,
+    ];
+    return _LogFindView._(source, query, qsos);
+  }
 }

@@ -12,16 +12,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
-  Widget host({required CallInfoData data, bool label = true}) => MaterialApp(
+  Widget host({required CallInfoData data, bool label = true, VoidCallback? onFindCall, VoidCallback? onAreaTap}) => MaterialApp(
     home: Scaffold(
       body: SizedBox(
         width: 400,
-        child: CallInfoSummary(
-          data: data,
-          foregroundColor: Colors.black,
-          iconColor: Colors.black,
-          noticeLabel: (key) => key.toUpperCase(),
-          workedBeforeLabel: label ? (times) => '${times.length} QSOs' : null,
+        child: GestureDetector(
+          onTap: onAreaTap,
+          child: CallInfoSummary(
+            data: data,
+            foregroundColor: Colors.black,
+            iconColor: Colors.black,
+            noticeLabel: (key) => key.toUpperCase(),
+            workedBeforeLabel: label ? (times) => '${times.length} QSOs' : null,
+            onFindCall: onFindCall,
+          ),
         ),
       ),
     ),
@@ -175,5 +179,41 @@ void main() {
       expect(find.text('⏰'), findsOneWidget);
       expect(find.textContaining('slow op'), findsOneWidget);
     });
+  });
+
+  // Both pills are about the station's other contacts, so a tap on either
+  // shows them; every other pill is a verdict on THIS contact, and stays part
+  // of the host's tap on the whole area (which opens the station's detail).
+  testWidgets('the dupe and worked-before pills find the call; other pills stay the area\'s', (tester) async {
+    var finds = 0;
+    var areaTaps = 0;
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', alertKeys: [duplicateNoticeKey], noticeKeys: ['newBand'], workedBefore: [1000, 2000]),
+        onFindCall: () => finds++,
+        onAreaTap: () => areaTaps++,
+      ),
+    );
+
+    await tester.tap(find.text('DUPLICATE'));
+    await tester.tap(find.text('2 QSOs'));
+    expect(finds, 2);
+    expect(areaTaps, 0, reason: 'a pill that finds takes its tap from the area');
+
+    await tester.tap(find.text('NEWBAND'));
+    expect(finds, 2);
+    expect(areaTaps, 1);
+  });
+
+  testWidgets('with no finder the pills are just part of the area', (tester) async {
+    var areaTaps = 0;
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', alertKeys: [duplicateNoticeKey]),
+        onAreaTap: () => areaTaps++,
+      ),
+    );
+    await tester.tap(find.text('DUPLICATE'));
+    expect(areaTaps, 1);
   });
 }

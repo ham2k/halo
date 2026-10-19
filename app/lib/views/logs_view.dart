@@ -24,15 +24,18 @@ import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/status_bar_service.dart';
 import '../settings/settings_target_dialog.dart';
+import '../tools/log_find_query.dart';
 import '../tools/operation_title.dart';
 import 'dock_host.dart';
 import 'home_navigation_rail.dart';
 import 'operation/adif_import_flow.dart';
 import 'operation/call_info_panel.dart';
 import 'operation/extension_panel.dart';
+import 'operation/log_find_bar.dart' show isFindChord;
 import 'operation/map_panel.dart';
 import 'operation_view.dart';
 import 'sheet_header_dots.dart';
+import 'tester_overlay.dart' show testerOverlayCovering;
 
 part 'logs/logs_table.dart';
 part 'logs/logs_side_panes.dart';
@@ -250,6 +253,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
   /// [_searchTyped]).
   String _searchQuery = '';
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode(debugLabel: 'logsSearch');
 
   /// Each search refilters and re-sorts a log that can run to tens of
   /// thousands of QSOs, so a keystroke alone doesn't start one: the typing
@@ -443,6 +447,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     // fresh each time the destination switches back to it, so `initState` is
     // exactly "a visit started".
     widget.services.track('screen_viewed', {'screen': 'logs'});
+    HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
     final settings = widget.services.settings;
     _columnWidths = _LogsColumnWidths.fromMap(settings.layoutData(LayoutKeys.logsQsoColumnWidths));
     // A column the stored map doesn't mention — one added since it was last
@@ -510,6 +515,8 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     _listScroll.dispose();
     _searchTimer?.cancel();
     _searchController.dispose();
+    _searchFocus.dispose();
+    HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     _sheetRevision.dispose();
     super.dispose();
   }
@@ -951,7 +958,32 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     unawaited(widget.services.settings.setLayoutData(LayoutKeys.logsQsoColumnOrder, {'order': _columnOrder}));
   }
 
+  /// ⌘F/Ctrl+F puts the keyboard in the search field, the caret after what
+  /// it holds — the Logs view's Find, for a field that is always on show.
+  /// Only while Logs is the destination: the view stays mounted through the
+  /// slide that takes it away.
+  bool _onFindKeyEvent(KeyEvent event) {
+    if (!isFindChord(event) || testerOverlayCovering.value) return false;
+    if (!mounted || homeRail.destination != HomeDestination.logs || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    // Disabled with no station picked: nothing to search, so nothing taken.
+    if (_filter.isEmpty) return false;
+    _searchFocus.requestFocus();
+    _searchController.selection = TextSelection.collapsed(offset: _searchController.text.length);
+    return true;
+  }
+
   List<Qso> _applySearch(List<Qso> qsos) {
+    // A trailing period asks for that exact callsign, as in an operation's
+    // Find bar. Digits alone stay a search here: this table has no Number
+    // column to jump by.
+    if (_searchQuery.trim().endsWith('.')) {
+      final exact = LogFindQuery.parse(_searchQuery);
+      if (exact == null) return qsos;
+      return [
+        for (final qso in qsos)
+          if (exact.matchesCall(qso.theirCall)) qso,
+      ];
+    }
     final query = _searchQuery.trim().toLowerCase();
     if (query.isEmpty) return qsos;
     return [
@@ -1276,33 +1308,47 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     // what is typed, which runs ahead of [_searchQuery] by the debounce.
     return ListenableBuilder(
       listenable: _searchController,
-      builder: (context, _) => TextField(
-        controller: _searchController,
-        onChanged: _searchTyped,
-        onSubmitted: _searchNow,
-        enabled: !_filter.isEmpty,
-        inputFormatters: const [UpperCaseTextFormatter()],
-        decoration: InputDecoration(
-          isDense: true,
-          filled: true,
-          fillColor: theme.colorScheme.surface,
-          contentPadding: const EdgeInsets.symmetric(horizontal: Space.lg),
-          prefixIcon: const Icon(MdiIcons.magnify),
-          suffixIcon: _searchController.text.isEmpty
-              ? null
-              : IconButton(
-                  icon: Icon(MdiIcons.close, semanticLabel: t.common.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    _searchNow('');
-                  },
-                ),
-          hintText: t.home.logs.searchHint,
-          // Dimmed by hand: nothing themed does it for a hand-built
-          // decoration, and at full strength the hint reads as a search
-          // already typed.
-          hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+      // Escape clears a search, and the keyboard goes on to the list; with
+      // nothing to clear it keeps whatever meaning it has further up.
+      builder: (context, _) => Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: (node, event) {
+          if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.escape || _searchController.text.isEmpty) return KeyEventResult.ignored;
+          _searchController.clear();
+          _searchNow('');
+          _listFocus.requestFocus();
+          return KeyEventResult.handled;
+        },
+        child: TextField(
+          controller: _searchController,
+          focusNode: _searchFocus,
+          onChanged: _searchTyped,
+          onSubmitted: _searchNow,
+          enabled: !_filter.isEmpty,
+          inputFormatters: const [UpperCaseTextFormatter()],
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: theme.colorScheme.surface,
+            contentPadding: const EdgeInsets.symmetric(horizontal: Space.lg),
+            prefixIcon: const Icon(MdiIcons.magnify),
+            suffixIcon: _searchController.text.isEmpty
+                ? null
+                : IconButton(
+                    icon: Icon(MdiIcons.close, semanticLabel: t.common.clear),
+                    onPressed: () {
+                      _searchController.clear();
+                      _searchNow('');
+                    },
+                  ),
+            hintText: t.home.logs.searchHint,
+            // Dimmed by hand: nothing themed does it for a hand-built
+            // decoration, and at full strength the hint reads as a search
+            // already typed.
+            hintStyle: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.38)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+          ),
         ),
       ),
     );

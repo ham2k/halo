@@ -10,6 +10,7 @@ upcoming:
     - "New manual time entry: set a time, it stays and steps per QSO"
     - "New time commands in the call field: +1m, -1h, 12:33, :34, 3/18, NOW"
     - "New Show Grayline map setting and postcard option: night and twilight shaded"
+    - "New Find in Log (⌘F/Ctrl+F, FIND): jump to a QSO or filter by call"
 
 "180":
   changes:

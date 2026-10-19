@@ -185,7 +185,7 @@ clicked button the focus, and a dialog closing over it hands the focus
 straight back to the button, so a button is not a claim. What is: anything
 under the panel's own scope (its pills, its Band dropdown), a text field
 anywhere, a `DropdownButton` anywhere, and a node that handles keys — the
-mark of a surface the operator steers from, which is the QSO list. A scope
+mark of a surface the operator steers from. A scope
 that is not on the panel's ancestry is a dialog's, sheet's, menu's or
 overlay's own and is never robbed, whatever is in it, and neither is a route
 pushed over the panel (`ModalRoute.isCurrent`). A locked form (above)
@@ -819,7 +819,10 @@ where the operator left off.
 Tab and the arrows above keep the operator inside the entry row. **Arrow Up
 is the way out of it**, and out of each rung above it in turn; Arrow Down
 walks back in. Between them the whole panel — and the QSO list above it — is
-reachable without a pointer.
+reachable without a pointer, but for one thing: a loaded row's own pills
+(see "The QSO list" below). The list is a rung that never holds the
+keyboard: arriving there loads a row and hands the keyboard back to the
+fields, and the list is walked from there.
 
 ```
 QSO list  ──▲──  secondary pills  ──▲──  main logging fields
@@ -832,15 +835,16 @@ way up — main fields at the top, then the keyer and the information area,
 then the pills, with an open control expanding below them — and its list runs
 newest first, so the live edge still meets the panel. Every rule in this
 section then holds with Up and Down swapped: Down leaves the fields for the
-pills and the pills for the list, Up walks back in, and in the list Up moves
-toward the newest contact and past it to the pills. Home, End and the page
-keys follow the screen too (Home is the top, the newest). An `options`
+pills and the pills for the list, Up walks back in, and the walk's Up moves
+toward the newest contact and past it back to composing. The page and end
+keys follow the screen too (Cmd+Up is the top, the newest). An `options`
 suggestion menu opens below its field, best match nearest the field.
 
 - **From a main field**, Up moves to the secondary pill strip, opening
   whichever pill the keyboard was last on (or the first) and focusing its
   field — see above. An open `options` suggestion menu keeps Up and Down for
-  its own highlight.
+  its own highlight, and while a row of the list is loaded they walk the
+  list (see "The QSO list" below).
 - **On the pills**, Left and Right cross straight to the next/previous pill
   and open it, wrapping at both ends; Tab and Shift-Tab step within a
   multi-field control first. Down returns to the remembered main field.
@@ -851,41 +855,62 @@ suggestion menu opens below its field, best match nearest the field.
 - **In an open control**, Down or Enter closes it and returns to the main
   field the operator was in before — not the pill. Up closes it too, but
   keeps going the same direction Up already takes from a bare pill: onward
-  into the QSO list. Enter does *not* log, in any secondary control —
+  into the QSO list, and from there back to the main field. Enter does *not* log, in any secondary control —
   logging is one rung down, from a main field. (It used to log from all of
   them: the radio control by its own submit handler, the reference controls
   and the spot comment by falling through to the panel's Enter shortcut. The
   spot comment is a partial exception again now — see the Status section's
   note on the Send button.)
-- **In the QSO list**, Up and Down walk the log, loading each row into
-  the editor **without moving focus**, so the next arrow keeps walking.
+- **The QSO list** is reached by Up off the pills, which loads the newest
+  contact (or the one already loaded) and puts the keyboard back in the main
+  field the operator was last in; by a **click or tap on a row**, which
+  loads it with the keyboard in the callsign field; or by Down or Enter in
+  the Find bar (below), which do the same. Either way the keyboard stays where it is, and **the walk keys
+  step through the list from that field**, loading each row into the editor
+  — so the contact on screen can be corrected at once, with no key to get
+  back to it. While a row of the list is loaded, Up and Down in a main
+  field are the walk's, not the ladder's: Escape, or Down past the newest,
+  ends the walk, as does Up off the top row while the Find bar is open
+  (below), and Up climbs to the pills again. So a loaded row's pills are
+  the one part of the panel the keyboard cannot reach: the way to them
+  ends the walk, which unloads the row. Correcting a past contact's
+  reference or power takes a pointer — the walk keeping the keyboard in
+  the field is worth more than the climb it gives up.
+
   Event and annotation rows (operation start/break/end, NOTE/TODO/SOLAR/
   WEATHER) load too — the main fields swap for that row's inline event
   editor (a kind field and, for NOTE/TODO, its text) instead of a contact's
   fields, and every secondary control but Time is disabled — shown, not
-  hidden, so the row's shape stays the same as a contact's. Enter restores
-  whichever main field the operator was last in
-  before arrowing up (the callsign field if none is remembered) with that
-  contact still loaded — this is "resume editing where I left off," not
-  "start fresh," which is what Escape below is for. Down past the newest
-  contact deselects back to the QSO that was being composed and leaves for
-  the pills, opening the remembered one the same way Up from a main field
-  does — see "The composing draft" below for what "deselects back to"
-  actually restores.
+  hidden, so the row's shape stays the same as a contact's. The event row
+  holds the keyboard on its text, or on its read-only value for a kind with
+  nothing to type, so the walk goes on across it. A locked row (above: a
+  deleted contact shown for restore, or any row of an operation this device
+  may not write to) has fields that take no focus, so the list itself holds
+  the keyboard while one is loaded and takes the walk keys from there;
+  walking off it puts the keyboard back in the fields. Escape does not end
+  the walk there — it never closes a read-only view — so the way off is a
+  walk key, a tap, or Restore. Down past the newest
+  contact deselects back to the QSO that was being composed, the keyboard
+  still in its field — see "The composing draft" below for what "deselects
+  back to" actually restores.
 
-  The list also takes the jumps every list is expected to: **Home** and
-  **End** go to the oldest and newest contact, **Page Up** and **Page Down**
-  move a screenful (as many rows as fit, less one carried over for context),
-  and on macOS **Cmd+Up/Down** repeat Home/End while **Option+Up/Down**
-  repeat the page keys. Unlike a single-row Down, none of them ever walks off
-  the end of the list — they stop at the last contact, because nobody presses
-  Page Down meaning "and then leave".
+  The walk keys (`qsoListWalkFor`) are the jumps every list is expected to
+  take: **Up** and **Down** a row; **Page Up** and **Page Down**, and
+  **Option+Up/Down**, a screenful (as many rows as fit, less one carried
+  over for context); **Cmd+Up/Down** the oldest and newest contact. In a
+  single-line field those chords only ever park the caret at an end of the
+  text, which Left and Right reach too, so the walk takes them; **Home** and
+  **End** stay the caret's. Unlike a single-row Down, no jump ever walks off
+  the end of the list — they stop at the last contact, because nobody
+  presses Page Down meaning "and then stop editing".
+
+  Not on a phone with no physical keyboard: there a tap only loads the row,
+  since focusing the callsign field would pop the on-screen keyboard.
 
 **Escape** is the way *out*, at every rung, one layer per press: an open
 suggestion menu, then an open control (back to the main fields, the same
 destination Down/Enter reach above) — then the editing session, back
-specifically to the callsign field, a "start a fresh QSO" gesture unlike
-Enter/Down-past-the-newest's "resume where I left off". It stops there: a
+specifically to the callsign field, a "start a fresh QSO" gesture. It stops there: a
 QSO being composed is never wiped by Escape, because Escape is aimed at menus
 and open controls all day long and one press too many must not cost a
 contact. It never walks back *in* either: in particular a second Escape does
@@ -925,21 +950,65 @@ instead of the first's.
 **Every rung claims bare keys only.** A held Cmd, Ctrl or Option makes the
 keystroke a platform gesture (Cmd+Down is "caret to the end of the text" on
 macOS), and Shift+arrow is a text selection — the ladder stands aside for
-both, exactly as the entry row's own Tab and arrow rules do.
+both, exactly as the entry row's own Tab and arrow rules do. The walk is the
+one exception, for Cmd and Option on the arrows, and only while a row of the
+list is loaded (above).
 
 Each rung hangs its handling off a `FocusNode`'s own `onKeyEvent`, never a
 panel-wide `Shortcuts` binding — a panel-wide arrow binding would swallow the
 arrow keys for every field underneath it, caret movement included. Crossing
-between the logging controls and the QSO list goes through
-`LoggingSession.onNavigateToQsoList` and `LoggingControlsController`: the two
-are siblings, and the panel above them owns the selection.
+into the QSO list goes through `LoggingSession.onNavigateToQsoList`, and the
+walk through `LoggingSession.onWalkQsoList`: the two are siblings, and the
+panel above them owns the selection.
 
 Whichever key moved the selection, the list scrolls to it — the row is placed
 from its position in the log rather than measured, so a jump to the far end
 lands as surely as a single step does.
 
-Still to come: a "goto" search (Cmd/Ctrl-G) for jumping to a QSO by number or
-callsign — see [backlog.md](../backlog.md).
+### Find in the log
+
+**Cmd/Ctrl+F** — or Find in Log in the logging pane's settings, which names
+the chord, for a device with no keyboard — opens a Find bar at the top of the
+QSO list and puts the keyboard in it, in the Operation and Chasing views alike,
+with the caret after anything it already holds rather than selecting it.
+So does the **FIND** command (SEARCH, JUMP and GOTO are the same one), on
+whatever follows it: `FIND KN`, `GOTO 42`, `FIND K1AB.`. A tap on the
+call-info's **Dupe** or **worked-before** pill opens it on that exact call —
+both are about the station's other contacts — without taking the keyboard
+out of the call field, so the contact being typed carries on. What is typed there
+decides what it does (`LogFindQuery`):
+
+- **Digits alone** are a QSO number: the list scrolls to that contact and
+  marks it — the selected row's border over a lighter fill, since it is not
+  being edited — on every keystroke. The mark stays up with the bar, but
+  once a walk moves on from it the list follows the walk.
+- **Anything else** filters the list to the contacts whose callsign holds it
+  anywhere, and **a trailing period** to that exact callsign. The rows keep
+  the numbers and the column widths they have in the whole log.
+- **Down** loads the contact a number names, whatever row was loaded
+  before, or else the row nearest the bar. The keyboard goes to the
+  callsign field — the same as arriving in the list from the pills, with
+  no Enter needed — and the walk goes on from there, over only the rows
+  the filter shows. The bar stays up.
+- **Up off the top row** of the list comes back to the bar, the caret at the
+  end of what was typed and nothing left loaded, so Down from it lands on
+  that same row again (on a number, the contact it names). Whichever way
+  up the list runs, the top row is the one next to the bar — with the
+  newest at the top, this takes the place of the step past the newest.
+- **Enter** does the same for the newest match (or the contact a number
+  names), and a number's bar closes.
+- **Escape** in the field, or its close button, clears the find and hides
+  the bar, and a keyboard that was in it returns to the main field the
+  operator was last in. Escape that just stopped a CW message does only that.
+
+The bar is the list's, not a rung of the focus ladder: the only arrow that
+reaches it is Up off the list's top row.
+The chord is taken from wherever focus is, by a `HardwareKeyboard` handler
+on the host view, while that view is on screen and front-most.
+
+The Logs view's search field is always on show; there Cmd/Ctrl+F only puts
+the keyboard in it, the caret at the end as in the bar, a trailing period
+means the exact callsign, and Escape clears it. Digits stay a search: that table has no Number column to jump by.
 
 ## Manual time entry
 

@@ -23,7 +23,7 @@ const _engine = 'lib/views/command_engine.dart';
 
 /// Actions only a live logging panel can run — they act on the QSO being
 /// entered — so the no-panel dispatcher reports them instead.
-const _panelOnly = {'setVfo', 'updateQso', 'addQso', 'sendSpots', 'autoRespot', 'setCallField', 'setTime'};
+const _panelOnly = {'setVfo', 'updateQso', 'addQso', 'sendSpots', 'autoRespot', 'findInLog', 'setCallField', 'setTime'};
 
 /// The top-level fields of `interface CommandAction`. Two-space indent only:
 /// a field's own object type (`setVfo: { freq?: … }`) nests deeper.

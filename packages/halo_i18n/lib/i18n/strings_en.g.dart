@@ -1517,6 +1517,8 @@ class Translations$qsoList$en {
 
 	/// en: 'Tomorrow'
 	String get tomorrow => 'Tomorrow';
+
+	late final Translations$qsoList$find$en find = Translations$qsoList$find$en.internal(_root);
 }
 
 // Path: loggingPanel
@@ -4144,6 +4146,24 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'Grid Too Short'
 	String get noticeShortGrid => 'Grid Too Short';
+}
+
+// Path: qsoList.find
+class Translations$qsoList$find$en {
+	Translations$qsoList$find$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Find in Log (${shortcut})'
+	String menuItem({required Object shortcut}) => 'Find in Log (${shortcut})';
+
+	/// en: 'QSO number or callsign'
+	String get hint => 'QSO number or callsign';
+
+	/// en: 'No match'
+	String get noMatches => 'No match';
 }
 
 // Path: callInfo.history
@@ -9396,6 +9416,9 @@ extension on Translations {
 			'qsoList.today' => 'Today',
 			'qsoList.yesterday' => 'Yesterday',
 			'qsoList.tomorrow' => 'Tomorrow',
+			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Find in Log (${shortcut})',
+			'qsoList.find.hint' => 'QSO number or callsign',
+			'qsoList.find.noMatches' => 'No match',
 			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
@@ -9440,11 +9463,11 @@ extension on Translations {
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
+			_ => null,
+		} ?? switch (path) {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
-			_ => null,
-		} ?? switch (path) {
 			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
 			'settings.keepDeviceAwake.descriptionOn' => 'Staying awake while you are on the logging view or a sync is in progress',
 			'settings.keepDeviceAwake.descriptionOff' => 'Sleeping as usual',
@@ -9954,11 +9977,11 @@ extension on Translations {
 			'settings.station.sdrIfInverted' => 'IF is inverted',
 			'settings.station.sdrGainDb' => 'Gain (dB)',
 			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
 			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
 			'settings.station.sdrPpm' => 'Frequency correction (ppm)',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.rtlDirectSampling' => 'Direct sampling',
 			'settings.station.rtlDirectSamplingDescription' => 'For HF on an RTL-SDR V3 without an upconverter. An RTL-SDR V4 reaches HF without it.',
 			'settings.station.rtlDirectSamplingOff' => 'Off',
@@ -10468,11 +10491,11 @@ extension on Translations {
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',

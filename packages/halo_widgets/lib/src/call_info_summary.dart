@@ -80,7 +80,12 @@ const infoGrey = Color(0xFF666666);
 
 enum NoticeLevel { alert, notice, info }
 
-typedef _Notice = ({String label, NoticeLevel level});
+/// The scoring key every scorer reports a duplicate contact under.
+const duplicateNoticeKey = 'duplicate';
+
+/// One pill: its label, its colour, and whether a tap on it finds the call
+/// in the log ([CallInfoSummary.onFindCall]).
+typedef _Notice = ({String label, NoticeLevel level, bool findsCall});
 
 /// The pills for [keys], one per key, naming the scorers [sources] lists for
 /// it: "PAQP: Dupe!", "CQWW, PAQP: New Mult". Shared by every pill row, so the
@@ -213,6 +218,12 @@ class CallInfoSummary extends StatelessWidget {
   /// Opens a link tapped inside a note's markdown.
   final void Function(String url)? onOpenLink;
 
+  /// Tapping the duplicate pill or the worked-before pill: both are about
+  /// this station's other contacts, and the host shows them — its log,
+  /// filtered to this exact call. Null leaves every pill part of whatever
+  /// tap target the host wraps the summary in.
+  final VoidCallback? onFindCall;
+
   /// The colour a link inside a note paints in. Defaults to a theme-tuned
   /// blue, which reads on the logging panel's own fill — a host painting on
   /// something else must say so, for the same reason [foregroundColor]
@@ -229,15 +240,17 @@ class CallInfoSummary extends StatelessWidget {
     this.workedBeforeLabel,
     this.onOpenLink,
     this.linkColor,
+    this.onFindCall,
   });
 
   List<_Notice> get _notices {
     final labelOf = noticeLabel ?? (String key) => key;
     final worked = _workedBeforeText;
+    final alertLabels = scorePillLabels(data.alertKeys, data.scoreSources, labelOf);
     return [
-      for (final label in scorePillLabels(data.alertKeys, data.scoreSources, labelOf)) (label: label, level: NoticeLevel.alert),
-      for (final label in scorePillLabels(data.noticeKeys, data.scoreSources, labelOf)) (label: label, level: NoticeLevel.notice),
-      if (worked != null) (label: worked, level: NoticeLevel.info),
+      for (var i = 0; i < alertLabels.length; i++) (label: alertLabels[i], level: NoticeLevel.alert, findsCall: data.alertKeys[i] == duplicateNoticeKey),
+      for (final label in scorePillLabels(data.noticeKeys, data.scoreSources, labelOf)) (label: label, level: NoticeLevel.notice, findsCall: false),
+      if (worked != null) (label: worked, level: NoticeLevel.info, findsCall: true),
     ];
   }
 
@@ -304,13 +317,9 @@ class CallInfoSummary extends StatelessWidget {
   /// a pill naming its scorer ("PAQP: Dupe!") is twice the width of a bare one.
   Widget _buildNoticesAndNote(BuildContext context, ThemeData theme, List<_Notice> notices, ({String text, bool isNote})? nameInfo) {
     final pillsRow = <Widget>[
-      for (var i = 0; i < notices.length; i++) ...[if (i > 0) const SizedBox(width: Space.xs), noticePill(theme, notices[i].label, level: notices[i].level)],
+      for (var i = 0; i < notices.length; i++) ...[if (i > 0) const SizedBox(width: Space.xs), _pill(theme, notices[i])],
     ];
-    final pillsWrap = Wrap(
-      spacing: Space.xs,
-      runSpacing: Space.xxs,
-      children: [for (final notice in notices) noticePill(theme, notice.label, level: notice.level)],
-    );
+    final pillsWrap = Wrap(spacing: Space.xs, runSpacing: Space.xxs, children: [for (final notice in notices) _pill(theme, notice)]);
     final note = nameInfo == null ? null : _buildNoteOrName(context, theme, nameInfo);
 
     if (notices.isEmpty) return note ?? const SizedBox.shrink();
@@ -356,6 +365,18 @@ class CallInfoSummary extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  /// A pill, taking its own tap when it finds the call — ahead of the host's
+  /// tap on the whole summary, which the rest of the pills stay part of.
+  Widget _pill(ThemeData theme, _Notice notice) {
+    final pill = noticePill(theme, notice.label, level: notice.level);
+    final onFindCall = this.onFindCall;
+    if (!notice.findsCall || onFindCall == null) return pill;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(onTap: onFindCall, child: pill),
     );
   }
 

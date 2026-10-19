@@ -3,7 +3,7 @@
 //
 // Keeps a spurious browser focus report from killing the focused field.
 
-import 'dart:async' show unawaited;
+import 'dart:async' show scheduleMicrotask, unawaited;
 import 'dart:ui' show ViewFocusDirection, ViewFocusEvent, ViewFocusState;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -75,6 +75,39 @@ class ViewFocusGuard with WidgetsBindingObserver {
   /// changes the operator caused.
   FocusNode? _recovering;
 
+  /// What Flutter's own handling of the latest report focused: the parked
+  /// root scope, or whatever its answer to a `focused` event picked. Anything
+  /// else holding focus when a restore runs was the app's own request.
+  FocusNode? _reportOutcome;
+
+  /// Reads [_reportOutcome] once every observer has handled the report.
+  /// Flutter's handling runs in the same dispatch as ours, before or after
+  /// it, so only a microtask is sure to see what it did.
+  void _noteReportOutcome() {
+    scheduleMicrotask(() {
+      FocusManager.instance.applyFocusChangesIfNeeded();
+      _reportOutcome = FocusManager.instance.primaryFocus;
+    });
+  }
+
+  /// The node the app focused since the report, or null when focus is still
+  /// where the report, or [node], left it. One of [node]'s own scopes is
+  /// never the app's choice: a field that lets go of focus hands it to its
+  /// enclosing scope, which takes no keystrokes — parked in all but name. A
+  /// scope elsewhere (a dialog's, opened with nothing to autofocus) is.
+  ///
+  /// The report is the only thing the guard undoes. Moving focus from one
+  /// text field to another that has only just been built (FIND opening the
+  /// log's Find bar) can itself blur the browser's input, so the report and
+  /// its echo land in the same frame as the app's request; restoring over it
+  /// hands the caret back to the field the app moved away from.
+  FocusNode? _focusedSinceReport(FocusNode node) {
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    final now = FocusManager.instance.primaryFocus;
+    if (now == null || identical(now, node) || identical(now, _reportOutcome) || (now is FocusScopeNode && node.ancestors.contains(now))) return null;
+    return _isLive(now) ? now : null;
+  }
+
   void _remember() {
     final node = FocusManager.instance.primaryFocus;
     if (node == null || identical(node, FocusManager.instance.rootScope)) return;
@@ -106,6 +139,7 @@ class ViewFocusGuard with WidgetsBindingObserver {
         }
         final node = _lastFocused!;
         _recovering = node;
+        _noteReportOutcome();
         _afterThisFrame(() {
           if (!_isLive(node)) {
             // Nothing left to restore — but the view is still DOM-unfocused,
@@ -113,6 +147,12 @@ class ViewFocusGuard with WidgetsBindingObserver {
             // the framework put focus somewhere rather than leaving it parked.
             _recovering = null;
             _requestViewFocus(event.viewId);
+            return;
+          }
+          if (_focusedSinceReport(node) case final moved?) {
+            // The echo, when it has yet to come, re-asserts the app's choice
+            // over Flutter's answer to it instead.
+            if (identical(_recovering, node)) _recovering = moved;
             return;
           }
           // Focusing the node is the whole request. The browser's focus comes
@@ -133,6 +173,7 @@ class ViewFocusGuard with WidgetsBindingObserver {
         // A view focus the operator caused — coming back to the tab, or a
         // click. Flutter's own handling of it is correct; leave it alone.
         if (node == null) return;
+        _noteReportOutcome();
         // The view regaining focus is NOT the end of the recovery, it is the
         // last thing that can wreck it. Flutter answers a `focused` event by
         // running `findFirstFocus(scope, ignoreCurrentFocus: true)` and
@@ -142,7 +183,7 @@ class ViewFocusGuard with WidgetsBindingObserver {
         // one this class exists for. So the remembered node is asserted again,
         // after that has run.
         _afterThisFrame(() {
-          if (!_isLive(node)) return;
+          if (!_isLive(node) || _focusedSinceReport(node) != null) return;
           node.requestFocus();
           _warnIfFocusRefused(node);
           // Re-focuses the editing element the engine feeds `EditableText`

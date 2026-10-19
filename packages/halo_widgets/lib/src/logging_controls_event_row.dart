@@ -49,7 +49,10 @@ class EventFieldRow extends StatelessWidget {
   /// carries, read-only.
   final Qso editingQso;
 
-  /// NOTE/TODO's inline editor.
+  /// NOTE/TODO's inline editor. The node is the row's for every kind: a kind
+  /// with nothing to type holds it on its read-only value, so the keyboard
+  /// still has somewhere to rest — and walk the log from — while one is
+  /// loaded.
   final TextEditingController textController;
   final FocusNode textFocus;
 
@@ -98,11 +101,14 @@ class EventFieldRow extends StatelessWidget {
         onSubmitted: (_) => onSubmitted(),
       );
     } else {
-      trailing = _chromelessValueField(
-        context,
-        keySuffix: kind ?? 'event',
-        value: (kind == 'solar' || kind == 'weather') ? (event?['description'] as String?) ?? '' : '',
-        style: textStyle,
+      trailing = Focus(
+        focusNode: textFocus,
+        child: _chromelessValueField(
+          context,
+          keySuffix: kind ?? 'event',
+          value: (kind == 'solar' || kind == 'weather') ? (event?['description'] as String?) ?? '' : '',
+          style: textStyle,
+        ),
       );
     }
 

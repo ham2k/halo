@@ -290,6 +290,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       eventTextFocus: _eventTextFocus,
       callFocus: _callFocus,
       navigateToQsoList: widget.session.onNavigateToQsoList,
+      walkQsoList: widget.session.onWalkQsoList,
       aboveLog: widget.prefs.aboveLog,
     ),
     selectControl: _onSelectControl,
@@ -728,6 +729,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     for (final node in [_callFocus, _sentFocus, _rcvdFocus, _stateFocus, _gridFocus]) {
       node.onKeyEvent = _ladder.onPrimaryFieldKeyEvent;
     }
+    _eventTextFocus.onKeyEvent = _ladder.onEventTextKeyEvent;
     _spotting.refreshSources();
     // Constructed already editing a QSO (rather than transitioning into it via
     // didUpdateWidget): score it so its pills show, and enqueue it for a
@@ -745,16 +747,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     // Wire the imperative handle (used by the app's dev bridge) so the call
     // field / Log / Wipe can be driven from outside the widget.
-    widget.session.controller?.attach(
-      setField: _devSetField,
-      submit: _log,
-      wipe: _wipe,
-      isFieldsLocked: () => _fieldsLocked,
-      handleChord: _handleChord,
-      focusCall: _callFocus.requestFocus,
-      focusSecondaryControls: _ladder.focusPillAndOpen,
-      focusLastPrimaryField: _ladder.focusLastPrimaryField,
-    );
+    _attachController(widget.session.controller);
     // Settles the serial previews' baseline: an idle panel shows no number
     // (docs/design/contests.md §5.8.1), but a panel constructed mid-contact —
     // a rebuild with the call already typed — takes its number now.
@@ -924,19 +917,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
+  void _attachController(LoggingControlsController? controller) => controller?.attach(
+    setField: _devSetField,
+    submit: _log,
+    wipe: _wipe,
+    isFieldsLocked: () => _fieldsLocked,
+    handleChord: _handleChord,
+    focusCall: _callFocus.requestFocus,
+    focusSecondaryControls: _ladder.focusPillAndOpen,
+    focusLastPrimaryField: _ladder.focusLastPrimaryField,
+  );
+
   void _syncController(LoggingControls oldWidget) {
     if (oldWidget.session.controller != widget.session.controller) {
       oldWidget.session.controller?.detach();
-      widget.session.controller?.attach(
-        setField: _devSetField,
-        submit: _log,
-        wipe: _wipe,
-        isFieldsLocked: () => _fieldsLocked,
-        handleChord: _handleChord,
-        focusCall: _callFocus.requestFocus,
-        focusSecondaryControls: _ladder.focusPillAndOpen,
-        focusLastPrimaryField: _ladder.focusLastPrimaryField,
-      );
+      _attachController(widget.session.controller);
     }
   }
 
@@ -2289,6 +2284,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.commands.onCommandAction?.call('showKeyer', null);
       } else if (map['setEnterSends'] is Map) {
         await widget.commands.onCommandAction?.call('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
+      } else if (map['findInLog'] is Map) {
+        // The host's Find bar over its own list — nothing of this widget's.
+        await widget.commands.onCommandAction?.call('findInLog', (map['findInLog'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)
@@ -3723,6 +3721,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       noticeLabel: widget.lookups.scoreNoticeLabel,
       workedBeforeLabel: widget.lookups.workedBeforeLabel,
       onCallInfoTap: widget.lookups.onCallInfoTap,
+      onFindCall: widget.lookups.onFindCall,
       onOperationInfoTap: widget.lookups.onOperationInfoTap,
       onOpenLink: widget.lookups.onOpenLink,
     );

@@ -21,5 +21,8 @@
   "catalogStop": "Mark the end of the operation (also END)",
   "catalogRoverQth": "Rover on the move: add a break and set a new location",
   "catalogOperator": "Set who is at the key for this operation",
-  "catalogPosition": "Set this device's operating position (0 for none)"
+  "catalogPosition": "Set this device's operating position (0 for none)",
+  "find": "Find **{{query}}** in the log?",
+  "findOpen": "Open Find in the log?",
+  "catalogFind": "Find a QSO in the log by number or callsign (also SEARCH, JUMP, GOTO)"
 }

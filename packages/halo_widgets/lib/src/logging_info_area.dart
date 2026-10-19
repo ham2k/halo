@@ -38,6 +38,7 @@ class LoggingInfoArea extends StatelessWidget {
     required this.noticeLabel,
     required this.workedBeforeLabel,
     required this.onCallInfoTap,
+    this.onFindCall,
     required this.onOperationInfoTap,
     required this.onOpenLink,
   });
@@ -96,6 +97,10 @@ class LoggingInfoArea extends StatelessWidget {
   /// as a distinction.
   final VoidCallback? onCallInfoTap;
   final VoidCallback? onOperationInfoTap;
+
+  /// The duplicate and worked-before pills' own tap — see
+  /// `LookupHooks.onFindCall`.
+  final void Function(String call)? onFindCall;
   final void Function(String url)? onOpenLink;
 
   @override
@@ -148,6 +153,7 @@ class LoggingInfoArea extends StatelessWidget {
         locationLine: locationLine,
         noticeLabel: noticeLabel,
         workedBeforeLabel: workedBeforeLabel,
+        onFindCall: onFindCall == null ? null : () => onFindCall!(callInfo.call),
         // The panel's own tertiaryContainer fill, and the accent the main
         // buttons use (tertiary, or secondary while editing).
         foregroundColor: theme.colorScheme.onTertiaryContainer,

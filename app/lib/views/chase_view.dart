@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyEvent;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -32,12 +33,14 @@ import 'home_navigation_rail.dart';
 import 'chase_import_flow.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
+import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_location_pin.dart';
 import 'operation/operation_location_screen.dart';
 import 'operation/operation_runtime_state.dart';
 import 'operation/spots_panel.dart';
+import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation_dialogs.dart' show editTwoFieldDialog;
 import 'operation_view.dart' show zeroBeatSuggestionFor;
 import 'sheet_header_dots.dart';
@@ -461,6 +464,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     _spotBoardView = widget.services.spotBoard.subscribe();
     WallClock.seconds.addListener(_onTick);
     frontSettingsOverrides.set(this, _loggingSettings);
+    HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
   }
 
   void _hidden() {
@@ -468,6 +472,29 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
     _spotBoardView = null;
     WallClock.seconds.removeListener(_onTick);
     frontSettingsOverrides.clear(this);
+    HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
+  }
+
+  /// Bumped to open the logging panel's Find bar — [LoggingPanel.findRequest].
+  int _findRequest = 0;
+
+  /// Opens Find over the log, bringing the logging pane forward first when
+  /// another tab holds its place.
+  void _openFind() {
+    dockKey.currentState?.revealModule(ChaseView.loggingPanelId);
+    setState(() => _findRequest++);
+  }
+
+  /// ⌘F/Ctrl+F while this view is on screen ([_shown] to [_hidden]), its
+  /// route is the front-most one — a dialog over it owns the keyboard — and
+  /// its layout has a logging pane to find in. Without one the chord is left
+  /// to the platform: on web, the browser's own Find.
+  bool _onFindKeyEvent(KeyEvent event) {
+    if (!isFindChord(event) || testerOverlayCovering.value) return false;
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    if (!(dockKey.currentState?.modules.contains(ChaseView.loggingPanelId) ?? true)) return false;
+    _openFind();
+    return true;
   }
 
   /// The period ends at a UTC midnight that no write announces: "today"
@@ -606,6 +633,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
       controlsAboveLog: true,
       scope: LoggingScope.chase,
       focusRequest: _focusRequest,
+      findRequest: _findRequest,
       showRSTFields: _loggingDisplay('showRSTFields'),
       showStateField: _loggingDisplay('showStateField'),
       showGridField: _loggingDisplay('showGridField'),
@@ -705,6 +733,17 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                     target: 'logging',
                     title: context.t.operation.menu.loggingSettingsTitle,
                     groupOverrides: _loggingSettings,
+                    // ⌘F's twin, for a device with no keyboard to press it on.
+                    actions: [
+                      (
+                        icon: 'magnify',
+                        label: context.t.qsoList.find.menuItem(shortcut: findChordLabel),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _openFind();
+                        },
+                      ),
+                    ],
                   ),
                   ChaseView.mapPanelId: (context) => buildTargetSettingsButton(context, target: 'map', title: context.t.operation.menu.mapSettingsTitle),
                 },

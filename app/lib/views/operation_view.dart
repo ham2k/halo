@@ -35,6 +35,7 @@ import 'operation/call_info_panel.dart';
 import 'operation/cw_function_keys.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
+import 'operation/log_find_bar.dart';
 import 'operation/logging_panel.dart';
 import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
@@ -417,6 +418,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // [_onCallEdited]), and closing it lets go.
     _wakeHold.touch();
     HardwareKeyboard.instance.addHandler(_onWakeKeyEvent);
+    // ⌘F/Ctrl+F from wherever focus is — see [_onFindKeyEvent].
+    HardwareKeyboard.instance.addHandler(_onFindKeyEvent);
     // Keeps spots flowing, judged against this operation and its log (shown
     // to the board below, mounted Spots Panel or not), while it is open: the
     // `spot-history` lookup reads that cache from the logging panel alone, and
@@ -553,6 +556,29 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// only its hold, not the one this view is still working under.
   late final WakeHold _wakeHold = widget.services.wakeLock.hold(WakeReason.logging);
 
+  /// Bumped to open the logging panel's Find bar — [LoggingPanel.findRequest].
+  int _findRequest = 0;
+
+  /// Opens Find over the log, bringing the logging pane forward first when
+  /// another tab holds its place.
+  @override
+  void _openFind() {
+    _revealLoggingPanel();
+    setState(() => _findRequest++);
+  }
+
+  /// ⌘F/Ctrl+F, while this operation is the front-most route — a dialog over
+  /// it owns the keyboard — and its layout has a logging pane to find in.
+  /// Without one the chord is left to the platform: on web, the browser's
+  /// own Find.
+  bool _onFindKeyEvent(KeyEvent event) {
+    if (!isFindChord(event) || testerOverlayCovering.value) return false;
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    if (!(dockKey.currentState?.modules.contains('logging') ?? true)) return false;
+    _openFind();
+    return true;
+  }
+
   /// Typing counts as activity on the logging view — but only while this
   /// view is the front-most route. A dialog over it, or Settings pushed on
   /// top, owns the keyboard, and keys typed there are not logging. Never
@@ -602,6 +628,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
     widget.services.cat.pttKeys.removeTarget(_pttTarget);
     HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
+    HardwareKeyboard.instance.removeHandler(_onFindKeyEvent);
     _wakeHold.release();
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);
@@ -833,6 +860,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 showStateField: _showStateField,
                 showGridField: _showGridField,
                 showQsoNumbers: _showQsoNumbers,
+                findRequest: _findRequest,
                 defaultReport: _defaultReport,
                 defaultReportCW: _defaultReportCW,
                 defaultReportFT8: _defaultReportFT8,

@@ -10,7 +10,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { parseOperatorCommand, parsePositionCommand, parseSegmentCommand, positionValueFor } from "./operationCommandParsing.ts"
+import { parseFindCommand, parseOperatorCommand, parsePositionCommand, parseSegmentCommand, positionValueFor } from "./operationCommandParsing.ts"
 
 test("parseOperatorCommand: OPER and the longer OPERATOR both take a callsign", () => {
   assert.deepEqual(parseOperatorCommand("OPER KI2D"), { call: "KI2D" })
@@ -89,4 +89,22 @@ test("positionValueFor: 0 means no position, which is how a typed command undoes
   assert.equal(positionValueFor("2"), "2")
   // Leading zeros normalize, so "/OP02" can't reach the air.
   assert.equal(positionValueFor("02"), "2")
+})
+
+test("parseFindCommand: FIND and its aliases carry what follows to the Find bar", () => {
+  assert.deepEqual(parseFindCommand("FIND KN"), { query: "KN" })
+  assert.deepEqual(parseFindCommand("SEARCH k1ab."), { query: "K1AB." })
+  assert.deepEqual(parseFindCommand("JUMP 42"), { query: "42" })
+  assert.deepEqual(parseFindCommand("GOTO/42"), { query: "42" })
+})
+
+test("parseFindCommand: the bare word opens the bar with nothing in it", () => {
+  // Not null: null would let Enter log "FIND" as a contact.
+  assert.deepEqual(parseFindCommand("FIND"), { query: "" })
+  assert.deepEqual(parseFindCommand("goto "), { query: "" })
+})
+
+test("parseFindCommand: a callsign that starts with the word is still a callsign", () => {
+  assert.equal(parseFindCommand("FINDX"), null)
+  assert.equal(parseFindCommand("GOTOK1"), null)
 })

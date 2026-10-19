@@ -12,6 +12,7 @@
 const OPERATOR_MATCH = /^(OPER|OPERATOR)(?:[ /](.*))?$/i
 const POSITION_MATCH = /^POSITION(?:[ /](.*))?$/i
 const SEGMENT_MATCH = /^(START|BREAK|STOP|END|ROVERQTH)$/i
+const FIND_MATCH = /^(FIND|SEARCH|JUMP|GOTO)(?:[ /](.*))?$/i
 
 export type SegmentKind = "start" | "break" | "stop"
 
@@ -26,6 +27,16 @@ export function parseSegmentCommand(input: string): { kind: SegmentKind; setLoca
   if (word === "ROVERQTH") return { kind: "break", setLocation: true }
   if (word === "END") return { kind: "stop", setLocation: false }
   return { kind: word.toLowerCase() as SegmentKind, setLocation: false }
+}
+
+/// What FIND (or SEARCH, JUMP, GOTO) asks the Find bar for: whatever follows
+/// the word, trimmed — empty for the bare word, which opens the bar as it is.
+/// `null` for input that isn't one of them; the whole word, so a callsign
+/// that happens to start with one still logs normally.
+export function parseFindCommand(input: string): { query: string } | null {
+  const match = FIND_MATCH.exec(input.trim())
+  if (!match) return null
+  return { query: (match[2] ?? "").trim().toUpperCase() }
 }
 
 /// `null` when the input is not an OPER command at all; `{ call: '' }` when
