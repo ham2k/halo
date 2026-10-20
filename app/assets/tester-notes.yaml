@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"181":
   changes:
     - "New Show Callsigns map setting: each contact a pill with its call"
     - "New manual time entry: set a time, it stays and steps per QSO"
