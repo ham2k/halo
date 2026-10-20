@@ -238,6 +238,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloRefit = handle.refit;
     window.poloZoomIn = handle.zoomIn;
     window.poloZoomOut = handle.zoomOut;
+    window.poloResetNorth = handle.resetNorth;
     window.poloCamera = handle.camera;
     window.poloSnapshot = handle.snapshot;
     window.poloSetDark = handle.setDark;
@@ -294,6 +295,17 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
         widget.onMapTap?.call(GridLocation(latitude, longitude));
       } else {
         MapErrorReporter.report(backend: 'webview', kind: 'map-click-malformed', message: message);
+      }
+      return;
+    }
+    if (kind == 'orientation') {
+      if ([for (final part in message.split(',')) double.tryParse(part)] case [final bearing?, final pitch?]) {
+        // Not after teardown: the controller belongs to the backend that
+        // replaced this one, and a turn still in flight would raise the
+        // compass over its north-up map.
+        if (mounted) widget.zoomController?.reportOrientation(MapOrientation(bearing: bearing, pitch: pitch));
+      } else {
+        MapErrorReporter.report(backend: 'webview', kind: 'orientation-malformed', message: message);
       }
       return;
     }
@@ -361,7 +373,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       ..onFitTo = _fitTo
       ..onRefit = _refit
       ..onCamera = _camera
-      ..onSnapshot = _snapshot;
+      ..onSnapshot = _snapshot
+      ..onResetNorth = _resetNorth
+      ..resetOrientation();
   }
 
   /// Both halves of "is this map being painted", ANDed the way every other
@@ -412,6 +426,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     if (controller?.onRefit == _refit) controller?.onRefit = null;
     if (controller?.onCamera == _camera) controller?.onCamera = null;
     if (controller?.onSnapshot == _snapshot) controller?.onSnapshot = null;
+    if (controller?.onResetNorth == _resetNorth) controller?.onResetNorth = null;
     WidgetsBinding.instance.removeObserver(this);
     _offlineChanges?.cancel();
     _readyWatchdog.dispose();
@@ -458,6 +473,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
 
   void _zoomIn() => _controller?.evaluateJavascript(source: 'window.poloZoomIn();');
   void _zoomOut() => _controller?.evaluateJavascript(source: 'window.poloZoomOut();');
+  void _resetNorth() => _controller?.evaluateJavascript(source: 'window.poloResetNorth();');
 
   @override
   void didUpdateWidget(MapboxWebviewMapView oldWidget) {

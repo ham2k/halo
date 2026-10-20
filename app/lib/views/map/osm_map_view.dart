@@ -137,7 +137,8 @@ class _OsmMapViewState extends State<OsmMapView> {
       ..onMoveTo = _moveTo
       ..onFitTo = _fitTo
       ..onRefit = _fitCamera
-      ..onCamera = _camera;
+      ..onCamera = _camera
+      ..onResetNorth = _resetNorth;
     if (widget.frame != null) widget.zoomController?.onSettled = _settled;
   }
 
@@ -196,6 +197,7 @@ class _OsmMapViewState extends State<OsmMapView> {
 
   void _zoomIn() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom + 1);
   void _zoomOut() => _mapController.move(_mapController.camera.center, _mapController.camera.zoom - 1);
+  void _resetNorth() => _mapController.rotate(0);
 
   @override
   void didUpdateWidget(OsmMapView oldWidget) {
@@ -255,6 +257,7 @@ class _OsmMapViewState extends State<OsmMapView> {
     if (controller?.onFitTo == _fitTo) controller?.onFitTo = null;
     if (controller?.onRefit == _fitCamera) controller?.onRefit = null;
     if (controller?.onCamera == _camera) controller?.onCamera = null;
+    if (controller?.onResetNorth == _resetNorth) controller?.onResetNorth = null;
     if (controller?.onSettled == _settled) controller?.onSettled = null;
     _replayFit?.cancel();
     _offlineChanges?.cancel();
@@ -311,6 +314,9 @@ class _OsmMapViewState extends State<OsmMapView> {
                 setState(() => _selectedMarkerId = null);
                 if (widget.onMarkerTap != null) widget.onMapTap?.call(GridLocation(point.latitude, point.longitude));
               },
+              // Every event, not just onPositionChanged's: a turn on its own
+              // is not a change of position to flutter_map. It has no tilt.
+              onMapEvent: (event) => widget.zoomController?.reportOrientation(MapOrientation(bearing: -event.camera.rotation)),
               onPositionChanged: (camera, _) => widget.onCameraChanged?.call((
                 camera: MapCameraPosition(
                   latitude: camera.center.latitude,

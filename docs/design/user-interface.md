@@ -207,7 +207,10 @@ operation, which opens on its Activities pane for the operator to check.
   hands it back to its first field — the search, its text selected and the
   list open again.
 - **The buttons down the right edge**: zoom, the activities, the layers, and
-  back to where the operator is. The activities button wears the icon of the
+  back to where the operator is. Under zoom, while the map is turned or
+  tilted, a compass whose needle points north; a tap sets the map north-up
+  and flat again. The Map tab shows the same compass under its top-right
+  buttons. The activities button wears the icon of the
   highest-priority activity still shown, and lists, with a box each, the
   activities that have put references on this map — one that never has (a
   contest) earns no row. Hiding one takes its references off the map and out

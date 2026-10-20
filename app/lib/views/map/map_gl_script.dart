@@ -11,7 +11,7 @@
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks, frame)` returning a handle with `setMarkersJson`,
 // `setLinesJson`, `setShapesJson`, `setOverlaysJson`, `setGraylineJson`, `setCreditLabelsJson`, `patchMarkersJson`, `patchLinesJson`,
-// `setProjection`, `moveTo`, `fitToJson`, `refit`, `camera`, `snapshot`, `reload`/`cancelReload`
+// `setProjection`, `moveTo`, `fitToJson`, `refit`, `resetNorth`, `camera`, `snapshot`, `reload`/`cancelReload`
 // (the host's word that the app is back online, or offline again), and
 // `remove`. Data crosses as JSON strings —
 // both callers already have the payload serialized, and strings keep the
@@ -56,6 +56,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../../services/settings_service.dart' show MapStyle;
+import 'map_gl_camera_script.dart';
 import 'map_gl_overlays_script.dart';
 import 'map_gl_pill_script.dart';
 import 'map_gl_spread_script.dart';
@@ -1243,20 +1244,7 @@ $mapGlSpreadScript
       setCredit('polo-shapes', data.credit);
     }
 
-    // Where the camera came to rest, for a host that fetches more as the map
-    // closes in or moves on (the Activities map's outlines and the references
-    // around its centre). 'moveend' covers a fit, a flyTo and a drag alike;
-    // 'load' covers a map that never moves.
-    function reportCamera() {
-      const center = map.getCenter();
-      const bounds = map.getBounds();
-      report('camera', JSON.stringify({
-        latitude: center.lat, longitude: center.lng, zoom: map.getZoom(),
-        south: bounds.getSouth(), west: bounds.getWest(), north: bounds.getNorth(), east: bounds.getEast(),
-      }));
-    }
-    map.on('load', reportCamera);
-    map.on('moveend', reportCamera);
+$mapGlCameraScript
 
     map.on('click', function (e) {
       // Topmost first, so where the current QSO overlaps another station the
@@ -1450,6 +1438,7 @@ $mapGlSpreadScript
         if (lastBaseBounds) map.fitBounds(lastBaseBounds, { padding: 48, maxZoom: FIT_MAX_ZOOM, duration: 500 });
       },
       zoomOut: function () { map.zoomOut(); },
+      resetNorth: function () { map.resetNorthPitch({ duration: 500 }); },
       // Where the map is looking and through how big a window, for a
       // MapFrame to hold.
       camera: function () {
@@ -1481,6 +1470,7 @@ $mapGlSpreadScript
         styleSwapId++;
         styleSwapInFlight = false;
         cancelAnimationFrame(spreadFrame);
+        cancelAnimationFrame(orientationFrame);
         clearTimeout(styleSwapTimer);
         pendingMarkers = null;
         pendingLines = null;

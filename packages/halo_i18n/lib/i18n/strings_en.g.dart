@@ -893,6 +893,9 @@ class Translations$map$en {
 	/// en: 'Zoom out'
 	String get zoomOut => 'Zoom out';
 
+	/// en: 'Reset to north up'
+	String get resetNorth => 'Reset to north up';
+
 	late final Translations$map$postcard$en postcard = Translations$map$postcard$en.internal(_root);
 }
 
@@ -9155,6 +9158,7 @@ extension on Translations {
 			'map.globe' => 'Globe',
 			'map.zoomIn' => 'Zoom in',
 			'map.zoomOut' => 'Zoom out',
+			'map.resetNorth' => 'Reset to north up',
 			'map.postcard.button' => 'Operation Postcard',
 			'map.postcard.title' => ({required Object title}) => 'Postcard for ${title}',
 			'map.postcard.portrait' => 'Portrait',
@@ -9462,9 +9466,9 @@ extension on Translations {
 			'settings.fontScaleOpts.smallest' => 'Smallest',
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
-			'settings.fontScaleOpts.larger' => 'Larger',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
@@ -9976,9 +9980,9 @@ extension on Translations {
 			'settings.station.sdrIfHzDescription' => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.',
 			'settings.station.sdrIfInverted' => 'IF is inverted',
 			'settings.station.sdrGainDb' => 'Gain (dB)',
-			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
 			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
 			'settings.station.sdrPpm' => 'Frequency correction (ppm)',
@@ -10490,9 +10494,9 @@ extension on Translations {
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.locating' => 'Locating…',
-			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',

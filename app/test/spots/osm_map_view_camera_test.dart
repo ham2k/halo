@@ -98,6 +98,41 @@ void main() {
       expect(controller.onMoveTo, isNull);
       expect(controller.onZoomIn, isNull);
       expect(controller.onCamera, isNull);
+      expect(controller.onResetNorth, isNull);
+    });
+  });
+
+  group('the compass', () {
+    MapController mapOf(WidgetTester tester) => MapController.of(tester.element(find.byType(PolylineLayer).first));
+
+    testWidgets('a turn of the map is a turn of the compass, and resetNorth turns it back', (tester) async {
+      await tester.runAsync(() async {
+        final controller = MapZoomController();
+        await tester.pumpWidget(host([_marker('a', 40, -74)], controller));
+        await tester.pump();
+        expect(controller.turned.value, isFalse);
+
+        // flutter_map turns the map clockwise, which puts west at the top: a
+        // sign slip would point the needle the wrong way round.
+        mapOf(tester).rotate(90);
+        await tester.pump();
+        expect(controller.turned.value, isTrue);
+        expect(controller.orientation.value.bearing, -90);
+
+        controller.resetNorth();
+        await tester.pump();
+        expect(mapOf(tester).camera.rotation, 0);
+        expect(controller.turned.value, isFalse, reason: 'the compass would stay up over a map already facing north');
+      });
+    });
+
+    testWidgets('a map coming up says it faces north, whatever the one before it was left facing', (tester) async {
+      await tester.runAsync(() async {
+        final controller = MapZoomController()..reportOrientation(const MapOrientation(bearing: 45, pitch: 30));
+        await tester.pumpWidget(host([_marker('a', 40, -74)], controller));
+        await tester.pump();
+        expect(controller.turned.value, isFalse, reason: 'a stale compass would stay up over a map facing north');
+      });
     });
   });
 }

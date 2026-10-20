@@ -487,6 +487,25 @@ void main() {
   // Flutter web injects the script once per Dart lifetime, and a hot restart
   // starts a new one on the same page: kept, the first copy would pair the
   // new Dart with a script missing every call added since it loaded.
+  group('the compass', () {
+    test('a turn reports where it ended, at most once a frame', () {
+      page = GlPage(framed: false);
+      // A twist that tilts as it turns fires a burst of both, faster than
+      // frames: each one carried over the bridge would flood it.
+      page.run("fakeMap.options.bearing = 10; fakeMap.fire('rotate'); fakeMap.options.bearing = 20; fakeMap.fire('rotate');");
+      page.run("fakeMap.options.pitch = 30; fakeMap.fire('pitch');");
+      expect(page.takeEvents('orientation'), isEmpty);
+      page.run('advance(16)');
+      expect(page.takeEvents('orientation'), ['20,30']);
+    });
+
+    test('a reset levels the map as well as turning it north', () {
+      page = GlPage(framed: false);
+      page.run('handle.resetNorth()');
+      expect(page.takeCalls(), contains('resetNorthPitch'), reason: "MapLibre's resetNorth alone leaves the map tilted");
+    });
+  });
+
   test('injecting the script again replaces the copy already on the page', () {
     page = GlPage(framed: false);
     page.run('window.poloMapGl = { create: function () { return {}; } };');

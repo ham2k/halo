@@ -431,14 +431,17 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     return Stack(
       children: [
         Positioned.fill(child: map),
-        if (hasGlobe || widget.offersPostcard)
-          Positioned(
-            // Clears the device's real top/right insets (notch, camera
-            // cutout) so the toggle isn't drawn under them — the map tiles
-            // themselves stay edge-to-edge.
-            top: 8 + PaneSafeArea.topOf(context),
-            right: 8 + PaneSafeArea.rightOf(context),
-            child: Column(
+        Positioned(
+          // Clears the device's real top/right insets (notch, camera
+          // cutout) so the toggle isn't drawn under them — the map tiles
+          // themselves stay edge-to-edge.
+          top: 8 + PaneSafeArea.topOf(context),
+          right: 8 + PaneSafeArea.rightOf(context),
+          // Rebuilt only as the compass comes and goes, not on every frame of
+          // a turn: the needle follows the turn by itself.
+          child: ValueListenableBuilder(
+            valueListenable: _zoomController.turned,
+            builder: (context, turned, _) => Column(
               mainAxisSize: MainAxisSize.min,
               spacing: Space.md,
               children: [
@@ -453,9 +456,11 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
                     semanticLabel: context.t.map.postcard.button,
                     onPressed: () => _openPostcard(backend: backend, shapes: shapes, appIsDark: theme.brightness == Brightness.dark),
                   ),
+                if (turned) MapCompassButton(controller: _zoomController),
               ],
             ),
           ),
+        ),
         Positioned(
           right: MapInfoBox.right + PaneSafeArea.rightOf(context),
           bottom: MapInfoBox.bottom + PaneSafeArea.bottomOf(context),

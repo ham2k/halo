@@ -419,33 +419,39 @@ class _MapsViewState extends State<MapsView> {
                   hintsWhenEmpty: false,
                 ),
               ),
-              // Down the right edge: zoom, the activities and layers, then back
-              // to where the operator is.
+              // Down the right edge: zoom and the compass, the activities and
+              // layers, then back to where the operator is.
               Positioned(
                 top: Space.md,
                 right: Space.md,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: Space.md,
-                  children: [
-                    MapZoomButtons(controller: _camera),
-                    if (leadActivity != null)
+                // Rebuilt only as the compass comes and goes, not on every
+                // frame of a turn: the needle follows the turn by itself.
+                child: ValueListenableBuilder(
+                  valueListenable: _camera.turned,
+                  builder: (context, turned, _) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: Space.md,
+                    children: [
+                      MapZoomButtons(controller: _camera),
+                      if (turned) MapCompassButton(controller: _camera),
+                      if (leadActivity != null)
+                        MapRoundButton(
+                          icon: resolveIconName(leadActivity.control['icon'] as String?),
+                          semanticLabel: t.activities,
+                          onPressed: () => _toggle(_Panel.activities),
+                        ),
                       MapRoundButton(
-                        icon: resolveIconName(leadActivity.control['icon'] as String?),
-                        semanticLabel: t.activities,
-                        onPressed: () => _toggle(_Panel.activities),
+                        icon: _panel == _Panel.layers ? MdiIcons.layers : MdiIcons.layersOutline,
+                        semanticLabel: t.layers,
+                        onPressed: () => _toggle(_Panel.layers),
                       ),
-                    MapRoundButton(
-                      icon: _panel == _Panel.layers ? MdiIcons.layers : MdiIcons.layersOutline,
-                      semanticLabel: t.layers,
-                      onPressed: () => _toggle(_Panel.layers),
-                    ),
-                    MapRoundButton(
-                      icon: MdiIcons.crosshairsGps,
-                      semanticLabel: t.currentLocation,
-                      onPressed: here == null ? null : () => _camera.moveTo(here.latitude, here.longitude),
-                    ),
-                  ],
+                      MapRoundButton(
+                        icon: MdiIcons.crosshairsGps,
+                        semanticLabel: t.currentLocation,
+                        onPressed: here == null ? null : () => _camera.moveTo(here.latitude, here.longitude),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               // Beside the buttons rather than over them.

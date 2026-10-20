@@ -17,6 +17,8 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Size;
 
+import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier, immutable;
+import 'package:flutter/scheduler.dart' show SchedulerBinding;
 import 'package:halo_core/halo_core.dart' show GridLocation;
 
 class MapZoomController {
@@ -45,8 +47,38 @@ class MapZoomController {
   /// that takes too long.
   Future<void> Function()? onSettled;
 
+  /// Set by every backend — see [resetNorth].
+  void Function()? onResetNorth;
+
   void zoomIn() => onZoomIn?.call();
   void zoomOut() => onZoomOut?.call();
+
+  /// Turns the live map back to north-up and flat.
+  void resetNorth() => onResetNorth?.call();
+
+  /// Which way the live map faces, kept current by its backend while the
+  /// operator turns or tilts it — what the compass button draws.
+  ValueListenable<MapOrientation> get orientation => _orientation;
+  final _orientation = ValueNotifier(MapOrientation.northUp);
+
+  /// Whether the live map is turned or tilted at all: what the compass
+  /// button shows for. Apart from [orientation] so that the buttons around
+  /// the compass rebuild only when it comes or goes, not on every frame of a
+  /// turn.
+  ValueListenable<bool> get turned => _turned;
+  final _turned = ValueNotifier(false);
+
+  /// For a backend: the live map now faces [value].
+  void reportOrientation(MapOrientation value) {
+    _orientation.value = value;
+    _turned.value = !value.isNorthUp;
+  }
+
+  /// For a backend coming up: the map it brings up faces north, whatever the
+  /// one before it was left facing. Once the frame is built — the buttons
+  /// listening are built above the backend, which calls this from its
+  /// initState, and marking them to rebuild then is an error.
+  void resetOrientation() => SchedulerBinding.instance.addPostFrameCallback((_) => reportOrientation(MapOrientation.northUp));
 
   /// Where the live map is looking and how much of it shows, or null while
   /// no backend is live — or while a GL backend's page has not yet answered
@@ -104,6 +136,32 @@ class MapZoomController {
   /// A flutter_map zoom on the GL backends' scale: its 256-pixel tiles show
   /// the same view one level higher than GL's 512-pixel ones.
   static double glZoomOf({required double osmZoom}) => osmZoom - 1;
+}
+
+/// Which way a map faces: the compass direction at its top ([bearing],
+/// degrees clockwise from north) and how far it leans back from looking
+/// straight down ([pitch], degrees).
+@immutable
+class MapOrientation {
+  final double bearing;
+  final double pitch;
+
+  const MapOrientation({this.bearing = 0, this.pitch = 0});
+
+  static const northUp = MapOrientation();
+
+  /// Within a hair of north-up and flat. Any whole turn counts: flutter_map
+  /// keeps the turns an operator winds on rather than wrapping them.
+  bool get isNorthUp {
+    final turn = bearing % 360;
+    return pitch.abs() < 0.05 && (turn < 0.05 || turn > 359.95);
+  }
+
+  @override
+  bool operator ==(Object other) => other is MapOrientation && other.bearing == bearing && other.pitch == pitch;
+
+  @override
+  int get hashCode => Object.hash(bearing, pitch);
 }
 
 /// The box a map shows, in degrees, longitudes wrapped into ±180 — so [west]

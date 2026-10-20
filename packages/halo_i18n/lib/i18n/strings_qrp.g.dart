@@ -431,6 +431,7 @@ class _Translations$map$qrp extends Translations$map$en {
 	@override String get globe => 'globe';
 	@override String get zoomIn => 'zoom in';
 	@override String get zoomOut => 'zoom out';
+	@override String get resetNorth => 'reset to north up';
 	@override late final _Translations$map$postcard$qrp postcard = _Translations$map$postcard$qrp._(_root);
 }
 
@@ -4667,6 +4668,7 @@ extension on TranslationsQrp {
 			'map.globe' => 'globe',
 			'map.zoomIn' => 'zoom in',
 			'map.zoomOut' => 'zoom out',
+			'map.resetNorth' => 'reset to north up',
 			'map.postcard.button' => 'operation postcard',
 			'map.postcard.title' => ({required Object title}) => 'postcard for ${title}',
 			'map.postcard.portrait' => 'portrait',
@@ -4974,9 +4976,9 @@ extension on TranslationsQrp {
 			'settings.fontScaleOpts.smallest' => 'smallest',
 			'settings.fontScaleOpts.smaller' => 'smaller',
 			'settings.fontScaleOpts.normal' => 'normal',
-			'settings.fontScaleOpts.larger' => 'larger',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.larger' => 'larger',
 			'settings.fontScaleOpts.largest' => 'largest',
 			'settings.fontScaleOpts.largestPlus' => 'largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'largest++',
@@ -5488,9 +5490,9 @@ extension on TranslationsQrp {
 			'settings.station.sdrIfHzDescription' => 'for an if output only: the frequency the radio\'s dial sits at on its if, such as 68330000 on an ft-817.',
 			'settings.station.sdrIfInverted' => 'if is inverted',
 			'settings.station.sdrGainDb' => 'gain (db)',
-			'settings.station.sdrGainDbDescription' => 'leave blank for the receiver\'s automatic gain.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.sdrGainDbDescription' => 'leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'frequency offset (hz)',
 			'settings.station.sdrOffsetHzDescription' => 'added to every frequency sent to the receiver, for an upconverter: 125000000 for a ham it up.',
 			'settings.station.sdrPpm' => 'frequency correction (ppm)',
@@ -6002,9 +6004,9 @@ extension on TranslationsQrp {
 			'operationLocationScreen.deviceGps' => 'device gps',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			'operationLocationScreen.locating' => 'locating…',
-			'operationLocationScreen.gpsUnavailable' => 'location unavailable',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.gpsUnavailable' => 'location unavailable',
 			'operationLocationScreen.permissionDenied' => 'location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'location permission blocked',
 			'operationLocationScreen.moreDetails' => 'more details',

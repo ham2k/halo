@@ -178,6 +178,17 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       }
       return;
     }
+    if (kind == 'orientation') {
+      if ([for (final part in message.split(',')) double.tryParse(part)] case [final bearing?, final pitch?]) {
+        // Not after teardown: the controller belongs to the backend that
+        // replaced this one, and a turn still in flight would raise the
+        // compass over its north-up map.
+        if (mounted) widget.zoomController?.reportOrientation(MapOrientation(bearing: bearing, pitch: pitch));
+      } else {
+        MapErrorReporter.report(backend: 'web', kind: 'orientation-malformed', message: message);
+      }
+      return;
+    }
     if (kind == 'camera') {
       Object? decoded;
       try {
@@ -227,7 +238,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       ..onFitTo = _fitTo
       ..onRefit = _refit
       ..onCamera = _camera
-      ..onSnapshot = _snapshot;
+      ..onSnapshot = _snapshot
+      ..onResetNorth = _resetNorth
+      ..resetOrientation();
     ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final div = web.HTMLDivElement();
       div.style
@@ -427,6 +440,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   void _zoomIn() => _handle?.callMethod('zoomIn'.toJS);
   void _zoomOut() => _handle?.callMethod('zoomOut'.toJS);
+  void _resetNorth() => _handle?.callMethod('resetNorth'.toJS);
 
   @override
   void dispose() {
@@ -447,6 +461,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     if (controller?.onRefit == _refit) controller?.onRefit = null;
     if (controller?.onCamera == _camera) controller?.onCamera = null;
     if (controller?.onSnapshot == _snapshot) controller?.onSnapshot = null;
+    if (controller?.onResetNorth == _resetNorth) controller?.onResetNorth = null;
     _offlineChanges?.cancel();
     _handle?.callMethod('remove'.toJS);
     _handle = null;

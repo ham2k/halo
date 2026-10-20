@@ -431,6 +431,7 @@ class _Translations$map$qro extends Translations$map$en {
 	@override String get globe => 'GLOBE';
 	@override String get zoomIn => 'ZOOM IN';
 	@override String get zoomOut => 'ZOOM OUT';
+	@override String get resetNorth => 'RESET TO NORTH UP';
 	@override late final _Translations$map$postcard$qro postcard = _Translations$map$postcard$qro._(_root);
 }
 
@@ -4667,6 +4668,7 @@ extension on TranslationsQro {
 			'map.globe' => 'GLOBE',
 			'map.zoomIn' => 'ZOOM IN',
 			'map.zoomOut' => 'ZOOM OUT',
+			'map.resetNorth' => 'RESET TO NORTH UP',
 			'map.postcard.button' => 'OPERATION POSTCARD',
 			'map.postcard.title' => ({required Object title}) => 'POSTCARD FOR ${title}',
 			'map.postcard.portrait' => 'PORTRAIT',
@@ -4974,9 +4976,9 @@ extension on TranslationsQro {
 			'settings.fontScaleOpts.smallest' => 'SMALLEST',
 			'settings.fontScaleOpts.smaller' => 'SMALLER',
 			'settings.fontScaleOpts.normal' => 'NORMAL',
-			'settings.fontScaleOpts.larger' => 'LARGER',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.larger' => 'LARGER',
 			'settings.fontScaleOpts.largest' => 'LARGEST',
 			'settings.fontScaleOpts.largestPlus' => 'LARGEST+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'LARGEST++',
@@ -5488,9 +5490,9 @@ extension on TranslationsQro {
 			'settings.station.sdrIfHzDescription' => 'FOR AN IF OUTPUT ONLY: THE FREQUENCY THE RADIO\'S DIAL SITS AT ON ITS IF, SUCH AS 68330000 ON AN FT-817.',
 			'settings.station.sdrIfInverted' => 'IF IS INVERTED',
 			'settings.station.sdrGainDb' => 'GAIN (DB)',
-			'settings.station.sdrGainDbDescription' => 'LEAVE BLANK FOR THE RECEIVER\'S AUTOMATIC GAIN.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.sdrGainDbDescription' => 'LEAVE BLANK FOR THE RECEIVER\'S AUTOMATIC GAIN.',
 			'settings.station.sdrOffsetHz' => 'FREQUENCY OFFSET (HZ)',
 			'settings.station.sdrOffsetHzDescription' => 'ADDED TO EVERY FREQUENCY SENT TO THE RECEIVER, FOR AN UPCONVERTER: 125000000 FOR A HAM IT UP.',
 			'settings.station.sdrPpm' => 'FREQUENCY CORRECTION (PPM)',
@@ -6002,9 +6004,9 @@ extension on TranslationsQro {
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.locating' => 'LOCATING…',
-			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
 			'operationLocationScreen.permissionBlocked' => 'LOCATION PERMISSION BLOCKED',
 			'operationLocationScreen.moreDetails' => 'MORE DETAILS',

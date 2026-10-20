@@ -889,6 +889,7 @@
     "globe": "globe",
     "zoomIn": "zoom in",
     "zoomOut": "zoom out",
+    "resetNorth": "reset to north up",
     "postcard": {
       "button": "operation postcard",
       "title": "postcard for ${title}",

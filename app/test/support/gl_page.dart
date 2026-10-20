@@ -19,6 +19,7 @@ import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapGlScript;
 const fakeBrowser = r'''
 var window = globalThis;
 var calls = [];
+var events = [];
 var now = 0;
 var timers = [];
 var nextTimer = 1;
@@ -122,6 +123,7 @@ function FakeMap(options) {
   this.images = images;
   this.setPaintProperty = function (id, name, value) { layers[id].paint = Object.assign({}, layers[id].paint, { [name]: value }); };
   this.setLayoutProperty = function (id, name, value) { layers[id].layout = Object.assign({}, layers[id].layout, { [name]: value }); };
+  this.resetNorthPitch = function () { calls.push('resetNorthPitch'); };
   this.fitBounds = function (bounds, options) { calls.push('fitBounds'); window.lastFitOptions = options; window.lastFitPoints = bounds.points; };
   this.loaded = function () { return sourcesLoaded; };
   this.isStyleLoaded = function () { return true; };
@@ -155,7 +157,9 @@ class GlPage {
     run(mapGlScript);
     final frame = framed ? jsonEncode({'latitude': 41.5, 'longitude': -74.4, 'zoom': 9.25, 'bearing': 0, 'pitch': 0, 'width': 540, 'height': 960}) : 'null';
     run("var container = document.createElement('div'); container.clientWidth = 270; container.clientHeight = 480;");
-    run("var handle = window.poloMapGl.create(container, 'light-style', 'dark-style', false, function () {}, false, $frame);");
+    run(
+      "var handle = window.poloMapGl.create(container, 'light-style', 'dark-style', false, function (kind, message) { events.push([kind, message]); }, false, $frame);",
+    );
   }
 
   String run(String code) {
@@ -167,6 +171,13 @@ class GlPage {
   void pumpPromises() {
     while (_js.pump() > 0) {}
   }
+
+  /// The messages of the events of [kind] the page has reported since the
+  /// last take.
+  List<String> takeEvents(String kind) => [
+    for (final e in jsonDecode(run('var e = JSON.stringify(events); events = []; e')) as List)
+      if (e[0] == kind) e[1] as String,
+  ];
 
   List<String> takeCalls() => (jsonDecode(run('var c = JSON.stringify(calls); calls = []; c')) as List).cast<String>();
 

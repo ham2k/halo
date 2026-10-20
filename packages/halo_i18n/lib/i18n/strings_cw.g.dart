@@ -431,6 +431,7 @@ class _Translations$map$cw extends Translations$map$en {
 	@override String get globe => '——· ·—·· ——— —··· ·';
 	@override String get zoomIn => '——·· ——— ——— —— / ·· —·';
 	@override String get zoomOut => '——·· ——— ——— —— / ——— ··— —';
+	@override String get resetNorth => '·—· · ··· · — / — ——— / —· ——— ·—· — ···· / ··— ·——·';
 	@override late final _Translations$map$postcard$cw postcard = _Translations$map$postcard$cw._(_root);
 }
 
@@ -4667,6 +4668,7 @@ extension on TranslationsCw {
 			'map.globe' => '——· ·—·· ——— —··· ·',
 			'map.zoomIn' => '——·· ——— ——— —— / ·· —·',
 			'map.zoomOut' => '——·· ——— ——— —— / ——— ··— —',
+			'map.resetNorth' => '·—· · ··· · — / — ——— / —· ——— ·—· — ···· / ··— ·——·',
 			'map.postcard.button' => '——— ·——· · ·—· ·— — ·· ——— —· / ·——· ——— ··· — —·—· ·— ·—· —··',
 			'map.postcard.title' => ({required Object title}) => '·——· ——— ··· — —·—· ·— ·—· —·· / ··—· ——— ·—· / ${title}',
 			'map.postcard.portrait' => '·——· ——— ·—· — ·—· ·— ·· —',
@@ -4974,9 +4976,9 @@ extension on TranslationsCw {
 			'settings.fontScaleOpts.smallest' => '··· —— ·— ·—·· ·—·· · ··· —',
 			'settings.fontScaleOpts.smaller' => '··· —— ·— ·—·· ·—·· · ·—·',
 			'settings.fontScaleOpts.normal' => '—· ——— ·—· —— ·— ·—··',
-			'settings.fontScaleOpts.larger' => '·—·· ·— ·—· ——· · ·—·',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.larger' => '·—·· ·— ·—· ——· · ·—·',
 			'settings.fontScaleOpts.largest' => '·—·· ·— ·—· ——· · ··· —',
 			'settings.fontScaleOpts.largestPlus' => '·—·· ·— ·—· ——· · ··· — ·—·—·',
 			'settings.fontScaleOpts.largestPlusPlus' => '·—·· ·— ·—· ——· · ··· — ·—·—· ·—·—·',
@@ -5488,9 +5490,9 @@ extension on TranslationsCw {
 			'settings.station.sdrIfHzDescription' => '··—· ——— ·—· / ·— —· / ·· ··—· / ——— ··— — ·——· ··— — / ——— —· ·—·· —·—— ———··· / — ···· · / ··—· ·—· · ——·— ··— · —· —·—· —·—— / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / —·· ·· ·— ·—·· / ··· ·· — ··· / ·— — / ——— —· / ·· — ··· / ·· ··—· ——··—— / ··· ··— —·—· ···· / ·— ··· / —···· ———·· ···—— ···—— ————— ————— ————— ————— / ——— —· / ·— —· / ··—· — —····— ———·· ·———— ——··· ·—·—·—',
 			'settings.station.sdrIfInverted' => '·· ··—· / ·· ··· / ·· —· ···— · ·—· — · —··',
 			'settings.station.sdrGainDb' => '——· ·— ·· —· / —·——· —·· —··· —·——·—',
-			'settings.station.sdrGainDbDescription' => '·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / — ···· · / ·—· · —·—· · ·· ···— · ·—· ·————· ··· / ·— ··— — ——— —— ·— — ·· —·—· / ——· ·— ·· —· ·—·—·—',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.sdrGainDbDescription' => '·—·· · ·— ···— · / —··· ·—·· ·— —· —·— / ··—· ——— ·—· / — ···· · / ·—· · —·—· · ·· ···— · ·—· ·————· ··· / ·— ··— — ——— —— ·— — ·· —·—· / ——· ·— ·· —· ·—·—·—',
 			'settings.station.sdrOffsetHz' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / ——— ··—· ··—· ··· · — / —·——· ···· ——·· —·——·—',
 			'settings.station.sdrOffsetHzDescription' => '·— —·· —·· · —·· / — ——— / · ···— · ·—· —·—— / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ··· · —· — / — ——— / — ···· · / ·—· · —·—· · ·· ···— · ·—· ——··—— / ··—· ——— ·—· / ·— —· / ··— ·——· —·—· ——— —· ···— · ·—· — · ·—· ———··· / ·———— ··——— ····· ————— ————— ————— ————— ————— ————— / ··—· ——— ·—· / ·— / ···· ·— —— / ·· — / ··— ·——· ·—·—·—',
 			'settings.station.sdrPpm' => '··—· ·—· · ——·— ··— · —· —·—· —·—— / —·—· ——— ·—· ·—· · —·—· — ·· ——— —· / —·——· ·——· ·——· —— —·——·—',
@@ -6002,9 +6004,9 @@ extension on TranslationsCw {
 			'operationLocationScreen.deviceGps' => '—·· · ···— ·· —·—· · / ——· ·——· ···',
 			'operationLocationScreen.peerGps' => ({required Object device}) => '——· ·——· ··· / ··—· ·—· ——— —— / ${device}',
 			'operationLocationScreen.locating' => '·—·· ——— —·—· ·— — ·· —· ——· …',
-			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.gpsUnavailable' => '·—·· ——— —·—· ·— — ·· ——— —· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'operationLocationScreen.permissionDenied' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —·· · —· ·· · —··',
 			'operationLocationScreen.permissionBlocked' => '·—·· ——— —·—· ·— — ·· ——— —· / ·——· · ·—· —— ·· ··· ··· ·· ——— —· / —··· ·—·· ——— —·—· —·— · —··',
 			'operationLocationScreen.moreDetails' => '—— ——— ·—· · / —·· · — ·— ·· ·—·· ···',
