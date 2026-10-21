@@ -2024,6 +2024,12 @@ class Translations$dataFiles$en {
 	/// en: '${host} couldn't provide this file (HTTP ${status}). Check that its address is still right.'
 	String downloadNotAvailable({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.';
 
+	/// en: 'N1MM has no call history file for ${stem}.'
+	String n1mmHistoryNoMatch({required Object stem}) => 'N1MM has no call history file for ${stem}.';
+
+	/// en: 'N1MM's call history download for ${stem} didn't work. Try again later.'
+	String n1mmHistoryUnavailable({required Object stem}) => 'N1MM\'s call history download for ${stem} didn\'t work. Try again later.';
+
 	/// en: 'Couldn't process ${name}'
 	String processingFailedTitle({required Object name}) => 'Couldn\'t process ${name}';
 
@@ -10454,6 +10460,8 @@ extension on Translations {
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (HTTP ${status}). Try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (HTTP ${status}). Check that its address is still right.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM has no call history file for ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'N1MM\'s call history download for ${stem} didn\'t work. Try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'Couldn\'t process ${name}',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} record for ${label}.', other: 'Imported ${count} records for ${label}.', ), 
@@ -10495,10 +10503,10 @@ extension on Translations {
 			'operationLocationScreen.gridSquare' => 'Maidenhead Grid Square Locator',
 			'operationLocationScreen.gridInvalid' => 'Needs 4, 6, 8 or 10 characters, like FN31pr',
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
-			'operationLocationScreen.deviceGps' => 'Device GPS',
-			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.deviceGps' => 'Device GPS',
+			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
 			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',

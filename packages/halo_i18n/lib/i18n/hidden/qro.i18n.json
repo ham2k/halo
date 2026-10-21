@@ -2405,6 +2405,8 @@
     "downloadTimedOut": "THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.",
     "downloadServerError": "${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.",
     "downloadNotAvailable": "${host} COULDN'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.",
+    "n1mmHistoryNoMatch": "N1MM HAS NO CALL HISTORY FILE FOR ${stem}.",
+    "n1mmHistoryUnavailable": "N1MM'S CALL HISTORY DOWNLOAD FOR ${stem} DIDN'T WORK. TRY AGAIN LATER.",
     "processingFailedTitle": "COULDN'T PROCESS ${name}",
     "importTooSmall": "THE DOWNLOAD HAD ONLY ${imported} OF THE ${existing} RECORDS ON THIS DEVICE, SO THE ONES IT LEFT OUT WERE KEPT. REFRESHING IT IN SETTINGS › OFFLINE DATA ACCEPTS IT ANYWAY.",
     "importedRecords": {

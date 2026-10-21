@@ -185,6 +185,19 @@ void main() {
       );
     });
 
+    test('an N1MM stem with no file says so, apart from a site that stopped working', () {
+      // One is the extension's stem, which waiting never fixes; the other is
+      // N1MM's site, which it may.
+      expect(
+        friendlyDownloadError(const N1mmCallHistoryUnavailable('CWOPS', 'no call history file matches', noMatch: true)),
+        t.dataFiles.n1mmHistoryNoMatch(stem: 'CWOPS'),
+      );
+      expect(
+        friendlyDownloadError(const N1mmCallHistoryUnavailable('CWOPS', "the file's page has no download form")),
+        t.dataFiles.n1mmHistoryUnavailable(stem: 'CWOPS'),
+      );
+    });
+
     test('an unrelated failure (e.g. a malformed URL) is shown as-is, even on web — guessing would mislead', () {
       final result = friendlyDownloadError(const FormatException('Invalid URL: ht!tp://x'), isWeb: true);
       expect(result, isNot(contains(t.dataFiles.downloadFailedWebHint)));
@@ -1271,6 +1284,121 @@ REF-002,Summit Two,45.56,-122.78
 
       await expectLater(m.processDataFile('bad', {'url': 'https://example.com/f.json', 'fetchType': 'json'}, notifyOnFailure: false), throwsA(anything));
       expect(prefs.getString('data_file_etag_bad'), isNull);
+    });
+  });
+
+  group('downloadFile for an n1mm-history: stem', () {
+    setUp(() {
+      PackageInfo.setMockInitialValues(appName: 'test', packageName: 'test', version: '1.0', buildNumber: '1', buildSignature: '');
+    });
+
+    late String newest;
+    late String published;
+    late String pageNonce;
+    late List<http.Request> requests;
+
+    // The site's markup, cut to the parts the scan reads; halo_core's
+    // n1mm_call_history_test.dart holds it as served.
+    String listing(String newest) =>
+        '''
+<div class="cmdm-archive-items"><ul>
+<li><a href="https://n1mmwp.hamdocs.com/mmfiles/${newest.toLowerCase().replaceAll('.', '-')}/"><span class="cmdm-list-item-title">$newest</span></a>
+<div class="cmdm-publish-date">$published</div></li>
+<li><a href="https://n1mmwp.hamdocs.com/mmfiles/cwopsopen_2026-003-txt/"><span class="cmdm-list-item-title">CWOPSOPEN_2026-003.txt</span></a>
+<div class="cmdm-publish-date">2026-10-21</div></li>
+</ul></div>''';
+    String detail(String name) =>
+        '''
+<form method="post" class="CMDM-downloadForm" action="https://n1mmwp.hamdocs.com/mmfile/get/file/$name">
+<input type="hidden" name="cmdm_nonce" value="$pageNonce" /><input type="hidden" name="id" value="242427" />
+</form>''';
+
+    // A stand-in for the site: the POST answers only with the nonce, as the
+    // real one does (anything else is redirected to "access denied").
+    Future<http.Response> site(http.Request request) async {
+      requests.add(request);
+      // The web proxy serves the site under /n1mmwp.hamdocs.com/.
+      final path = request.url.path.replaceFirst('/n1mmwp.hamdocs.com/', '/');
+      if (path.endsWith('/categories/callhistory/')) return http.Response(listing(newest), 200, headers: {'content-type': 'text/html; charset=UTF-8'});
+      if (path.startsWith('/mmfiles/')) return http.Response(detail(newest), 200, headers: {'content-type': 'text/html; charset=UTF-8'});
+      if (request.method == 'POST' && request.bodyFields['cmdm_nonce'] == 'n0nce') {
+        return http.Response.bytes(utf8.encode('!!Order!!,Call,Name\nAK0A,Ken Topêka\n'), 200, headers: {'content-type': 'application/octet-stream'});
+      }
+      return http.Response('<html>Access denied</html>', 200, headers: {'content-type': 'text/html; charset=UTF-8'});
+    }
+
+    setUp(() {
+      newest = 'CWOPS_4002.txt';
+      published = '2026-10-20';
+      pageNonce = 'n0nce';
+      requests = [];
+    });
+
+    DataFileManager buildManager({bool isWeb = false}) =>
+        DataFileManager(lookups: lookups, extensions: extensions, prefs: prefs, httpClientFactory: () => http.MockClient(site), isWeb: isWeb);
+
+    test("POSTs the newest file's own form and returns the file", () async {
+      final body = await buildManager().downloadFile('cwops', 'n1mm-history:CWOPS');
+
+      expect(body, '!!Order!!,Call,Name\nAK0A,Ken Topêka\n', reason: 'an octet-stream body with no charset must still decode as UTF-8');
+      expect(requests.map((r) => '${r.method} ${r.url.path}'), [
+        'GET /mmfiles/categories/callhistory/',
+        // Not CWOPSOPEN, though the search lists it as newer.
+        'GET /mmfiles/cwops_4002-txt/',
+        'POST /mmfile/get/file/CWOPS_4002.txt',
+      ]);
+      expect(requests.first.url.queryParameters, {'CMDsearch': 'CWOPS', 'sort': 'newest'});
+      expect(prefs.getString('data_file_etag_cwops'), 'n1mm:CWOPS_4002.txt@2026-10-20@https://n1mmwp.hamdocs.com/mmfiles/cwops_4002-txt/');
+    });
+
+    test('an unchanged newest file answers like a 304, from the search alone', () async {
+      // N1MM sends no ETag: without the version standing in for one, every
+      // sync pass downloads and reprocesses the whole file again.
+      final m = buildManager();
+      await m.downloadFile('cwops', 'n1mm-history:CWOPS');
+      requests.clear();
+
+      expect(await m.downloadFile('cwops', 'n1mm-history:CWOPS'), isNull);
+      expect(requests, hasLength(1));
+
+      newest = 'CWOPS_4003.txt';
+      expect(await m.downloadFile('cwops', 'n1mm-history:CWOPS'), isNotNull, reason: 'a new upload is a new name');
+      expect(prefs.getString('data_file_etag_cwops'), startsWith('n1mm:CWOPS_4003.txt@'));
+    });
+
+    test('a re-upload under the same name is downloaded, by its new publish date', () async {
+      // Some files keep their name across updates (SSCW_new.txt): versioned
+      // by name alone, the device keeps the first copy until a forced refresh.
+      final m = buildManager();
+      await m.downloadFile('cwops', 'n1mm-history:CWOPS');
+
+      published = '2026-10-27';
+      expect(await m.downloadFile('cwops', 'n1mm-history:CWOPS'), isNotNull);
+    });
+
+    test('a forced download fetches the file even when it is unchanged', () async {
+      final m = buildManager();
+      await m.downloadFile('cwops', 'n1mm-history:CWOPS');
+      expect(await m.downloadFile('cwops', 'n1mm-history:CWOPS', force: true), isNotNull, reason: 'RELOAD must reprocess the file');
+    });
+
+    test('a refused download fails and records no version', () async {
+      // The fake answers a refusal with the access-denied page's own 200, as
+      // the site would without its redirect: taken as the file, an HTML page
+      // is imported and its version stored, so nothing fetches the real file
+      // until N1MM publishes another.
+      pageNonce = 'expired';
+
+      await expectLater(buildManager().downloadFile('cwops', 'n1mm-history:CWOPS'), throwsA(isA<N1mmCallHistoryUnavailable>()));
+      expect(prefs.getString('data_file_etag_cwops'), isNull);
+    });
+
+    test('on web, every request goes through the services proxy, the POST with its form', () async {
+      await buildManager(isWeb: true).downloadFile('cwops', 'n1mm-history:CWOPS');
+
+      expect(requests.map((r) => r.url.host).toSet(), {'services.ham2k.net'}, reason: 'N1MM sends no CORS headers');
+      expect(requests.last.url.path, '/n1mmwp.hamdocs.com/mmfile/get/file/CWOPS_4002.txt');
+      expect(requests.last.bodyFields, {'cmdm_nonce': 'n0nce', 'id': '242427'});
     });
   });
 

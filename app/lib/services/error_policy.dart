@@ -25,7 +25,15 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHostException, HookTimeoutException;
 import 'package:halo_core/halo_core.dart'
-    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, SyncPayloadUnreadable, SyncPullStuck, SyncRecordsRejected, WriteRefused;
+    show
+        DataFileImportShrank,
+        LogFromNewerBuild,
+        MalformedQsonDataException,
+        N1mmCallHistoryUnavailable,
+        SyncPayloadUnreadable,
+        SyncPullStuck,
+        SyncRecordsRejected,
+        WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -438,6 +446,16 @@ class ErrorPolicy {
           'or a mapper has broken',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is DataFileImportShrank,
+    ),
+    ErrorRule(
+      id: 'n1mm-call-history-unavailable',
+      reason:
+          "N1MM's call history pages led to no file: no file matches the data file's stem, the "
+          'download was refused, or a page changed shape. The offline data already on the device '
+          'stays and a refresh the operator asked for says so in its own notice. Uploaded because '
+          'the rate says whether N1MM changed its site, which breaks every n1mm-history: data file at once',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is N1mmCallHistoryUnavailable,
     ),
     ErrorRule(
       id: 'catalog-unreachable',

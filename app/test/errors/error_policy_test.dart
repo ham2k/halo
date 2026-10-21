@@ -31,7 +31,7 @@ import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' s
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:halo_core/halo_core.dart'
-    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation, SyncPullStuck;
+    show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, N1mmCallHistoryUnavailable, QsonFieldType, QsonTypeViolation, SyncPullStuck;
 import 'package:ham2k_logger/services/extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
@@ -632,6 +632,14 @@ void main() {
     test('refused as far smaller than the stored data is reported, not noticed', () {
       final decision = ErrorPolicy.decide(const DataFileImportShrank('pota-all-parks', imported: 0, existing: 95000));
       expect(decision.rule?.id, 'data-file-import-shrank');
+      expect(decision.disposition, ErrorDisposition.report);
+    });
+
+    test("that N1MM's pages led to no file is reported, not noticed", () {
+      // Unclassified, a stem N1MM no longer lists, or a change to its site,
+      // puts a notice in front of the operator on every boot.
+      final decision = ErrorPolicy.decide(const N1mmCallHistoryUnavailable('CWOPS', 'no call history file matches', noMatch: true));
+      expect(decision.rule?.id, 'n1mm-call-history-unavailable');
       expect(decision.disposition, ErrorDisposition.report);
     });
 

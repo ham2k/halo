@@ -26,9 +26,10 @@ import 'status_bar_service.dart';
 /// never the message text: `'Failed to fetch'` is Chromium/V8's own wording
 /// for the underlying `fetch()` TypeError, and Firefox and Safari phrase
 /// the identical failure differently — a string match silently never fires
-/// for them. A [DataFileUnavailable] gets its own translated sentence; every
-/// other failure (a malformed URL) is shown as-is, since guessing at THOSE
-/// causes would be more likely to mislead than help. [isWeb] defaults to
+/// for them. A [DataFileUnavailable] or [N1mmCallHistoryUnavailable] gets its
+/// own translated sentence; every other failure (a malformed URL) is shown
+/// as-is, since guessing at THOSE causes would be more likely to mislead than
+/// help. [isWeb] defaults to
 /// [kIsWeb] but is overridable — the constant itself isn't, so a test can't
 /// flip platforms without this.
 @visibleForTesting
@@ -42,6 +43,9 @@ String friendlyDownloadError(Object error, {bool isWeb = kIsWeb}) {
     if (status == null) return t.dataFiles.downloadTimedOut;
     if (status == 404 || status == 410) return t.dataFiles.downloadNotAvailable(host: error.host, status: status);
     return t.dataFiles.downloadServerError(host: error.host, status: status);
+  }
+  if (error is N1mmCallHistoryUnavailable) {
+    return error.noMatch ? t.dataFiles.n1mmHistoryNoMatch(stem: error.stem) : t.dataFiles.n1mmHistoryUnavailable(stem: error.stem);
   }
   final message = error.toString();
   if (isWeb && error is http.ClientException) {
@@ -423,7 +427,7 @@ class DataFileManager {
   }
 
   String _resolveFetchUrl(String urlString) {
-    if (kIsWeb) {
+    if (isWeb) {
       final uri = Uri.parse(urlString);
       const allowedDomains = {
         'api.pota.app',
@@ -453,6 +457,9 @@ class DataFileManager {
         // services, so proxying them would be needless indirection.
         'www.dropbox.com',
         'drive.google.com',
+        // N1MM call history (`n1mm-history:`): no CORS headers on any of its
+        // pages, and the download is a POST.
+        'n1mmwp.hamdocs.com',
       };
       if (allowedDomains.contains(uri.host)) {
         return 'https://services.ham2k.net/${uri.host}${uri.path}${uri.hasQuery ? "?${uri.query}" : ""}';
@@ -469,7 +476,12 @@ class DataFileManager {
   /// names. Uses ETag cached in [prefs] to avoid duplicate downloads,
   /// unless [force] skips sending it — a manual reload wants a full reprocess
   /// even when the server would otherwise report the content unchanged.
+  ///
+  /// An `n1mm-history:` [url] names an N1MM call history file by stem instead
+  /// (see [_downloadN1mmCallHistory]).
   Future<String?> downloadFile(String key, String url, {bool force = false, String? encoding}) async {
+    final stem = n1mmCallHistoryStem(url);
+    if (stem != null) return _downloadN1mmCallHistory(key, stem, force: force, encoding: encoding);
     final resolvedUrl = _resolveFetchUrl(resolveDownloadUrl(url));
     // Set when a conditional GET failed on web but the unconditional retry
     // below succeeded: that host rejects CORS preflights, and `If-None-Match`
@@ -512,46 +524,84 @@ class DataFileManager {
   static const bodyTimeout = Duration(minutes: 2);
 
   Future<String?> _fetchAndDecode(String key, String resolvedUrl, {String? etag, bool storeEtag = true, String? encoding}) async {
+    final request = http.Request('GET', Uri.parse(resolvedUrl));
+    if (etag != null) {
+      request.headers['If-None-Match'] = etag;
+    }
+
+    debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $etag)');
+    final response = await _send(key, request);
+
+    if (response.statusCode == 304) {
+      debugPrint('[data-file] File $key unchanged (304)');
+      return null;
+    }
+
+    if (response.statusCode != 200) {
+      throw DataFileUnavailable.status(key, request.url.host, response.statusCode);
+    }
+
+    final newEtag = response.headers['etag'];
+    if (storeEtag && newEtag != null) {
+      await prefs.setString('data_file_etag_$key', newEtag);
+    }
+    final resolved = resolveDataFileEncoding(encoding, response.headers['content-type']);
+    return decodeDataFileBody(response.bodyBytes, encoding: resolved);
+  }
+
+  /// Sends [request] under [headersTimeout] and [bodyTimeout] and reads the
+  /// whole response, whatever its status.
+  Future<http.Response> _send(String key, http.Request request) async {
     final client = httpClientFactory();
     try {
-      final request = http.Request('GET', Uri.parse(resolvedUrl));
       request.headers['User-Agent'] = await ham2kUserAgent();
-      if (etag != null) {
-        request.headers['If-None-Match'] = etag;
-      }
-
-      debugPrint('[data-file] Fetching $key from ${redactUrlForLog(resolvedUrl)} (cached ETag: $etag)');
       final http.StreamedResponse streamedResponse;
       try {
         streamedResponse = await client.send(request).timeout(headersTimeout);
       } on TimeoutException {
         throw DataFileUnavailable.timedOut(key, request.url.host, DataFileWait.headers);
       }
-      final http.Response response;
       try {
-        response = await http.Response.fromStream(streamedResponse).timeout(bodyTimeout);
+        return await http.Response.fromStream(streamedResponse).timeout(bodyTimeout);
       } on TimeoutException {
         throw DataFileUnavailable.timedOut(key, request.url.host, DataFileWait.body);
       }
-
-      if (response.statusCode == 304) {
-        debugPrint('[data-file] File $key unchanged (304)');
-        return null;
-      }
-
-      if (response.statusCode != 200) {
-        throw DataFileUnavailable.status(key, request.url.host, response.statusCode);
-      }
-
-      final newEtag = response.headers['etag'];
-      if (storeEtag && newEtag != null) {
-        await prefs.setString('data_file_etag_$key', newEtag);
-      }
-      final resolved = resolveDataFileEncoding(encoding, response.headers['content-type']);
-      return decodeDataFileBody(response.bodyBytes, encoding: resolved);
     } finally {
       client.close();
     }
+  }
+
+  /// The N1MM call history file of [stem], or null when the newest one is the
+  /// file this key last downloaded. Its [N1mmCallHistoryFile.version] stands
+  /// in for the ETag N1MM does not send, kept where an ETag is, so every path
+  /// that drops a key's ETag to force the next download drops this too.
+  Future<String?> _downloadN1mmCallHistory(String key, String stem, {required bool force, String? encoding}) async {
+    Future<http.Response> fetch(http.Request request) async {
+      debugPrint('[data-file] Fetching $key: ${request.method} ${redactUrlForLog(request.url.toString())}');
+      final response = await _send(key, request);
+      if (response.statusCode != 200) throw DataFileUnavailable.status(key, request.url.host, response.statusCode);
+      return response;
+    }
+
+    Future<String> get(Uri url) async {
+      final response = await fetch(http.Request('GET', Uri.parse(_resolveFetchUrl(url.toString()))));
+      return decodeDataFileBody(response.bodyBytes, encoding: resolveDataFileEncoding(null, response.headers['content-type']));
+    }
+
+    Future<({List<int> bytes, String? contentType})> post(Uri url, Map<String, String> fields) async {
+      final response = await fetch(http.Request('POST', Uri.parse(_resolveFetchUrl(url.toString())))..bodyFields = fields);
+      return (bytes: response.bodyBytes, contentType: response.headers['content-type']);
+    }
+
+    final file = await findN1mmCallHistoryFile(stem, get);
+    final version = 'n1mm:${file.version}';
+    if (!force && prefs.getString('data_file_etag_$key') == version) {
+      debugPrint('[data-file] File $key unchanged (${file.name})');
+      return null;
+    }
+    final body = await downloadN1mmCallHistoryFile(file, stem, get, post);
+    await prefs.setString('data_file_etag_$key', version);
+    return decodeDataFileBody(body.bytes, encoding: resolveDataFileEncoding(encoding, body.contentType));
   }
 
   /// Schedules sync and processing of registered data files. With

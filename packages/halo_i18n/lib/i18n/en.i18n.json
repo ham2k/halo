@@ -2405,6 +2405,8 @@
     "downloadTimedOut": "The server took too long to respond. Try again later.",
     "downloadServerError": "${host} answered with an error (HTTP ${status}). Try again later.",
     "downloadNotAvailable": "${host} couldn't provide this file (HTTP ${status}). Check that its address is still right.",
+    "n1mmHistoryNoMatch": "N1MM has no call history file for ${stem}.",
+    "n1mmHistoryUnavailable": "N1MM's call history download for ${stem} didn't work. Try again later.",
     "processingFailedTitle": "Couldn't process ${name}",
     "importTooSmall": "The download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. Refreshing it in Settings › Offline Data accepts it anyway.",
     "importedRecords": {

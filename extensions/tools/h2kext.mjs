@@ -41,8 +41,8 @@ import yazl from "yazl"
 /// frozen, from the one copy of the log every extension shares, and adds the
 /// `chasing` hook category; 10 adds the DX cluster connection — the
 /// `requiresCluster*` grants, the `host.cluster*` calls and the `cluster`
-/// hook category.
-export const H2KEXT_API_VERSION = 10
+/// hook category; 11 adds `n1mm-history:` data-file urls.
+export const H2KEXT_API_VERSION = 11
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -164,6 +164,7 @@ SHARED_MODULES_BY_API[7] = SHARED_MODULES_BY_API[6]
 SHARED_MODULES_BY_API[8] = SHARED_MODULES_BY_API[7]
 SHARED_MODULES_BY_API[9] = SHARED_MODULES_BY_API[8]
 SHARED_MODULES_BY_API[10] = SHARED_MODULES_BY_API[9]
+SHARED_MODULES_BY_API[11] = SHARED_MODULES_BY_API[10]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

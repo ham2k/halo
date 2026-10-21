@@ -927,6 +927,8 @@ class _Translations$dataFiles$qrp extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'the server took too long to respond. try again later.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'n1mm has no call history file for ${stem}.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'n1mm\'s call history download for ${stem} didn\'t work. try again later.';
 	@override String processingFailedTitle({required Object name}) => 'couldn\'t process ${name}';
 	@override String importTooSmall({required Object imported, required Object existing}) => 'the download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. refreshing it in settings › offline data accepts it anyway.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count,
@@ -5962,6 +5964,8 @@ extension on TranslationsQrp {
 			'dataFiles.downloadTimedOut' => 'the server took too long to respond. try again later.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} answered with an error (http ${status}). try again later.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} couldn\'t provide this file (http ${status}). check that its address is still right.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'n1mm has no call history file for ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'n1mm\'s call history download for ${stem} didn\'t work. try again later.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'couldn\'t process ${name}',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'the download had only ${imported} of the ${existing} records on this device, so the ones it left out were kept. refreshing it in settings › offline data accepts it anyway.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'imported ${count} record for ${label}.', other: 'imported ${count} records for ${label}.', ), 
@@ -6003,10 +6007,10 @@ extension on TranslationsQrp {
 			'operationLocationScreen.gridSquare' => 'maidenhead grid square locator',
 			'operationLocationScreen.gridInvalid' => 'needs 4, 6, 8 or 10 characters, like fn31pr',
 			'operationLocationScreen.suggestedLocations' => 'suggested locations',
-			'operationLocationScreen.deviceGps' => 'device gps',
-			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.deviceGps' => 'device gps',
+			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			'operationLocationScreen.locating' => 'locating…',
 			'operationLocationScreen.gpsUnavailable' => 'location unavailable',
 			'operationLocationScreen.permissionDenied' => 'location permission denied',

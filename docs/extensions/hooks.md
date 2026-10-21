@@ -2422,6 +2422,39 @@ row/entry→`LookupRow` transform. See `DataFileManager`
 (`fetchType: 'raw'` — the parsed Hams of Note index is cached as JSON and
 replayed through `onLoadRawData` at startup, issue #17).
 
+### N1MM call history files
+
+N1MM Logger+'s call history files are uploaded to
+[n1mmwp.hamdocs.com](https://n1mmwp.hamdocs.com/mmfiles/categories/callhistory/)
+under a new name with every update (`CWOPS_4002.txt`), and downloaded by a
+form POST that carries a nonce from the file's own page, so no URL points at
+the current one. A `url` of `n1mm-history:<stem>` asks the host to find it
+(extension API 11):
+
+```ts
+{ key: 'cwops-history', url: 'n1mm-history:CWOPS', fetchType: 'raw', maxAgeInDays: 7, /* … */ }
+```
+
+- **Which file:** the newest one, by publish date, whose name is the stem or
+  the stem followed by `-` or `_` (extension and case aside). `CWOPS` takes
+  `CWOPS_4002.txt` and `CWOPS_4000-CCC.txt`, never `CWOPSOPEN_2026-002.txt`,
+  though N1MM's search lists all three; to follow one variant only, name it
+  (`n1mm-history:CWOPS_4000-CCC`). The search is read newest first, page by
+  page, until a page lists one of the stem's files.
+- **When:** N1MM sends no ETag; the chosen file's name, publish date and page
+  stand in for one, so a re-upload under the same name still counts as new. A
+  refresh whose newest file is the one last downloaded stops after the search,
+  like a 304. A forced refresh (RELOAD, Refresh) downloads it regardless.
+- **What arrives:** the file as served, in N1MM's format — a `!!Order!!,…`
+  column line, `#` comment lines, then CSV rows. `fetchType: 'raw'` is the one
+  that fits; `rawToJSONData` parses it. `url` in its arguments is the
+  `n1mm-history:` string, not the file's address.
+- **Failures:** a stem nothing matches, a refused download, or a page that no
+  longer has the shape the host reads fails the download with
+  `N1mmCallHistoryUnavailable` — a notice on a refresh the operator asked for,
+  an upload for the background passes. The requests and parsing are
+  `halo_core`'s `n1mm_call_history.dart`, shared by the app and the CLI.
+
 ### How CSV rows reach `csvToLookupEntry`
 
 An extension writes a **per-row** mapper; the kernel synthesizes the batch

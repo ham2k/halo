@@ -137,12 +137,39 @@ class DataFileSync {
   }
 
   Future<String> _download(String url, {String? encoding}) async {
-    if (verbose) stderr.writeln('[data-file] GET ${redactUrlForLog(url)}');
-    final response = await http.get(Uri.parse(url), headers: {'User-Agent': userAgent});
-    if (response.statusCode != 200) {
-      throw StateError('HTTP ${response.statusCode} from ${redactUrlForLog(url)}');
-    }
+    final stem = n1mmCallHistoryStem(url);
+    if (stem != null) return _downloadN1mmCallHistory(stem, encoding: encoding);
+    final response = _ok(await http.get(Uri.parse(_log('GET', url)), headers: {'User-Agent': userAgent}));
     return decodeDataFileBody(response.bodyBytes, encoding: resolveDataFileEncoding(encoding, response.headers['content-type']));
+  }
+
+  /// The app's requests for an `n1mm-history:` stem, less its unchanged-version
+  /// skip: a CLI run always wants the file.
+  Future<String> _downloadN1mmCallHistory(String stem, {String? encoding}) async {
+    Future<String> get(Uri url) async {
+      final response = _ok(await http.get(Uri.parse(_log('GET', '$url')), headers: {'User-Agent': userAgent}));
+      return decodeDataFileBody(response.bodyBytes, encoding: resolveDataFileEncoding(null, response.headers['content-type']));
+    }
+
+    Future<({List<int> bytes, String? contentType})> post(Uri url, Map<String, String> fields) async {
+      final response = _ok(await http.post(Uri.parse(_log('POST', '$url')), headers: {'User-Agent': userAgent}, body: fields));
+      return (bytes: response.bodyBytes, contentType: response.headers['content-type']);
+    }
+
+    final body = await downloadN1mmCallHistoryFile(await findN1mmCallHistoryFile(stem, get), stem, get, post);
+    return decodeDataFileBody(body.bytes, encoding: resolveDataFileEncoding(encoding, body.contentType));
+  }
+
+  String _log(String method, String url) {
+    if (verbose) stderr.writeln('[data-file] $method ${redactUrlForLog(url)}');
+    return url;
+  }
+
+  http.Response _ok(http.Response response) {
+    if (response.statusCode != 200) {
+      throw StateError('HTTP ${response.statusCode} from ${redactUrlForLog('${response.request?.url}')}');
+    }
+    return response;
   }
 
   Future<DataFileResult> _importCsv(DataFileDef def, String body) async {

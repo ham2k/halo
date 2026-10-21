@@ -2583,6 +2583,12 @@ export interface DataFileDefinition {
   /// Usually a plain string. A function when the URL depends on something the
   /// extension must ask for — TOTA's list carries its API key as a query
   /// parameter — resolved once per refresh, like `name` and `description`.
+  ///
+  /// `n1mm-history:<stem>` names an N1MM call history file instead, by the
+  /// stem its versions share (`n1mm-history:CWOPS` for `CWOPS_4002.txt`): the
+  /// host downloads the newest one, and only when its name changes. Use it
+  /// with `fetchType: 'raw'`; see docs/extensions/hooks.md's `dataFile`.
+  /// Extension API 11.
   url: Localizable<string>
   maxAgeInDays: number
   fetchType: FetchType

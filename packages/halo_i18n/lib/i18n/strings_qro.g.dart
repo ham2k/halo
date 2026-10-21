@@ -927,6 +927,8 @@ class _Translations$dataFiles$qro extends Translations$dataFiles$en {
 	@override String get downloadTimedOut => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.';
 	@override String downloadServerError({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.';
 	@override String downloadNotAvailable({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.';
+	@override String n1mmHistoryNoMatch({required Object stem}) => 'N1MM HAS NO CALL HISTORY FILE FOR ${stem}.';
+	@override String n1mmHistoryUnavailable({required Object stem}) => 'N1MM\'S CALL HISTORY DOWNLOAD FOR ${stem} DIDN\'T WORK. TRY AGAIN LATER.';
 	@override String processingFailedTitle({required Object name}) => 'COULDN\'T PROCESS ${name}';
 	@override String importTooSmall({required Object imported, required Object existing}) => 'THE DOWNLOAD HAD ONLY ${imported} OF THE ${existing} RECORDS ON THIS DEVICE, SO THE ONES IT LEFT OUT WERE KEPT. REFRESHING IT IN SETTINGS › OFFLINE DATA ACCEPTS IT ANYWAY.';
 	@override String importedRecords({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count,
@@ -5962,6 +5964,8 @@ extension on TranslationsQro {
 			'dataFiles.downloadTimedOut' => 'THE SERVER TOOK TOO LONG TO RESPOND. TRY AGAIN LATER.',
 			'dataFiles.downloadServerError' => ({required Object host, required Object status}) => '${host} ANSWERED WITH AN ERROR (HTTP ${status}). TRY AGAIN LATER.',
 			'dataFiles.downloadNotAvailable' => ({required Object host, required Object status}) => '${host} COULDN\'T PROVIDE THIS FILE (HTTP ${status}). CHECK THAT ITS ADDRESS IS STILL RIGHT.',
+			'dataFiles.n1mmHistoryNoMatch' => ({required Object stem}) => 'N1MM HAS NO CALL HISTORY FILE FOR ${stem}.',
+			'dataFiles.n1mmHistoryUnavailable' => ({required Object stem}) => 'N1MM\'S CALL HISTORY DOWNLOAD FOR ${stem} DIDN\'T WORK. TRY AGAIN LATER.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'COULDN\'T PROCESS ${name}',
 			'dataFiles.importTooSmall' => ({required Object imported, required Object existing}) => 'THE DOWNLOAD HAD ONLY ${imported} OF THE ${existing} RECORDS ON THIS DEVICE, SO THE ONES IT LEFT OUT WERE KEPT. REFRESHING IT IN SETTINGS › OFFLINE DATA ACCEPTS IT ANYWAY.',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'IMPORTED ${count} RECORD FOR ${label}.', other: 'IMPORTED ${count} RECORDS FOR ${label}.', ), 
@@ -6003,10 +6007,10 @@ extension on TranslationsQro {
 			'operationLocationScreen.gridSquare' => 'MAIDENHEAD GRID SQUARE LOCATOR',
 			'operationLocationScreen.gridInvalid' => 'NEEDS 4, 6, 8 OR 10 CHARACTERS, LIKE FN31PR',
 			'operationLocationScreen.suggestedLocations' => 'SUGGESTED LOCATIONS',
-			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
-			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
+			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
 			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
