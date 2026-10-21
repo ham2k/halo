@@ -15,6 +15,7 @@ import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
+import 'package:halo_widgets/src/dock_tab.dart' show PaneHeaderPeek;
 
 /// What three letters and an ellipsis measure, in the same style the strip's
 /// floor is measured against — bold for the editing floor, since a tab being
@@ -1488,6 +1489,295 @@ void main() {
       // be moved, renamed or given its header back.
       await tester.pumpWidget(withHeaderless(spec: DockGroup(['a']), editing: true));
       expect(find.text('Alpha'), findsOneWidget);
+    });
+
+    testWidgets('a headerless pane peeks its header above itself while the mouse is near its top', (tester) async {
+      // A desktop: a touch platform's divider slop takes the pane's top
+      // points, and touch has no hover to peek with anyway.
+      await _as(TargetPlatform.macOS, () async {
+        var tapped = 0;
+        Widget dock({bool editing = false}) => harness(
+          spec: DockSplit(
+            Axis.vertical,
+            [
+              DockGroup(['b']),
+              DockGroup(['a']),
+            ],
+            [1, 1],
+          ),
+          headerlessModules: const {'a'},
+          tabActions: {'a': (_) => IconButton(icon: const Icon(Icons.settings), onPressed: () => tapped++)},
+          editing: editing,
+        );
+        await tester.pumpWidget(dock());
+        final pane = tester.getRect(find.byKey(const Key('pane-a')));
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+
+        await mouse.addPointer(location: pane.center);
+        await tester.pump();
+        expect(find.text('Alpha'), findsNothing, reason: 'only NEAR the top — a pointer anywhere in the pane is the operator using it');
+
+        await mouse.moveTo(pane.topCenter + const Offset(0, 4));
+        await tester.pump();
+        expect(find.text('Alpha'), findsOneWidget);
+        // Above the pane, not on it: over the top is where the pointer is
+        // reaching, and a strip laid there would cover what it reaches for.
+        final strip = tester.getRect(find.text('Alpha'));
+        expect(strip.bottom, lessThanOrEqualTo(pane.top));
+        expect(strip.left, greaterThanOrEqualTo(pane.left));
+
+        // Leaving the pane FOR the peek must not take the peek away — its
+        // button is what the operator was moving up to press.
+        final action = tester.getCenter(find.byIcon(Icons.settings));
+        await mouse.moveTo(action);
+        await tester.pump();
+        expect(find.text('Alpha'), findsOneWidget);
+        await tester.tap(find.byIcon(Icons.settings), kind: PointerDeviceKind.mouse);
+        expect(tapped, 1);
+
+        // Out onto the fade past the button: still the peek's, or a pointer
+        // coming at the title from that side loses it on the way in.
+        final unit = LayoutDensity.chromeHeightOf(tester.element(find.byKey(const Key('pane-a'))));
+        await mouse.moveTo(action + Offset(unit / 2 + Space.xxs + PaneHeaderPeek.fadeExtent / 2, 0));
+        await tester.pump();
+        expect(find.text('Alpha'), findsOneWidget);
+
+        await mouse.moveTo(pane.center);
+        await tester.pump();
+        expect(find.text('Alpha'), findsNothing);
+
+        // While editing, the pane's chrome is FloatingPaneChrome over its
+        // corner; a second title above it would be two headers for one pane.
+        await mouse.moveTo(pane.topCenter + const Offset(0, 4));
+        await tester.pump();
+        await tester.pumpWidget(dock(editing: true));
+        await tester.pump();
+        expect(find.text('Alpha'), findsOneWidget, reason: 'the floating chrome, and nothing else');
+      });
+    });
+
+    testWidgets('a dialog opened from the peek can still act through the context its action was built with', (tester) async {
+      // The peek hides the moment the dialog's barrier takes the pointer.
+      // Unmounting the strip then would leave the logging pane's Find and
+      // Lookup-all items popping a Navigator through a defunct context: the
+      // dialog stays up and the command never runs.
+      await _as(TargetPlatform.macOS, () async {
+        var closed = false;
+        await tester.pumpWidget(
+          harness(
+            spec: DockSplit(
+              Axis.vertical,
+              [
+                DockGroup(['b']),
+                DockGroup(['a']),
+              ],
+              [1, 1],
+            ),
+            headerlessModules: const {'a'},
+            // Its own Builder's context, deepest in the strip, as the app's
+            // panel settings button captures.
+            tabActions: {
+              'a': (_) => Builder(
+                builder: (buttonContext) => IconButton(
+                  icon: const Icon(Icons.settings),
+                  onPressed: () => showDialog<void>(
+                    context: buttonContext,
+                    builder: (_) => TextButton(
+                      onPressed: () {
+                        Navigator.of(buttonContext).pop();
+                        closed = true;
+                      },
+                      child: const Text('Close'),
+                    ),
+                  ),
+                ),
+              ),
+            },
+          ),
+        );
+        final pane = tester.getRect(find.byKey(const Key('pane-a')));
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: pane.center);
+        await mouse.moveTo(pane.topCenter + const Offset(0, 4));
+        await tester.pump();
+        await tester.tap(find.byIcon(Icons.settings), kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+        expect(find.text('Alpha'), findsNothing, reason: 'the barrier took the pointer, so the peek is down');
+
+        await tester.tap(find.text('Close'), kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+        expect(closed, isTrue);
+        expect(find.text('Close'), findsNothing);
+      });
+    });
+
+    testWidgets('the divider above a headerless pane still resizes from under its peek', (tester) async {
+      // Reaching the divider from inside the pane always crosses the band
+      // that brings the peek up, so a strip that took the press would make
+      // the divider work from one side and not the other.
+      await _as(TargetPlatform.macOS, () async {
+        await tester.pumpWidget(
+          harness(
+            spec: DockSplit(
+              Axis.vertical,
+              [
+                DockGroup(['b']),
+                DockGroup(['a']),
+              ],
+              [1, 1],
+            ),
+            headerlessModules: const {'a'},
+          ),
+        );
+        final pane = tester.getRect(find.byKey(const Key('pane-a')));
+        final divider = tester.getRect(find.byType(SolidPaneDivider).first);
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: pane.center);
+        await mouse.moveTo(pane.topLeft + const Offset(10, 4));
+        await tester.pump();
+        // Through the title itself, which the strip spans down to the pane's
+        // top — the divider is inside that span.
+        final through = Offset(tester.getCenter(find.text('Alpha')).dx, divider.center.dy);
+        final unit = LayoutDensity.chromeHeightOf(tester.element(find.byKey(const Key('pane-a'))));
+        expect(through.dy, greaterThan(pane.top - unit), reason: 'the peek has to be over the divider, or this proves nothing');
+        await mouse.moveTo(through);
+        await tester.pump();
+        expect(find.text('Alpha'), findsOneWidget);
+
+        await mouse.down(through);
+        await mouse.moveBy(const Offset(0, -40));
+        await mouse.up();
+        await tester.pump();
+        expect(tester.getRect(find.byKey(const Key('pane-a'))).top, lessThan(pane.top - 20));
+      });
+    });
+
+    testWidgets('a headerless pane at the top peeks over itself, and only after a still hold in its corner', (tester) async {
+      await _as(TargetPlatform.macOS, () async {
+        await tester.pumpWidget(
+          harness(
+            spec: DockSplit(
+              Axis.vertical,
+              [
+                DockGroup(['a']),
+                DockGroup(['b']),
+              ],
+              [1, 1],
+            ),
+            headerlessModules: const {'a'},
+          ),
+        );
+        final pane = tester.getRect(find.byKey(const Key('pane-a')));
+        final unit = LayoutDensity.chromeHeightOf(tester.element(find.byKey(const Key('pane-a'))));
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+
+        // Near the top but outside the corner — past where "Alpha" and its
+        // insets end, or below a third of a header: nothing, however long it
+        // rests. At the top this peek covers the pane, so it is never
+        // incidental.
+        await mouse.addPointer(location: pane.topLeft + Offset(unit * 3, 4));
+        await tester.pump(const Duration(seconds: 3));
+        expect(find.text('Alpha'), findsNothing);
+        await mouse.moveTo(pane.topLeft + Offset(10, unit / 3 + 2));
+        await tester.pump(const Duration(seconds: 3));
+        expect(find.text('Alpha'), findsNothing);
+
+        // Every move inside the corner restarts the hold: a pointer working
+        // there must not bring up a strip over what it is working on.
+        await mouse.moveTo(pane.topLeft + const Offset(10, 4));
+        await tester.pump(const Duration(milliseconds: 700));
+        await mouse.moveTo(pane.topLeft + const Offset(20, 4));
+        await tester.pump(const Duration(milliseconds: 700));
+        expect(find.text('Alpha'), findsNothing, reason: '1.4s in the corner, but never 1s still');
+        // A jitter is not a move: a hand resting on a mouse is never quite
+        // still, and restarting on it would make the hold unreachable.
+        await mouse.moveTo(pane.topLeft + const Offset(22, 5));
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text('Alpha'), findsOneWidget);
+        // Over the pane, not above it: above the dock is the view's header.
+        expect(tester.getRect(find.text('Alpha')).top, greaterThanOrEqualTo(pane.top));
+
+        await mouse.moveTo(pane.center);
+        await tester.pump();
+        expect(find.text('Alpha'), findsNothing);
+      });
+    });
+
+    testWidgets('a headerless pane under a group\'s tab strip peeks like one at the top', (tester) async {
+      // Drawn above, its peek would lie across that tab strip and the tabs
+      // the pointer may be heading for — the strip is chrome, like the view's
+      // header above the dock.
+      await _as(TargetPlatform.macOS, () async {
+        await tester.pumpWidget(
+          harness(
+            spec: DockGroup(
+              ['b', 'n1'],
+              nested: {
+                'n1': DockSplit(
+                  Axis.vertical,
+                  [
+                    DockGroup(['a']),
+                    DockGroup(['c']),
+                  ],
+                  [1, 1],
+                ),
+              },
+              selected: 1,
+            ),
+            headerlessModules: const {'a'},
+          ),
+        );
+        final pane = tester.getRect(find.byKey(const Key('pane-a')));
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: pane.center);
+        await mouse.moveTo(pane.topLeft + const Offset(10, 4));
+        await tester.pump();
+        expect(find.text('Alpha'), findsNothing, reason: 'not straight away, as it would be under another pane');
+        await tester.pump(PaneHeaderPeek.holdToReveal + const Duration(milliseconds: 100));
+        expect(find.text('Alpha'), findsOneWidget);
+        expect(tester.getRect(find.text('Alpha')).top, greaterThanOrEqualTo(pane.top));
+      });
+    });
+
+    testWidgets('a long title ellipsizes within its pane rather than running across its neighbours', (tester) async {
+      await _as(TargetPlatform.macOS, () async {
+        await tester.pumpWidget(
+          harness(
+            spec: DockSplit(
+              Axis.vertical,
+              [
+                DockGroup(['b']),
+                DockSplit(
+                  Axis.horizontal,
+                  [
+                    DockGroup(['a']),
+                    DockGroup(['c']),
+                  ],
+                  [1, 1],
+                ),
+              ],
+              [1, 1],
+            ),
+            titles: {'a': 'Alpha ' * 40, 'b': 'Bravo', 'c': 'Charlie'},
+            headerlessModules: const {'a'},
+          ),
+        );
+        final pane = tester.getRect(find.byKey(const Key('pane-a')));
+        final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+        addTearDown(mouse.removePointer);
+        await mouse.addPointer(location: pane.center);
+        await mouse.moveTo(pane.topLeft + const Offset(10, 4));
+        await tester.pump();
+        final title = find.text('Alpha ' * 40);
+        expect(title, findsOneWidget);
+        expect(tester.getRect(title).right, lessThanOrEqualTo(pane.right));
+        expect(tester.takeException(), isNull, reason: 'capped, the title has to give way rather than overflow');
+      });
     });
 
     testWidgets('a narrow strip squeezes the tabs that are not showing, and only them', (tester) async {

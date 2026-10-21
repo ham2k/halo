@@ -668,6 +668,25 @@ nowhere else — outside edit mode there is no layout to have options about.
   rather than hidden while it shares a group: the header is the tab strip
   there, and hiding it would strand every other pane. Also always shown while
   editing, since the header is the grab handle and the pane's own control.
+  A headerless pane still **peeks** its header while the mouse is within a
+  chrome height of its top (`PaneHeaderPeek`): the title and tab action,
+  sized to their content with a solo tab's insets (capped at the pane's
+  width, the title ellipsizing), drawn ABOVE the pane's
+  top-left corner over whatever is there and fading out to the right. Above
+  rather than on the pane, because the pointer is near that top reaching for
+  something in it. A pane with only **chrome above it** — at the top of the
+  dock, under the view's header, or nested under a group's tab strip — has
+  no pane above to draw over, and covering that chrome would hide what the
+  pointer may be heading for, so its peek lies over its own top-left corner
+  instead — and because there it covers the
+  pane's content, it shows only after the pointer rests **still for a
+  second** (a few points of drift allowed) in that corner: a third of a
+  chrome height tall, and as wide as the peek. Only the
+  peek's button takes a press: the title passes clicks and hover through,
+  since it lies over the divider above its pane, and a pointer reaching for
+  that divider from inside the pane always brings the peek up first. Mouse
+  only, and not while editing, where `FloatingPaneChrome` is the pane's
+  chrome.
 - **Font Scale**, **Layout Density** and **Theme Mode**, side by side and
   always visible (no disclosure to open first), each an "inherit or override"
   for this pane alone, and a **Restore Defaults** in the dialog's footer that

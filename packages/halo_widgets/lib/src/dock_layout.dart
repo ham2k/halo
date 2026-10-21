@@ -972,7 +972,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     return Stack(
       fit: StackFit.expand,
       children: [
-        _buildNode(_spec),
+        _buildNode(_spec, atTop: true),
         // The dock's own edge strips, live only mid-drag.
         if (_dragging != null)
           for (final region in const [DockRegion.left, DockRegion.right, DockRegion.top, DockRegion.bottom])
@@ -1030,9 +1030,11 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
 
   /// What tab slot [index] of [group] shows: a container's whole subtree, or
   /// a pane wrapped in the chrome editing gives a pane.
-  Widget _slotBody(DockGroup group, int index, {required bool showHeader}) {
+  Widget _slotBody(DockGroup group, int index, {required bool showHeader, required bool atTop}) {
     final slot = group.modules[index];
-    if (group.nested[slot] case final subtree?) return _buildNode(subtree);
+    // Under this group's header, a container's top is as much "at the top"
+    // as the dock's own: a peek drawn above it would cover that tab strip.
+    if (group.nested[slot] case final subtree?) return _buildNode(subtree, atTop: atTop || showHeader);
     final pane = widget.children[slot] ?? _missingPane(slot);
     // While editing, the pane's own contents take no pointer input. A pane is
     // a block to be moved then, and its insides are a picture of what the
@@ -1078,9 +1080,13 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     );
   }
 
-  Widget _buildNode(DockNode node) => switch (node) {
-    DockGroup() => _buildGroup(node),
-    DockSplit() => _buildSplit(node),
+  /// [atTop] is whether only chrome sits above [node]'s top edge — the view's
+  /// header, or the tab strip of a group it is nested in — rather than another
+  /// pane for a headerless pane to peek its header over (see
+  /// [PaneHeaderPeek.atTop]).
+  Widget _buildNode(DockNode node, {required bool atTop}) => switch (node) {
+    DockGroup() => _buildGroup(node, atTop: atTop),
+    DockSplit() => _buildSplit(node, atTop: atTop),
   };
 
   /// A module's declared minimum along [axis] ([DockLayoutView.moduleMinimumSizes]),
@@ -1149,7 +1155,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     }
   }
 
-  Widget _buildSplit(DockSplit split) {
+  Widget _buildSplit(DockSplit split, {required bool atTop}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final horizontal = split.axis == Axis.horizontal;
@@ -1400,7 +1406,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                   top: horizontal ? ambientTop : (isFirst ? ambientTop : 0),
                   right: horizontal ? (isLast ? ambientRight : 0) : ambientRight,
                   bottom: horizontal ? ambientBottom : (isLast ? ambientBottom : 0),
-                  child: _buildNode(split.children[i]),
+                  child: _buildNode(split.children[i], atTop: atTop && (horizontal || isFirst)),
                 ),
               ),
             ),
@@ -1494,7 +1500,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     return const SizedBox.shrink();
   }
 
-  Widget _buildGroup(DockGroup group) {
+  Widget _buildGroup(DockGroup group, {required bool atTop}) {
     final theme = Theme.of(context);
     final headerColor = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
     // See [headerlessModules] for the two overrides. Edit mode is NOT one of
@@ -1654,118 +1660,124 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
             ),
           ),
         Expanded(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // No local PaneSafeArea wrap here: this group's content
-              // inherits whatever ambient value _buildSplit (or this dock's
-              // own outer ancestor, for a lone root group) already
-              // established — re-wrapping with a hardcoded value would
-              // shadow it (InheritedWidget lookup finds only the nearest
-              // ancestor).
-              // While editing, the pane's own contents take no pointer input.
-              // A pane is a block to be moved then, and its insides are a
-              // picture of what the block holds: a drag begun inside the log
-              // would otherwise be taken by the log's own scroll or selection
-              // gestures, and a tap would put the caret in a field the
-              // operator can't see the point of typing into.
-              // ExcludeFocus alongside it, which IgnorePointer does not
-              // imply: whatever held focus when editing began keeps it
-              // otherwise, and in this app that is a logging field — now
-              // under an opaque wash, still taking keystrokes, still
-              // submitting the QSO on Enter. ExcludeSemantics for the same
-              // reason one level up: a screen reader must not land on a
-              // control that is only a picture of itself right now.
-              IndexedStack(
-                // Tight constraints, like a TabBarView page — panes are
-                // designed to fill their pane, not shrink-wrap.
-                sizing: StackFit.expand,
-                index: group.selected,
-                children: [
-                  for (var i = 0; i < group.modules.length; i++)
-                    // A Builder so the value below can be ANDed with the one
-                    // this group is itself inside. `DockPaneVisibility.of`
-                    // reads the NEAREST ancestor only, so an inner group that
-                    // published its own selection unqualified would tell the
-                    // selected pane of a hidden container that it is on screen
-                    // — and everything that acts on this (the mobile numbers
-                    // row, every polling panel, the webview panes) would go on
-                    // as if nobody had switched tabs.
-                    Builder(
-                      builder: (context) => DockPaneVisibility(
-                        visible: i == group.selected && DockPaneVisibility.of(context),
-                        // A CONTAINER slot renders its whole subtree, bare: the
-                        // groups inside it apply their own editing chrome and
-                        // own their own drop regions, so wrapping them in this
-                        // group's would leave a nested arrangement with no way
-                        // to be rearranged.
-                        child: _slotBody(group, i, showHeader: showHeader),
+          child: PaneHeaderPeek(
+            enabled: !showHeader && !widget.editing,
+            atTop: atTop,
+            title: widget.titles[group.modules.first] ?? group.modules.first,
+            action: widget.tabActions?[group.modules.first],
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // No local PaneSafeArea wrap here: this group's content
+                // inherits whatever ambient value _buildSplit (or this dock's
+                // own outer ancestor, for a lone root group) already
+                // established — re-wrapping with a hardcoded value would
+                // shadow it (InheritedWidget lookup finds only the nearest
+                // ancestor).
+                // While editing, the pane's own contents take no pointer input.
+                // A pane is a block to be moved then, and its insides are a
+                // picture of what the block holds: a drag begun inside the log
+                // would otherwise be taken by the log's own scroll or selection
+                // gestures, and a tap would put the caret in a field the
+                // operator can't see the point of typing into.
+                // ExcludeFocus alongside it, which IgnorePointer does not
+                // imply: whatever held focus when editing began keeps it
+                // otherwise, and in this app that is a logging field — now
+                // under an opaque wash, still taking keystrokes, still
+                // submitting the QSO on Enter. ExcludeSemantics for the same
+                // reason one level up: a screen reader must not land on a
+                // control that is only a picture of itself right now.
+                IndexedStack(
+                  // Tight constraints, like a TabBarView page — panes are
+                  // designed to fill their pane, not shrink-wrap.
+                  sizing: StackFit.expand,
+                  index: group.selected,
+                  children: [
+                    for (var i = 0; i < group.modules.length; i++)
+                      // A Builder so the value below can be ANDed with the one
+                      // this group is itself inside. `DockPaneVisibility.of`
+                      // reads the NEAREST ancestor only, so an inner group that
+                      // published its own selection unqualified would tell the
+                      // selected pane of a hidden container that it is on screen
+                      // — and everything that acts on this (the mobile numbers
+                      // row, every polling panel, the webview panes) would go on
+                      // as if nobody had switched tabs.
+                      Builder(
+                        builder: (context) => DockPaneVisibility(
+                          visible: i == group.selected && DockPaneVisibility.of(context),
+                          // A CONTAINER slot renders its whole subtree, bare: the
+                          // groups inside it apply their own editing chrome and
+                          // own their own drop regions, so wrapping them in this
+                          // group's would leave a nested arrangement with no way
+                          // to be rearranged.
+                          child: _slotBody(group, i, showHeader: showHeader, atTop: atTop),
+                        ),
                       ),
-                    ),
-                ],
-              ),
-              // All three belong to a PANE. A container showing in this slot
-              // is not one — it is a piece of layout, and the panes inside it
-              // draw their own wash, bands and outline.
-              if (widget.editing && !showingNested) const IgnorePointer(child: EditingPaneWash()),
-              // Cross-faded rather than mounted outright: bands that appear
-              // the instant a drag starts read as a flicker under the
-              // pointer, and on drop they would vanish before the layout
-              // they described has finished moving.
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                child: _dragging == null || showingNested
-                    ? const SizedBox.shrink()
-                    : DockGroupDropRegions(
-                        washAlpha: _hitWashAlpha,
-                        onDrop: (id, drop) =>
-                            drop.nest ? _handleNestDrop(id, group, above: drop.region == DockRegion.top) : _handleDrop(id, group, drop.region),
-                      ),
-              ),
-              // Last, so the outline is over the drop bands too — otherwise
-              // the pane being aimed at loses its own edges at the moment it
-              // matters most.
-              if (widget.editing && !showingNested)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: CustomPaint(painter: PaneFramePainter(topFromStrip: showHeader)),
-                  ),
+                  ],
                 ),
-              // Above the frame and the wash both: it is the only thing in a
-              // headerless pane that is still a control while editing, so
-              // nothing may paint over it.
-              if (floatingChrome)
-                // `.fill`, not left/top alone: a Positioned with only two
-                // edges hands its child UNBOUNDED constraints (nothing pins
-                // the other two), so the reflow LayoutBuilder inside
-                // FloatingPaneChrome could never see the pane's real width
-                // and always chose the wide layout. Align keeps the content
-                // shrink-wrapped within the now-bounded box — it gets LOOSE
-                // constraints from Align, not the tight ones Positioned.fill
-                // itself receives.
-                Positioned.fill(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: editingFrameWidth, top: editingFrameWidth),
-                    child: Align(
-                      alignment: Alignment.topLeft,
-                      child: FloatingPaneChrome(
-                        title: widget.titles[group.modules.first] ?? group.modules.first,
-                        moduleId: group.modules.first,
-                        pinned: widget.pinnedModuleIds.contains(group.modules.first),
-                        action: widget.editingPaneControls?.call(context, group.modules.first),
-                        onDragStarted: (id) {
-                          setState(() => _dragging = id);
-                          _syncDeleteTargetOverlay();
-                        },
-                        onDragEnded: () {
-                          setState(() => _dragging = null);
-                          _syncDeleteTargetOverlay();
-                        },
-                      ),
+                // All three belong to a PANE. A container showing in this slot
+                // is not one — it is a piece of layout, and the panes inside it
+                // draw their own wash, bands and outline.
+                if (widget.editing && !showingNested) const IgnorePointer(child: EditingPaneWash()),
+                // Cross-faded rather than mounted outright: bands that appear
+                // the instant a drag starts read as a flicker under the
+                // pointer, and on drop they would vanish before the layout
+                // they described has finished moving.
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: _dragging == null || showingNested
+                      ? const SizedBox.shrink()
+                      : DockGroupDropRegions(
+                          washAlpha: _hitWashAlpha,
+                          onDrop: (id, drop) =>
+                              drop.nest ? _handleNestDrop(id, group, above: drop.region == DockRegion.top) : _handleDrop(id, group, drop.region),
+                        ),
+                ),
+                // Last, so the outline is over the drop bands too — otherwise
+                // the pane being aimed at loses its own edges at the moment it
+                // matters most.
+                if (widget.editing && !showingNested)
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(painter: PaneFramePainter(topFromStrip: showHeader)),
                     ),
                   ),
-                ),
-            ],
+                // Above the frame and the wash both: it is the only thing in a
+                // headerless pane that is still a control while editing, so
+                // nothing may paint over it.
+                if (floatingChrome)
+                  // `.fill`, not left/top alone: a Positioned with only two
+                  // edges hands its child UNBOUNDED constraints (nothing pins
+                  // the other two), so the reflow LayoutBuilder inside
+                  // FloatingPaneChrome could never see the pane's real width
+                  // and always chose the wide layout. Align keeps the content
+                  // shrink-wrapped within the now-bounded box — it gets LOOSE
+                  // constraints from Align, not the tight ones Positioned.fill
+                  // itself receives.
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: editingFrameWidth, top: editingFrameWidth),
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: FloatingPaneChrome(
+                          title: widget.titles[group.modules.first] ?? group.modules.first,
+                          moduleId: group.modules.first,
+                          pinned: widget.pinnedModuleIds.contains(group.modules.first),
+                          action: widget.editingPaneControls?.call(context, group.modules.first),
+                          onDragStarted: (id) {
+                            setState(() => _dragging = id);
+                            _syncDeleteTargetOverlay();
+                          },
+                          onDragEnded: () {
+                            setState(() => _dragging = null);
+                            _syncDeleteTargetOverlay();
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ],

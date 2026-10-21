@@ -5,6 +5,7 @@
 // drag. The quiet tone for a tab's own actions is derived here too, from
 // the strip's colours.
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -619,4 +620,291 @@ class FloatingPaneChrome extends StatelessWidget {
       },
     );
   }
+}
+
+/// A headerless pane's header, brought back while the pointer is near the
+/// pane's top edge: its title and its tab action, the same two things a solo
+/// header would have carried.
+///
+/// Drawn ABOVE the pane, over whatever of the dock sits there, rather than
+/// over the pane's top. The pointer is near that top because the operator is
+/// reaching for something in it, and a strip unrolled across it would cover
+/// exactly that. An overlay, because "above" is outside the pane's own box and
+/// painted over a sibling's.
+///
+/// A pane at the dock's top ([atTop]) has nothing of the dock above it, so
+/// its peek lies over its own top-left corner instead — and, since there it
+/// DOES cover the pane, it waits to be asked: see [holdToReveal].
+///
+/// Sized to its content and faded out to the right, like
+/// [FloatingPaneChrome]: it lies on someone else's content, and a crisp right
+/// edge reads as a piece of that content rather than as chrome over it.
+///
+/// Mouse only. Touch has no hover; a headerless pane on a touch screen
+/// offers its title and options from edit mode.
+class PaneHeaderPeek extends StatefulWidget {
+  /// Off while the dock is being edited — [FloatingPaneChrome] is the pane's
+  /// chrome then — and for a pane that shows its header anyway. A flag rather
+  /// than leaving this widget out: unwrapping [child] would remount the pane,
+  /// and with it whatever the operator had half-typed into it.
+  final bool enabled;
+
+  /// Whether only chrome sits above the pane — the view's header, or the tab
+  /// strip of the group it is nested in — rather than another pane. Chrome is
+  /// not the peek's to draw over: a strip laid on a tab strip covers the tabs
+  /// the pointer may be heading for.
+  final bool atTop;
+
+  final String title;
+
+  /// The module's tab action — see `DockLayoutView.tabActions`.
+  final WidgetBuilder? action;
+
+  final Widget child;
+
+  const PaneHeaderPeek({super.key, required this.enabled, required this.atTop, required this.title, required this.action, required this.child});
+
+  /// How far past the content the fade runs — the same tail as
+  /// [FloatingPaneChrome]'s.
+  static const double fadeExtent = FloatingPaneChrome._fadeExtent;
+
+  /// How long an [atTop] pane's pointer has to rest, unmoving, in its
+  /// top-left corner — a third of a chrome height tall, and as wide as the
+  /// peek's own title and action — before the peek shows. That peek covers the pane's own content, and that corner is where
+  /// a table's first column or a form's first field lives: the pointer
+  /// passing through it, or working there, must not bring up a strip over
+  /// what it is working on.
+  static const holdToReveal = Duration(milliseconds: 1000);
+
+  /// How far the pointer may wander from where a [holdToReveal] began and
+  /// still count as resting: a hand on a mouse is never quite still. Measured
+  /// from that start, not from the last move, so a slow creep across the
+  /// corner still restarts it.
+  static const double holdDrift = 4;
+
+  @override
+  State<PaneHeaderPeek> createState() => _PaneHeaderPeekState();
+}
+
+class _PaneHeaderPeekState extends State<PaneHeaderPeek> {
+  /// Shown for the pane's whole life, the strip hidden inside it rather than
+  /// the portal: a tab action captures contexts in the strip's subtree, and
+  /// the dialog it opens takes the pointer — hiding the peek. Unmounted
+  /// there, the dialog's own buttons (the logging pane's Find, for one) would
+  /// pop a Navigator through a defunct context and do nothing.
+  final _peek = OverlayPortalController()..show();
+  final _link = LayerLink();
+
+  /// Two flags, because the peek is a region of its own: moving onto it
+  /// leaves the pane's region in the same pointer event that enters the
+  /// peek's, and either one alone would hide it on the way to its button.
+  /// For an [PaneHeaderPeek.atTop] pane, [_nearTop] is "revealed by a hold".
+  bool _nearTop = false;
+  bool _overPeek = false;
+
+  /// Restarted by a move inside the corner past [PaneHeaderPeek.holdDrift]
+  /// from [_holdFrom] — see [PaneHeaderPeek.holdToReveal].
+  Timer? _hold;
+  Offset _holdFrom = Offset.zero;
+
+  bool get _visible => widget.enabled && (_nearTop || _overPeek);
+
+  void _update({bool? nearTop, bool? overPeek}) {
+    final was = _visible;
+    _nearTop = nearTop ?? _nearTop;
+    _overPeek = overPeek ?? _overPeek;
+    if (_visible != was) setState(() {});
+  }
+
+  /// The pane's width, so a long title ellipsizes rather than running across
+  /// its neighbours — but never below the action and three letters, which a
+  /// pane narrower than that would squeeze into an overflow.
+  double _stripMaxWidth(double paneWidth) =>
+      math.max(paneWidth, _PeekStrip.contentWidth(context, 'Abc…', hasAction: widget.action != null) + PaneHeaderPeek.fadeExtent);
+
+  void _onHover(Offset at) {
+    final unit = LayoutDensity.chromeHeightOf(context);
+    // The band the header would have filled, had the pane kept it.
+    if (!widget.atTop) return _update(nearTop: at.dy < unit);
+    // The strip's own footprint, so a revealed peek covers the whole corner
+    // and the pointer resting there is always over it.
+    final width = math.min(
+      _PeekStrip.contentWidth(context, widget.title, hasAction: widget.action != null),
+      _stripMaxWidth(context.size!.width) - PaneHeaderPeek.fadeExtent,
+    );
+    final inCorner = at.dx < width && at.dy < unit / 3;
+    if (inCorner && (_hold?.isActive ?? false) && (at - _holdFrom).distance <= PaneHeaderPeek.holdDrift) return;
+    _hold?.cancel();
+    _update(nearTop: false);
+    if (inCorner && widget.enabled) {
+      _holdFrom = at;
+      _hold = Timer(PaneHeaderPeek.holdToReveal, () => _update(nearTop: true));
+    }
+  }
+
+  void _onExit() {
+    _hold?.cancel();
+    _update(nearTop: false);
+  }
+
+  @override
+  void didUpdateWidget(PaneHeaderPeek oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enabled) {
+      _hold?.cancel();
+      _nearTop = _overPeek = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _hold?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) => MouseRegion(
+        opaque: false,
+        onHover: (event) => _onHover(event.localPosition),
+        onExit: (_) => _onExit(),
+        child: OverlayPortal(
+          controller: _peek,
+          // Positioned with no size: unbounded constraints, so the follower is
+          // the strip's own size and its anchor lands on the strip. The cap is
+          // the ConstrainedBox below.
+          overlayChildBuilder: (context) => Positioned(
+            left: 0,
+            top: 0,
+            child: CompositedTransformFollower(
+              link: _link,
+              targetAnchor: Alignment.topLeft,
+              followerAnchor: widget.atTop ? Alignment.topLeft : Alignment.bottomLeft,
+              // Hidden but kept — see [_peek]. Visibility also takes the
+              // hidden strip's button out of focus traversal and semantics.
+              child: Visibility(
+                visible: _visible,
+                maintainState: true,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: _stripMaxWidth(constraints.maxWidth)),
+                  child: _PeekStrip(
+                    title: widget.title,
+                    action: widget.action?.call(context),
+                    onHover: (over) => _update(overPeek: over),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          child: CompositedTransformTarget(link: _link, child: widget.child),
+        ),
+      ),
+    );
+  }
+}
+
+/// The strip itself: a solo tab's title and action on the header colour,
+/// solid under them and fading out past them.
+class _PeekStrip extends StatelessWidget {
+  final String title;
+  final Widget? action;
+  final ValueChanged<bool> onHover;
+
+  const _PeekStrip({required this.title, required this.action, required this.onHover});
+
+  /// The strip's width short of its fade: the insets, the title and the
+  /// action slot laid out in [build]. Kept beside it, since the two must
+  /// agree.
+  static double contentWidth(BuildContext context, String title, {required bool hasAction}) =>
+      Space.xxs * 2 +
+      Space.lg * 2 +
+      textWidth(context, title, Theme.of(context).textTheme.titleSmall ?? const TextStyle()) +
+      (hasAction ? LayoutDensity.chromeHeightOf(context) : 0);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final header = theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary;
+    final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
+    final unit = LayoutDensity.chromeHeightOf(context);
+    // Hover over the whole strip, fade included: the fade is where a pointer
+    // heading for the title lands first, and losing the peek there would
+    // take it away on the way in. Only the action takes a press, and nothing
+    // takes the hover from what is underneath: the strip lies over the
+    // divider above its pane, or a tab strip, or the pane above, and a
+    // pointer moving up from the pane always brings it up first — swallowed
+    // there, the divider would resize from one side and not the other.
+    return MouseRegion(
+      opaque: false,
+      hitTestBehavior: HitTestBehavior.translucent,
+      onEnter: (_) => onHover(true),
+      onExit: (_) => onHover(false),
+      child: CustomPaint(
+        painter: _FadeRightPainter(header, PaneHeaderPeek.fadeExtent),
+        child: Padding(
+          padding: const EdgeInsets.only(right: PaneHeaderPeek.fadeExtent),
+          // A surface for the action's ink — without one its splash paints on
+          // the route's Material, underneath this strip.
+          child: Material(
+            type: MaterialType.transparency,
+            child: SizedBox(
+              height: unit,
+              // A solo tab's insets (see [DockTab._tabRow]), so the title sits
+              // where the header would have put it.
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.xxs),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+                        child: Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleSmall?.copyWith(color: onHeader),
+                        ),
+                      ),
+                    ),
+                    if (action != null)
+                      SizedBox(
+                        width: unit,
+                        child: _QuietTabAction(child: action!),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// [color] across the whole box, fading to transparent over its last [fade]
+/// points. A painter rather than a gradient decoration, whose stops are
+/// fractions of a width the strip only learns from its content.
+class _FadeRightPainter extends CustomPainter {
+  final Color color;
+  final double fade;
+
+  const _FadeRightPainter(this.color, this.fade);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Clamped either side of the fade's own rect, so everything left of it is
+    // solid.
+    final shader = LinearGradient(colors: [color, color.withValues(alpha: 0)]).createShader(Rect.fromLTWH(size.width - fade, 0, fade, size.height));
+    canvas.drawRect(Offset.zero & size, Paint()..shader = shader);
+  }
+
+  /// Paint only — see [_PeekStrip]'s MouseRegion for who takes the pointer.
+  @override
+  bool? hitTest(Offset position) => false;
+
+  @override
+  bool shouldRepaint(_FadeRightPainter old) => old.color != color || old.fade != fade;
 }
