@@ -35,8 +35,6 @@ class _Radio extends ChangeNotifier implements SceneSpectrumSource {
   @override
   bool recenter(String uuid, int centerHz) => false;
   @override
-  bool get spectrumEnabled => false;
-  @override
   Stream<SpectrumFrame> frames(String uuid) => const Stream.empty();
   @override
   String? problem(String uuid) => null;

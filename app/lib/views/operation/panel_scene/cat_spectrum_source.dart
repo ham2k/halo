@@ -9,6 +9,7 @@ import '../../../services/cat/cat_service.dart';
 import '../../../services/cat/equipment.dart';
 import '../../../services/cat/spectrum.dart';
 import '../../../services/panel_radio_service.dart';
+import '../../../services/settings_service.dart';
 import 'scene_spectrum.dart';
 
 /// A scene's spectrum controls, fed by the station's CAT connections.
@@ -16,14 +17,19 @@ import 'scene_spectrum.dart';
 class CatSpectrumSource implements SceneSpectrumSource {
   final CatService cat;
 
-  @override
-  final bool spectrumEnabled;
+  /// Holds the SDR receivers experiment (`fall` in experiments.yaml): whether
+  /// a radio's linked SDR draws in place of its own scope. Read at each
+  /// [resolve], with [changes] carrying its toggle, as [PanelRadioService]
+  /// reads it at each call — a value captured when the dock builds would have
+  /// a panel set one device's scope while its control draws another's. Null
+  /// reads as off.
+  final SettingsService? settings;
 
   /// Whether the panel may command the radio — `requiresRadioWrite` — and so
   /// move its scope.
   final bool canCommand;
 
-  const CatSpectrumSource(this.cat, {this.spectrumEnabled = true, this.canCommand = false});
+  const CatSpectrumSource(this.cat, {this.settings, this.canCommand = false});
 
   /// The node whose sweeps a control draws: the radio's linked SDR when it
   /// has one, otherwise the radio. Everything about the radio itself — its
@@ -41,7 +47,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
             final node? when cat.typeFor(node)?.category == kCategoryTransceiver => radio,
             _ => null,
           };
-    if (uuid == null || !spectrumEnabled) return uuid;
+    if (uuid == null || !(settings?.experimentEnabled('fall') /* stored key, see experiments.yaml */ ?? false)) return uuid;
     return cat.spectrumNodeFor(uuid);
   }
 
@@ -72,7 +78,10 @@ class CatSpectrumSource implements SceneSpectrumSource {
   };
 
   @override
-  Listenable get changes => cat;
+  Listenable get changes => switch (settings) {
+    final settings? => Listenable.merge([cat, settings]),
+    null => cat,
+  };
 
   @override
   Map<String, num> readings(String node) {
@@ -107,8 +116,8 @@ class CatSpectrumSource implements SceneSpectrumSource {
 
   @override
   bool operator ==(Object other) =>
-      other is CatSpectrumSource && identical(other.cat, cat) && other.spectrumEnabled == spectrumEnabled && other.canCommand == canCommand;
+      other is CatSpectrumSource && identical(other.cat, cat) && identical(other.settings, settings) && other.canCommand == canCommand;
 
   @override
-  int get hashCode => Object.hash(identityHashCode(cat), spectrumEnabled, canCommand);
+  int get hashCode => Object.hash(identityHashCode(cat), identityHashCode(settings), canCommand);
 }

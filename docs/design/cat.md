@@ -2567,7 +2567,7 @@ Web cannot listen, so the section is hidden there and the socket stub throws.
 ## Spectrum
 
 A radio's panadapter and waterfall, drawn in an extension's scene panel
-([panel-scenes.md § Spectrum](panel-scenes.md#spectrum)). Behind `EXP FALL`.
+([panel-scenes.md § Spectrum](panel-scenes.md#spectrum)).
 
 **The sweeps never cross the extension bridge.** A sweep arrives up to thirty
 times a second with hundreds of points; pushed through `render` as artwork,
@@ -2663,9 +2663,11 @@ pan and slice, with the radio's FFT. That session mode does not exist yet.
 
 A receive-only SDR — an RTL-SDR or Nooelec NESDR, an SDRplay RSP, an Airspy —
 as equipment of its own category (`kCategorySdr`), listed under Other
-Equipment and offered only while `EXP FALL` is on. It exists to be a
-spectrum source: it has no VFO, nothing logs from it, and nothing tunes it but
-the app.
+Equipment and offered only while `EXP SDR` is on (stored as `fall`). With it
+off, a linked SDR already in the station draws nothing and the radio shows its
+own scope; the scene's source reads the experiment live, as `readRadio` does,
+so both follow a toggle together. It exists to be a spectrum source: it has no
+VFO, nothing logs from it, and nothing tunes it but the app.
 
 **It draws a radio's spectrum, not its own.** Its config links it to a radio —
 a specific node, or whichever is Main (`sdrRadio`). `CatService.spectrumNodeFor`

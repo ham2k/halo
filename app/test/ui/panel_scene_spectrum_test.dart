@@ -45,9 +45,6 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
     recentered.add(centerHz);
     return true;
   }
-
-  @override
-  bool get spectrumEnabled => true;
 }
 
 SpectrumFrame _frame([double level = 20, int lowHz = 14000000]) =>

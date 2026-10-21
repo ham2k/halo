@@ -29,8 +29,9 @@ class PanelRadioService {
   final _rawWaiting = <String, int>{};
   int _lastCommand = 0;
 
-  /// Whether `spectrum` is reported and set at all — `EXP FALL`.
-  final bool Function() spectrumEnabled;
+  /// Whether a radio's linked SDR stands in for its own scope — the SDR
+  /// receivers experiment, `fall` in experiments.yaml.
+  final bool Function() sdrEnabled;
 
   /// Whether `keying` is reported and the keying calls act at all — the
   /// `keyer` experiment, which gates the app's own keying surfaces too.
@@ -39,7 +40,7 @@ class PanelRadioService {
   /// The operator's opt-in to the app keying PTT at all, off by default: a
   /// panel keys PTT only where the app's own PTT key would.
   final bool Function() pttEnabled;
-  PanelRadioService(this.cat, this.radio, {this.spectrumEnabled = _never, this.keyingEnabled = _never, this.pttEnabled = _never});
+  PanelRadioService(this.cat, this.radio, {this.sdrEnabled = _never, this.keyingEnabled = _never, this.pttEnabled = _never});
 
   static bool _never() => false;
 
@@ -96,7 +97,7 @@ class PanelRadioService {
       'maxWatts': config?['maxWatts'] as num?,
       'modes': type == null ? const <String>[] : _settableModes(type, config!),
       'keying': live && keyingEnabled() && cat.isRadio1(node.uuid) ? _keying() : null,
-      if (spectrumEnabled()) 'spectrum': node == null || !live ? null : _spectrum(cat.spectrumNodeFor(node.uuid)),
+      'spectrum': node == null || !live ? null : _spectrum(_spectrumNodeFor(node.uuid)),
     };
   }
 
@@ -124,6 +125,10 @@ class PanelRadioService {
       ],
     };
   }
+
+  /// Must agree with the scene's `CatSpectrumSource.resolve`: the settings a
+  /// panel reads and sets are those of the scope its control draws.
+  String _spectrumNodeFor(String radioUuid) => sdrEnabled() ? cat.spectrumNodeFor(radioUuid) : radioUuid;
 
   /// The radio's scope as the radio reports it, and what it accepts. Null for
   /// a radio with none; the sweeps themselves are drawn by the host. [uuid]
@@ -180,8 +185,8 @@ class PanelRadioService {
   Map<String, dynamic> setSpectrum(Map<String, dynamic> args) {
     final selection = args['selection'] as String?;
     final state = read(selection);
-    if (!spectrumEnabled() || args['id'] == null || args['id'] != state['id']) return {'accepted': false, 'reason': 'changed', 'state': state};
-    final source = cat.spectrumNodeFor(state['id'] as String);
+    if (args['id'] == null || args['id'] != state['id']) return {'accepted': false, 'reason': 'changed', 'state': state};
+    final source = _spectrumNodeFor(state['id'] as String);
     final session = cat.spectrumSessionFor(source);
     if (session == null || session.spectrumUnavailable != null) return {'accepted': false, 'reason': 'disconnected', 'state': state};
     T? pick<T extends Enum>(List<T> values, Object? name) => name == null ? null : values.asNameMap()[name];

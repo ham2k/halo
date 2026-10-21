@@ -38,7 +38,7 @@ abstract class SceneSpectrumSource {
   /// Where the radio is tuned, for the marker.
   double? vfoHz(String uuid);
 
-  /// Fires when [problem] or [vfoHz] may have changed.
+  /// Fires when [problem], [vfoHz] or what [resolve] answers may have changed.
   Listenable get changes;
 
   /// The words for a control with no radio, or one waiting for a first sweep.
@@ -53,10 +53,6 @@ abstract class SceneSpectrumSource {
   /// Fires when [readings] may have changed — at meter rate, so only what
   /// draws them listens.
   Listenable get readingChanges;
-
-  /// Whether `spectrum` controls may run — `EXP FALL`. The readings do not
-  /// depend on it.
-  bool get spectrumEnabled;
 
   /// Moves [uuid]'s scope to centre on [centerHz], for a control that
   /// `follow`s the VFO. False where the radio's window is not the app's to

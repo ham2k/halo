@@ -695,9 +695,7 @@ void main() {
   group('the scope', () {
     late TestCat cat;
     late TestScope scope;
-    var enabled = true;
     setUp(() {
-      enabled = true;
       scope = TestScope();
       cat = TestCat()
         ..session = scope
@@ -707,18 +705,12 @@ void main() {
           spectrum: SpectrumSettings(spanHz: 25000, refLevelDb: -4.5, speed: SpectrumSpeed.slow),
         );
     });
-    PanelRadioService bridge() => PanelRadioService(cat, TestRadio(), spectrumEnabled: () => enabled);
+    PanelRadioService bridge() => PanelRadioService(cat, TestRadio());
 
-    test('is reported, with what it accepts, only where the feature is on', () {
+    test('is reported, with what it accepts, with no experiment on', () {
       final spectrum = bridge().read()['spectrum'] as Map;
       expect((spectrum['spanHz'], spectrum['refLevelDb'], spectrum['speed']), (25000, -4.5, 'slow'));
       expect(spectrum['spansHz'], [25000, 50000]);
-      enabled = false;
-      // Absent, not null: null says this radio has no scope, which is a
-      // different thing to tell an extension than "this host has none".
-      expect(bridge().read().containsKey('spectrum'), isFalse);
-      expect(bridge().setSpectrum({'id': 'a', 'spanHz': 50000})['accepted'], isFalse);
-      expect(scope.requests, isEmpty);
     });
 
     test('a change reaches the radio as asked; a malformed one does not', () {

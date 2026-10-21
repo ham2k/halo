@@ -20,8 +20,10 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/panel_radio_service.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/panel_scene/cat_spectrum_source.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _Connection implements EquipmentConnection {
@@ -137,6 +139,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late CatService cat;
+  late RadioService radio;
+  late SettingsService settings;
   late SharedPreferences prefs;
   late _Transport transport;
   late _SdrDriver sdrDriver;
@@ -144,12 +148,12 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-    final radio = RadioService(prefs, writeDelay: Duration.zero);
+    radio = RadioService(prefs, writeDelay: Duration.zero);
     addTearDown(radio.dispose);
     transport = _Transport();
     sdrDriver = _SdrDriver();
     cat = CatService(
-      SettingsService(prefs),
+      settings = SettingsService(prefs),
       radio: radio,
       registry: EquipmentRegistry(
         models: [
@@ -199,6 +203,29 @@ void main() {
     await cat.setRadio1(LocalRadio(left));
     expect(cat.spectrumNodeFor(left), sdr);
     expect(cat.spectrumNodeFor(right), right);
+  });
+
+  test("with SDR receivers off, a linked SDR stands in for the radio's scope neither in the panel nor in readRadio", () async {
+    final left = (await cat.addNode(typeKey: 'left-type', name: 'Left', config: const {})).uuid;
+    final sdr = (await cat.addNode(typeKey: 'sdr-type', name: 'SDR', config: const {sdrRadioConfigKey: sdrRadioMain})).uuid;
+    await cat.connect(left);
+    await settle();
+    final scene = CatSpectrumSource(cat, settings: settings);
+    final panel = PanelRadioService(cat, radio, sdrEnabled: () => settings.experimentEnabled('fall'));
+    var changed = 0;
+    scene.changes.addListener(() => changed++);
+    // Left has no scope of its own, so its spectrum reads null; the SDR's,
+    // not yet connected, reads as a wait. Gating one path and not the other
+    // would have a panel set one scope while its control draws another.
+    expect(scene.resolve(left), left);
+    expect(panel.read(left)['spectrum'], isNull);
+
+    // The source the dock built before the toggle: a gate it captured then
+    // would keep drawing Left while the panel reads and sets the SDR.
+    await settings.setExperimentEnabled('fall', true);
+    expect(changed, greaterThan(0), reason: 'the control re-resolves only when told to');
+    expect(scene.resolve(left), sdr);
+    expect(panel.read(left)['spectrum'], isNotNull);
   });
 
   test('an SDR linked to one radio stays with it whichever radio is Main', () async {

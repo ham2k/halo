@@ -3210,7 +3210,7 @@ export interface PanelRadioState {
    */
   lastTransmission?: { swrAverage: number | null; endedAtMillis: number } | null
   /**
-   * The radio's scope, on hosts with the panadapter enabled: absent there otherwise, and null
+   * The radio's scope: absent on an app without a panadapter, and null
    * for a radio without one. The sweeps are never sent — a `spectrum` scene control draws them.
    */
   spectrum?: PanelRadioSpectrum | null

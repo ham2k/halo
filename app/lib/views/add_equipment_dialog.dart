@@ -44,8 +44,7 @@ class AddEquipmentDialog extends StatefulWidget {
   /// experiment, with everything that keys.
   final bool showKeyer;
 
-  /// Whether "Other Equipment" offers the SDR receivers — behind `EXP FALL`,
-  /// with the spectrum they exist to show.
+  /// Whether "Other Equipment" offers the SDR receivers — behind `EXP SDR`.
   final bool showSdr;
 
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;

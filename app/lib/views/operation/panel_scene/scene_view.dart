@@ -300,7 +300,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     return SceneSpectrumView(
       key: ValueKey('${control.id}:${control.kind}'),
       control: control,
-      source: widget.spectrum?.spectrumEnabled ?? false ? widget.spectrum : null,
+      source: widget.spectrum,
       awake: _appVisible && DockPaneVisibility.of(context),
       values: _values,
       onHover: spec.hoverHz == null && spec.hoverDb == null

@@ -2005,7 +2005,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                   spectrum: dockServices.extensions.radioCalls.canRead(dockServices.panels[id]!.hookKey)
                       ? CatSpectrumSource(
                           dockServices.cat,
-                          spectrumEnabled: dockServices.settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
+                          settings: dockServices.settings,
                           canCommand: dockServices.extensions.radioCalls.canWrite(dockServices.panels[id]!.hookKey),
                         )
                       : null,

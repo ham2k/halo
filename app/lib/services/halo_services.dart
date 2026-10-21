@@ -416,7 +416,7 @@ class HaLoServices {
   late final PanelRadioService panelRadio = PanelRadioService(
     cat,
     radio,
-    spectrumEnabled: () => settings.experimentEnabled('fall'),
+    sdrEnabled: () => settings.experimentEnabled('fall') /* stored key, see experiments.yaml */,
     keyingEnabled: () => settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
     pttEnabled: () => settings.pttKey,
   );

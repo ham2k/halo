@@ -2029,9 +2029,8 @@ control faded in over the artwork, and a click-through layer painted over it.
 #### Spectrum
 
 A `spectrum` control is a radio's panadapter and waterfall, drawn by the host
-from sweeps that never reach the extension, on a host with the panadapter
-enabled. It is **extension API 6**, as is `host.setRadioSpectrum`: a bundle
-using either declares `"api": 6`, and an app speaking less refuses it at install
+from sweeps that never reach the extension. It is **extension API 6**, as is
+`host.setRadioSpectrum`: a bundle using either declares `"api": 6`, and an app speaking less refuses it at install
 rather than failing to render the scene. It needs `requiresRadioRead`; without it, or on a host or radio
 without a spectrum, the control says why instead. It is placed like a native
 control and takes the fields of `PanelSceneSpectrum` in the SDK:
@@ -2288,7 +2287,7 @@ protocol's (CI-V bytes that are not whole frames), `invalid`. A refusal heard
 within a second of a raw command on a protocol whose refusals name no command
 (`?;`, rigctld's `RPRT`) is taken as the raw command's, not counted against the
 app's own reads.
-On a host with the panadapter enabled, `readRadio()` carries `spectrum`: null
+`readRadio()` carries `spectrum` (absent on an app without a panadapter): null
 for a radio without a scope, otherwise its settings as the radio reports them
 (`mode`, `spanHz`, `lowHz`/`highHz`, `refLevelDb`, `speed`), what it accepts
 (`spansHz`, `refMinDb`…`refStepDb`, `modes`, `speeds`) and `problem`, why it

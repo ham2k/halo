@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // SDR receivers that show a radio's spectrum — docs/design/cat.md § SDR
-// receivers. Behind `EXP FALL`: offered from the Add dialog's "Other
+// receivers. Behind `EXP SDR` (stored as `fall`): offered from the Add dialog's "Other
 // Equipment" rows only while it is on, hence [EquipmentModel.hiddenFromCatalog].
 //
 // None of these has been on the bench.

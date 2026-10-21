@@ -184,7 +184,7 @@ The public contract is in [the panel hook](../extensions/hooks.md) and
 
 A `spectrum` control shows a radio's panadapter and waterfall, painted by the
 host from sweeps that never reach the extension
-([cat.md § Spectrum](cat.md#spectrum)). Behind `EXP FALL`, and extension API 6:
+([cat.md § Spectrum](cat.md#spectrum)). It is extension API 6:
 an older app does not know the kind and would refuse the whole scene, so a
 bundle using it declares `"api": 6` and is refused at install there instead;
 `follow`, `span` and label `decimals` are API 7. The public contract
@@ -195,10 +195,9 @@ is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
   the layout — all things only controls do here. Layers are click-through
   artwork.
 - **The panel must be allowed to read the radio.** The dock hands the scene a
-  source only when the extension declares `requiresRadioRead`, and the source
-  runs a spectrum control only while the experiment is on; otherwise the
+  source only when the extension declares `requiresRadioRead`; without one the
   control says the display is not available. (The same source feeds the
-  scene's radio values, which do not depend on the experiment.) Subscribing to
+  scene's radio values.) Subscribing to
   the sweeps is what starts the radio's scope, so the control subscribes only
   while its pane and the app are visible.
 - **Display settings are the host's; scope settings are the radio's.**

@@ -101,16 +101,15 @@ experiments:
     description: Offer the Lab599 TX-500 and TX-500MP, and Bluetooth LE connections to radios through a serial bridge.
     aliases: [tx500, link500]
     private: true
-  # A radio's panadapter and waterfall as a `spectrum` control in extension
-  # scene panels (docs/design/cat.md § Spectrum), and SDR receivers as the
-  # source of one (§ SDR receivers). Gated because it streams the radio's
-  # scope — on a Flex it assigns a DAX IQ channel to the operator's
-  # panadapter — and because only an IC-705 and a FLEX-6600 have been on the
-  # bench, and no SDR at all.
+  # SDR receivers as the source of a radio's panadapter and waterfall
+  # (docs/design/cat.md § SDR receivers): offered under Other Equipment, and
+  # drawn in place of the radio's own scope. Gated because no SDR has been on
+  # the bench. The stored key stays `fall`: a new key would switch it off for
+  # every tester who has it on.
   - key: fall
-    name: Panadapter & Waterfall
-    description: Show a CAT radio's panadapter and waterfall in scene panels that ask for one.
-    aliases: [panafall]
+    name: SDR Receivers
+    description: Add SDR receivers as equipment, to show a radio's panadapter and waterfall.
+    aliases: [sdr]
   # Named layouts (docs/design/layouts.md § Named layouts): several layouts
   # per docked view, a switcher beside the layout button, and layout files —
   # exporting all or part of one, and importing one as a new layout, in place
