@@ -46,6 +46,9 @@ String scoreNoticeLabel(BuildContext context, String key, {Map<String, ChasingPr
     'invalidMode' => t.noticeInvalidMode,
     'invalidBand' => t.noticeInvalidBand,
     'invalidCategory' => t.noticeInvalidCategory,
+    // Past the contest's limit on operating time (ARRL Sweepstakes counts 24
+    // of its 30 hours): the contact stays in the log and scores nothing.
+    'overTime' => t.noticeOverTime,
     // The QSO counts, but its exchange doesn't — nothing was sent, or what was
     // sent isn't a value this contest recognizes. Either way a multiplier is
     // being lost silently unless the operator is told (M4).

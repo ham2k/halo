@@ -4114,6 +4114,9 @@ class Translations$loggingControls$info$en {
 	/// en: 'Not Workable'
 	String get noticeInvalidCategory => 'Not Workable';
 
+	/// en: 'Time Over'
+	String get noticeOverTime => 'Time Over';
+
 	/// en: 'Worked Before'
 	String get noticeWorkedBefore => 'Worked Before';
 
@@ -9360,6 +9363,7 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidMode' => 'Wrong Mode',
 			'loggingControls.info.noticeInvalidBand' => 'Wrong Band',
 			'loggingControls.info.noticeInvalidCategory' => 'Not Workable',
+			'loggingControls.info.noticeOverTime' => 'Time Over',
 			'loggingControls.info.noticeWorkedBefore' => 'Worked Before',
 			'loggingControls.info.noticeNewPark' => 'New Park',
 			'loggingControls.info.noticeNewSection' => 'New Section',
@@ -9465,9 +9469,9 @@ extension on Translations {
 			'settings.fontScaleOpts.smallestMinus' => 'Smallest-',
 			'settings.fontScaleOpts.smallest' => 'Smallest',
 			'settings.fontScaleOpts.smaller' => 'Smaller',
-			'settings.fontScaleOpts.normal' => 'Normal',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
@@ -9979,9 +9983,9 @@ extension on Translations {
 			'settings.station.sdrIfHz' => 'IF frequency (Hz)',
 			'settings.station.sdrIfHzDescription' => 'For an IF output only: the frequency the radio\'s dial sits at on its IF, such as 68330000 on an FT-817.',
 			'settings.station.sdrIfInverted' => 'IF is inverted',
-			'settings.station.sdrGainDb' => 'Gain (dB)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.sdrGainDb' => 'Gain (dB)',
 			'settings.station.sdrGainDbDescription' => 'Leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'Frequency offset (Hz)',
 			'settings.station.sdrOffsetHzDescription' => 'Added to every frequency sent to the receiver, for an upconverter: 125000000 for a Ham It Up.',
@@ -10493,9 +10497,9 @@ extension on Translations {
 			'operationLocationScreen.suggestedLocations' => 'Suggested Locations',
 			'operationLocationScreen.deviceGps' => 'Device GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS from ${device}',
-			'operationLocationScreen.locating' => 'Locating…',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.locating' => 'Locating…',
 			'operationLocationScreen.gpsUnavailable' => 'Location unavailable',
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',

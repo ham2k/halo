@@ -1109,6 +1109,7 @@
       "noticeInvalidMode": "Wrong Mode",
       "noticeInvalidBand": "Wrong Band",
       "noticeInvalidCategory": "Not Workable",
+      "noticeOverTime": "Time Over",
       "noticeWorkedBefore": "Worked Before",
       "noticeNewPark": "New Park",
       "noticeNewSection": "New Section",

@@ -1925,6 +1925,7 @@ class _Translations$loggingControls$info$qro extends Translations$loggingControl
 	@override String get noticeInvalidMode => 'WRONG MODE';
 	@override String get noticeInvalidBand => 'WRONG BAND';
 	@override String get noticeInvalidCategory => 'NOT WORKABLE';
+	@override String get noticeOverTime => 'TIME OVER';
 	@override String get noticeWorkedBefore => 'WORKED BEFORE';
 	@override String get noticeNewPark => 'NEW PARK';
 	@override String get noticeNewSection => 'NEW SECTION';
@@ -4870,6 +4871,7 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeInvalidMode' => 'WRONG MODE',
 			'loggingControls.info.noticeInvalidBand' => 'WRONG BAND',
 			'loggingControls.info.noticeInvalidCategory' => 'NOT WORKABLE',
+			'loggingControls.info.noticeOverTime' => 'TIME OVER',
 			'loggingControls.info.noticeWorkedBefore' => 'WORKED BEFORE',
 			'loggingControls.info.noticeNewPark' => 'NEW PARK',
 			'loggingControls.info.noticeNewSection' => 'NEW SECTION',
@@ -4975,9 +4977,9 @@ extension on TranslationsQro {
 			'settings.fontScaleOpts.smallestMinus' => 'SMALLEST-',
 			'settings.fontScaleOpts.smallest' => 'SMALLEST',
 			'settings.fontScaleOpts.smaller' => 'SMALLER',
-			'settings.fontScaleOpts.normal' => 'NORMAL',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.normal' => 'NORMAL',
 			'settings.fontScaleOpts.larger' => 'LARGER',
 			'settings.fontScaleOpts.largest' => 'LARGEST',
 			'settings.fontScaleOpts.largestPlus' => 'LARGEST+',
@@ -5489,9 +5491,9 @@ extension on TranslationsQro {
 			'settings.station.sdrIfHz' => 'IF FREQUENCY (HZ)',
 			'settings.station.sdrIfHzDescription' => 'FOR AN IF OUTPUT ONLY: THE FREQUENCY THE RADIO\'S DIAL SITS AT ON ITS IF, SUCH AS 68330000 ON AN FT-817.',
 			'settings.station.sdrIfInverted' => 'IF IS INVERTED',
-			'settings.station.sdrGainDb' => 'GAIN (DB)',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.sdrGainDb' => 'GAIN (DB)',
 			'settings.station.sdrGainDbDescription' => 'LEAVE BLANK FOR THE RECEIVER\'S AUTOMATIC GAIN.',
 			'settings.station.sdrOffsetHz' => 'FREQUENCY OFFSET (HZ)',
 			'settings.station.sdrOffsetHzDescription' => 'ADDED TO EVERY FREQUENCY SENT TO THE RECEIVER, FOR AN UPCONVERTER: 125000000 FOR A HAM IT UP.',
@@ -6003,9 +6005,9 @@ extension on TranslationsQro {
 			'operationLocationScreen.suggestedLocations' => 'SUGGESTED LOCATIONS',
 			'operationLocationScreen.deviceGps' => 'DEVICE GPS',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'GPS FROM ${device}',
-			'operationLocationScreen.locating' => 'LOCATING…',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.locating' => 'LOCATING…',
 			'operationLocationScreen.gpsUnavailable' => 'LOCATION UNAVAILABLE',
 			'operationLocationScreen.permissionDenied' => 'LOCATION PERMISSION DENIED',
 			'operationLocationScreen.permissionBlocked' => 'LOCATION PERMISSION BLOCKED',
