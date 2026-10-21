@@ -275,8 +275,13 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
   }
 
   /// Install or Update from the catalog: the shared path (installFromCatalog).
-  Future<void> _installFromCatalog(CatalogEntry entry) =>
-      installFromCatalog(context, services: widget.services, release: entry.release, name: entry.nameFor(LocaleSettings.currentLocale.languageCode));
+  Future<void> _installFromCatalog(CatalogEntry entry) => installFromCatalog(
+    context,
+    services: widget.services,
+    release: entry.release,
+    name: entry.nameFor(LocaleSettings.currentLocale.languageCode),
+    screenshots: entry.screenshots,
+  );
 
   /// Takes every pending update — the shared path, which confirms first.
   ///
@@ -301,6 +306,12 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
       installedFromIcon: from?.icon,
       updateVersion: entry?.version,
       channel: info.isInstalled ? widget.services.catalog.channelFollowedBy(info.key) : CatalogChannel.stable,
+      // The extension's, not a release's (catalog SPEC §4.8): any listing of
+      // the key carries the same ones, newer than what is installed or not.
+      screenshots:
+          (_catalog ?? const <CatalogEntry>[]).where((e) => e.key == info.key).firstOrNull?.screenshots ??
+          widget.services.catalogUpdateCheck.pendingUpdates[info.key]?.screenshots ??
+          const [],
     );
     if (!mounted || action == null) return;
     switch (action) {

@@ -53,6 +53,46 @@ const _cacheTtl = Duration(minutes: 5);
 /// warns about, and what the install records as the key's track.
 typedef CatalogRelease = ({String key, String version, String sha256, Uri bundleUrl, CatalogChannel channel});
 
+/// One screenshot of an extension's approved set (catalog SPEC §4.8), in
+/// display order. [width] and [height] are the full image's, which the
+/// thumbnail shares the proportions of — enough to lay out its box before
+/// either has loaded.
+class CatalogScreenshot {
+  final Uri url;
+  final Uri thumbUrl;
+  final int width;
+  final int height;
+  final String? caption;
+
+  const CatalogScreenshot({required this.url, required this.thumbUrl, required this.width, required this.height, this.caption});
+
+  double get aspectRatio => width / height;
+
+  /// Null for anything that is not a usable screenshot, including one whose
+  /// either URL is off [origin] — the catalog's own scheme, host and port,
+  /// as the service is configured, never anything the listing itself says.
+  /// The app loads images from the catalog and nowhere else: a listing that
+  /// names another host would make every search a request to it.
+  static CatalogScreenshot? fromJson(Object? json, {required Uri origin}) {
+    if (json is! Map) return null;
+    bool onOrigin(Uri? uri) => uri != null && uri.scheme == origin.scheme && uri.host == origin.host && uri.port == origin.port;
+    final url = json['url'] is String ? Uri.tryParse(json['url'] as String) : null;
+    final thumbUrl = json['thumbUrl'] is String ? Uri.tryParse(json['thumbUrl'] as String) : null;
+    final width = json['width'];
+    final height = json['height'];
+    if (!onOrigin(url) || !onOrigin(thumbUrl)) return null;
+    if (width is! int || height is! int || width < 1 || height < 1) return null;
+    final caption = json['caption'];
+    return CatalogScreenshot(
+      url: url!,
+      thumbUrl: thumbUrl!,
+      width: width,
+      height: height,
+      caption: caption is String && caption.trim().isNotEmpty ? caption.trim() : null,
+    );
+  }
+}
+
 /// One entry of `GET /api/v1/catalog`: what the panel shows of an extension's
 /// current release on this channel, and what an install needs of it. Only
 /// the fields something reads; `fromJson` ignores the rest of the row.
@@ -101,6 +141,10 @@ class CatalogEntry with ExtensionSearchable {
   /// is never installed without the warning.
   final CatalogChannel channel;
 
+  /// The extension's approved screenshots (catalog SPEC §4.8), the same on
+  /// every channel; empty when it has none, or when none survived parsing.
+  final List<CatalogScreenshot> screenshots;
+
   const CatalogEntry({
     required this.key,
     required this.name,
@@ -116,6 +160,7 @@ class CatalogEntry with ExtensionSearchable {
     this.hooks = const [],
     this.relevance,
     this.translations = const {},
+    this.screenshots = const [],
   });
 
   static final _sha256Pattern = RegExp(r'^[0-9a-fA-F]{64}$');
@@ -123,7 +168,10 @@ class CatalogEntry with ExtensionSearchable {
   /// Lenient per entry, strict about what an install needs. An entry missing
   /// a usable key, name, version, sha256 or bundle URL is null — dropped by
   /// the caller — so one broken row never costs the operator the list.
-  static CatalogEntry? fromJson(Object? json) {
+  ///
+  /// [catalog] is the catalog the service asked, the only origin screenshots
+  /// load from; without it an entry carries none.
+  static CatalogEntry? fromJson(Object? json, {Uri? catalog}) {
     if (json is! Map) return null;
     final key = json['key'];
     final name = json['name'];
@@ -154,6 +202,11 @@ class CatalogEntry with ExtensionSearchable {
           for (final entry in (json['translations'] as Map).entries)
             if (entry.key is String && entry.value is Map) entry.key as String: (entry.value as Map).cast<String, Object?>(),
       },
+      // One broken screenshot costs that screenshot, never the entry: an
+      // extension stays installable whatever its pictures say.
+      screenshots: catalog != null && json['screenshots'] is List
+          ? [for (final raw in json['screenshots'] as List) ?CatalogScreenshot.fromJson(raw, origin: catalog)]
+          : const [],
     );
   }
 
@@ -288,11 +341,11 @@ class CatalogUpdates {
 
   const CatalogUpdates({required this.updates, required this.revoked, required this.ignored});
 
-  static CatalogUpdates fromJson(Map<String, dynamic> json) => CatalogUpdates(
+  static CatalogUpdates fromJson(Map<String, dynamic> json, {Uri? catalog}) => CatalogUpdates(
     updates: [
       if (json['updates'] is List)
         for (final raw in json['updates'] as List)
-          if (CatalogEntry.fromJson(raw) case final entry?)
+          if (CatalogEntry.fromJson(raw, catalog: catalog) case final entry?)
             CatalogUpdate(entry: entry, installedStatus: raw is Map && raw['installedStatus'] is String ? raw['installedStatus'] as String : 'unknown'),
     ],
     revoked: [
@@ -487,7 +540,7 @@ class CatalogService {
       _malformed(url, 'no "extensions" list');
       return null;
     }
-    final entries = [for (final item in raw) ?CatalogEntry.fromJson(item)];
+    final entries = [for (final item in raw) ?CatalogEntry.fromJson(item, catalog: Uri.parse(baseUrl))];
     // A catalog older than this app still names the field `geo`, which
     // nothing here reads. Every entry would then rank as worldwide and the
     // listing would lose its order entirely, looking exactly like a catalog
@@ -525,7 +578,7 @@ class CatalogService {
         if (json['versions'] is List)
           for (final raw in json['versions'] as List) ?CatalogVersion.fromJson(raw),
       ],
-      current: CatalogEntry.fromJson(json['current']),
+      current: CatalogEntry.fromJson(json['current'], catalog: Uri.parse(baseUrl)),
     );
     _remember(url, listing);
     return listing;
@@ -556,7 +609,7 @@ class CatalogService {
         _postJson(url, {'channel': channel.name, 'api': kExtensionApiVersion, 'installed': pairs}),
     ]);
     if (replies.contains(null)) return null;
-    final answers = [for (final json in replies) CatalogUpdates.fromJson(json!)];
+    final answers = [for (final json in replies) CatalogUpdates.fromJson(json!, catalog: Uri.parse(baseUrl))];
     return CatalogUpdates(
       updates: [for (final answer in answers) ...answer.updates],
       revoked: [for (final answer in answers) ...answer.revoked],

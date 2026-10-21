@@ -173,6 +173,54 @@ void main() {
       expect(entries!.map((e) => e.key), ['good-one', 'also-good']);
     });
 
+    test('screenshots load only from the catalog itself, and one broken screenshot costs only itself', () async {
+      // An off-host URL would turn every search into a request to whoever a
+      // listing names; a malformed one must not take the installable entry
+      // with it.
+      const media = 'https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/media';
+      final catalog = service(
+        (_) async => http.Response(
+          _catalog([
+            _entry(
+              extra: {
+                'screenshots': [
+                  {'url': '$media/a', 'thumbUrl': '$media/at', 'width': 1600, 'height': 900, 'caption': ' Logging '},
+                  {'url': 'https://tracker.example/a', 'thumbUrl': '$media/bt', 'width': 1600, 'height': 900},
+                  {'url': '$media/c', 'thumbUrl': 'http://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/media/ct', 'width': 1600, 'height': 900},
+                  {'url': '$media/d', 'thumbUrl': '$media/dt', 'width': 0, 'height': 900},
+                  'not a screenshot',
+                  {'url': '$media/e', 'thumbUrl': '$media/et', 'width': 900, 'height': 1600},
+                ],
+              },
+            ),
+            _entry(key: 'k2hrc-plain', extra: {'screenshots': 'not a list'}),
+            // The row's own bundleUrl vouches for nothing: the origin is the
+            // catalog the service asked.
+            _entry(
+              key: 'k2hrc-elsewhere',
+              bundleUrl: 'https://tracker.example/bundle',
+              extra: {
+                'screenshots': [
+                  {'url': 'https://tracker.example/a', 'thumbUrl': 'https://tracker.example/at', 'width': 1600, 'height': 900},
+                ],
+              },
+            ),
+          ]),
+          200,
+        ),
+      );
+
+      final entries = (await catalog.fetchCatalog())!;
+      expect(entries.map((e) => e.key), ['k2hrc-llota', 'k2hrc-plain', 'k2hrc-elsewhere']);
+      final shots = entries.first.screenshots;
+      expect(shots.map((s) => s.url.toString()), ['$media/a', '$media/e']);
+      expect(shots.first.caption, 'Logging');
+      expect(shots.first.aspectRatio, 1600 / 900);
+      expect(shots.last.caption, isNull);
+      expect(entries[1].screenshots, isEmpty);
+      expect(entries.last.screenshots, isEmpty);
+    });
+
     test('a non-200 answers null and reports nothing', () async {
       await withErrorHooks(() async {
         final catalog = service((_) async => http.Response('nope', 503));

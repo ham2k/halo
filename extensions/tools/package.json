@@ -43,6 +43,9 @@
     "@ham2k/lib-callsigns": "^1.0.2",
     "yazl": "^3.3.1"
   },
+  "optionalDependencies": {
+    "sharp": "^0.34.0"
+  },
   "peerDependencies": {
     "esbuild": ">=0.20"
   },

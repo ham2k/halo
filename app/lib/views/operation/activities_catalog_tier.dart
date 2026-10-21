@@ -26,6 +26,7 @@ import '../../services/extensions/extension_relevance.dart';
 import '../../services/extensions/extension_info.dart' show activityScopeWordsOf, hooksClaimRef;
 import '../../services/halo_services.dart';
 import '../extension_install_flow.dart';
+import '../extension_screenshots.dart';
 import '../extensions_panel.dart' show extensionCategoryIcon;
 
 /// The sheet's half of the tier: the listing it matches against, the one
@@ -168,7 +169,18 @@ class InstallExtensionRow extends StatelessWidget {
         context.t.activitiesView.installExtension(name: entry.nameFor(locale)),
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
-      subtitle: Text(context.t.activitiesView.installExtensionHint),
+      // What it looks like, before anything is downloaded: an operator
+      // choosing between two programs' extensions by name alone is guessing.
+      subtitle: entry.screenshots.isEmpty
+          ? Text(context.t.activitiesView.installExtensionHint)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(context.t.activitiesView.installExtensionHint),
+                const SizedBox(height: Space.sm),
+                ExtensionScreenshotStrip(screenshots: entry.screenshots, title: entry.nameFor(locale)),
+              ],
+            ),
       trailing: const Icon(MdiIcons.trayArrowDown),
       onTap: onTap,
     );
@@ -184,7 +196,13 @@ class InstallExtensionRow extends StatelessWidget {
 /// that went wrong underneath it.
 Future<bool> installCatalogExtension(BuildContext context, {required HaLoServices services, required CatalogEntry entry}) async {
   try {
-    final name = await installFromCatalog(context, services: services, release: entry.release, name: entry.nameFor(LocaleSettings.currentLocale.languageCode));
+    final name = await installFromCatalog(
+      context,
+      services: services,
+      release: entry.release,
+      name: entry.nameFor(LocaleSettings.currentLocale.languageCode),
+      screenshots: entry.screenshots,
+    );
     if (name == null) return false;
     // A fresh catalog install drops the operator's stored override, so the
     // extension lands on whatever its manifest defaults to — which an author

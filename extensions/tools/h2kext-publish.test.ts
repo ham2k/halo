@@ -8,7 +8,8 @@
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, writeFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { createServer } from "node:http"
 import type { AddressInfo } from "node:net"
 import { tmpdir } from "node:os"
@@ -64,12 +65,21 @@ const unreachable = () => assert.fail("fetch was called")
 /// fake token rather than `process.env`, so a real token in the developer's
 /// shell can never make a test pass or fail by accident; the missing-token
 /// test passes an empty one on purpose.
-async function run(argv: string[], { fetch, env = authed }: { fetch: any; env?: Record<string, string> }) {
+/// An empty working directory, so a `screenshots/` folder wherever the suite
+/// happens to run can never turn a publish test into a screenshot sync.
+const emptyCwd = await mkdtemp(join(tmpdir(), "h2kext-publish-cwd-"))
+
+async function run(
+  argv: string[],
+  { fetch, env = authed, cwd = emptyCwd, thumbnail }: { fetch: any; env?: Record<string, string>; cwd?: string; thumbnail?: any },
+) {
   let stdout = ""
   let stderr = ""
   const code = await main(argv, {
     env,
     fetch,
+    cwd,
+    thumbnail: thumbnail ?? (() => assert.fail("a thumbnail was made")),
     stdout: {
       write(s: string) {
         stdout += s
@@ -460,4 +470,196 @@ test("the token never reaches stdout or stderr, whatever quotes it", async () =>
   const broken = await run([file, "--channel", "stable"], { fetch: async () => ({ status: 201 }) })
   assert.equal(broken.code, EXIT_REFUSED)
   assert.ok(!broken.stderr.includes(TOKEN), `token leaked: ${broken.stderr}`)
+})
+
+// ---------------------------------------------------------------------------
+// Screenshots (§4.8)
+// ---------------------------------------------------------------------------
+
+const sha = (b: Uint8Array) => createHash("sha256").update(b).digest("hex")
+
+/// Bytes that sniff as a PNG; `seed` makes each one distinct. Nothing here
+/// decodes them — the thumbnailer is a fake — so a signature is enough.
+function fakePng(seed: number) {
+  return new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, seed])
+}
+
+/// A thumbnailer that records what it was asked for and answers bytes derived from them.
+function fakeThumbnailer() {
+  const made: string[] = []
+  const thumbnail = async (bytes: Uint8Array) => {
+    made.push(sha(bytes))
+    return { bytes: new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50, ...bytes.slice(-1)]), type: "image/webp" }
+  }
+  return { thumbnail, made }
+}
+
+/// A project folder whose `screenshots/` holds [files]; `captions` becomes screenshots.json.
+async function projectWith(files: Record<string, Uint8Array | string>, captions?: Record<string, unknown>) {
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-publish-shots-"))
+  await mkdir(join(dir, "screenshots"))
+  for (const [name, data] of Object.entries(files)) await writeFile(join(dir, "screenshots", name), data)
+  if (captions) await writeFile(join(dir, "screenshots", "screenshots.json"), JSON.stringify(captions))
+  return dir
+}
+
+/// A catalog that publishes, holds [current] screenshots, and accepts any upload and set.
+function screenshotCatalog(current: { approved?: unknown; pending?: unknown } = {}) {
+  return catalogAnswering(0, null, (url, init) => {
+    if (url.includes("/api/v1/publish")) return { status: 201, body: accepted }
+    if (url.endsWith("/screenshots") && !init?.method) return { status: 200, body: { approved: null, pending: null, rejected: null, ...current } }
+    if (url.includes("/media/")) return { status: 200, body: { sha256: url.split("/").pop() } }
+    if (url.endsWith("/screenshots")) {
+      const { screenshots } = JSON.parse(init.body)
+      return { status: 200, body: { set: { id: "set_1", status: "pending", items: screenshots } } }
+    }
+    return { status: 500, body: "unexpected" }
+  })
+}
+
+test("after the bundle, ./screenshots becomes the extension's set: file-name order, captions, a thumbnail each", async () => {
+  // The folder IS the set (§15): numeric-aware order, so `2-` precedes `10-`
+  // the way the author numbered them, and every upload addressed by its hash.
+  const file = await bundleFile()
+  const cwd = await projectWith({ "10-map.png": fakePng(10), "2-log.png": fakePng(2), "notes.txt": "ignored" }, { "2-log.png": " Logging " })
+  const catalog = screenshotCatalog()
+  const thumbs = fakeThumbnailer()
+
+  const { code, stdout } = await run([file], { fetch: catalog.fetch, cwd, thumbnail: thumbs.thumbnail })
+
+  assert.equal(code, 0)
+  const paths = catalog.calls.map((c) => `${c.init?.method ?? "GET"} ${new URL(c.url).pathname}`)
+  assert.equal(paths[0], "POST /api/v1/publish")
+  assert.equal(paths[1], "GET /api/v1/extensions/w7abc-notes/screenshots")
+  const uploads = catalog.calls.filter((c) => c.url.includes("/media/"))
+  assert.equal(uploads.length, 4)
+  for (const u of uploads) {
+    assert.equal(u.url.split("/").pop(), sha(u.init.body), "an upload is not addressed by its own hash")
+    assert.equal(u.init.headers.authorization, `Bearer ${TOKEN}`)
+  }
+  const set = JSON.parse(catalog.calls.at(-1)!.init.body)
+  assert.deepEqual(
+    set.screenshots.map((s: any) => [s.image, s.caption]),
+    [
+      [sha(fakePng(2)), "Logging"],
+      [sha(fakePng(10)), undefined],
+    ],
+  )
+  assert.deepEqual(thumbs.made, [sha(fakePng(2)), sha(fakePng(10))])
+  assert.match(stdout, /screenshots → 2 screenshots \(pending review\)/)
+})
+
+test("an unchanged folder sends nothing past the read, and makes no thumbnail", async () => {
+  // A publish on every release must not put the same pictures through review
+  // again — nor regenerate thumbnails whose bytes a newer sharp could change.
+  const file = await bundleFile()
+  const cwd = await projectWith({ "1.png": fakePng(1) }, { "1.png": "One" })
+  const catalog = screenshotCatalog({ pending: { status: "pending", items: [{ image: sha(fakePng(1)), thumb: "t", caption: "One" }] } })
+
+  const { code, stdout } = await run([file], { fetch: catalog.fetch, cwd })
+
+  assert.equal(code, 0)
+  assert.deepEqual(
+    catalog.calls.map((c) => c.init?.method ?? "GET"),
+    ["POST", "GET"],
+  )
+  assert.match(stdout, /screenshots unchanged \(1 screenshot, pending review\)/)
+})
+
+test("a picture already in a set keeps that set's thumbnail and is not uploaded again", async () => {
+  const file = await bundleFile()
+  const cwd = await projectWith({ "1.png": fakePng(1), "2.png": fakePng(2) })
+  const catalog = screenshotCatalog({ approved: { status: "approved", items: [{ image: sha(fakePng(1)), thumb: "f".repeat(64), caption: null }] } })
+  const thumbs = fakeThumbnailer()
+
+  assert.equal((await run([file], { fetch: catalog.fetch, cwd, thumbnail: thumbs.thumbnail })).code, 0)
+
+  assert.deepEqual(thumbs.made, [sha(fakePng(2))])
+  const uploaded = catalog.calls.filter((c) => c.url.includes("/media/")).map((c) => c.url.split("/").pop())
+  assert.deepEqual(uploaded, [sha(fakePng(2)), sha((await thumbs.thumbnail(fakePng(2))).bytes)])
+  const set = JSON.parse(catalog.calls.at(-1)!.init.body)
+  assert.equal(set.screenshots[0].thumb, "f".repeat(64))
+})
+
+test("without a screenshots folder, a publish never touches the extension's screenshots", async () => {
+  // A project with no folder has not asked for its screenshots to be removed.
+  const file = await bundleFile()
+  const catalog = catalogAnswering(201, accepted)
+  assert.equal((await run([file], catalog)).code, 0)
+  assert.equal(catalog.calls.length, 1)
+})
+
+test("a bad screenshot folder stops the command before the version is published", async () => {
+  const file = await bundleFile()
+  const nine = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`${i}.png`, fakePng(i)]))
+  for (const [cwd, why] of [
+    [await projectWith({ "1.png": "not a picture" }), /is not a PNG, JPEG or WebP image/],
+    [await projectWith(nine), /holds 9 screenshots; the catalog takes at most 8/],
+    [await projectWith({ "1.png": fakePng(1) }, { "01.png": "renamed" }), /caption for '01.png', which is not a screenshot/],
+    [await projectWith({ "1.png": fakePng(1) }, { "1.png": "x".repeat(201) }), /caption for '1.png' is longer than 200 characters/],
+  ] as const) {
+    const { code, stderr } = await run([file], { fetch: unreachable, cwd })
+    assert.equal(code, EXIT_REFUSED)
+    assert.match(stderr, why)
+  }
+})
+
+test("--screenshots-only syncs the set without publishing a bundle", async () => {
+  const dir = await bundleDir()
+  const cwd = await projectWith({ "1.png": fakePng(1) })
+  const catalog = screenshotCatalog()
+  const { code } = await run([dir, "--screenshots-only"], { fetch: catalog.fetch, cwd, thumbnail: fakeThumbnailer().thumbnail })
+  assert.equal(code, 0)
+  assert.ok(!catalog.calls.some((c) => c.url.includes("/api/v1/publish")), "the bundle was published")
+  assert.ok(catalog.calls.some((c) => c.init?.method === "PUT" && c.url.endsWith("/screenshots")))
+
+  const none = await run([dir, "--screenshots-only"], { fetch: unreachable, cwd: emptyCwd })
+  assert.equal(none.code, EXIT_USAGE)
+})
+
+test("a refused screenshot set after a published version warns and exits 1, the version standing", async () => {
+  const file = await bundleFile()
+  const cwd = await projectWith({ "1.png": fakePng(1) })
+  const catalog = catalogAnswering(0, null, (url, init) => {
+    if (url.includes("/api/v1/publish")) return { status: 201, body: accepted }
+    if (url.endsWith("/screenshots") && !init?.method) return { status: 200, body: { approved: null, pending: null } }
+    if (url.includes("/media/")) return { status: 400, body: { error: `token ${TOKEN} says no`, code: "image-too-large" } }
+    return { status: 500, body: "unexpected" }
+  })
+  const { code, stdout, stderr } = await run([file], { fetch: catalog.fetch, cwd, thumbnail: fakeThumbnailer().thumbnail })
+  assert.equal(code, EXIT_REFUSED)
+  assert.match(stdout, /published w7abc-notes 1.2.3/)
+  assert.match(stderr, /warning: w7abc-notes 1.2.3 is published, but its screenshots were not updated — .*image-too-large/)
+  assert.ok(!stderr.includes(TOKEN), `token leaked: ${stderr}`)
+})
+
+test("an empty ./screenshots found by accident leaves the catalog's alone; naming it takes them down", async () => {
+  // A stray empty folder where the command runs must not wipe a live set:
+  // the catalog approves an empty set at once.
+  const file = await bundleFile()
+  const cwd = await projectWith({ "README.md": "pictures go here" })
+  const found = await run([file], { ...catalogAnswering(201, accepted), cwd })
+  assert.equal(found.code, 0)
+  assert.match(found.stdout, /holds no screenshots; leaving the catalog's as they are/)
+
+  const catalog = screenshotCatalog({ approved: { status: "approved", items: [{ image: sha(fakePng(1)), thumb: "t", caption: null }] } })
+  const named = await run([file, "--screenshots", join(cwd, "screenshots")], { fetch: catalog.fetch, cwd: emptyCwd })
+  assert.equal(named.code, 0)
+  assert.deepEqual(JSON.parse(catalog.calls.at(-1)!.init.body), { screenshots: [] })
+})
+
+test("a picture sharp cannot read is a refusal naming it, after the version is published", async () => {
+  // A stack trace here would hide whether the version went out.
+  const file = await bundleFile()
+  const cwd = await projectWith({ "1.png": fakePng(1) })
+  const { code, stderr } = await run([file], {
+    fetch: screenshotCatalog().fetch,
+    cwd,
+    thumbnail: async () => {
+      throw new Error("Input buffer contains unsupported image format")
+    },
+  })
+  assert.equal(code, EXIT_REFUSED)
+  assert.match(stderr, /is published, but its screenshots were not updated — could not make a thumbnail of 1.png: Input buffer/)
+  assert.ok(!stderr.includes("    at "), `stack trace: ${stderr}`)
 })

@@ -185,6 +185,11 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get noMatches => '—· ——— / · —··— — · —· ··· ·· ——— —· ··· / —— ·— — —·—· ···· / —·—— ——— ··— ·—· / ··· · ·— ·—· —·—· ····';
 	@override String get installFromFile => '·· —· ··· — ·— ·—·· ·—·· / ··—· ·—· ——— —— / ··—· ·· ·—·· · …';
 	@override String installVersion({required Object version}) => '···— · ·—· ··· ·· ——— —· / ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => '··· —·—· ·—· · · —· ··· ···· ——— — / ${n} / ——— ··—· / ${count}';
+	@override String moreScreenshots({required Object count}) => '·—·—· ${count}';
+	@override String get previousScreenshot => '·——· ·—· · ···— ·· ——— ··— ··· / ··· —·—· ·—· · · —· ··· ···· ——— —';
+	@override String get nextScreenshot => '—· · —··— — / ··· —·—· ·—· · · —· ··· ···· ——— —';
+	@override String get screenshotUnavailable => '··· —·—· ·—· · · —· ··· ···· ——— — / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·';
 	@override String get canReach => '— ···· ·· ··· / · —··— — · —· ··· ·· ——— —· / —·—· ·— —· / —·—· ——— —· — ·— —·—· —';
 	@override String canHoldConnection({required Object host}) => '${host} ——··—— / ——— ···— · ·—· / ·— / ·—·· ·· ···— · / —·—· ——— —· —· · —·—· — ·· ——— —·';
 	@override String get canHoldLocalConnection => '—·· · ···— ·· —·—· · ··· / ——— —· / —·—— ——— ··— ·—· / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— ——··—— / ——— ···— · ·—· / ·— / ·—·· ·· ···— · / —·—· ——— —· —· · —·—· — ·· ——— —·';
@@ -4106,6 +4111,11 @@ extension on TranslationsCw {
 			'extensionsPanel.noMatches' => '—· ——— / · —··— — · —· ··· ·· ——— —· ··· / —— ·— — —·—· ···· / —·—— ——— ··— ·—· / ··· · ·— ·—· —·—· ····',
 			'extensionsPanel.installFromFile' => '·· —· ··· — ·— ·—·· ·—·· / ··—· ·—· ——— —— / ··—· ·· ·—·· · …',
 			'extensionsPanel.installVersion' => ({required Object version}) => '···— · ·—· ··· ·· ——— —· / ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => '··· —·—· ·—· · · —· ··· ···· ——— — / ${n} / ——— ··—· / ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '·—·—· ${count}',
+			'extensionsPanel.previousScreenshot' => '·——· ·—· · ···— ·· ——— ··— ··· / ··· —·—· ·—· · · —· ··· ···· ——— —',
+			'extensionsPanel.nextScreenshot' => '—· · —··— — / ··· —·—· ·—· · · —· ··· ···· ——— —',
+			'extensionsPanel.screenshotUnavailable' => '··· —·—· ·—· · · —· ··· ···· ——— — / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'extensionsPanel.canReach' => '— ···· ·· ··· / · —··— — · —· ··· ·· ——— —· / —·—· ·— —· / —·—· ——— —· — ·— —·—· —',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host} ——··—— / ——— ···— · ·—· / ·— / ·—·· ·· ···— · / —·—· ——— —· —· · —·—· — ·· ——— —·',
 			'extensionsPanel.canHoldLocalConnection' => '—·· · ···— ·· —·—· · ··· / ——— —· / —·—— ——— ··— ·—· / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— ——··—— / ——— ···— · ·—· / ·— / ·—·· ·· ···— · / —·—· ——— —· —· · —·—· — ·· ——— —·',
@@ -4551,13 +4561,13 @@ extension on TranslationsCw {
 			'operation.layout.panels.weatherConditions.clear' => '—·—· ·—·· · ·— ·—·',
 			'operation.layout.panels.weatherConditions.mainlySunny' => '—— ·— ·· —· ·—·· —·—— / ··· ··— —· —· —·——',
 			'operation.layout.panels.weatherConditions.mainlyClear' => '—— ·— ·· —· ·—·· —·—— / —·—· ·—·· · ·— ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.partlyCloudy' => '·——· ·— ·—· — ·—·· —·—— / —·—· ·—·· ——— ··— —·· —·——',
 			'operation.layout.panels.weatherConditions.cloudy' => '—·—· ·—·· ——— ··— —·· —·——',
 			'operation.layout.panels.weatherConditions.foggy' => '··—· ——— ——· ——· —·——',
 			'operation.layout.panels.weatherConditions.rimeFog' => '·—· ·· —— · / ··—· ——— ——·',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => '·—·· ·· ——· ···· — / —·· ·—· ·· ——·· ——·· ·—·· ·',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.drizzle' => '—·· ·—· ·· ——·· ——·· ·—·· ·',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => '···· · ·— ···— —·—— / —·· ·—· ·· ——·· ——·· ·—·· ·',
 			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => '·—·· ·· ——· ···· — / ··—· ·—· · · ——·· ·· —· ——· / —·· ·—· ·· ——·· ——·· ·—·· ·',
@@ -5065,13 +5075,13 @@ extension on TranslationsCw {
 			'formChrome.deleteItemTitle' => ({required Object name}) => '—·· · ·—·· · — · / ${name} ··——··',
 			'formChrome.storageUnavailable' => '·—·· ——— ——· ·· —· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
 			'qsoEditForm.title' => '· —·· ·· — / ——·— ··· ———',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.operatorCall' => '——— ·——· · ·—· ·— — ——— ·—·',
 			'qsoEditForm.position' => '·——· ——— ··· ·· — ·· ——— —·',
 			'qsoEditForm.theirName' => '—· ·— —— ·',
 			'qsoEditForm.theirGrid' => '——· ·—· ·· —··',
 			'qsoEditForm.theirState' => '··· — ·— — ·',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.band' => '—··· ·— —· —··',
 			'qsoEditForm.notes' => '—· ——— — · ···',
 			'qsoEditForm.sectionQso' => '——·— ··· ———',
@@ -5579,13 +5589,13 @@ extension on TranslationsCw {
 			'settings.station.reportIntro' => '— · ·—·· ·—·· / ··— ··· / ·—— ···· ·— — / ·—· ·— —·· ·· ——— / — ···· ·· ··· / ·—· · ·— ·—·· ·—·· —·—— / ·· ··· / ·— —· —·· / ···· ——— ·—— / ·· — / ·—— · —· — ·—·—·— / —·—— ——— ··— ·—· / ·—· · ·——· ——— ·—· — / —··· · —·—· ——— —— · ··· / ·— / —·—· ·— ·—· —·· / — ···· · / ···· ·— —— ··——— —·— / — · ·— —— / ·—· · ·— —·· ··· ——··—— / ·— —· —·· / ·—— ···· ·— — / —·—— ——— ··— / ·—— ·—· ·· — · / ·— —··· ——— ··— — / ——· · — — ·· —· ——· / ·· — / ·—— ——— ·—· —·— ·· —· ——· / —— ·— —·—— / · —· —·· / ··— ·——· / ···· · ·—·· ·——· ·· —· ——· / — ···· · / —· · —··— — / ——— ·——· · ·—· ·— — ——— ·—· / ·—— ·· — ···· / — ···· · / ··· ·— —— · / ·—· ·· ——· ·—·—·—',
 			'settings.station.reportManufacturer' => '—— ·— —· ··— ··—· ·— —·—· — ··— ·—· · ·—·',
 			'settings.station.reportManufacturerDescription' => '·—— ···· ——— / —— ·— —·— · ··· / ·· — / — / ·· —·—· ——— —— ——··—— / —·—— ·— · ··· ··— ——··—— / —·— · —· ·—— ——— ——— —·· ——··—— / · ·—·· · —·—· ·—· ·— ··—· — …',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportManufacturerRequired' => '·— / —— ·— —· ··— ··—· ·— —·—· — ··— ·—· · ·—· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.reportModel' => '—— ——— —·· · ·—··',
 			'settings.station.reportModelDescription' => '— ···· · / —— ——— —·· · ·—·· ——··—— / ·— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·· — ··· · ·—·· ··—· / —·—· ·— ·—·· ·—·· ··· / ·· — / — / ·—··—· ·· —·—· —····— ——··· ···—— ————— ————— ·—··—· ——··—— / ·—··—· ··—· — —····— ————· ————· ·———— ·— ·—··—· ·—·—·—',
 			'settings.station.reportModelRequired' => '·— / —— ——— —·· · ·—·· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.reportOutcome' => '···· ——— ·—— / —·· ·· —·· / ·· — / ——· ——— ··——··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportOutcomeWorks' => '·—— ——— ·—· —·— · —·· / ·—— · ·—·· ·—··',
 			'settings.station.reportOutcomeIssues' => '·—— ——— ·—· —·— · —·· ——··—— / ·—— ·· — ···· / ·· ··· ··· ··— · ···',
 			'settings.station.reportOutcomeFails' => '—·· ·· —·· —· ·————· — / ·—— ——— ·—· —·— / ·— — / ·— ·—·· ·—··',
@@ -6093,13 +6103,13 @@ extension on TranslationsCw {
 			'commands.noCwKeyer' => '—· ——— / —·—· ——— —· —· · —·—· — · —·· / ·—· ·— —·· ·· ——— / —·—· ·— —· / —·— · —·—— / —·—· ·——',
 			'commands.noKeyer' => '—· ——— / —·—· ——— —· —· · —·—· — · —·· / ·—· ·— —·· ·· ——— / —·—· ·— —· / —·— · —·—— / —·—· ·—— / ——— ·—· / ·——· ·—·· ·— —·—— / ···— ——— ·· —·—· · / —— · —— ——— ·—· ·· · ···',
 			'commands.keyerNeedsOperation' => '——— ·——· · —· / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ——— / ··— ··· · / — ···· · / —·—· ·—— / —·— · —·—— · ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'commands.keyerExperimentOff' => '—·—· ·—— / —·— · —·—— ·· —· ——· / ·· ··· / ——— ··—· ··—· / — / — ··— ·—· —· / ·· — / ——— —· / ·—— ·· — ···· / · —··— ·——· / —·— · —·—— · ·—·',
 			'commands.esmExperimentOff' => '· —· — · ·—· / ··· · —· —·· ··· / —— · ··· ··· ·— ——· · ··· / ·· ··· / ——— ··—· ··—· / — / — ··— ·—· —· / ·· — / ——— —· / ·—— ·· — ···· / · —··— ·——· / · ··· ——',
 			'commands.cwSending' => ({required Object text}) => '··· · —· —·· ·· —· ——· / —·—· ·—— ———··· / ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} ———··· / ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} / ·—— ·— ··· / —· ——— — / ··· · —· — ———··· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingNotStored' => ({required Object label}) => '“ ${label} ” / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· ·— — / ···— ·— ·—·· ··— ·',
 			'commandDialog.hint' => '··· · ·— ·—· —·—· ···· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ——— ·—· / — —·—— ·——· · / ·— / —·—· ——— —— —— ·— —· —··',
 			'commandDialog.noResults' => ({required Object text}) => '—· ——— — ···· ·· —· ——· / —— ·— — —·—· ···· · ··· / “ ${text} ”',

@@ -312,6 +312,21 @@ class Translations$extensionsPanel$en {
 	/// en: 'Version ${version}'
 	String installVersion({required Object version}) => 'Version ${version}';
 
+	/// en: 'Screenshot ${n} of ${count}'
+	String screenshotLabel({required Object n, required Object count}) => 'Screenshot ${n} of ${count}';
+
+	/// en: '+${count}'
+	String moreScreenshots({required Object count}) => '+${count}';
+
+	/// en: 'Previous screenshot'
+	String get previousScreenshot => 'Previous screenshot';
+
+	/// en: 'Next screenshot'
+	String get nextScreenshot => 'Next screenshot';
+
+	/// en: 'Screenshot unavailable'
+	String get screenshotUnavailable => 'Screenshot unavailable';
+
 	/// en: 'This extension can contact'
 	String get canReach => 'This extension can contact';
 
@@ -8765,6 +8780,11 @@ extension on Translations {
 			'extensionsPanel.noMatches' => 'No extensions match your search',
 			'extensionsPanel.installFromFile' => 'Install from file…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Version ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'Screenshot ${n} of ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'Previous screenshot',
+			'extensionsPanel.nextScreenshot' => 'Next screenshot',
+			'extensionsPanel.screenshotUnavailable' => 'Screenshot unavailable',
 			'extensionsPanel.canReach' => 'This extension can contact',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, over a live connection',
 			'extensionsPanel.canHoldLocalConnection' => 'Devices on your local network, over a live connection',
@@ -9210,13 +9230,13 @@ extension on Translations {
 			'operation.layout.panels.weatherConditions.clear' => 'Clear',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'Mainly Sunny',
 			'operation.layout.panels.weatherConditions.mainlyClear' => 'Mainly Clear',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Partly Cloudy',
 			'operation.layout.panels.weatherConditions.cloudy' => 'Cloudy',
 			'operation.layout.panels.weatherConditions.foggy' => 'Foggy',
 			'operation.layout.panels.weatherConditions.rimeFog' => 'Rime Fog',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => 'Light Drizzle',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.drizzle' => 'Drizzle',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'Heavy Drizzle',
 			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'Light Freezing Drizzle',
@@ -9724,13 +9744,13 @@ extension on Translations {
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'Delete ${name}?',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
 			'qsoEditForm.title' => 'Edit QSO',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.operatorCall' => 'Operator',
 			'qsoEditForm.position' => 'Position',
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
 			'qsoEditForm.sectionQso' => 'QSO',
@@ -10238,13 +10258,13 @@ extension on Translations {
 			'settings.station.reportIntro' => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
 			'settings.station.reportManufacturer' => 'Manufacturer',
 			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
 			'settings.station.reportModel' => 'Model',
 			'settings.station.reportModelDescription' => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".',
 			'settings.station.reportModelRequired' => 'A model is required',
 			'settings.station.reportOutcome' => 'How did it go?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportOutcomeWorks' => 'Worked well',
 			'settings.station.reportOutcomeIssues' => 'Worked, with issues',
 			'settings.station.reportOutcomeFails' => 'Didn\'t work at all',
@@ -10752,13 +10772,13 @@ extension on Translations {
 			'commands.noCwKeyer' => 'No connected radio can key CW',
 			'commands.noKeyer' => 'No connected radio can key CW or play voice memories',
 			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
+			_ => null,
+		} ?? switch (path) {
 			'commands.keyerExperimentOff' => 'CW keying is off — turn it on with EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter Sends Messages is off — turn it on with EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',

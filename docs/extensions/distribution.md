@@ -540,6 +540,13 @@ catalog's own bundle links (`…/api/v1/extensions/<key>/versions/<version>/bund
 take this verified path when they arrive as a deep link; every other host
 takes the plain one above.
 
+An extension's screenshots — published beside its bundles, never inside them
+(the tools README says how) — show as a strip of thumbnails on its row in the
+operation sheet's activity search, on the consent screen of a catalog install,
+and in an installed extension's details; a tap opens them full size. The app
+loads them only from the catalog's own host: a listing naming any other is
+shown without them.
+
 ### Release tracks
 
 A catalog channel — `stable`, `unstable` or `bleeding` — says how finished a

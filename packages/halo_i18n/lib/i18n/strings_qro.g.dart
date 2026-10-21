@@ -185,6 +185,11 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get noMatches => 'NO EXTENSIONS MATCH YOUR SEARCH';
 	@override String get installFromFile => 'INSTALL FROM FILE…';
 	@override String installVersion({required Object version}) => 'VERSION ${version}';
+	@override String screenshotLabel({required Object n, required Object count}) => 'SCREENSHOT ${n} OF ${count}';
+	@override String moreScreenshots({required Object count}) => '+${count}';
+	@override String get previousScreenshot => 'PREVIOUS SCREENSHOT';
+	@override String get nextScreenshot => 'NEXT SCREENSHOT';
+	@override String get screenshotUnavailable => 'SCREENSHOT UNAVAILABLE';
 	@override String get canReach => 'THIS EXTENSION CAN CONTACT';
 	@override String canHoldConnection({required Object host}) => '${host}, OVER A LIVE CONNECTION';
 	@override String get canHoldLocalConnection => 'DEVICES ON YOUR LOCAL NETWORK, OVER A LIVE CONNECTION';
@@ -4106,6 +4111,11 @@ extension on TranslationsQro {
 			'extensionsPanel.noMatches' => 'NO EXTENSIONS MATCH YOUR SEARCH',
 			'extensionsPanel.installFromFile' => 'INSTALL FROM FILE…',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'VERSION ${version}',
+			'extensionsPanel.screenshotLabel' => ({required Object n, required Object count}) => 'SCREENSHOT ${n} OF ${count}',
+			'extensionsPanel.moreScreenshots' => ({required Object count}) => '+${count}',
+			'extensionsPanel.previousScreenshot' => 'PREVIOUS SCREENSHOT',
+			'extensionsPanel.nextScreenshot' => 'NEXT SCREENSHOT',
+			'extensionsPanel.screenshotUnavailable' => 'SCREENSHOT UNAVAILABLE',
 			'extensionsPanel.canReach' => 'THIS EXTENSION CAN CONTACT',
 			'extensionsPanel.canHoldConnection' => ({required Object host}) => '${host}, OVER A LIVE CONNECTION',
 			'extensionsPanel.canHoldLocalConnection' => 'DEVICES ON YOUR LOCAL NETWORK, OVER A LIVE CONNECTION',
@@ -4551,13 +4561,13 @@ extension on TranslationsQro {
 			'operation.layout.panels.weatherConditions.clear' => 'CLEAR',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'MAINLY SUNNY',
 			'operation.layout.panels.weatherConditions.mainlyClear' => 'MAINLY CLEAR',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'PARTLY CLOUDY',
 			'operation.layout.panels.weatherConditions.cloudy' => 'CLOUDY',
 			'operation.layout.panels.weatherConditions.foggy' => 'FOGGY',
 			'operation.layout.panels.weatherConditions.rimeFog' => 'RIME FOG',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => 'LIGHT DRIZZLE',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.drizzle' => 'DRIZZLE',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'HEAVY DRIZZLE',
 			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'LIGHT FREEZING DRIZZLE',
@@ -5065,13 +5075,13 @@ extension on TranslationsQro {
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'DELETE ${name}?',
 			'formChrome.storageUnavailable' => 'LOGINS UNAVAILABLE',
 			'qsoEditForm.title' => 'EDIT QSO',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.operatorCall' => 'OPERATOR',
 			'qsoEditForm.position' => 'POSITION',
 			'qsoEditForm.theirName' => 'NAME',
 			'qsoEditForm.theirGrid' => 'GRID',
 			'qsoEditForm.theirState' => 'STATE',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.band' => 'BAND',
 			'qsoEditForm.notes' => 'NOTES',
 			'qsoEditForm.sectionQso' => 'QSO',
@@ -5579,13 +5589,13 @@ extension on TranslationsQro {
 			'settings.station.reportIntro' => 'TELL US WHAT RADIO THIS REALLY IS AND HOW IT WENT. YOUR REPORT BECOMES A CARD THE HAM2K TEAM READS, AND WHAT YOU WRITE ABOUT GETTING IT WORKING MAY END UP HELPING THE NEXT OPERATOR WITH THE SAME RIG.',
 			'settings.station.reportManufacturer' => 'MANUFACTURER',
 			'settings.station.reportManufacturerDescription' => 'WHO MAKES IT — ICOM, YAESU, KENWOOD, ELECRAFT…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportManufacturerRequired' => 'A MANUFACTURER IS REQUIRED',
 			'settings.station.reportModel' => 'MODEL',
 			'settings.station.reportModelDescription' => 'THE MODEL, AS THE RADIO ITSELF CALLS IT — "IC-7300", "FT-991A".',
 			'settings.station.reportModelRequired' => 'A MODEL IS REQUIRED',
 			'settings.station.reportOutcome' => 'HOW DID IT GO?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportOutcomeWorks' => 'WORKED WELL',
 			'settings.station.reportOutcomeIssues' => 'WORKED, WITH ISSUES',
 			'settings.station.reportOutcomeFails' => 'DIDN\'T WORK AT ALL',
@@ -6093,13 +6103,13 @@ extension on TranslationsQro {
 			'commands.noCwKeyer' => 'NO CONNECTED RADIO CAN KEY CW',
 			'commands.noKeyer' => 'NO CONNECTED RADIO CAN KEY CW OR PLAY VOICE MEMORIES',
 			'commands.keyerNeedsOperation' => 'OPEN AN OPERATION TO USE THE CW KEYER',
+			_ => null,
+		} ?? switch (path) {
 			'commands.keyerExperimentOff' => 'CW KEYING IS OFF — TURN IT ON WITH EXP KEYER',
 			'commands.esmExperimentOff' => 'ENTER SENDS MESSAGES IS OFF — TURN IT ON WITH EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'SENDING CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW MESSAGE F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW MESSAGE F${n} WAS NOT SENT: THE EXTENSIONS ARE NOT READY',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” DID NOT ACCEPT THAT VALUE',
 			'commandDialog.hint' => 'SEARCH CALLSIGNS OR TYPE A COMMAND',
 			'commandDialog.noResults' => ({required Object text}) => 'NOTHING MATCHES “${text}”',

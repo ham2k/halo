@@ -21,11 +21,12 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show localNetworkEntry;
 import '../services/extensions/extension_info.dart';
-import '../services/extensions/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogUpdateCheck;
+import '../services/extensions/catalog_service.dart' show CatalogEntry, CatalogRelease, CatalogScreenshot, CatalogUpdateCheck;
 import '../services/error_reporting_service.dart';
 import '../services/file_pick.dart';
 import '../services/halo_services.dart';
 import '../services/extensions/installed_extensions.dart';
+import 'extension_screenshots.dart';
 import '../services/status_bar_service.dart' show StatusBarService;
 
 /// The file types the picker offers.
@@ -92,6 +93,9 @@ Future<String?> installExtensionFromBytes(
   BundleProvenance? provenance,
   CatalogChannel? releaseChannel,
 
+  /// The extension's catalog screenshots, shown on the consent screen.
+  List<CatalogScreenshot> screenshots = const [],
+
   /// False only for a bulk update the operator has already asked for as a
   /// whole — see where the screen is shown below. Never for a file, a deep
   /// link, or anything an extension can reach.
@@ -150,7 +154,16 @@ Future<String?> installExtensionFromBytes(
   if (askConsent || await _asksMore(store, bundle)) {
     final replacing = await _isInstalled(store, bundle);
     if (!context.mounted) return null;
-    if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from, channel: releaseChannel ?? provenance?.channel)) return null;
+    if (!await showConsentDialog(
+      context,
+      bundle: bundle,
+      replacing: replacing,
+      from: from,
+      channel: releaseChannel ?? provenance?.channel,
+      screenshots: screenshots,
+    )) {
+      return null;
+    }
     // Asked again: another install of this key can have started while the
     // operator was reading.
     if (isBusy?.call(bundle.key) ?? false) {
@@ -196,6 +209,10 @@ Future<String?> installFromCatalog(
   String? name,
   bool askConsent = true,
   CatalogChannel track = CatalogChannel.stable,
+
+  /// The extension's screenshots from the listing that named [release]:
+  /// what the consent screen shows of it beside what it can reach.
+  List<CatalogScreenshot> screenshots = const [],
 }) async {
   final store = services.extensions.installed;
   // A press that did nothing at all, with no message and no log, is the one
@@ -252,6 +269,7 @@ Future<String?> installFromCatalog(
       from: catalog.host,
       provenance: provenance,
       releaseChannel: release.channel,
+      screenshots: screenshots,
       commit: commitThroughInstaller(services),
       askConsent: askConsent,
       beforeRefusal: () => installer.clearProgress(release.key),
@@ -348,6 +366,8 @@ Future<void> updateAllFromCatalog(
         release: entry.release,
         name: info.nameFor(locale),
         askConsent: false,
+        // Shown only by an update asking for more than was granted (above).
+        screenshots: entry.screenshots,
       ).then<void>((_) {}, onError: (Object e, StackTrace stack) => ErrorReportingService.report(e, stack, context: 'extension-update-all')),
   ]);
 }
@@ -395,11 +415,18 @@ Future<void> showInstallRefusal(BuildContext context, String message) => showDia
 
 /// Shows what [bundle] will be able to reach, and returns whether the operator
 /// agreed to it.
-Future<bool> showConsentDialog(BuildContext context, {required InspectedBundle bundle, required bool replacing, String? from, CatalogChannel? channel}) async =>
+Future<bool> showConsentDialog(
+  BuildContext context, {
+  required InspectedBundle bundle,
+  required bool replacing,
+  String? from,
+  CatalogChannel? channel,
+  List<CatalogScreenshot> screenshots = const [],
+}) async =>
     await showDialog<bool>(
       context: context,
       builder: (context) => HoldSizeWhileCovered(
-        child: _ConsentDialog(bundle: bundle, replacing: replacing, from: from, channel: channel),
+        child: _ConsentDialog(bundle: bundle, replacing: replacing, from: from, channel: channel, screenshots: screenshots),
       ),
     ) ??
     false;
@@ -447,7 +474,10 @@ class _ConsentDialog extends StatelessWidget {
   /// not come from the catalog.
   final CatalogChannel? channel;
 
-  const _ConsentDialog({required this.bundle, required this.replacing, this.from, this.channel});
+  /// The catalog's screenshots of the extension; empty for a file.
+  final List<CatalogScreenshot> screenshots;
+
+  const _ConsentDialog({required this.bundle, required this.replacing, this.from, this.channel, this.screenshots = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -482,6 +512,7 @@ class _ConsentDialog extends StatelessWidget {
             ),
           ],
           if (bundle.description != null) ...[const SizedBox(height: Space.md), Text(bundle.description!)],
+          if (screenshots.isNotEmpty) ...[const SizedBox(height: Space.md), ExtensionScreenshotStrip(screenshots: screenshots, title: bundle.name, height: 88)],
           const SizedBox(height: Space.xl),
           // The capabilities, given the most room. The domains list is not a
           // summary of this extension's network access — it IS that access,
@@ -722,6 +753,7 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   IconData? installedFromIcon,
   String? updateVersion,
   CatalogChannel channel = CatalogChannel.stable,
+  List<CatalogScreenshot> screenshots = const [],
 }) => showDialog<ExtensionDetailsAction>(
   context: context,
   builder: (context) => HoldSizeWhileCovered(
@@ -732,6 +764,7 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
       installedFromIcon: installedFromIcon,
       updateVersion: updateVersion,
       channel: channel,
+      screenshots: screenshots,
     ),
   ),
 );
@@ -746,6 +779,7 @@ class _DetailsDialog extends StatelessWidget {
   final IconData? installedFromIcon;
   final String? updateVersion;
   final CatalogChannel channel;
+  final List<CatalogScreenshot> screenshots;
 
   const _DetailsDialog({
     required this.info,
@@ -754,6 +788,7 @@ class _DetailsDialog extends StatelessWidget {
     required this.installedFromIcon,
     required this.updateVersion,
     required this.channel,
+    required this.screenshots,
   });
 
   @override
@@ -788,6 +823,10 @@ class _DetailsDialog extends StatelessWidget {
         children: [
           if (version != null) Text(t.installVersion(version: version), style: theme.textTheme.bodySmall),
           if (description != null) ...[const SizedBox(height: Space.md), Text(description)],
+          if (screenshots.isNotEmpty) ...[
+            const SizedBox(height: Space.md),
+            ExtensionScreenshotStrip(screenshots: screenshots, title: info.nameFor(locale), height: 88),
+          ],
           const SizedBox(height: Space.xl),
           // Where it came from, in the same words the consent screen used
           // when it arrived. For an extension the app ships there is nothing

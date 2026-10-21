@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
+import 'package:ham2k_logger/services/extensions/catalog_service.dart' show CatalogScreenshot;
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/views/extension_install_flow.dart';
 
@@ -292,6 +293,42 @@ void main() {
     await close();
     await open(null);
     expect(find.byType(PreReleaseWarning), findsNothing);
+  });
+
+  testWidgets("a catalog install shows the extension's screenshots; a file shows none", (tester) async {
+    // What it looks like is part of what the operator is agreeing to install.
+    final bundle = await inspect(fixture);
+    final shots = [
+      for (final n in [1, 2])
+        CatalogScreenshot(
+          url: Uri.parse('https://catalog.ham2k.net/api/v1/extensions/ki2d-my-clock/media/$n'),
+          thumbUrl: Uri.parse('https://catalog.ham2k.net/api/v1/extensions/ki2d-my-clock/media/t$n'),
+          width: 160,
+          height: 90,
+        ),
+    ];
+    for (final (screenshots, expected) in [(shots, findsOneWidget), (const <CatalogScreenshot>[], findsNothing)]) {
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            locale: const Locale('en'),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => showConsentDialog(context, bundle: bundle, replacing: false, from: 'catalog.ham2k.net', screenshots: screenshots),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel(t.extensionsPanel.screenshotLabel(n: 2, count: 2)), expected);
+      await tester.tap(find.text(t.common.cancel));
+      await tester.pumpAndSettle();
+    }
   });
 
   testWidgets('a bundle picked off disk names no source', (tester) async {

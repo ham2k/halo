@@ -107,3 +107,32 @@ A channel says how finished a release is — `stable`, `unstable`, `bleeding` �
 not which app edition is asking. They cascade upward, so `stable` reaches
 everyone and `bleeding` reaches only somebody who asked for it. `--channel` is
 optional and defaults to `stable`.
+
+### Screenshots
+
+```
+screenshots/
+  1-logging.png
+  2-map.png
+  screenshots.json    optional — { "1-logging.png": "Logging a park" }
+```
+
+When your project has a `screenshots/` folder (or you name one with
+`--screenshots <dir>`), `h2kext-publish` makes the catalog's screenshots for
+your extension match it, after the bundle is accepted. The folder is the
+whole set: PNG, JPEG or WebP files, at most 8, shown in file-name order
+(`2-…` before `10-…`), captions from `screenshots.json`. Screenshots are never
+packed into the bundle, and they belong to the extension rather than to a
+version: every channel shows the same ones, and
+`h2kext-publish build --screenshots-only` updates them without publishing a
+version.
+
+Each screenshot is at most 2 MiB and 3840 pixels on its longest side. The
+command makes the thumbnail the app shows in search results itself, with
+[sharp](https://sharp.pixelplumbing.com) — an optional dependency, so if it
+could not install on your machine the command says so, and you can add your
+screenshots on the site's [/publish](https://catalog.ham2k.net/publish) page
+instead. An unchanged folder sends nothing. A new set waits for a reviewer,
+like a version, while the approved one keeps showing. An empty folder named
+with `--screenshots` takes every screenshot down at once; an empty
+`./screenshots` found on its own is left alone.

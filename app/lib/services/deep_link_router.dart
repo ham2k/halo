@@ -431,7 +431,7 @@ Future<void> _installFromCatalogLink(HaLoServices services, BuildContext context
       await showInstallRefusal(context, listing == null ? t.extensionsPanel.catalogUnreachable : t.extensionsPanel.catalogNoRelease(key: page.key));
       return;
     }
-    await installFromCatalog(context, services: services, release: current.release, track: page.channel);
+    await installFromCatalog(context, services: services, release: current.release, track: page.channel, screenshots: current.screenshots);
     return;
   }
   final ref = CatalogService.parseBundleUrl(source);
@@ -453,6 +453,8 @@ Future<void> _installFromCatalogLink(HaLoServices services, BuildContext context
     context,
     services: services,
     release: (key: ref.key, version: version.version, sha256: version.sha256, bundleUrl: source, channel: version.channel),
+    // The extension's own, whichever version the link names (catalog SPEC §4.8).
+    screenshots: listing?.current?.screenshots ?? const [],
   );
 }
 
