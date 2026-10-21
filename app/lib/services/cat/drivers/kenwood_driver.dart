@@ -62,7 +62,7 @@ class KenwoodDriver extends EquipmentDriver {
 
   @override
   List<String> settableModes(Map<String, dynamic> config) => radioModeOrder([
-    ...kenwoodModeCodes.keys,
+    ...kenwoodModeTable(modeDialectFrom(config)).keys,
     if (isK4) ...['DATA-USB', 'DATA-LSB', 'PSK'] else ...dataModeBases.keys,
   ]);
 
@@ -105,6 +105,13 @@ class KenwoodDriver extends EquipmentDriver {
   /// above. Absent means none is read or offered — a radio with one port
   /// shows no choice. Never the K4's: its `AN` is its own.
   static const antennaDialectKey = 'antennaDialect';
+
+  /// Which `MD` table the radio speaks ([KenwoodModeDialect] by name), pinned
+  /// per entry like the dialects above. Absent is Kenwood's own.
+  static const modeDialectKey = 'modeDialect';
+
+  static KenwoodModeDialect? modeDialectFrom(Map<String, dynamic> config) =>
+      KenwoodModeDialect.values.where((d) => d.name == config[modeDialectKey]).firstOrNull;
 
   static KenwoodAntennaDialect? antennaDialectFrom(Map<String, dynamic> config) =>
       KenwoodAntennaDialect.values.where((d) => d.name == config[antennaDialectKey]).firstOrNull;
@@ -151,6 +158,7 @@ class KenwoodDriver extends EquipmentDriver {
     dataModeKey,
     passbandDialectKey,
     antennaDialectKey,
+    modeDialectKey,
   };
 
   @override
@@ -177,6 +185,7 @@ class KenwoodDriver extends EquipmentDriver {
       final dialect => dialect,
     },
     antennaDialect: isK4 ? null : antennaDialectFrom(config),
+    modeDialect: isK4 ? null : modeDialectFrom(config),
     config: config,
   );
 
@@ -265,7 +274,10 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// One diagnostic per connection: a status reply outside the K31 layout
   /// leaves mode and transmit state unreported, and nothing else says so.
   bool _k4InfoRejected = false;
-  final _framer = KenwoodFramer();
+
+  /// GPS sentences dropped for the TX-500 line: the LiNK500MP made for it
+  /// can interleave its receiver's NMEA with the radio's CAT on one channel.
+  late final _framer = KenwoodFramer(dropsNmea: modeDialect == KenwoodModeDialect.lab599);
 
   /// Auto-Information is the primary path; this covers what it can't — the
   /// radio's AI menu switched off, or a frame lost to line noise.
@@ -387,6 +399,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this.dataMode = false,
     this.passbandDialect,
     this.antennaDialect,
+    this.modeDialect,
     Map<String, dynamic> config = const {},
   }) : _modeOffset = declaredModeOffset,
        // ignore: prefer_initializing_formals
@@ -397,6 +410,17 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   /// See [KenwoodDriver.dataModeKey].
   final bool dataMode;
+
+  /// See [KenwoodDriver.modeDialectKey].
+  final KenwoodModeDialect? modeDialect;
+
+  /// Whether a [KenwoodModeDialect.lab599] radio's CAT menu is on the LAB599
+  /// protocol, from its `ID;` answer. Null until it answers. Only that
+  /// protocol has a command for DIG: on TS-2000 a DIG request is sent as its
+  /// USB base, as on a radio without a DATA submode.
+  bool? _lab599Protocol;
+
+  bool get _digSettable => modeDialect == KenwoodModeDialect.lab599 && _lab599Protocol == true;
 
   /// Whether the DATA submode was last reported on, and the base mode it was
   /// last reported against — `MD` and `IF` never say DATA, so [_withData]
@@ -765,7 +789,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
           if (RegExp(r'^[1-79]$').hasMatch(command.params)) _send('IF;');
           return;
         }
-        final mode = parseKenwoodModeParams(command.params);
+        final mode = parseKenwoodModeParams(command.params, dialect: modeDialect);
         if (mode == null) return;
         // The raw code, not one rebuilt from the name: `params` IS what the
         // radio sent, and round-tripping it through the name map would go
@@ -914,6 +938,9 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
             return;
         }
         _passbandAnswered();
+      case 'ID' when modeDialect == KenwoodModeDialect.lab599:
+        _lab599Protocol = lab599ProtocolIds.contains(command.params);
+        _sink.reportDiagnostic('CAT protocol ${_lab599Protocol! ? 'LAB599' : 'TS-2000, no DIG'} (ID${command.params})');
       case 'ER':
         if (isK4) _sink.reportDiagnostic('K4 refused a command: ER${command.params}');
       case 'TQ':
@@ -942,7 +969,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // generation of the line.
     final freqHz = parseKenwoodInfoFrequency(params);
     final learned = _modeOffset;
-    final mode = learned == null ? null : _withData(parseKenwoodInfoModeAt(params, learned));
+    final mode = learned == null ? null : _withData(parseKenwoodInfoModeAt(params, learned, dialect: modeDialect));
 
     if (freqHz != null || mode != null) {
       _report(VfoReading(freqKHz: freqHz == null ? null : freqHz / 1000, mode: mode));
@@ -1000,7 +1027,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         // from where the radio says the mode actually is, so the wrong one
         // just reported upward does not stand until the next poll.
         _modeOffset = null;
-        _report(VfoReading(mode: _withData(parseKenwoodInfoModeAt(params, offset))));
+        _report(VfoReading(mode: _withData(parseKenwoodInfoModeAt(params, offset, dialect: modeDialect))));
         // Said once and done: the layout does not change mid-session, so
         // re-deciding it on every packet forever would add nothing.
         _settled = true;
@@ -1051,11 +1078,14 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // A data mode is its base mode with the DATA submode on; a radio without
     // one is at least put in the base mode, rather than left in whatever a
     // band recall brought back.
-    final dataBase = dataModeBases[mode.toUpperCase()];
+    // DIG is a mode of its own in the LAB599 protocol, not a base plus a
+    // submode.
+    final ownCode = _digSettable && kenwoodCodeForMode(mode, dialect: modeDialect) != null;
+    final dataBase = ownCode ? null : dataModeBases[mode.toUpperCase()];
     final base = dataBase ?? mode;
     // A mode the radio has no code for sends nothing, rather than a
     // malformed command it would silently reject.
-    final command = buildKenwoodSetModeCommand(base);
+    final command = buildKenwoodSetModeCommand(base, dialect: modeDialect);
     if (command == null) return;
     _send(command);
     // Stated either way wherever the base mode has a submode, so plain USB
@@ -1333,6 +1363,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _antennas = null;
     _antennaPollsToSkip = 0;
     _antennaRead.reset();
+    _lab599Protocol = null;
     _started = true;
     // K4n clears K2 meta mode; K31 explicitly includes the DATA submode in
     // IF. Do this before AI or any reads, on each USB or TCP connection.
@@ -1340,6 +1371,9 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     if (declaredModeOffset != null) {
       _sink.reportDiagnostic('IF mode offset $declaredModeOffset (declared)');
     }
+    // Once: the protocol is a menu setting, not something that changes while
+    // connected.
+    if (modeDialect == KenwoodModeDialect.lab599) _send(buildKenwoodReadIdCommand());
     _send(buildKenwoodAutoInformationCommand(true));
     _requestState();
     _telemetry.start();

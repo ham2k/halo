@@ -710,15 +710,15 @@ void main() {
     expect(const IcomCredentialsMissing().toString(), contains('required'));
   });
 
-  test('the registry offers every model\'s every variant over five transports', () {
+  test('the registry offers every model\'s every variant over six transports', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ic705-network')?.key, 'ic705-network');
     // Derived from the models, so a variant added to one has to appear here
     // without anything else being edited — including the placeholder every
     // real transceiver gains.
-    expect(registry.types, hasLength(83));
-    expect(registry.models, hasLength(47));
-    expect(registry.transports.keys, containsAll(['tcp', 'serial', 'bluetoothSerial', 'icom-network', 'placeholder']));
+    expect(registry.types, hasLength(121));
+    expect(registry.models, hasLength(49));
+    expect(registry.transports.keys, containsAll(['tcp', 'serial', 'bluetoothSerial', 'bleSerial', 'icom-network', 'placeholder']));
   });
 
   group('what the driver is told, versus what the user typed', () {

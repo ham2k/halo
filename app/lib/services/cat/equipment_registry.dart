@@ -42,6 +42,7 @@ import 'equipment_models_other_radios.dart';
 import 'equipment_models_sdr.dart';
 import 'equipment_models_yaesu.dart';
 import 'transport.dart';
+import 'transports/ble_serial_transport.dart';
 import 'transports/bluetooth_serial_transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_transport.dart';
@@ -144,11 +145,16 @@ class EquipmentModel {
   /// General characteristics, per data-model.md — `transceiver` today.
   final String category;
 
-  /// At least one. Order is what the transport picker offers, with the
-  /// derived placeholder variant last for a model that [offersPlaceholder].
+  /// At least one. Order is what the transport picker offers, then the
+  /// derived variants: Bluetooth LE for a model with a serial one, and the
+  /// placeholder last for a model that [offersPlaceholder].
   final List<EquipmentVariant> _variants;
 
-  List<EquipmentVariant> get variants => offersPlaceholder ? [..._variants, placeholderVariantFor(key)] : _variants;
+  List<EquipmentVariant> get variants {
+    if (!offersPlaceholder) return _variants;
+    final ble = bleSerialVariantFor(this);
+    return [..._variants, ?ble, placeholderVariantFor(key)];
+  }
 
   /// Every real transceiver can be run as the placeholder radio. Not the
   /// placeholder itself, and not a bridge: neither has a maker, and a program
@@ -234,6 +240,41 @@ class EquipmentModel {
     return null;
   }
 }
+
+/// A real transceiver's serial pairing, reached through a Bluetooth LE serial
+/// bridge instead of a cable: the same driver, and the driver's own pins and
+/// prefills, without the serial port's — no port to pick, and no baud field,
+/// since the bridge holds the rate. The radio's serial default is pinned as
+/// [bleSerialLinkBaudKey] instead: with no baud at all a driver budgets as
+/// for a network link, and would offer an Icom's scope and the fast telemetry
+/// floor over the 9600 or 19200 wire behind the bridge. Null for a model with
+/// no serial variant. Derived like the
+/// placeholder, so its key is `<model>-ble` — stable, since a node stores it.
+///
+/// Every model rather than a chosen few: a bridge carries any radio's serial
+/// CAT, and which bridge is on the operator's radio is not the catalogue's
+/// to know.
+EquipmentVariant? bleSerialVariantFor(EquipmentModel model) => _bleSerialVariants.putIfAbsent(model.key, () {
+  final serial = model._variants.where((v) => v.transportKey == SerialTransport.transportKey).firstOrNull;
+  if (serial == null) return null;
+  final driverKeys = serial.driver.recognizedConfigKeys;
+  Map<String, dynamic> driverOnly(Map<String, dynamic> config) => {
+    for (final entry in config.entries)
+      if (driverKeys.contains(entry.key)) entry.key: entry.value,
+  };
+  return EquipmentVariant(
+    key: '${model.key}-ble',
+    driver: serial.driver,
+    transport: const BleSerialTransport(),
+    defaultConfig: driverOnly(serial.defaultConfig),
+    overrides: {...driverOnly(serial.overrides), bleSerialLinkBaudKey: serial.defaultConfig['baudRate'] ?? 9600},
+    restrictions: driverOnly(serial.restrictions),
+    extraValidate: serial.extraValidate,
+    notes: () => serial.notes,
+  );
+});
+
+final _bleSerialVariants = <String, EquipmentVariant?>{};
 
 /// A model bound to one of its transports — what a configured node points at,
 /// and the whole of what [CatService] and the Station panel need to connect,
@@ -395,6 +436,9 @@ class EquipmentType {
   /// operator just did, so it's never something a radio definition would
   /// want to override out from under them.
   Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) => transport.runAction(actionKey, method, state);
+
+  /// See [EquipmentTransport.fieldChanged].
+  Map<String, dynamic>? fieldChanged(String key, dynamic value) => transport.fieldChanged(key, value);
 }
 
 /// The operator-facing name of a transport, by key. Kept here rather than on
@@ -410,6 +454,7 @@ String? transportLabelFor(String transportKey) {
     TcpTransport.transportKey => labels.network,
     SerialTransport.transportKey => labels.usbSerial,
     BluetoothSerialTransport.transportKey => labels.bluetoothSerial,
+    BleSerialTransport.transportKey => labels.bleSerial,
     IcomNetworkTransport.transportKey => labels.wifi,
     PlaceholderTransport.transportKey => labels.placeholder,
     _ => null,
@@ -430,7 +475,7 @@ String? transportLabelFor(String transportKey) {
 /// no error at all, so a typo here ships silently.
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
   SerialTransport.transportKey => 'usb-port',
-  BluetoothSerialTransport.transportKey => 'bluetooth',
+  BluetoothSerialTransport.transportKey || BleSerialTransport.transportKey => 'bluetooth',
   TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
   // Not a way of plugging anything in — the exception the rule above
   // allows for, because what this transport connects to is nothing.
@@ -477,6 +522,8 @@ const _defaultModels = [
   ts590sgModel,
   ts480Model,
   kenwoodGenericModel,
+  tx500Model,
+  tx500mpModel,
   rigctldModel,
   flrigModel,
   hrdModel,
@@ -490,6 +537,12 @@ const _defaultModels = [
   winkeyerModel,
   ...sdrModels,
 ];
+
+/// What `EXP 500MP` holds back from the catalogue: the Lab599 radios, and
+/// the Bluetooth LE pairing every serial radio derives — neither has met
+/// hardware yet. Only the OFFER: a node already on one keeps connecting with
+/// the experiment off, so turning it off never strands a working radio.
+bool isBehindTx500Experiment(EquipmentType type) => type.model.manufacturer == lab599Brand || type.transportKey == BleSerialTransport.transportKey;
 
 class EquipmentRegistry {
   final List<EquipmentModel> models;
@@ -512,6 +565,7 @@ class EquipmentRegistry {
             TcpTransport.transportKey: const TcpTransport(),
             SerialTransport.transportKey: const SerialTransport(),
             BluetoothSerialTransport.transportKey: const BluetoothSerialTransport(),
+            BleSerialTransport.transportKey: const BleSerialTransport(),
             IcomNetworkTransport.transportKey: const IcomNetworkTransport(),
             PlaceholderTransport.transportKey: const PlaceholderTransport(),
           };
@@ -528,6 +582,17 @@ class EquipmentRegistry {
   /// The opposite question — "what does THIS connection need?" — is still the
   /// pairing's, and [EquipmentType.secretFields] answers it.
   late final Set<String> allSecretFields = {for (final type in types) ...type.secretFields};
+
+  /// The pairings of [model] the catalogue offers on this platform — web has
+  /// no raw sockets and no serial, so a model can be reachable everywhere
+  /// but here — less what `EXP 500MP` holds back ([isBehindTx500Experiment])
+  /// while [tx500Experiment] is off, and never less [current]: the node being
+  /// edited keeps its own pairing in the choice.
+  List<EquipmentType> offeredVariants(EquipmentModel model, {required bool tx500Experiment, EquipmentType? current}) => [
+    for (final variant in model.variants)
+      if (typeFor(variant.key) case final type?)
+        if (type.isSupportedOnThisPlatform && (tx500Experiment || type == current || !isBehindTx500Experiment(type))) type,
+  ];
 
   EquipmentType? typeFor(String? key) {
     for (final type in types) {

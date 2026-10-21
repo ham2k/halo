@@ -2481,6 +2481,17 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get serialPortSuggested => 'suggested';
 	@override String get serialPortJustNow => 'recently connected';
 	@override String get serialDeviceRequest => 'add a usb device…';
+	@override String get bleDevice => 'bluetooth le device';
+	@override String get bleDeviceDescription => 'the serial bridge your radio is connected through, such as a link500mp in its ios mode or a ble serial adapter.';
+	@override String get bleScan => 'scan for bluetooth le devices…';
+	@override String get bleScanNoneFound => 'no bluetooth le devices found. check that the bridge is on, nearby, and in its bluetooth le (ios) mode.';
+	@override String bleScanFailed({required Object reason}) => 'the bluetooth le scan could not run: ${reason}';
+	@override String get bleOff => 'bluetooth is turned off.';
+	@override String get bleDenied => 'bluetooth permission was not granted. allow it in system settings, then try again.';
+	@override String get bleUnsupported => 'this device has no bluetooth le.';
+	@override String get bleStarting => 'bluetooth is still starting up. try again in a moment.';
+	@override String get bleConnectFailed => 'cannot reach the bluetooth le device. check that it\'s on, nearby, and not connected to another app.';
+	@override String bleNoSerialService({required Object services}) => 'this bluetooth le device has no serial service the app recognizes. please report it with its services: ${services}';
 	@override String get baudRate => 'speed (baud)';
 	@override String get baudRateDescription => 'must match the radio\'s cat menu. with a mismatch, the radio sends back garbage and no error.';
 	@override String get serialRtsHigh => 'hold rts high';
@@ -2571,6 +2582,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get k4PowerRange => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.';
 	@override String get elecraftTroubleshootingTitle => 'if the radio connects but shows no frequency';
 	@override String get elecraftTroubleshooting => 'elecraft rigs speak kenwood cat, and a kx2 and a kx3 have both been run this way — vfo in both directions, mode switching and cw zero-beat all working.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the rate set under **rs232** in the radio\'s menu. 38400 is what these ship on. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\n**if the frequency is right but the mode is wrong**, tell us. the kx2 and kx3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nthe k3 has not been reported either way, so please say what happens if you run one. a k4 has its own entry.';
+	@override String get lab599TroubleshootingTitle => 'if the radio connects but shows no frequency';
+	@override String get lab599Troubleshooting => 'the tx-500 line speaks kenwood cat. written from published references rather than tested on the radio, so please report what happens either way.\n\n- **speed must match** the radio\'s cat setting, 9600 unless you changed it. with a mismatch the radio sends back garbage or nothing, and never an error.\n- **pick the cat protocol on the radio.** ts-2000 covers frequency and mode. lab599 also lets the app switch the radio to dig.\n- **through a link500mp**, press and hold the vfo knob for about three seconds to hand cat control to the interface.\n- **over bluetooth on a computer**, the link500mp pairs as two serial ports and only one carries cat. if the radio stays silent, pick the other.\n- **over bluetooth le**, as on an iphone or ipad, switch the link500mp to its ios mode first. in its other modes it does not show up in a scan.';
 	@override String get kenwoodTroubleshootingTitle => 'if the radio connects but shows no frequency';
 	@override String get kenwoodTroubleshooting => 'this driver is proven against kenwood\'s ts-590sg and ts-480, qrp labs\' qmx and qcx-mini, and elecraft\'s kx2 and kx3. the rest of the line is written from published cat references, so please report what happens either way.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the radio\'s cat menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **some rigs need cat enabled** in the menu before they respond at all.\n\n**several sdr front-ends speak this same protocol**, so this entry is worth trying for those too; elecraft rigs are listed separately, under elecraft. if the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
 	@override String get statusConnected => 'connected';
@@ -3823,6 +3836,8 @@ class _Translations$settings$station$models$qrp extends Translations$settings$st
 	@override String get ts480 => 'kenwood ts-480';
 	@override String get qmx => 'qrp labs qmx';
 	@override String get fx4cr => 'bg2fx fx-4cr';
+	@override String get tx500 => 'lab599 tx-500';
+	@override String get tx500mp => 'lab599 tx-500mp';
 	@override String get qcx => 'qrp labs qcx';
 	@override String get elecraftGeneric => 'elecraft - generic';
 	@override String get kx2 => 'elecraft kx2';
@@ -3870,6 +3885,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 	@override String get usbSerial => 'usb serial';
 	@override String get wifi => 'network/wifi';
 	@override String get bluetoothSerial => 'bluetooth serial';
+	@override String get bleSerial => 'bluetooth le';
 	@override String get placeholder => 'placeholder';
 }
 
@@ -5452,6 +5468,17 @@ extension on TranslationsQrp {
 			'settings.station.serialPortSuggested' => 'suggested',
 			'settings.station.serialPortJustNow' => 'recently connected',
 			'settings.station.serialDeviceRequest' => 'add a usb device…',
+			'settings.station.bleDevice' => 'bluetooth le device',
+			'settings.station.bleDeviceDescription' => 'the serial bridge your radio is connected through, such as a link500mp in its ios mode or a ble serial adapter.',
+			'settings.station.bleScan' => 'scan for bluetooth le devices…',
+			'settings.station.bleScanNoneFound' => 'no bluetooth le devices found. check that the bridge is on, nearby, and in its bluetooth le (ios) mode.',
+			'settings.station.bleScanFailed' => ({required Object reason}) => 'the bluetooth le scan could not run: ${reason}',
+			'settings.station.bleOff' => 'bluetooth is turned off.',
+			'settings.station.bleDenied' => 'bluetooth permission was not granted. allow it in system settings, then try again.',
+			'settings.station.bleUnsupported' => 'this device has no bluetooth le.',
+			'settings.station.bleStarting' => 'bluetooth is still starting up. try again in a moment.',
+			'settings.station.bleConnectFailed' => 'cannot reach the bluetooth le device. check that it\'s on, nearby, and not connected to another app.',
+			'settings.station.bleNoSerialService' => ({required Object services}) => 'this bluetooth le device has no serial service the app recognizes. please report it with its services: ${services}',
 			'settings.station.baudRate' => 'speed (baud)',
 			'settings.station.baudRateDescription' => 'must match the radio\'s cat menu. with a mismatch, the radio sends back garbage and no error.',
 			'settings.station.serialRtsHigh' => 'hold rts high',
@@ -5482,6 +5509,8 @@ extension on TranslationsQrp {
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
 			'settings.station.spectrumSdrNotConnected' => 'the sdr is not connected',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.spectrumSdrNoIf' => 'set the radio\'s if frequency in this sdr\'s settings',
 			'settings.station.sdrRadio' => 'shows the spectrum for',
 			'settings.station.sdrRadioDescription' => 'a spectrum display on this radio draws from this receiver instead of the radio\'s own scope.',
@@ -5493,8 +5522,6 @@ extension on TranslationsQrp {
 			'settings.station.sdrIfHz' => 'if frequency (hz)',
 			'settings.station.sdrIfHzDescription' => 'for an if output only: the frequency the radio\'s dial sits at on its if, such as 68330000 on an ft-817.',
 			'settings.station.sdrIfInverted' => 'if is inverted',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.sdrGainDb' => 'gain (db)',
 			'settings.station.sdrGainDbDescription' => 'leave blank for the receiver\'s automatic gain.',
 			'settings.station.sdrOffsetHz' => 'frequency offset (hz)',
@@ -5545,6 +5572,8 @@ extension on TranslationsQrp {
 			'settings.station.models.ts480' => 'kenwood ts-480',
 			'settings.station.models.qmx' => 'qrp labs qmx',
 			'settings.station.models.fx4cr' => 'bg2fx fx-4cr',
+			'settings.station.models.tx500' => 'lab599 tx-500',
+			'settings.station.models.tx500mp' => 'lab599 tx-500mp',
 			'settings.station.models.qcx' => 'qrp labs qcx',
 			'settings.station.models.elecraftGeneric' => 'elecraft - generic',
 			'settings.station.models.kx2' => 'elecraft kx2',
@@ -5583,6 +5612,7 @@ extension on TranslationsQrp {
 			'settings.station.transports.usbSerial' => 'usb serial',
 			'settings.station.transports.wifi' => 'network/wifi',
 			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
+			'settings.station.transports.bleSerial' => 'bluetooth le',
 			'settings.station.transports.placeholder' => 'placeholder',
 			'settings.station.troubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'the radio is receiving commands but not responding. almost always one of:\n\n- **cat rts must be off at the radio** (ft-891 menu **05-08**). with it on, the radio waits for a handshake line the app keeps low. on a digirig, signalink or most home-brew cables that same line is ptt, so raising it would key your transmitter. on the radio\'s own usb port, **hold rts high** under advanced settings is the alternative.\n- **speed must match** the radio\'s cat rate (menu **05-06**). with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
@@ -5600,6 +5630,8 @@ extension on TranslationsQrp {
 			'settings.station.k4PowerRange' => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.elecraftTroubleshooting' => 'elecraft rigs speak kenwood cat, and a kx2 and a kx3 have both been run this way — vfo in both directions, mode switching and cw zero-beat all working.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the rate set under **rs232** in the radio\'s menu. 38400 is what these ship on. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\n**if the frequency is right but the mode is wrong**, tell us. the kx2 and kx3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nthe k3 has not been reported either way, so please say what happens if you run one. a k4 has its own entry.',
+			'settings.station.lab599TroubleshootingTitle' => 'if the radio connects but shows no frequency',
+			'settings.station.lab599Troubleshooting' => 'the tx-500 line speaks kenwood cat. written from published references rather than tested on the radio, so please report what happens either way.\n\n- **speed must match** the radio\'s cat setting, 9600 unless you changed it. with a mismatch the radio sends back garbage or nothing, and never an error.\n- **pick the cat protocol on the radio.** ts-2000 covers frequency and mode. lab599 also lets the app switch the radio to dig.\n- **through a link500mp**, press and hold the vfo knob for about three seconds to hand cat control to the interface.\n- **over bluetooth on a computer**, the link500mp pairs as two serial ports and only one carries cat. if the radio stays silent, pick the other.\n- **over bluetooth le**, as on an iphone or ipad, switch the link500mp to its ios mode first. in its other modes it does not show up in a scan.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'this driver is proven against kenwood\'s ts-590sg and ts-480, qrp labs\' qmx and qcx-mini, and elecraft\'s kx2 and kx3. the rest of the line is written from published cat references, so please report what happens either way.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the radio\'s cat menu. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n- **some rigs need cat enabled** in the menu before they respond at all.\n\n**several sdr front-ends speak this same protocol**, so this entry is worth trying for those too; elecraft rigs are listed separately, under elecraft. if the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'connected',
@@ -5991,6 +6023,8 @@ extension on TranslationsQrp {
 			'updates.automaticChecksDescription' => 'look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'extension runtime not ready.',
 			'extensionService.testFailed' => ({required Object error}) => 'test failed: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.connectedAs' => ({required Object identity}) => 'connected as ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'invalid field configuration',
 			'extensionService.invalidValue' => 'invalid value',
@@ -6007,8 +6041,6 @@ extension on TranslationsQrp {
 			'operationLocationScreen.gridSquare' => 'maidenhead grid square locator',
 			'operationLocationScreen.gridInvalid' => 'needs 4, 6, 8 or 10 characters, like fn31pr',
 			'operationLocationScreen.suggestedLocations' => 'suggested locations',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.deviceGps' => 'device gps',
 			'operationLocationScreen.peerGps' => ({required Object device}) => 'gps from ${device}',
 			'operationLocationScreen.locating' => 'locating…',

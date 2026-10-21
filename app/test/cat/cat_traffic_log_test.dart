@@ -19,6 +19,7 @@ import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/ble_serial_transport.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -385,6 +386,18 @@ void main() {
         await fourth.catTraffic.resume();
         expect(backend.diagnostics, hasLength(1), reason: 'sent once, not at every launch after');
       });
+    });
+
+    test('a recording carries what the Bluetooth LE transport noted', () async {
+      // The transport is const and reaches the recording only through this
+      // wiring: without it, a field recording of a bridge nobody here has met
+      // holds the bytes and none of the GATT table that explains them.
+      final disk = _Disk();
+      final services = (await makeHaLoServices(catTrafficLog: disk.log())).services;
+      addTearDown(() => BleSerialTransport.onNote = null);
+      await services.handleCommandAction('devLogCat');
+      BleSerialTransport.onNote?.call('services: 12345678-0000-0000-0000-000000000000');
+      expect(disk.files.values.single.toString(), allOf(contains('ble'), contains('12345678-0000-0000-0000-000000000000')));
     });
 
     test('a spent recording is NOT sent at launch without consent to share app data', () async {

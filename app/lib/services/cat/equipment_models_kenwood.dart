@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The radios that speak Kenwood CAT: Kenwood's own, Elecraft's, and the QRP
-// Labs and BG2FX rigs that answer the same protocol.
+// Labs, BG2FX and Lab599 rigs that answer the same protocol.
 
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -12,6 +12,7 @@ import 'drivers/kenwood_driver.dart';
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
+import 'transports/bluetooth_serial_transport.dart';
 import 'transports/serial_transport.dart';
 
 const _kenwoodSerialKey = 'kenwood-serial';
@@ -23,6 +24,9 @@ const _ts480SerialKey = 'ts480-serial';
 const _elecraftSerialKey = 'elecraft-serial';
 const _kx2SerialKey = 'kx2-serial';
 const _kx3SerialKey = 'kx3-serial';
+const _tx500SerialKey = 'tx500-serial';
+const _tx500mpSerialKey = 'tx500mp-serial';
+const _tx500mpBluetoothKey = 'tx500mp-bluetooth';
 
 /// Kenwood TS-590SG over its built-in USB port, at the 115200 its USB speed
 /// menu ships on. The operator who reported it working had set 38400.
@@ -327,5 +331,85 @@ List<Map<String, dynamic>> _elecraftSerialNotes() => [
     'text':
         '**${t.settings.station.elecraftTroubleshootingTitle}**\n\n'
         '${t.settings.station.elecraftTroubleshooting}',
+  },
+];
+
+/// Lab599 TX-500, over a CAT cable of the operator's own (Lab599's AD-502,
+/// or a LiNK500's) at the 9600 the radio ships on.
+///
+/// Written from Lab599's getting-started guide and a third-party command
+/// reference (github.com/rdcm/lab599-cat), not from a capture. The radio
+/// offers two CAT protocols in its menu, and the session tells them apart by
+/// `ID;` — see [KenwoodModeDialect.lab599]. No keyer, no voice memories and
+/// no `DA`: none is in that reference.
+const tx500Model = EquipmentModel(
+  key: 'tx500',
+  manufacturer: lab599Brand,
+  category: kCategoryTransceiver,
+  name: _tx500Name,
+  variants: [
+    EquipmentVariant(
+      key: _tx500SerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      overrides: _lab599Overrides,
+      notes: _lab599Notes,
+    ),
+  ],
+);
+
+/// Lab599 TX-500MP — the same protocol as [tx500Model], answering `ID505;`
+/// instead of `ID500;` on LAB599. Over USB through a LiNK500MP or an AD-511
+/// cable, or over Bluetooth through a LiNK500MP: Classic Bluetooth on a
+/// computer, where it pairs as two serial ports and CAT is one of them, and
+/// Bluetooth LE in its iOS mode (the derived `tx500mp-ble`). It can mix its
+/// GPS receiver's NMEA into the CAT channel, which the session drops — see
+/// `AsciiCatFramer.dropsNmea`. Lab599's other interface, the LiNK500 for any
+/// radio, carries CAT over USB only; its Bluetooth reaches the TNC.
+const tx500mpModel = EquipmentModel(
+  key: 'tx500mp',
+  manufacturer: lab599Brand,
+  category: kCategoryTransceiver,
+  name: _tx500mpName,
+  variants: [
+    EquipmentVariant(
+      key: _tx500mpSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      overrides: _lab599Overrides,
+      notes: _lab599Notes,
+    ),
+    EquipmentVariant(
+      key: _tx500mpBluetoothKey,
+      driver: KenwoodDriver(),
+      transport: BluetoothSerialTransport(),
+      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      overrides: _lab599Overrides,
+      notes: _lab599Notes,
+    ),
+  ],
+);
+
+const _lab599Overrides = {
+  KenwoodDriver.modeDialectKey: 'lab599',
+  KenwoodDriver.cwDialectKey: '',
+  KenwoodDriver.voiceDialectKey: '',
+  KenwoodDriver.voiceMemoriesKey: 0,
+};
+
+String _tx500Name() => t.settings.station.models.tx500;
+
+String _tx500mpName() => t.settings.station.models.tx500mp;
+
+List<Map<String, dynamic>> _lab599Notes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.lab599TroubleshootingTitle}**\n\n'
+        '${t.settings.station.lab599Troubleshooting}',
   },
 ];

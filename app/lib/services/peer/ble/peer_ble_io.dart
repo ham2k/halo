@@ -7,8 +7,9 @@
 //
 // The plugin's surfaces are process-global singletons (static callbacks and
 // streams), which is why there is exactly one gateway per app: this class
-// owns `onScanResult` and `onAvailabilityChange` outright. Nothing else in
-// the app may take them.
+// owns `onAvailabilityChange` outright, and nothing else in the app may take
+// it. The scan is shared with the CAT transport's device picker, so it goes
+// through `BleScanCoordinator` rather than the plugin.
 
 import 'dart:async';
 
@@ -16,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:universal_ble/universal_ble.dart';
 
+import '../../ble/ble_scan_coordinator.dart';
 import 'peer_ble_framing.dart' show bleMaxChunk, bleSafeChunk;
 import 'peer_ble_gateway.dart';
 
@@ -315,27 +317,25 @@ class UniversalBlePeerGateway implements PeerBleGateway {
 
   // ---- central role ----
 
+  BleScanLease? _scan;
+
   @override
   Future<void> startScan() async {
-    // Claimed before the scan so no early result is lost — and released on
-    // failure, or a start that threw would hold the global callback forever
-    // with `stopScan` never called to free it.
-    UniversalBle.onScanResult = (device) {
-      if (_sightings.isClosed) return;
-      _sightings.add(PeerBleSighting(addressId: device.deviceId, nameHint: device.name));
-    };
-    try {
-      await UniversalBle.startScan(scanFilter: ScanFilter(withServices: [peerBleServiceUuid]));
-    } catch (_) {
-      UniversalBle.onScanResult = null;
-      rethrow;
-    }
+    if (_scan != null) return;
+    _scan = await BleScanCoordinator.instance.acquire(
+      services: {peerBleServiceUuid},
+      onResult: (device) {
+        if (_sightings.isClosed) return;
+        _sightings.add(PeerBleSighting(addressId: device.deviceId, nameHint: device.name));
+      },
+    );
   }
 
   @override
   Future<void> stopScan() async {
-    UniversalBle.onScanResult = null;
-    await UniversalBle.stopScan();
+    final scan = _scan;
+    _scan = null;
+    if (scan != null) await BleScanCoordinator.instance.release(scan);
   }
 
   @override

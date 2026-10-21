@@ -29,6 +29,9 @@ const qrpLabsBrand = 'QRP Labs';
 /// Not featured either; spelled once for the same reason.
 const xieguBrand = 'Xiegu';
 
+/// Not featured either; spelled once for the same reason.
+const lab599Brand = 'Lab599';
+
 /// The models that are not a radio but a way to reach one: a program on the
 /// same machine that owns the rig's port and answers for it. Keyed by
 /// [EquipmentModel.key], because these name a protocol or a program rather

@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cat_ascii_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -663,6 +664,164 @@ void main() {
       // command; on a serial line beside a transmitting rig that is expected.
       session.handleData(Uint8List.fromList([0xFF, ...ascii.encode('FA00014250000;')]));
       expect(sink.readings.single.freqKHz, 14250.0);
+    });
+  });
+
+  group('the Lab599 TX-500 line', () {
+    late _FakeSink sink;
+
+    setUp(() => sink = _FakeSink());
+
+    KenwoodSession sessionFor(String typeKey) {
+      final type = EquipmentRegistry().typeFor(typeKey)!;
+      return type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession;
+    }
+
+    void receive(KenwoodSession session, String text) => session.handleData(Uint8List.fromList(ascii.encode(text)));
+
+    test('every TX-500 entry pins the LAB599 mode table, through driverConfig', () {
+      // Without the pin the radio reads as a plain Kenwood: its DIG reports
+      // as RTTY, a mode it does not have, and nothing fails.
+      for (final key in ['tx500-serial', 'tx500mp-serial', 'tx500mp-bluetooth']) {
+        expect(sessionFor(key).modeDialect, KenwoodModeDialect.lab599, reason: key);
+      }
+    });
+
+    test('MD6 is DIG on the TX-500, and RTTY on any other Kenwood', () {
+      final lab599 = sessionFor('tx500mp-serial');
+      receive(lab599, 'MD6;');
+      expect(sink.readings.last.mode, 'DATA-USB');
+
+      sink.readings.clear();
+      final kenwood = sessionFor('kenwood-serial');
+      receive(kenwood, 'MD6;');
+      expect(sink.readings.last.mode, 'RTTY');
+    });
+
+    test('the mode table offers DIG and no RTTY', () {
+      final type = EquipmentRegistry().typeFor('tx500mp-serial')!;
+      final modes = type.driver.settableModes(type.driverConfig(const {}));
+      expect(modes, contains('DATA-USB'));
+      expect(modes, isNot(contains('RTTY')));
+      expect(modes, isNot(contains('RTTY-R')));
+    });
+
+    test('only a TX-500 is asked for its ID', () {
+      // ID tells the radio's two CAT protocols apart. Asking it of the rest of
+      // the line would add a question every Kenwood answers and nothing reads.
+      final lab599 = sessionFor('tx500mp-serial');
+      lab599.startUpdates();
+      expect(sink.sent, contains('ID;'));
+
+      sink.sent.clear();
+      sessionFor('kenwood-serial').startUpdates();
+      expect(sink.sent, isNot(contains('ID;')));
+    });
+
+    test('DIG goes out as MD6 only on the LAB599 protocol', () {
+      // On TS-2000 the radio refuses MD6, which would leave it in whatever
+      // mode it was in. Its USB base is what a radio without DIG gets.
+      final session = sessionFor('tx500mp-serial');
+      session.startUpdates();
+
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent, ['MD2;'], reason: 'the radio has not said which protocol it is on yet');
+
+      receive(session, 'ID505;');
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent, ['MD6;']);
+
+      session.startUpdates();
+      receive(session, 'ID019;');
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent, ['MD2;'], reason: 'ID019 is the TS-2000 protocol');
+    });
+
+    test('the original TX-500 answers ID500, and that is LAB599 too', () {
+      final session = sessionFor('tx500-serial');
+      session.startUpdates();
+      receive(session, 'ID500;');
+      sink.sent.clear();
+      session.setMode('DATA-USB');
+      expect(sink.sent, ['MD6;']);
+    });
+
+    test('a mode the TX-500 has no code for sends nothing', () {
+      final session = sessionFor('tx500mp-serial');
+      session.startUpdates();
+      receive(session, 'ID505;');
+      sink.sent.clear();
+      session.setMode('RTTY');
+      expect(sink.sent, isEmpty);
+    });
+
+    test('a learned IF offset reads DIG from the LAB599 table too', () {
+      // The IF path has its own lookup: miss the dialect there and a learned
+      // offset reports RTTY on every packet after the MD answers that taught it.
+      final session = sessionFor('tx500mp-serial');
+      const tail =
+          '0000'
+          '+00000'
+          '6';
+      receive(session, 'MD6;IF00014074000$tail;');
+      receive(session, 'MD6;IF00014075000$tail;');
+      expect(session.modeOffset, 21);
+      sink.readings.clear();
+      receive(session, 'IF00014076000$tail;');
+      expect(sink.readings.single.mode, 'DATA-USB');
+    });
+
+    group('GPS sentences interleaved by the LiNK500MP', () {
+      // A sentence holds no `;`, so framed as CAT it fuses with the command
+      // after it — `$GPRMC,…\r\nFA…;` reads as a `GP` command and the
+      // frequency is lost, on every GPS fix, with nothing logged.
+      const rmc =
+          r'$GPRMC,123519,A,4807.038,N,01131.000,E,022.4,084.4,230394,003.1,W*6A'
+          '\r\n';
+
+      test('are dropped, so the command after one still reads', () {
+        final session = sessionFor('tx500mp-ble');
+        receive(session, '${rmc}FA00014074000;');
+        expect(sink.readings.single.freqKHz, 14074.0);
+      });
+
+      test('are dropped when a read splits one, or the command it sits in front of', () {
+        final session = sessionFor('tx500mp-bluetooth');
+        receive(session, 'FA0001${rmc.substring(0, 20)}');
+        receive(session, rmc.substring(20, 50));
+        receive(session, '${rmc.substring(50)}4074000;');
+        expect(sink.readings.single.freqKHz, 14074.0);
+      });
+
+      test('a stray dollar sign with no line end holds nothing up', () {
+        // Waiting for a line end that never comes would park every command
+        // behind it in the residual for good.
+        final session = sessionFor('tx500mp-serial');
+        receive(
+          session,
+          r'$'
+          '${'x' * 90}FA00014074000;',
+        );
+        expect(sink.readings.single.freqKHz, 14074.0);
+      });
+
+      test('a stray dollar sign never swallows the replies behind it', () {
+        // No sentence holds a `;`, so one ends a would-be sentence: read on to
+        // the next GPS fix's line end, a noise `$` takes every reply before it.
+        final session = sessionFor('tx500mp-serial');
+        receive(session, '\$FA00014074000;MD2;$rmc');
+        expect(sink.readings.first.freqKHz, 14074.0);
+        expect(sink.readings.last.mode, 'USB');
+      });
+
+      test('only the TX-500 line drops them: a dollar sign is CAT on the K4', () {
+        // The K4 marks its sub receiver with `$`. Filtered, its `MD$2;` sub
+        // report would come out as `MD2;`, the main receiver's.
+        expect(AsciiCatFramer().add(r'MD$2;'), [const AsciiCatCommand('MD', r'$2')]);
+      });
     });
   });
 }

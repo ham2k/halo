@@ -689,6 +689,60 @@ void main() {
     expect(find.text('No equipment matches'), findsOneWidget);
   });
 
+  testWidgets('the Lab599 radios and the Bluetooth LE pairing wait for EXP 500MP', (tester) async {
+    // Neither has met hardware: offered before the experiment is on, an
+    // operator would set up a radio from guesses and blame the app.
+    final services = await pumpSettings(tester);
+    await openAddDialog(tester);
+    final search = find.widgetWithText(TextField, 'Search equipment');
+
+    await tester.enterText(search, 'tx-500');
+    await tester.pump();
+    expect(find.text('Lab599 TX-500MP'), findsNothing);
+    await tester.enterText(search, 'bluetooth le');
+    await tester.pump();
+    expect(find.text('Icom IC-7300'), findsNothing, reason: 'its only Bluetooth is the LE pairing every serial radio derives');
+
+    Navigator.of(tester.element(search)).pop();
+    await tester.pumpAndSettle();
+    await services.settings.setExperimentEnabled('500mp', true);
+    await tester.pumpAndSettle();
+    await openAddDialog(tester);
+
+    await tester.enterText(search, 'tx-500');
+    await tester.pump();
+    expect(find.text('Lab599 TX-500MP'), findsOneWidget);
+    await tester.enterText(search, 'bluetooth le');
+    await tester.pump();
+    expect(find.text('Icom IC-7300'), findsOneWidget);
+  });
+
+  testWidgets('a radio already on a pairing EXP 500MP holds back keeps it in its editor', (tester) async {
+    // The gate holds back the offer only. Dropped from the editor, the
+    // node's own pairing would vanish from its Connection choice, and the
+    // first save would move a working radio onto another one.
+    await pumpSettings(
+      tester,
+      equipment: {
+        'version': 1,
+        'radio1': 'radio-1',
+        'nodes': {
+          'radio-1': {
+            'typeKey': 'ic7300-ble',
+            'name': 'Field Radio',
+            'config': {'bleDevice': 'AA:BB', 'bleDeviceName': 'Bridge'},
+          },
+        },
+      },
+    );
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Field Radio').first);
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(SegmentedButton<dynamic>, 'Bluetooth LE'), findsOneWidget);
+  });
+
   testWidgets('a search reaches the equipment that is added by name, not picked by model', (tester) async {
     // "Other Equipment" is a shelf like any other now, so the keyer an
     // operator searches for by make has to come back from the same box that

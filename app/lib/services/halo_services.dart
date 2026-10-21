@@ -56,6 +56,7 @@ import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransc
 import 'cat/cat_service.dart';
 import 'cat/cat_traffic_log.dart';
 import 'cat/cat_traffic_recording.dart';
+import 'cat/transports/ble_serial_transport.dart' show BleSerialTransport;
 import 'cat/keyer_commands.dart';
 import 'cat/equipment_details.dart';
 import 'cat/radio_proof.dart';
@@ -1066,6 +1067,10 @@ class HaLoServices {
        _exportsOverride = exports,
        _outlineGridOverride = outlineGrid {
     wireExtensions(this);
+    // The Bluetooth LE transport is const and keeps no service of its own,
+    // so its notes — what the bridge offered, what failed — reach DEVLOGCAT
+    // through here, the recording's owner.
+    BleSerialTransport.onNote = (text) => this.catTrafficLog.note('ble', text);
     // Time travel is developer-mode-only, and this is the ONE place that can
     // see developer mode go off no matter which surface turned it off (DEVMODE,
     // the Settings toggle, a settings command). Leaving the clock travelled

@@ -19,6 +19,7 @@ import 'package:flutter/foundation.dart';
 import 'drivers/poll_config.dart';
 import 'equipment.dart';
 import 'equipment_registry.dart';
+import 'transports/ble_serial_transport.dart' show bleDeviceConfigKey;
 import 'transports/serial_transport_config.dart';
 
 /// The pairing and its settings, as the block both reports carry.
@@ -178,7 +179,11 @@ List<String> configLines(EquipmentNode node, EquipmentType type, EquipmentRegist
 
   return [
     for (final entry in node.config.entries)
-      if (!secrets.contains(entry.key) && !_statedByEffect.contains(entry.key) && entry.value != null && '${entry.value}'.isNotEmpty)
+      if (!secrets.contains(entry.key) &&
+          !_statedByEffect.contains(entry.key) &&
+          !_neverStated.contains(entry.key) &&
+          entry.value != null &&
+          '${entry.value}'.isNotEmpty)
         '- ${labels[entry.key] ?? entry.key}: '
             '${_shownValue('${entry.value}', optionLabels[entry.key])}',
   ];
@@ -187,6 +192,10 @@ List<String> configLines(EquipmentNode node, EquipmentType type, EquipmentRegist
 /// Keys [effectiveSettingLines] states as what the connection DOES, so the
 /// stored value would only repeat it — or, absent, say nothing at all.
 const _statedByEffect = {serialRtsHighConfigKey, serialDtrHighConfigKey, pollIntervalConfigKey};
+
+/// A Bluetooth LE bridge's handle: on Android, its hardware address. The
+/// name stored beside it already says which bridge.
+const _neverStated = {bleDeviceConfigKey};
 
 /// The settings most operators never touch, as the connection applies them —
 /// stated whether or not the node stores them. A blank or absent value means

@@ -254,6 +254,9 @@ void main() {
       'qcx-serial',
       'ts590sg-serial',
       'ts480-serial',
+      'tx500-serial',
+      'tx500mp-serial',
+      'tx500mp-bluetooth',
       'kx2-serial',
       'kx3-serial',
       'k4-serial',
@@ -318,6 +321,43 @@ void main() {
       'ts590sg-placeholder',
       'ts480-placeholder',
       'kenwood-generic-placeholder',
+      'tx500-placeholder',
+      'tx500mp-placeholder',
+      // Derived the same way, one per model with a serial pairing: that
+      // pairing over a Bluetooth LE serial bridge.
+      'ft891-ble',
+      'ft991a-ble',
+      'ft710-ble',
+      'ftdx10-ble',
+      'ftx1-ble',
+      'ft450-ble',
+      'ft817-ble',
+      'ft857-ble',
+      'ft897-ble',
+      'q900-ble',
+      'yaesu-generic-ble',
+      'ic705-ble',
+      'ic7300-ble',
+      'ic7300mk2-ble',
+      'ic706mkiig-ble',
+      'ic7100-ble',
+      'ic7610-ble',
+      'ic7760-ble',
+      'x6100-ble',
+      'g90-ble',
+      'icom-generic-ble',
+      'qmx-ble',
+      'fx4cr-ble',
+      'qcx-ble',
+      'kx2-ble',
+      'kx3-ble',
+      'k4-ble',
+      'elecraft-generic-ble',
+      'ts590sg-ble',
+      'ts480-ble',
+      'kenwood-generic-ble',
+      'tx500-ble',
+      'tx500mp-ble',
     });
   });
 
@@ -358,6 +398,9 @@ void main() {
       // on it, and a speed mismatch is answered with silence, not an error.
       'kx2-serial': ('kenwood', {'baudRate': 38400}),
       'kx3-serial': ('kenwood', {'baudRate': 38400}),
+      // The rate Lab599's guide gives for both CAT protocols.
+      'tx500-serial': ('kenwood', {'baudRate': 9600}),
+      'tx500mp-serial': ('kenwood', {'baudRate': 9600}),
     };
 
     expected.forEach((key, spec) {
@@ -396,6 +439,13 @@ void main() {
   test('every Elecraft entry states its own brand rather than its protocol family', () {
     for (final key in ['elecraft-serial', 'kx2-serial', 'kx3-serial']) {
       expect(registry.typeFor(key)!.manufacturer, 'Elecraft', reason: '$key would otherwise report as Kenwood');
+    }
+  });
+
+  // Same fallback: the TX-500 line rides the Kenwood driver too.
+  test('every Lab599 entry states its own brand rather than its protocol family', () {
+    for (final key in ['tx500-serial', 'tx500mp-serial', 'tx500mp-bluetooth']) {
+      expect(registry.typeFor(key)!.manufacturer, lab599Brand, reason: '$key would otherwise report as Kenwood');
     }
   });
 
@@ -447,8 +497,19 @@ void main() {
       'ic705-network': 10,
       'ic705-serial': 10,
       'ic705-bluetooth': 10,
+      // Over a BLE bridge the rating has to come along with the driver's
+      // other pins, or the meter reads against the family default.
+      'ic7300-ble': 100,
+      'ic7300mk2-ble': 100,
+      'ic706mkiig-ble': 100,
+      'ic7100-ble': 100,
+      'ic7610-ble': 100,
+      'ic7760-ble': 200,
+      'x6100-ble': 10,
+      'g90-ble': 20,
+      'ic705-ble': 10,
     };
-    final named = registry.types.where((type) => type.driver.key == 'icom-civ' && type.key != 'icom-generic-serial');
+    final named = registry.types.where((type) => type.driver.key == 'icom-civ' && !type.key.startsWith('icom-generic-'));
     expect(named.map((type) => type.key), unorderedEquals(rated.keys));
     for (final type in named) {
       final session = type.driver.createSession(_SilentSink(), type.driverConfig(const {})) as IcomCivSession;

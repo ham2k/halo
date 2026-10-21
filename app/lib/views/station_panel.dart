@@ -204,14 +204,12 @@ class StationPanel extends StatelessWidget {
     ];
   }
 
-  /// The pairings of [model] this platform could actually connect — web has
-  /// no raw sockets and no serial, so a model can be reachable everywhere
-  /// but here.
-  List<EquipmentType> _supportedVariants(EquipmentModel model) => [
-    for (final variant in model.variants)
-      if (_cat.registry.typeFor(variant.key) case final type?)
-        if (type.isSupportedOnThisPlatform) type,
-  ];
+  /// See [EquipmentRegistry.offeredVariants].
+  List<EquipmentType> _supportedVariants(EquipmentModel model, {EquipmentType? current}) => _cat.registry.offeredVariants(
+    model,
+    tx500Experiment: services.settings.experimentEnabled('500mp') /* stored key, see experiments.yaml */,
+    current: current,
+  );
 
   Future<void> _editEquipment(BuildContext context, EquipmentNode node) async {
     final type = _cat.typeFor(node);
@@ -509,7 +507,7 @@ class StationPanel extends StatelessWidget {
     EquipmentNode? node,
   }) async {
     final st = context.t.settings.station;
-    final variants = _supportedVariants(model);
+    final variants = _supportedVariants(model, current: node == null ? null : type);
     // A model with one way in asks no question — the form is exactly what it
     // was before transports were selectable.
     final choosable = variants.length > 1;
@@ -691,13 +689,15 @@ class StationPanel extends StatelessWidget {
       // Asks the pairing the form is currently on: a field belonging to a
       // transport the operator switched away from is not theirs to get right.
       validator: (key, value, values) async => isSwitchPortRoutingFormKey(key) ? null : typeForState(values).validateEditorField(key, value, values),
-      // The one field kind that acts as it is touched rather than on save:
-      // routing a port is a command to the switch, and an operator who
-      // cancels the pane has still moved the relay. Returning no updates
-      // leaves the form's own value where the operator put it; the switch's
-      // confirmation lands in the panel behind.
+      // A pairing's own field gets the companions its transport sets beside
+      // it (a Bluetooth LE device's name). Routing a port is the one field
+      // kind that acts as it is touched rather than on save: it is a command
+      // to the switch, and an operator who cancels the pane has still moved
+      // the relay. Returning no updates leaves the form's own value where the
+      // operator put it; the switch's confirmation lands in the panel behind.
       onChange: (key, value, values) async {
-        if (node == null || !isSwitchPortRoutingFormKey(key)) return null;
+        if (!isSwitchPortRoutingFormKey(key)) return typeForState(values).fieldChanged(key, value);
+        if (node == null) return null;
         if (value is! String || value.isEmpty) return null;
         for (final port in _cat.stateFor(node.uuid).switchPorts) {
           if (switchPortRoutingFormKey(port.key) == key) _cat.selectAntenna(node.uuid, port.key, value);

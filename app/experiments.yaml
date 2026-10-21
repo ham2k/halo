@@ -89,6 +89,18 @@ experiments:
     description: Show a screen or window from one of your other devices in a panel.
     aliases: [screens, screenshare]
     private: true
+  # The Lab599 TX-500 and TX-500MP, through the LiNK500MP among other ways,
+  # and the Bluetooth LE serial pairing every serial radio derives
+  # (docs/design/cat.md § Bluetooth LE serial). Gated because neither has
+  # been on the bench: the LiNK500MP's GATT table is unpublished and the
+  # TX-500 protocol comes from references, not a capture. The gate holds
+  # back only the catalogue's offer (`isBehindTx500Experiment`) — a radio
+  # already added keeps connecting with it off.
+  - key: 500mp
+    name: Lab599 TX-500 and Bluetooth LE radios
+    description: Offer the Lab599 TX-500 and TX-500MP, and Bluetooth LE connections to radios through a serial bridge.
+    aliases: [tx500, link500]
+    private: true
   # A radio's panadapter and waterfall as a `spectrum` control in extension
   # scene panels (docs/design/cat.md § Spectrum), and SDR receivers as the
   # source of one (§ SDR receivers). Gated because it streams the radio's

@@ -47,15 +47,66 @@ class AsciiCatCommand {
 /// Serial delivers arbitrary chunks — a command can and does arrive split
 /// across two reads — so the residual is not an edge case.
 class AsciiCatFramer {
+  AsciiCatFramer({this.dropsNmea = false});
+
+  /// Whether the stream interleaves GPS NMEA-0183 sentences with the CAT —
+  /// a `$`, then everything up to its line end — and they are dropped
+  /// before framing. A sentence holds no `;`, so left in, it fuses with the
+  /// command after it: `$GPRMC,…\r\nFA…;` would frame as one `GP` command and
+  /// lose the `FA`. Never for a family that uses `$` in its commands (the
+  /// K4's `MD$;`).
+  final bool dropsNmea;
+
+  /// The longest sentence NMEA-0183 allows, `$` and line end included. A
+  /// `$` with no line end within it is noise, not a sentence still arriving:
+  /// waiting on it would hold every command behind it.
+  static const _nmeaMaxLength = 82;
+
+  static final _lineEnd = RegExp('[\r\n]');
+
+  /// Where a `$` stops being a sentence: its line end, or a `;`, which no
+  /// sentence holds. A `$` that meets a `;` first is noise, and reading on
+  /// to the next line end would swallow every CAT reply in between.
+  static final _sentenceEnd = RegExp('[\r\n;]');
+
   String _residual = '';
 
   /// The complete commands in [incoming], with any partial tail retained.
   List<AsciiCatCommand> add(String incoming) {
-    final text = _residual + incoming;
+    var text = _residual + incoming;
+    var sentence = '';
+    if (dropsNmea) (text, sentence) = _withoutNmea(text);
     final parts = text.split(';');
-    // Whatever follows the last ';' is incomplete (or empty).
-    _residual = parts.removeLast();
+    // Whatever follows the last ';' is incomplete (or empty), as is a
+    // sentence whose line end has not arrived.
+    _residual = parts.removeLast() + sentence;
     return [for (final part in parts) ?parseAsciiCatCommand('$part;')];
+  }
+
+  /// [text] with every complete sentence cut out, and the incomplete one at
+  /// its end — still waiting for its line end — split off. Every line end
+  /// goes too, not just the one closing a sentence: CAT has none, and the
+  /// `\n` of a `\r\n` would otherwise sit inside the command that follows.
+  static (String, String) _withoutNmea(String text) {
+    final kept = StringBuffer();
+    var at = 0;
+    while (true) {
+      final start = text.indexOf(r'$', at);
+      if (start < 0) break;
+      kept.write(text.substring(at, start));
+      final end = text.indexOf(_sentenceEnd, start);
+      if (end >= 0 && text[end] == ';') {
+        at = start + 1;
+      } else if (end >= 0 && end - start < _nmeaMaxLength) {
+        at = end + 1;
+      } else if (end < 0 && text.length - start < _nmeaMaxLength) {
+        return ('$kept'.replaceAll(_lineEnd, ''), text.substring(start));
+      } else {
+        at = start + 1;
+      }
+    }
+    kept.write(text.substring(at));
+    return ('$kept'.replaceAll(_lineEnd, ''), '');
   }
 
   /// Drops any partial command — for a fresh connection, so a truncated

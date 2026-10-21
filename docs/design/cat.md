@@ -127,8 +127,10 @@ Two consequences worth stating, because both are load-bearing:
 - **Bluetooth serial is the serial transport under another name.** A paired radio's SPP profile is
   one more serial port to the OS, so `BluetoothSerialTransport` subclasses `SerialTransport` and
   changes only its key and which ports it ranks first (those with no USB identity). A model offers
-  it only where the radio has one — the IC-705 and the Q900 — with the same defaults as its USB
-  variant, which the registry's self-checks require.
+  it only where the radio, or the interface made for it, has one — the IC-705, the Q900, and the
+  TX-500MP through a LiNK500MP — with the same defaults as its USB variant, which the registry's
+  self-checks require. Bluetooth **LE** is a different transport altogether; see § Bluetooth LE
+  serial.
 - **Re-typing a node drops its connection.** Switching transport replaces both the transport and
   the driver, and a live runtime holds a session the old driver built over a connection the old
   transport opened. `CatService.updateNode` disconnects on a typeKey change *only* — an edited host
@@ -291,6 +293,18 @@ what the user configured; everything about a connection is rebuilt at runtime.
   asked as any read the radio may lack does (§ Tuner, passband and the radio's own antenna ports),
   and a diagnostic says so. An entry whose radio has no submode (`civDataMode: false` on the IC-706MKIIG and G90; any Kenwood
   without `dataMode`) is put in the base mode. It then reports USB, so the log says USB.
+- **A Kenwood-protocol radio can have its own `MD` table**, pinned per entry as `modeDialect`. Lab599's
+  TX-500 and TX-500MP have no RTTY, and in their LAB599 CAT protocol `MD6` is DIG — so `6` reads and
+  sets as DATA-USB there, and RTTY is not offered. The same radios also offer the TS-2000 protocol,
+  which has no command for DIG, and the operator picks between them in the radio's own menu. The
+  session asks `ID;` once to know which: `500`/`505` is LAB599, `019` is TS-2000, and on TS-2000 a DIG
+  request goes out as its USB base, as on any radio without a DATA submode.
+- **The TX-500 line's stream drops GPS sentences.** The LiNK500MP can mix its GPS receiver's NMEA-0183
+  into the CAT channel, and a sentence holds no `;`: framed as CAT it fuses with the command after it
+  and loses that command. So the LAB599 dialect's framer cuts each `$`-led sentence out through its
+  line end, before framing (`AsciiCatFramer.dropsNmea`), holding one split across reads until it
+  ends — but never longer than NMEA's 82 characters, after which the `$` is noise. Only that dialect:
+  the Elecraft line uses `$` inside its own commands (`MD$`, the sub receiver).
 - **A CI-V mode set carries no filter byte**, so the operator's filter survives a mode change (polo
   sent `01` and forced FIL1 every time). The exception is an entry pinning `civModeWithFilter` —
   the Xiegu G90, which ignores a set without one: it sends the filter the radio last reported for
@@ -620,6 +634,68 @@ rather than a wedged one:
    our own session instead of queueing behind it. That is a plausible root
    cause for the whole limitation, and it is a guess about protocol
    semantics until it is tried.
+
+## Bluetooth LE serial
+
+**Behind `EXP 500MP`**, with the Lab599 TX-500 line it was built for: neither has met hardware. The
+gate (`isBehindTx500Experiment`, applied by `EquipmentRegistry.offeredVariants`) holds
+back only the catalogue's offer — the Lab599 models, and the `-ble` pairing of every radio. A node
+already on one keeps it in its editor and keeps connecting with the experiment off.
+
+A BLE serial bridge — a LiNK500MP in its iOS mode, an HM-10 module on a CAT cable — carries a radio's
+serial CAT without the OS ever presenting a port. `BleSerialTransport` scans for the bridge,
+connects, and moves the bytes through two GATT characteristics itself. That is what reaches iOS,
+which has no serial ports at all and no Classic Bluetooth serial without Apple's MFi program.
+
+- **Every serial radio gets it, derived.** `bleSerialVariantFor` gives each real transceiver with a
+  serial variant a `<model>-ble` one: the same driver, with the driver's own pins, prefills and
+  restrictions, and none of the port's — no port, no baud, no RTS/DTR, because the bridge has the
+  wire to the radio and its rate is set there. Every model rather than a chosen few, because which
+  bridge is on the operator's radio is not the catalogue's to know. The keys are derived but
+  persisted, so the shipped-key test lists them.
+- **No published GATT table for the LiNK500MP exists**, so the pipe is found rather than declared
+  (`ble_serial_profiles.dart`): Nordic UART, the HM-10/CC254x `FFE0`/`FFE1`, and Microchip's
+  Transparent UART are recognized by name; anything else is used by shape only when it is the ONLY
+  non-standard service with one writable and one notifying characteristic — counting only the
+  services the device advertised, where any candidate is among them. That is Lab599's own guidance
+  for the LiNK500MP (its read, write and notify UUIDs come from the advertisement), and the
+  advertised list is stored with the device (`bleDeviceServices`) so a connect after a restart has
+  it without a scan. Two candidates fail rather than guess, since writing CAT into the wrong vendor characteristic could change the bridge's own
+  settings. A failure names the device's services, which is what an operator can send to get a
+  bridge added. The HM-10 layout drops writes over 20 bytes without refusing them, so it is held to
+  20 whatever the MTU says.
+- **Writes are serialized and chunked** to the negotiated MTU, without response wherever the
+  characteristic allows: two writes in flight may land in either order, and a command split across
+  them would be garbled.
+- **The device is stored as the platform's handle** (`bleDevice`) — an address on Android, Windows
+  and Linux, a per-host UUID on Apple platforms — with its advertised name beside it
+  (`bleDeviceName`) and its advertised services, set through `EquipmentTransport.fieldChanged` as the
+  operator picks. A node is
+  device-local, so a per-host handle is enough. Connecting needs no scan: Apple's plugin path falls
+  back to `retrievePeripherals` for a known UUID.
+- **Only the platform's failures are the bridge's.** The gateway wraps what the Bluetooth stack
+  reports (`UniversalBleException`, `PlatformException`) as `BleSerialPlatformError`, and only that,
+  or a connect timeout, becomes the `CatUnreachable` `BleSerialUnavailable` that stays out of the
+  crash reports. Anything else out of the gateway is this app's bug and stays loud. A timeout gets
+  the bridge's message, not the shared one that tells the operator to check the radio.
+- **Permission is asked only by the editor's Scan.** A background connect prepares without prompting
+  and fails with the reason, so no permission dialog appears out of a reconnect ladder at launch.
+- **One platform scan, shared.** `universal_ble` runs a single scan per process: a second
+  `startScan` replaces the first's filter and any `stopScan` ends it for everybody. Peer discovery
+  and the device picker both take a lease from `BleScanCoordinator`, which runs the union — filtered
+  while every lease names services, unfiltered while any does not — and gives each lease only the
+  results it asked for. Nothing else may call the plugin's scan. A stop that fails still clears the
+  record of what is running: Android refuses one while Bluetooth is off, and a kept record would skip
+  the start that follows Bluetooth coming back.
+- **Every step is a DEVLOGCAT note** (`BleSerialTransport.onNote`, wired by `HaLoServices`): a scan's
+  sightings, the GATT table a connect discovered, the pipe and chunk size picked from it, and each
+  failure in the platform's own words — a field recording is the only way a bridge nobody here has
+  met gets debugged. The handle never appears: on Android it is the bridge's hardware address, so
+  it is scrubbed from platform errors and left out of the setup lines (`configLines`), and a scan
+  names only devices advertising a serial profile or a vendor UUID, not the phones and earbuds
+  around the operator.
+- **Not on web.** The plugin is kept off that build, as for peer sync; the transport reports itself
+  unsupported there and its variants are not offered.
 
 ## Platforms
 

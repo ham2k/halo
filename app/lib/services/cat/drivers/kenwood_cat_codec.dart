@@ -28,11 +28,37 @@ import 'cat_ascii_codec.dart';
 /// guessing it would be inventing a mode.
 const kenwoodModeCodes = <String, String>{'LSB': '1', 'USB': '2', 'CW': '3', 'FM': '4', 'AM': '5', 'RTTY': '6', 'CW-R': '7', 'RTTY-R': '9'};
 
-final Map<String, String> _modeNamesByCode = {for (final entry in kenwoodModeCodes.entries) entry.value: entry.key};
+/// A radio whose `MD` table is not [kenwoodModeCodes], pinned per catalogue
+/// entry. Absent is the Kenwood table.
+enum KenwoodModeDialect {
+  /// Lab599's TX-500 line, which has no RTTY: in its LAB599 CAT protocol
+  /// `6` is DIG, its USB-based data mode. The TS-2000 protocol on the same
+  /// radio has no command for DIG at all — see [lab599ProtocolIds].
+  lab599,
+}
 
-String? kenwoodModeForCode(String code) => _modeNamesByCode[code];
+/// [KenwoodModeDialect.lab599]'s table, from the third-party protocol
+/// reference (github.com/rdcm/lab599-cat, `docs/cat-protocol-en.md`) rather
+/// than from a capture.
+const lab599ModeCodes = <String, String>{'LSB': '1', 'USB': '2', 'CW': '3', 'FM': '4', 'AM': '5', 'DATA-USB': '6', 'CW-R': '7'};
 
-String? kenwoodCodeForMode(String? name) => name == null ? null : kenwoodModeCodes[name.toUpperCase()];
+/// What a TX-500 or TX-500MP answers `ID;` with while its CAT menu is set to
+/// the LAB599 protocol. Set to TS-2000 the same radio answers `019`, a
+/// TS-2000's own, and refuses `MD6`.
+const lab599ProtocolIds = {'500', '505'};
+
+Map<String, String> kenwoodModeTable(KenwoodModeDialect? dialect) => switch (dialect) {
+  KenwoodModeDialect.lab599 => lab599ModeCodes,
+  null => kenwoodModeCodes,
+};
+
+final Map<KenwoodModeDialect?, Map<String, String>> _modeNamesByCode = {
+  for (final dialect in [null, ...KenwoodModeDialect.values]) dialect: {for (final entry in kenwoodModeTable(dialect).entries) entry.value: entry.key},
+};
+
+String? kenwoodModeForCode(String code, {KenwoodModeDialect? dialect}) => _modeNamesByCode[dialect]![code];
+
+String? kenwoodCodeForMode(String? name, {KenwoodModeDialect? dialect}) => name == null ? null : kenwoodModeTable(dialect)[name.toUpperCase()];
 
 /// How many digits a Kenwood frequency carries, everywhere on the wire: in
 /// `FA`, in `FB`, and as the leading field of `IF`.
@@ -53,8 +79,8 @@ String buildKenwoodReadFrequencyCommand() => 'FA;';
 
 /// Null for a mode the radio has no code for — the caller sends nothing
 /// rather than a malformed command.
-String? buildKenwoodSetModeCommand(String? mode) {
-  final code = kenwoodCodeForMode(mode);
+String? buildKenwoodSetModeCommand(String? mode, {KenwoodModeDialect? dialect}) {
+  final code = kenwoodCodeForMode(mode, dialect: dialect);
   // No VFO selector, unlike Yaesu's MD0<code>.
   return code == null ? null : 'MD$code;';
 }
@@ -276,7 +302,9 @@ int? parseKenwoodFrequencyParams(String params) {
 /// leading selector would be speaking Yaesu, so only the single-character
 /// form is accepted rather than "the last character", which would quietly
 /// mis-read anything unexpected.
-String? parseKenwoodModeParams(String params) => params.length == 1 ? kenwoodModeForCode(params) : null;
+String? parseKenwoodModeParams(String params, {KenwoodModeDialect? dialect}) => params.length == 1 ? kenwoodModeForCode(params, dialect: dialect) : null;
+
+String buildKenwoodReadIdCommand() => 'ID;';
 
 /// The frequency at the head of an `IF` packet.
 ///
@@ -317,9 +345,9 @@ int? kenwoodModeOffsetIn(String params, String modeCode) {
 }
 
 /// The mode at a [offset] previously learned by [kenwoodModeOffsetIn].
-String? parseKenwoodInfoModeAt(String params, int offset) {
+String? parseKenwoodInfoModeAt(String params, int offset, {KenwoodModeDialect? dialect}) {
   if (offset < 0 || offset >= params.length) return null;
-  return kenwoodModeForCode(params[offset]);
+  return kenwoodModeForCode(params[offset], dialect: dialect);
 }
 
 /// Whether the radio is transmitting, read out of an `IF` packet whose mode
