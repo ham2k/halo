@@ -27,6 +27,7 @@ import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
+import 'dock_layouts/layout_menu.dart' show showLayoutsSheet;
 import 'operation_dialogs.dart';
 import 'panel_use_tracker.dart';
 import 'operation/adif_import_flow.dart';

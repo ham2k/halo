@@ -15,6 +15,7 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:collection/collection.dart' show DeepCollectionEquality;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:halo_core/halo_core.dart' show HookCategories;
@@ -47,6 +48,11 @@ import 'operation/radio/radio_panel.dart';
 import 'operation/remote_screen/remote_screen_panel.dart';
 import 'operation/remote_screen/remote_screen_picker.dart';
 import 'operation/website/website_panel.dart';
+import 'dock_layouts/layout_file.dart';
+import 'dock_layouts/layout_menu.dart' show LayoutSwitcherButton, showLayoutsSheet;
+import 'dock_layouts/view_layouts.dart';
+
+part 'dock_layouts/named_layouts.dart';
 
 /// Which of a view's two arrangements is being drawn.
 ///
@@ -62,7 +68,12 @@ import 'operation/website/website_panel.dart';
 /// draft to the other with Save and Discard still on screen, and each of those
 /// commits or rolls back both — an edit that half-committed on a resize is one
 /// the operator has no way to finish or undo.
-enum DockLayoutClass { wide, narrow }
+enum DockLayoutClass {
+  wide,
+  narrow;
+
+  DockLayoutClass get other => this == wide ? narrow : wide;
+}
 
 /// Where one view's layout lives in settings. Four keys rather than one: the
 /// reasons they are kept apart are on [LayoutKeys]'s own members, and a view
@@ -106,6 +117,28 @@ class DockLayoutKeys {
   final String viewOptions;
 
   const DockLayoutKeys({required this.spec, required this.state, required this.paneOptions, required this.viewOptions});
+
+  /// These keys as the named layout [layoutId] stores them — see
+  /// [ViewLayouts.layoutKey].
+  DockLayoutKeys forLayout(String layoutId) => DockLayoutKeys(
+    spec: ViewLayouts.layoutKey(spec, layoutId),
+    state: ViewLayouts.layoutKey(state, layoutId),
+    paneOptions: ViewLayouts.layoutKey(paneOptions, layoutId),
+    viewOptions: ViewLayouts.layoutKey(viewOptions, layoutId),
+  );
+
+  List<String> get all => [spec, state, paneOptions, viewOptions];
+
+  /// [everySpec] in every named layout of every view — the layouts not on
+  /// screen place instances too, and their config is just as stored.
+  static Iterable<String> everySpecIn(SettingsService settings) sync* {
+    for (final base in everySpec) {
+      final view = base.substring(0, base.indexOf('.'));
+      for (final layout in ViewLayouts.read(settings, view).layouts) {
+        yield ViewLayouts.layoutKey(base, layout.id);
+      }
+    }
+  }
 }
 
 /// Hosts a [DockLayoutView] on behalf of a root view.
@@ -177,7 +210,11 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   ///
   /// Empty by default. A pane nothing pins is a pane the operator can throw
   /// away, which is the whole point of an arrangement.
-  Set<String> get pinnedModuleIds => const {};
+  Set<String> get pinnedModuleIds => pinnedModuleIdsIn(dockLayoutClass);
+
+  /// [pinnedModuleIds] in [layoutClass], drawn or not: an import fills the
+  /// class off screen too, and has to keep what that class pins.
+  Set<String> pinnedModuleIdsIn(DockLayoutClass layoutClass) => const {};
 
   /// Modules whose header is off until the operator says otherwise. Empty by
   /// default: a pane that names itself is the safe assumption, and a view
@@ -222,21 +259,32 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// Everything the host owns PER ARRANGEMENT. Both classes are live at once,
   /// whichever is drawn: an edit spans them (see [startLayoutEditing]), and
   /// the class not on screen still holds a draft that Save must commit.
-  late final Map<DockLayoutClass, _DockClassState> _dockClasses = {
-    for (final layoutClass in DockLayoutClass.values) layoutClass: _DockClassState(dockServices.settings, dockKeysFor(layoutClass)),
+  ///
+  /// Replaced wholesale when the operator switches named layouts: each class
+  /// holds keys, a dock key and drafts that all belong to ONE layout, and a
+  /// new dock key is what makes the dock re-read its `initialSpec`.
+  late Map<DockLayoutClass, _DockClassState> _dockClasses = _classesFor(viewLayouts.active);
+
+  Map<DockLayoutClass, _DockClassState> _classesFor(String layoutId) => {
+    for (final layoutClass in DockLayoutClass.values) layoutClass: _DockClassState(dockServices.settings, dockKeysFor(layoutClass).forLayout(layoutId)),
   };
+
+  /// This view's named layouts, and which one is on screen
+  /// (docs/design/layouts.md § Named layouts).
+  late ViewLayouts viewLayouts = _readViewLayouts();
+
+  /// The layout on screen when another view of this kind deleted it: listed
+  /// here until this view moves off it, never written back to the list.
+  String? _layoutDeletedElsewhere;
 
   /// The class being drawn. Every unqualified accessor below reads this one.
   _DockClassState get _active => _dockClasses[dockLayoutClass]!;
 
-  /// The class that is not being drawn.
-  DockLayoutClass get _otherClass => dockLayoutClass == DockLayoutClass.wide ? DockLayoutClass.narrow : DockLayoutClass.wide;
-
   /// The class NOT being drawn — the other half of the same edit.
-  _DockClassState get _inactive => _dockClasses[_otherClass]!;
+  _DockClassState get _inactive => _dockClasses[dockLayoutClass.other]!;
 
-  /// Where the class on screen is persisted.
-  DockLayoutKeys get dockKeys => dockKeysFor(dockLayoutClass);
+  /// Where the class on screen is persisted, in the named layout on screen.
+  DockLayoutKeys get dockKeys => _active.keys;
 
   /// The arrangement, resolved from settings (or the default) ONCE per class:
   /// [DockLayoutView] copies its `initialSpec` into its own State on first
@@ -338,6 +386,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
     super.initState();
+    _mountedHosts.add(this);
     dockServices.panels.addListener(_onPanelCatalogChanged);
     dockServices.cat.addListener(_onEquipmentChanged);
     // Extensions are asked for their panels once per view, not once per build:
@@ -348,6 +397,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
 
   @override
   void dispose() {
+    _mountedHosts.remove(this);
     dockServices.panels.removeListener(_onPanelCatalogChanged);
     dockServices.cat.removeListener(_onEquipmentChanged);
     for (final klass in _dockClasses.values) {
@@ -474,7 +524,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// the safe direction — the worst case is an id handed out twice, and an
   /// unparseable spec is one whose panes are about to be replaced anyway.
   Iterable<String> _instanceIdsInEveryDock() sync* {
-    for (final key in DockLayoutKeys.everySpec) {
+    for (final key in DockLayoutKeys.everySpecIn(dockServices.settings)) {
       final spec = DockNode.fromJson(dockServices.settings.layoutData(key));
       if (spec != null) yield* spec.collectModules();
     }
@@ -679,7 +729,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       // the one the desktop is still showing.
       if (stillPlaced.contains(id)) continue;
       panelTitles.remove(id);
-      unawaited(dockServices.panels.forgetInstanceConfig(id));
+      unawaited(_forgetInstance(id));
     }
   }
 
@@ -772,6 +822,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // (the FIELD is already false the moment this returns, which is what this
     // guard reads).
     if (!layoutEditing) return;
+    _pendingSettingWrites.clear();
     final activeSnapshot = _active.specSnapshot;
     final activeSpec = activeSnapshot == null ? null : DockNode.fromJson(activeSnapshot);
     if (activeSpec == null) {
@@ -879,6 +930,10 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         settings.setLayoutData(klass.keys.viewOptions, klass.viewOptions.toJson());
       }
     }
+    for (final entry in _pendingSettingWrites.entries) {
+      unawaited(_queuePanelSettings(entry.key, entry.value));
+    }
+    _pendingSettingWrites.clear();
     setState(() {
       layoutEditing = false;
       for (final klass in _dockClasses.values) {
@@ -946,6 +1001,26 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       paneOptions.clear();
     });
   }
+
+  // --------------------------------------------------------- named layouts
+  // The rest of this section is the [NamedLayouts] extension, in
+  // dock_layouts/named_layouts.dart.
+
+  /// Shared panels' settings an import is to overwrite, held until Save — a
+  /// panel placed once keeps ONE set of settings for every layout showing
+  /// it, so writing them mid-edit is a change Discard could not undo.
+  final _pendingSettingWrites = <String, Map<String, dynamic>>{};
+
+  /// Where the next shared panel's settings write waits its turn — see
+  /// [NamedLayouts._queuePanelSettings].
+  Future<void> _panelSettingsQueue = Future.value();
+
+  /// Every docked view mounted, so a layout one deletes can move another
+  /// view of the same kind off it before its instances are forgotten.
+  static final _mountedHosts = <DockHost>{};
+
+  /// [setState] for the extension, which may not call it itself.
+  void _rebuild(VoidCallback fn) => setState(fn);
 
   // ------------------------------------------------------------- the overrides
 
@@ -1268,6 +1343,9 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     final onHeader = theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary;
     if (!layoutEditing) {
       return [
+        // With one layout there is nothing to switch to, and the editor is
+        // where a second one is made.
+        if (namedLayoutsOffered && viewLayouts.layouts.length > 1) _layoutSwitcher(context, onHeader, inSheet: inSheet),
         Listener(
           // Pointer-down, not `onPressed`. A click anywhere outside a text
           // field unfocuses it first — TextField's own tap-outside — and that
@@ -1310,12 +1388,23 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
         color: onHeader,
         onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: revertLayout),
       ),
-      TextButton.icon(
-        onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: saveLayout),
-        icon: const Icon(MdiIcons.contentSave, size: 18),
-        label: Text(_t.saveLayout),
-        style: TextButton.styleFrom(foregroundColor: onHeader),
-      ),
+      // With named layouts, the edit says WHICH layout it is saving into: the
+      // same switcher as outside the edit sits left of a bare Save, which
+      // stays the rightmost control.
+      if (namedLayoutsOffered) ...[
+        _layoutSwitcher(context, onHeader, inSheet: inSheet),
+        IconButton(
+          icon: Icon(MdiIcons.contentSave, semanticLabel: _t.saveLayout),
+          color: onHeader,
+          onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: saveLayout),
+        ),
+      ] else
+        TextButton.icon(
+          onPressed: () => _endEditingFrom(context, inSheet: inSheet, exit: saveLayout),
+          icon: const Icon(MdiIcons.contentSave, size: 18),
+          label: Text(_t.saveLayout),
+          style: TextButton.styleFrom(foregroundColor: onHeader),
+        ),
     ];
   }
 
@@ -1926,7 +2015,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
               // keeps its pane and says so, rather than costing the operator
               // the layout.
               else if (!nativeModuleIds.contains(id))
-                id: MissingPanelPane(extensionName: extensionKeyOfPanelId(id) ?? id),
+                id: MissingPanelPane(services: dockServices, panelId: id, gainWith: _gainPanelExtension),
         }.entries)
           entry.key: withPaneOverrides(entry.key, entry.value),
       },

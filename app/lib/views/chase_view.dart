@@ -190,7 +190,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
   /// Pinned narrow for the same reason as the Operation view's logging pane:
   /// a phone with no logging pane cannot enter a QSO at all.
   @override
-  Set<String> get pinnedModuleIds => dockLayoutClass == DockLayoutClass.narrow ? const {ChaseView.loggingPanelId} : const {};
+  Set<String> pinnedModuleIdsIn(DockLayoutClass layoutClass) => layoutClass == DockLayoutClass.narrow ? const {ChaseView.loggingPanelId} : const {};
 
   @override
   Set<String> get nativeModuleIds => const {ChaseView.loggingPanelId, ChaseView.spotsPanelId, ChaseView.infoPanelId, ChaseView.mapPanelId};

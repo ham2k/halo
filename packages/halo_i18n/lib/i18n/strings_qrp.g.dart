@@ -1634,8 +1634,16 @@ class _Translations$operation$layout$qrp extends Translations$operation$layout$e
 	@override String addPanel({required Object panel}) => 'add ${panel}';
 	@override String showPreview({required Object panel}) => 'preview ${panel}';
 	@override String missingExtension({required Object name}) => 'extension "${name}" is missing';
+	@override String get missingExtensionEnable => 'enable';
+	@override String get missingExtensionInstall => 'install…';
+	@override String get missingExtensionWontRun => 'this version won’t run. update it in settings › extensions.';
+	@override String get missingExtensionUnavailable => 'not available in this app';
+	@override String get missingExtensionNotInCatalog => 'not in the catalog';
+	@override String get missingExtensionCatalogUnreachable => 'couldn’t reach the catalog. try again';
+	@override String get missingExtensionFailed => 'that didn’t work. try again';
 	@override String get previewUnavailable => 'this panel\'s preview image could not be shown.';
 	@override String get nestedPaneTitle => 'more';
+	@override late final _Translations$operation$layout$layouts$qrp layouts = _Translations$operation$layout$layouts$qrp._(_root);
 	@override String get editLayout => 'edit layout';
 	@override String get saveLayout => 'save layout';
 	@override String get revertLayout => 'discard layout changes';
@@ -3078,6 +3086,72 @@ class _Translations$home$logs$import$qrp extends Translations$home$logs$import$e
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} imported, out of ${total}';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$qrp extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => 'default';
+	@override String untitledName({required Object number}) => 'layout ${number}';
+	@override String switcherLabel({required Object name}) => 'layout: ${name}';
+	@override String get menuNew => 'new…';
+	@override String get menuExport => 'export…';
+	@override String get menuImport => 'import…';
+	@override String get menuTitle => 'layouts';
+	@override String get newTitle => 'new layout';
+	@override String get editTitle => 'edit layout';
+	@override String get edit => 'edit';
+	@override String get duplicateCurrent => 'duplicate current layout';
+	@override String get startFromDefault => 'start from the default layout';
+	@override String get nameLabel => 'name';
+	@override String get descriptionLabel => 'description';
+	@override String get create => 'create';
+	@override String leaveEditTitle({required Object name}) => 'save changes to "${name}"?';
+	@override String get leaveEditBody => 'this layout has changes you haven’t saved.';
+	@override String get discard => 'discard';
+	@override String get deleteTitle => 'delete this layout?';
+	@override String deleteBody({required Object name}) => 'are you sure you want to delete this "${name}" layout?';
+	@override String get exportTitle => 'export layout';
+	@override String get exportPick => 'panels to export';
+	@override String get tabSet => 'tab set';
+	@override String get exportAction => 'export';
+	@override String exported({required Object location}) => 'layout saved to ${location}';
+	@override String exportFailed({required Object error}) => 'couldn\'t export the layout: ${error}';
+	@override String get importTitle => 'import layout';
+	@override String importFromOtherView({required Object view}) => 'made for the ${view} view: panels only that view has are left out.';
+	@override String get viewHome => 'home';
+	@override String get viewOperation => 'operation';
+	@override String get viewLogs => 'logs';
+	@override String get viewChase => 'chasing';
+	@override String get importAsNew => 'as a new layout';
+	@override String get importReplace => 'in place of this layout';
+	@override String get importAdd => 'added to this layout';
+	@override String get importAddHint => 'the panels arrive in a new column on the right.';
+	@override String get importPick => 'panels to import';
+	@override String get importReplaceSettings => 'replace the settings of panels already set up here';
+	@override String get importAction => 'import';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'the text isn’t valid yaml (line ${line})';
+	@override String get problemNotLayoutFile => 'it isn’t a ham2k layout file';
+	@override String get problemNewerVersion => 'it was written by a newer version of the app';
+	@override String get problemNoArrangement => 'it holds no arrangement';
+	@override String get problemMalformed => 'part of it doesn’t follow the layout format';
+	@override String get problemTooLarge => 'it is too large';
+	@override String importPickerFailed({required Object error}) => 'couldn\'t open the file: ${error}';
+	@override String importFailed({required Object error}) => 'couldn\'t import the layout: ${error}';
+	@override String duplicateFailed({required Object error}) => 'couldn\'t copy the layout: ${error}';
+	@override String get importNothing => 'no panel picked, so nothing was imported.';
+	@override String importSkipped({required Object panels}) => 'left out: ${panels}';
+	@override String importKeptPinned({required Object panels}) => 'kept ${panels}: the small-screen arrangement can’t do without it.';
+	@override String get notOffered => 'not available in this view';
+	@override String get alreadyPlaced => 'already in this layout';
+	@override String needsExtension({required Object name}) => 'needs ${name}';
+	@override String get listRecoveredTitle => 'layout names couldn’t be read';
+	@override String get listRecoveredBody => 'this view’s list of layouts could not be read. every layout is still here, numbered in place of its name.';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$qrp extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -4367,8 +4441,72 @@ extension on TranslationsQrp {
 			'operation.layout.addPanel' => ({required Object panel}) => 'add ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'preview ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'extension "${name}" is missing',
+			'operation.layout.missingExtensionEnable' => 'enable',
+			'operation.layout.missingExtensionInstall' => 'install…',
+			'operation.layout.missingExtensionWontRun' => 'this version won’t run. update it in settings › extensions.',
+			'operation.layout.missingExtensionUnavailable' => 'not available in this app',
+			'operation.layout.missingExtensionNotInCatalog' => 'not in the catalog',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'couldn’t reach the catalog. try again',
+			'operation.layout.missingExtensionFailed' => 'that didn’t work. try again',
 			'operation.layout.previewUnavailable' => 'this panel\'s preview image could not be shown.',
 			'operation.layout.nestedPaneTitle' => 'more',
+			'operation.layout.layouts.defaultName' => 'default',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'layout ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'layout: ${name}',
+			'operation.layout.layouts.menuNew' => 'new…',
+			'operation.layout.layouts.menuExport' => 'export…',
+			'operation.layout.layouts.menuImport' => 'import…',
+			'operation.layout.layouts.menuTitle' => 'layouts',
+			'operation.layout.layouts.newTitle' => 'new layout',
+			'operation.layout.layouts.editTitle' => 'edit layout',
+			'operation.layout.layouts.edit' => 'edit',
+			'operation.layout.layouts.duplicateCurrent' => 'duplicate current layout',
+			'operation.layout.layouts.startFromDefault' => 'start from the default layout',
+			'operation.layout.layouts.nameLabel' => 'name',
+			'operation.layout.layouts.descriptionLabel' => 'description',
+			'operation.layout.layouts.create' => 'create',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => 'save changes to "${name}"?',
+			'operation.layout.layouts.leaveEditBody' => 'this layout has changes you haven’t saved.',
+			'operation.layout.layouts.discard' => 'discard',
+			'operation.layout.layouts.deleteTitle' => 'delete this layout?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'are you sure you want to delete this "${name}" layout?',
+			'operation.layout.layouts.exportTitle' => 'export layout',
+			'operation.layout.layouts.exportPick' => 'panels to export',
+			'operation.layout.layouts.tabSet' => 'tab set',
+			'operation.layout.layouts.exportAction' => 'export',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'layout saved to ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'couldn\'t export the layout: ${error}',
+			'operation.layout.layouts.importTitle' => 'import layout',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'made for the ${view} view: panels only that view has are left out.',
+			'operation.layout.layouts.viewHome' => 'home',
+			'operation.layout.layouts.viewOperation' => 'operation',
+			'operation.layout.layouts.viewLogs' => 'logs',
+			'operation.layout.layouts.viewChase' => 'chasing',
+			'operation.layout.layouts.importAsNew' => 'as a new layout',
+			'operation.layout.layouts.importReplace' => 'in place of this layout',
+			'operation.layout.layouts.importAdd' => 'added to this layout',
+			'operation.layout.layouts.importAddHint' => 'the panels arrive in a new column on the right.',
+			'operation.layout.layouts.importPick' => 'panels to import',
+			'operation.layout.layouts.importReplaceSettings' => 'replace the settings of panels already set up here',
+			'operation.layout.layouts.importAction' => 'import',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'the text isn’t valid yaml (line ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'it isn’t a ham2k layout file',
+			'operation.layout.layouts.problemNewerVersion' => 'it was written by a newer version of the app',
+			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
+			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
+			'operation.layout.layouts.problemTooLarge' => 'it is too large',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'couldn\'t open the file: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'couldn\'t import the layout: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'couldn\'t copy the layout: ${error}',
+			'operation.layout.layouts.importNothing' => 'no panel picked, so nothing was imported.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'left out: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'kept ${panels}: the small-screen arrangement can’t do without it.',
+			'operation.layout.layouts.notOffered' => 'not available in this view',
+			'operation.layout.layouts.alreadyPlaced' => 'already in this layout',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => 'needs ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => 'layout names couldn’t be read',
+			'operation.layout.layouts.listRecoveredBody' => 'this view’s list of layouts could not be read. every layout is still here, numbered in place of its name.',
 			'operation.layout.editLayout' => 'edit layout',
 			'operation.layout.saveLayout' => 'save layout',
 			'operation.layout.revertLayout' => 'discard layout changes',
@@ -4418,6 +4556,8 @@ extension on TranslationsQrp {
 			'operation.layout.panels.weatherConditions.foggy' => 'foggy',
 			'operation.layout.panels.weatherConditions.rimeFog' => 'rime fog',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => 'light drizzle',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.drizzle' => 'drizzle',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'heavy drizzle',
 			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'light freezing drizzle',
@@ -4482,8 +4622,6 @@ extension on TranslationsQrp {
 			'operation.layout.panels.solarDescription' => 'solar and geomagnetic conditions, with band-by-band propagation',
 			'operation.layout.panels.solarUnreachable' => 'couldn\'t reach hamqsl.com — no network? will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. will try again shortly.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.solarAIndex' => 'a',
 			'operation.layout.panels.solarKIndex' => 'kp',
 			'operation.layout.panels.solarBandDay' => 'day',
@@ -4932,6 +5070,8 @@ extension on TranslationsQrp {
 			'qsoEditForm.theirName' => 'name',
 			'qsoEditForm.theirGrid' => 'grid',
 			'qsoEditForm.theirState' => 'state',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.band' => 'band',
 			'qsoEditForm.notes' => 'notes',
 			'qsoEditForm.sectionQso' => 'qso',
@@ -4996,8 +5136,6 @@ extension on TranslationsQrp {
 			'settings.fontScaleOpts.smallestMinusMinus' => 'smallest--',
 			'settings.fontScaleOpts.smallestMinus' => 'smallest-',
 			'settings.fontScaleOpts.smallest' => 'smallest',
-			_ => null,
-		} ?? switch (path) {
 			'settings.fontScaleOpts.smaller' => 'smaller',
 			'settings.fontScaleOpts.normal' => 'normal',
 			'settings.fontScaleOpts.larger' => 'larger',
@@ -5446,6 +5584,8 @@ extension on TranslationsQrp {
 			'settings.station.reportModelDescription' => 'the model, as the radio itself calls it — "ic-7300", "ft-991a".',
 			'settings.station.reportModelRequired' => 'a model is required',
 			'settings.station.reportOutcome' => 'how did it go?',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportOutcomeWorks' => 'worked well',
 			'settings.station.reportOutcomeIssues' => 'worked, with issues',
 			'settings.station.reportOutcomeFails' => 'didn\'t work at all',
@@ -5510,8 +5650,6 @@ extension on TranslationsQrp {
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'the sdr is not connected',
 			'settings.station.spectrumSdrNoIf' => 'set the radio\'s if frequency in this sdr\'s settings',
 			'settings.station.sdrRadio' => 'shows the spectrum for',
@@ -5960,6 +6098,8 @@ extension on TranslationsQrp {
 			'commands.cwSending' => ({required Object text}) => 'sending cw: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'cw message f${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'cw message f${n} was not sent: the extensions are not ready',
+			_ => null,
+		} ?? switch (path) {
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'nothing matches “${text}”',
@@ -6024,8 +6164,6 @@ extension on TranslationsQrp {
 			'updates.automaticChecks' => 'check automatically',
 			'updates.automaticChecksDescription' => 'look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'extension runtime not ready.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => 'test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'connected as ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'invalid field configuration',

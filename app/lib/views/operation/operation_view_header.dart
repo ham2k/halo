@@ -490,6 +490,17 @@ mixin _OperationHeader on State<OperationView>, DockHost<OperationView> {
                   startLayoutEditing();
                 },
               ),
+            // The header's layout switcher, for a header with no room for it.
+            if (includeEditLayout && namedLayoutsOffered)
+              ListTile(
+                leading: const Icon(MdiIcons.viewDashboardVariantOutline),
+                title: Text(context.t.operation.layout.layouts.menuTitle),
+                subtitle: Text(layoutName(viewLayouts.activeLayout)),
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(showLayoutsSheet(context, this));
+                },
+              ),
             if (!operation.deleted)
               ListTile(
                 leading: const Icon(MdiIcons.noteEditOutline),

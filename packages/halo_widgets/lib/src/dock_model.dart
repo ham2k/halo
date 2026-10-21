@@ -112,39 +112,35 @@ sealed class DockNode {
   /// NOT for a module that is merely unavailable — an extension disabled or
   /// slow to answer still gets a placeholder pane, because its arrangement is
   /// meant to come back.
-  DockNode? without(String id) {
+  DockNode? without(String id) => where((module) => module != id);
+
+  /// This arrangement holding only the modules [keep] accepts, collapsed the
+  /// same way as [without]: null when nothing is left, a container down to
+  /// one module folded back by [DockGroup.collapseNested].
+  DockNode? where(bool Function(String id) keep) {
     switch (this) {
       case DockGroup(:final modules, :final nested):
-        final keptNested = <String, DockNode>{};
         final kept = <String>[];
+        final keptNested = <String, DockNode>{};
         for (final slot in modules) {
-          if (slot == id) continue;
           if (nested[slot] case final node?) {
-            // A container whose whole contents were the retired module goes
-            // with them; one left holding a single module hands that slot
-            // back to it, which is the same collapse [collapseNested] makes.
-            final inner = node.without(id);
-            if (inner == null) continue;
-            final single = inner.collectModules();
-            if (single.length == 1 && inner.collectContainerIds().isEmpty) {
-              kept.add(single.single);
-            } else {
+            if (node.where(keep) case final inner?) {
               kept.add(slot);
               keptNested[slot] = inner;
             }
-          } else {
+          } else if (keep(slot)) {
             kept.add(slot);
           }
         }
-        return kept.isEmpty ? null : DockGroup(kept, nested: keptNested);
+        return kept.isEmpty ? null : (DockGroup(kept, nested: keptNested)..collapseNested());
       case DockSplit(:final axis, :final children, :final weights):
         final kept = <DockNode>[];
         final keptWeights = <double>[];
         for (var i = 0; i < children.length; i++) {
-          final child = children[i].without(id);
-          if (child == null) continue;
-          kept.add(child);
-          keptWeights.add(weights[i]);
+          if (children[i].where(keep) case final child?) {
+            kept.add(child);
+            keptWeights.add(weights[i]);
+          }
         }
         if (kept.isEmpty) return null;
         if (kept.length == 1) return kept.first;

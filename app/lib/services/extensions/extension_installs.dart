@@ -347,6 +347,9 @@ mixin _ExtensionInstalls {
   List<ExtensionInfo> get availableExtensions => _availableExtensions ?? const [];
   List<ExtensionInfo>? _availableExtensions;
 
+  /// The one of [availableExtensions] called [key], if any.
+  ExtensionInfo? extensionInfo(String key) => availableExtensions.where((info) => info.key == key).firstOrNull;
+
   @visibleForTesting
   void debugSetAvailableExtensions(List<ExtensionInfo> extensions) => _availableExtensions = extensions;
 

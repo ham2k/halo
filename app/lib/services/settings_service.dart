@@ -82,7 +82,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   static const _stationEquipmentKey = 'stationEquipment';
   static const _experimentsKey = 'experiments';
   static const _onboardingKey = 'onboarding';
-  static const _layoutKey = 'layout';
+  static const layoutPrefsKey = 'layout';
   static const _lastSeenReleaseVersionKey = 'lastSeenReleaseVersion';
   static const _lastSeenTesterBuildKey = 'lastSeenTesterBuild';
   static const _shorebirdTrackKey = 'shorebirdTrack';
@@ -904,27 +904,27 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// null. Cached because layouts read this from build methods that rerun
   /// on every window-resize frame; only [setLayoutDimension] changes it.
   double? layoutDimension(String key) {
-    final value = (_layoutCache ??= jsonMapPref(_layoutKey))[key];
+    final value = (_layoutCache ??= jsonMapPref(layoutPrefsKey))[key];
     return value is num ? value.toDouble() : null;
   }
 
-  Future<void> setLayoutDimension(String key, double value) => _setLayoutValue(key, value);
+  Future<void> setLayoutDimension(String key, double value) => setLayoutValues({key: value});
 
   /// A structured layout value (the dock-layout prototype's arrangement
   /// tree) riding in the same per-key layout map as the scalar dimensions.
   Map<String, dynamic>? layoutData(String key) {
-    final value = (_layoutCache ??= jsonMapPref(_layoutKey))[key];
+    final value = (_layoutCache ??= jsonMapPref(layoutPrefsKey))[key];
     return value is Map<String, dynamic> ? value : null;
   }
 
-  Future<void> setLayoutData(String key, Map<String, dynamic> value) => _setLayoutValue(key, value);
+  Future<void> setLayoutData(String key, Map<String, dynamic> value) => setLayoutValues({key: value});
 
-  /// The one writer of the layout map: cache first (build methods read the
-  /// cache synchronously), then persist the whole map, then notify.
-  Future<void> _setLayoutValue(String key, Object value) async {
-    final updated = {...(_layoutCache ??= jsonMapPref(_layoutKey)), key: value};
+  /// The one writer of the layout map, any number of keys per write: cache
+  /// first (builds read it synchronously), then persist the map, then notify.
+  Future<void> setLayoutValues(Map<String, Object> values) async {
+    final updated = {...(_layoutCache ??= jsonMapPref(layoutPrefsKey)), ...values};
     _layoutCache = updated;
-    await _prefs.setString(_layoutKey, jsonEncode(updated));
+    await _prefs.setString(layoutPrefsKey, jsonEncode(updated));
     notifyListeners();
   }
 

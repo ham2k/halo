@@ -3460,11 +3460,34 @@ class Translations$operation$layout$en {
 	/// en: 'Extension "${name}" is missing'
 	String missingExtension({required Object name}) => 'Extension "${name}" is missing';
 
+	/// en: 'Enable'
+	String get missingExtensionEnable => 'Enable';
+
+	/// en: 'Install…'
+	String get missingExtensionInstall => 'Install…';
+
+	/// en: 'This version won’t run. Update it in Settings › Extensions.'
+	String get missingExtensionWontRun => 'This version won’t run. Update it in Settings › Extensions.';
+
+	/// en: 'Not available in this app'
+	String get missingExtensionUnavailable => 'Not available in this app';
+
+	/// en: 'Not in the catalog'
+	String get missingExtensionNotInCatalog => 'Not in the catalog';
+
+	/// en: 'Couldn’t reach the catalog. Try again'
+	String get missingExtensionCatalogUnreachable => 'Couldn’t reach the catalog. Try again';
+
+	/// en: 'That didn’t work. Try again'
+	String get missingExtensionFailed => 'That didn’t work. Try again';
+
 	/// en: 'This panel's preview image could not be shown.'
 	String get previewUnavailable => 'This panel\'s preview image could not be shown.';
 
 	/// en: 'More'
 	String get nestedPaneTitle => 'More';
+
+	late final Translations$operation$layout$layouts$en layouts = Translations$operation$layout$layouts$en.internal(_root);
 
 	/// en: 'Edit Layout'
 	String get editLayout => 'Edit Layout';
@@ -6717,6 +6740,186 @@ class Translations$home$logs$import$en {
 	String importingDetail({required Object imported, required Object total}) => '${imported} imported, out of ${total}';
 }
 
+// Path: operation.layout.layouts
+class Translations$operation$layout$layouts$en {
+	Translations$operation$layout$layouts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Default'
+	String get defaultName => 'Default';
+
+	/// en: 'Layout ${number}'
+	String untitledName({required Object number}) => 'Layout ${number}';
+
+	/// en: 'Layout: ${name}'
+	String switcherLabel({required Object name}) => 'Layout: ${name}';
+
+	/// en: 'New…'
+	String get menuNew => 'New…';
+
+	/// en: 'Export…'
+	String get menuExport => 'Export…';
+
+	/// en: 'Import…'
+	String get menuImport => 'Import…';
+
+	/// en: 'Layouts'
+	String get menuTitle => 'Layouts';
+
+	/// en: 'New Layout'
+	String get newTitle => 'New Layout';
+
+	/// en: 'Edit Layout'
+	String get editTitle => 'Edit Layout';
+
+	/// en: 'Edit'
+	String get edit => 'Edit';
+
+	/// en: 'Duplicate current layout'
+	String get duplicateCurrent => 'Duplicate current layout';
+
+	/// en: 'Start from the default layout'
+	String get startFromDefault => 'Start from the default layout';
+
+	/// en: 'Name'
+	String get nameLabel => 'Name';
+
+	/// en: 'Description'
+	String get descriptionLabel => 'Description';
+
+	/// en: 'Create'
+	String get create => 'Create';
+
+	/// en: 'Save changes to "${name}"?'
+	String leaveEditTitle({required Object name}) => 'Save changes to "${name}"?';
+
+	/// en: 'This layout has changes you haven’t saved.'
+	String get leaveEditBody => 'This layout has changes you haven’t saved.';
+
+	/// en: 'Discard'
+	String get discard => 'Discard';
+
+	/// en: 'Delete this layout?'
+	String get deleteTitle => 'Delete this layout?';
+
+	/// en: 'Are you sure you want to delete this "${name}" Layout?'
+	String deleteBody({required Object name}) => 'Are you sure you want to delete this "${name}" Layout?';
+
+	/// en: 'Export Layout'
+	String get exportTitle => 'Export Layout';
+
+	/// en: 'Panels to export'
+	String get exportPick => 'Panels to export';
+
+	/// en: 'Tab Set'
+	String get tabSet => 'Tab Set';
+
+	/// en: 'Export'
+	String get exportAction => 'Export';
+
+	/// en: 'Layout saved to ${location}'
+	String exported({required Object location}) => 'Layout saved to ${location}';
+
+	/// en: 'Couldn't export the layout: ${error}'
+	String exportFailed({required Object error}) => 'Couldn\'t export the layout: ${error}';
+
+	/// en: 'Import Layout'
+	String get importTitle => 'Import Layout';
+
+	/// en: 'Made for the ${view} view: panels only that view has are left out.'
+	String importFromOtherView({required Object view}) => 'Made for the ${view} view: panels only that view has are left out.';
+
+	/// en: 'Home'
+	String get viewHome => 'Home';
+
+	/// en: 'Operation'
+	String get viewOperation => 'Operation';
+
+	/// en: 'Logs'
+	String get viewLogs => 'Logs';
+
+	/// en: 'Chasing'
+	String get viewChase => 'Chasing';
+
+	/// en: 'As a new layout'
+	String get importAsNew => 'As a new layout';
+
+	/// en: 'In place of this layout'
+	String get importReplace => 'In place of this layout';
+
+	/// en: 'Added to this layout'
+	String get importAdd => 'Added to this layout';
+
+	/// en: 'The panels arrive in a new column on the right.'
+	String get importAddHint => 'The panels arrive in a new column on the right.';
+
+	/// en: 'Panels to import'
+	String get importPick => 'Panels to import';
+
+	/// en: 'Replace the settings of panels already set up here'
+	String get importReplaceSettings => 'Replace the settings of panels already set up here';
+
+	/// en: 'Import'
+	String get importAction => 'Import';
+
+	/// en: '${filename} isn't a layout this app can read: ${problem}'
+	String importUnreadable({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}';
+
+	/// en: 'the text isn’t valid YAML (line ${line})'
+	String problemNotYaml({required Object line}) => 'the text isn’t valid YAML (line ${line})';
+
+	/// en: 'it isn’t a Ham2K layout file'
+	String get problemNotLayoutFile => 'it isn’t a Ham2K layout file';
+
+	/// en: 'it was written by a newer version of the app'
+	String get problemNewerVersion => 'it was written by a newer version of the app';
+
+	/// en: 'it holds no arrangement'
+	String get problemNoArrangement => 'it holds no arrangement';
+
+	/// en: 'part of it doesn’t follow the layout format'
+	String get problemMalformed => 'part of it doesn’t follow the layout format';
+
+	/// en: 'it is too large'
+	String get problemTooLarge => 'it is too large';
+
+	/// en: 'Couldn't open the file: ${error}'
+	String importPickerFailed({required Object error}) => 'Couldn\'t open the file: ${error}';
+
+	/// en: 'Couldn't import the layout: ${error}'
+	String importFailed({required Object error}) => 'Couldn\'t import the layout: ${error}';
+
+	/// en: 'Couldn't copy the layout: ${error}'
+	String duplicateFailed({required Object error}) => 'Couldn\'t copy the layout: ${error}';
+
+	/// en: 'No panel picked, so nothing was imported.'
+	String get importNothing => 'No panel picked, so nothing was imported.';
+
+	/// en: 'Left out: ${panels}'
+	String importSkipped({required Object panels}) => 'Left out: ${panels}';
+
+	/// en: 'Kept ${panels}: the small-screen arrangement can’t do without it.'
+	String importKeptPinned({required Object panels}) => 'Kept ${panels}: the small-screen arrangement can’t do without it.';
+
+	/// en: 'Not available in this view'
+	String get notOffered => 'Not available in this view';
+
+	/// en: 'Already in this layout'
+	String get alreadyPlaced => 'Already in this layout';
+
+	/// en: 'Needs ${name}'
+	String needsExtension({required Object name}) => 'Needs ${name}';
+
+	/// en: 'Layout names couldn’t be read'
+	String get listRecoveredTitle => 'Layout names couldn’t be read';
+
+	/// en: 'This view’s list of layouts could not be read. Every layout is still here, numbered in place of its name.'
+	String get listRecoveredBody => 'This view’s list of layouts could not be read. Every layout is still here, numbered in place of its name.';
+}
+
 // Path: operation.layout.panels
 class Translations$operation$layout$panels$en {
 	Translations$operation$layout$panels$en.internal(this._root);
@@ -8897,8 +9100,72 @@ extension on Translations {
 			'operation.layout.addPanel' => ({required Object panel}) => 'Add ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => 'Preview ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => 'Extension "${name}" is missing',
+			'operation.layout.missingExtensionEnable' => 'Enable',
+			'operation.layout.missingExtensionInstall' => 'Install…',
+			'operation.layout.missingExtensionWontRun' => 'This version won’t run. Update it in Settings › Extensions.',
+			'operation.layout.missingExtensionUnavailable' => 'Not available in this app',
+			'operation.layout.missingExtensionNotInCatalog' => 'Not in the catalog',
+			'operation.layout.missingExtensionCatalogUnreachable' => 'Couldn’t reach the catalog. Try again',
+			'operation.layout.missingExtensionFailed' => 'That didn’t work. Try again',
 			'operation.layout.previewUnavailable' => 'This panel\'s preview image could not be shown.',
 			'operation.layout.nestedPaneTitle' => 'More',
+			'operation.layout.layouts.defaultName' => 'Default',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => 'Layout ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => 'Layout: ${name}',
+			'operation.layout.layouts.menuNew' => 'New…',
+			'operation.layout.layouts.menuExport' => 'Export…',
+			'operation.layout.layouts.menuImport' => 'Import…',
+			'operation.layout.layouts.menuTitle' => 'Layouts',
+			'operation.layout.layouts.newTitle' => 'New Layout',
+			'operation.layout.layouts.editTitle' => 'Edit Layout',
+			'operation.layout.layouts.edit' => 'Edit',
+			'operation.layout.layouts.duplicateCurrent' => 'Duplicate current layout',
+			'operation.layout.layouts.startFromDefault' => 'Start from the default layout',
+			'operation.layout.layouts.nameLabel' => 'Name',
+			'operation.layout.layouts.descriptionLabel' => 'Description',
+			'operation.layout.layouts.create' => 'Create',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => 'Save changes to "${name}"?',
+			'operation.layout.layouts.leaveEditBody' => 'This layout has changes you haven’t saved.',
+			'operation.layout.layouts.discard' => 'Discard',
+			'operation.layout.layouts.deleteTitle' => 'Delete this layout?',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => 'Are you sure you want to delete this "${name}" Layout?',
+			'operation.layout.layouts.exportTitle' => 'Export Layout',
+			'operation.layout.layouts.exportPick' => 'Panels to export',
+			'operation.layout.layouts.tabSet' => 'Tab Set',
+			'operation.layout.layouts.exportAction' => 'Export',
+			'operation.layout.layouts.exported' => ({required Object location}) => 'Layout saved to ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => 'Couldn\'t export the layout: ${error}',
+			'operation.layout.layouts.importTitle' => 'Import Layout',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => 'Made for the ${view} view: panels only that view has are left out.',
+			'operation.layout.layouts.viewHome' => 'Home',
+			'operation.layout.layouts.viewOperation' => 'Operation',
+			'operation.layout.layouts.viewLogs' => 'Logs',
+			'operation.layout.layouts.viewChase' => 'Chasing',
+			'operation.layout.layouts.importAsNew' => 'As a new layout',
+			'operation.layout.layouts.importReplace' => 'In place of this layout',
+			'operation.layout.layouts.importAdd' => 'Added to this layout',
+			'operation.layout.layouts.importAddHint' => 'The panels arrive in a new column on the right.',
+			'operation.layout.layouts.importPick' => 'Panels to import',
+			'operation.layout.layouts.importReplaceSettings' => 'Replace the settings of panels already set up here',
+			'operation.layout.layouts.importAction' => 'Import',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn\'t a layout this app can read: ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => 'the text isn’t valid YAML (line ${line})',
+			'operation.layout.layouts.problemNotLayoutFile' => 'it isn’t a Ham2K layout file',
+			'operation.layout.layouts.problemNewerVersion' => 'it was written by a newer version of the app',
+			'operation.layout.layouts.problemNoArrangement' => 'it holds no arrangement',
+			'operation.layout.layouts.problemMalformed' => 'part of it doesn’t follow the layout format',
+			'operation.layout.layouts.problemTooLarge' => 'it is too large',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => 'Couldn\'t open the file: ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => 'Couldn\'t import the layout: ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => 'Couldn\'t copy the layout: ${error}',
+			'operation.layout.layouts.importNothing' => 'No panel picked, so nothing was imported.',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => 'Left out: ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => 'Kept ${panels}: the small-screen arrangement can’t do without it.',
+			'operation.layout.layouts.notOffered' => 'Not available in this view',
+			'operation.layout.layouts.alreadyPlaced' => 'Already in this layout',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => 'Needs ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => 'Layout names couldn’t be read',
+			'operation.layout.layouts.listRecoveredBody' => 'This view’s list of layouts could not be read. Every layout is still here, numbered in place of its name.',
 			'operation.layout.editLayout' => 'Edit Layout',
 			'operation.layout.saveLayout' => 'Save Layout',
 			'operation.layout.revertLayout' => 'Discard layout changes',
@@ -8948,6 +9215,8 @@ extension on Translations {
 			'operation.layout.panels.weatherConditions.foggy' => 'Foggy',
 			'operation.layout.panels.weatherConditions.rimeFog' => 'Rime Fog',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => 'Light Drizzle',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.drizzle' => 'Drizzle',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => 'Heavy Drizzle',
 			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => 'Light Freezing Drizzle',
@@ -9012,8 +9281,6 @@ extension on Translations {
 			'operation.layout.panels.solarDescription' => 'Solar and geomagnetic conditions, with band-by-band propagation',
 			'operation.layout.panels.solarUnreachable' => 'Couldn\'t reach hamqsl.com — no network? Will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. Will try again shortly.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.solarAIndex' => 'A',
 			'operation.layout.panels.solarKIndex' => 'Kp',
 			'operation.layout.panels.solarBandDay' => 'Day',
@@ -9462,6 +9729,8 @@ extension on Translations {
 			'qsoEditForm.theirName' => 'Name',
 			'qsoEditForm.theirGrid' => 'Grid',
 			'qsoEditForm.theirState' => 'State',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
 			'qsoEditForm.sectionQso' => 'QSO',
@@ -9526,8 +9795,6 @@ extension on Translations {
 			'settings.fontScaleOpts.smallestMinusMinus' => 'Smallest--',
 			'settings.fontScaleOpts.smallestMinus' => 'Smallest-',
 			'settings.fontScaleOpts.smallest' => 'Smallest',
-			_ => null,
-		} ?? switch (path) {
 			'settings.fontScaleOpts.smaller' => 'Smaller',
 			'settings.fontScaleOpts.normal' => 'Normal',
 			'settings.fontScaleOpts.larger' => 'Larger',
@@ -9976,6 +10243,8 @@ extension on Translations {
 			'settings.station.reportModelDescription' => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".',
 			'settings.station.reportModelRequired' => 'A model is required',
 			'settings.station.reportOutcome' => 'How did it go?',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportOutcomeWorks' => 'Worked well',
 			'settings.station.reportOutcomeIssues' => 'Worked, with issues',
 			'settings.station.reportOutcomeFails' => 'Didn\'t work at all',
@@ -10040,8 +10309,6 @@ extension on Translations {
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => 'The SDR is not connected',
 			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
 			'settings.station.sdrRadio' => 'Shows the spectrum for',
@@ -10490,6 +10757,8 @@ extension on Translations {
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',
+			_ => null,
+		} ?? switch (path) {
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
@@ -10554,8 +10823,6 @@ extension on Translations {
 			'updates.automaticChecks' => 'Check automatically',
 			'updates.automaticChecksDescription' => 'Look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'Extension runtime not ready.',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => 'Test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Connected as ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'Invalid field configuration',

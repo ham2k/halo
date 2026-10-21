@@ -599,6 +599,15 @@ other pane so removal stays the operator's call, and one that was only
 briefly missing repairs
 itself when its extension answers. Nothing reconciles, and nothing is set aside.
 
+The placeholder also says what would bring the panel back
+(`MissingExtensionAction`): **Enable** for an extension installed and switched
+off, **Install…** for one the app does not have, or why neither helps (it
+won't run in this version, it isn't offered in this app). Install asks the
+catalog only when pressed, since a layout full of these panes would otherwise
+fetch on every open. It then takes the catalog's usual consent prompt, or says
+the catalog had no such extension or couldn't be reached, offering to try
+again. The import dialog's extension rows are the same control.
+
 That rule exists because setting an arrangement aside is as destructive as
 deleting from it — the next thing written replaces it — and an extension can
 be absent for reasons as mundane as a `panel` hook that timed out once. The
@@ -1093,6 +1102,237 @@ upward, and the consumer-side rule is the one that guards the expensive half
 — the bridge call. What a hidden panel still costs is the draft's rebuild
 and one debounced rebuild of the view per typing pause.
 
+## Named layouts
+
+*Behind the `layouts` experiment.* A customizable view keeps a **list of
+named layouts**, and draws one of them. Each named layout is everything the
+sections above call "the arrangement" — both classes, wide and narrow, with
+their trees, pane options, view options and dock state — so switching swaps
+all of it at once, the same unit an edit already spans.
+
+**The first layout is the view's original keys.** The list lives under
+`<view>.layouts` (`ViewLayouts`, `app/lib/views/dock_layouts/view_layouts.dart`):
+`{active, layouts: [{id, name}]}`. The layout with id `default` stores under
+the view's unsuffixed `LayoutKeys`, and every other suffixes each of its keys
+with `@<id>`. So an arrangement saved before the list existed IS the default
+layout, with nothing to migrate, and a missing list reads as that one
+layout. It is never scanned for others: the list and the keys are one stored
+map, lost together or not at all. Its name is unset until the operator gives it one, and shows as the
+translated "Default" meanwhile.
+
+**A list that can't be read loses names, never layouts.** The `@<id>` keys
+outlive the list, so `ViewLayouts.read` lists again every id whose keys still
+hold something. Each one is unnamed and shows as "Layout <id>". The recovered
+list is written back, and a notice says once what happened. A list that forgot
+those ids would hand them to new layouts, and a new layout empties its keys
+before taking them.
+
+**Switching mounts a different dock.** `DockHost` holds one
+`_DockClassState` per class for the layout on screen; switching replaces both
+with a fresh pair — new keys, new dock keys — and the dock re-reads its
+`initialSpec` because its key changed, exactly as crossing the two-pane
+boundary does. The choice is per VIEW, shared by every operation; a view
+remembers it across launches.
+
+**Leaving a layout ends its edit first.** The draft belongs to the layout it
+began in, and a Save after a switch would write it into the other one, so
+`switchLayout` and the rest refuse mid-edit. The sheet goes through
+`leaveEditFor` instead. When the draft changed something, the operator picks
+Save, Discard or Cancel, and Cancel leaves the sheet up. The edit then ends,
+and the editor opens again on whatever layout is now on screen: moving to
+another layout from the editor is still editing. Starting a new layout from
+the default and importing one as a new layout go the same way. Two actions
+take no question. **Duplicate** from the editor copies the DRAFT, including
+shared panels' settings an import queued for Save, and lets the original keep
+what it last saved, so the edit carries on in the copy. **Delete** drops the
+draft along with the layout it belonged to.
+
+**A new layout is written before the edit ends.** A copy or a new-layout
+import writes its keys, its instances' settings and the list entry while the
+edit is still open, with every id the edit holds kept off limits. Only then
+does it save or discard the edit and draw the new layout. One that fails
+partway, a keychain refusing a secret say, takes out what it wrote and
+leaves the edit as it was. Its half-written slots would otherwise open in the
+next layout or pane handed those ids.
+
+**The list is re-read before every change.** Two views of one kind share
+it (an Operation view can be stacked over another), and a change made against
+a stale copy would hand a layout id out twice or write the other view's
+layout out of the list. A view of the same kind drawing the layout another one deletes is moved off
+it at once, its draft discarded as the deleting view's is, before the deleted
+instances' settings are forgotten under its panes. A re-read that still finds
+the layout on screen gone keeps it listed until this view moves off it, but
+only here: it is never written back to the list, where it would be a layout
+again in both views, opening on the keys the delete emptied.
+
+**Instance ids are unique across every layout of every view.**
+`DockLayoutKeys.everySpecIn` lists the spec key of every stored layout, and
+`_instanceIdsInEveryDock` reads them all — a layout off screen still holds the
+config its instances placed. Two consequences follow from config living in
+one app-wide store keyed by placement id:
+
+- **Duplicate** gives each instance a new id with its settings COPIED into it
+  (secrets included — the copy stays on this device). Sharing the ids would
+  make the two layouts' clocks one placement, and changing one zone would
+  change the other's. An instance whose extension is switched off still has
+  its plain values copied, read from storage without its fields. Its secrets
+  are not: the keychain cannot be listed everywhere the app runs.
+- **Delete** forgets the settings of the instances the deleted layout held,
+  as removing those panes would have. A panel placed once keeps its settings,
+  which belong to the panel and every layout showing it. The last layout
+  cannot be deleted.
+- An instance whose panel is not loaded, its extension switched off or
+  missing, has no fields to name what it stored. Forgetting it, on a delete
+  or on a Discard of an import, removes every plain value stored under its
+  id instead. So does a forget that fails: it goes a field at a time, and a
+  keychain refusing one secret would leave every field after it behind.
+  Undoing a write that failed takes each step on its own, so one refused
+  forget stops none after it.
+
+The switcher is the layout's name with a drop-down arrow, left of the layout
+button. Outside the editor it shows only once there are two layouts: with one
+there is nothing to switch to, and the editor, which always shows it, is
+where a second one is made. It opens the **layouts sheet**, hanging from it like the Add a Panel
+sheet from its plus: one row per layout, its name over its **description**
+so two layouts are told apart by more than a name, and a tap on another row
+switches to it. A layout the operator has not described shows the panes it
+holds instead, and the description field offers that same list as its hint,
+so leaving it blank is a choice whose result is on screen. Only the row on
+screen carries **Edit** — it is the layout there is to edit — and the Edit
+dialog names and describes it and holds **Delete**, at the
+far edge of its footer behind a confirmation of its own, absent for the last
+layout. The sheet's foot holds Import, Export and **New**, whose dialog asks
+for a name and whether to **duplicate the current layout** (the default) or
+**start from the default** arrangement.
+
+**While editing, the header keeps the switcher**, the same control as outside
+the edit, left of Save, which loses its label and stays the rightmost
+control. With several layouts, the header has to say which one a Save writes
+into. From the Add a Panel sheet's own header copy, the switcher takes that
+sheet down before opening the layouts sheet: what the layouts sheet does next
+can end the edit, and an Add a Panel sheet left up past that writes its adds
+straight to settings.
+
+A narrow header has no room for the name: Logs and Chase show an icon there,
+and Operation's Tools menu carries a **Layouts** entry beside Edit Layout;
+both open the same sheet.
+
+## Layout files
+
+A layout — whole, or any part of one — can be exported as a **YAML file** and
+imported on another device (`LayoutFile`,
+`app/lib/views/dock_layouts/layout_file.dart`). YAML rather than JSON because
+these are meant to be read and edited by people; the `yaml` package only
+reads, so a small emitter (`yaml_writer.dart`) writes them. Exports are named
+`<layout name>.h2klyt`, so a file says which app it is for. Import also takes
+`.yaml` and `.yml`, for a file written by hand, and the parse is what decides
+in the end.
+
+```yaml
+# Ham2K Logger layout
+ham2k-layout: 1
+view: operation
+name: Contest
+description: Sprint, with the log on the left
+extensions:
+  - key: custom-text
+    name: Custom Text
+wide:
+  options:
+    density: dense
+  root:
+    split: horizontal
+    weights: [2, 1]
+    children:
+      - tabs:
+          - panel: logging
+      - tabs:
+          - panel: ext:custom-text:text
+            instance: true
+            options:
+              title: Skeds
+            settings:
+              text: |-
+                K1ABC 14:00
+                W1AW 15:30
+```
+
+**A file names panels, not placements.** `#n` is a slot in one device's config
+store and means nothing on another, so a tab carries its descriptor id, and
+`instance: true` where the placement was one of several — read only when the
+reading device's catalog cannot say whether the panel allows several (its
+extension is not installed). On import every instance gets an id clear of
+every layout on the device, and every container a `nested#n` clear of the
+arrangement it joins.
+
+**Settings travel per pane, secrets never.** Each pane's form values ride in
+its tab; a `secret` field is left out of an exported file, and not even read
+from the keychain, which can prompt or fail. On import an
+instance's settings are written at once — nothing else reads that new slot.
+A panel placed once shares ONE set of settings with every layout showing it,
+so the file's replace them only when the operator ticks *Replace the settings
+of panels already set up here*, and in a draft only on Save. Those writes
+take turns: a Save writes the ones it queued without waiting, and an import
+right after it writing the same panel lands after it, not field by field
+among it.
+
+**Export** shows a diagram of the arrangement on screen — boxes in the
+proportions of its splits, a tick on every panel and one over every tab set
+and container — and writes the ticked part, pruned to canonical shape (no empty
+group, no split of one, a container down to one pane folded back into a tab).
+With everything ticked it carries the other class too, whole: that one has
+no diagram, since it is not on screen to pick from. A partial export carries
+only the class on screen. Inside a tab set or a container, the tabs and the
+container's contents are indented under its tick.
+
+**Import** offers three destinations:
+
+- **As a new layout** — written and drawn at once, keys in one write. A file
+  that places nothing this view can hold makes no layout at all; the panels
+  left out are named, as always.
+- **In place of this layout** and **Added to this layout** — both go into the
+  edit DRAFT, entering edit mode if need be, so Save and Discard mean what
+  they always do and a discarded import forgets the instance settings it
+  wrote. Those settings are written before the draft changes: an import that
+  fails partway takes them out again and leaves the draft untouched, rather
+  than one Save would commit as though it had worked. One overtaken while it
+  writes (a Discard, a move to another layout, a pane added meanwhile) takes
+  them out too and lands nowhere. Adding puts the imported panes in a new column at the right of the
+  root, for the operator to drag where they belong, and leaves out a panel
+  placed once that the arrangement already shows.
+
+A file is refused with a reason the operator can read in their own
+language: not YAML (with the line), not a layout file, written by a newer
+version, holding no arrangement, not following the format, or too large. Too
+large counts values after YAML aliases are expanded, which caps at 100,000;
+a few lines of nested aliases would otherwise expand to billions and freeze
+the app. It also caps bracket nesting at 200, counted before the parser
+runs, since the parser's time grows with the square of the depth. Block
+nesting deep enough to run the parser out of stack is refused the same way.
+
+A file exported from another view still imports, and the dialog says which
+view it came from: the panels the two views share come across. A class whose
+panels the view offers none of is left at the view's default, and the
+left-out panels are named after the import like any other.
+
+**A pinned pane stays.** A class's pinned pane (the log, in a narrow Operation
+or Chasing arrangement) is put back as the first tab of the first group when
+the file leaves it out, and the operator is told. Nothing on a phone could
+bring it back, and without it there is nowhere to enter a QSO.
+
+A file with both classes fills both, as a new layout or in place of this
+one. The class off screen has no diagram to pick from, so it comes whole and
+unasked; adding takes only the class on screen. A file with one class fills
+**the class on screen**, whichever it was exported from — the operator is
+looking at the arrangement they mean to change. "On screen" is as the dialog
+drew it: the picks are tabs of that arrangement, and a rotation behind the
+dialog does not move them to the other one. Another view's native pane is left out
+(greyed in the diagram), and an extension panel whose extension is missing
+comes in as the usual missing-panel pane. The dialog lists those extensions,
+each with the placeholder's own control (Enable, Install…, or why neither
+helps; after a press that failed, a retry that says so). Once one is running, only the panels that became pickable with it are
+ticked; the operator's own unticks stand.
+
 ## Dialogs and Modal Panes
 
 Two distinct surfaces; pick deliberately:
@@ -1182,6 +1422,7 @@ not add it.
 | Home's dock, panels and narrow fallback | `app/lib/views/home_view.dart` |
 | The navigation rail | `app/lib/views/home_navigation_rail.dart` |
 | The shared dock-hosting machinery | `app/lib/views/dock_host.dart` |
+| Named layouts, layout files, the switcher and its dialogs | `app/lib/views/dock_layouts/` |
 | Operation tab/split layout | `app/lib/views/operation/operation_view_dock.dart` (part of `operation_view.dart`) |
 | Settings split | `app/lib/views/settings_view.dart` |
 | Tests | `packages/halo_widgets/test/`, `app/test/` |

@@ -40,7 +40,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   /// away looks like any other — whereas wide always draws logging alongside
   /// whatever else is arranged, so there is nothing there to protect.
   @override
-  Set<String> get pinnedModuleIds => dockLayoutClass == DockLayoutClass.narrow ? const {'logging'} : const {};
+  Set<String> pinnedModuleIdsIn(DockLayoutClass layoutClass) => layoutClass == DockLayoutClass.narrow ? const {'logging'} : const {};
 
   @override
   Set<String> get nativeModuleIds => {

@@ -404,11 +404,38 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
     final raw = isSecret
         ? await _secureStorage.read(key: _settingsSecretStorageKey(panelKey, fieldKey))
         : settings?.prefs.getString(_settingsPrefsKey(panelKey, fieldKey));
-    if (raw == null) return null;
+    return raw == null ? null : _decodeSettingsValue(raw);
+  }
+
+  dynamic _decodeSettingsValue(String raw) {
     try {
       return jsonDecode(raw);
     } catch (_) {
       return raw;
+    }
+  }
+
+  /// Every plain value stored for [panelKey], whatever its fields are — for a
+  /// panel whose extension is not loaded to declare them. Secrets are not
+  /// among them: the keychain cannot be listed everywhere the app runs
+  /// (see extension_keychain.dart).
+  Map<String, dynamic> readStoredPanelValues(String panelKey) {
+    final prefs = settings?.prefs;
+    if (prefs == null) return const {};
+    final prefix = _settingsPrefsKey(panelKey, '');
+    return {
+      for (final key in prefs.getKeys())
+        if (prefs.get(key) case final String raw when key.startsWith(prefix)) key.substring(prefix.length): _decodeSettingsValue(raw),
+    };
+  }
+
+  /// Forgets every value [readStoredPanelValues] reads.
+  Future<void> forgetStoredPanelValues(String panelKey) async {
+    final prefs = settings?.prefs;
+    if (prefs == null) return;
+    final prefix = _settingsPrefsKey(panelKey, '');
+    for (final key in prefs.getKeys().where((key) => key.startsWith(prefix)).toList()) {
+      await prefs.remove(key);
     }
   }
 

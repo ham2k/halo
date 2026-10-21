@@ -1634,8 +1634,16 @@ class _Translations$operation$layout$cw extends Translations$operation$layout$en
 	@override String addPanel({required Object panel}) => '·— —·· —·· / ${panel}';
 	@override String showPreview({required Object panel}) => '·——· ·—· · ···— ·· · ·—— / ${panel}';
 	@override String missingExtension({required Object name}) => '· —··— — · —· ··· ·· ——— —· / ·—··—· ${name} ·—··—· / ·· ··· / —— ·· ··· ··· ·· —· ——·';
+	@override String get missingExtensionEnable => '· —· ·— —··· ·—·· ·';
+	@override String get missingExtensionInstall => '·· —· ··· — ·— ·—·· ·—·· …';
+	@override String get missingExtensionWontRun => '— ···· ·· ··· / ···— · ·—· ··· ·· ——— —· / ·—— ——— —· ’ — / ·—· ··— —· ·—·—·— / ··— ·——· —·· ·— — · / ·· — / ·· —· / ··· · — — ·· —· ——· ··· / › / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—';
+	@override String get missingExtensionUnavailable => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· ·· ··· / ·— ·——· ·——·';
+	@override String get missingExtensionNotInCatalog => '—· ——— — / ·· —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——·';
+	@override String get missingExtensionCatalogUnreachable => '—·—· ——— ··— ·—·· —·· —· ’ — / ·—· · ·— —·—· ···· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —·';
+	@override String get missingExtensionFailed => '— ···· ·— — / —·· ·· —·· —· ’ — / ·—— ——— ·—· —·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —·';
 	@override String get previewUnavailable => '— ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ·——· ·—· · ···— ·· · ·—— / ·· —— ·— ——· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ··· ···· ——— ·—— —· ·—·—·—';
 	@override String get nestedPaneTitle => '—— ——— ·—· ·';
+	@override late final _Translations$operation$layout$layouts$cw layouts = _Translations$operation$layout$layouts$cw._(_root);
 	@override String get editLayout => '· —·· ·· — / ·—·· ·— —·—— ——— ··— —';
 	@override String get saveLayout => '··· ·— ···— · / ·—·· ·— —·—— ——— ··— —';
 	@override String get revertLayout => '—·· ·· ··· —·—· ·— ·—· —·· / ·—·· ·— —·—— ——— ··— — / —·—· ···· ·— —· ——· · ···';
@@ -3078,6 +3086,72 @@ class _Translations$home$logs$import$cw extends Translations$home$logs$import$en
 	@override String importingDetail({required Object imported, required Object total}) => '${imported} / ·· —— ·——· ——— ·—· — · —·· ——··—— / ——— ··— — / ——— ··—· / ${total}';
 }
 
+// Path: operation.layout.layouts
+class _Translations$operation$layout$layouts$cw extends Translations$operation$layout$layouts$en {
+	_Translations$operation$layout$layouts$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get defaultName => '—·· · ··—· ·— ··— ·—·· —';
+	@override String untitledName({required Object number}) => '·—·· ·— —·—— ——— ··— — / ${number}';
+	@override String switcherLabel({required Object name}) => '·—·· ·— —·—— ——— ··— — ———··· / ${name}';
+	@override String get menuNew => '—· · ·—— …';
+	@override String get menuExport => '· —··— ·——· ——— ·—· — …';
+	@override String get menuImport => '·· —— ·——· ——— ·—· — …';
+	@override String get menuTitle => '·—·· ·— —·—— ——— ··— — ···';
+	@override String get newTitle => '—· · ·—— / ·—·· ·— —·—— ——— ··— —';
+	@override String get editTitle => '· —·· ·· — / ·—·· ·— —·—— ——— ··— —';
+	@override String get edit => '· —·· ·· —';
+	@override String get duplicateCurrent => '—·· ··— ·——· ·—·· ·· —·—· ·— — · / —·—· ··— ·—· ·—· · —· — / ·—·· ·— —·—— ——— ··— —';
+	@override String get startFromDefault => '··· — ·— ·—· — / ··—· ·—· ——— —— / — ···· · / —·· · ··—· ·— ··— ·—·· — / ·—·· ·— —·—— ——— ··— —';
+	@override String get nameLabel => '—· ·— —— ·';
+	@override String get descriptionLabel => '—·· · ··· —·—· ·—· ·· ·——· — ·· ——— —·';
+	@override String get create => '—·—· ·—· · ·— — ·';
+	@override String leaveEditTitle({required Object name}) => '··· ·— ···— · / —·—· ···· ·— —· ——· · ··· / — ——— / ·—··—· ${name} ·—··—· ··——··';
+	@override String get leaveEditBody => '— ···· ·· ··· / ·—·· ·— —·—— ——— ··— — / ···· ·— ··· / —·—· ···· ·— —· ——· · ··· / —·—— ——— ··— / ···· ·— ···— · —· ’ — / ··· ·— ···— · —·· ·—·—·—';
+	@override String get discard => '—·· ·· ··· —·—· ·— ·—· —··';
+	@override String get deleteTitle => '—·· · ·—·· · — · / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— — ··——··';
+	@override String deleteBody({required Object name}) => '·— ·—· · / —·—— ——— ··— / ··· ··— ·—· · / —·—— ——— ··— / ·—— ·— —· — / — ——— / —·· · ·—·· · — · / — ···· ·· ··· / ·—··—· ${name} ·—··—· / ·—·· ·— —·—— ——— ··— — ··——··';
+	@override String get exportTitle => '· —··— ·——· ——— ·—· — / ·—·· ·— —·—— ——— ··— —';
+	@override String get exportPick => '·——· ·— —· · ·—·· ··· / — ——— / · —··— ·——· ——— ·—· —';
+	@override String get tabSet => '— ·— —··· / ··· · —';
+	@override String get exportAction => '· —··— ·——· ——— ·—· —';
+	@override String exported({required Object location}) => '·—·· ·— —·—— ——— ··— — / ··· ·— ···— · —·· / — ——— / ${location}';
+	@override String exportFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / · —··— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}';
+	@override String get importTitle => '·· —— ·——· ——— ·—· — / ·—·· ·— —·—— ——— ··— —';
+	@override String importFromOtherView({required Object view}) => '—— ·— —·· · / ··—· ——— ·—· / — ···· · / ${view} / ···— ·· · ·—— ———··· / ·——· ·— —· · ·—·· ··· / ——— —· ·—·· —·—— / — ···· ·— — / ···— ·· · ·—— / ···· ·— ··· / ·— ·—· · / ·—·· · ··—· — / ——— ··— — ·—·—·—';
+	@override String get viewHome => '···· ——— —— ·';
+	@override String get viewOperation => '——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get viewLogs => '·—·· ——— ——· ···';
+	@override String get viewChase => '—·—· ···· ·— ··· ·· —· ——·';
+	@override String get importAsNew => '·— ··· / ·— / —· · ·—— / ·—·· ·— —·—— ——— ··— —';
+	@override String get importReplace => '·· —· / ·——· ·—·· ·— —·—· · / ——— ··—· / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— —';
+	@override String get importAdd => '·— —·· —·· · —·· / — ——— / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— —';
+	@override String get importAddHint => '— ···· · / ·——· ·— —· · ·—·· ··· / ·— ·—· ·—· ·· ···— · / ·· —· / ·— / —· · ·—— / —·—· ——— ·—·· ··— —— —· / ——— —· / — ···· · / ·—· ·· ——· ···· — ·—·—·—';
+	@override String get importPick => '·——· ·— —· · ·—·· ··· / — ——— / ·· —— ·——· ——— ·—· —';
+	@override String get importReplaceSettings => '·—· · ·——· ·—·· ·— —·—· · / — ···· · / ··· · — — ·· —· ——· ··· / ——— ··—· / ·——· ·— —· · ·—·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ··· · — / ··— ·——· / ···· · ·—· ·';
+	@override String get importAction => '·· —— ·——· ——— ·—· —';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} / ·· ··· —· ·————· — / ·— / ·—·· ·— —·—— ——— ··— — / — ···· ·· ··· / ·— ·——· ·——· / —·—· ·— —· / ·—· · ·— —·· ———··· / ${problem}';
+	@override String problemNotYaml({required Object line}) => '— ···· · / — · —··— — / ·· ··· —· ’ — / ···— ·— ·—·· ·· —·· / —·—— ·— —— ·—·· / —·——· ·—·· ·· —· · / ${line} —·——·—';
+	@override String get problemNotLayoutFile => '·· — / ·· ··· —· ’ — / ·— / ···· ·— —— ··——— —·— / ·—·· ·— —·—— ——— ··— — / ··—· ·· ·—·· ·';
+	@override String get problemNewerVersion => '·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / — ···· · / ·— ·——· ·——·';
+	@override String get problemNoArrangement => '·· — / ···· ——— ·—·· —·· ··· / —· ——— / ·— ·—· ·—· ·— —· ——· · —— · —· —';
+	@override String get problemMalformed => '·——· ·— ·—· — / ——— ··—· / ·· — / —·· ——— · ··· —· ’ — / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· —— ·— —';
+	@override String get problemTooLarge => '·· — / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· ·';
+	@override String importPickerFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}';
+	@override String importFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·· —— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}';
+	@override String duplicateFailed({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}';
+	@override String get importNothing => '—· ——— / ·——· ·— —· · ·—·· / ·——· ·· —·—· —·— · —·· ——··—— / ··· ——— / —· ——— — ···· ·· —· ——· / ·—— ·— ··· / ·· —— ·——· ——— ·—· — · —·· ·—·—·—';
+	@override String importSkipped({required Object panels}) => '·—·· · ··—· — / ——— ··— — ———··· / ${panels}';
+	@override String importKeptPinned({required Object panels}) => '—·— · ·——· — / ${panels} ———··· / — ···· · / ··· —— ·— ·—·· ·—·· —····— ··· —·—· ·—· · · —· / ·— ·—· ·—· ·— —· ——· · —— · —· — / —·—· ·— —· ’ — / —·· ——— / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—';
+	@override String get notOffered => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· ·· ··· / ···— ·· · ·——';
+	@override String get alreadyPlaced => '·— ·—·· ·—· · ·— —·· —·—— / ·· —· / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— —';
+	@override String needsExtension({required Object name}) => '—· · · —·· ··· / ${name}';
+	@override String get listRecoveredTitle => '·—·· ·— —·—— ——— ··— — / —· ·— —— · ··· / —·—· ——— ··— ·—·· —·· —· ’ — / —··· · / ·—· · ·— —··';
+	@override String get listRecoveredBody => '— ···· ·· ··· / ···— ·· · ·—— ’ ··· / ·—·· ·· ··· — / ——— ··—· / ·—·· ·— —·—— ——— ··— — ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· ·—·—·— / · ···— · ·—· —·—— / ·—·· ·— —·—— ——— ··— — / ·· ··· / ··· — ·· ·—·· ·—·· / ···· · ·—· · ——··—— / —· ··— —— —··· · ·—· · —·· / ·· —· / ·——· ·—·· ·— —·—· · / ——— ··—· / ·· — ··· / —· ·— —— · ·—·—·—';
+}
+
 // Path: operation.layout.panels
 class _Translations$operation$layout$panels$cw extends Translations$operation$layout$panels$en {
 	_Translations$operation$layout$panels$cw._(TranslationsCw root) : this._root = root, super.internal(root);
@@ -4367,8 +4441,72 @@ extension on TranslationsCw {
 			'operation.layout.addPanel' => ({required Object panel}) => '·— —·· —·· / ${panel}',
 			'operation.layout.showPreview' => ({required Object panel}) => '·——· ·—· · ···— ·· · ·—— / ${panel}',
 			'operation.layout.missingExtension' => ({required Object name}) => '· —··— — · —· ··· ·· ——— —· / ·—··—· ${name} ·—··—· / ·· ··· / —— ·· ··· ··· ·· —· ——·',
+			'operation.layout.missingExtensionEnable' => '· —· ·— —··· ·—·· ·',
+			'operation.layout.missingExtensionInstall' => '·· —· ··· — ·— ·—·· ·—·· …',
+			'operation.layout.missingExtensionWontRun' => '— ···· ·· ··· / ···— · ·—· ··· ·· ——— —· / ·—— ——— —· ’ — / ·—· ··— —· ·—·—·— / ··— ·——· —·· ·— — · / ·· — / ·· —· / ··· · — — ·· —· ——· ··· / › / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—',
+			'operation.layout.missingExtensionUnavailable' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· ·· ··· / ·— ·——· ·——·',
+			'operation.layout.missingExtensionNotInCatalog' => '—· ——— — / ·· —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——·',
+			'operation.layout.missingExtensionCatalogUnreachable' => '—·—· ——— ··— ·—·· —·· —· ’ — / ·—· · ·— —·—· ···· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —·',
+			'operation.layout.missingExtensionFailed' => '— ···· ·— — / —·· ·· —·· —· ’ — / ·—— ——— ·—· —·— ·—·—·— / — ·—· —·—— / ·— ——· ·— ·· —·',
 			'operation.layout.previewUnavailable' => '— ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ·——· ·—· · ···— ·· · ·—— / ·· —— ·— ——· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ··· ···· ——— ·—— —· ·—·—·—',
 			'operation.layout.nestedPaneTitle' => '—— ——— ·—· ·',
+			'operation.layout.layouts.defaultName' => '—·· · ··—· ·— ··— ·—·· —',
+			'operation.layout.layouts.untitledName' => ({required Object number}) => '·—·· ·— —·—— ——— ··— — / ${number}',
+			'operation.layout.layouts.switcherLabel' => ({required Object name}) => '·—·· ·— —·—— ——— ··— — ———··· / ${name}',
+			'operation.layout.layouts.menuNew' => '—· · ·—— …',
+			'operation.layout.layouts.menuExport' => '· —··— ·——· ——— ·—· — …',
+			'operation.layout.layouts.menuImport' => '·· —— ·——· ——— ·—· — …',
+			'operation.layout.layouts.menuTitle' => '·—·· ·— —·—— ——— ··— — ···',
+			'operation.layout.layouts.newTitle' => '—· · ·—— / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.editTitle' => '· —·· ·· — / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.edit' => '· —·· ·· —',
+			'operation.layout.layouts.duplicateCurrent' => '—·· ··— ·——· ·—·· ·· —·—· ·— — · / —·—· ··— ·—· ·—· · —· — / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.startFromDefault' => '··· — ·— ·—· — / ··—· ·—· ——— —— / — ···· · / —·· · ··—· ·— ··— ·—·· — / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.nameLabel' => '—· ·— —— ·',
+			'operation.layout.layouts.descriptionLabel' => '—·· · ··· —·—· ·—· ·· ·——· — ·· ——— —·',
+			'operation.layout.layouts.create' => '—·—· ·—· · ·— — ·',
+			'operation.layout.layouts.leaveEditTitle' => ({required Object name}) => '··· ·— ···— · / —·—· ···· ·— —· ——· · ··· / — ——— / ·—··—· ${name} ·—··—· ··——··',
+			'operation.layout.layouts.leaveEditBody' => '— ···· ·· ··· / ·—·· ·— —·—— ——— ··— — / ···· ·— ··· / —·—· ···· ·— —· ——· · ··· / —·—— ——— ··— / ···· ·— ···— · —· ’ — / ··· ·— ···— · —·· ·—·—·—',
+			'operation.layout.layouts.discard' => '—·· ·· ··· —·—· ·— ·—· —··',
+			'operation.layout.layouts.deleteTitle' => '—·· · ·—·· · — · / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— — ··——··',
+			'operation.layout.layouts.deleteBody' => ({required Object name}) => '·— ·—· · / —·—— ——— ··— / ··· ··— ·—· · / —·—— ——— ··— / ·—— ·— —· — / — ——— / —·· · ·—·· · — · / — ···· ·· ··· / ·—··—· ${name} ·—··—· / ·—·· ·— —·—— ——— ··— — ··——··',
+			'operation.layout.layouts.exportTitle' => '· —··— ·——· ——— ·—· — / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.exportPick' => '·——· ·— —· · ·—·· ··· / — ——— / · —··— ·——· ——— ·—· —',
+			'operation.layout.layouts.tabSet' => '— ·— —··· / ··· · —',
+			'operation.layout.layouts.exportAction' => '· —··— ·——· ——— ·—· —',
+			'operation.layout.layouts.exported' => ({required Object location}) => '·—·· ·— —·—— ——— ··— — / ··· ·— ···— · —·· / — ——— / ${location}',
+			'operation.layout.layouts.exportFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / · —··— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
+			'operation.layout.layouts.importTitle' => '·· —— ·——· ——— ·—· — / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.importFromOtherView' => ({required Object view}) => '—— ·— —·· · / ··—· ——— ·—· / — ···· · / ${view} / ···— ·· · ·—— ———··· / ·——· ·— —· · ·—·· ··· / ——— —· ·—·· —·—— / — ···· ·— — / ···— ·· · ·—— / ···· ·— ··· / ·— ·—· · / ·—·· · ··—· — / ——— ··— — ·—·—·—',
+			'operation.layout.layouts.viewHome' => '···· ——— —— ·',
+			'operation.layout.layouts.viewOperation' => '——— ·——· · ·—· ·— — ·· ——— —·',
+			'operation.layout.layouts.viewLogs' => '·—·· ——— ——· ···',
+			'operation.layout.layouts.viewChase' => '—·—· ···· ·— ··· ·· —· ——·',
+			'operation.layout.layouts.importAsNew' => '·— ··· / ·— / —· · ·—— / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.importReplace' => '·· —· / ·——· ·—·· ·— —·—· · / ——— ··—· / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.importAdd' => '·— —·· —·· · —·· / — ——— / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.importAddHint' => '— ···· · / ·——· ·— —· · ·—·· ··· / ·— ·—· ·—· ·· ···— · / ·· —· / ·— / —· · ·—— / —·—· ——— ·—·· ··— —— —· / ——— —· / — ···· · / ·—· ·· ——· ···· — ·—·—·—',
+			'operation.layout.layouts.importPick' => '·——· ·— —· · ·—·· ··· / — ——— / ·· —— ·——· ——— ·—· —',
+			'operation.layout.layouts.importReplaceSettings' => '·—· · ·——· ·—·· ·— —·—· · / — ···· · / ··· · — — ·· —· ——· ··· / ——— ··—· / ·——· ·— —· · ·—·· ··· / ·— ·—·· ·—· · ·— —·· —·—— / ··· · — / ··— ·——· / ···· · ·—· ·',
+			'operation.layout.layouts.importAction' => '·· —— ·——· ——— ·—· —',
+			'operation.layout.layouts.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} / ·· ··· —· ·————· — / ·— / ·—·· ·— —·—— ——— ··— — / — ···· ·· ··· / ·— ·——· ·——· / —·—· ·— —· / ·—· · ·— —·· ———··· / ${problem}',
+			'operation.layout.layouts.problemNotYaml' => ({required Object line}) => '— ···· · / — · —··— — / ·· ··· —· ’ — / ···— ·— ·—·· ·· —·· / —·—— ·— —— ·—·· / —·——· ·—·· ·· —· · / ${line} —·——·—',
+			'operation.layout.layouts.problemNotLayoutFile' => '·· — / ·· ··· —· ’ — / ·— / ···· ·— —— ··——— —·— / ·—·· ·— —·—— ——— ··— — / ··—· ·· ·—·· ·',
+			'operation.layout.layouts.problemNewerVersion' => '·· — / ·—— ·— ··· / ·—— ·—· ·· — — · —· / —··· —·—— / ·— / —· · ·—— · ·—· / ···— · ·—· ··· ·· ——— —· / ——— ··—· / — ···· · / ·— ·——· ·——·',
+			'operation.layout.layouts.problemNoArrangement' => '·· — / ···· ——— ·—·· —·· ··· / —· ——— / ·— ·—· ·—· ·— —· ——· · —— · —· —',
+			'operation.layout.layouts.problemMalformed' => '·——· ·— ·—· — / ——— ··—· / ·· — / —·· ——— · ··· —· ’ — / ··—· ——— ·—·· ·—·· ——— ·—— / — ···· · / ·—·· ·— —·—— ——— ··— — / ··—· ——— ·—· —— ·— —',
+			'operation.layout.layouts.problemTooLarge' => '·· — / ·· ··· / — ——— ——— / ·—·· ·— ·—· ——· ·',
+			'operation.layout.layouts.importPickerFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ——— ·——· · —· / — ···· · / ··—· ·· ·—·· · ———··· / ${error}',
+			'operation.layout.layouts.importFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·· —— ·——· ——— ·—· — / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
+			'operation.layout.layouts.duplicateFailed' => ({required Object error}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·— —·—— ——— ··— — ———··· / ${error}',
+			'operation.layout.layouts.importNothing' => '—· ——— / ·——· ·— —· · ·—·· / ·——· ·· —·—· —·— · —·· ——··—— / ··· ——— / —· ——— — ···· ·· —· ——· / ·—— ·— ··· / ·· —— ·——· ——— ·—· — · —·· ·—·—·—',
+			'operation.layout.layouts.importSkipped' => ({required Object panels}) => '·—·· · ··—· — / ——— ··— — ———··· / ${panels}',
+			'operation.layout.layouts.importKeptPinned' => ({required Object panels}) => '—·— · ·——· — / ${panels} ———··· / — ···· · / ··· —— ·— ·—·· ·—·· —····— ··· —·—· ·—· · · —· / ·— ·—· ·—· ·— —· ——· · —— · —· — / —·—· ·— —· ’ — / —·· ——— / ·—— ·· — ···· ——— ··— — / ·· — ·—·—·—',
+			'operation.layout.layouts.notOffered' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· ·· ··· / ···— ·· · ·——',
+			'operation.layout.layouts.alreadyPlaced' => '·— ·—·· ·—· · ·— —·· —·—— / ·· —· / — ···· ·· ··· / ·—·· ·— —·—— ——— ··— —',
+			'operation.layout.layouts.needsExtension' => ({required Object name}) => '—· · · —·· ··· / ${name}',
+			'operation.layout.layouts.listRecoveredTitle' => '·—·· ·— —·—— ——— ··— — / —· ·— —— · ··· / —·—· ——— ··— ·—·· —·· —· ’ — / —··· · / ·—· · ·— —··',
+			'operation.layout.layouts.listRecoveredBody' => '— ···· ·· ··· / ···— ·· · ·—— ’ ··· / ·—·· ·· ··· — / ——— ··—· / ·—·· ·— —·—— ——— ··— — ··· / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·· ·—·—·— / · ···— · ·—· —·—— / ·—·· ·— —·—— ——— ··— — / ·· ··· / ··· — ·· ·—·· ·—·· / ···· · ·—· · ——··—— / —· ··— —— —··· · ·—· · —·· / ·· —· / ·——· ·—·· ·— —·—· · / ——— ··—· / ·· — ··· / —· ·— —— · ·—·—·—',
 			'operation.layout.editLayout' => '· —·· ·· — / ·—·· ·— —·—— ——— ··— —',
 			'operation.layout.saveLayout' => '··· ·— ···— · / ·—·· ·— —·—— ——— ··— —',
 			'operation.layout.revertLayout' => '—·· ·· ··· —·—· ·— ·—· —·· / ·—·· ·— —·—— ——— ··— — / —·—· ···· ·— —· ——· · ···',
@@ -4418,6 +4556,8 @@ extension on TranslationsCw {
 			'operation.layout.panels.weatherConditions.foggy' => '··—· ——— ——· ——· —·——',
 			'operation.layout.panels.weatherConditions.rimeFog' => '·—· ·· —— · / ··—· ——— ——·',
 			'operation.layout.panels.weatherConditions.lightDrizzle' => '·—·· ·· ——· ···· — / —·· ·—· ·· ——·· ——·· ·—·· ·',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.drizzle' => '—·· ·—· ·· ——·· ——·· ·—·· ·',
 			'operation.layout.panels.weatherConditions.heavyDrizzle' => '···· · ·— ···— —·—— / —·· ·—· ·· ——·· ——·· ·—·· ·',
 			'operation.layout.panels.weatherConditions.lightFreezingDrizzle' => '·—·· ·· ——· ···· — / ··—· ·—· · · ——·· ·· —· ——· / —·· ·—· ·· ——·· ——·· ·—·· ·',
@@ -4482,8 +4622,6 @@ extension on TranslationsCw {
 			'operation.layout.panels.solarDescription' => '··· ——— ·—·· ·— ·—· / ·— —· —·· / ——· · ——— —— ·— ——· —· · — ·· —·—· / —·—· ——— —· —·· ·· — ·· ——— —· ··· ——··—— / ·—— ·· — ···· / —··· ·— —· —·· —····— —··· —·—— —····— —··· ·— —· —·· / ·——· ·—· ——— ·——· ·— ——· ·— — ·· ——— —·',
 			'operation.layout.panels.solarUnreachable' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·—· ···· / ···· ·— —— ——·— ··· ·—·· ·—·—·— —·—· ——— —— / — / —· ——— / —· · — ·—— ——— ·—· —·— ··——·· / ·—— ·· ·—·· ·—·· / — ·—· —·—— / ·— ——· ·— ·· —· / ··· ···· ——— ·—· — ·—·· —·—— ·—·—·—',
 			'operation.layout.panels.solarUnreadable' => '···· ·— —— ——·— ··· ·—·· ·—·—·— —·—· ——— —— / ·—· · ··· ·——· ——— —· —·· · —·· ——··—— / —··· ··— — / —· ——— — / ·—— ·· — ···· / ·— / ·—· · ·— —·· ·· —· ——· / ·—— · / —·—· ——— ··— ·—·· —·· / ··— ··· · ·—·—·— / ·—— ·· ·—·· ·—·· / — ·—· —·—— / ·— ——· ·— ·· —· / ··· ···· ——— ·—· — ·—·· —·—— ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.solarAIndex' => '·—',
 			'operation.layout.panels.solarKIndex' => '—·— ·——·',
 			'operation.layout.panels.solarBandDay' => '—·· ·— —·——',
@@ -4932,6 +5070,8 @@ extension on TranslationsCw {
 			'qsoEditForm.theirName' => '—· ·— —— ·',
 			'qsoEditForm.theirGrid' => '——· ·—· ·· —··',
 			'qsoEditForm.theirState' => '··· — ·— — ·',
+			_ => null,
+		} ?? switch (path) {
 			'qsoEditForm.band' => '—··· ·— —· —··',
 			'qsoEditForm.notes' => '—· ——— — · ···',
 			'qsoEditForm.sectionQso' => '——·— ··· ———',
@@ -4996,8 +5136,6 @@ extension on TranslationsCw {
 			'settings.fontScaleOpts.smallestMinusMinus' => '··· —— ·— ·—·· ·—·· · ··· — —····— —····—',
 			'settings.fontScaleOpts.smallestMinus' => '··· —— ·— ·—·· ·—·· · ··· — —····—',
 			'settings.fontScaleOpts.smallest' => '··· —— ·— ·—·· ·—·· · ··· —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.fontScaleOpts.smaller' => '··· —— ·— ·—·· ·—·· · ·—·',
 			'settings.fontScaleOpts.normal' => '—· ——— ·—· —— ·— ·—··',
 			'settings.fontScaleOpts.larger' => '·—·· ·— ·—· ——· · ·—·',
@@ -5446,6 +5584,8 @@ extension on TranslationsCw {
 			'settings.station.reportModelDescription' => '— ···· · / —— ——— —·· · ·—·· ——··—— / ·— ··· / — ···· · / ·—· ·— —·· ·· ——— / ·· — ··· · ·—·· ··—· / —·—· ·— ·—·· ·—·· ··· / ·· — / — / ·—··—· ·· —·—· —····— ——··· ···—— ————— ————— ·—··—· ——··—— / ·—··—· ··—· — —····— ————· ————· ·———— ·— ·—··—· ·—·—·—',
 			'settings.station.reportModelRequired' => '·— / —— ——— —·· · ·—·· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.reportOutcome' => '···· ——— ·—— / —·· ·· —·· / ·· — / ——· ——— ··——··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportOutcomeWorks' => '·—— ——— ·—· —·— · —·· / ·—— · ·—·· ·—··',
 			'settings.station.reportOutcomeIssues' => '·—— ——— ·—· —·— · —·· ——··—— / ·—— ·· — ···· / ·· ··· ··· ··— · ···',
 			'settings.station.reportOutcomeFails' => '—·· ·· —·· —· ·————· — / ·—— ——— ·—· —·— / ·— — / ·— ·—·· ·—··',
@@ -5510,8 +5650,6 @@ extension on TranslationsCw {
 			'settings.station.spectrumScopeRefused' => '— ···· · / ·—· ·— —·· ·· ——— / ·—· · ··—· ··— ··· · —·· / ·· — ··· / ··· —·—· ——— ·——· · / —·—· ——— —— —— ·— —· —·· ···',
 			'settings.station.spectrumOutOfRange' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ··· —·—· ——— ·——· · / ·· ··· / ··· · — / ——— ··— — ··· ·· —·· · / — ···· · / ·—· ·— —· ——· · / ·· — / —·—· ·— —· / ··· ···· ——— ·——',
 			'settings.station.spectrumSdrNoRadio' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / — ···· · / ·—·· ·· —· —·— · —·· / ·—· ·— —·· ·· ——— ·————· ··· / ··—· ·—· · ——·— ··— · —· —·—· —·—— …',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.spectrumSdrNotConnected' => '— ···· · / ··· —·· ·—· / ·· ··· / —· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.station.spectrumSdrNoIf' => '··· · — / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·· ··—· / ··—· ·—· · ——·— ··— · —· —·—· —·—— / ·· —· / — ···· ·· ··· / ··· —·· ·—· ·————· ··· / ··· · — — ·· —· ——· ···',
 			'settings.station.sdrRadio' => '··· ···· ——— ·—— ··· / — ···· · / ··· ·——· · —·—· — ·—· ··— —— / ··—· ——— ·—·',
@@ -5960,6 +6098,8 @@ extension on TranslationsCw {
 			'commands.cwSending' => ({required Object text}) => '··· · —· —·· ·· —· ——· / —·—· ·—— ———··· / ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} ———··· / ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} / ·—— ·— ··· / —· ——— — / ··· · —· — ———··· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——',
+			_ => null,
+		} ?? switch (path) {
 			'commands.settingNotStored' => ({required Object label}) => '“ ${label} ” / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· ·— — / ···— ·— ·—·· ··— ·',
 			'commandDialog.hint' => '··· · ·— ·—· —·—· ···· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ——— ·—· / — —·—— ·——· · / ·— / —·—· ——— —— —— ·— —· —··',
 			'commandDialog.noResults' => ({required Object text}) => '—· ——— — ···· ·· —· ——· / —— ·— — —·—· ···· · ··· / “ ${text} ”',
@@ -6024,8 +6164,6 @@ extension on TranslationsCw {
 			'updates.automaticChecks' => '—·—· ···· · —·—· —·— / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·——',
 			'updates.automaticChecksDescription' => '·—·· ——— ——— —·— / ··—· ——— ·—· / —· · ·—— / ···— · ·—· ··· ·· ——— —· ··· / ·· —· / — ···· · / —··· ·— —·—· —·— ——· ·—· ——— ··— —· —·· ——··—— / ··—· ·—· ——— —— / — ···· · / —· · —··— — / — ·· —— · / —·—— ——— ··— / ··· — ·— ·—· — / — ···· · / ·— ·——· ·——·',
 			'extensionService.runtimeNotReady' => '· —··— — · —· ··· ·· ——— —· / ·—· ··— —· — ·· —— · / —· ——— — / ·—· · ·— —·· —·—— ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.testFailed' => ({required Object error}) => '— · ··· — / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => '—·—· ——— —· —· · —·—· — · —·· / ·— ··· / ${identity}',
 			'extensionService.invalidFieldConfiguration' => '·· —· ···— ·— ·—·· ·· —·· / ··—· ·· · ·—·· —·· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',

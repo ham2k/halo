@@ -111,3 +111,11 @@ experiments:
     name: Panadapter & Waterfall
     description: Show a CAT radio's panadapter and waterfall in scene panels that ask for one.
     aliases: [panafall]
+  # Named layouts (docs/design/layouts.md § Named layouts): several layouts
+  # per docked view, a switcher beside the layout button, and layout files —
+  # exporting all or part of one, and importing one as a new layout, in place
+  # of the one on screen, or beside it.
+  - key: layouts
+    name: Named Layouts
+    description: Keep several layouts per view, switch between them, and export or import them as files.
+    aliases: [dashboards]
