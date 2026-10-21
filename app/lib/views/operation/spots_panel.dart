@@ -515,6 +515,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   SpotBoardService get _board => widget.services.spotBoard;
   @override
   Map<String, SpotCallInfo> get _callNotes => _board.callInfo;
+  String? _entityOf(String call) => _callNotes[call]?.entityPrefix;
   Map<String, SpotScore> get _spotScores => _board.scoresFor(widget.operation.uuid) ?? const {};
 
   @override
@@ -794,7 +795,7 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     // Computed once and shared — merging independently for each count map
     // would re-run the merge pipeline from scratch 4x per dialog open.
     final filters = _filterState;
-    final merged = filters.mergedSpots(_spotsBySource);
+    final merged = filters.mergedSpots(_spotsBySource, entityOf: _entityOf);
     // Every count except the per-band ones is drawn from the spots the panel
     // would actually show, so the "any (n)" entries agree with what picking
     // them does. Per-band counts stay drawn from the full merge: they are what
@@ -859,7 +860,11 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
       );
     }
 
-    final summary = _filterState.summarize(_filterState.mergedSpots(_spotsBySource), ourBaseCalls: _ourBaseCalls, continentOf: (c) => _callNotes[c]?.continent);
+    final summary = _filterState.summarize(
+      _filterState.mergedSpots(_spotsBySource, entityOf: _entityOf),
+      ourBaseCalls: _ourBaseCalls,
+      continentOf: (c) => _callNotes[c]?.continent,
+    );
     final filtered = _chaseOrder(summary.filtered);
 
     return Column(

@@ -192,7 +192,7 @@ void main() {
       };
 
       expect(state.rawSpots(bySource).map((s) => (s['their'] as Map)['call']), ['K1ABC']);
-      expect(state.mergedSpots(bySource).map((s) => (s['their'] as Map)['call']), ['K1ABC']);
+      expect(state.mergedSpots(bySource, entityOf: (_) => 'K').map((s) => (s['their'] as Map)['call']), ['K1ABC']);
     });
 
     test('isSingleBandFilter is false for the two filters that span bands', () async {

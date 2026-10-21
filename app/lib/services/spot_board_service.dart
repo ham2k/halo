@@ -27,7 +27,7 @@ import 'settings_service.dart';
 import 'spot_board.dart';
 import 'spots_service.dart';
 
-typedef SpotCallInfo = ({bool hasNote, String? emoji, String? continent});
+typedef SpotCallInfo = ({bool hasNote, String? emoji, String? continent, String? entityPrefix});
 typedef SpotScore = ({List<String> notices, List<String> alerts});
 typedef _Shown = ({Operation operation, List<Qso> qsos, String logRevision, bool chasing});
 
@@ -287,7 +287,8 @@ class SpotBoardService extends ChangeNotifier {
         final emoji = guess?['emoji'] as String?;
         final hasNote = guess != null && (emoji != null || guess['note'] != null);
         final continent = guess?['continent'] as String?;
-        return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent));
+        final entityPrefix = guess?['entityPrefix'] as String?;
+        return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent, entityPrefix: entityPrefix));
       }),
     );
     if (_subscribers == 0) return;
@@ -367,7 +368,7 @@ class SpotBoardService extends ChangeNotifier {
           }
         }
 
-        mergedSpotBoard(spots.spotsBySource, settings.disabledSpotSources).forEach(ask);
+        mergedSpotBoard(spots.spotsBySource, settings.disabledSpotSources, entityOf: (call) => _callInfo[call]?.entityPrefix).forEach(ask);
         for (final list in spots.spotsBySource.values) {
           list.forEach(ask);
         }

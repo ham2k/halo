@@ -16,6 +16,8 @@ Map<String, dynamic> _spot({required String call, double? freq, String? band, St
   'spot': {'timeInMillis': timeInMillis, 'source': 'test'},
 };
 
+String? _allUS(String call) => 'K';
+
 void main() {
   group('mergeSpotsByCallAndFreq', () {
     test('same call, close freq and time merges refs into one spot', () {
@@ -81,12 +83,22 @@ void main() {
         {
           'their': {'call': 'K1ABC'},
           'freq': '14285.0', // numeric string, not a num
+          'refs': [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
           'spot': {'timeInMillis': 1000},
         },
-        _spot(call: 'W1XYZ', freq: 14285.0, timeInMillis: 1000),
+        _spot(
+          call: 'W1XYZ',
+          freq: 14285.0,
+          refs: [
+            {'type': 'pota', 'ref': 'US-0001'},
+          ],
+          timeInMillis: 1000,
+        ),
       ];
 
-      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots));
+      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots), entityOf: _allUS);
 
       // Neither pass crashed, and the malformed spot's own String freq never
       // matches the good one's num freq for merge purposes — the two stay
@@ -104,12 +116,11 @@ void main() {
         },
       ];
 
-      expect(() => mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots)), returnsNormally);
+      expect(() => mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots), entityOf: _allUS), returnsNormally);
     });
 
-    test('a call-less spot already in `merged` is never chosen as a match TARGET either', () {
-      // The mirror of the guard above: that one only stops a call-less spot
-      // from being the spot BEING merged. Without the matching guard on the
+    test('a call-less spot already in `merged` is never chosen as a match TARGET', () {
+      // A call-less spot has no entity. Without the entity check on the
       // `other` side, a later valid spot at the same freq/time/refs matches
       // against the call-less one already sitting in `merged`, producing
       // `existingCall = ''` and a dangling ",W1AW" instead of two rows.
@@ -117,12 +128,22 @@ void main() {
         {
           'their': <String, dynamic>{}, // present but no call
           'freq': 14285.0,
+          'refs': [
+            {'type': 'pota', 'ref': 'K-0001'},
+          ],
           'spot': {'timeInMillis': 1000},
         },
-        _spot(call: 'W1AW', freq: 14285.05, timeInMillis: 1000),
+        _spot(
+          call: 'W1AW',
+          freq: 14285.05,
+          refs: [
+            {'type': 'pota', 'ref': 'K-0001'},
+          ],
+          timeInMillis: 1000,
+        ),
       ];
 
-      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots));
+      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots), entityOf: _allUS);
 
       expect(merged, hasLength(2));
       final calls = merged.map((s) => (s['their'] as Map)['call']).toList();
@@ -140,7 +161,7 @@ void main() {
         },
       ];
 
-      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots));
+      final merged = mergeSpotsByFreqAndRefs(mergeSpotsByCallAndFreq(spots), entityOf: _allUS);
       expect(merged.single['refs'], isEmpty);
     });
   });
@@ -155,7 +176,7 @@ void main() {
         _spot(call: 'W1XYZ', freq: 14285.05, mode: 'SSB', refs: refs, timeInMillis: 1500),
       ];
 
-      final merged = mergeSpotsByFreqAndRefs(spots);
+      final merged = mergeSpotsByFreqAndRefs(spots, entityOf: _allUS);
 
       expect(merged, hasLength(1));
       expect((merged.first['their'] as Map)['call'], 'K1ABC,W1XYZ');
@@ -183,7 +204,49 @@ void main() {
         ),
       ];
 
-      expect(mergeSpotsByFreqAndRefs(spots), hasLength(2));
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: _allUS), hasLength(2));
+    });
+
+    test('ref-less spots never merge callsigns, even at the same frequency and time', () {
+      // Cluster spots carry no refs. Two empty ref sets are trivially
+      // "identical", so without the non-empty requirement two unrelated DX
+      // stations heard on one frequency collapse into a single "4U1UN,5Z4B" row.
+      final spots = [
+        _spot(call: '4U1UN', freq: 18110.0, mode: 'CW', timeInMillis: 1000),
+        _spot(call: '5Z4B', freq: 18110.0, mode: 'CW', refs: const [], timeInMillis: 1500),
+      ];
+
+      final merged = mergeSpotsByFreqAndRefs(spots, entityOf: _allUS);
+
+      expect(merged, hasLength(2));
+      expect(merged.map((s) => (s['their'] as Map)['call']), ['4U1UN', '5Z4B']);
+    });
+
+    test('calls from different DXCC entities never merge, even on one reference', () {
+      final refs = [
+        {'type': 'wwff', 'ref': 'XXFF-0001'},
+      ];
+      final spots = [
+        _spot(call: 'K1ABC', freq: 14285.0, mode: 'SSB', refs: refs, timeInMillis: 1000),
+        _spot(call: 'VE3XYZ', freq: 14285.0, mode: 'SSB', refs: refs, timeInMillis: 1000),
+      ];
+
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: (call) => {'K1ABC': 'K', 'VE3XYZ': 'VE'}[call]), hasLength(2));
+    });
+
+    test('calls whose entities are not known yet never merge', () {
+      // The lookup that resolves entities is asynchronous. Two unknowns
+      // compare equal, so without the guard they merge into a row the next
+      // repaint may prove is two countries.
+      final refs = [
+        {'type': 'pota', 'ref': 'US-0001'},
+      ];
+      final spots = [
+        _spot(call: 'K1ABC', freq: 14285.0, mode: 'SSB', refs: refs, timeInMillis: 1000),
+        _spot(call: 'W1XYZ', freq: 14285.0, mode: 'SSB', refs: refs, timeInMillis: 1000),
+      ];
+
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: (_) => null), hasLength(2));
     });
 
     test('digital modes never merge callsigns, even with identical refs and frequency', () {
@@ -195,7 +258,7 @@ void main() {
         _spot(call: 'W1XYZ', freq: 14074.0, mode: 'FT8', refs: refs, timeInMillis: 1000),
       ];
 
-      expect(mergeSpotsByFreqAndRefs(spots), hasLength(2));
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: _allUS), hasLength(2));
     });
 
     test('just past the 0.1kHz tolerance stays separate', () {
@@ -207,7 +270,7 @@ void main() {
         _spot(call: 'W1XYZ', freq: 14285.11, mode: 'SSB', refs: refs, timeInMillis: 1000),
       ];
 
-      expect(mergeSpotsByFreqAndRefs(spots), hasLength(2));
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: _allUS), hasLength(2));
     });
 
     test('just under the 0.1kHz tolerance still merges', () {
@@ -219,7 +282,7 @@ void main() {
         _spot(call: 'W1XYZ', freq: 14285.09, mode: 'SSB', refs: refs, timeInMillis: 1000),
       ];
 
-      expect(mergeSpotsByFreqAndRefs(spots), hasLength(1));
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: _allUS), hasLength(1));
     });
 
     test('just past the 10min tolerance stays separate', () {
@@ -231,7 +294,7 @@ void main() {
         _spot(call: 'W1XYZ', freq: 14285.0, mode: 'SSB', refs: refs, timeInMillis: 10 * 60 * 1000 + 1),
       ];
 
-      expect(mergeSpotsByFreqAndRefs(spots), hasLength(2));
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: _allUS), hasLength(2));
     });
 
     test('exactly at the 10min tolerance still merges', () {
@@ -243,7 +306,7 @@ void main() {
         _spot(call: 'W1XYZ', freq: 14285.0, mode: 'SSB', refs: refs, timeInMillis: 10 * 60 * 1000),
       ];
 
-      expect(mergeSpotsByFreqAndRefs(spots), hasLength(1));
+      expect(mergeSpotsByFreqAndRefs(spots, entityOf: _allUS), hasLength(1));
     });
   });
 

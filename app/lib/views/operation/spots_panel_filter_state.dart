@@ -150,8 +150,9 @@ class SpotsFilterState extends ChangeNotifier {
   /// Merged spots, same as [summarize]'s `total` stage — the baseline the
   /// band/mode/age dropdown option counts are drawn from (unaffected by the
   /// currently-selected band/mode/age/continent, same "of 72" semantics used
-  /// elsewhere in the panel).
-  List<Map<String, dynamic>> mergedSpots(Map<String, List<Map<String, dynamic>>> spotsBySource) => mergedSpotBoard(spotsBySource, _disabledSources);
+  /// elsewhere in the panel). [entityOf] as [mergedSpotBoard] takes it.
+  List<Map<String, dynamic>> mergedSpots(Map<String, List<Map<String, dynamic>>> spotsBySource, {required String? Function(String call) entityOf}) =>
+      mergedSpotBoard(spotsBySource, _disabledSources, entityOf: entityOf);
 
   /// `filtered` and `total` are [filterSpotBoard]'s.
   ///

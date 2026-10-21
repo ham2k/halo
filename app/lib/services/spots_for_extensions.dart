@@ -44,7 +44,7 @@ class ExtensionSpotsReader {
       final vfo = _services.radio.vfoA;
       final callInfo = board.callInfo;
       spots = filterSpotBoard(
-        mergedSpotBoard(bySource, filters.disabledSources),
+        mergedSpotBoard(bySource, filters.disabledSources, entityOf: (call) => callInfo[call]?.entityPrefix),
         filters,
         vfoBand: vfo.band,
         vfoMode: vfo.mode,

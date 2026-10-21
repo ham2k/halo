@@ -46,6 +46,8 @@ class _FakeExtensions extends ExtensionService {
   @override
   Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async => (controls: controls, loadFailed: false);
 
+  // Every call one entity: the second merge pass joins calls only once their
+  // entities are known and agree.
   @override
   Future<Map<String, dynamic>?> lookupCall(
     String call, {
@@ -54,15 +56,17 @@ class _FakeExtensions extends ExtensionService {
     bool online = true,
     bool recentContext = false,
     String? streakKey,
-  }) async => null;
+  }) async => {
+    'guess': {'entityPrefix': 'K'},
+  };
 }
 
-Map<String, dynamic> _spot(String call, {String band = '20m', double freq = 14250.0, int? timeInMillis}) => {
+Map<String, dynamic> _spot(String call, {String band = '20m', double freq = 14250.0, int? timeInMillis, List<Map<String, dynamic>> refs = const []}) => {
   'their': {'call': call},
   'freq': freq,
   'band': band,
   'mode': 'SSB',
-  'refs': const <Map<String, dynamic>>[],
+  'refs': refs,
   'spot': {'timeInMillis': timeInMillis ?? nowMillis() - 60000, 'source': 'test'},
   'hookKey': 'test',
 };
@@ -198,13 +202,16 @@ void main() {
   });
 
   testWidgets('a merged multi-op row that merely includes us keeps its QSO affordances', (tester) async {
-    // Same freq, same (empty) refs, non-digital and within 10 minutes: the
-    // second merge pass folds these into one 'W1XYZ,N0CALL' row. W1XYZ is a
+    // Same freq, same refs, non-digital and within 10 minutes: the second
+    // merge pass folds these into one 'W1XYZ,N0CALL' row. W1XYZ is a
     // workable station, so the row must NOT be pinned or claimed as self —
     // an any-of predicate here would make W1XYZ unreachable from the board.
+    const park = [
+      {'type': 'pota', 'ref': 'US-0001'},
+    ];
     final services = await servicesWith([
-      _spot('N0CALL', freq: 14285.0, timeInMillis: nowMillis() - 120000),
-      _spot('W1XYZ', freq: 14285.0, timeInMillis: nowMillis() - 60000),
+      _spot('N0CALL', freq: 14285.0, timeInMillis: nowMillis() - 120000, refs: park),
+      _spot('W1XYZ', freq: 14285.0, timeInMillis: nowMillis() - 60000, refs: park),
     ]);
     final suggested = <Map<String, dynamic>>[];
     await pumpPanel(tester, services: services, onSuggestQso: (qso, {reveal = true}) => suggested.add(qso));

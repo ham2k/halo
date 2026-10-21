@@ -147,30 +147,45 @@ List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> sp
   return merged;
 }
 
-/// Pass 2: same frequency (0.1kHz) and time (10min), with an identical ref
-/// set — merge the second spot's callsign into the first's (comma-joined)
-/// instead of listing it again. Skips digital modes, where many operators
-/// can share one frequency at once.
-List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> spots) {
+/// The DXCC entity every operator on [spot] resolves to through [entityOf],
+/// or null when any of them is unknown or they disagree.
+String? _entityOfSpot(Map<String, dynamic> spot, String? Function(String call) entityOf) {
+  String? entity;
+  for (final call in spotOperatorCalls(spot)) {
+    final e = entityOf(call);
+    if (e == null || (entity != null && e != entity)) return null;
+    entity = e;
+  }
+  return entity;
+}
+
+/// Pass 2: same frequency (0.1kHz) and time (10min), with an identical,
+/// non-empty ref set and the same DXCC entity — merge the second spot's
+/// callsign into the first's (comma-joined) instead of listing it again: a
+/// multi-op activation of the same reference. Skips digital modes, where
+/// many operators can share one frequency at once. A shared reference is the
+/// only evidence two calls are one station, so ref-less spots (DX cluster,
+/// RBN) never merge — PoLo merges two empty ref sets as "identical"; we
+/// deliberately don't. Nor do two calls from different entities, or one
+/// whose entity [entityOf] does not know yet: one activation is one
+/// country, and a wrong merge hides a station where a missed one only
+/// costs a row.
+List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> spots, {required String? Function(String call) entityOf}) {
   final merged = <Map<String, dynamic>>[];
   for (final spot in spots) {
     Map<String, dynamic>? match;
-    // A call-less spot (a malformed hook result — Spot.their.call is
-    // required by the SDK type, but nothing enforces that across the JS
-    // bridge at runtime) is never merged into another's call list — checked
-    // here for the spot BEING merged, and in the loop below for a call-less
-    // spot already sitting in `merged` as a would-be TARGET — either
-    // direction would otherwise produce a dangling ",CALL" or "CALL,".
-    if (!_isDigital(_modeOf(spot)) && (_callOf(spot)?.isNotEmpty ?? false)) {
+    if (!_isDigital(_modeOf(spot))) {
       final freq = _freqOf(spot);
       final refs = _refsOf(spot);
-      if (freq != null) {
+      // A call-less spot (a malformed hook result — Spot.their.call is
+      // required by the SDK type, but nothing enforces that across the JS
+      // bridge at runtime) has no entity, so the entity checks keep it out
+      // of a merge on either side, as the spot BEING merged and as a
+      // would-be TARGET — either would otherwise produce a dangling ",CALL"
+      // or "CALL,".
+      final entity = _entityOfSpot(spot, entityOf);
+      if (freq != null && refs.isNotEmpty && entity != null) {
         for (final other in merged) {
-          // The same guard as above, applied to the OTHER side of the merge:
-          // a call-less spot already sitting in `merged` must never be a
-          // match target either, or the appended call lands on an empty
-          // existingCall and produces a dangling ",CALL".
-          if (_callOf(other)?.isNotEmpty != true) continue;
           final otherFreq = _freqOf(other);
           if (otherFreq == null) continue;
           if ((freq - otherFreq).abs() > 0.1) continue;
@@ -178,6 +193,7 @@ List<Map<String, dynamic>> mergeSpotsByFreqAndRefs(List<Map<String, dynamic>> sp
           final otherRefs = _refsOf(other);
           if (refs.length != otherRefs.length) continue;
           if (!otherRefs.every((r) => refs.any((x) => x['ref'] == r['ref']))) continue;
+          if (_entityOfSpot(other, entityOf) != entity) continue;
           match = other;
           break;
         }
@@ -428,11 +444,18 @@ class SpotBoardFilters {
 
 /// Every held spot from a source the operator has not switched off, combined
 /// by both merge passes — the board before any band/mode/age narrowing.
-List<Map<String, dynamic>> mergedSpotBoard(Map<String, List<Map<String, dynamic>>> spotsBySource, Set<String> disabledSources) => mergeSpotsByFreqAndRefs(
+/// [entityOf] resolves a single callsign to its DXCC entity prefix, as
+/// `SpotBoardService.callInfo` holds it.
+List<Map<String, dynamic>> mergedSpotBoard(
+  Map<String, List<Map<String, dynamic>>> spotsBySource,
+  Set<String> disabledSources, {
+  required String? Function(String call) entityOf,
+}) => mergeSpotsByFreqAndRefs(
   mergeSpotsByCallAndFreq([
     for (final entry in spotsBySource.entries)
       if (!disabledSources.contains(entry.key)) ...entry.value,
   ]),
+  entityOf: entityOf,
 );
 
 /// What [filters] admit of the [merged] board, sorted their way, and the
