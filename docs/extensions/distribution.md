@@ -573,7 +573,7 @@ counts as the catalog's own here. The row and the details show the track, and
 the details' **Follow stable releases only** puts it back on stable; an
 uninstall or a file install clears it with the rest of the record.
 
-At most once every six hours — on launch and on resume — the app asks the
+At most once a day — on launch and on resume — the app asks the
 catalog whether anything installed has a newer release, and says so in the
 status bar and on the row; the notice comes down with the last update taken.
 It never installs unasked: the notice's **Update all** is the panel's own,

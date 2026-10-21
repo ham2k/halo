@@ -160,8 +160,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     // Fresh on every opening, cache bypassed: the operator has come to see
     // what the catalog holds, and an answer from four minutes ago is one that
     // predates whatever they came to look for. The update check goes with it —
-    // it runs on a six-hour timer of its own, and Pending Updates would
-    // otherwise show what was true this morning.
+    // left alone it asks at most once a day, and Pending Updates would
+    // otherwise show what was true yesterday.
     if (_catalogShown) {
       unawaited(_loadCatalog(force: true));
       unawaited(widget.services.catalogUpdateCheck.check(force: true, announce: false));

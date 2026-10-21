@@ -573,7 +573,7 @@ void main() {
     test('a connection failure, a timeout, or a dart:io failure on the catalog is reported, not noticed', () {
       // IOClient hands a TLS handshake or socket failure up unwrapped, so
       // the cause is not always a ClientException; matched on
-      // ClientException alone, a refused handshake on the six-hourly check
+      // ClientException alone, a refused handshake on the daily check
       // would notify the operator about a server they never asked about.
       for (final cause in [ClientException('connection refused'), TimeoutException('5s'), HandshakeException('tls'), const SocketException('reset')]) {
         final decision = ErrorPolicy.decide(CatalogUnreachable(url, cause));
@@ -583,7 +583,7 @@ void main() {
     });
 
     test('an error status on the catalog is reported, not noticed', () {
-      // A challenge page or a maintenance response in front of the six-hourly
+      // A challenge page or a maintenance response in front of the daily
       // check. Unclassified, the default notify puts a notice in front of an
       // operator who asked for nothing.
       final decision = ErrorPolicy.decide(CatalogRefused(url, 503));

@@ -738,7 +738,7 @@ class CatalogService {
 /// stops running on the spot, with a notice carrying the catalog's note,
 /// because the release it names has been pulled for a reason.
 class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
-  static const interval = Duration(hours: 6);
+  static const interval = Duration(hours: 24);
   static const noticeKey = 'catalog:updates';
   static String revokedNoticeKey(String key) => 'catalog:revoked:$key';
 
@@ -929,7 +929,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Records each revoked pair that is installed, applies it, and tells the
-  /// operator once. The RECORD is what says "told": a check every six hours
+  /// operator once. The RECORD is what says "told": a check once a day
   /// must not repeat the notice, and the operator's own switch cannot stand
   /// in for it — an extension they had already switched off is revoked all
   /// the same, and would otherwise never learn it.

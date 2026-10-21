@@ -407,7 +407,7 @@ void main() {
 
     test('one track going unanswered fails the whole check, so it is asked again', () async {
       // A partial answer stamped as done would leave the unanswered track
-      // without an update offer for six hours.
+      // without an update offer for a day.
       final settings = await settingsWith({
         'extensionInstalledFrom': jsonEncode({
           'ki2d-unstable': {'host': kCatalogHost, 'sha256': _sha, 'version': '0.1.0', 'channel': 'unstable'},
@@ -752,7 +752,7 @@ void main() {
       // for an installed version the channel cannot see — every check, for
       // an install put back on stable from an unstable prerelease. Announced,
       // it is an "update available" that Update all finds nothing to take
-      // for, every six hours.
+      // for, every day.
       final check = await checker(
         (_) async => answer(
           updates: [
@@ -898,7 +898,7 @@ void main() {
       expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
     });
 
-    test('asks at most once per six hours, judged by the persisted stamp', () async {
+    test('asks at most once per day, judged by the persisted stamp', () async {
       var requests = 0;
       var now = 1_800_000_000_000;
       final check = await checker((_) async {
@@ -908,7 +908,7 @@ void main() {
 
       expect(await check.check(), isTrue);
       expect(settings.catalogUpdateCheckedAt, now);
-      now += const Duration(hours: 5).inMilliseconds;
+      now += const Duration(hours: 23).inMilliseconds;
       expect(await check.check(), isFalse);
       expect(requests, 1);
       now += const Duration(hours: 2).inMilliseconds;
@@ -994,7 +994,7 @@ void main() {
       expect(notice.title, contains('LLOTA'));
       expect(notice.text, contains('It uploads the whole log.'));
 
-      // On record: the six-hourly check must not announce the same pair
+      // On record: the daily check must not announce the same pair
       // again, nor restart the runtime over it.
       statusBar.dismissNotice(CatalogUpdateCheck.revokedNoticeKey('k2hrc-llota'));
       await check.check(force: true);
