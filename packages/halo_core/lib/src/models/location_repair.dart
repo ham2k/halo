@@ -41,7 +41,7 @@ import 'qson_values.dart';
 /// A placeholder locator ([isPlaceholderGrid]) is left alone, both halves of
 /// it: `AA00` decodes like any other square, and reading it as a statement
 /// about where the station is would drop a real coordinate in favour of a
-/// corner of the Atlantic that names nothing.
+/// point at the South Pole that names nothing.
 bool repairStatedLocation(Map<String, dynamic> data) {
   final grid = asQsonString(data['grid'])?.trim();
   if (grid != null && isPlaceholderGrid(grid)) return false;
@@ -91,7 +91,16 @@ bool _holds(Map<String, dynamic> data, String key) => data[key] != null;
 /// so judging a locator against it could place the station on the wrong side
 /// of the meridian, and dropping the pair it disagrees with would cost the
 /// record the coordinate its own locator was written from.
+///
+/// A placeholder pair ([isPlaceholderLocation]) IS returned, though no reader
+/// in the app takes it as a location: beside a real locator it contradicts it
+/// and goes, or extension hooks and chasing programs, which receive the stored
+/// record raw, would be handed a pair that outranks the square.
 GridLocation? _statedCoordinate(Map<String, dynamic> data) {
   if (data['locSource'] == 'prefix') return null;
-  return locationFromLatLon(asQsonCoordinate(data['lat'], latitude: true), asQsonCoordinate(data['lon'], latitude: false));
+  final lat = asQsonCoordinate(data['lat'], latitude: true);
+  final lon = asQsonCoordinate(data['lon'], latitude: false);
+  if (lat == null || lon == null) return null;
+  final pair = GridLocation(lat.toDouble(), lon.toDouble());
+  return isPlaceholderLocation(pair) ? pair : locationFromLatLon(lat, lon);
 }

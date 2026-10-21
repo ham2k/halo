@@ -181,7 +181,8 @@ String _locationToGrid(double lat, double lon, {required bool extended}) {
 }
 
 /// A coordinate pair as an exact location, or null when either half is
-/// missing, non-numeric, not finite, or out of range.
+/// missing, non-numeric, not finite, or out of range — or when the pair is a
+/// placeholder rather than a position.
 ///
 /// Takes [Object]s because every caller reads them straight out of a JSON
 /// blob (`operation.data`, `qso.their.guess`, an activity ref) where the type
@@ -189,14 +190,33 @@ String _locationToGrid(double lat, double lon, {required bool extended}) {
 /// arriving as a string from a data file that never got parsed. Answering
 /// "is there an exact location here?" in one place keeps every caller from
 /// re-deciding what counts.
+///
+/// A placeholder pair ([isPlaceholderLocation]) is refused too: it would
+/// outrank the grid, state and entity fallbacks with a point at Null Island
+/// or the South Pole.
 GridLocation? locationFromLatLon(Object? lat, Object? lon) {
   if (lat is! num || lon is! num) return null;
   final latitude = lat.toDouble();
   final longitude = lon.toDouble();
   if (!latitude.isFinite || !longitude.isFinite) return null;
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
-  return GridLocation(latitude, longitude);
+  final location = GridLocation(latitude, longitude);
+  return isPlaceholderLocation(location) ? null : location;
 }
+
+/// Whether [location] is a pair some writer stores when it has no position at
+/// all: exactly `0,0`, the default a writer with no fix leaves behind, or the
+/// center of a placeholder grid ([isPlaceholderGrid]), which QRZ sends beside
+/// `AA00aa` for a station it cannot place.
+///
+/// Mirrored by the ADIF exporter's `isPlaceholderLocation`
+/// (extensions/core/adif/src/grid.ts) — a file must not state a position the
+/// screen refuses.
+bool isPlaceholderLocation(GridLocation location) =>
+    (location.latitude == 0 && location.longitude == 0) ||
+    // Both placeholder centers sit south of -89°; the bound keeps every real
+    // coordinate from parsing two locators on each read.
+    (location.latitude < -89 && _placeholderGrids.any((grid) => isGridCenter(location, grid)));
 
 /// The coordinate a record carries, or null when the pair it holds is really
 /// a DXCC entity centroid taken straight from the country file. Reads a

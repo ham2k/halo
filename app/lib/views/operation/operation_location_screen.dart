@@ -256,11 +256,19 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     // What tapping the row stores (`gpsLocationData`), so the line reads the
     // same as the location it would become: the square, and the rounded
     // coordinate behind it.
-    final fixData = location.location == null ? null : gpsLocationData(location.location!);
+    // A reading of exactly 0,0 is a receiver with nothing to report yet
+    // ([isPlaceholderLocation]); adopted, it would store a `JJ00aa` locator
+    // that places the station at Null Island although the pair is refused.
+    final fix = switch (location.location) {
+      final fix? when !isPlaceholderLocation(fix) => fix,
+      _ => null,
+    };
+    final fixData = fix == null ? null : gpsLocationData(fix);
     final fixText = fixData == null
         ? ''
         : '${fixData['grid']} (${(fixData['lat'] as double).toStringAsFixed(capturedFixDecimals)}, ${(fixData['lon'] as double).toStringAsFixed(capturedFixDecimals)})';
     final gpsSubtitle = switch (location.status) {
+      LocationStatus.available when fix == null => t.locating,
       LocationStatus.available => localProblem == null ? fixText : '$fixText — $localProblem',
       LocationStatus.unknown || LocationStatus.determining => t.locating,
       LocationStatus.permissionDenied => t.permissionDenied,
@@ -320,7 +328,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
                 // Live fixes only: the service keeps its last position while it
                 // says "Locating…" or that it was denied, and that one can be
                 // hours old.
-                onTap: location.status != LocationStatus.available || location.location == null ? null : () => _adoptFix(location.location!),
+                onTap: location.status != LocationStatus.available || fix == null ? null : () => _adoptFix(fix),
               ),
               for (final (index, suggestion) in refsWithGrid.indexed)
                 ListTile(

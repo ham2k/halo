@@ -405,6 +405,20 @@ void main() {
       expect(popped!['gridSource'], isNot('gps'));
     });
 
+    // A receiver with nothing to report yet can read exactly 0,0. Adopted, it
+    // stores a JJ00aa locator that places the station at Null Island although
+    // every reader refuses the pair.
+    testWidgets('Device GPS cannot be picked from a 0,0 reading', (tester) async {
+      final gps = FakeGpsLocation()..fix = const GridLocation(0, 0);
+      await open(tester, withPark(), location: gps);
+      expect(find.text(AppLocale.en.buildSync().operationLocationScreen.locating), findsOneWidget);
+      await tester.tap(find.text(AppLocale.en.buildSync().operationLocationScreen.deviceGps));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(popped!['gridSource'], isNot('gps'));
+    });
+
     // The refs always follow the FIRST park. A second one picked as `refs`
     // would be moved back to the first at their next edit, undoing the one
     // pick that changed anything.

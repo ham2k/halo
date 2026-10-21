@@ -323,6 +323,58 @@ void main() {
     expect(content, isNot(contains('MY_LON')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  // The app refuses a placeholder pair as a location (locations.md); a file
+  // that still states one publishes the station at the South Pole or Null
+  // Island to every program that reads it, while the screen shows it right.
+  group('a placeholder pair is no coordinate in the file either', () {
+    test('a lookup that answered AA00aa and its center exports neither', () async {
+      final content = await export(
+        includePrivateData: true,
+        qsoOverrides: {
+          'their': {
+            'call': 'N2ISM',
+            'guess': {'call': 'N2ISM', 'grid': 'AA00aa', 'lat': -89.979167, 'lon': -179.958333, 'state': 'SC', 'entityPrefix': 'K'},
+          },
+        },
+      );
+      expect(content, isNot(contains('<LAT:')));
+      expect(content, isNot(contains('<LON:')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test("an entered 0,0 for the other station gives way to the lookup's location", () async {
+      final content = await export(
+        includePrivateData: true,
+        qsoOverrides: {
+          'their': {
+            'call': 'W1AW',
+            'lat': 0,
+            'lon': 0,
+            'guess': {'call': 'W1AW', 'grid': 'FN31pr', 'lat': 41.7146, 'lon': -72.7273, 'state': 'CT', 'entityPrefix': 'K'},
+          },
+        },
+      );
+      expect(content, isNot(contains('E000 00.000')));
+      expect(content, contains('<GRIDSQUARE:6>FN31pr'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('an operation stored at 0,0 beside its grid exports the grid, not Null Island', () async {
+      final content = await export(includePrivateData: true, operationOverrides: {'lat': 0, 'lon': 0});
+      expect(content, contains('<MY_GRIDSQUARE:6>CM87ss'), reason: 'a locator derived from 0,0 is JJ00aa');
+      expect(content, isNot(contains('MY_LAT')));
+      expect(content, isNot(contains('MY_LON')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test("a contact holding only 0,0 for our side takes the operation's place", () async {
+      final content = await export(
+        includePrivateData: true,
+        qsoOverrides: {
+          'our': {'call': 'N0DEV', 'sent': '59', 'lat': 0, 'lon': 0},
+        },
+      );
+      expect(content, contains('<MY_GRIDSQUARE:6>CM87ss'));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
   // FREQ_RX equal to FREQ says "split" about a contact that wasn't one, so the
   // pair is written only where the two frequencies actually differ.
   test('a split contact records the frequency we listened on', () async {

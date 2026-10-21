@@ -29,7 +29,7 @@ import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, H
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
-import { isGridCenter } from "./grid.ts"
+import { isGridCenter, isPlaceholderLocation } from "./grid.ts"
 import { adifAddress } from "./address.ts"
 import { adifCounty } from "./county.ts"
 import { field, renderRow } from "./fields.ts"
@@ -59,12 +59,21 @@ const DEFAULT_PROGRAM_ID = "Ham2K Logger"
 /// square is already going out as `GRIDSQUARE` — writing its middle as
 /// `LAT`/`LON` too would publish a point they never claimed, and would take
 /// precedence over the square for every reader.
+///
+/// Nor is a placeholder pair (`isPlaceholderLocation`), which names no
+/// location at all.
 function theirCoordinate(their: Record<string, unknown>, theirGuess: Record<string, unknown>): { lat: unknown; lon: unknown } | undefined {
-  if (their.locSource !== "prefix" && their.lat != null && their.lon != null && !isGridCenter(their.lat, their.lon, their.grid)) {
+  if (
+    their.locSource !== "prefix" &&
+    their.lat != null &&
+    their.lon != null &&
+    !isGridCenter(their.lat, their.lon, their.grid) &&
+    !isPlaceholderLocation(their.lat, their.lon)
+  ) {
     return { lat: their.lat, lon: their.lon }
   }
   if (their.grid != null) return undefined
-  if (theirGuess.locSource === "prefix") return undefined
+  if (theirGuess.locSource === "prefix" || isPlaceholderLocation(theirGuess.lat, theirGuess.lon)) return undefined
   return { lat: theirGuess.lat, lon: theirGuess.lon }
 }
 
@@ -101,7 +110,7 @@ const WELL_FORMED_GRID = /^[A-R]{2}[0-9]{2}(?:[A-X]{2}(?:[0-9]{2}(?:[A-X]{2})?)?
 
 function gridForExport(grid: unknown, lat: unknown, lon: unknown, digits: number): string | undefined {
   const stored = typeof grid === "string" ? grid : undefined
-  if (typeof lat === "number" && typeof lon === "number" && !isGridCenter(lat, lon, stored)) {
+  if (typeof lat === "number" && typeof lon === "number" && !isGridCenter(lat, lon, stored) && !isPlaceholderLocation(lat, lon)) {
     return digits >= 8 ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon)
   }
   return stored
@@ -471,7 +480,9 @@ function baseFieldsFor(
   // California beside MY_LAT/MY_LON in Nevada, and locations.md's rule says
   // the coordinate wins, so the record reads as a place the operator never
   // claimed.
-  const ourLocation = our.grid != null || our.lat != null || our.lon != null ? our : operation
+  // A placeholder pair ([isPlaceholderLocation]) names no location, so a
+  // contact holding only one takes the operation's.
+  const ourLocation = our.grid != null || ((our.lat != null || our.lon != null) && !isPlaceholderLocation(our.lat, our.lon)) ? our : operation
   const ourGrid = ourLocation.grid as string | undefined
   const ourDigits = includePrivateData ? gridDigits : 6
   // Capped as well as derived, unlike the worked station's below: a stored
@@ -545,9 +556,9 @@ function baseFieldsFor(
     // Our own side, under the same rule as [theirCoordinate]: a pair that is
     // only the stated grid's center says nothing `MY_GRIDSQUARE` did not, and
     // a reader would take it as the finer of the two.
-    const ourStatedSquare = isGridCenter(ourLocation.lat, ourLocation.lon, ourGrid)
-    add("MY_LAT", ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lat, "lat"))
-    add("MY_LON", ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lon, "lon"))
+    const ourNoCoordinate = isGridCenter(ourLocation.lat, ourLocation.lon, ourGrid) || isPlaceholderLocation(ourLocation.lat, ourLocation.lon)
+    add("MY_LAT", ourNoCoordinate ? undefined : formatAdifCoordinate(ourLocation.lat, "lat"))
+    add("MY_LON", ourNoCoordinate ? undefined : formatAdifCoordinate(ourLocation.lon, "lon"))
   }
 
   // Built once per record, on the first field that will actually render —

@@ -195,7 +195,7 @@ the records this exists for.
 
 A placeholder (`AA00`) is left alone on both counts. It decodes like any other
 square, so judging a coordinate against it would drop a real fix in favour of a
-corner of the Atlantic that names nothing.
+point at the South Pole that names nothing.
 
 **An operation's record, and nothing else.** The first rule rests entirely on
 both halves being written together, and that holds for an operation's location
@@ -253,6 +253,44 @@ What this cannot catch: a pair that lost the tag on its way through another
 program — notably a HaLo ADIF export written before this rule existed, read
 back in as `LAT`/`LON`. There is nothing in such a record to tell it from a
 real fix.
+
+### Placeholder pairs
+
+Two pairs are what a writer stores when it has no position at all, tag or no
+tag (`isPlaceholderLocation`): exactly `0,0`, the default a writer with no fix
+leaves behind, and the center of a placeholder grid (`AA00`, `AA00aa`), which
+QRZ sends beside `AA00aa` for a station it cannot place. Screening the grid
+alone is not enough, because the pair beside it outranks it: the station would
+land at the South Pole instead of falling through to its state or entity.
+
+- **Reading.** `locationFromLatLon` refuses both, so every resolver falls
+  through to the grid, the state and the entity. The ADIF exporter carries the
+  same rule (`adif/src/grid.ts`), so a file never states a position the screen
+  refuses — neither as `LAT`/`LON` nor as a locator derived from the pair.
+- **Has a place.** A side holding only a placeholder pair has none: the
+  operation's place is copied onto it (`withPlaceFrom`), and the exporter takes
+  the operation's location for it.
+- **Repair.** On an operation arriving by sync or QSON import, a placeholder
+  pair beside a real locator contradicts it and goes (`repairStatedLocation`).
+  Anywhere else it stays stored: the app and the exporter refuse it, but
+  extension hooks receive the record raw.
+- **Capture.** A GPS reading of exactly `0,0` is a receiver with nothing to
+  report yet. Neither the setup sheet's automatic capture nor the location
+  screen's Device GPS row adopts one: captured, it would arrive with a
+  `JJ00aa` locator derived from it, and that locator places the station at
+  Null Island although the pair itself is refused. The reading is still
+  offered as the live position; only storing it is refused.
+
+What this cannot catch, because each stores a locator derived from the pair
+and that locator is read like any other:
+
+- a lookup answering `0,0` with no grid, from which `mergeLookup` derives
+  `JJ00aa`;
+- an operation captured from a `0,0` reading before capture refused one. Its
+  `JJ00aa` and the pair agree, so no repair touches it.
+
+Nor does the repair sweep records already stored locally; it runs on what
+arrives.
 
 ## Display
 

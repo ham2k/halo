@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { gridCell, isGridCenter } from "./grid.ts"
+import { gridCell, isGridCenter, isPlaceholderLocation } from "./grid.ts"
 
 test("a cell knows how big it is, which is what its length claims", () => {
   // Four characters is a degree of latitude; every level below divides it.
@@ -84,4 +84,17 @@ test("a malformed tail yields the coarser cell the locator does agree on", () =>
 test("half a coordinate is no coordinate", () => {
   assert.equal(isGridCenter(41.7135, undefined, "FN31pr"), false)
   assert.equal(isGridCenter(undefined, -72.7278, "FN31pr"), false)
+})
+
+test("a placeholder pair is recognised, and nothing near it is", () => {
+  // A guard wider than the placeholder would drop real stations from the file;
+  // one narrower would publish QRZ's South Pole stand-in as a coordinate.
+  assert.equal(isPlaceholderLocation(0, 0), true)
+  assert.equal(isPlaceholderLocation(-89.979167, -179.958333), true, "what QRZ sends beside AA00aa")
+  assert.equal(isPlaceholderLocation(-89.979, -179.958), true, "the same center, rounded")
+  assert.equal(isPlaceholderLocation(-89.5, -179), true, "the AA00 center")
+  assert.equal(isPlaceholderLocation(0, 0.5), false)
+  assert.equal(isPlaceholderLocation(-89.2, -178.5), false, "inside AA00, but not its center")
+  assert.equal(isPlaceholderLocation(-90, 0), false, "the South Pole station")
+  assert.equal(isPlaceholderLocation(undefined, 0), false)
 })

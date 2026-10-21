@@ -81,6 +81,17 @@ void main() {
       expect(fields['lat'], 41.7292);
     });
 
+    test('drops a placeholder pair beside a real locator', () {
+      // No reader in the app takes 0,0 or the AA00aa center as a location, but
+      // extension hooks receive the stored record raw; kept, the pair outranks
+      // the square for them and places the station at Null Island or the pole.
+      for (final (lat, lon) in [(0, 0), (-89.979167, -179.958333)]) {
+        final fields = <String, dynamic>{'grid': 'FN31pr', 'lat': lat, 'lon': lon};
+        expect(repairStatedLocation(fields), isTrue, reason: '$lat,$lon');
+        expect(fields, {'grid': 'FN31pr'});
+      }
+    });
+
     test('never reads a country-file centroid as the coordinate to judge', () {
       // A `locSource: 'prefix'` pair may be west-positive and is refused wherever
       // one is read; judging the grid against it would mirror the station

@@ -58,10 +58,28 @@ void main() {
 
     test('ignores placeholder grids and falls back to the state centroid', () {
       // AA00/AA00aa are "no real location" placeholders some sources emit —
-      // plotting them would put the QSO in the Gulf of Guinea.
+      // plotting them would put the QSO at the South Pole.
       final location = locationForQsoInfo(grid: 'AA00aa', entityPrefix: 'K', state: 'CA')!;
       expect(location.latitude, closeTo(37.6, 0.1));
       expect(location.longitude, closeTo(-119.7, 0.1));
+    });
+
+    test('falls back past a lookup that sent a placeholder grid AND its center', () {
+      // Without refusing the pair, it outranks the screened grid and draws the
+      // station at the South Pole.
+      const qso = Qso(
+        uuid: 'q',
+        operationUuid: 'op',
+        data: {
+          'their': {
+            'guess': {'grid': 'AA00aa', 'lat': -89.979167, 'lon': -179.958333, 'entityPrefix': 'K', 'state': 'SC'},
+          },
+        },
+      );
+      expect(qso.theirExactLocation, isNull);
+      final location = locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState)!;
+      expect(location.latitude, closeTo(33.9, 1));
+      expect(location.longitude, closeTo(-80.9, 1));
     });
 
     test('uses the state/province centroid when there is no grid', () {

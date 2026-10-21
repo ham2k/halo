@@ -9,6 +9,7 @@ import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
+import '../ham/grid.dart';
 import 'models.dart';
 
 /// Ordered: a later value outranks an earlier one in a slot.
@@ -522,9 +523,12 @@ Object? withSortedKeys(Object? value) => switch (value) {
 /// (docs/design/locations.md), copied together or not at all.
 const _placeKeys = ['grid', 'gridSource', 'lat', 'lon'];
 
+/// A placeholder pair ([isPlaceholderLocation]) is no place: counted as one,
+/// it would keep the operation's real place off a contact that every reader
+/// then finds unlocated.
 bool _hasPlace(Map<String, dynamic> side) {
   final grid = side['grid'];
-  return (grid is String && grid.isNotEmpty) || (side['lat'] is num && side['lon'] is num);
+  return (grid is String && grid.isNotEmpty) || locationFromLatLon(side['lat'], side['lon']) != null;
 }
 
 /// [side] — a contact's `our`, or a station a program is asked about — with
@@ -534,8 +538,12 @@ bool _hasPlace(Map<String, dynamic> side) {
 /// operation does.
 Map<String, dynamic> withPlaceFrom(Map<String, dynamic> side, Map<String, dynamic> from) {
   if (_hasPlace(side) || !_hasPlace(from)) return side;
+  // The side's own place keys go even though it has no place: a placeholder
+  // pair left beside the operation's grid would outrank it for any program
+  // reading the station raw.
   return {
-    ...side,
+    for (final MapEntry(:key, :value) in side.entries)
+      if (!_placeKeys.contains(key)) key: value,
     for (final key in _placeKeys)
       if (from[key] != null && from[key] != '') key: from[key],
   };

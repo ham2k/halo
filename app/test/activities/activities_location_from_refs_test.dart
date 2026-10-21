@@ -197,6 +197,21 @@ void main() {
       expect(draft?.data['gridSource'], gpsGridSource);
     });
 
+    // A receiver with nothing to report yet can read exactly 0,0. Captured,
+    // its JJ00aa locator places the station at Null Island although every
+    // reader refuses the pair.
+    testWidgets('a 0,0 reading is not captured', (tester) async {
+      final gps = FakeGpsLocation();
+      final (services, operation) = await tester.runAsync(() => _harness(location: gps)) as (HaLoServices, Operation);
+      Operation? draft;
+      await _pumpSheet(tester, services, operation, onChanged: (op) => draft = op);
+
+      gps.setFix(const GridLocation(0, 0));
+      await _pumpFrames(tester);
+
+      expect(draft, isNull);
+    });
+
     // The service keeps its last position through a restart's `determining`
     // and a stream error. Read as live, it would place a new operation
     // wherever the device was hours ago.

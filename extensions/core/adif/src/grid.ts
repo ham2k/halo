@@ -101,3 +101,18 @@ export function isGridCenter(lat: unknown, lon: unknown, grid: unknown): boolean
   if (!cell) return false
   return Math.abs(lat - cell.lat) <= cell.latSize * CENTER_TOLERANCE && Math.abs(lon - cell.lon) <= cell.lonSize * CENTER_TOLERANCE
 }
+
+/// Locators some sources emit for a station they cannot place — halo_core's
+/// `_placeholderGrids`.
+const PLACEHOLDER_GRIDS = ["AA00", "AA00AA"]
+
+/// Whether the pair is one a writer stores when it has no position at all:
+/// exactly 0,0, or a placeholder locator's center (QRZ sends `AA00aa` and
+/// that center for a station it cannot place). The port of halo_core's
+/// `isPlaceholderLocation`, which keeps the app from reading either as a
+/// location — a file must not state a position the screen refuses.
+export function isPlaceholderLocation(lat: unknown, lon: unknown): boolean {
+  if (typeof lat !== "number" || typeof lon !== "number") return false
+  if (lat === 0 && lon === 0) return true
+  return lat < -89 && PLACEHOLDER_GRIDS.some((grid) => isGridCenter(lat, lon, grid))
+}

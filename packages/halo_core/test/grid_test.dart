@@ -171,6 +171,23 @@ void main() {
       expect(locationFromLatLon(91, 0), isNull);
       expect(locationFromLatLon(0, -181), isNull);
     });
+
+    test('refuses a placeholder pair, so the coarser fallbacks still answer', () {
+      // Either pair would outrank the grid/state/entity chain and draw the
+      // station at Null Island or the South Pole.
+      expect(locationFromLatLon(0, 0), isNull, reason: 'the default a writer with no fix leaves behind');
+      expect(locationFromLatLon(-89.979167, -179.958333), isNull, reason: 'what QRZ sends beside AA00aa');
+      expect(locationFromLatLon(-89.979, -179.958), isNull, reason: 'the same center, rounded');
+      expect(locationFromLatLon(-89.5, -179), isNull, reason: 'the AA00 center');
+    });
+
+    test('keeps real coordinates that sit near a placeholder', () {
+      // A guard wider than the placeholder itself would erase real stations.
+      expect(locationFromLatLon(0, 0.5), const GridLocation(0, 0.5), reason: 'on the equator');
+      expect(locationFromLatLon(0.5, 0), const GridLocation(0.5, 0), reason: 'on the prime meridian');
+      expect(locationFromLatLon(-90, 0), const GridLocation(-90, 0), reason: 'the South Pole station');
+      expect(locationFromLatLon(-89.2, -178.5), const GridLocation(-89.2, -178.5), reason: 'inside AA00, but not its center');
+    });
   });
 
   group('gridForDisplay', () {

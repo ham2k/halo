@@ -245,6 +245,10 @@ class OperationSheetState extends State<OperationSheet>
     final position = location.position;
     final fix = location.location;
     if (location.status != LocationStatus.available || position == null || fix == null) return;
+    // A reading of exactly 0,0 is a receiver with nothing to report yet
+    // ([isPlaceholderLocation]); captured, its `JJ00aa` locator would place
+    // the station at Null Island although the pair itself is refused.
+    if (isPlaceholderLocation(fix)) return;
     if (_operation.qsoCount > 0) return;
     // Zero or less is a platform that does not report one, not a perfect fix.
     final accuracy = position.accuracy > 0 ? position.accuracy : null;
