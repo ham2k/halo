@@ -16,6 +16,17 @@ class _NodeRuntime {
   StreamSubscription<Uint8List>? subscription;
   CatCancelToken? cancel;
 
+  /// Raw commands awaiting their reply ([_RadioControls.sendNodeRaw]): each
+  /// sees every chunk received, before the driver does.
+  final rawTaps = <void Function(Uint8List chunk)>{};
+
+  void heard(Uint8List chunk) {
+    if (rawTaps.isEmpty) return;
+    for (final tap in [...rawTaps]) {
+      tap(chunk);
+    }
+  }
+
   /// The last value moved between this node and the app's VFO, in either
   /// direction — the echo guard. Without it an app→radio tune and the
   /// radio's confirmation of it keep re-triggering each other.

@@ -7,6 +7,7 @@
 // matched to its question. It does NOT establish that a real HRD answers
 // this way; nothing has been captured from one.
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
@@ -412,6 +413,54 @@ void main() {
       run(const Duration(seconds: 6));
       expect(sink.sent.where((s) => s.endsWith('get frequency')).length - before, greaterThanOrEqualTo(2));
       session.teardown();
+    });
+  });
+
+  group('a raw command', () {
+    test('is asked in its turn, with the context, and its answer is not read as the driver\'s', () {
+      // HRD's replies name no command: written beside the queue, the raw
+      // command's `14200000` would answer the set in flight, and every answer
+      // after it the question before.
+      fakeAsync((async) {
+        final (:session, :sink) = _started();
+        session.setFrequency(14200);
+        final readings = sink.readings.length;
+        final answers = <String>[];
+        expect(session.sendRaw(utf8.encode('get frequency\nget radio\n'), onAnswer: (a) => answers.add(utf8.decode(a))), 2);
+        expect(sink.sent.last, '[1] set frequency-hz 14200000', reason: 'one question on the wire at a time');
+
+        session.answer('OK');
+        expect(sink.sent.last, '[1] get frequency');
+        session.answer('14200000');
+        expect(answers, ['14200000\n']);
+        expect(sink.readings, hasLength(readings), reason: 'the extension\'s answer, not a reading');
+        expect(sink.sent.last, '[1] get radio');
+        session.answer('IC-7300');
+        expect(answers, ['14200000\n', 'IC-7300\n']);
+        session.teardown();
+      });
+    });
+
+    test('unanswered is answered empty, and the queue moves on', () {
+      fakeAsync((async) {
+        final (:session, :sink) = _started();
+        final answers = <List<int>>[];
+        session.sendRaw(utf8.encode('get nothing'), onAnswer: answers.add);
+        async.elapse(const Duration(seconds: 2));
+        expect(answers, [<int>[]]);
+        expect(sink.diagnostics, isEmpty, reason: 'said once a session, and kept for the driver\'s own questions');
+        session.teardown();
+      });
+    });
+
+    test('with no command in it is not sent', () {
+      fakeAsync((async) {
+        final (:session, :sink) = _started();
+        final sent = sink.sent.length;
+        expect(() => session.sendRaw(utf8.encode('  \n')), throwsFormatException);
+        expect(sink.sent, hasLength(sent));
+        session.teardown();
+      });
     });
   });
 }

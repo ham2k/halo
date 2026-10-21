@@ -336,4 +336,49 @@ void main() {
       session.teardown();
     });
   });
+
+  group('a raw message', () {
+    test('unanswered is answered empty, and leaves the driver\'s diagnostic for its own questions', () {
+      fakeAsync((async) {
+        final (:session, :sink) = _started();
+        final answers = <List<int>>[];
+        session.sendRaw(latin1.encode('<command:9>CmdNothing<parameters:0>'), onAnswer: answers.add);
+        expect(sink.sent.last, contains('CmdNothing'));
+        // Just past its answer timeout: any longer, and the driver's own polls
+        // queued behind it go unanswered too, which is theirs to report.
+        async.elapse(const Duration(milliseconds: 1001));
+        expect(answers, [<int>[]]);
+        expect(sink.diagnostics, isEmpty);
+        session.teardown();
+      });
+    });
+
+    test('wanting a reply is asked in its turn, and answered by the field that comes, as Commander sent it', () {
+      fakeAsync((async) {
+        final (:session, :sink) = _started();
+        final answers = <String>[];
+        final readings = sink.readings.length;
+        expect(session.sendRaw(latin1.encode('<command:10>CmdGetFreq<parameters:0>'), onAnswer: (a) => answers.add(latin1.decode(a))), 1);
+        expect(sink.sent.last, '<command:10>CmdGetFreq<parameters:0>');
+        session.feed('<CmdFreq:10>14,200.000');
+        expect(answers, ['<CmdFreq:10>14,200.000']);
+        expect(sink.readings, hasLength(readings), reason: 'the extension\'s answer, not a reading');
+        session.teardown();
+      });
+    });
+
+    test('wanting none goes out as a set does, and holds nothing up waiting for an answer', () {
+      // Asked, a raw set — which Commander never answers — would hold the
+      // line for the whole answer timeout and its drain.
+      fakeAsync((async) {
+        final (:session, :sink) = _started();
+        expect(session.sendRaw(latin1.encode('<command:5>CmdTX<parameters:0>')), 0);
+        expect(sink.sent.last, '<command:5>CmdTX<parameters:0>');
+        session.setFrequency(14200);
+        async.elapse(const Duration(milliseconds: 150));
+        expect(sink.sent.last, contains('CmdSetFreq'));
+        session.teardown();
+      });
+    });
+  });
 }

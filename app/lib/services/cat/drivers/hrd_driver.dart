@@ -24,6 +24,7 @@
 //
 // and then polls `get frequency` and `get dropdown-text {Mode}` (`Mode: USB`).
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../adaptive_poller.dart';
@@ -62,7 +63,7 @@ class HrdDriver extends EquipmentDriver {
 }
 
 /// What the outstanding request will answer.
-enum _Ask { context, dropdowns, modeList, buttons, frequency, mode, transmitting, set }
+enum _Ask { context, dropdowns, modeList, buttons, frequency, mode, transmitting, set, raw }
 
 /// Far longer than a local HRD takes to answer, short enough that a command
 /// it ignores costs one skipped poll rather than a frozen radio.
@@ -81,7 +82,7 @@ const _maxFrameLength = 64 * 1024;
 
 final _digits = RegExp(r'^\d+$');
 
-class HrdSession implements TransceiverSession {
+class HrdSession implements TransceiverSession, RawCommandSession {
   final EquipmentSink _sink;
 
   final Map<String, dynamic> _config;
@@ -138,6 +139,23 @@ class HrdSession implements TransceiverSession {
 
   void _ask(_Ask ask, String? Function() text) => _requests.ask(ask, _command(text));
 
+  /// An extension's raw commands, one per line, each asked like the driver's
+  /// own — framed, with this connection's context — and answered by HRD's
+  /// reply to it: HRD answers every command, a set included.
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    final commands = rawCommandLines(bytes);
+    for (final command in commands) {
+      _rawAnswers.add(onAnswer ?? (_) {});
+      _ask(_Ask.raw, () => command);
+    }
+    return commands.length;
+  }
+
+  /// Who waits for each raw command's answer, in the order asked — the order
+  /// the queue answers them in, since none is asked ahead of the rest.
+  final _rawAnswers = <void Function(List<int> answer)>[];
+
   /// One of the questions a session opens with, asked ahead of everything
   /// waiting when [retry] — what it learns is needed by the polls behind it.
   void _askOpening(_Ask ask, {bool retry = false}) {
@@ -152,6 +170,9 @@ class HrdSession implements TransceiverSession {
   }
 
   void _unanswered(_Ask ask) {
+    // Not the session's: an extension's command HRD ignores says nothing
+    // about the polls, and must not spend the one timeout diagnostic.
+    if (ask == _Ask.raw) return _rawAnswers.removeAt(0)(const []);
     if (ask == _Ask.transmitting) _txBackoff.unanswered();
     if (_isOpening(ask)) {
       final misses = _openingMisses[ask] = (_openingMisses[ask] ?? 0) + 1;
@@ -209,6 +230,7 @@ class HrdSession implements TransceiverSession {
         ..add(pending.sublist(frame.consumed));
       final ask = _requests.replyArrived();
       if (ask == null) continue;
+      if (ask == _Ask.raw) _rawAnswers.removeAt(0)(utf8.encode('${frame.text.trim()}\n'));
       _handleAnswer(ask, frame.text.trim());
       _requests.settle();
     }
@@ -266,7 +288,7 @@ class HrdSession implements TransceiverSession {
           _ => null,
         };
         if (pressed != null && _telemetry.noteTransmitting(pressed)) _sink.reportTransmitting(pressed);
-      case _Ask.set:
+      case _Ask.set || _Ask.raw:
         break;
     }
   }
@@ -342,6 +364,7 @@ class HrdSession implements TransceiverSession {
   void startUpdates() {
     _buffer.clear();
     _requests.clear();
+    _rawAnswers.clear();
     _txBackoff.reset();
     _prefix = '';
     _modeDropdown = null;
@@ -370,6 +393,7 @@ class HrdSession implements TransceiverSession {
     // HRD holds no per-client state; stopping the poll is the farewell.
     stopUpdates();
     _requests.clear();
+    _rawAnswers.clear();
     _telemetry.dispose();
   }
 }

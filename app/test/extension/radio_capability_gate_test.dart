@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The radio host calls are manifest capabilities (`requiresRadioRead`,
-// `requiresRadioWrite`). Ungated, any installed bundle could retune the rig,
-// drop the CAT link or key the transmitter from any hook, with nothing in its
-// manifest saying so.
+// `requiresRadioWrite`, `requiresRadioRaw`). Ungated, any installed bundle
+// could retune the rig, drop the CAT link or key the transmitter from any
+// hook, with nothing in its manifest saying so.
 //
 // Driven through the REAL kernel with hand-written probe bundles, because the
 // gate has two halves and either alone is worthless: the host checks a key, and
@@ -83,11 +83,26 @@ class FakeRadio extends Fake implements PanelRadioService {
     commands.add('spectrum');
     return {'accepted': true, 'state': null};
   }
+
+  @override
+  Future<Map<String, dynamic>> sendRaw(Map<String, dynamic> args) async {
+    commands.add('raw');
+    return {'accepted': true, 'state': null};
+  }
 }
 
-({String source, ExtensionInfo info}) bundle(String key, {bool read = false, bool write = false}) => (
+({String source, ExtensionInfo info}) bundle(String key, {bool read = false, bool write = false, bool raw = false}) => (
   source: probe(key),
-  info: ExtensionInfo(key: key, file: '$key.js', source: ExtensionSource.dev, core: true, name: key, requiresRadioRead: read, requiresRadioWrite: write),
+  info: ExtensionInfo(
+    key: key,
+    file: '$key.js',
+    source: ExtensionSource.dev,
+    core: true,
+    name: key,
+    requiresRadioRead: read,
+    requiresRadioWrite: write,
+    requiresRadioRaw: raw,
+  ),
 );
 
 void main() {
@@ -104,6 +119,7 @@ void main() {
     await extensions.setDevBundles({
       'reader': bundle('reader', read: true),
       'writer': bundle('writer', write: true),
+      'tinkerer': bundle('tinkerer', raw: true),
       'plain': bundle('plain'),
       // A separately installed bundle NAMED like a sub-extension of `writer`.
       'writer-themes': bundle('writer-themes'),
@@ -126,6 +142,10 @@ void main() {
     'stopRadioTransmit': {'id': 'a'},
   };
 
+  // Any command at all, the transmitter's included: a grant of its own,
+  // stronger than write's, since nothing about it is checked.
+  const raw = {'id': 'a', 'text': 'TX1;'};
+
   Matcher blockedFor(String capability) => throwsA(isA<ExtensionHostException>().having((e) => e.toString(), 'message', contains(capability)));
 
   test('an extension that declares nothing can neither read nor command a radio', () async {
@@ -134,6 +154,7 @@ void main() {
     for (final MapEntry(key: method, value: params) in writes.entries) {
       await expectLater(call('plain', method, params), blockedFor('requiresRadioWrite'));
     }
+    await expectLater(call('plain', 'sendRadioRaw', raw), blockedFor('requiresRadioRaw'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
@@ -159,6 +180,21 @@ void main() {
     expect(commands, ['set', 'set', 'connection', 'spectrum', 'cw', 'voice', 'ptt', 'stop']);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  test('write does not grant raw: the operator agreed to the commands the app checks, not to any', () async {
+    await expectLater(call('writer', 'sendRadioRaw', raw), blockedFor('requiresRadioRaw'));
+    await expectLater(call('reader', 'sendRadioRaw', raw), blockedFor('requiresRadioRaw'));
+    expect(commands, isEmpty);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('raw grants all three: anything setRadio does, a raw command can', () async {
+    expect((await call('tinkerer', 'sendRadioRaw', raw) as Map)['accepted'], true);
+    for (final MapEntry(key: method, value: params) in writes.entries) {
+      expect((await call('tinkerer', method, params) as Map)['accepted'], true, reason: method);
+    }
+    expect(await call('tinkerer', 'listRadios'), hasLength(1));
+    expect(commands, ['raw', 'set', 'set', 'connection', 'spectrum', 'cw', 'voice', 'ptt', 'stop']);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   test('naming a capable extension in the call does not borrow its capability', () async {
     // The kernel stamps the caller's own key over whatever the params carry.
     // If the radio calls were missing from its identity list, this argument
@@ -166,6 +202,7 @@ void main() {
     for (final MapEntry(key: method, value: params) in writes.entries) {
       await expectLater(call('plain', method, {...params, 'extensionKey': 'writer'}), blockedFor('requiresRadioWrite'));
     }
+    await expectLater(call('plain', 'sendRadioRaw', {...raw, 'extensionKey': 'tinkerer'}), blockedFor('requiresRadioRaw'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 

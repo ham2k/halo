@@ -22,7 +22,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/extensions/bundle_storage.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/services/extensions/catalog_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
@@ -34,6 +33,7 @@ import 'package:ham2k_logger/views/extensions_panel.dart';
 import 'package:ham2k_logger/views/station_rows.dart' show StationPill;
 
 import '../support/halo_test_support.dart';
+import '../support/memory_bundle_storage.dart';
 
 const _testExtensions = [
   ExtensionInfo(key: 'adif', file: 'adif.js', core: true, name: 'ADIF Export'),
@@ -1750,7 +1750,7 @@ void main() {
     /// The full panel over an in-memory store and a catalog whose
     /// `ki2d-my-clock` listing answers with [listing] — the fixture bundle at
     /// 1.2.3 — for a pasted link to install from.
-    Future<({HaLoServices services, SettingsService settings, _MemoryBundleStorage storage, List<Uri> asked})> linkPanel(
+    Future<({HaLoServices services, SettingsService settings, MemoryBundleStorage storage, List<Uri> asked})> linkPanel(
       WidgetTester tester,
       Map<String, Object?> Function(String sha256) listing,
     ) async {
@@ -1763,7 +1763,7 @@ void main() {
       final settings = SettingsService(await SharedPreferences.getInstance());
       final db = HaLoDatabase(NativeDatabase.memory());
       addTearDown(db.close);
-      final storage = _MemoryBundleStorage();
+      final storage = MemoryBundleStorage();
       final store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, storage: storage);
       final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
         ..settings = settings
@@ -1905,24 +1905,4 @@ void main() {
       await tester.pump(StatusBarService.completedDismissDelay);
     });
   });
-}
-
-/// The store's files in memory: a widget test's fake clock never completes
-/// real file IO.
-class _MemoryBundleStorage implements BundleStorage {
-  final files = <String, Map<String, List<int>>>{};
-
-  @override
-  Future<Map<String, String?>> manifests() async => {
-    for (final MapEntry(:key, :value) in files.entries) key: value['manifest.json'] == null ? null : utf8.decode(value['manifest.json']!),
-  };
-
-  @override
-  Future<String?> readText(String key, String name) async => files[key]?[name] == null ? null : utf8.decode(files[key]![name]!);
-
-  @override
-  Future<void> write(String key, Map<String, List<int>> files) async => this.files[key] = files;
-
-  @override
-  Future<void> remove(String key) async => files.remove(key);
 }

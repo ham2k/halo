@@ -139,16 +139,15 @@ Future<String?> installExtensionFromBytes(
   // strength of the key alone — and the code behind that key can have changed
   // completely, since nothing about the code is compared.
   //
-  // [askConsent] false is the ONE exception, and it is not a capability
-  // comparison: Update all is a single press on a list the operator is looking
-  // at, naming every extension it will take — its confirmation, which also says
-  // what each becomes, or an update notice that named them all. Asking five
-  // times for the one thing they asked for once is how an operator learns to
-  // press through the screen without reading it, which costs more than it
-  // buys. It does mean an update that widens what an extension reaches is
-  // applied without saying so — worth revisiting when a bundle can be shown to
-  // come from who it claims, which is the same thing this whole rule waits on.
-  if (askConsent) {
+  // [askConsent] false is the ONE exception: Update all is a single press on a
+  // list the operator is looking at, naming every extension it will take — its
+  // confirmation, which also says what each becomes, or an update notice that
+  // named them all. Asking five times for the one thing they asked for once is
+  // how an operator learns to press through the screen without reading it,
+  // which costs more than it buys. Except for an update asking for more than
+  // the operator granted the version it replaces: nothing on that list says
+  // so, and a grant like `requiresRadioRaw` keys the transmitter.
+  if (askConsent || await _asksMore(store, bundle)) {
     final replacing = await _isInstalled(store, bundle);
     if (!context.mounted) return null;
     if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from, channel: releaseChannel ?? provenance?.channel)) return null;
@@ -353,6 +352,19 @@ Future<void> updateAllFromCatalog(
   ]);
 }
 
+/// Whether [bundle] asks for more than the version it would replace was
+/// granted. A version that cannot be read is taken as granting nothing, so
+/// the operator is asked rather than not.
+Future<bool> _asksMore(InstalledExtensions store, InspectedBundle bundle) async {
+  try {
+    final installed = await store.installedBundle(bundle.key);
+    return installed == null || bundle.asksMoreThan(installed);
+  } catch (e) {
+    debugPrint('[extensions] could not read what ${bundle.key} was granted: $e');
+    return true;
+  }
+}
+
 /// Whether [bundle] is replacing something, which is only how the screen is
 /// worded. A store that cannot answer says no — the wrong word on a dialog is
 /// a smaller failure than refusing to show one.
@@ -482,8 +494,10 @@ class _ConsentDialog extends StatelessWidget {
             for (final domain in bundle.domains) _Capability(icon: MdiIcons.web, label: domain),
             for (final host in bundle.webSockets) _Capability(icon: MdiIcons.accessPointNetwork, label: _socketGrantLabel(host)),
             if (bundle.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
-            // One line, the stronger one: write implies read.
-            if (bundle.requiresRadioWrite)
+            // One line, the strongest one: raw implies write, and write read.
+            if (bundle.requiresRadioRaw)
+              _Capability(icon: MdiIcons.radio, label: t.canCommandRadioRaw)
+            else if (bundle.requiresRadioWrite)
               _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
             else if (bundle.requiresRadioRead)
               _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
@@ -759,6 +773,7 @@ class _DetailsDialog extends StatelessWidget {
         info.requiresLocation ||
         info.requiresRadioRead ||
         info.requiresRadioWrite ||
+        info.requiresRadioRaw ||
         info.requiresClusterRead ||
         info.requiresClusterSpot ||
         info.requiresClusterCommand ||
@@ -799,7 +814,9 @@ class _DetailsDialog extends StatelessWidget {
             for (final domain in info.domains) _Capability(icon: MdiIcons.web, label: domain),
             for (final host in info.webSockets) _Capability(icon: MdiIcons.accessPointNetwork, label: _socketGrantLabel(host)),
             if (info.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
-            if (info.requiresRadioWrite)
+            if (info.requiresRadioRaw)
+              _Capability(icon: MdiIcons.radio, label: t.canCommandRadioRaw)
+            else if (info.requiresRadioWrite)
               _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
             else if (info.requiresRadioRead)
               _Capability(icon: MdiIcons.radio, label: t.canReadRadio),

@@ -1517,6 +1517,77 @@ void main() {
       expect(registry.transports.keys, containsAll(['tcp', 'serial', 'icom-network']));
     });
   });
+
+  group('a raw command', () {
+    // The radio's answers here, by hand: an ACK freeing the wire on every
+    // frame would hide which command each answer was taken for.
+    setUp(() => sink.answer = null);
+
+    test('waits its turn on the wire, and its ACK does not free the wire for the driver\'s next command', () {
+      // Written beside the outbox, the raw frame's ACK would answer the
+      // driver's read still in flight, and the next command would go out
+      // while the radio is still answering it.
+      fakeAsync((async) {
+        session.setFrequency(14074);
+        final answers = <List<int>>[];
+        final raw = [0xFE, 0xFE, ic705, us, 0x1C, 0x00, 0x01, 0xFD, 0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x00, 0x50, 0xFD];
+        expect(session.sendRaw(raw, onAnswer: answers.add), 2);
+        session.setMode('CW');
+        expect(sink.sent, hasLength(1), reason: 'one on the wire at a time, raw or not');
+
+        feed(_fromRadio([0xFB]));
+        expect(sink.sent.last, raw.sublist(0, 8));
+        expect(answers, isEmpty, reason: 'the ACK was the set frequency\'s');
+
+        feed(_fromRadio([0xFA]));
+        expect(answers, [
+          _fromRadio([0xFA]),
+        ]);
+        expect(sink.sent.last, raw.sublist(8));
+        feed(_fromRadio([0xFB]));
+        expect(answers, hasLength(2));
+        expect(sink.sent.last[4], 0x06, reason: 'the mode set queued after them goes out only now');
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('answered by nothing in time is answered empty, and leaves the driver\'s diagnostic for its own', () {
+      // Said once a session: spent on an extension's command the radio
+      // ignores, it would be gone when the driver's own polls go unanswered.
+      fakeAsync((async) {
+        final answers = <List<int>>[];
+        session.sendRaw([0xFE, 0xFE, ic705, us, 0x19, 0x00, 0xFD], onAnswer: answers.add);
+        async.elapse(civAnswerTimeout);
+        expect(answers, [<int>[]]);
+        expect(sink.diagnostics, isEmpty);
+        session.setFrequency(14074);
+        async.elapse(civAnswerTimeout);
+        expect(sink.diagnostics.single, contains('did not answer'));
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('goes from this session to its radio, whatever addresses it carries', () {
+      // An extension cannot know them, and an answer to any other address is
+      // never heard here: the frame would hold the wire for nothing.
+      session.sendRaw([0xFE, 0xFE, 0x94, 0xE1, 0x03, 0xFD]);
+      expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x03, 0xFD]);
+    });
+
+    test('that is not whole CI-V frames is not sent', () {
+      for (final bytes in [
+        [0xFE, 0xFE, ic705, us, 0x03],
+        [0x00, 0xFE, ic705, us, 0x03, 0xFD],
+        [0xFE, 0xFE, 0xFD],
+        <int>[],
+      ]) {
+        expect(() => session.sendRaw(bytes), throwsFormatException, reason: '$bytes');
+      }
+      expect(sink.sent, isEmpty);
+    });
+  });
 }
 
 /// A frame the session sends to ask whether the radio is transmitting —

@@ -251,10 +251,13 @@ class ExtensionInfo with ExtensionSearchable {
   /// `readRadio`, a scene's `spectrum` control; the manifest's
   /// `requiresRadioRead`) and whether it may command them (`setRadio`,
   /// `setRadioConnection`, `setRadioSpectrum` and the keying calls;
-  /// `requiresRadioWrite`).
-  /// A command answers with the radio's state, so write implies read.
+  /// `requiresRadioWrite`), and whether it may send them any command at all
+  /// (`sendRadioRaw`; `requiresRadioRaw`).
+  /// A command answers with the radio's state, so write implies read, and raw
+  /// implies both.
   final bool requiresRadioRead;
   final bool requiresRadioWrite;
+  final bool requiresRadioRaw;
 
   /// What this extension may do with the app's DX cluster connection, each
   /// level including the ones before it: read what the node sends
@@ -271,6 +274,7 @@ class ExtensionInfo with ExtensionSearchable {
       requiresLocation == other.requiresLocation &&
       requiresRadioRead == other.requiresRadioRead &&
       requiresRadioWrite == other.requiresRadioWrite &&
+      requiresRadioRaw == other.requiresRadioRaw &&
       requiresClusterRead == other.requiresClusterRead &&
       requiresClusterSpot == other.requiresClusterSpot &&
       requiresClusterCommand == other.requiresClusterCommand &&
@@ -353,6 +357,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresLocation = false,
     this.requiresRadioRead = false,
     this.requiresRadioWrite = false,
+    this.requiresRadioRaw = false,
     this.requiresClusterRead = false,
     this.requiresClusterSpot = false,
     this.requiresClusterCommand = false,
@@ -388,6 +393,7 @@ class ExtensionInfo with ExtensionSearchable {
     requiresLocation: json['requiresLocation'] as bool? ?? false,
     requiresRadioRead: json['requiresRadioRead'] as bool? ?? false,
     requiresRadioWrite: json['requiresRadioWrite'] as bool? ?? false,
+    requiresRadioRaw: json['requiresRadioRaw'] as bool? ?? false,
     requiresClusterRead: json['requiresClusterRead'] as bool? ?? false,
     requiresClusterSpot: json['requiresClusterSpot'] as bool? ?? false,
     requiresClusterCommand: json['requiresClusterCommand'] as bool? ?? false,

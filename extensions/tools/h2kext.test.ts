@@ -207,6 +207,14 @@ test("a bundle registering a chasing program must declare the api that calls it"
   assert.equal(validateManifest({ ...chasing, api: 9 }).length, 0)
 })
 
+test("a bundle declaring requiresRadioRaw must declare the api that answers it", () => {
+  // An older app knows no such grant: its install screen would show the
+  // bundle as asking for nothing it can name, and refuse every raw command.
+  const raw = { ...validManifest, requiresRadioRaw: true }
+  assert.match(validateManifest({ ...raw, api: 10 }).join(), /'requiresRadioRaw' needs 'api' 11/)
+  assert.equal(validateManifest({ ...raw, api: 11 }).length, 0)
+})
+
 test("every problem is reported at once", async () => {
   // An author who fixes one problem per run is an author running this five
   // times to find out what is wrong with one file.

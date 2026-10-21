@@ -179,7 +179,7 @@ class YaesuBinaryDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => YaesuBinarySession(sink, config: config);
 }
 
-class YaesuBinarySession implements TransceiverSession, PttSession {
+class YaesuBinarySession implements TransceiverSession, PttSession, RawCommandSession {
   final EquipmentSink _sink;
   final Map<String, dynamic> _config;
 
@@ -241,6 +241,23 @@ class YaesuBinarySession implements TransceiverSession, PttSession {
     _pump();
   }
 
+  /// An extension's raw commands, five bytes each, queued like the driver's
+  /// own. How long each one's answer is, only the extension knows: it is what
+  /// the radio sends until it has been quiet for [yaesuBinaryReplyTimeout],
+  /// and it is not read as an answer to any question of the driver's.
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    if (bytes.isEmpty || bytes.length % 5 != 0) throw const FormatException('not 5-byte commands');
+    for (var i = 0; i < bytes.length; i += 5) {
+      final command = YaesuBinaryCommand(bytes.sublist(i, i + 5), replyLength: 1 << 16, replyOptional: true);
+      _rawAnswers[command] = onAnswer ?? (_) {};
+      _request(command, isWrite: true);
+    }
+    return bytes.length ~/ 5;
+  }
+
+  final _rawAnswers = Map<YaesuBinaryCommand, void Function(List<int> answer)>.identity();
+
   void _pump() {
     if (_inFlight != null || _resyncing != null || _queue.isEmpty) return;
     final command = _queue.removeFirst();
@@ -259,6 +276,12 @@ class YaesuBinarySession implements TransceiverSession, PttSession {
 
   void _abandon(YaesuBinaryCommand command) {
     if (!identical(_inFlight, command)) return;
+    // A raw command's answer ends where the radio fell quiet: over, not given up on.
+    if (_rawAnswers.remove(command) case final answer?) {
+      final reply = [..._reply];
+      _finish();
+      return answer(reply);
+    }
     // A tolerated missing acknowledgement is not news — see
     // [YaesuBinaryCommand.replyOptional]. Anything else is a radio that
     // did not answer a question the chart says it answers, which is what a
@@ -447,6 +470,7 @@ class YaesuBinarySession implements TransceiverSession, PttSession {
       _sink.send(buildPttCommand(false).bytes);
     }
     _queue.clear();
+    _rawAnswers.clear();
     _clearInFlight();
     _resyncing?.cancel();
     _resyncing = null;

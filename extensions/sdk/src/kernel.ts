@@ -402,6 +402,7 @@ const IDENTITY_HOST_METHODS = new Set([
   "playRadioVoice",
   "setRadioPtt",
   "stopRadioTransmit",
+  "sendRadioRaw",
   "clusterStatus",
   "clusterLines",
   "clusterSubscribe",

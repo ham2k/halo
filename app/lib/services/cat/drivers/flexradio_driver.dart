@@ -288,7 +288,8 @@ class FlexRadioSession
         SpectrumSession,
         AntennaTunerSession,
         PassbandSession,
-        RadioAntennaSession {
+        RadioAntennaSession,
+        RawCommandSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -460,6 +461,21 @@ class FlexRadioSession
   /// carries something, like a stream id.
   final _replies = <int, void Function(int code, String body)>{};
 
+  /// An extension's raw commands, one per line, each numbered like the
+  /// driver's own: a line is a command without its `C<seq>|`, and its answer
+  /// is its `R` line.
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    final commands = rawCommandLines(bytes);
+    for (final command in commands) {
+      final seq = _sendCommand(command);
+      if (onAnswer != null) _rawReplies[seq] = (line) => onAnswer(utf8.encode('$line\n'));
+    }
+    return commands.length;
+  }
+
+  final _rawReplies = <int, void Function(String line)>{};
+
   late final _spectrum = FlexDaxSpectrum(
     send: _sendCommand,
     sink: switch (_sink) {
@@ -570,6 +586,7 @@ class FlexRadioSession
       final seq = int.parse(reply[1]!), code = int.tryParse(reply[2]!, radix: 16);
       _handleReply(seq, code ?? 0);
       _replies.remove(seq)?.call(code ?? -1, reply[3]!);
+      _rawReplies.remove(seq)?.call(line);
       // A command acknowledgement: the radio answered, so it is alive. WHICH
       // command does not matter — the ping exists only so that there is one
       // to answer while the dial is still. Status and acknowledgements share
@@ -1279,6 +1296,7 @@ class FlexRadioSession
     _spectrum.teardown();
     // Answers to a connection that is closing would come to nobody.
     _replies.clear();
+    _rawReplies.clear();
     _cwQueue.clear();
     _stopPeriodicTimers();
     if (_wantUpdates && _handshakeDone) _unsubscribe();

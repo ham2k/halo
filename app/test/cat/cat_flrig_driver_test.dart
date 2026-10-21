@@ -70,6 +70,13 @@ class _FakeSink implements EquipmentSink {
   void reportAlive() {}
 }
 
+/// Keeps the bytes, which a raw call need not spell in ASCII.
+class _BytesSink extends _FakeSink {
+  final bytes = <List<int>>[];
+  @override
+  void send(List<int> bytes) => this.bytes.add(bytes);
+}
+
 extension on FlrigSession {
   void feed(String text) => handleData(Uint8List.fromList(ascii.encode(text)));
 }
@@ -575,6 +582,51 @@ void main() {
         expect(sink.meterReports.map((m) => m.$1), isNot(contains(RadioMeter.swr)));
         session.teardown();
       });
+    });
+  });
+
+  group('a raw call', () {
+    const call = '<?xml version="1.0"?><methodCall><methodName>rig.get_bw</methodName><params></params></methodCall>';
+
+    test('is posted in its turn, and answered by its response\'s body, not read as the driver\'s', () {
+      // flrig's responses carry no method name: written beside the queue, the
+      // raw call's response would answer the frequency read in flight.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.startUpdates();
+      final answers = <String>[];
+      expect(session.sendRaw(utf8.encode(call), onAnswer: (a) => answers.add(utf8.decode(a))), 1);
+      expect(sink.sent, hasLength(1), reason: 'the frequency read is on the wire');
+
+      session.feed(_response('14074000'));
+      session.feed(_response('USB'));
+      session.feed(_response('<i4>5</i4>'));
+      expect(sink.sent.last, endsWith(call));
+      session.feed(_response('2400'));
+      expect(answers.single, contains('<value>2400</value>'));
+      expect(sink.readings.map((r) => r.freqKHz).nonNulls, [14074], reason: 'the bandwidth is not read as a frequency');
+      session.teardown();
+    });
+
+    test('states its length in bytes, which a call may spell in more than ASCII', () {
+      final sink = _BytesSink();
+      final session = _stateOnlySession(sink);
+      const body = '<?xml version="1.0"?><methodCall><methodName>rig.set_notes</methodName><params><param><value>73 — é</value></param></params></methodCall>';
+      session.sendRaw(utf8.encode(body));
+      final request = sink.bytes.single;
+      final headerEnd = latin1.decode(request).indexOf('\r\n\r\n') + 4;
+      expect(RegExp(r'Content-Length: (\d+)').firstMatch(latin1.decode(request))!.group(1), '${request.length - headerEnd}');
+      session.teardown();
+    });
+
+    test('whose response is lost is answered empty, and the queue moves on', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      final answers = <List<int>>[];
+      session.sendRaw(utf8.encode(call), onAnswer: answers.add);
+      session.feed('HTTP/1.1 200 OK\r\n\r\n');
+      expect(answers, [<int>[]]);
+      session.teardown();
     });
   });
 }

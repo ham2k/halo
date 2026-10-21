@@ -19,6 +19,73 @@ mixin _RadioControls {
   EquipmentSession? connectedSession(String uuid);
   EquipmentState stateFor(String uuid);
 
+  /// Writes an extension's raw commands (`host.sendRadioRaw`) to [uuid]'s
+  /// radio. Nothing about them is checked — they may key the transmitter or
+  /// change any setting, which is what the extension's `requiresRadioRaw` told
+  /// the operator at install. `refused` is `disconnected`, `unsupported` (a
+  /// session that is not a [RawCommandSession]) or `invalid` (bytes its
+  /// protocol cannot send).
+  ///
+  /// With a [reply] window it answers, within it, the answers to these
+  /// commands alone where the session queues them, or else everything the
+  /// connection received — the answers to the driver's own polls included,
+  /// since no protocol says which bytes answer a command it never sent. Cut
+  /// after the first [until], and at [rawReplyMaxBytes].
+  Future<({String? refused, List<int>? reply})> sendNodeRaw(String uuid, List<int> bytes, {Duration reply = Duration.zero, List<int>? until}) async {
+    final runtime = _runtimes[uuid];
+    final session = connectedSession(uuid);
+    final connection = runtime?.connection;
+    if (runtime == null || session == null || connection == null) return (refused: 'disconnected', reply: null);
+    if (session is! RawCommandSession) return (refused: 'unsupported', reply: null);
+    final listening = reply > Duration.zero;
+    final done = Completer<void>();
+    final received = <int>[];
+    void take(List<int> more) {
+      if (done.isCompleted) return;
+      // Only the bytes that just came can complete a terminator.
+      final from = until == null ? 0 : (received.length - until.length + 1).clamp(0, received.length);
+      received.addAll(more);
+      final at = until == null ? -1 : _indexOfBytes(received, until, from);
+      if (at >= 0) received.length = at + until!.length;
+      if (received.length >= rawReplyMaxBytes) received.length = rawReplyMaxBytes;
+      if (at >= 0 || received.length >= rawReplyMaxBytes) done.complete();
+    }
+
+    void tap(Uint8List chunk) {
+      // The reply is this connection's: the next one's traffic is not its answer.
+      if (identical(runtime.connection, connection)) take(chunk);
+    }
+
+    // Null until sendRaw returns: an answer before then is counted below.
+    int? expected;
+    var answered = 0;
+    try {
+      expected = session.sendRaw(
+        bytes,
+        onAnswer: listening
+            ? (answer) {
+                take(answer);
+                if (++answered == expected && !done.isCompleted) done.complete();
+              }
+            : null,
+      );
+    } on FormatException {
+      return (refused: 'invalid', reply: null);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:send-raw');
+      return (refused: 'disconnected', reply: null);
+    }
+    if (!listening) return (refused: null, reply: null);
+    if (expected == null) {
+      runtime.rawTaps.add(tap);
+    } else if (answered >= expected && !done.isCompleted) {
+      done.complete();
+    }
+    await done.future.timeout(reply, onTimeout: () {});
+    runtime.rawTaps.remove(tap);
+    return (refused: null, reply: [...received]);
+  }
+
   /// Sets [uuid]'s receive passband, as near as its radio can — see
   /// [PassbandSession]. A no-op for a radio whose driver cannot.
   void setNodePassband(String uuid, Passband passband) {
@@ -140,4 +207,20 @@ mixin _RadioControls {
   /// The SWR average of the transmission under way, or else of the last one.
   double? swrAverageFor(String uuid) =>
       stateFor(uuid).telemetry.transmitting == true ? _runtimes[uuid]?.swrRunning : _runtimes[uuid]?.lastTransmission?.swrAverage;
+}
+
+/// The most of a raw command's reply kept: a radio streaming its scope would
+/// otherwise fill a reply window with sweeps.
+const rawReplyMaxBytes = 64 * 1024;
+
+/// Where [needle] first starts in [haystack] at or after [from], or -1.
+int _indexOfBytes(List<int> haystack, List<int> needle, [int from = 0]) {
+  outer:
+  for (var i = from; i + needle.length <= haystack.length; i++) {
+    for (var j = 0; j < needle.length; j++) {
+      if (haystack[i + j] != needle[j]) continue outer;
+    }
+    return i;
+  }
+  return -1;
 }

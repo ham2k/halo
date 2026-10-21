@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 import 'dart:async';
+import 'dart:convert';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_core/halo_core.dart' show realNowMillis, nowMillis;
 import 'cat/cat_service.dart';
@@ -24,6 +25,8 @@ class PanelRadioService {
   final CatService cat;
   final RadioService radio;
   Future<void> _tail = Future.value();
+  final _rawTails = <String, Future<void>>{};
+  final _rawWaiting = <String, int>{};
   int _lastCommand = 0;
 
   /// Whether `spectrum` is reported and set at all — `EXP FALL`.
@@ -316,6 +319,79 @@ class PanelRadioService {
     // Acceptance is not an acknowledgement: read() contains only radio reports.
     return {'accepted': true, 'state': read(selection)};
   }
+
+  /// The longest reply window and the largest command `sendRadioRaw` takes,
+  /// and how many of one radio's raw calls may wait at once.
+  static const rawReplyMaxMs = 2000, rawMaxBytes = 4096, rawMaxWaiting = 8;
+
+  /// Sends [args]' `text` or `bytes` to the radio through its driver
+  /// unchecked — anything at all, transmitting included: `requiresRadioRaw` is
+  /// the operator's consent to it. Neither paced nor refused while
+  /// transmitting, unlike [set], but one at a time per radio, so that one
+  /// call's reply window never holds another's answer — and refused as `busy`
+  /// past [rawMaxWaiting], so that an extension calling in a loop cannot hold
+  /// every later call back without end.
+  Future<Map<String, dynamic>> sendRaw(Map<String, dynamic> args) {
+    final radio = '${args['id']}';
+    final waiting = _rawWaiting[radio] ?? 0;
+    if (waiting >= rawMaxWaiting) return Future.value({'accepted': false, 'reason': 'busy', 'state': read(args['selection'] as String?)});
+    _rawWaiting[radio] = waiting + 1;
+    final done = (_rawTails[radio] ?? Future<void>.value()).then((_) => _performRaw(args)).whenComplete(() {
+      final left = _rawWaiting[radio]! - 1;
+      if (left > 0) {
+        _rawWaiting[radio] = left;
+      } else {
+        _rawWaiting.remove(radio);
+        _rawTails.remove(radio);
+      }
+    });
+    _rawTails[radio] = done.then<void>((_) {}, onError: (Object _, StackTrace _) {});
+    return done;
+  }
+
+  Future<Map<String, dynamic>> _performRaw(Map<String, dynamic> args) async {
+    final selection = args['selection'] as String?;
+    final state = read(selection);
+    Map<String, dynamic> refused(String reason) => {'accepted': false, 'reason': reason, 'state': state};
+    if (args['id'] == null || args['id'] != state['id']) return refused('changed');
+    final bytes = _rawBytes(args['text'], args['bytes']);
+    final replyMs = args['replyMs'] ?? 0;
+    final until = switch (args['until']) {
+      null => null,
+      // Empty when malformed, which is refused below.
+      final String text => _rawBytes(text, null) ?? const <int>[],
+      final List<dynamic> bytes => _rawBytes(null, bytes) ?? const <int>[],
+      _ => const <int>[],
+    };
+    if (bytes == null ||
+        bytes.length > rawMaxBytes ||
+        replyMs is! int ||
+        replyMs < 0 ||
+        replyMs > rawReplyMaxMs ||
+        (until != null && (until.isEmpty || replyMs == 0))) {
+      return refused('invalid');
+    }
+    final result = await cat.sendNodeRaw(
+      state['id'] as String,
+      bytes,
+      reply: Duration(milliseconds: replyMs),
+      until: until,
+    );
+    if (result.refused case final reason?) return refused(reason);
+    return {
+      'accepted': true,
+      if (result.reply case final reply?) 'reply': {'text': utf8.decode(reply, allowMalformed: true), 'bytes': reply},
+      'state': read(selection),
+    };
+  }
+
+  /// Exactly one of [text] (sent as UTF-8) or [bytes] (each 0…255), not
+  /// empty — or null.
+  static List<int>? _rawBytes(Object? text, Object? bytes) => switch ((text, bytes)) {
+    (final String text, null) when text.isNotEmpty => utf8.encode(text),
+    (null, final List<dynamic> bytes) when bytes.isNotEmpty && bytes.every((b) => b is int && b >= 0 && b <= 255) => bytes.cast<int>(),
+    _ => null,
+  };
 
   /// The radio [args] names, if it is the one the app keys with — or why not.
   /// Keying is radio1's: a panel pinned to another radio is refused rather

@@ -13,6 +13,7 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
@@ -637,6 +638,29 @@ void main() {
         session.feed('PTT: 1\n');
         session.feed('get_level: RFPOWER_METER_WATTS\nRPRT -1\n');
         expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), isNot(contains('+l RFPOWER_METER_WATTS\n')));
+        session.teardown();
+      });
+    });
+
+    test('a refusal just after an extension\'s raw command retires nothing — and one after that does', () {
+      // A raw `\get_level SWR 1` is refused under the same header as the
+      // driver's own SWR read: counted, it would end the SWR meter for the
+      // connection.
+      final followed = AppClock.followZoneClock;
+      AppClock.followZoneClock = true;
+      addTearDown(() => AppClock.followZoneClock = followed);
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        session.feed('PTT: 1\n');
+        session.sendRaw(ascii.encode('+\\get_level SWR 1\n'));
+        session.feed('get_level: SWR\nRPRT -1\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), contains('+l SWR\n'));
+
+        async.elapse(rawRefusalGrace);
+        session.feed('get_level: SWR\nRPRT -1\n');
+        expect(meterReads(sink, () => async.elapse(const Duration(milliseconds: 200))), isNot(contains('+l SWR\n')), reason: 'the grace ends');
         session.teardown();
       });
     });

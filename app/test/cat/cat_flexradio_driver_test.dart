@@ -1465,4 +1465,44 @@ void main() {
       expect(const FlexRadioDriver().voiceMemoryCountWith(const {}), maxVoiceMemories);
     });
   });
+
+  group('a raw command', () {
+    test('takes the next sequence number, so the driver\'s next command does not reuse it', () {
+      // Sent to the socket as given, `C1|…` would collide with whatever the
+      // driver numbers next, and the driver would take the extension's answer
+      // for its own.
+      fakeAsync((async) {
+        final answers = <String>[];
+        expect(session.sendRaw(utf8.encode('slice set 0 nr=1\n'), onAnswer: (r) => answers.add(utf8.decode(r))), 1);
+        session.setFrequency(14200);
+        expect(sink.sent.first, 'C1|slice set 0 nr=1\n');
+        expect(sink.sent[1], startsWith('C2|slice tune 0 '));
+
+        session.feed('S0|slice 0 nr=1\n');
+        session.feed('R2|0|\n');
+        expect(answers, isEmpty, reason: 'neither a status push nor another command\'s answer is its answer');
+        session.feed('R1|50000015|Invalid slice\n');
+        expect(answers, ['R1|50000015|Invalid slice\n']);
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('of several lines numbers each one, and each is answered by its own R line', () {
+      // Numbered as one, the second line would reach the radio with no
+      // `C<seq>|` at all — not a command it takes.
+      final answers = <String>[];
+      expect(session.sendRaw(utf8.encode('slice set 0 nr=1\r\n\nslice set 0 nb=1\n'), onAnswer: (r) => answers.add(utf8.decode(r))), 2);
+      expect(sink.sent, ['C1|slice set 0 nr=1\n', 'C2|slice set 0 nb=1\n'], reason: 'blank lines are no command');
+      session.feed('R1|0|\n');
+      session.feed('R2|0|\n');
+      expect(answers, ['R1|0|\n', 'R2|0|\n']);
+    });
+
+    test('with no command in it is not sent', () {
+      expect(() => session.sendRaw(utf8.encode(' \n ')), throwsFormatException);
+      expect(sink.sent, isEmpty);
+    });
+  });
 }

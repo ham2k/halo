@@ -482,4 +482,46 @@ void main() {
       });
     });
   });
+
+  group('a raw command', () {
+    test('waits its turn, and its answer is not read as the driver\'s', () {
+      // Written beside the pump, the raw command's answer bytes would be
+      // appended to the frequency read in flight and decoded as a frequency.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        final answers = <List<int>>[];
+        expect(session.sendRaw([0, 0, 0, 0, 0xE7, 0, 0, 0, 0, 0xF7], onAnswer: answers.add), 2);
+        expect(sink.sent, hasLength(1), reason: 'the frequency read is on the wire');
+
+        session.feed([0x01, 0x42, 0x34, 0x56, 0x01]);
+        expect(sink.readings.single.freqKHz, closeTo(14234.56, 0.001));
+        expect(sink.sent.last, [0, 0, 0, 0, 0xE7]);
+
+        // Its length is the extension's to know: what comes before the radio falls quiet.
+        session.feed([0x8A]);
+        async.elapse(yaesuBinaryReplyTimeout ~/ 2);
+        session.feed([0x12]);
+        expect(answers, isEmpty, reason: 'the radio is still answering');
+        async.elapse(yaesuBinaryReplyTimeout);
+        expect(answers, [
+          [0x8A, 0x12],
+        ]);
+        expect(sink.sent.last, [0, 0, 0, 0, 0xF7], reason: 'next at once: an answer that ended is not one given up on');
+        expect(sink.readings, hasLength(1), reason: 'not decoded as a reading');
+        expect(sink.diagnostics, isEmpty);
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('that is not whole five-byte commands is not sent', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      expect(() => session.sendRaw([0, 0, 0, 0x03]), throwsFormatException);
+      expect(() => session.sendRaw(const []), throwsFormatException);
+      expect(sink.sent, isEmpty);
+    });
+  });
 }

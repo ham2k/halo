@@ -76,6 +76,7 @@
     "canUseLocation": "your location",
     "canReadRadio": "your radio, to read its frequency and mode",
     "canControlRadio": "your radio, to control it and to transmit with it — tuning, power, cw, voice memories and ptt",
+    "canCommandRadioRaw": "your radio, to send it any command in its own protocol — including ones that transmit or change its settings",
     "canReadCluster": "the dx cluster, logged in as you, to read what it sends",
     "canSpotCluster": "the dx cluster, logged in as you, to post spots in your name",
     "canCommandCluster": "the dx cluster, logged in as you, to send it any command in your name",

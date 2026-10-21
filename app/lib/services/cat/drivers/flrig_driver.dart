@@ -105,7 +105,7 @@ class FlrigDriver extends EquipmentDriver {
 /// What kind of answer the outstanding request will produce — the only
 /// correlation an XML-RPC response offers is "it answers the oldest
 /// unanswered question".
-enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ptt, ignored }
+enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ptt, ignored, raw }
 
 /// An XML-RPC scalar: bare text, which the spec reads as a string, or text
 /// inside one type element. flrig sends both — `rig.get_vfo` answers bare,
@@ -113,7 +113,7 @@ enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ptt, ign
 /// the bare form loses every typed answer without a trace.
 final _scalar = RegExp(r'<value>(?:<(i4|int|double|string|boolean)>([^<]*)</\1>|([^<]*))</value>');
 
-class FlrigSession implements TransceiverSession, PttSession {
+class FlrigSession implements TransceiverSession, PttSession, RawCommandSession {
   final EquipmentSink _sink;
 
   FlrigSession(this._sink, [this._config = const {}]);
@@ -162,22 +162,46 @@ class FlrigSession implements TransceiverSession, PttSession {
     _pump();
   }
 
+  /// An extension's raw XML-RPC call, as given (`<?xml …?><methodCall>…`),
+  /// posted like the driver's own and queued behind them — flrig drops a
+  /// request that arrives mid-response. Its answer is the response's body.
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    final body = utf8.decode(bytes, allowMalformed: true);
+    if (body.trim().isEmpty) throw const FormatException('no call');
+    _rawAnswers.add(onAnswer ?? (_) {});
+    _queue.add((_Ask.raw, _post(body)));
+    _pump();
+    return 1;
+  }
+
+  /// Who waits for each raw call's answer, in the order queued.
+  final _rawAnswers = <void Function(List<int> answer)>[];
+
+  /// Hands the raw call on the wire its answer — nothing, for a response lost.
+  /// None is waiting after [teardown], which leaves the call outstanding.
+  void _answerRaw(List<int> answer) {
+    if (_outstanding == _Ask.raw && _rawAnswers.isNotEmpty) _rawAnswers.removeAt(0)(answer);
+  }
+
   void _pump() {
     if (_outstanding != null || _queue.isEmpty) return;
     final (ask, request) = _queue.removeAt(0);
     _outstanding = ask;
-    _sink.send(ascii.encode(request));
+    _sink.send(utf8.encode(request));
   }
 
-  static String _httpRequest(String method, String params) {
-    final body = '<?xml version="1.0"?><methodCall><methodName>$method</methodName><params>$params</params></methodCall>';
-    return 'POST /RPC2 HTTP/1.1\r\n'
-        'Host: flrig\r\n'
-        'Content-Type: text/xml\r\n'
-        'Content-Length: ${body.length}\r\n'
-        '\r\n'
-        '$body';
-  }
+  static String _httpRequest(String method, String params) =>
+      _post('<?xml version="1.0"?><methodCall><methodName>$method</methodName><params>$params</params></methodCall>');
+
+  /// Content-Length counts bytes, which a raw call may spell in more than ASCII.
+  static String _post(String body) =>
+      'POST /RPC2 HTTP/1.1\r\n'
+      'Host: flrig\r\n'
+      'Content-Type: text/xml\r\n'
+      'Content-Length: ${utf8.encode(body).length}\r\n'
+      '\r\n'
+      '$body';
 
   void _requestFrequencyAndMode() {
     // A backed-up queue means flrig is answering slower than the poll
@@ -240,6 +264,7 @@ class FlrigSession implements TransceiverSession, PttSession {
         // this buffer without bound, re-decoded in full on every chunk.
         if (_buffer.length > _maxUnframedBytes) {
           _buffer.clear();
+          _answerRaw(const []);
           _outstanding = null;
           _pump();
         }
@@ -253,6 +278,7 @@ class FlrigSession implements TransceiverSession, PttSession {
       // the next poll.
       if (lengthMatch == null) {
         _buffer.clear();
+        _answerRaw(const []);
         _outstanding = null;
         _pump();
         return;
@@ -260,7 +286,9 @@ class FlrigSession implements TransceiverSession, PttSession {
       final bodyStart = headerEnd + 4;
       final bodyLength = int.parse(lengthMatch.group(1)!);
       if (_buffer.length < bodyStart + bodyLength) return;
-      _handleResponse(ascii.decode(_buffer.sublist(bodyStart, bodyStart + bodyLength), allowInvalid: true));
+      final body = _buffer.sublist(bodyStart, bodyStart + bodyLength);
+      _answerRaw(body);
+      _handleResponse(ascii.decode(body, allowInvalid: true));
       _buffer.removeRange(0, bodyStart + bodyLength);
       _outstanding = null;
       _pump();
@@ -314,6 +342,7 @@ class FlrigSession implements TransceiverSession, PttSession {
         if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
       case _Ask.ptt:
       case _Ask.ignored:
+      case _Ask.raw:
         break;
     }
   }
@@ -370,6 +399,7 @@ class FlrigSession implements TransceiverSession, PttSession {
   void startUpdates() {
     _buffer.clear();
     _queue.clear();
+    _rawAnswers.clear();
     _outstanding = null;
     _requestFrequencyAndMode();
     _poller.start();
@@ -401,6 +431,7 @@ class FlrigSession implements TransceiverSession, PttSession {
     // A key still queued must not follow the unkey out, should one more
     // response arrive and pump it.
     _queue.clear();
+    _rawAnswers.clear();
     // flrig holds no per-client state; stopping the poll is the farewell.
     stopUpdates();
     _telemetry.dispose();

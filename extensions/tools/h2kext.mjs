@@ -41,7 +41,8 @@ import yazl from "yazl"
 /// frozen, from the one copy of the log every extension shares, and adds the
 /// `chasing` hook category; 10 adds the DX cluster connection — the
 /// `requiresCluster*` grants, the `host.cluster*` calls and the `cluster`
-/// hook category; 11 adds `n1mm-history:` data-file urls.
+/// hook category; 11 adds `n1mm-history:` data-file urls, and
+/// `host.sendRadioRaw` with its `requiresRadioRaw` grant.
 export const H2KEXT_API_VERSION = 11
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
@@ -59,6 +60,11 @@ export const CHASING_API_VERSION = 9
 /// `requiresCluster*` grant or a `cluster` hook under an older one is
 /// refused: an older app would install it and refuse every call it makes.
 export const CLUSTER_API_VERSION = 10
+
+/// The first API with `host.sendRadioRaw`. A manifest declaring
+/// `requiresRadioRaw` under an older one is refused: an older app would
+/// install it and refuse every raw command it sends.
+export const RADIO_RAW_API_VERSION = 11
 
 /// The first API with timers. The build points a bundle's bare `setTimeout`
 /// and friends at the SDK's only from here on: an older app's kernel hands an
@@ -364,6 +370,9 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
     say(
       `'${clusterGrant ?? "cluster"}' needs 'api' ${CLUSTER_API_VERSION} or later — an app older than that would install this and refuse every cluster call it makes`,
     )
+  }
+  if (manifest.requiresRadioRaw === true && Number.isInteger(manifest.api) && manifest.api < RADIO_RAW_API_VERSION) {
+    say(`'requiresRadioRaw' needs 'api' ${RADIO_RAW_API_VERSION} or later — an app older than that would install this and refuse every raw command it sends`)
   }
 
   // An extension with no category is CORE to the host: always enabled, and

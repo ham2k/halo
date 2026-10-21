@@ -21,6 +21,8 @@ import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
 import 'package:ham2k_logger/views/extension_install_flow.dart';
 
+import '../support/memory_bundle_storage.dart';
+
 void main() {
   late List<int> fixture;
 
@@ -146,6 +148,16 @@ void main() {
 
     expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
     expect(find.text(t.extensionsPanel.canControlRadio), findsOneWidget);
+    expect(find.text(t.extensionsPanel.canReadRadio), findsNothing);
+  });
+
+  // A raw command is not checked at all, so the line the operator agrees to
+  // must not be the one naming the commands the app does check.
+  testWidgets('a claim to send the radio any command is named, in place of the control it implies', (tester) async {
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'api': 11, 'requiresRadioRaw': true})));
+
+    expect(find.text(t.extensionsPanel.canCommandRadioRaw), findsOneWidget);
+    expect(find.text(t.extensionsPanel.canControlRadio), findsNothing);
     expect(find.text(t.extensionsPanel.canReadRadio), findsNothing);
   });
 
@@ -295,6 +307,56 @@ void main() {
 
     expect(find.text(t.extensionsPanel.updateAction), findsOneWidget);
     expect(find.text(t.extensionsPanel.installAction), findsNothing);
+  });
+
+  group('Update all, which shows no consent screen', () {
+    // An update asking for more than the version it replaces was granted is
+    // the one Update all must not take silently: nothing on its list says so,
+    // and `requiresRadioRaw` keys the transmitter.
+    late InstalledExtensions store;
+    late int commits;
+
+    Future<void> update(WidgetTester tester, List<int> bytes) async {
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            locale: const Locale('en'),
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: ElevatedButton(
+                  onPressed: () => installExtensionFromBytes(context, store: store, read: () async => bytes, commit: (_) async => commits++, askConsent: false),
+                  child: const Text('open'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+    }
+
+    setUp(() {
+      store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, storage: MemoryBundleStorage());
+      commits = 0;
+    });
+
+    testWidgets('takes an update asking for nothing new without asking', (tester) async {
+      await store.install(await store.inspect(fixture));
+      await update(tester, fixture);
+      expect(find.widgetWithText(FilledButton, t.extensionsPanel.updateAction), findsNothing);
+      expect(commits, 1);
+    });
+
+    testWidgets('asks before an update that adds a grant, naming it', (tester) async {
+      await store.install(await store.inspect(fixture));
+      await update(tester, withManifest((m) => {...m, 'api': 11, 'requiresRadioRaw': true}));
+      expect(find.text(t.extensionsPanel.canCommandRadioRaw), findsOneWidget);
+      expect(commits, 0, reason: 'nothing installed before the operator agrees');
+      await tester.tap(find.widgetWithText(FilledButton, t.extensionsPanel.updateAction));
+      await tester.pumpAndSettle();
+      expect(commits, 1);
+    });
   });
 
   testWidgets('an install of a key already under way is refused before anything is written', (tester) async {

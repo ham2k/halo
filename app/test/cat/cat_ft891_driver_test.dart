@@ -15,6 +15,7 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/meter_calibration.dart';
@@ -659,6 +660,32 @@ void main() {
           // connection, and a switch that writes to a tuner nobody has.
           expect(sink.sent.where((c) => c.startsWith('AC')), isEmpty);
           expect(sink.tunerReports, [null]);
+          session.teardown();
+        });
+      });
+
+      // A `?;` names no command: a raw command the radio refuses, counted,
+      // would twice in a row cost a read that happened to be out.
+      test('a refusal just after an extension\'s raw command is no strike — and one after that is', () {
+        final followed = AppClock.followZoneClock;
+        AppClock.followZoneClock = true;
+        addTearDown(() => AppClock.followZoneClock = followed);
+        fakeAsync((async) {
+          session.startUpdates();
+          for (var i = 0; i < 3; i++) {
+            session.sendRaw(ascii.encode('ZZ;'));
+            session.feed('?;');
+            untilTunerRead(async);
+          }
+          expect(sink.tunerReports, isEmpty);
+
+          session.sendRaw(ascii.encode('ZZ;'));
+          async.elapse(rawRefusalGrace);
+          session.feed('?;');
+          untilTunerRead(async);
+          session.feed('?;');
+          untilTunerRead(async);
+          expect(sink.tunerReports, [null], reason: 'the grace ends');
           session.teardown();
         });
       });

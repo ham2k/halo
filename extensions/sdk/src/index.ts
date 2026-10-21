@@ -30,6 +30,8 @@ import type {
   PanelRadioSet,
   PanelRadioTarget,
   PanelRadioResult,
+  PanelRadioRaw,
+  PanelRadioRawResult,
   ExtensionWebSocket,
   WebSocketOptions,
   ClusterLine,
@@ -318,6 +320,13 @@ export const host = {
   /** Stops all CW, voice and PTT the app is keying, and a tune it started (extension API 9), as Escape does. Needs `requiresRadioWrite` and extension API 7. */
   async stopRadioTransmit(args: PanelRadioTarget): Promise<PanelRadioResult> {
     return (await hostCallFn()("stopRadioTransmit", { ...args })) as PanelRadioResult
+  },
+  /**
+   * Writes any command in the radio's own protocol — one that transmits included — and collects the
+   * reply for `replyMs`. Needs `requiresRadioRaw` and extension API 11.
+   */
+  async sendRadioRaw(args: PanelRadioRaw): Promise<PanelRadioRawResult> {
+    return (await hostCallFn()("sendRadioRaw", { ...args })) as PanelRadioRawResult
   },
   /** The app's DX cluster connection, as Settings shows it. Needs `requiresClusterRead` and extension API 10. */
   async clusterStatus(): Promise<ClusterStatus> {

@@ -66,7 +66,7 @@ class N3fjpDriver extends EquipmentDriver {
 /// Far past any real message; reached only when the peer is not N3FJP.
 const _maxPending = 64 * 1024;
 
-class N3fjpSession implements TransceiverSession {
+class N3fjpSession implements TransceiverSession, RawCommandSession {
   final EquipmentSink _sink;
 
   final Map<String, dynamic> _config;
@@ -82,6 +82,14 @@ class N3fjpSession implements TransceiverSession {
   Duration get pollInterval => _poller.interval;
 
   void _send(String inner) => _sink.send(utf8.encode(n3fjpMessage(inner)));
+
+  /// An extension's raw messages, written as given (`<CMD><READBMF></CMD>`):
+  /// every answer names what it answers, so none is taken for another's.
+  @override
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    _sink.send(bytes);
+    return null;
+  }
 
   void _poll() {
     _send('<RIGENABLED>');

@@ -9,9 +9,10 @@ import '../panel_radio_service.dart';
 /// The radio host calls and the manifest capabilities that gate them:
 /// `requiresRadioRead` for `listRadios`/`readRadio`, `requiresRadioWrite` for
 /// everything that commands one — settings, connection, scope, and keying
-/// (CW, voice memories, PTT). Without the gate any installed bundle could
-/// retune the rig, drop the CAT link or key the transmitter from any hook,
-/// with nothing in its manifest saying so.
+/// (CW, voice memories, PTT) — and `requiresRadioRaw` for `sendRadioRaw`, any
+/// command in the radio's own protocol, which implies both. Without the gate
+/// any installed bundle could retune the rig, drop the CAT link or key the
+/// transmitter from any hook, with nothing in its manifest saying so.
 ///
 /// `tuneRadio` is `setRadio`'s name through extension API 6, still answered
 /// for bundles built against it.
@@ -32,7 +33,9 @@ class RadioHostCalls {
     'stopRadioTransmit',
   };
 
-  static bool handles(String method) => _reads.contains(method) || _writes.contains(method);
+  static const _raw = 'sendRadioRaw';
+
+  static bool handles(String method) => _reads.contains(method) || _writes.contains(method) || method == _raw;
 
   /// Null on a host with no CAT service behind it: reads answer empty and
   /// commands are refused as `disconnected`.
@@ -40,12 +43,17 @@ class RadioHostCalls {
 
   CapabilityGrant _read = const CapabilityGrant();
   CapabilityGrant _write = const CapabilityGrant();
+  CapabilityGrant _rawGrant = const CapabilityGrant();
 
   /// Resolved once per runtime start, like the location allowlist. A write
-  /// key is in both sets: a command answers with the radio's state.
+  /// key is in both sets: a command answers with the radio's state. A raw
+  /// key is in all three: anything `setRadio` does, a raw command can.
   void allow(Iterable<ExtensionInfo> loaded) {
-    _read = CapabilityGrant.among(loaded, (info) => info.requiresRadioRead || info.requiresRadioWrite);
-    _write = CapabilityGrant.among(loaded, (info) => info.requiresRadioWrite);
+    bool raw(ExtensionInfo info) => info.requiresRadioRaw;
+    bool write(ExtensionInfo info) => raw(info) || info.requiresRadioWrite;
+    _read = CapabilityGrant.among(loaded, (info) => write(info) || info.requiresRadioRead);
+    _write = CapabilityGrant.among(loaded, write);
+    _rawGrant = CapabilityGrant.among(loaded, raw);
   }
 
   /// Whether [extensionKey] may read the radio — and so be shown its
@@ -57,13 +65,14 @@ class RadioHostCalls {
   bool canWrite(String? extensionKey) => _write.allows(extensionKey);
 
   Future<dynamic> handle(String method, Map<String, dynamic> params) async {
-    final write = _writes.contains(method);
     final extensionKey = params['extensionKey'] as String?;
-    if (!(write ? _write : _read).allows(extensionKey)) {
-      throw ExtensionHostException(
-        "$method blocked: extension '${extensionKey ?? 'unknown'}' does not declare "
-        "${write ? 'requiresRadioWrite' : 'requiresRadioRead'}",
-      );
+    final (grant, name) = method == _raw
+        ? (_rawGrant, 'requiresRadioRaw')
+        : _writes.contains(method)
+        ? (_write, 'requiresRadioWrite')
+        : (_read, 'requiresRadioRead');
+    if (!grant.allows(extensionKey)) {
+      throw ExtensionHostException("$method blocked: extension '${extensionKey ?? 'unknown'}' does not declare $name");
     }
     const unavailable = {'accepted': false, 'reason': 'disconnected', 'state': null};
     return switch (method) {
@@ -75,6 +84,7 @@ class RadioHostCalls {
       'playRadioVoice' => radio?.playVoice(params) ?? unavailable,
       'setRadioPtt' => radio?.setPtt(params) ?? unavailable,
       'stopRadioTransmit' => radio?.stopTransmit(params) ?? unavailable,
+      _raw => await radio?.sendRaw(params) ?? unavailable,
       _ => await radio?.set(params) ?? unavailable,
     };
   }

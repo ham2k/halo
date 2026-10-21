@@ -163,7 +163,7 @@ class _FakeTransport extends EquipmentTransport {
   }
 }
 
-class _FakeSession implements TransceiverSession, CwKeyerSession {
+class _FakeSession implements TransceiverSession, CwKeyerSession, RawCommandSession {
   final EquipmentSink sink;
   final List<String> log;
   var updatesStarted = false;
@@ -191,6 +191,13 @@ class _FakeSession implements TransceiverSession, CwKeyerSession {
 
   @override
   void stopUpdates() => log.add('stopUpdates');
+
+  /// Written as given, like the drivers whose answers name their command.
+  @override
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    sink.send(bytes);
+    return null;
+  }
 
   /// Drivers report from their own timers, so a session can try to publish
   /// long after the connection it belongs to has been superseded.
@@ -308,6 +315,37 @@ class _PlainDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => _PlainSession();
 }
 
+/// A protocol that queues raw commands behind its own and answers each, as
+/// CI-V does: one per line here, and a line reading `bad` is not a command.
+class _QueuedSession extends _PlainSession implements RawCommandSession {
+  final raw = <String>[];
+  final answers = <void Function(List<int> answer)?>[];
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    final lines = utf8.decode(bytes).split('\n');
+    if (lines.contains('bad')) throw const FormatException('not a command');
+    raw.addAll(lines);
+    answers.addAll([for (final _ in lines) onAnswer]);
+    return lines.length;
+  }
+
+  void answer(int index, String text) => answers[index]!(utf8.encode(text));
+}
+
+class _QueuedDriver extends EquipmentDriver {
+  final sessions = <_QueuedSession>[];
+  @override
+  String get key => 'queued';
+  @override
+  String get name => 'Queued Radio';
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
+    final session = _QueuedSession();
+    sessions.add(session);
+    return session;
+  }
+}
+
 EquipmentModel _plainModel(EquipmentTransport transport) => EquipmentModel(
   key: 'plain',
   category: kCategoryTransceiver,
@@ -368,12 +406,14 @@ void main() {
   late List<String> log;
   late CatService cat;
   late RadioService radio;
+  late _QueuedDriver queued;
 
   Future<CatService> makeService({void Function(String event, [Map<String, Object?> properties])? onTrack, Duration? idleRetryFirst}) async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
     transport = _FakeTransport();
     driver = _FakeDriver(log);
+    queued = _QueuedDriver();
     radio = RadioService(await SharedPreferences.getInstance(), writeDelay: Duration.zero);
     addTearDown(radio.dispose);
     return CatService(
@@ -381,7 +421,21 @@ void main() {
       radio: radio,
       onTrack: onTrack,
       registry: EquipmentRegistry(
-        models: [_fakeModel(driver, transport), _plainModel(transport), _keyerModel(driver, transport), antennaModel, keyModel],
+        models: [
+          _fakeModel(driver, transport),
+          _plainModel(transport),
+          _keyerModel(driver, transport),
+          antennaModel,
+          keyModel,
+          EquipmentModel(
+            key: 'queued',
+            category: kCategoryTransceiver,
+            name: () => 'Queued Radio',
+            variants: [
+              EquipmentVariant(key: 'queued-type', driver: queued, transport: transport, defaultConfig: const {'host': ''}),
+            ],
+          ),
+        ],
         transports: {'fake': transport, 'none': const NoneTransport()},
       ),
       reconnectDelay: Duration.zero,
@@ -2805,6 +2859,106 @@ void main() {
       usb.attempts.last.completer.complete(_FakeConnection('c1', log));
       await connecting;
       expect(bare.radio1SettableModes, ['CW'], reason: 'the driver offers CW and CW-R');
+    });
+  });
+
+  group('an extension\'s raw command', () {
+    List<int> ascii(String text) => utf8.encode(text);
+    String? text(({String? refused, List<int>? reply}) result) => result.reply == null ? null : utf8.decode(result.reply!);
+
+    test('reaches only a connected radio whose driver takes raw commands', () async {
+      // Written beside a driver that does not queue them, a raw command's
+      // answer would be read as the answer to the driver's own question.
+      final node = await addRadio();
+      expect((await cat.sendNodeRaw(node.uuid, ascii('FA;'))).refused, 'disconnected');
+      final connection = await connectAndLand(node);
+      final result = await cat.sendNodeRaw(node.uuid, ascii('TX1;'));
+      expect(result.refused, isNull);
+      expect(result.reply, isNull, reason: 'no window asked for, none waited for');
+      expect(connection.sent.last, 'TX1;');
+
+      final plain = await cat.addNode(typeKey: 'plain-type', name: 'Plain', config: {'host': 'plain.local'});
+      final plainConnection = await connectAndLand(plain);
+      expect((await cat.sendNodeRaw(plain.uuid, ascii('FA;'))).refused, 'unsupported');
+      expect(plainConnection.sent, isEmpty);
+    });
+
+    test('written as given, answers what arrived within its window, cut after the first terminator', () async {
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      final sending = cat.sendNodeRaw(node.uuid, ascii('FA;'), reply: const Duration(seconds: 2), until: ascii(';'));
+      await pumpEventQueue();
+      // Split across reads, as a serial port delivers it.
+      connection.push('FA0142');
+      connection.push('50000;MD2;');
+      expect(text(await sending), 'FA014250000;');
+    });
+
+    test('written as given and with no terminator, keeps everything the radio sent until the window closes', () async {
+      // No protocol says which bytes answer a command the driver never sent:
+      // the answers to its own polls are in there too, and are not dropped.
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      final sending = cat.sendNodeRaw(node.uuid, ascii('X'), reply: const Duration(milliseconds: 50));
+      await pumpEventQueue();
+      connection.push('14074 USB\n');
+      connection.push('ok');
+      expect(text(await sending), '14074 USB\nok');
+      expect(cat.stateFor(node.uuid).vfo.freqKHz, 14074, reason: 'the driver still parses what the radio said');
+    });
+
+    test('ends with its connection: the next one\'s traffic is not its reply', () async {
+      final node = await addRadio();
+      final first = await connectAndLand(node);
+      final sending = cat.sendNodeRaw(node.uuid, ascii('X'), reply: const Duration(milliseconds: 200));
+      await pumpEventQueue();
+      first.push('a');
+      await pumpEventQueue();
+      await cat.disconnect(node.uuid);
+      final second = await connectAndLand(node);
+      second.push('b');
+      expect(text(await sending), 'a');
+    });
+
+    test('keeps no more of a streaming radio\'s traffic than its cap', () async {
+      final node = await addRadio();
+      final connection = await connectAndLand(node);
+      final sending = cat.sendNodeRaw(node.uuid, ascii('X'), reply: const Duration(seconds: 2));
+      await pumpEventQueue();
+      final sweep = 'x' * 1000;
+      for (var i = 0; i * 1000 <= rawReplyMaxBytes; i++) {
+        connection.push(sweep);
+      }
+      expect((await sending).reply, hasLength(rawReplyMaxBytes), reason: 'and answered at the cap, not at the window');
+    });
+
+    test('queued by its driver, answers with its own answers alone, once each command has one', () async {
+      final node = await cat.addNode(typeKey: 'queued-type', name: 'Icom', config: {'host': 'icom.local'});
+      final connection = await connectAndLand(node);
+      final sending = cat.sendNodeRaw(node.uuid, ascii('one\ntwo'), reply: const Duration(seconds: 2));
+      await pumpEventQueue();
+      final session = queued.sessions.last;
+      expect(session.raw, ['one', 'two']);
+      connection.push('14074 USB\n');
+      session.answer(0, 'A1;');
+      session.answer(1, 'A2;');
+      expect(text(await sending), 'A1;A2;', reason: 'not the poll answer that came between');
+    });
+
+    test('queued by its driver and not all answered in time, keeps the answers that came', () async {
+      final node = await cat.addNode(typeKey: 'queued-type', name: 'Icom', config: {'host': 'icom.local'});
+      await connectAndLand(node);
+      final sending = cat.sendNodeRaw(node.uuid, ascii('one\ntwo'), reply: const Duration(milliseconds: 50));
+      await pumpEventQueue();
+      queued.sessions.last.answer(0, 'A1;');
+      expect(text(await sending), 'A1;');
+    });
+
+    test('that its driver cannot send is refused, rather than written as something else', () async {
+      final node = await cat.addNode(typeKey: 'queued-type', name: 'Icom', config: {'host': 'icom.local'});
+      await connectAndLand(node);
+      expect((await cat.sendNodeRaw(node.uuid, ascii('one\nbad'))).refused, 'invalid');
+      expect(queued.sessions.last.raw, isEmpty);
     });
   });
 }

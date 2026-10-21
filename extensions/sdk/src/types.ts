@@ -2411,6 +2411,11 @@ export interface ExtensionManifest {
   /// `host.stopRadioTransmit()`. Implies `requiresRadioRead`, since a command
   /// answers with the radio's state.
   requiresRadioWrite?: boolean
+  /// Declares this extension's bundle may send the operator's radios any
+  /// command in their own protocol — `host.sendRadioRaw()`. Nothing about the
+  /// command is checked: it may transmit or change any setting, and the
+  /// install screen says so. Implies `requiresRadioWrite`. Extension API 11.
+  requiresRadioRaw?: boolean
   /// Declares this extension's bundle may read the app's DX cluster
   /// connection — `host.clusterStatus()`, `host.clusterLines()`,
   /// `host.clusterSubscribe()` and the `cluster` hook's `onLines`. Each of
@@ -3295,15 +3300,41 @@ export interface PanelRadioSet extends PanelRadioTarget {
 }
 /** @deprecated `setRadio`'s argument through extension API 6. */
 export type PanelRadioTune = PanelRadioSet
+/**
+ * Commands in the radio's own protocol — exactly one of `text` or `bytes`, up to 4096 bytes
+ * (extension API 11). Where the app's driver keeps one question on the wire (CI-V, Yaesu binary,
+ * HRD, Commander, flrig) each command waits its turn in that queue, and on a FlexRadio is numbered
+ * like the driver's own; the reply is then the answers to these commands alone. Elsewhere the bytes
+ * are written as given. See hooks.md for what each protocol takes.
+ */
+export interface PanelRadioRaw extends PanelRadioTarget {
+  /** Sent as UTF-8: Kenwood, Yaesu and Elecraft ASCII, rigctld, N3FJP, SmartSDR, HRD, Commander, flrig. */
+  text?: string
+  /** Each 0…255: Icom CI-V, Yaesu's binary protocol. */
+  bytes?: number[]
+  /**
+   * How long to wait for the reply, up to 2000 ms; omitted or 0, the call answers once the commands
+   * are handed to the driver. Where they are written as given, the reply is everything the radio
+   * sent in that time — the answers to the app's own polls included.
+   */
+  replyMs?: number
+  /** Ends the reply early, just after the first occurrence of this text or these bytes. Needs `replyMs`. */
+  until?: string | number[]
+}
+export interface PanelRadioRawResult extends PanelRadioResult {
+  /** What came back within `replyMs`, possibly nothing, at most 64 KiB; absent without `replyMs`. `text` is it as UTF-8. */
+  reply?: { text: string; bytes: number[] }
+}
 export interface PanelRadioResult {
   /** Accepted by the host; confirmation still comes from reported state. */
   accepted: boolean
   /**
    * `stopped`: a scope change while no display has the scope running — nothing was sent.
+   * `busy`: eight raw commands to this radio are already waiting (extension API 11).
    * `unsupported`: this radio, or the app's keying, cannot do it — keying calls on a radio that
    * is not the logging radio, or with the app's keying off.
    */
-  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped" | "unsupported"
+  reason?: "changed" | "disconnected" | "transmitting" | "invalid" | "stopped" | "unsupported" | "busy"
   state: PanelRadioState | null
 }
 /** @deprecated `PanelRadioResult`'s name through extension API 6. */

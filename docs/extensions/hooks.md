@@ -2115,7 +2115,9 @@ same shape as `requiresLocation`, and shown to the operator at install:
 `host.setRadioConnection()` and `host.setRadioSpectrum()` — and transmitting
 with them: `host.sendRadioCw()`, `host.playRadioVoice()`, `host.setRadioPtt()`
 and `host.stopRadioTransmit()` — and implies read, since a command answers with the
-radio's state. An undeclared call rejects rather than answering null.
+radio's state. `"requiresRadioRaw": true` (extension API 11) also allows
+`host.sendRadioRaw()`, any command in the radio's own protocol, and implies
+write. An undeclared call rejects rather than answering null.
 A capability belongs to the bundle that declared it, and to the sub-extensions
 that bundle defines under its own key. A separately installed bundle never
 inherits one through its name: `rigpanel-themes` gets nothing from `rigpanel`.
@@ -2231,6 +2233,61 @@ not paced, and not refused for a transmission in progress.
 connection using the same selection and identity checks. Acceptance starts the
 operation; follow reported connection state for completion. It does not switch
 the hardware's mains power or initiate transmission.
+
+`host.sendRadioRaw({id, selection?, text | bytes, replyMs?, until?})`
+(extension API 11, `requiresRadioRaw`) sends commands in the radio's own
+protocol — exactly one of `text`, sent as UTF-8, or `bytes`, each 0…255, up
+to 4096 bytes. **Nothing about them is checked.** They may transmit, change
+any setting or put the radio somewhere the app's own controls never would;
+that is what the operator agreed to at install, where the grant is shown in
+those words. It reaches any local radio through the same `id`/`selection`
+check as `setRadio`, with keying on or off, and is neither paced nor refused
+for a transmission in progress. One radio's calls go one at a time, in order,
+so that one call's reply window never holds the next one's answer, and past
+eight waiting the next is refused as `busy`; the app's own polls may come
+between two calls.
+
+- `replyMs`, up to 2000: how long to wait for the reply. Omitted or 0, the
+  call answers as soon as the commands are handed to the driver, with no
+  `reply`.
+- `until`, text or bytes, needs `replyMs`: the reply ends just after its first
+  occurrence.
+- The answer carries `reply: {text, bytes}`, possibly empty, at most 64 KiB,
+  with `text` its UTF-8 reading.
+
+What the commands are, and what the reply holds, is the protocol's. Where the
+app's driver keeps one question on the wire and reads the next reply as its
+answer, a raw command waits its turn in that queue — written beside it, its
+answer would be read as the answer to the driver's question — or, on a
+FlexRadio, is numbered as the driver's own are. The reply is then the answers
+to the raw commands alone, as the radio sent them, once each has come or the
+window closes:
+
+| Radio | Commands | Reply |
+|---|---|---|
+| Icom CI-V | `bytes`: whole frames, `FE FE` … `FD`, one at a time; the app addresses each to the radio from itself, whatever its address bytes say | each frame's answer frame (`FB`/`FA` or its data) |
+| Yaesu binary (FT-817/857/897) | `bytes`: five-byte commands | what the radio sends for each before it falls quiet; not read by the app |
+| FlexRadio | `text`: one command per line, without `C<seq>\|` — the app numbers each like its own | each one's `R` line |
+| Ham Radio Deluxe | `text`: one command per line, without the radio's context — the app adds it | each one's reply text, one per line |
+| DXLab Commander | `text`: one whole message (`<command:10>CmdGetFreq<parameters:0>`) | the field it is answered with; without `replyMs` it goes out as a set, waiting for nothing |
+| flrig | `text`: one XML-RPC call (`<?xml …?><methodCall>…`) — the app posts it | the response's body |
+
+Every other radio's commands are written as given — several back to back
+(`FA00014074000;MD2;`) in one write, none of the app's own between them —
+since each of their answers names what it answers: Kenwood, Elecraft and
+Yaesu ASCII, rigctld, N3FJP, Guohetec. The reply there is everything the
+connection received in the window, the answers to the app's own polls
+included, so `until` is worth setting.
+
+The app's driver still reads what the radio sends, so a raw command's effect
+shows in `readRadio` as a change made at the front panel would — and a command
+that confuses the driver confuses the app. A radio that is not connected
+answers `disconnected`; one whose driver takes no raw commands (a placeholder
+radio), `unsupported`; a malformed call, or commands that are not the
+protocol's (CI-V bytes that are not whole frames), `invalid`. A refusal heard
+within a second of a raw command on a protocol whose refusals name no command
+(`?;`, rigctld's `RPRT`) is taken as the raw command's, not counted against the
+app's own reads.
 On a host with the panadapter enabled, `readRadio()` carries `spectrum`: null
 for a radio without a scope, otherwise its settings as the radio reports them
 (`mode`, `spanHz`, `lowHz`/`highHz`, `refLevelDb`, `speed`), what it accepts

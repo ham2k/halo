@@ -97,6 +97,8 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // host.listRadios()/readRadio() (and a scene's spectrum control) and
 // host.setRadio()/setRadioConnection()/setRadioSpectrum() and the keying calls.
 // Write implies read: a command answers with the radio's state.
+// `requiresRadioRaw: true` also allows host.sendRadioRaw(), any command in the
+// radio's own protocol, and implies both.
 // `requiresClusterRead`, `requiresClusterSpot` and `requiresClusterCommand`
 // allow the DX cluster calls, each including the ones before it:
 // host.clusterStatus()/clusterLines()/clusterSubscribe(), then
@@ -274,6 +276,7 @@ export function indexEntryFor({ key, manifest: m }) {
     ...(m.requiresLocation ? { requiresLocation: true } : {}),
     ...(m.requiresRadioRead ? { requiresRadioRead: true } : {}),
     ...(m.requiresRadioWrite ? { requiresRadioWrite: true } : {}),
+    ...(m.requiresRadioRaw ? { requiresRadioRaw: true } : {}),
     ...(m.requiresClusterRead ? { requiresClusterRead: true } : {}),
     ...(m.requiresClusterSpot ? { requiresClusterSpot: true } : {}),
     ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),

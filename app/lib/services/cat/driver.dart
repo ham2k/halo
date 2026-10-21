@@ -11,7 +11,10 @@
 // manager is what makes a driver testable with a plain fake sink, and what
 // makes a second device a map lookup rather than a rewrite.
 
+import 'dart:convert';
 import 'dart:typed_data';
+
+import 'package:halo_core/halo_core.dart' show realNowMillis;
 
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
@@ -518,6 +521,56 @@ abstract class RadioNamedVoiceMemories implements VoiceKeyerSession {
 abstract class PttSession implements EquipmentSession {
   /// Keys ([on]) or unkeys the transmitter.
   void setPtt(bool on);
+}
+
+/// A session that takes an extension's raw commands (`host.sendRadioRaw`).
+/// A transceiver session without it answers them as unsupported.
+///
+/// A protocol whose driver keeps one question on the wire and reads the next
+/// reply as its answer — CI-V, Yaesu's binary protocol, HRD, Commander,
+/// flrig — queues the raw commands behind its own, and SmartSDR numbers them
+/// as it does its own. Written to the connection as given, a raw command's
+/// answer would be read as the answer to the driver's question, and every
+/// answer after it as the one before's.
+abstract class RawCommandSession implements EquipmentSession {
+  /// Sends [bytes] as this protocol's commands.
+  ///
+  /// Answers how many answers will come to [onAnswer], one per command and
+  /// in order — an empty one for a command that got none in the protocol's
+  /// time — or null where the bytes are written as given and the protocol's
+  /// replies need not be told apart from the rest of its traffic (each names
+  /// what it answers), for the caller to collect what arrives instead.
+  /// Throws [FormatException] for bytes that are not this protocol's
+  /// commands. Without [onAnswer] the caller wants no reply.
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer});
+}
+
+/// [text] as the one-per-line commands of a protocol that takes them so
+/// (SmartSDR, HRD), trimmed and without the blank ones. Throws
+/// [FormatException] when none is left.
+List<String> rawCommandLines(List<int> text) {
+  final lines = [
+    for (final line in utf8.decode(text, allowMalformed: true).split('\n'))
+      if (line.trim().isNotEmpty) line.trim(),
+  ];
+  if (lines.isEmpty) throw const FormatException('no command');
+  return lines;
+}
+
+/// How long after an extension's raw command a refusal is left uncounted.
+const rawRefusalGrace = Duration(seconds: 1);
+
+/// For a protocol whose refusals name no command (`?;`, `RPRT -1`): whether a
+/// refusal heard now may be an extension's raw command's. Counted against the
+/// driver, one would cost a read that happened to be out, or retire a meter,
+/// for the whole connection.
+class RawRefusalGrace {
+  int? _sentAt;
+
+  /// A raw command went out. Real time: a protocol's answer does not travel.
+  void sent() => _sentAt = realNowMillis();
+
+  bool get active => _sentAt != null && realNowMillis() - _sentAt! < rawRefusalGrace.inMilliseconds;
 }
 
 abstract class EquipmentDriver {

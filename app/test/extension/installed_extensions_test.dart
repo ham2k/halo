@@ -381,6 +381,60 @@ void main() {
     });
   });
 
+  group('what an update asks for beyond the version it replaces', () {
+    // Update all installs without a consent screen. An update widening what
+    // the extension reaches — `requiresRadioRaw` keys the transmitter — must
+    // be held for one, and one asking for nothing new must not be.
+    InspectedBundle bundle(Map<String, dynamic> grants) => InspectedBundle(manifest: {'key': 'w7abc-panel', ...grants}, archive: Archive());
+
+    test('is nothing for the same grants, or fewer', () {
+      final installed = bundle({
+        'domains': ['a.example.org', 'b.example.org'],
+        'requiresRadioRaw': true,
+      });
+      expect(bundle({'requiresRadioRaw': true}).asksMoreThan(installed), isFalse);
+      expect(
+        bundle({
+          'domains': ['b.example.org'],
+          'requiresRadioWrite': true,
+        }).asksMoreThan(installed),
+        isFalse,
+        reason: 'raw already granted write',
+      );
+    });
+
+    test('is a new host, or any stronger grant', () {
+      final installed = bundle({
+        'domains': ['a.example.org'],
+        'requiresRadioWrite': true,
+      });
+      for (final more in <Map<String, dynamic>>[
+        {
+          'domains': ['a.example.org', 'c.example.org'],
+        },
+        {
+          'webSockets': ['stream.example.org'],
+        },
+        {'requiresRadioRaw': true},
+        {'requiresLocation': true},
+        {'requiresClusterRead': true},
+        {'allowUserAgentOverride': true},
+      ]) {
+        expect(bundle({'requiresRadioWrite': true, ...more}).asksMoreThan(installed), isTrue, reason: '$more');
+      }
+    });
+
+    test('is read from what is installed', () async {
+      final s = store();
+      expect(await s.installedBundle('ki2d-my-clock'), isNull);
+      final inspected = await s.inspect(fixture);
+      await s.install(inspected);
+      final installed = (await s.installedBundle('ki2d-my-clock'))!;
+      expect(inspected.asksMoreThan(installed), isFalse);
+      expect((await s.inspect(rebuilt((m) => {...m, 'api': 11, 'requiresRadioRaw': true}))).asksMoreThan(installed), isTrue);
+    });
+  });
+
   group('a manifest the consent screen could not survive is refused', () {
     // These fields are read while BUILDING that screen, from a file supplied
     // by whoever wrote it — unchecked, they throw out of a widget build

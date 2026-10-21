@@ -336,7 +336,16 @@ class IcomCivDriver extends EquipmentDriver {
 }
 
 class IcomCivSession
-    implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, SpectrumSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
+    implements
+        TransceiverSession,
+        CwKeyerSession,
+        VoiceKeyerSession,
+        PttSession,
+        SpectrumSession,
+        AntennaTunerSession,
+        PassbandSession,
+        RadioAntennaSession,
+        RawCommandSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).
@@ -532,10 +541,41 @@ class IcomCivSession
   /// [droppingSub] narrows that to one sub-command, for a command byte
   /// shared by things a stop must not take with it.
   void _sendFirst(List<int> frame, {required int dropping, int? droppingSub}) {
-    _outbox.removeWhere((queued) => queued[4] == dropping && (droppingSub == null || queued[5] == droppingSub));
+    _outbox.removeWhere((queued) {
+      final drop = queued[4] == dropping && (droppingSub == null || queued[5] == droppingSub);
+      if (drop) _rawAnswers.remove(queued)?.call(const []);
+      return drop;
+    });
     _outbox.addFirst(frame);
     _sendNext();
   }
+
+  /// An extension's raw frames, queued like the driver's own — one on the
+  /// wire at a time — each answered by the frame that frees the wire for the
+  /// next, or by nothing in [civAnswerTimeout]. Addressed from this session to
+  /// its radio whatever the frames say: an answer to any other address is
+  /// never heard here, and the extension cannot know these two.
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    final frames = <List<int>>[];
+    var start = 0;
+    while (start < bytes.length) {
+      final end = bytes.indexOf(civTerminator, start);
+      // Preamble, preamble, to, from, command, terminator at the least.
+      if (end < start + 5 || bytes[start] != civPreamble || bytes[start + 1] != civPreamble) throw const FormatException('not CI-V frames');
+      frames.add([civPreamble, civPreamble, radioAddress, controllerAddress, ...bytes.sublist(start + 4, end + 1)]);
+      start = end + 1;
+    }
+    if (frames.isEmpty) throw const FormatException('no frame');
+    for (final frame in frames) {
+      if (onAnswer != null) _rawAnswers[frame] = onAnswer;
+      _send(frame);
+    }
+    return frames.length;
+  }
+
+  /// Who is waiting for each raw frame's answer, by the frame itself.
+  final _rawAnswers = Map<List<int>, void Function(List<int> answer)>.identity();
 
   void _sendNext() {
     if (_awaiting != null || _outbox.isEmpty) return;
@@ -569,7 +609,9 @@ class IcomCivSession
   /// Said once a session: a radio that ignores one of our commands costs a
   /// timeout on every poll, and nothing else would show it.
   void _unanswered() {
-    if (!_warnedUnanswered) {
+    // An extension's frame the radio ignores says nothing about the polls,
+    // and must not spend the one diagnostic.
+    if (!_warnedUnanswered && !_rawAnswers.containsKey(_onWire)) {
       _warnedUnanswered = true;
       _sink.reportDiagnostic('radio did not answer CI-V command 0x${_awaiting!.toRadixString(16).padLeft(2, '0').toUpperCase()} in time');
     }
@@ -583,6 +625,7 @@ class IcomCivSession
       if (read != silent) read.radioWentSilent();
     }
     if (!_telemetry.transmitting) silent?.unanswered();
+    _rawAnswers.remove(_onWire)?.call(const []);
     _answered();
   }
 
@@ -728,7 +771,10 @@ class IcomCivSession
     final answering = _awaiting;
     final answeringFrame = _onWire;
     // An answer to us, not a transceive broadcast, is what frees the wire.
-    if (frame.to == controllerAddress && _answers(frame)) _answered();
+    if (frame.to == controllerAddress && _answers(frame)) {
+      _rawAnswers.remove(answeringFrame)?.call(buildCivFrame(to: frame.to, from: frame.from, command: frame.command, data: frame.data));
+      _answered();
+    }
 
     if (frame.isNak) {
       // The radio refused the command. polo ignored this entirely, so a
@@ -1439,6 +1485,7 @@ class IcomCivSession
     }
     _answerTimer?.cancel();
     _outbox.clear();
+    _rawAnswers.clear();
     _cwQueue.clear();
     _voice.dispose();
     _stopPolling();

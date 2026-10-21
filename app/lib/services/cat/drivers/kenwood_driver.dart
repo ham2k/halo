@@ -259,7 +259,8 @@ const kenwoodPassbandReadEvery = 5;
 /// tuner's rate, for the tuner's reason.
 const kenwoodAntennaReadEvery = 5;
 
-class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
+class KenwoodSession
+    implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
   final EquipmentSink _sink;
   final bool isK4;
   num? _pendingK4Power;
@@ -454,6 +455,17 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   Duration? get expectedUpdateInterval => _poller.interval;
 
   void _send(String command) => _sink.send(ascii.encode(command));
+
+  /// An extension's raw commands, written as given: every answer names the
+  /// command it answers, so none is taken for another's.
+  @override
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    _rawGrace.sent();
+    _sink.send(bytes);
+    return null;
+  }
+
+  final _rawGrace = RawRefusalGrace();
 
   /// `IF` is in here, not only in [startUpdates], and that is what makes the
   /// offset learnable at all. It needs an `IF` paired with a FRESH `MD`
@@ -765,7 +777,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // Before the framer, which drops `?;` — it has no letters to frame.
     // Not on the air: the K3 line answers `?;` to commands it will not handle
     // while transmitting, which says nothing about whether it has them.
-    if (!_telemetry.transmitting && text.contains(kenwoodRefusal)) {
+    if (!_telemetry.transmitting && !_rawGrace.active && text.contains(kenwoodRefusal)) {
       _tunerRead.heardRefusal();
       _passbandRead.heardRefusal();
       _antennaRead.heardRefusal();

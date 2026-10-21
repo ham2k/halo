@@ -136,7 +136,7 @@ class GuohetecDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => GuohetecSession(sink, config: config);
 }
 
-class GuohetecSession implements TransceiverSession, PttSession {
+class GuohetecSession implements TransceiverSession, PttSession, RawCommandSession {
   final EquipmentSink _sink;
   final Map<String, dynamic> _config;
   final String? _meterInfoKey;
@@ -220,6 +220,14 @@ class GuohetecSession implements TransceiverSession, PttSession {
   Duration? get expectedUpdateInterval => _poller.interval;
 
   void _send(List<int> bytes) => _sink.send(bytes);
+
+  /// An extension's raw packets, written as given: every answer is framed and
+  /// names its command byte, so none is taken for another's.
+  @override
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    _send(bytes);
+    return null;
+  }
 
   // ------------------------------------------------------------- reading
 

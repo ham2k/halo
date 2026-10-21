@@ -191,6 +191,7 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String get canUseLocation => 'your location';
 	@override String get canReadRadio => 'your radio, to read its frequency and mode';
 	@override String get canControlRadio => 'your radio, to control it and to transmit with it — tuning, power, cw, voice memories and ptt';
+	@override String get canCommandRadioRaw => 'your radio, to send it any command in its own protocol — including ones that transmit or change its settings';
 	@override String get canReadCluster => 'the dx cluster, logged in as you, to read what it sends';
 	@override String get canSpotCluster => 'the dx cluster, logged in as you, to post spots in your name';
 	@override String get canCommandCluster => 'the dx cluster, logged in as you, to send it any command in your name';
@@ -4037,6 +4038,7 @@ extension on TranslationsQrp {
 			'extensionsPanel.canUseLocation' => 'your location',
 			'extensionsPanel.canReadRadio' => 'your radio, to read its frequency and mode',
 			'extensionsPanel.canControlRadio' => 'your radio, to control it and to transmit with it — tuning, power, cw, voice memories and ptt',
+			'extensionsPanel.canCommandRadioRaw' => 'your radio, to send it any command in its own protocol — including ones that transmit or change its settings',
 			'extensionsPanel.canReadCluster' => 'the dx cluster, logged in as you, to read what it sends',
 			'extensionsPanel.canSpotCluster' => 'the dx cluster, logged in as you, to post spots in your name',
 			'extensionsPanel.canCommandCluster' => 'the dx cluster, logged in as you, to send it any command in your name',
@@ -4480,9 +4482,9 @@ extension on TranslationsQrp {
 			'operation.layout.panels.solarDescription' => 'solar and geomagnetic conditions, with band-by-band propagation',
 			'operation.layout.panels.solarUnreachable' => 'couldn\'t reach hamqsl.com — no network? will try again shortly.',
 			'operation.layout.panels.solarUnreadable' => 'hamqsl.com responded, but not with a reading we could use. will try again shortly.',
-			'operation.layout.panels.solarAIndex' => 'a',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.solarAIndex' => 'a',
 			'operation.layout.panels.solarKIndex' => 'kp',
 			'operation.layout.panels.solarBandDay' => 'day',
 			'operation.layout.panels.solarBandNight' => 'night',
@@ -4994,9 +4996,9 @@ extension on TranslationsQrp {
 			'settings.fontScaleOpts.smallestMinusMinus' => 'smallest--',
 			'settings.fontScaleOpts.smallestMinus' => 'smallest-',
 			'settings.fontScaleOpts.smallest' => 'smallest',
-			'settings.fontScaleOpts.smaller' => 'smaller',
 			_ => null,
 		} ?? switch (path) {
+			'settings.fontScaleOpts.smaller' => 'smaller',
 			'settings.fontScaleOpts.normal' => 'normal',
 			'settings.fontScaleOpts.larger' => 'larger',
 			'settings.fontScaleOpts.largest' => 'largest',
@@ -5508,9 +5510,9 @@ extension on TranslationsQrp {
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumSdrNoRadio' => 'waiting for the linked radio\'s frequency…',
-			'settings.station.spectrumSdrNotConnected' => 'the sdr is not connected',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.spectrumSdrNotConnected' => 'the sdr is not connected',
 			'settings.station.spectrumSdrNoIf' => 'set the radio\'s if frequency in this sdr\'s settings',
 			'settings.station.sdrRadio' => 'shows the spectrum for',
 			'settings.station.sdrRadioDescription' => 'a spectrum display on this radio draws from this receiver instead of the radio\'s own scope.',
@@ -6022,9 +6024,9 @@ extension on TranslationsQrp {
 			'updates.automaticChecks' => 'check automatically',
 			'updates.automaticChecksDescription' => 'look for new versions in the background, from the next time you start the app',
 			'extensionService.runtimeNotReady' => 'extension runtime not ready.',
-			'extensionService.testFailed' => ({required Object error}) => 'test failed: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'extensionService.testFailed' => ({required Object error}) => 'test failed: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'connected as ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'invalid field configuration',
 			'extensionService.invalidValue' => 'invalid value',

@@ -63,7 +63,7 @@ class CommanderDriver extends EquipmentDriver {
 }
 
 /// What the outstanding message will answer, or [set] for one it will not.
-enum _Ask { locale, frequency, mode, transmitting, set }
+enum _Ask { locale, frequency, mode, transmitting, set, raw }
 
 /// Long past a local Commander's answer, short enough that a question it
 /// ignores costs one skipped poll rather than a frozen radio.
@@ -83,7 +83,7 @@ const _localeTries = 3;
 /// Far past any real answer; reached only when the peer is not Commander.
 const _maxPending = 64 * 1024;
 
-class CommanderSession implements TransceiverSession {
+class CommanderSession implements TransceiverSession, RawCommandSession {
   final EquipmentSink _sink;
 
   final Map<String, dynamic> _config;
@@ -118,7 +118,30 @@ class CommanderSession implements TransceiverSession {
 
   void _ask(_Ask ask, String Function() message) => _requests.ask(ask, () => ascii.encode(message()));
 
+  /// An extension's raw message, as given (`<command:10>CmdGetFreq<parameters:0>`).
+  /// Commander answers a question and not a set, and which this is only the
+  /// extension knows: one wanting a reply is asked, holding the line until
+  /// Commander answers or the answer timeout passes, and one wanting none is
+  /// sent like a set.
+  @override
+  int sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    if (bytes.isEmpty) throw const FormatException('no message');
+    if (onAnswer == null) {
+      _requests.tell(_Ask.raw, () => bytes, gap: _setGap);
+      return 0;
+    }
+    _rawAnswers.add(onAnswer);
+    _requests.ask(_Ask.raw, () => bytes);
+    return 1;
+  }
+
+  /// Who waits for each raw message's answer, in the order asked.
+  final _rawAnswers = <void Function(List<int> answer)>[];
+
   void _unanswered(_Ask ask) {
+    // Not the session's: an extension's message Commander ignores says
+    // nothing about the polls, and must not spend the one diagnostic.
+    if (ask == _Ask.raw) return _rawAnswers.removeAt(0)(const []);
     if (ask == _Ask.transmitting) _txBackoff.unanswered();
     if (ask == _Ask.locale) _localeMisses++;
     if (!_reportedUnanswered) {
@@ -150,9 +173,16 @@ class CommanderSession implements TransceiverSession {
     while (true) {
       final field = takeCommanderField(_pending);
       if (field == null) break;
+      final text = _pending.substring(0, field.consumed);
       _pending = _pending.substring(field.consumed);
       final ask = _requests.replyArrived();
-      if (ask != null) _handleField(ask, field.name.toUpperCase(), field.value.trim());
+      if (ask == _Ask.raw) {
+        // Whatever field comes answers it: the extension's question names none here.
+        _rawAnswers.removeAt(0)(latin1.encode(text));
+        _requests.settle();
+      } else if (ask != null) {
+        _handleField(ask, field.name.toUpperCase(), field.value.trim());
+      }
     }
     if (_pending.length > _maxPending) _pending = '';
   }
@@ -164,7 +194,7 @@ class CommanderSession implements TransceiverSession {
       _Ask.locale || _Ask.frequency => 'CMDFREQ',
       _Ask.mode => 'CMDMODE',
       _Ask.transmitting => 'CMDTX',
-      _Ask.set => null,
+      _Ask.set || _Ask.raw => null,
     };
     if (name != expected) {
       // Left to time out: a field this question does not name may be a late
@@ -193,7 +223,7 @@ class CommanderSession implements TransceiverSession {
           _ => null,
         };
         if (on != null && _telemetry.noteTransmitting(on)) _sink.reportTransmitting(on);
-      case _Ask.set:
+      case _Ask.set || _Ask.raw:
         break;
     }
     _requests.settle();
@@ -231,6 +261,7 @@ class CommanderSession implements TransceiverSession {
   void startUpdates() {
     _pending = '';
     _requests.clear();
+    _rawAnswers.clear();
     _txBackoff.reset();
     _decimal = null;
     _localeMisses = 0;
@@ -253,6 +284,7 @@ class CommanderSession implements TransceiverSession {
     // Commander holds no per-client state; stopping the poll is the farewell.
     stopUpdates();
     _requests.clear();
+    _rawAnswers.clear();
     _telemetry.dispose();
   }
 }

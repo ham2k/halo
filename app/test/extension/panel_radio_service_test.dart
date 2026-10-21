@@ -1,5 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -161,6 +164,22 @@ class TestCat extends Fake implements CatService {
   bool stopKeying() {
     keyed.add('stop');
     return true;
+  }
+
+  final raw = <({String uuid, List<int> bytes, Duration reply, List<int>? until})>[];
+
+  /// What the radio's CAT link refuses a raw command with, if anything.
+  String? rawRefused;
+  List<int> rawReply = const [];
+
+  /// Completed by the test to hold a reply window open.
+  Completer<void>? rawHeld;
+  @override
+  Future<({String? refused, List<int>? reply})> sendNodeRaw(String uuid, List<int> bytes, {Duration reply = Duration.zero, List<int>? until}) async {
+    if (rawRefused != null) return (refused: rawRefused, reply: null);
+    raw.add((uuid: uuid, bytes: bytes, reply: reply, until: until));
+    await rawHeld?.future;
+    return (refused: null, reply: reply > Duration.zero ? rawReply : null);
   }
 
   EquipmentSession? session;
@@ -563,6 +582,113 @@ void main() {
       expect((await bridge().set({'id': 'a', 'keyerSpeedWpm': 24.6}))['accepted'], true);
       expect(cat.keyed, ['wpm:25']);
       expect((await bridge().set({'selection': 'b', 'id': 'b', 'keyerSpeedWpm': 25}))['reason'], 'unsupported');
+    });
+  });
+
+  group('a raw command', () {
+    test('goes to the radio the panel names, as text or as bytes, with or without a reply', () async {
+      final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+      cat.rawReply = const [0x46, 0x41, 0x3B, 0xFD];
+      final sent = await bridge.sendRaw({'id': 'b', 'selection': 'b', 'text': 'FA;', 'replyMs': 500, 'until': ';'});
+      expect(sent['accepted'], true);
+      expect(sent['reply'], {
+        'text': 'FA;\uFFFD',
+        'bytes': [0x46, 0x41, 0x3B, 0xFD],
+      }, reason: 'bytes that are not UTF-8 stay whole in `bytes`');
+      expect(cat.raw.single.uuid, 'b');
+      expect(cat.raw.single.reply, const Duration(milliseconds: 500));
+      expect(cat.raw.single.until, [0x3B]);
+      final bytes = await bridge.sendRaw({
+        'id': 'a',
+        'bytes': [0xFE, 0xFE, 0x94, 0xE0, 0x1C, 0x00, 0x01, 0xFD],
+      });
+      expect(bytes.containsKey('reply'), false, reason: 'no window, no reply');
+      expect(cat.raw.last.bytes, [0xFE, 0xFE, 0x94, 0xE0, 0x1C, 0x00, 0x01, 0xFD]);
+      expect(cat.raw.last.reply, Duration.zero);
+    });
+
+    test('is not refused while transmitting, unlike setRadio — keying the radio is what some are for', () async {
+      final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+      cat.state = cat.state.copyWith(telemetry: const RadioTelemetry(transmitting: true));
+      expect((await bridge.sendRaw({'id': 'a', 'text': 'RX;'}))['accepted'], true);
+    });
+
+    test('a stale identity, a radio not connected and a malformed command never reach it', () async {
+      final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+      Future<Object?> reason(Map<String, dynamic> args) async => (await bridge.sendRaw({'id': 'a', ...args}))['reason'];
+      expect((await bridge.sendRaw({'id': 'b', 'text': 'TX1;'}))['reason'], 'changed');
+      // A switch is not a radio: a selection naming one reads as no radio.
+      expect((await bridge.sendRaw({'id': 'switch', 'selection': 'switch', 'text': 'X'}))['reason'], 'changed');
+      expect(await reason({}), 'invalid', reason: 'neither text nor bytes');
+      expect(
+        await reason({
+          'text': 'FA;',
+          'bytes': [1],
+        }),
+        'invalid',
+        reason: 'both',
+      );
+      expect(await reason({'text': ''}), 'invalid');
+      expect(await reason({'bytes': <int>[]}), 'invalid');
+      expect(
+        await reason({
+          'bytes': [256],
+        }),
+        'invalid',
+      );
+      expect(
+        await reason({
+          'bytes': [1.5],
+        }),
+        'invalid',
+      );
+      expect(await reason({'text': 'x' * (PanelRadioService.rawMaxBytes + 1)}), 'invalid');
+      expect(await reason({'text': 'FA;', 'replyMs': PanelRadioService.rawReplyMaxMs + 1}), 'invalid');
+      expect(await reason({'text': 'FA;', 'replyMs': -1}), 'invalid');
+      expect(await reason({'text': 'FA;', 'until': ';'}), 'invalid', reason: 'a terminator with no window to wait in');
+      expect(await reason({'text': 'FA;', 'replyMs': 100, 'until': ''}), 'invalid');
+      expect(cat.raw, isEmpty);
+    });
+
+    test('what the CAT link refuses is answered as it says', () async {
+      // `unsupported` is a driver that would mistake a raw answer for its own;
+      // `invalid`, bytes its protocol cannot send — neither is `disconnected`.
+      final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+      for (final reason in ['disconnected', 'unsupported', 'invalid']) {
+        cat.rawRefused = reason;
+        final result = await bridge.sendRaw({'id': 'a', 'text': 'FA;'});
+        expect(result['accepted'], false);
+        expect(result['reason'], reason);
+      }
+    });
+
+    test('one radio\'s backlog neither holds up another\'s nor grows without end', () async {
+      // One chain for every radio would let an extension calling in a loop
+      // hold back every other extension's command, to any radio, for good.
+      final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+      cat.rawHeld = Completer();
+      final waiting = [
+        for (var i = 0; i < PanelRadioService.rawMaxWaiting; i++) bridge.sendRaw({'id': 'a', 'text': 'FA;', 'replyMs': 500}),
+      ];
+      expect((await bridge.sendRaw({'id': 'a', 'text': 'FA;'}))['reason'], 'busy');
+      final other = bridge.sendRaw({'id': 'b', 'selection': 'b', 'text': 'FA;'});
+      await pumpEventQueue();
+      expect(cat.raw.map((r) => r.uuid), ['a', 'b'], reason: 'b goes out beside a\'s first, not after all eight');
+      cat.rawHeld!.complete();
+      await Future.wait([...waiting, other]);
+      expect((await bridge.sendRaw({'id': 'a', 'text': 'FA;'}))['accepted'], true, reason: 'the backlog drained, the radio takes calls again');
+    });
+
+    test('one at a time, so one call\'s window never holds the next one\'s answer', () async {
+      final cat = TestCat(), bridge = PanelRadioService(cat, TestRadio());
+      cat.rawHeld = Completer();
+      final first = bridge.sendRaw({'id': 'a', 'text': 'FA;', 'replyMs': 500});
+      final second = bridge.sendRaw({'id': 'a', 'text': 'MD;', 'replyMs': 500});
+      await pumpEventQueue();
+      expect(cat.raw.map((r) => utf8.decode(r.bytes)), ['FA;']);
+      cat.rawHeld!.complete();
+      await Future.wait([first, second]);
+      expect(cat.raw.map((r) => utf8.decode(r.bytes)), ['FA;', 'MD;']);
     });
   });
 

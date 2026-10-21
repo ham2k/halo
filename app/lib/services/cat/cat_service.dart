@@ -1962,6 +1962,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
       // Not an SDR's IQ: megabytes a second of it would fill the log in
       // moments and end the recording of the CAT traffic it exists for.
       if (type.category != kCategorySdr) trafficLog?.received(_logLabel(uuid), chunk);
+      runtime.heard(chunk);
       try {
         session.handleData(chunk);
       } catch (e, st) {

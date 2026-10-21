@@ -245,7 +245,8 @@ class InspectedBundle {
   /// The hosts this extension may hold a `host.webSocket` open to.
   List<String> get webSockets => ((manifest['webSockets'] as List?) ?? const []).cast<String>();
   bool get requiresLocation => manifest['requiresLocation'] == true;
-  bool get requiresRadioWrite => manifest['requiresRadioWrite'] == true;
+  bool get requiresRadioRaw => manifest['requiresRadioRaw'] == true;
+  bool get requiresRadioWrite => requiresRadioRaw || manifest['requiresRadioWrite'] == true;
   bool get requiresRadioRead => requiresRadioWrite || manifest['requiresRadioRead'] == true;
   bool get requiresClusterCommand => manifest['requiresClusterCommand'] == true;
   bool get requiresClusterSpot => requiresClusterCommand || manifest['requiresClusterSpot'] == true;
@@ -256,6 +257,20 @@ class InspectedBundle {
   /// nothing should not be dressed up as though it did.
   bool get claimsCapabilities =>
       domains.isNotEmpty || webSockets.isNotEmpty || requiresLocation || requiresRadioRead || requiresClusterRead || allowUserAgentOverride;
+
+  /// Whether this asks for anything [installed] — the version it would
+  /// replace — was not granted: a host, or a stronger grant.
+  bool asksMoreThan(InspectedBundle installed) =>
+      !installed.domains.toSet().containsAll(domains) ||
+      !installed.webSockets.toSet().containsAll(webSockets) ||
+      (requiresLocation && !installed.requiresLocation) ||
+      (requiresRadioRead && !installed.requiresRadioRead) ||
+      (requiresRadioWrite && !installed.requiresRadioWrite) ||
+      (requiresRadioRaw && !installed.requiresRadioRaw) ||
+      (requiresClusterRead && !installed.requiresClusterRead) ||
+      (requiresClusterSpot && !installed.requiresClusterSpot) ||
+      (requiresClusterCommand && !installed.requiresClusterCommand) ||
+      (allowUserAgentOverride && !installed.allowUserAgentOverride);
 }
 
 /// Reads, validates, installs and removes `.h2kext` bundles.
@@ -661,6 +676,14 @@ class InstalledExtensions {
   Future<bool> isInstalled(String key) async {
     _checkSafeKey(key);
     return await storage.readText(key, kManifestEntry) != null;
+  }
+
+  /// What [key] is installed as — its manifest, with no archive — or null.
+  Future<InspectedBundle?> installedBundle(String key) async {
+    _checkSafeKey(key);
+    final raw = await storage.readText(key, kManifestEntry);
+    if (raw == null) return null;
+    return InspectedBundle(manifest: (jsonDecode(raw) as Map).cast<String, dynamic>(), archive: Archive());
   }
 
   /// The JS for an installed extension.

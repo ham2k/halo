@@ -332,7 +332,8 @@ const yaesuAntennaReadEvery = 5;
 /// IF shift moves it from here.
 const yaesuSsbPassbandCentreHz = 1500;
 
-class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession {
+class Ft891Session
+    implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -548,6 +549,17 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
 
   void _send(String command) => _sink.send(ascii.encode(command));
 
+  /// An extension's raw commands, written as given: every answer names the
+  /// command it answers, so none is taken for another's.
+  @override
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    _rawGrace.sent();
+    _sink.send(bytes);
+    return null;
+  }
+
+  final _rawGrace = RawRefusalGrace();
+
   /// State polls left before the next tuner read — see [yaesuTunerReadEvery].
   int _pollsUntilTunerRead = 0;
 
@@ -752,7 +764,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     // Not on the air: a radio may refuse commands it will not handle while
     // transmitting, and a long over would otherwise end these reads for the
     // connection.
-    final refused = !_telemetry.transmitting && text.contains(yaesuRefusal);
+    final refused = !_telemetry.transmitting && !_rawGrace.active && text.contains(yaesuRefusal);
     if (refused) {
       _tunerRead.heardRefusal();
       _passbandRead.heardRefusal();

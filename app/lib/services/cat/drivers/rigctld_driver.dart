@@ -203,7 +203,7 @@ const rigctldKeyerSpeedMaxConfigKey = 'keyerSpeedMax';
 /// with fixed arguments refused for any of these is refused every time.
 const _retiringLevelErrors = {-1, -4, -11};
 
-class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, VoiceKeyerSession {
+class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession {
   final EquipmentSink _sink;
 
   RigctldSession(this._sink, [this._config = const {}]);
@@ -331,6 +331,21 @@ class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, 
 
   void _send(String command) => _sink.send(ascii.encode('$command\n'));
 
+  /// An extension's raw commands, written as given (`f\n`, `+\get_level RFPOWER\n`):
+  /// the daemon answers each command in order and whole, so a raw answer
+  /// never lands between one of the driver's headers and its value.
+  @override
+  int? sendRaw(List<int> bytes, {void Function(List<int> answer)? onAnswer}) {
+    _rawGrace.sent();
+    _sink.send(bytes);
+    return null;
+  }
+
+  /// A raw `\get_level` or `send_morse` is answered under the same header as
+  /// the driver's own: its refusal, counted, would retire that meter for the
+  /// connection, or drop the operator's queued CW.
+  final _rawGrace = RawRefusalGrace();
+
   /// Asks for [level] unless this daemon has already refused it.
   void _readLevel(String level) {
     if (!_refusedLevels.containsKey(level)) _send('+l$_vfo $level');
@@ -399,13 +414,13 @@ class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, 
     _pendingCommand = null;
     if (command != null && line.startsWith('RPRT ')) {
       final code = int.tryParse(line.substring('RPRT '.length).trim());
-      if (code != null && code != 0) _commandRefused(command, code);
+      if (code != null && code != 0 && !_rawGrace.active) _commandRefused(command, code);
       return;
     }
     if (pending != null) {
       if (line.startsWith('RPRT ')) {
         final code = int.tryParse(line.substring('RPRT '.length).trim());
-        if (code != null && _retiringLevelErrors.contains(code)) {
+        if (code != null && _retiringLevelErrors.contains(code) && !_rawGrace.active) {
           _refusedLevels[pending] = code;
           _reportDiagnostic();
         }
