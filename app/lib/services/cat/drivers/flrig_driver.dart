@@ -45,8 +45,16 @@ import '../equipment.dart';
 /// USB-D AM-D FM-D DV WFM): CW-R already matches the app's spelling, and
 /// names with no app equivalent (DV, WFM, AM-D) pass through in both
 /// directions, the way the rigctld driver passes Hamlib tokens.
+///
+/// These are the spellings a set falls back to when the rig's own list is
+/// not known; with it, [flrigModeForRig] picks from the list instead.
 const flrigModesByAppMode = <String, String>{'DATA-USB': 'USB-D', 'DATA-LSB': 'LSB-D', 'DATA-FM': 'FM-D', 'RTTY-LSB': 'RTTY', 'RTTY-USB': 'RTTY-R'};
 
+/// flrig's spellings → app mode names. More than one spelling per mode: a
+/// Yaesu's table names its sides with a suffix — CW-U and CW-L, as an FTDX10
+/// behind flrig reports them; its DATA and RTTY by the same scheme, not yet
+/// seen on a radio — and an unmapped name reaches the app as a mode of its
+/// own, never matching the operation's.
 const appModesByFlrigMode = <String, String>{
   'USB-D': 'DATA-USB',
   'LSB-D': 'DATA-LSB',
@@ -54,11 +62,30 @@ const appModesByFlrigMode = <String, String>{
   // Plain RTTY is the conventional (LSB) side, mirroring the rigctld map.
   'RTTY': 'RTTY-LSB',
   'RTTY-R': 'RTTY-USB',
+  // A Yaesu's CW is on the upper side (its mode 3), CW-L the reverse.
+  'CW-U': 'CW',
+  'CW-L': 'CW-R',
+  'DATA-U': 'DATA-USB',
+  'DATA-L': 'DATA-LSB',
+  'RTTY-L': 'RTTY-LSB',
+  'RTTY-U': 'RTTY-USB',
 };
 
 String flrigModeForAppMode(String mode) => flrigModesByAppMode[mode.toUpperCase()] ?? mode.toUpperCase();
 
 String appModeForFlrigMode(String name) => appModesByFlrigMode[name.toUpperCase()] ?? name.toUpperCase();
+
+/// What to send flrig for [mode]: the first name in the rig's own list that
+/// reads back as [mode], so a set never names a mode the rig lacks — a Yaesu
+/// has no plain CW, an IC-705 no CW-U. The usual spelling when the list is
+/// unknown or has no such name.
+String flrigModeForRig(String mode, List<String>? rigModes) {
+  final wanted = mode.toUpperCase();
+  for (final name in rigModes ?? const <String>[]) {
+    if (appModeForFlrigMode(name) == wanted) return name;
+  }
+  return flrigModeForAppMode(mode);
+}
 
 class FlrigDriver extends EquipmentDriver {
   const FlrigDriver();
@@ -105,7 +132,7 @@ class FlrigDriver extends EquipmentDriver {
 /// What kind of answer the outstanding request will produce — the only
 /// correlation an XML-RPC response offers is "it answers the oldest
 /// unanswered question".
-enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, ptt, ignored, raw }
+enum _Ask { frequency, mode, modes, setMode, power, transmitting, meterPower, meterSwr, ptt, ignored, raw }
 
 /// An XML-RPC scalar: bare text, which the spec reads as a string, or text
 /// inside one type element. flrig sends both — `rig.get_vfo` answers bare,
@@ -142,12 +169,22 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
   /// Bytes of the response currently being received.
   final _buffer = <int>[];
 
-  /// Requests not yet on the wire, oldest first.
+  /// Requests not yet on the wire, oldest first. A [_Ask.setMode] entry
+  /// holds the app's mode rather than a request: it is spelled as it goes
+  /// out, once the `rig.get_modes` queued ahead of it has been answered.
   final _queue = <(_Ask, String)>[];
 
   /// The one request on the wire, or null. Never more than one: flrig
   /// drops — not defers — a request that arrives mid-response.
   _Ask? _outstanding;
+
+  /// The rig's own mode names, as `rig.get_modes` listed them — asked for
+  /// ahead of a set rather than at connect, so a session that only reads
+  /// spends no round-trip on it. Null until a list arrives, and again once
+  /// the rig reports a mode the list lacks: flrig was switched to another
+  /// rig. A fault or an empty list is asked again on the next set, since
+  /// flrig with no rig behind it yet has nothing to list.
+  List<String>? _rigModes;
 
   /// Far past any real flrig header (~120 bytes); reached only when the
   /// peer isn't speaking HTTP at all.
@@ -188,7 +225,7 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
     if (_outstanding != null || _queue.isEmpty) return;
     final (ask, request) = _queue.removeAt(0);
     _outstanding = ask;
-    _sink.send(utf8.encode(request));
+    _sink.send(utf8.encode(ask == _Ask.setMode ? _setModeRequest(request) : request));
   }
 
   static String _httpRequest(String method, String params) =>
@@ -298,6 +335,16 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
   void _handleResponse(String body) {
     final ask = _outstanding;
     if (ask == null) return;
+    if (ask == _Ask.modes) {
+      final names = body.contains('<fault>')
+          ? const <String>[]
+          : [
+              for (final match in _scalar.allMatches(body))
+                if ((match.group(2) ?? match.group(3))?.trim() case final name? when name.isNotEmpty) name,
+            ];
+      _rigModes = names.isEmpty ? null : names;
+      return;
+    }
     // Deferring the state poll is for what flrig volunteers about the RADIO,
     // never for an answer to a question of our own — and the TX watch asks
     // one several times a second. Counted as data, those re-arm the poll
@@ -317,6 +364,8 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
           _report(VfoReading(freqKHz: double.parse((hz / 1000).toStringAsFixed(3))));
         }
       case _Ask.mode:
+        final rigModes = _rigModes;
+        if (rigModes != null && !rigModes.any((name) => name.toUpperCase() == value.toUpperCase())) _rigModes = null;
         _report(VfoReading(mode: appModeForFlrigMode(value)));
       case _Ask.power:
         // flrig answers 0 with no rig behind it. No rig is set to 0 W, and
@@ -340,6 +389,8 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
       case _Ask.meterSwr:
         final swr = double.tryParse(value);
         if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
+      case _Ask.modes:
+      case _Ask.setMode:
       case _Ask.ptt:
       case _Ask.ignored:
       case _Ask.raw:
@@ -369,8 +420,18 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
   @override
   void setFrequency(double freqKHz) => _call(_Ask.ignored, 'rig.set_frequency', '<param><value><double>${(freqKHz * 1000).round()}</double></value></param>');
 
+  /// In its place in the queue, not held back for the list: CatService sends
+  /// frequency, mode, frequency on a band change, and a mode arriving last
+  /// lands the frequency against the wrong one.
   @override
-  void setMode(String mode) => _call(_Ask.ignored, 'rig.set_mode', '<param><value>${flrigModeForAppMode(mode)}</value></param>');
+  void setMode(String mode) {
+    final asked = _outstanding == _Ask.modes || _queue.any((entry) => entry.$1 == _Ask.modes);
+    if (_rigModes == null && !asked) _queue.add((_Ask.modes, _httpRequest('rig.get_modes', '')));
+    _queue.add((_Ask.setMode, mode));
+    _pump();
+  }
+
+  String _setModeRequest(String mode) => _httpRequest('rig.set_mode', '<param><value>${flrigModeForRig(mode, _rigModes)}</value></param>');
 
   @override
   void setPower(num watts) => _call(_Ask.ignored, 'rig.set_power', '<param><value><double>$watts</double></value></param>');
@@ -401,6 +462,8 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
     _queue.clear();
     _rawAnswers.clear();
     _outstanding = null;
+    // flrig may have been switched to another rig since it was answered.
+    _rigModes = null;
     _requestFrequencyAndMode();
     _poller.start();
     _telemetry.start();

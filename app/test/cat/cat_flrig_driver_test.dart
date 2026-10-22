@@ -97,6 +97,9 @@ String _response(String inner) {
       '$body';
 }
 
+/// `rig.get_modes`'s answer: an XML-RPC array of bare strings.
+String _modeList(List<String> names) => '<array><data>${[for (final name in names) '<value>$name</value>'].join()}</data></array>';
+
 String _fault() {
   const body =
       '<?xml version="1.0"?>\r\n'
@@ -137,6 +140,29 @@ void main() {
       expect(flrigModeForAppMode('RTTY-USB'), 'RTTY-R');
       expect(appModeForFlrigMode('RTTY-R'), 'RTTY-USB');
       expect(appModeForFlrigMode('RTTY'), 'RTTY-LSB');
+    });
+
+    test('a Yaesu\'s sided names read as the app\'s modes', () {
+      // Unmapped, CW-U reaches the app as a mode of its own, and an FTDX10
+      // in CW reads as the wrong mode for a CW operation.
+      expect(appModeForFlrigMode('CW-U'), 'CW');
+      expect(appModeForFlrigMode('CW-L'), 'CW-R');
+      expect(appModeForFlrigMode('DATA-U'), 'DATA-USB');
+      expect(appModeForFlrigMode('DATA-L'), 'DATA-LSB');
+      expect(appModeForFlrigMode('RTTY-L'), 'RTTY-LSB');
+      expect(appModeForFlrigMode('RTTY-U'), 'RTTY-USB');
+    });
+
+    test('a set names the mode the way the rig\'s own list does', () {
+      const yaesu = ['LSB', 'USB', 'CW-U', 'FM', 'AM', 'RTTY-L', 'CW-L', 'DATA-L', 'RTTY-U', 'DATA-U'];
+      const ic705 = ['LSB', 'USB', 'AM', 'FM', 'CW', 'CW-R', 'RTTY', 'RTTY-R', 'LSB-D', 'USB-D', 'AM-D', 'FM-D', 'DV', 'WFM'];
+      expect(flrigModeForRig('CW', yaesu), 'CW-U', reason: 'a Yaesu has no plain CW to set');
+      expect(flrigModeForRig('CW-R', yaesu), 'CW-L');
+      expect(flrigModeForRig('DATA-USB', yaesu), 'DATA-U');
+      expect(flrigModeForRig('CW', ic705), 'CW');
+      expect(flrigModeForRig('DATA-USB', ic705), 'USB-D');
+      expect(flrigModeForRig('DATA-USB', null), 'USB-D', reason: 'no list: the usual spelling');
+      expect(flrigModeForRig('DATA-FM', yaesu), 'FM-D', reason: 'a mode the list lacks: the usual spelling, for flrig to refuse');
     });
 
     test('a name with no app spelling passes through instead of vanishing', () {
@@ -281,12 +307,105 @@ void main() {
       expect(sink.sent.single, contains('<double>7074500</double>'));
     });
 
-    test('mode goes out translated', () {
+    test('the first mode set asks for the rig\'s list, then names the mode its way', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setMode('CW');
+      expect(sink.sent.single, contains('rig.get_modes'), reason: 'the spelling depends on the rig');
+      session.feed(_response(_modeList(['LSB', 'USB', 'CW-U', 'CW-L', 'DATA-U'])));
+      expect(sink.sent, hasLength(2));
+      expect(sink.sent.last, contains('rig.set_mode'));
+      expect(sink.sent.last, contains('<value>CW-U</value>'));
+    });
+
+    test('the list is asked for once, and later sets go straight out', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setMode('CW');
+      session.feed(_response(_modeList(['CW-U', 'CW-L'])));
+      session.feed(_response('')); // the set's acknowledgement
+      session.setMode('CW-R');
+      expect(sink.sent, hasLength(3));
+      expect(sink.sent.last, contains('<value>CW-L</value>'));
+    });
+
+    test('asking for the list keeps the set in its place among the others', () {
+      // A band change sends frequency, mode, frequency: the second frequency
+      // re-states it against the mode in force. A set held back until the
+      // list arrived would go out after it, and land the frequency against
+      // the old mode.
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setFrequency(14025);
+      session.setMode('CW');
+      session.setFrequency(14025);
+      session.feed(_response('')); // the first frequency's acknowledgement
+      session.feed(_response(_modeList(['USB', 'CW-U'])));
+      session.feed(_response('')); // the mode's
+      final methods = [for (final request in sink.sent) RegExp('<methodName>([^<]+)</methodName>').firstMatch(request)!.group(1)];
+      expect(methods, ['rig.set_frequency', 'rig.get_modes', 'rig.set_mode', 'rig.set_frequency']);
+      expect(sink.sent[2], contains('<value>CW-U</value>'));
+    });
+
+    test('sets made while the list is on its way ask for it once', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setMode('USB');
+      session.setMode('CW');
+      session.feed(_response(_modeList(['USB', 'CW-U'])));
+      session.feed(_response(''));
+      expect(sink.sent.where((request) => request.contains('rig.get_modes')), hasLength(1));
+      expect(sink.sent.last, contains('<value>CW-U</value>'));
+    });
+
+    test('a list flrig cannot give still sends the set, in the usual spelling', () {
+      // An flrig without rig.get_modes faults; the set waiting on the list
+      // must still go out rather than be lost with it.
       final sink = _FakeSink();
       final session = _stateOnlySession(sink);
       session.setMode('DATA-USB');
-      expect(sink.sent.single, contains('rig.set_mode'));
-      expect(sink.sent.single, contains('<value>USB-D</value>'));
+      session.feed(_fault());
+      expect(sink.sent.last, contains('rig.set_mode'));
+      expect(sink.sent.last, contains('<value>USB-D</value>'));
+      // flrig with no rig behind it yet faults too, and has a list once one
+      // is — so a fault is not the answer for the rest of the session.
+      session.feed(_response(''));
+      session.setMode('CW');
+      expect(sink.sent.last, contains('rig.get_modes'));
+    });
+
+    test('a mode the list lacks says flrig has another rig, and the list is asked again', () {
+      // flrig switched from the FTDX10 to an IC-705 mid-session keeps the
+      // connection; the Yaesu's list would set CW-U on a rig that has none.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = _stateOnlySession(sink);
+        session.startUpdates();
+        session.feed(_response('14025000'));
+        session.feed(_response('CW-U'));
+        session.feed(_response('100'));
+        session.setMode('CW');
+        session.feed(_response(_modeList(['USB', 'CW-U', 'CW-L'])));
+        session.feed(_response(''));
+        async.elapse(kPollSlow + const Duration(milliseconds: 10));
+        session.feed(_response('14025000'));
+        session.feed(_response('CW'));
+        session.feed(_response('10'));
+        session.setMode('CW');
+        expect(sink.sent.last, contains('rig.get_modes'));
+        session.teardown();
+      });
+    });
+
+    test('a list lost on the way still sends the set, and is asked for again next time', () {
+      final sink = _FakeSink();
+      final session = _stateOnlySession(sink);
+      session.setMode('CW');
+      session.feed('HTTP/1.1 200 OK\r\n\r\n'); // no Content-length: unreadable
+      expect(sink.sent.last, contains('<value>CW</value>'));
+      session.feed(_response(''));
+      session.setMode('CW-R');
+      expect(sink.sent.last, contains('rig.get_modes'));
     });
 
     test('power goes out as an XML-RPC double, in watts', () {
