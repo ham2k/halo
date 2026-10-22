@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Added Ten-Tec Eagle, Orion and Orion II to the radio list (tell us how it behaves)"
+
 "182":
   changes:
     - "New map compass: shows on a turned or tilted map, tap for north-up"

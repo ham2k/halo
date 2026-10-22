@@ -371,7 +371,9 @@ leaves them where opening the port put them — macOS, Linux and most Windows dr
 open, and libserialport's `setFlowControl(none)` does not lower them (a line it is not told about is
 left alone). Two node settings say where they go (`rtsHigh`, `dtrHigh` in
 `serial_transport_config.dart`), and **both are off unless the operator turns them on**, on every
-entry in the catalogue:
+entry in the catalogue but the few whose radio is known to wait for RTS — the Orions, whose port uses
+RTS/CTS as its handshake. Each of those prefills RTS high as a default the operator can turn off,
+and `cat_serial_lines_test.dart` names every one, so a new one is a deliberate edit:
 
 - **RTS** is the PTT line on a Digirig, a SignaLink and most home-made cables, so a high RTS keys the
   transmitter the moment the app connects. The radio that wants it is a Yaesu with CAT RTS on, which
@@ -465,6 +467,45 @@ so the session tunes only from a picture the radio has given it, and holds a ret
 before the first status sync rather than inventing the half it cannot see.
 
 The PMR-171 speaks the same protocol and gets an entry when someone can test one.
+
+### Ten-Tec's Orion command set
+
+The Eagle (599), the Orion (565) and the Orion II (566) speak one plain-text command set
+(`tentec_codec.dart`, `tentec_driver.dart`), written from Ten-Tec's programmer's reference guides
+for the Orion (Rev 1.2) and the Eagle (Rev 1.001) and the Orion's V3 firmware addendum. A set is
+`*AF14074000`, a query `?AF`, an answer `@AF14074000`, each line ending in a carriage return. The
+Eagle's set is the Orion's with things taken away, so one codec serves both and the differences are
+asked of a `TenTecDialect` the catalogue entry pins.
+
+Answers name what they answer, which would allow several questions on the wire at once, except for
+one thing: **the Eagle's refusal is a bare `Z`.** With two questions out, a refusal cannot be pinned
+on either, and pinned on the wrong one it is blamed on a read the radio has while the command it
+refused goes unreported. So the driver keeps one question in flight (`request_queue.dart`), and
+every set — PTT included, sent ahead of the queued polls — is followed by the 200 ms pause the
+Eagle's guide asks for "to maintain proper transmit and receive transition timing". The refusal of a
+set therefore arrives while nothing is outstanding, and is not mistaken for the answer to the
+read-back behind it. An Orion names what it refused (`Z!xx`), so its refusal of a CW character,
+written past the queue, is never taken for the question's either. An Eagle older than firmware 1.736
+refuses the filter-width set and answers the width query, which is exactly the case this protects.
+
+What the guides leave open, the driver does not guess:
+
+- **`?S` answers `@SRM` while receiving and `@STF` while keyed.** The shape of the answer is the
+  transmit state, and the transmit answer carries forward and reflected power. The receive number is
+  not reported as a meter: the Eagle's guide calls `16` "dbm" and the Orion's calls `10` an
+  S-meter reading, so its unit needs a capture first.
+- **The Orion keys CW one character per command** (`/c`) and its guide says nothing of buffering,
+  so each character is written at its own PARIS start time rather than all at once.
+- **No probe uses `X`.** The Eagle answers it with its name, but on an Orion `XX` restarts the
+  radio. The firmware is read with `?V`.
+- **An Eagle in split is taken out of split before a retune to another band.** Its front panel
+  refuses a cross-band split and its guide warns that the serial port does not.
+- **RTS is prefilled high**, an exception to [RTS and DTR](#rts-and-dtr): the Orion wires RTS/CTS
+  as its handshake and may not answer with RTS low. A default, not an override, because on an
+  interface that keys PTT from RTS it transmits; the notes say so.
+
+Ten-Tec's other CAT radios, the Omni VII, Argonaut VI and Jupiter, speak other protocols and are not
+covered.
 
 Serial is `flutter_libserialport` (FFI, the same shape as the existing `halo_quickjs` plugin), behind
 the same conditional-export barrel as TCP. Android goes through the `usb_serial` plugin instead
@@ -1888,8 +1929,8 @@ logging fields `'` never keys while the operator types — and with no field foc
 
 `PttSession` (driver.dart) is a capability like the keyers, on every protocol with a documented PTT
 set: CI-V `0x1C 0x00 01/00`, Yaesu `TX1;`/`TX0;` and the FT-8x7's binary `0x08`/`0x88`, Kenwood and
-Elecraft `TX;`/`RX;`, FlexRadio `xmit 1/0`, flrig `rig.set_ptt`, rigctld `T 1/0`, and the Guohetec
-radios. HRD, Commander and N3FJP document none and are not keyed. A session that keyed unkeys in its
+Elecraft `TX;`/`RX;`, FlexRadio `xmit 1/0`, flrig `rig.set_ptt`, rigctld `T 1/0`, the Guohetec
+radios, and Ten-Tec `*TK`/`*TU`. HRD, Commander and N3FJP document none and are not keyed. A session that keyed unkeys in its
 teardown, ahead of anything queued: no protocol here has a dead-man's switch, and only the driver can
 put the unkey ahead of its own queue. A driver marks itself keyed BEFORE a key goes out and clears the
 mark only AFTER an unkey has: either command throwing leaves the teardown an unkey to send. PTT on a serial line (RTS/DTR, § RTS and DTR) is not offered;

@@ -30,20 +30,24 @@ void main() {
       if (type.transportKey != BluetoothSerialTransport.transportKey) type,
   ];
 
-  test('no entry in the catalogue raises either line unless the operator asks', () {
+  // The entries whose radio waits for RTS before it answers, and so prefill it
+  // high — each one a decision, since on a Digirig the same line transmits.
+  // The Orions' guide wires RTS/CTS as the port's handshake.
+  const rtsHighByDefault = {'tentec-565-serial', 'tentec-566-serial'};
+
+  test('no entry in the catalogue raises either line unless it is known to need it', () {
     // Whatever a new entry prefills, these are the lines that transmit. The
     // prefill is what a new node starts from; the bare port is a node saved
     // before the settings existed.
     expect(cableTypes, isNotEmpty, reason: 'sanity: the loop below must check something');
     for (final type in cableTypes) {
-      for (final stored in [
-        {...type.defaultConfig, 'port': '/dev/tty.fake'},
-        {'port': '/dev/tty.fake'},
-      ]) {
-        final target = type.targetFor(stored);
-        expect(target[serialRtsHighConfigKey], isFalse, reason: '${type.key} would key a Digirig on connect');
-        expect(target[serialDtrHighConfigKey], isFalse, reason: '${type.key} would key a cable that keys from DTR');
-      }
+      final prefilled = type.targetFor({...type.defaultConfig, 'port': '/dev/tty.fake'});
+      expect(prefilled[serialRtsHighConfigKey], rtsHighByDefault.contains(type.key), reason: '${type.key}: RTS keys a Digirig on connect');
+      expect(prefilled[serialDtrHighConfigKey], isFalse, reason: '${type.key} would key a cable that keys from DTR');
+
+      final bare = type.targetFor({'port': '/dev/tty.fake'});
+      expect(bare[serialRtsHighConfigKey], isFalse, reason: '${type.key}: a node saved without the setting never raises RTS');
+      expect(bare[serialDtrHighConfigKey], isFalse, reason: '${type.key} would key a cable that keys from DTR');
     }
   });
 
@@ -86,9 +90,20 @@ void main() {
   test('the troubleshooting notes name the settings the way the editor does, in every language', () async {
     // The notes quote the labels as text, so renaming a label would leave
     // them pointing at a control that no longer exists under that name.
+    final english = (await AppLocale.en.build()).settings.station;
     for (final locale in AppLocale.values) {
       final st = (await locale.build()).settings.station;
-      for (final note in [st.ft891Troubleshooting, st.yaesuTroubleshooting, st.yaesuRs232Troubleshooting, st.yaesuUsbTroubleshooting]) {
+      for (final (note, base) in [
+        (st.ft891Troubleshooting, english.ft891Troubleshooting),
+        (st.yaesuTroubleshooting, english.yaesuTroubleshooting),
+        (st.yaesuRs232Troubleshooting, english.yaesuRs232Troubleshooting),
+        (st.yaesuUsbTroubleshooting, english.yaesuUsbTroubleshooting),
+        (st.tenTecOrionTroubleshooting, english.tenTecOrionTroubleshooting),
+      ]) {
+        // The Ten-Tec note is not yet translated, so it falls back to English
+        // beside labels that are: checked once a translation arrives. Only
+        // that one — a translated note reverting to English is a regression.
+        if (locale != AppLocale.en && note == base && base == english.tenTecOrionTroubleshooting) continue;
         expect(note, contains(st.serialRtsHigh), reason: '${locale.languageCode}: a CAT RTS note');
         expect(note, contains(st.advancedSettings), reason: '${locale.languageCode}: a CAT RTS note');
       }

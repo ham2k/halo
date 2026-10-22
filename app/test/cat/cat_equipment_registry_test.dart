@@ -257,6 +257,9 @@ void main() {
       'tx500-serial',
       'tx500mp-serial',
       'tx500mp-bluetooth',
+      'tentec-599-serial',
+      'tentec-565-serial',
+      'tentec-566-serial',
       'kx2-serial',
       'kx3-serial',
       'k4-serial',
@@ -323,6 +326,9 @@ void main() {
       'kenwood-generic-placeholder',
       'tx500-placeholder',
       'tx500mp-placeholder',
+      'tentec-599-placeholder',
+      'tentec-565-placeholder',
+      'tentec-566-placeholder',
       // Derived the same way, one per model with a serial pairing: that
       // pairing over a Bluetooth LE serial bridge.
       'ft891-ble',
@@ -358,6 +364,9 @@ void main() {
       'kenwood-generic-ble',
       'tx500-ble',
       'tx500mp-ble',
+      'tentec-599-ble',
+      'tentec-565-ble',
+      'tentec-566-ble',
     });
   });
 
@@ -401,6 +410,10 @@ void main() {
       // The rate Lab599's guide gives for both CAT protocols.
       'tx500-serial': ('kenwood', {'baudRate': 9600}),
       'tx500mp-serial': ('kenwood', {'baudRate': 9600}),
+      'tentec-599-serial': ('tentec', {}),
+      // RTS high: the Orions' port uses it as the hardware handshake.
+      'tentec-565-serial': ('tentec', {'rtsHigh': true}),
+      'tentec-566-serial': ('tentec', {'rtsHigh': true}),
     };
 
     expected.forEach((key, spec) {

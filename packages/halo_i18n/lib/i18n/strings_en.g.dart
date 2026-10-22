@@ -5604,6 +5604,21 @@ class Translations$settings$station$en {
 	String get yaesuBinaryTroubleshooting => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.';
 
 	/// en: 'If the radio connects but shows no frequency'
+	String get tenTecTroubleshootingTitle => 'If the radio connects but shows no frequency';
+
+	/// en: '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec's USB to UART driver, which appears in Device Manager as "USB to UART (COMx)". - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec's firmware updater. - **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works. This driver was written from Ten-Tec's programmer's reference guide. If it half-works, that is worth reporting, with the firmware version from the radio's menu.'
+	String get tenTecEagleTroubleshooting => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.';
+
+	/// en: '- **Use a straight-through DB-9 serial cable** to the SERIAL DATA port, not a null-modem one. - **This entry holds RTS high**, because the Orion uses RTS and CTS as its handshake. On an interface that keys PTT from RTS, such as a Digirig, turn off Hold RTS high under Advanced Settings, or the radio transmits as soon as the app connects. - **CW from the app needs the radio's internal keyer on.** With it off, the radio ignores what the app sends. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. This driver was written from Ten-Tec's programmer's reference guide and has not been run against an Orion. If it half-works, that is worth reporting, with the firmware version from the radio's menu.'
+	String get tenTecOrionTroubleshooting => '- **Use a straight-through DB-9 serial cable** to the SERIAL DATA port, not a null-modem one.\n- **This entry holds RTS high**, because the Orion uses RTS and CTS as its handshake. On an interface that keys PTT from RTS, such as a Digirig, turn off Hold RTS high under Advanced Settings, or the radio transmits as soon as the app connects.\n- **CW from the app needs the radio\'s internal keyer on.** With it off, the radio ignores what the app sends.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide and has not been run against an Orion. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.';
+
+	/// en: 'This radio's firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.'
+	String get tenTecNoCw => 'This radio\'s firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.';
+
+	/// en: 'The radio's internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio's menu.'
+	String get tenTecKeyerOff => 'The radio\'s internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio\'s menu.';
+
+	/// en: 'If the radio connects but shows no frequency'
 	String get guohetecTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
 	/// en: 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using. - **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to. - **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. - **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation. This driver was written from the manufacturer's published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.'
@@ -8388,6 +8403,15 @@ class Translations$settings$station$models$en {
 	/// en: 'Guohetec Q900'
 	String get q900 => 'Guohetec Q900';
 
+	/// en: 'Ten-Tec Eagle (599)'
+	String get tenTecEagle => 'Ten-Tec Eagle (599)';
+
+	/// en: 'Ten-Tec Orion (565)'
+	String get tenTecOrion => 'Ten-Tec Orion (565)';
+
+	/// en: 'Ten-Tec Orion II (566)'
+	String get tenTecOrionII => 'Ten-Tec Orion II (566)';
+
 	/// en: 'SOTAcat (Elecraft KX2/KX3)'
 	String get sotacat => 'SOTAcat (Elecraft KX2/KX3)';
 
@@ -10383,6 +10407,9 @@ extension on Translations {
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
 			'settings.station.models.q900' => 'Guohetec Q900',
+			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
+			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
+			'settings.station.models.tenTecOrionII' => 'Ten-Tec Orion II (566)',
 			'settings.station.models.sotacat' => 'SOTAcat (Elecraft KX2/KX3)',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
@@ -10437,6 +10464,11 @@ extension on Translations {
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it does not respond at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB; it needs a CT-62 or an equivalent adapter. A plain audio or data cable won\'t work for CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). With a mismatch, the radio sends nothing back, and never an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. An older interface powered from DTR is the exception: turn on **Hold DTR high** under Advanced Settings for that one.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
+			'settings.station.tenTecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.tenTecEagleTroubleshooting' => '- **The USB-B port on the back is the CAT link.** The radio shows up as a USB serial port; on Windows it needs Ten-Tec\'s USB to UART driver, which appears in Device Manager as "USB to UART (COMx)".\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open, and so does Ten-Tec\'s firmware updater.\n- **Setting the filter width from the app takes it away from the BW knob** until the radio is switched off and on again. That is how the radio works.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
+			'settings.station.tenTecOrionTroubleshooting' => '- **Use a straight-through DB-9 serial cable** to the SERIAL DATA port, not a null-modem one.\n- **This entry holds RTS high**, because the Orion uses RTS and CTS as its handshake. On an interface that keys PTT from RTS, such as a Digirig, turn off Hold RTS high under Advanced Settings, or the radio transmits as soon as the app connects.\n- **CW from the app needs the radio\'s internal keyer on.** With it off, the radio ignores what the app sends.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Ten-Tec\'s programmer\'s reference guide and has not been run against an Orion. If it half-works, that is worth reporting, with the firmware version from the radio\'s menu.',
+			'settings.station.tenTecNoCw' => 'This radio\'s firmware does not take CW from the app. Ten-Tec added it in Orion firmware 1.366.',
+			'settings.station.tenTecKeyerOff' => 'The radio\'s internal keyer is off, so it ignores CW sent from the app. Turn the keyer on in the radio\'s menu.',
 			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -10764,6 +10796,8 @@ extension on Translations {
 			'commands.settingEmpty' => '(empty)',
 			'commands.settingSecretSet' => '(set)',
 			'commands.settingSecretUnset' => '(not set)',
+			_ => null,
+		} ?? switch (path) {
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} selected',
 			'commands.settingExpectsOnOff' => 'on or off',
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
@@ -10772,8 +10806,6 @@ extension on Translations {
 			'commands.noCwKeyer' => 'No connected radio can key CW',
 			'commands.noKeyer' => 'No connected radio can key CW or play voice memories',
 			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
-			_ => null,
-		} ?? switch (path) {
 			'commands.keyerExperimentOff' => 'CW keying is off — turn it on with EXP KEYER',
 			'commands.esmExperimentOff' => 'Enter Sends Messages is off — turn it on with EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',

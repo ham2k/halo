@@ -54,8 +54,10 @@ class RequestQueue<A> {
   /// ahead of everything waiting.
   void ask(A ask, List<int>? Function() build, {bool first = false}) => _add(_Request(ask, build, expectsAnswer: true), first: first);
 
-  /// Queues a message the peer does not answer, followed by [gap].
-  void tell(A ask, List<int>? Function() build, {required Duration gap}) => _add(_Request(ask, build, expectsAnswer: false, gap: gap), first: false);
+  /// Queues a message the peer does not answer, followed by [gap]. [first]
+  /// puts it ahead of everything waiting, as for [ask].
+  void tell(A ask, List<int>? Function() build, {required Duration gap, bool first = false}) =>
+      _add(_Request(ask, build, expectsAnswer: false, gap: gap), first: first);
 
   void _add(_Request<A> request, {required bool first}) {
     first ? _pending.insert(0, request) : _pending.add(request);

@@ -40,6 +40,7 @@ import 'equipment_models_icom.dart';
 import 'equipment_models_kenwood.dart';
 import 'equipment_models_other_radios.dart';
 import 'equipment_models_sdr.dart';
+import 'equipment_models_tentec.dart';
 import 'equipment_models_yaesu.dart';
 import 'transport.dart';
 import 'transports/ble_serial_transport.dart';
@@ -524,6 +525,9 @@ const _defaultModels = [
   kenwoodGenericModel,
   tx500Model,
   tx500mpModel,
+  tenTecEagleModel,
+  tenTecOrionModel,
+  tenTecOrionIIModel,
   rigctldModel,
   flrigModel,
   hrdModel,
