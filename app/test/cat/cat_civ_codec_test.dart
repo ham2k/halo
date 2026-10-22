@@ -32,8 +32,16 @@ void main() {
       expect(encodeBcdFrequency(14074123), [0x23, 0x41, 0x07, 0x14, 0x00]);
     });
 
+    test('takes a sixth byte from 10 GHz up, and only there', () {
+      // Five bytes hold ten digits: 10.368 GHz squeezed into them goes out as
+      // 368 MHz, and the IC-905 tunes there. The 5.76 GHz vector is the
+      // IC-905's top ten-digit band, which a 6-byte frame would break.
+      expect(encodeBcdFrequency(10368100000), [0x00, 0x00, 0x10, 0x68, 0x03, 0x01]);
+      expect(encodeBcdFrequency(5760100000), [0x00, 0x00, 0x10, 0x60, 0x57]);
+    });
+
     test('round-trips', () {
-      for (final hz in [1840000, 7074000, 14250000, 50313000, 144200000, 430000000]) {
+      for (final hz in [1840000, 7074000, 14250000, 50313000, 144200000, 430000000, 5760100000, 10368100000]) {
         expect(decodeBcdFrequency(encodeBcdFrequency(hz)), hz, reason: '$hz Hz');
       }
     });

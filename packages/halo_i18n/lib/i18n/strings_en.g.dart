@@ -5456,6 +5456,9 @@ class Translations$settings$station$en {
 	/// en: 'The radio's scope is set outside the range it can show'
 	String get spectrumOutOfRange => 'The radio\'s scope is set outside the range it can show';
 
+	/// en: 'The radio's scope cannot be shown on this band'
+	String get spectrumBandUnsupported => 'The radio\'s scope cannot be shown on this band';
+
 	/// en: 'Waiting for the linked radio's frequency…'
 	String get spectrumSdrNoRadio => 'Waiting for the linked radio\'s frequency…';
 
@@ -5813,6 +5816,9 @@ class Translations$settings$station$en {
 
 	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled. - **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session stuck on the radio. A **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.'
 	String get ic705Troubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.';
+
+	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview, RS-BA1 or Icom's Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio. - **If it connects but never answers**, the CI-V address here must match the radio's CI-V ADDRESS menu. This entry prefills the address the model ships with. - **Turn the radio off and on** if it stays stuck.'
+	String get icomLanTroubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.';
 
 	/// en: 'Not responding'
 	String get statusStale => 'Not responding';
@@ -8478,6 +8484,18 @@ class Translations$settings$station$models$en {
 	/// en: 'Icom IC-7760'
 	String get ic7760 => 'Icom IC-7760';
 
+	/// en: 'Icom IC-9700'
+	String get ic9700 => 'Icom IC-9700';
+
+	/// en: 'Icom IC-905'
+	String get ic905 => 'Icom IC-905';
+
+	/// en: 'Icom IC-7850'
+	String get ic7850 => 'Icom IC-7850';
+
+	/// en: 'Icom IC-7851'
+	String get ic7851 => 'Icom IC-7851';
+
 	/// en: 'Xiegu X6100'
 	String get x6100 => 'Xiegu X6100';
 
@@ -10352,6 +10370,7 @@ extension on Translations {
 			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
+			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
 			'settings.station.spectrumSdrNoRadio' => 'Waiting for the linked radio\'s frequency…',
 			'settings.station.spectrumSdrNotConnected' => 'The SDR is not connected',
 			'settings.station.spectrumSdrNoIf' => 'Set the radio\'s IF frequency in this SDR\'s settings',
@@ -10432,6 +10451,10 @@ extension on Translations {
 			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			'settings.station.models.ic9700' => 'Icom IC-9700',
+			'settings.station.models.ic905' => 'Icom IC-905',
+			'settings.station.models.ic7850' => 'Icom IC-7850',
+			'settings.station.models.ic7851' => 'Icom IC-7851',
 			'settings.station.models.x6100' => 'Xiegu X6100',
 			'settings.station.models.g90' => 'Xiegu G90',
 			'settings.station.models.rigctld' => 'Radio controlled via rigctld',
@@ -10531,6 +10554,7 @@ extension on Translations {
 			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never responds',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.',
+			'settings.station.icomLanTroubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.',
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.statusDisconnected' => 'Not connected',
 			'settings.station.statusConnecting' => 'Connecting…',
@@ -10790,14 +10814,14 @@ extension on Translations {
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again',
 			'commands.receivedPurgesFailed' => 'Couldn\'t remove those Test Operations — try Review again',
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Test Operation was removed on another device', other: '${count} Test Operations were removed on another device', ), 
+			_ => null,
+		} ?? switch (path) {
 			'commands.receivedPurgesReview' => 'Review',
 			'commands.settingOn' => 'On',
 			'commands.settingOff' => 'Off',
 			'commands.settingEmpty' => '(empty)',
 			'commands.settingSecretSet' => '(set)',
 			'commands.settingSecretUnset' => '(not set)',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} selected',
 			'commands.settingExpectsOnOff' => 'on or off',
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',

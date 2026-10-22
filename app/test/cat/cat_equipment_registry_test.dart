@@ -13,6 +13,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/civ_power.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
@@ -267,10 +268,21 @@ void main() {
       'elecraft-serial',
       'ic7300-serial',
       'ic7300mk2-serial',
+      'ic7300mk2-network',
       'ic706mkiig-serial',
       'ic7100-serial',
       'ic7610-serial',
+      'ic7610-network',
       'ic7760-serial',
+      'ic7760-network',
+      'ic9700-serial',
+      'ic9700-network',
+      'ic905-serial',
+      'ic905-network',
+      'ic7850-serial',
+      'ic7850-network',
+      'ic7851-serial',
+      'ic7851-network',
       'x6100-serial',
       'g90-serial',
       'ic705-network',
@@ -311,6 +323,10 @@ void main() {
       'ic7100-placeholder',
       'ic7610-placeholder',
       'ic7760-placeholder',
+      'ic9700-placeholder',
+      'ic905-placeholder',
+      'ic7850-placeholder',
+      'ic7851-placeholder',
       'x6100-placeholder',
       'g90-placeholder',
       'icom-generic-placeholder',
@@ -349,6 +365,10 @@ void main() {
       'ic7100-ble',
       'ic7610-ble',
       'ic7760-ble',
+      'ic9700-ble',
+      'ic905-ble',
+      'ic7850-ble',
+      'ic7851-ble',
       'x6100-ble',
       'g90-ble',
       'icom-generic-ble',
@@ -384,13 +404,20 @@ void main() {
       // The MK2 is its own entry for this address above all: prefill it with
       // the 7300's '94' and it answers nothing. (It also claims Port A of
       // the two USB ports the original lacks.)
-      'ic7300mk2-serial': ('icom-civ', {'civAddress': 'B6', 'baudRate': 19200}),
+      'ic7300mk2-serial': ('icom-civ', {'civAddress': 'B6', 'baudRate': 115200}),
       'ic706mkiig-serial': ('icom-civ', {'civAddress': '58', 'baudRate': 19200}),
       'ic7100-serial': ('icom-civ', {'civAddress': '88', 'baudRate': 19200}),
-      // 9600, not the CI-V family's 19200: the 7610 ships slow, and a speed
-      // mismatch is answered with silence rather than an error.
-      'ic7610-serial': ('icom-civ', {'civAddress': '98', 'baudRate': 9600}),
-      'ic7760-serial': ('icom-civ', {'civAddress': 'B2', 'baudRate': 19200}),
+      // 115200, pinned: the scope's rate. The MK2 and IC-7760 have no USB
+      // speed menu to match; the IC-7610's is set to it.
+      'ic7610-serial': ('icom-civ', {'civAddress': '98', 'baudRate': 115200}),
+      'ic7760-serial': ('icom-civ', {'civAddress': 'B2', 'baudRate': 115200}),
+      'ic9700-serial': ('icom-civ', {'civAddress': 'A2', 'baudRate': 19200}),
+      // 115200: the IC-905 has no CI-V speed menu to match, and the scope
+      // needs that rate on a serial line.
+      'ic905-serial': ('icom-civ', {'civAddress': 'AC', 'baudRate': 115200}),
+      // Both on 8E: one radio line, two names on the front panel.
+      'ic7850-serial': ('icom-civ', {'civAddress': '8E', 'baudRate': 19200}),
+      'ic7851-serial': ('icom-civ', {'civAddress': '8E', 'baudRate': 19200}),
       // CI-V, not the Kenwood protocol the radio's own documentation implies.
       'x6100-serial': ('icom-civ', {'civAddress': 'A4', 'baudRate': 19200}),
       // hamlib's stock G90 address, not the X6100's A4.
@@ -426,6 +453,17 @@ void main() {
         prefills.forEach((field, value) => expect(type.defaultConfig[field], value));
       });
     });
+  });
+
+  // A prefill is only where a node starts; these three are pinned, so a node
+  // saved at the IC-7610's old 9600 is talked to at 115200 too, and there is
+  // no speed field to set wrong. A slower line would also refuse the scope.
+  test('the IC-7300 MK2, IC-7610 and IC-7760 talk CI-V at 115200 only', () {
+    for (final key in ['ic7300mk2-serial', 'ic7610-serial', 'ic7760-serial']) {
+      final type = registry.typeFor(key)!;
+      expect(type.targetFor({'port': '/dev/cu.usbmodem1', 'baudRate': 9600})['baudRate'], 115200, reason: key);
+      expect([for (final e in type.configElements()) e['key']], isNot(contains('baudRate')), reason: key);
+    }
   });
 
   // These are what an operator reaches for when their radio is not in the
@@ -505,9 +543,21 @@ void main() {
       'ic7100-serial': 100,
       'ic7610-serial': 100,
       'ic7760-serial': 200,
+      'ic9700-serial': 100,
+      'ic905-serial': 10,
+      'ic7850-serial': 200,
+      'ic7851-serial': 200,
       'x6100-serial': 10,
       'g90-serial': 20,
       'ic705-network': 10,
+      // A network pairing reads against the same rating as its serial one.
+      'ic7300mk2-network': 100,
+      'ic7610-network': 100,
+      'ic7760-network': 200,
+      'ic9700-network': 100,
+      'ic905-network': 10,
+      'ic7850-network': 200,
+      'ic7851-network': 200,
       'ic705-serial': 10,
       'ic705-bluetooth': 10,
       // Over a BLE bridge the rating has to come along with the driver's
@@ -518,6 +568,10 @@ void main() {
       'ic7100-ble': 100,
       'ic7610-ble': 100,
       'ic7760-ble': 200,
+      'ic9700-ble': 100,
+      'ic905-ble': 10,
+      'ic7850-ble': 200,
+      'ic7851-ble': 200,
       'x6100-ble': 10,
       'g90-ble': 20,
       'ic705-ble': 10,
@@ -527,6 +581,23 @@ void main() {
     for (final type in named) {
       final session = type.driver.createSession(_SilentSink(), type.driverConfig(const {})) as IcomCivSession;
       expect(session.maxWatts, rated[type.key], reason: type.key);
+    }
+  });
+
+  // A band list is read by skipping what is not a `[fromHz, watts]` pair and
+  // taking the last pair at or below the frequency — so a typo'd pair, or
+  // one out of order, silently rates a band against the wrong ceiling: the
+  // 10x power error the list exists to prevent.
+  test('every band power list is whole and ascending', () {
+    final pinned = registry.types.where((type) => type.overrides.containsKey(civBandMaxWattsConfigKey)).toList();
+    expect(pinned.map((type) => type.model.key).toSet(), {'ic9700', 'ic905'});
+    for (final type in pinned) {
+      final raw = type.overrides[civBandMaxWattsConfigKey] as List;
+      final bands = civBandMaxWattsFrom(raw);
+      expect(bands, hasLength(raw.length), reason: type.key);
+      for (var i = 1; i < bands.length; i++) {
+        expect(bands[i].$1, greaterThan(bands[i - 1].$1), reason: type.key);
+      }
     }
   });
 

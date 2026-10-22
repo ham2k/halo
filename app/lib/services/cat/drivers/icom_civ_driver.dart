@@ -26,6 +26,7 @@ import '../spectrum.dart';
 import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
 import 'civ_codec.dart';
+import 'civ_power.dart';
 import 'civ_scope_codec.dart';
 import 'cw_send_queue.dart';
 import 'keyer_config.dart';
@@ -57,46 +58,6 @@ const _defaultPollInterval = Duration(seconds: 5);
 /// that counts only silences on receive; any other command the radio ignores
 /// costs it on every poll.
 const civAnswerTimeout = Duration(seconds: 1);
-
-/// The RF power level (0x14 0x0A) is a 0-255 value standing for 0-100% of
-/// the radio's OWN maximum — CI-V has no command that states what that
-/// maximum is, so [IcomCivSession.maxWatts] comes from config instead: a
-/// named radio rated anything other than 100W overrides it with its own
-/// SSB/CW ceiling (equipment_models_icom.dart — the IC-705's 10W, the
-/// IC-7760's 200W); everything else — the generic Icom pairing, and any
-/// config that leaves it out — falls back to this 100W guess, the common
-/// ceiling across the HF line this driver otherwise targets (IC-7300,
-/// IC-9700, IC-7610). Unverified either way — see
-/// [IcomCivDriver.hardwareVerified].
-const _assumedMaxWatts = 100;
-
-/// Below this ceiling a 0-255 level actually carries sub-watt resolution
-/// worth showing (10W over 255 steps is ~0.04W/step) — above it the ceiling
-/// itself is a guess, and reporting e.g. 76.47058823529412W as though
-/// precise is worse than useless. One decimal, not the raw division: it
-/// still fits the Power field's 4-digit width and is what a QRP radio's own
-/// display shows.
-const _preciseWattsCeiling = 20;
-
-int _levelForWatts(num watts, num maxWatts) => (watts / maxWatts * 255).round().clamp(0, 255);
-
-num _wattsForLevel(int level, num maxWatts) {
-  final raw = level / 255 * maxWatts;
-  return maxWatts <= _preciseWattsCeiling ? (raw * 10).round() / 10 : raw.round();
-}
-
-/// Below this RAW reading, [IcomCivSession.dcInputMeterLevel] says the radio
-/// is on its own battery rather than an external supply — confirmed LIVE
-/// against an IC-705, which read 115 on its internal battery and 195 plugged
-/// in. The midpoint, since only those two bench readings exist; a supply
-/// that happens to land near it would misclassify, but nothing between "flat
-/// battery" and "external DC" is physically expected.
-///
-/// Deliberately compared as a RAW level and not as volts. Icom's published
-/// Vd scale is a curve, and a different one per radio (see
-/// [civMeterDcInputVoltage]) — this check needs neither, because both bench
-/// readings are in the same units the radio answers in.
-const _batteryMeterCeiling = 150;
 
 /// A CI-V exchange is a 7-byte question and a 9-byte answer with one data
 /// byte pair — 16 bytes on the wire, which is what the cadence floor is
@@ -238,7 +199,7 @@ class IcomCivDriver extends EquipmentDriver {
     sink,
     radioAddress: _addressOrFallback(config['civAddress'], civRadioAddresses['IC-705']!),
     controllerAddress: _addressOrFallback(config['civControllerAddress'], civDefaultControllerAddress),
-    maxWatts: (config['maxWatts'] as num?) ?? _assumedMaxWatts,
+    maxWatts: (config['maxWatts'] as num?) ?? civAssumedMaxWatts,
     batteryMaxWatts: config['batteryMaxWatts'] as num?,
     // Absent means NONE, unlike the CW keyer: every named entry pins
     // the count, so an absent key is a generic entry's node — one
@@ -269,6 +230,7 @@ class IcomCivDriver extends EquipmentDriver {
     voiceCeilingConfigKey,
     civScopeConfigKey,
     civAntennaPortsConfigKey,
+    civBandMaxWattsConfigKey,
   };
 
   @override
@@ -355,7 +317,7 @@ class IcomCivSession
   /// carrying it is our own echo.
   final int controllerAddress;
 
-  /// The radio's own 100%-level ceiling in watts — see [_assumedMaxWatts].
+  /// The radio's own 100%-level ceiling in watts — see [civAssumedMaxWatts].
   final num maxWatts;
 
   /// A lower ceiling that applies instead of [maxWatts] while
@@ -435,7 +397,7 @@ class IcomCivSession
     this._sink, {
     required this.radioAddress,
     required this.controllerAddress,
-    this.maxWatts = _assumedMaxWatts,
+    this.maxWatts = civAssumedMaxWatts,
     this.batteryMaxWatts,
     this._voiceMemories = civVoiceMemoryCount,
     this.voiceMemoryCeiling = voiceActivityCeiling,
@@ -445,10 +407,19 @@ class IcomCivSession
        _modeWithFilter = config[civModeWithFilterConfigKey] == true,
        _scopeSupported = config[civScopeConfigKey] == true,
        _antennaPorts = (config[civAntennaPortsConfigKey] as num?)?.toInt().clamp(0, 4) ?? 0,
+       _bandMaxWatts = civBandMaxWattsFrom(config[civBandMaxWattsConfigKey]),
        _baudRate = serialBaudRateOrNull(config);
 
   /// See [civModeWithFilterConfigKey].
   final bool _modeWithFilter;
+
+  /// See [civBandMaxWattsConfigKey].
+  final List<(int, num)> _bandMaxWatts;
+
+  /// The radio's last reported frequency, which picks the band ceiling.
+  int? _freqHz;
+
+  num get _ratedWatts => civRatedWatts(maxWatts, _bandMaxWatts, _freqHz);
 
   late final Duration _pollInterval = idlePollIntervalFor(_config, fallback: _defaultPollInterval);
 
@@ -702,14 +673,14 @@ class IcomCivSession
   /// poll.
   int? _lastLevel;
 
-  bool get _onBattery => _dcInputMeterLevel != null && _dcInputMeterLevel! < _batteryMeterCeiling;
+  bool get _onBattery => _dcInputMeterLevel != null && _dcInputMeterLevel! < civBatteryMeterCeiling;
 
   /// Watts for a 0.0-1.0 fraction of the radio's rated output, under the
   /// same battery cap [_reportPower] applies to the SET level.
   num _wattsForFraction(double fraction) {
-    final ceiling = batteryMaxWatts != null && _onBattery ? math.min(maxWatts, batteryMaxWatts!) : maxWatts;
+    final ceiling = batteryMaxWatts != null && _onBattery ? math.min(_ratedWatts, batteryMaxWatts!) : _ratedWatts;
     final watts = fraction * ceiling;
-    return ceiling <= _preciseWattsCeiling ? (watts * 10).round() / 10 : watts.round();
+    return ceiling <= civPreciseWattsCeiling ? (watts * 10).round() / 10 : watts.round();
   }
 
   /// The radio answered the TX watch: tell the app, and move the cadence.
@@ -725,7 +696,7 @@ class IcomCivSession
   void _reportPower() {
     final level = _lastLevel;
     if (level == null) return;
-    final watts = _wattsForLevel(level, maxWatts);
+    final watts = civWattsForLevel(level, _ratedWatts);
     final cap = batteryMaxWatts;
     _sink.reportPower(cap != null && _onBattery ? math.min(watts, cap) : watts);
   }
@@ -808,8 +779,10 @@ class IcomCivSession
       case CivCommand.transceiveFrequency:
       case CivCommand.readFrequency:
         final freqHz = decodeBcdFrequency(frame.data);
+        if (freqHz == null) return;
+        _noteFrequency(freqHz);
         // Everything above here speaks kHz.
-        if (freqHz != null) _sink.report(VfoReading(freqKHz: freqHz / 1000));
+        _sink.report(VfoReading(freqKHz: freqHz / 1000));
 
       case CivCommand.transceiveMode:
       case CivCommand.readMode:
@@ -955,7 +928,27 @@ class IcomCivSession
   }
 
   @override
-  void setFrequency(double freqKHz) => _send(buildSetFrequencyFrame(to: radioAddress, from: controllerAddress, freqHz: (freqKHz * 1000).round()));
+  void setFrequency(double freqKHz) {
+    final freqHz = (freqKHz * 1000).round();
+    _send(buildSetFrequencyFrame(to: radioAddress, from: controllerAddress, freqHz: freqHz));
+    _noteFrequency(freqHz);
+  }
+
+  /// Where the radio is tuned, from its report or our own set. Ours counts
+  /// at once: the VFO path sends a tune and a power set together, and a set
+  /// rated against the band being left would put an IC-9700 on 23 cm at a
+  /// tenth of what was asked.
+  ///
+  /// Across a band ceiling the level last read belongs to the old band — a
+  /// radio may keep RF power per band — so it is forgotten and read again
+  /// rather than re-rated into a wattage neither band is at.
+  void _noteFrequency(int freqHz) {
+    final ratedBefore = _ratedWatts;
+    _freqHz = freqHz;
+    if (_ratedWatts == ratedBefore) return;
+    _lastLevel = null;
+    _poll(buildReadPowerLevelFrame(to: radioAddress, from: controllerAddress));
+  }
 
   @override
   void setMode(String mode) {
@@ -991,7 +984,7 @@ class IcomCivSession
   }
 
   @override
-  void setPower(num watts) => _send(buildSetPowerLevelFrame(to: radioAddress, from: controllerAddress, level: _levelForWatts(watts, maxWatts)));
+  void setPower(num watts) => _send(buildSetPowerLevelFrame(to: radioAddress, from: controllerAddress, level: civLevelForWatts(watts, _ratedWatts)));
 
   @override
   void sendCw(String text) => _cwQueue.enqueue(text);
@@ -1411,6 +1404,10 @@ class IcomCivSession
     switch (data[0]) {
       case civScopeWaveform:
         if (!_scopeWanted) return;
+        // There the sweep header's frequencies are six bytes too, and the
+        // assembler reads five: every field after the first lands a byte off
+        // and the sweep would draw as noise across the wrong range.
+        if ((_freqHz ?? 0) >= civSixByteFrequencyHz) return _reportScopeProblem(t.settings.station.spectrumBandUnsupported);
         final sweep = _scopeAssembler.add(data);
         if (sweep == null) return;
         // The header restates mode and span on every sweep, so a turn of the

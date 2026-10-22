@@ -186,7 +186,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       // taking it instead of sending our own is what left polo's radio
       // never told where to send CI-V.
       final authId = await raceLost(control.login(username: username, password: password));
-      final token = await raceLost(control.awaitStreamToken());
+      final radio = await raceLost(control.awaitStreamToken());
 
       // Both sockets must exist before the request that names their ports.
       // Not raced: assigning through a generic wrapper's return type loses
@@ -207,7 +207,14 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       if (cancel.isCancelled) throw const CatCancelledException();
 
       await raceLost(
-        control.requestStreams(authId: authId, token: token, username: username, serialPort: serialSession.localPort, audioPort: audioSocket.port),
+        control.requestStreams(
+          authId: authId,
+          token: radio.token,
+          username: username,
+          radioName: radio.name,
+          serialPort: serialSession.localPort,
+          audioPort: audioSocket.port,
+        ),
       );
 
       serialSession.sendTracked(buildSerialOpen(serialSession.localSid, serialSession.remoteSid, 0, magic: icomSerialOpenMagic));
@@ -626,12 +633,19 @@ class _IcomSession {
     return authId;
   }
 
-  /// The 16-byte token from the radio's unsolicited 0xa8, at offset 66.
-  Future<List<int>> awaitStreamToken() async {
-    List<int>? token;
+  /// The token and name from the radio's unsolicited capabilities packet —
+  /// see [readRadioCapabilities]. Logged as read: on any radio but the
+  /// IC-705 the layout is inferred, and a name or address read off the wrong
+  /// bytes is otherwise invisible.
+  Future<({List<int> token, String name, int civAddress})> awaitStreamToken() async {
+    ({List<int> token, String name, int civAddress})? token;
     Object? socketError;
     final stop = onMessage((b) {
-      if (b.length == 168 && icomPrefixIs(b, [0xa8, 0, 0, 0, 0, 0])) token = b.sublist(66, 82);
+      if (token != null) return;
+      token = readRadioCapabilities(b);
+      if (token case final read?) {
+        debugPrint('[cat] icom capabilities: ${b.length} bytes, radio "${read.name}", CI-V ${read.civAddress.toRadixString(16)}');
+      }
     });
     _failPending = (error) => socketError = error;
     sendTracked(buildAuth(local: localSid, remote: remoteSid, innerSeq: _innerSeq++, magic: 0x05, authId: _authId!));
@@ -658,6 +672,7 @@ class _IcomSession {
     required List<int> authId,
     required List<int> token,
     required String username,
+    required String radioName,
     required int serialPort,
     required int audioPort,
   }) async {
@@ -673,6 +688,7 @@ class _IcomSession {
         ourAudioPort: audioPort,
         audioSampleRate: icomAudioSampleRate,
         txBufferMs: icomTxBufferMs,
+        deviceName: radioName,
       ),
     );
 

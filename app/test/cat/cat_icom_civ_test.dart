@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/civ_codec.dart';
+import 'package:ham2k_logger/services/cat/drivers/civ_power.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -205,7 +206,7 @@ void main() {
     });
 
     test('a QRP radio configured with a real ceiling reports fractional watts', () {
-      // Below _preciseWattsCeiling the 0-255 level actually resolves to
+      // Below civPreciseWattsCeiling the 0-255 level actually resolves to
       // sub-watt steps, unlike the assumed-100W case above — rounding away
       // the decimal would throw away real information, not false precision.
       final qrpSession = IcomCivSession(sink, radioAddress: ic705, controllerAddress: us, maxWatts: 10);
@@ -1413,6 +1414,58 @@ void main() {
       const driver = IcomCivDriver();
       expect((driver.createSession(sink, {}) as IcomCivSession).maxWatts, 100);
       expect((driver.createSession(sink, {'maxWatts': 10}) as IcomCivSession).maxWatts, 10);
+    });
+
+    // An IC-9700's 0x14 0x0A runs to each band's own rating. Against one
+    // 100 W ceiling, 10 W asked on 23 cm goes out as 1 W, and its full power
+    // reads as 100 W into the log.
+    IcomCivSession vhfSession() => IcomCivSession(
+      sink,
+      radioAddress: ic705,
+      controllerAddress: us,
+      maxWatts: 100,
+      config: {
+        civBandMaxWattsConfigKey: [
+          [300000000, 75],
+          [1000000000, 10],
+        ],
+      },
+    );
+    const readPower = [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0xFD];
+
+    test('a band ceiling rates the power where the radio reports it is tuned', () {
+      final vhf = vhfSession();
+      void feedVhf(List<int> bytes) => vhf.handleData(Uint8List.fromList(bytes));
+
+      // Before any frequency, the model's own ceiling.
+      feedVhf([0xFE, 0xFE, us, ic705, 0x14, 0x0A, 0x02, 0x55, 0xFD]);
+      expect(sink.powers, [100]);
+
+      // 1296.1 MHz. The 2 m level is not re-rated — the radio may hold a
+      // different one on 23 cm, and 10 W shown for it would be invented —
+      // it is read again.
+      feedVhf([0xFE, 0xFE, us, ic705, 0x03, 0x00, 0x00, 0x10, 0x96, 0x12, 0xFD]);
+      expect(sink.powers, [100]);
+      expect(sink.sent.last, readPower);
+      feedVhf([0xFE, 0xFE, us, ic705, 0x14, 0x0A, 0x01, 0x28, 0xFD]);
+      expect(sink.powers, [100, 5.0]);
+
+      vhf.setPower(10);
+      expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x02, 0x55, 0xFD], reason: 'full scale, not 10%');
+
+      // A report on the same band asks nothing.
+      final asked = sink.sent.length;
+      feedVhf([0xFE, 0xFE, us, ic705, 0x03, 0x00, 0x00, 0x20, 0x96, 0x12, 0xFD]);
+      expect(sink.sent, hasLength(asked));
+    });
+
+    test('a power set behind our own tune is rated for the band tuned to', () {
+      // The VFO path sends both at once, before any report can come back.
+      final vhf = vhfSession();
+      sink.answer = vhf.handleData;
+      vhf.setFrequency(1296100);
+      vhf.setPower(10);
+      expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x02, 0x55, 0xFD], reason: 'full scale on 23 cm, not 10% of 100 W');
     });
 
     test('batteryMaxWatts comes from config too, defaulting to no cap at all', () {

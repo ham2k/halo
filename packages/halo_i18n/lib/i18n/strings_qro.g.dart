@@ -2534,6 +2534,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get spectrumNoUdp => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE';
 	@override String get spectrumScopeRefused => 'THE RADIO REFUSED ITS SCOPE COMMANDS';
 	@override String get spectrumOutOfRange => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW';
+	@override String get spectrumBandUnsupported => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND';
 	@override String get spectrumSdrNoRadio => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…';
 	@override String get spectrumSdrNotConnected => 'THE SDR IS NOT CONNECTED';
 	@override String get spectrumSdrNoIf => 'SET THE RADIO\'S IF FREQUENCY IN THIS SDR\'S SETTINGS';
@@ -2661,6 +2662,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get commanderTroubleshooting => 'THIS CONNECTS TO **DXLAB COMMANDER, RUNNING ON YOUR COMPUTER**, NOT TO THE RADIO DIRECTLY — COMMANDER TALKS TO THE RADIO.\n\n- **COMMANDER MUST ALREADY BE RUNNING** AND CONNECTED TO THE RADIO.\n- **ITS NETWORK SERVICE MUST BE ON**: THE **NET SERV** BUTTON IN THE RADIO PANEL OF COMMANDER\'S CONFIGURATION WINDOW.\n- **PORT** IS 52002, THE THIRD PORT OF THE BLOCK STARTING AT NET SERV\'S **BASE PORT** (52000 UNLESS YOU CHANGED IT).\n- **FROM ANOTHER MACHINE**, MAKE SURE YOUR FIREWALL LETS THE CONNECTION THROUGH.\n\nTHIS ENTRY WAS WRITTEN FROM COMMANDER\'S PUBLISHED TCP MESSAGES AND HAS NOT BEEN RUN AGAINST COMMANDER. IF IT HALF-WORKS, THAT IS WORTH REPORTING.';
 	@override String get ic705TroubleshootingTitle => 'IF THE RADIO NEVER RESPONDS';
 	@override String get ic705Troubleshooting => 'THE RADIO HAS A **SINGLE** REMOTE-CONTROL SESSION. WHEN THE LOGIN IS IGNORED, SOMETHING ELSE IS ALMOST ALWAYS USING IT.\n\n- **CLOSE ANY OTHER CLIENT.** WFVIEW OR RS-BA1 CONNECTED TO THE SAME RADIO HOLDS THAT ONE SESSION, AND THE LOGIN HERE IS SIMPLY IGNORED WHILE IT DOES.\n- **CHECK THE RADIO\'S NETWORK SETTINGS.** WLAN MUST BE ON, THE RADIO MUST BE ON THE SAME NETWORK, AND ITS REMOTE-CONTROL (NETWORK) FUNCTION MUST BE ENABLED.\n- **POWER-CYCLE THE RADIO\'S WLAN** IF IT STAYS STUCK. THAT RELIABLY CLEARS A SESSION STUCK ON THE RADIO.\n\nA **WRONG PASSWORD IS REFUSED EXPLICITLY**, NOT MET WITH SILENCE. IF YOU GOT HERE RATHER THAN A "REJECTED" MESSAGE, THE PASSWORD IS NOT THE PROBLEM.';
+	@override String get icomLanTroubleshooting => 'THE RADIO HAS A **SINGLE** REMOTE-CONTROL SESSION. WHEN THE LOGIN IS IGNORED, SOMETHING ELSE IS ALMOST ALWAYS USING IT.\n\n- **CLOSE ANY OTHER CLIENT.** WFVIEW, RS-BA1 OR ICOM\'S REMOTE UTILITY CONNECTED TO THE SAME RADIO HOLDS THAT ONE SESSION, AND THE LOGIN HERE IS SIMPLY IGNORED WHILE IT DOES.\n- **CHECK THE RADIO\'S NETWORK SETTINGS.** ITS LAN PORT MUST BE CONNECTED TO THE SAME NETWORK AS THIS DEVICE, ITS **NETWORK CONTROL** MUST BE ON, AND THE USERNAME AND PASSWORD MUST BE SET UP AS A NETWORK USER ON THE RADIO.\n- **IF IT CONNECTS BUT NEVER ANSWERS**, THE CI-V ADDRESS HERE MUST MATCH THE RADIO\'S CI-V ADDRESS MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH.\n- **TURN THE RADIO OFF AND ON** IF IT STAYS STUCK.';
 	@override String get statusStale => 'NOT RESPONDING';
 	@override String get statusDisconnected => 'NOT CONNECTED';
 	@override String get statusConnecting => 'CONNECTING…';
@@ -3938,6 +3940,10 @@ class _Translations$settings$station$models$qro extends Translations$settings$st
 	@override String get ic7100 => 'ICOM IC-7100';
 	@override String get ic7610 => 'ICOM IC-7610';
 	@override String get ic7760 => 'ICOM IC-7760';
+	@override String get ic9700 => 'ICOM IC-9700';
+	@override String get ic905 => 'ICOM IC-905';
+	@override String get ic7850 => 'ICOM IC-7850';
+	@override String get ic7851 => 'ICOM IC-7851';
 	@override String get x6100 => 'XIEGU X6100';
 	@override String get g90 => 'XIEGU G90';
 	@override String get rigctld => 'RADIO CONTROLLED VIA RIGCTLD';
@@ -5667,6 +5673,7 @@ extension on TranslationsQro {
 			'settings.station.spectrumNoUdp' => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE',
 			'settings.station.spectrumScopeRefused' => 'THE RADIO REFUSED ITS SCOPE COMMANDS',
 			'settings.station.spectrumOutOfRange' => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW',
+			'settings.station.spectrumBandUnsupported' => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND',
 			'settings.station.spectrumSdrNoRadio' => 'WAITING FOR THE LINKED RADIO\'S FREQUENCY…',
 			'settings.station.spectrumSdrNotConnected' => 'THE SDR IS NOT CONNECTED',
 			'settings.station.spectrumSdrNoIf' => 'SET THE RADIO\'S IF FREQUENCY IN THIS SDR\'S SETTINGS',
@@ -5747,6 +5754,10 @@ extension on TranslationsQro {
 			'settings.station.models.ic7100' => 'ICOM IC-7100',
 			'settings.station.models.ic7610' => 'ICOM IC-7610',
 			'settings.station.models.ic7760' => 'ICOM IC-7760',
+			'settings.station.models.ic9700' => 'ICOM IC-9700',
+			'settings.station.models.ic905' => 'ICOM IC-905',
+			'settings.station.models.ic7850' => 'ICOM IC-7850',
+			'settings.station.models.ic7851' => 'ICOM IC-7851',
 			'settings.station.models.x6100' => 'XIEGU X6100',
 			'settings.station.models.g90' => 'XIEGU G90',
 			'settings.station.models.rigctld' => 'RADIO CONTROLLED VIA RIGCTLD',
@@ -5846,6 +5857,7 @@ extension on TranslationsQro {
 			'settings.station.commanderTroubleshooting' => 'THIS CONNECTS TO **DXLAB COMMANDER, RUNNING ON YOUR COMPUTER**, NOT TO THE RADIO DIRECTLY — COMMANDER TALKS TO THE RADIO.\n\n- **COMMANDER MUST ALREADY BE RUNNING** AND CONNECTED TO THE RADIO.\n- **ITS NETWORK SERVICE MUST BE ON**: THE **NET SERV** BUTTON IN THE RADIO PANEL OF COMMANDER\'S CONFIGURATION WINDOW.\n- **PORT** IS 52002, THE THIRD PORT OF THE BLOCK STARTING AT NET SERV\'S **BASE PORT** (52000 UNLESS YOU CHANGED IT).\n- **FROM ANOTHER MACHINE**, MAKE SURE YOUR FIREWALL LETS THE CONNECTION THROUGH.\n\nTHIS ENTRY WAS WRITTEN FROM COMMANDER\'S PUBLISHED TCP MESSAGES AND HAS NOT BEEN RUN AGAINST COMMANDER. IF IT HALF-WORKS, THAT IS WORTH REPORTING.',
 			'settings.station.ic705TroubleshootingTitle' => 'IF THE RADIO NEVER RESPONDS',
 			'settings.station.ic705Troubleshooting' => 'THE RADIO HAS A **SINGLE** REMOTE-CONTROL SESSION. WHEN THE LOGIN IS IGNORED, SOMETHING ELSE IS ALMOST ALWAYS USING IT.\n\n- **CLOSE ANY OTHER CLIENT.** WFVIEW OR RS-BA1 CONNECTED TO THE SAME RADIO HOLDS THAT ONE SESSION, AND THE LOGIN HERE IS SIMPLY IGNORED WHILE IT DOES.\n- **CHECK THE RADIO\'S NETWORK SETTINGS.** WLAN MUST BE ON, THE RADIO MUST BE ON THE SAME NETWORK, AND ITS REMOTE-CONTROL (NETWORK) FUNCTION MUST BE ENABLED.\n- **POWER-CYCLE THE RADIO\'S WLAN** IF IT STAYS STUCK. THAT RELIABLY CLEARS A SESSION STUCK ON THE RADIO.\n\nA **WRONG PASSWORD IS REFUSED EXPLICITLY**, NOT MET WITH SILENCE. IF YOU GOT HERE RATHER THAN A "REJECTED" MESSAGE, THE PASSWORD IS NOT THE PROBLEM.',
+			'settings.station.icomLanTroubleshooting' => 'THE RADIO HAS A **SINGLE** REMOTE-CONTROL SESSION. WHEN THE LOGIN IS IGNORED, SOMETHING ELSE IS ALMOST ALWAYS USING IT.\n\n- **CLOSE ANY OTHER CLIENT.** WFVIEW, RS-BA1 OR ICOM\'S REMOTE UTILITY CONNECTED TO THE SAME RADIO HOLDS THAT ONE SESSION, AND THE LOGIN HERE IS SIMPLY IGNORED WHILE IT DOES.\n- **CHECK THE RADIO\'S NETWORK SETTINGS.** ITS LAN PORT MUST BE CONNECTED TO THE SAME NETWORK AS THIS DEVICE, ITS **NETWORK CONTROL** MUST BE ON, AND THE USERNAME AND PASSWORD MUST BE SET UP AS A NETWORK USER ON THE RADIO.\n- **IF IT CONNECTS BUT NEVER ANSWERS**, THE CI-V ADDRESS HERE MUST MATCH THE RADIO\'S CI-V ADDRESS MENU. THIS ENTRY PREFILLS THE ADDRESS THE MODEL SHIPS WITH.\n- **TURN THE RADIO OFF AND ON** IF IT STAYS STUCK.',
 			'settings.station.statusStale' => 'NOT RESPONDING',
 			'settings.station.statusDisconnected' => 'NOT CONNECTED',
 			'settings.station.statusConnecting' => 'CONNECTING…',
@@ -6105,14 +6117,14 @@ extension on TranslationsQro {
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'REMOVED ${removed} OF ${total} TEST OPERATIONS — THE REST FAILED; TRY REVIEW AGAIN',
 			'commands.receivedPurgesFailed' => 'COULDN\'T REMOVE THOSE TEST OPERATIONS — TRY REVIEW AGAIN',
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} TEST OPERATION WAS REMOVED ON ANOTHER DEVICE', other: '${count} TEST OPERATIONS WERE REMOVED ON ANOTHER DEVICE', ), 
+			_ => null,
+		} ?? switch (path) {
 			'commands.receivedPurgesReview' => 'REVIEW',
 			'commands.settingOn' => 'ON',
 			'commands.settingOff' => 'OFF',
 			'commands.settingEmpty' => '(EMPTY)',
 			'commands.settingSecretSet' => '(SET)',
 			'commands.settingSecretUnset' => '(NOT SET)',
-			_ => null,
-		} ?? switch (path) {
 			'commands.settingSelectedCount' => ({required Object count}) => '${count} SELECTED',
 			'commands.settingExpectsOnOff' => 'ON OR OFF',
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'ONE OF: ${choices}',

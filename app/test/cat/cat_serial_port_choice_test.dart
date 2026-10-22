@@ -560,8 +560,8 @@ void main() {
     // manufacturer would let an entry drop out of the set silently — renamed
     // brand string, re-keyed variant — and a guard that shrinks to nothing
     // still passes.
-    const claimsPortA = {'icom-generic-serial', 'ic705-serial', 'ic7300mk2-serial', 'ic7610-serial', 'ic7760-serial'};
-    const noPortOfItsOwn = {'ic7300-serial', 'ic706mkiig-serial', 'ic7100-serial'};
+    const claimsPortA = {'icom-generic-serial', 'ic705-serial', 'ic7300mk2-serial', 'ic7610-serial', 'ic7760-serial', 'ic9700-serial', 'ic905-serial'};
+    const noPortOfItsOwn = {'ic7300-serial', 'ic706mkiig-serial', 'ic7100-serial', 'ic7850-serial', 'ic7851-serial'};
 
     test('the Icoms with two USB ports of their own claim the first', () {
       for (final key in claimsPortA) {
@@ -579,7 +579,9 @@ void main() {
       // original IC-7300 and the IC-7100 present one port each, so the only
       // ports these could ever rank belong to somebody else's bridge — whose second channel is
       // usually PTT, which picks and then answers nothing. Icom's Port A
-      // convention is about Icom's own USB and says nothing about that.
+      // convention is about Icom's own USB and says nothing about that. The
+      // IC-7850 and IC-7851 are here for want of evidence of a second port:
+      // a claim nobody has seen hold costs more than none.
       for (final key in noPortOfItsOwn) {
         expect(registry.typeFor(key)!.restrictions.containsKey('port'), isFalse, reason: key);
       }

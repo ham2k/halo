@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The radios that speak Icom's CI-V — Icom's own, and the Xiegu X6100 that
-// imitates them — over a serial port and, for the IC-705, the network.
+// imitates them — over a serial port and, for the Icoms with a LAN port or
+// the IC-705's WiFi, the network.
 
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
 import 'drivers/icom_civ_driver.dart';
+import 'drivers/civ_power.dart' show civBandMaxWattsConfigKey;
 import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
 import 'equipment.dart';
 import 'equipment_brands.dart';
@@ -28,12 +30,26 @@ const _ic7760SerialKey = 'ic7760-serial';
 const _x6100SerialKey = 'x6100-serial';
 const _g90SerialKey = 'g90-serial';
 const _ic705NetworkKey = 'ic705-network';
+const _ic7300mk2NetworkKey = 'ic7300mk2-network';
+const _ic7610NetworkKey = 'ic7610-network';
+const _ic7760NetworkKey = 'ic7760-network';
+const _ic9700SerialKey = 'ic9700-serial';
+const _ic9700NetworkKey = 'ic9700-network';
+const _ic905SerialKey = 'ic905-serial';
+const _ic905NetworkKey = 'ic905-network';
+const _ic7850SerialKey = 'ic7850-serial';
+const _ic7850NetworkKey = 'ic7850-network';
+const _ic7851SerialKey = 'ic7851-serial';
+const _ic7851NetworkKey = 'ic7851-network';
 
 // The modes each named radio has — see [civRadioModesConfigKey].
 const _civHfModes = ['LSB', 'USB', 'AM', 'CW', 'CW-R', 'RTTY', 'RTTY-R', 'FM'];
 const _civDataModes = ['DATA-LSB', 'DATA-USB', 'DATA-FM'];
 const _ic705Modes = [..._civHfModes, 'WFM', 'DV', ..._civDataModes];
 const _ic7100Modes = [..._civHfModes, 'WFM', 'DV', ..._civDataModes];
+// DD on the IC-9700's 1200 MHz band, and ATV on the IC-905's, have no
+// mode name in civModeCodes, so neither is offered.
+const _civVuDvModes = [..._civHfModes, 'DV', ..._civDataModes];
 const _civHfDataModes = [..._civHfModes, ..._civDataModes];
 const _ic706Modes = [..._civHfModes, 'WFM'];
 const _x6100Modes = ['LSB', 'USB', 'CW', 'CW-R', 'AM', 'FM', 'DATA-LSB', 'DATA-USB'];
@@ -73,6 +89,28 @@ const _icomVoiceSeconds = 90;
 /// shape, where Port A is the first data interface. Treat a report that
 /// contradicts it as the better evidence.
 const _icomCatPort = {'index': 0};
+
+/// The troubleshooting note for a LAN-port Icom's network variant.
+///
+/// Such a variant pins its serial sibling's overrides and the network
+/// side's controller address, and prefills the radio's factory CI-V
+/// address. A prefill, unlike the IC-705's pinned A4 ([ic705Model]): CI-V
+/// ADDRESS is in each of these radios' menus, and nothing shows that the
+/// network ignores it.
+///
+/// INFERRED for every radio but the IC-705: the protocol is proven only on
+/// an IC-705, and these radios are listed with the same RS-BA1 server
+/// function in Icom's RS-BA1 guide (A7463-2EX-8).
+List<Map<String, dynamic>> _icomLanNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.ic705TroubleshootingTitle}**\n\n'
+        '${t.settings.station.icomLanTroubleshooting}',
+  },
+];
 
 /// Any Icom transceiver over CI-V on a serial port — the IC-705's USB
 /// connection, and equally an IC-7300 or IC-9700 with a different address.
@@ -172,6 +210,13 @@ List<Map<String, dynamic>> _ic7300SerialNotes() => _civSerialNotes(extra: t.sett
 
 List<Map<String, dynamic>> _ic7300mk2SerialNotes() => _civSerialNotes();
 
+/// The one CI-V speed the IC-7300 MK2, IC-7610 and IC-7760 entries offer —
+/// pinned, so there is no field. 115200 is what the scope needs
+/// ([civScopeMinBaud]). The MK2 and IC-7760 have no USB speed menu at all:
+/// Icom's manuals say they talk at whatever rate the computer uses. The
+/// IC-7610's USB speed ships on Auto.
+const _icomUsbBaud = 115200;
+
 /// Icom IC-7300 MK2 over its built-in USB CI-V port.
 ///
 /// Its own model rather than a note on [ic7300Model]: an operator picks the
@@ -188,22 +233,32 @@ const ic7300mk2Model = EquipmentModel(
       key: _ic7300mk2SerialKey,
       driver: IcomCivDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'civAddress': 'B6', 'baudRate': 19200},
-      overrides: {
-        civAntennaPortsConfigKey: 1,
-        civRadioModesConfigKey: _civHfDataModes,
-        cwKeyerConfigKey: true,
-        voiceMemoriesConfigKey: civVoiceMemoryCount,
-        civScopeConfigKey: true,
-        voiceCeilingConfigKey: _icomVoiceSeconds,
-      },
+      defaultConfig: {'civAddress': 'B6', 'baudRate': _icomUsbBaud},
+      overrides: {..._ic7300mk2Overrides, 'baudRate': _icomUsbBaud},
       // Unlike the original IC-7300's single bridge, the MK2 presents two
       // USB serial ports of Icom's own (0c26:0052).
       restrictions: {'port': _icomCatPort},
       notes: _ic7300mk2SerialNotes,
     ),
+    EquipmentVariant(
+      key: _ic7300mk2NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': 'B6'},
+      overrides: {..._ic7300mk2Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
+    ),
   ],
 );
+
+const _ic7300mk2Overrides = {
+  civAntennaPortsConfigKey: 1,
+  civRadioModesConfigKey: _civHfDataModes,
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: civVoiceMemoryCount,
+  civScopeConfigKey: true,
+  voiceCeilingConfigKey: _icomVoiceSeconds,
+};
 
 String _ic7300mk2Name() => t.settings.station.models.ic7300mk2;
 
@@ -275,10 +330,8 @@ List<Map<String, dynamic>> _ic7610SerialNotes() => _civSerialNotes(extra: '\n\n$
 
 /// Icom IC-7610 over its built-in USB CI-V port.
 ///
-/// 9600 is the radio's own default rather than the CI-V family's 19200, and a
-/// speed mismatch is answered with silence — so the prefill here is the whole
-/// reason the model exists. The radio will run far faster once both ends
-/// agree, which is a change made in two places, not one.
+/// At [_icomUsbBaud], which its CI-V USB Baud Rate menu has to match — a
+/// speed mismatch is answered with silence.
 const ic7610Model = EquipmentModel(
   key: 'ic7610',
   manufacturer: icomBrand,
@@ -289,20 +342,30 @@ const ic7610Model = EquipmentModel(
       key: _ic7610SerialKey,
       driver: IcomCivDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'civAddress': '98', 'baudRate': 9600},
-      overrides: {
-        civAntennaPortsConfigKey: 2,
-        civRadioModesConfigKey: _civHfDataModes,
-        cwKeyerConfigKey: true,
-        voiceMemoriesConfigKey: civVoiceMemoryCount,
-        civScopeConfigKey: true,
-        voiceCeilingConfigKey: _icomVoiceSeconds,
-      },
+      defaultConfig: {'civAddress': '98', 'baudRate': _icomUsbBaud},
+      overrides: {..._ic7610Overrides, 'baudRate': _icomUsbBaud},
       restrictions: {'port': _icomCatPort},
       notes: _ic7610SerialNotes,
     ),
+    EquipmentVariant(
+      key: _ic7610NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': '98'},
+      overrides: {..._ic7610Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
+    ),
   ],
 );
+
+const _ic7610Overrides = {
+  civAntennaPortsConfigKey: 2,
+  civRadioModesConfigKey: _civHfDataModes,
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: civVoiceMemoryCount,
+  civScopeConfigKey: true,
+  voiceCeilingConfigKey: _icomVoiceSeconds,
+};
 
 String _ic7610Name() => t.settings.station.models.ic7610;
 
@@ -324,23 +387,211 @@ const ic7760Model = EquipmentModel(
       key: _ic7760SerialKey,
       driver: IcomCivDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
-      overrides: {
-        civAntennaPortsConfigKey: 4,
-        civRadioModesConfigKey: _civHfDataModes,
-        'maxWatts': 200,
-        cwKeyerConfigKey: true,
-        voiceMemoriesConfigKey: civVoiceMemoryCount,
-        civScopeConfigKey: true,
-        voiceCeilingConfigKey: _icomVoiceSeconds,
-      },
+      defaultConfig: {'civAddress': 'B2', 'baudRate': _icomUsbBaud},
+      overrides: {..._ic7760Overrides, 'baudRate': _icomUsbBaud},
       restrictions: {'port': _icomCatPort},
       notes: _ic7760SerialNotes,
+    ),
+    EquipmentVariant(
+      key: _ic7760NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': 'B2'},
+      overrides: {..._ic7760Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
     ),
   ],
 );
 
+const _ic7760Overrides = {
+  civAntennaPortsConfigKey: 4,
+  civRadioModesConfigKey: _civHfDataModes,
+  'maxWatts': 200,
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: civVoiceMemoryCount,
+  civScopeConfigKey: true,
+  voiceCeilingConfigKey: _icomVoiceSeconds,
+};
+
 String _ic7760Name() => t.settings.station.models.ic7760;
+
+/// Icom IC-9700 over CI-V or its LAN port.
+///
+/// From Icom's IC-9700 CI-V guide (A7508-3EX-4) and basic manual
+/// (A7508H-1EX-7): address A2; no 0x12, one antenna connector per band;
+/// scope, eight voice memories and 0x17 CW. Its USB CI-V speed ships on
+/// Auto, which the shared note says to change to the number here. Rated
+/// 100 W on 2 m, 75 W on 70 cm and 10 W on 23 cm, each band's 0x14 0x0A
+/// scale running to its own.
+const ic9700Model = EquipmentModel(
+  key: 'ic9700',
+  manufacturer: icomBrand,
+  category: kCategoryTransceiver,
+  name: _ic9700Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic9700SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': 'A2', 'baudRate': 19200},
+      overrides: _ic9700Overrides,
+      restrictions: {'port': _icomCatPort},
+      notes: _civSerialNotes,
+    ),
+    EquipmentVariant(
+      key: _ic9700NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': 'A2'},
+      overrides: {..._ic9700Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
+    ),
+  ],
+);
+
+const _ic9700Overrides = {
+  civRadioModesConfigKey: _civVuDvModes,
+  civBandMaxWattsConfigKey: [
+    [300000000, 75],
+    [1000000000, 10],
+  ],
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: civVoiceMemoryCount,
+  civScopeConfigKey: true,
+  voiceCeilingConfigKey: _icomVoiceSeconds,
+};
+
+String _ic9700Name() => t.settings.station.models.ic9700;
+
+/// Icom IC-905 over CI-V or its controller's LAN port.
+///
+/// From Icom's IC-905 CI-V guide (A7711-9EX-2) and basic manual
+/// (A7711D-1EX): address AC; no 0x12; scope, eight voice memories and 0x17
+/// CW. It has no CI-V speed menu at all — a USB virtual COM port only — so
+/// the prefill is the 115200 the scope needs. Icom says any rate works on
+/// the IC-7760's and IC-7300 MK2's ports; it does not say so for this
+/// one. Its 10 GHz band takes
+/// six-byte frequencies (see [encodeBcdFrequency]); the scope's centre
+/// does too there, which [CivScopeAssembler] does not read, so a sweep on
+/// that band is not drawn. 10 W on 144-1200 MHz and 2 W on 2400 and 5600
+/// MHz (the basic manual), and 0.5 W on 10 GHz — INFERRED: the basic manual
+/// defers to the CX-10G's.
+const ic905Model = EquipmentModel(
+  key: 'ic905',
+  manufacturer: icomBrand,
+  category: kCategoryTransceiver,
+  name: _ic905Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic905SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': 'AC', 'baudRate': 115200},
+      overrides: _ic905Overrides,
+      restrictions: {'port': _icomCatPort},
+      notes: _civSerialNotes,
+    ),
+    EquipmentVariant(
+      key: _ic905NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': 'AC'},
+      overrides: {..._ic905Overrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
+    ),
+  ],
+);
+
+const _ic905Overrides = {
+  civRadioModesConfigKey: _civVuDvModes,
+  'maxWatts': 10,
+  civBandMaxWattsConfigKey: [
+    [2000000000, 2],
+    [10000000000, 0.5],
+  ],
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: civVoiceMemoryCount,
+  civScopeConfigKey: true,
+  voiceCeilingConfigKey: _icomVoiceSeconds,
+};
+
+String _ic905Name() => t.settings.station.models.ic905;
+
+/// Icom IC-7850 and IC-7851 — two entries for one radio line, so that each
+/// is found by the name on its front panel.
+///
+/// From Icom's IC-7850/7851 instruction manual (A7205H-1EX-3): address 8E
+/// on both, four antenna ports on 0x12, 200 W, eight voice memories and
+/// 0x17 CW. The scope (0x27) arrived in firmware 1.10. The USB CI-V speed
+/// ships on Auto, and before firmware 1.40 the USB port shares the [REMOTE]
+/// jack's speed, which tops out at 19200 — the rate prefilled here. Its
+/// PSK modes have no name in civModeCodes, so they are not offered. No CAT
+/// port is claimed: nothing says it presents two USB ports of its own.
+const _ic785xOverrides = {
+  civAntennaPortsConfigKey: 4,
+  civRadioModesConfigKey: _civHfDataModes,
+  'maxWatts': 200,
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: civVoiceMemoryCount,
+  civScopeConfigKey: true,
+  voiceCeilingConfigKey: _icomVoiceSeconds,
+};
+
+/// See [_ic785xOverrides].
+const ic7850Model = EquipmentModel(
+  key: 'ic7850',
+  manufacturer: icomBrand,
+  category: kCategoryTransceiver,
+  name: _ic7850Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7850SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '8E', 'baudRate': 19200},
+      overrides: _ic785xOverrides,
+      notes: _civSerialNotes,
+    ),
+    EquipmentVariant(
+      key: _ic7850NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': '8E'},
+      overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
+    ),
+  ],
+);
+
+String _ic7850Name() => t.settings.station.models.ic7850;
+
+/// See [_ic785xOverrides].
+const ic7851Model = EquipmentModel(
+  key: 'ic7851',
+  manufacturer: icomBrand,
+  category: kCategoryTransceiver,
+  name: _ic7851Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7851SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '8E', 'baudRate': 19200},
+      overrides: _ic785xOverrides,
+      notes: _civSerialNotes,
+    ),
+    EquipmentVariant(
+      key: _ic7851NetworkKey,
+      driver: IcomCivDriver(),
+      transport: IcomNetworkTransport(),
+      defaultConfig: {'civAddress': '8E'},
+      overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress},
+      notes: _icomLanNotes,
+    ),
+  ],
+);
+
+String _ic7851Name() => t.settings.station.models.ic7851;
 
 List<Map<String, dynamic>> _x6100SerialNotes() => _civSerialNotes(extra: t.settings.station.x6100PortNote);
 
@@ -451,8 +702,8 @@ const ic705Model = EquipmentModel(
         civRadioModesConfigKey: _ic705Modes,
         'civAddress': 'A4',
         'civControllerAddress': icomNetworkControllerAddress,
-        // The IC-705's real ceiling (10W SSB/CW) — see _assumedMaxWatts in
-        // icom_civ_driver.dart. A device fact, not something the operator
+        // The IC-705's real ceiling (10W SSB/CW) — see civAssumedMaxWatts in
+        // civ_power.dart. A device fact, not something the operator
         // picked, so it's an override like the addresses above.
         'maxWatts': 10,
         // On its own battery the radio caps actual output well below the

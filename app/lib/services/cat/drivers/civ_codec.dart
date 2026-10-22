@@ -113,16 +113,25 @@ String? civModeNameForCode(int code) => _modeNamesByCode[code];
 
 int? civCodeForModeName(String? name) => name == null ? null : civModeCodes[name.toUpperCase()];
 
+/// Where a CI-V frequency takes a sixth byte, because ten digits run out:
+/// the IC-905's CI-V guide (A7711-9EX-2) gives its 10 GHz band twelve
+/// digits and every band below it ten. Without the sixth byte, 10.368 GHz
+/// goes out as 368 MHz.
+const civSixByteFrequencyHz = 10000000000;
+
 /// Frequency is five BCD bytes, **least-significant pair first**: byte 0
 /// holds the 1 Hz/10 Hz digits, byte 4 the 100 MHz/1 GHz digits. Each byte
 /// packs two decimal digits, more significant in the upper nibble.
 ///
 /// The byte order is the part that catches people — it is the reverse of
 /// how the number reads.
+///
+/// Six bytes from [civSixByteFrequencyHz] up — see there.
 List<int> encodeBcdFrequency(int freqHz) {
-  final digits = freqHz.abs().toString().padLeft(10, '0');
-  final trimmed = digits.substring(digits.length - 10);
-  return [for (var i = 8; i >= 0; i -= 2) (int.parse(trimmed[i]) << 4) | int.parse(trimmed[i + 1])];
+  final width = freqHz.abs() >= civSixByteFrequencyHz ? 12 : 10;
+  final digits = freqHz.abs().toString().padLeft(width, '0');
+  final trimmed = digits.substring(digits.length - width);
+  return [for (var i = width - 2; i >= 0; i -= 2) (int.parse(trimmed[i]) << 4) | int.parse(trimmed[i + 1])];
 }
 
 /// Null for anything that isn't valid BCD — a nibble above 9 means the

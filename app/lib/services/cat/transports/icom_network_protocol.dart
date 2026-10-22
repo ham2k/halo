@@ -310,6 +310,9 @@ List<int> buildAuth({required int local, required int remote, required int inner
 /// port numbers back at it, which told the radio to send CI-V to itself —
 /// exactly the "serial stream alive, no payload" symptom both it and this
 /// spike hit.
+///
+/// [deviceName] is the name the radio gave in its 0xa8
+/// ([readRadioCapabilities]), sent back in the same 32-byte field.
 List<int> buildRequestStreams({
   required int local,
   required int remote,
@@ -321,9 +324,9 @@ List<int> buildRequestStreams({
   required int ourAudioPort,
   required int audioSampleRate,
   required int txBufferMs,
-  String deviceName = 'IC-705',
+  required String deviceName,
 }) {
-  final name = deviceName.codeUnits;
+  final name = deviceName.codeUnits.take(32).toList();
   return [
     0x90,
     0,
@@ -348,8 +351,7 @@ List<int> buildRequestStreams({
     ...a8ReplyId,
     ...zeros(16),
     ...name,
-    ...zeros(8 - name.length),
-    ...zeros(24),
+    ...zeros(32 - name.length),
     ...passcode(username),
     0x01,
     0x01,
@@ -505,6 +507,24 @@ IcomStreamAnswer readStreamAnswer(List<int> b) {
     }
   }
   return IcomStreamAnswer.unknown;
+}
+
+/// What the radio's unsolicited capabilities packet says about itself: the
+/// 16-byte token the stream request echoes, at offset 66; the radio's name,
+/// a 32-byte zero-padded field at 82 that the stream request carries back in
+/// the same shape; and, at 148, what the IC-705's capture holds as its CI-V
+/// address (A4), read only for the log.
+///
+/// Laid out as an IC-705's 168-byte packet, the only one seen. Matched by
+/// type and by a length header that agrees with the datagram, not by the
+/// length itself — bytes 0-3 ARE the length, so a match on `a8 00 00 00`
+/// takes only 168. No other control packet is anywhere near that long, and
+/// a radio whose record runs longer still connects instead of timing out
+/// with nothing to say why.
+({List<int> token, String name, int civAddress})? readRadioCapabilities(List<int> b) {
+  if (b.length < 168 || (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) != b.length || b[4] != 0 || b[5] != 0) return null;
+  final name = b.sublist(82, 114).takeWhile((c) => c != 0);
+  return (token: b.sublist(66, 82), name: String.fromCharCodes(name), civAddress: b[148]);
 }
 
 /// The radio's answer to our login.

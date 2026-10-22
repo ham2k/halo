@@ -44,6 +44,7 @@ void main() {
         ourAudioPort: 0xe0be,
         audioSampleRate: icomAudioSampleRate,
         txBufferMs: icomTxBufferMs,
+        deviceName: 'IC-705',
       );
 
       expect(packet.length, 144);
@@ -53,6 +54,66 @@ void main() {
       expect(packet.sublist(124, 128), [0, 0, 0xe2, 0xed]);
       expect(packet.sublist(128, 132), [0, 0, 0xe0, 0xbe]);
       expect(packet.sublist(124, 128), isNot([0, 0, 0xc3, 0x52]), reason: 'not 50002');
+    });
+
+    test('the capabilities packet gives the token and the radio\'s name, at the IC-705\'s offsets', () {
+      // Laid out as an IC-705's: its own length, type 0, the token at 66, a
+      // zero-padded 32-byte name at 82, the audio device's name at 114, the
+      // CI-V address at 148. The name is what the stream request sends back,
+      // so a name read one byte off, or with its padding, would be a request
+      // the radio may not recognise.
+      List<int> capabilities(int length, {int? header}) => [
+        ...le32(header ?? length),
+        0,
+        0,
+        ...List.filled(60, 0x11),
+        ...List.generate(16, (i) => i + 1),
+        ...'IC-9700'.codeUnits,
+        ...List.filled(25, 0),
+        ...'ICOM_VAUDIO'.codeUnits,
+        ...List.filled(21, 0),
+        0x07,
+        0x07,
+        0xa2,
+        ...List.filled(length - 149, 0x07),
+      ];
+      final read = readRadioCapabilities(capabilities(168))!;
+      expect(read.token, List.generate(16, (i) => i + 1));
+      expect(read.name, 'IC-9700');
+      expect(read.civAddress, 0xa2);
+      // Longer than the one radio captured, and saying so in its own header —
+      // `a8 00 00 00` is the length 168, so a match on those bytes would
+      // ignore it and time the connect out on a radio nobody has seen.
+      expect(readRadioCapabilities(capabilities(270))?.name, 'IC-9700');
+      expect(readRadioCapabilities(capabilities(270, header: 168)), isNull, reason: 'a header that disagrees is not this packet');
+      expect(readRadioCapabilities(capabilities(168).sublist(0, 167)), isNull);
+      expect(readRadioCapabilities([...capabilities(168)]..[4] = 0x01), isNull, reason: 'not type 0');
+    });
+
+    test('the radio name fills a 32-byte field, whatever its length', () {
+      List<int> withName(String name) => buildRequestStreams(
+        local: 1,
+        remote: 2,
+        innerSeq: 0,
+        authId: List.filled(6, 0),
+        a8ReplyId: List.filled(16, 0),
+        username: 'op',
+        ourSerialPort: 1000,
+        ourAudioPort: 1001,
+        audioSampleRate: icomAudioSampleRate,
+        txBufferMs: icomTxBufferMs,
+        deviceName: name,
+      );
+      // Padded as `8 - length` plus a fixed 24, a name past eight characters
+      // throws; one that grew the packet would shift the ports the radio
+      // reads at fixed offsets.
+      final long = withName('IC-7300MK2');
+      expect(long.length, 144);
+      expect(long.sublist(64, 74), 'IC-7300MK2'.codeUnits);
+      expect(long.sublist(74, 96), everyElement(0));
+      expect(long.sublist(124, 128), [0, 0, 0x03, 0xe8]);
+      // The IC-705's own bytes are what a capture proved, and stay so.
+      expect(withName('IC-705').sublist(64, 96), [...'IC-705'.codeUnits, ...List.filled(26, 0)]);
     });
 
     test('the audio fields are populated, because zeroes are rejected', () {
@@ -67,6 +128,7 @@ void main() {
         ourAudioPort: 1001,
         audioSampleRate: icomAudioSampleRate,
         txBufferMs: icomTxBufferMs,
+        deviceName: 'IC-705',
       );
       // 48000 = 0xBB80. Zeroed, the radio answers 0x50 with 0xffff.
       expect(packet.sublist(116, 120), [0, 0, 0xbb, 0x80]);
@@ -716,9 +778,27 @@ void main() {
     // Derived from the models, so a variant added to one has to appear here
     // without anything else being edited — including the placeholder every
     // real transceiver gains.
-    expect(registry.types, hasLength(130));
-    expect(registry.models, hasLength(52));
+    expect(registry.types, hasLength(149));
+    expect(registry.models, hasLength(56));
     expect(registry.transports.keys, containsAll(['tcp', 'serial', 'bluetoothSerial', 'bleSerial', 'icom-network', 'placeholder']));
+  });
+
+  // A wrong CI-V address is answered with silence. Each network entry has
+  // to address the radio its serial entry ships for — and on a LAN radio,
+  // whose CI-V ADDRESS is in its menu, let the operator change it.
+  test('every Icom network entry addresses its own radio', () {
+    final registry = EquipmentRegistry();
+    final networked = registry.types.where((type) => type.transportKey == IcomNetworkTransport.transportKey);
+    expect(networked.map((type) => type.model.key), unorderedEquals(['ic705', 'ic7300mk2', 'ic7610', 'ic7760', 'ic9700', 'ic905', 'ic7850', 'ic7851']));
+    for (final type in networked) {
+      final serial = registry.typeFor('${type.model.key}-serial')!;
+      final config = type.driverConfig({...type.defaultConfig, 'host': '10.0.0.9', 'username': 'op'});
+      expect(config['civAddress'], serial.defaultConfig['civAddress'], reason: type.key);
+      expect(config['civControllerAddress'], icomNetworkControllerAddress, reason: type.key);
+      if (type.key == 'ic705-network') continue;
+      final fields = [for (final e in type.configElements()) e['key']];
+      expect(fields, contains('civAddress'), reason: type.key);
+    }
   });
 
   group('what the driver is told, versus what the user typed', () {

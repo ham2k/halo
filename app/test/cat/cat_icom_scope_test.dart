@@ -169,6 +169,19 @@ void main() {
       expect(sink.sent, hasLength(1), reason: 'a sweep repeats the command byte of the read in flight');
     });
 
+    test('from 10 GHz up a sweep is not drawn, and the display says why', () {
+      // An IC-905 on its 10 GHz band sends six-byte frequencies in the sweep
+      // header, and the assembler reads five: drawn, the sweep is noise
+      // placed across an unrelated range.
+      make({civScopeConfigKey: true});
+      session.startSpectrum();
+      // 10.368 GHz, six bytes.
+      session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0x00, 0x00, 0x00, 0x10, 0x68, 0x03, 0x01, 0xFD]));
+      session.handleData(Uint8List.fromList([0xFE, 0xFE, us, ic705, 0x27, ..._capturedSweep, 0xFD]));
+      expect(sink.frames, isEmpty);
+      expect(sink.problems.last, t.settings.station.spectrumBandUnsupported);
+    });
+
     test('a scope the display turned on goes off with it; one already on stays on', () {
       make({civScopeConfigKey: true});
       sink.answers = {

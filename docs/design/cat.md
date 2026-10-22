@@ -1255,13 +1255,17 @@ writing it:
 - **Kenwood, FT-891, Icom CI-V, FlexRadio** represent power as a relative scale (Kenwood/FT-891's
   `PC` 0-100; CI-V's 0-255 level; SmartSDR's `rfpower` 0-100) with no command that states the radio's
   own maximum, on both reads and writes. Each driver documents its own assumption (see
-  `icom_civ_driver.dart`'s `_assumedMaxWatts`). The Icom CI-V driver is model-agnostic — the ceiling
+  `civ_power.dart`'s `civAssumedMaxWatts`). The Icom CI-V driver is model-agnostic — the ceiling
   comes from `IcomCivSession.maxWatts`, sourced from the pairing's config rather than hardcoded — so
   every named radio in `equipment_models_icom.dart` rated anything but 100W overrides it with its
   real SSB/CW ceiling (the IC-705 and X6100 10W, the G90 20W, the IC-7760 200W), and a registry test
-  lists every named CI-V entry's rating so a new one cannot fall back to the guess unnoticed. It is
-  one ceiling per model: a lower AM or VHF/UHF ceiling (the IC-7760's 50W AM carrier) is not
-  modeled. At 20W and below the 0-255 level actually resolves to sub-watt
+  lists every named CI-V entry's rating so a new one cannot fall back to the guess unnoticed. A radio
+  whose 100% level is worth different watts on different bands pins `civBandMaxWatts` — the IC-9700's
+  75W on 70cm and 10W on 23cm, the IC-905's 2W above 1200MHz — and the session rates reads and sets
+  against the band of its last frequency, reported or set — a power set sent right behind a tune is
+  rated for the band tuned to. Crossing a ceiling, the level is read again rather than re-rated: a
+  radio may hold a different one per band. A lower AM ceiling (the IC-7760's 50W carrier)
+  is not modeled. At 20W and below the 0-255 level actually resolves to sub-watt
   steps, so the driver reports one decimal place there instead of rounding to a whole watt. The
   FTX-1 is the exception on the Yaesu side: its `PC` names the unit first (`PC1010;` the field head,
   0.5-10 W; `PC2100;` the SPA-1, 5-100 W), so its entry pins `yaesuHeadPower` and a power change
@@ -1275,7 +1279,7 @@ writing it:
   command for actual transmitted power outside a live transmission (the RF-power METER, 0x15 0x11,
   reads 0 at rest — Icom's guide says so outright), so `IcomCivSession` infers battery vs. external DC
   from the DC-input meter (0x15 0x15) instead, and clamps the reported watts to `batteryMaxWatts` (5,
-  from `ic705Model`'s override) whenever that reading is below `_batteryMeterCeiling`. The threshold
+  from `ic705Model`'s override) whenever that reading is below `civBatteryMeterCeiling`. The threshold
   and both wattage figures come from one bench session each, not a published spec. That comparison is
   against the RAW reading, which is what saved it: the meter was long documented here as tenths of a
   volt, and Icom's own guide gives a two-segment curve instead (`00 13`=10 V, `02 41`=16 V on an
@@ -2637,7 +2641,7 @@ that range to its height and an operator's contrast moves from there.
 
 ### Icom (CI-V `0x27`)
 
-The IC-705/7300/7610/7760 entries pin `civScope`. Captured from an IC-705 over
+The IC-705/7300/7610/7760/9700/905/7850/7851 entries pin `civScope`. Captured from an IC-705 over
 WiFi:
 
 - Over the network a sweep is one `27 00` frame — `00, receiver, division 1 of
@@ -2881,6 +2885,34 @@ callers should offer manual entry — but a **unicast `pkt3` sweep of the subnet
 and it answers with a valid `pkt4`.
 
 `docs/design/ic705-spike-capture.log` holds an annotated exchange (dist-only, as above).
+
+### The LAN-port Icoms: the IC-705's protocol, unproven on them
+
+The IC-7300 MK2, IC-7610, IC-7760, IC-9700, IC-905, IC-7850 and IC-7851 are listed with the same
+RS-BA1 server function as the IC-705 in Icom's RS-BA1 guide (A7463-2EX-8), and each has a network
+variant on the same transport. None has been connected. Each pins the network controller address
+0xE1 and prefills its factory CI-V address — a prefill rather than the IC-705's pinned A4, because
+CI-V ADDRESS is in each radio's menu and nothing shows the network ignores it.
+
+The radio names itself. Its unsolicited `0xa8` carries, after the stream token at 66, a 32-byte
+zero-padded name at 82 (`IC-705` on the capture; then `ICOM_VAUDIO` at 114 and the CI-V address
+at 148), and the `0x90` stream request sends that name back in the same field. So nothing
+hardcodes a model name, and a renamed radio is still named the way it named itself.
+
+What would break first, from what only the IC-705 has shown:
+
+- **The capabilities layout.** Read at the IC-705's offsets. The packet is matched by type 0 and a
+  length header that agrees with the datagram, at 168 bytes or more — its first byte, `a8`, IS the
+  length, so a match on it would take only 168. What is read (length, name, CI-V byte) goes to the
+  log, the one trace of a layout that differs.
+- **A scope sweep over the network** was seen as one division on the IC-705. Icom's IC-7850/7851
+  firmware notes say a sweep's fifteen divisions arrive together over the LAN, which
+  `CivScopeAssembler` reassembles like a serial radio's.
+- **The IC-905's 10 GHz band** takes six-byte frequencies (its CI-V guide, A7711-9EX-2:
+  "When the 10 GHz band is selected, the number of digits is 12"). `encodeBcdFrequency` writes six
+  from 10 GHz up. The sweep header's frequencies are six bytes there too, and the assembler reads
+  five, so from 10 GHz up the session draws no sweep and says the band cannot be shown. Whether the
+  header's second frequency also grows is not in the guide.
 
 ### Known, not fixed here
 

@@ -7,6 +7,8 @@
 upcoming:
   changes:
     - "Added Ten-Tec Eagle, Orion and Orion II to the radio list (tell us how it behaves)"
+    - "Added Icom IC-9700, IC-905, IC-7850 and IC-7851 to the radio list"
+    - "New network connection for Icom IC-7300 MK2, IC-7610, IC-7760, IC-9700, IC-905, IC-7850 and IC-7851 (tell us how it behaves)"
 
 "182":
   changes:
