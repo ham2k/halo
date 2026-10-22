@@ -14,8 +14,7 @@ existing feature gate.
   port, and match its **Serial USB-PCn: Baud Rate** setting. The form starts
   at 38400; this is a configurable starting value, not auto-detection.
 - **Ethernet:** enter the K4's local-network hostname/IP and CAT port **9200**.
-  Discovery, audio streaming, panadapter data and the separate remote-access
-  service on 9204 are outside this driver.
+  The panadapter opens port **9201** on the same host while visible.
 - The serial device path is stored as `port`; the TCP number as `tcpPort`.
   Both variants seed the same editor, so reusing `port` would overwrite one
   connection's settings when switching to the other. TCP still receives the
@@ -94,6 +93,78 @@ each connection:
    propagate without disturbing that client's reporting configuration.
 6. If using a transverter, verify X-range reads/writes and refusal of watt-range
    requests while the milliwatt output is selected.
+
+## LAN spectrum
+
+### App integration
+
+The K4 Ethernet pairing exposes the existing `SpectrumSession` contract
+through a separate, demand-driven TCP 9201 connection. The connection runs
+only while a visible spectrum display listens, is cancelled on stop or CAT
+disconnect, and retries a failed or stalled stream independently of CAT.
+USB and the other Kenwood-family radios retain their existing capabilities.
+
+The initial display uses main-pan `A` packets. Each packet's own center and
+sample rate place its bins; local zoom crops those bins without moving the
+radio or substituting the VFO frequency. Local reference adjustment and
+frame-rate limiting use the existing spectrum controls and noise-floor
+estimator. These are display controls, not claims about calibrated dBm or
+the K4's REF/SCALE settings. No spectrum CAT setters are sent.
+
+Verification covers the captured wire fixtures, crop coordinates, other-pan
+filtering, cancellation, reconnect and a stalled main stream. The panadapter
+and waterfall are available in radio panels. The `k2hrc-panafall` sample can
+also be packaged and installed; see its README for installation steps. Its
+local span choices track the stream's available width, and its reference
+control adjusts HaLo's display range.
+
+The display uses main pan `A` only. Physical link-loss recovery and absolute
+level calibration remain unverified. Capture provenance, observed frequency
+comparisons and validation procedures are recorded in the
+[spectrum fixture README](../../app/test/cat/fixtures/k4-spectrum/README.md).
+
+### Capture and decoder
+
+`app/lib/services/cat/drivers/k4_spectrum_codec.dart` and
+`app/tool/k4_spectrum_capture.dart` implement decoding and capture of the
+K4's separate TCP 9201 spectrum stream. Four live R39 captures verify the
+framing and checksums for observed `A`, `Y`, `B`, and `Z` packets. The fixture
+README records the capture details and the limits of that evidence.
+Elecraft's public programmer's reference offers
+streaming protocol details and examples on request.
+
+### Wire format
+
+Observed version-2 frames are 4162 bytes. Offsets below are zero-based.
+The remaining limits on field interpretation are described below.
+
+| Offset | Bytes | Meaning |
+| --- | ---: | --- |
+| 0 | 4 | Sync marker `FF FE 01 00` |
+| 4 | 1 | Version, expected `2` |
+| 5 | 1 | Sequence byte; advanced independently per observed pan on R39 |
+| 6 | 1 | ASCII pan ID: `A` main, `B` sub, `Y`/`Z` mini-pans |
+| 7 | 6 | ASCII sample rate in Hz |
+| 13 | 11 | ASCII center frequency in Hz |
+| 24 | 5 | ASCII noise floor / AutoRef in tenths of a dB |
+| 29 | 35 | Remaining header; individual fields are not established |
+| 64 | 4096 | 2048 signed big-endian 16-bit levels, in tenths of a dB |
+| 4160 | 2 | Big-endian CRC |
+
+The sum of all 64 header bytes modulo 256 must be zero. The CRC covers bytes
+0–4159, starts at `0xFFFF`, uses reflected polynomial `0x8408`, and ends with
+a complement. Its transmitted byte order is big-endian. Metadata must parse
+strictly; malformed fields must not become invented frequencies or rates.
+
+The decoder preserves bin order. Main-pan signal comparisons support
+ascending, already centered bins with candidate bin-center frequencies
+`centerHz + (i - 1024) * sampleRateHz / 2048` for zero-based index `i`.
+Exact bin-edge conventions and small frequency offsets remain unverified.
+R39 captures confirm sampled width can differ from `#SPN`. `#SPN` denotes a full span;
+HaLo's `SpectrumSettings.spanHz` denotes a half-width. AutoRef's relationship
+to `#REF` and `#SCL`, and whether levels are calibrated dBm, remain unverified.
+Mini-pan scaling and behavior on other firmware releases remain unverified.
+This format is distinct from the remote-access stream on 9204/9205.
 
 ## References
 

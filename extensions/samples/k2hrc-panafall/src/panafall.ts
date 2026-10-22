@@ -42,15 +42,25 @@ const spanLabel = (hz: number) => `±${hz >= 1000 ? `${hz / 1000} kHz` : `${hz} 
 export function scene(radio: PanelRadioState | null, display: Display, step = "100"): PanelScene {
   const spectrum: PanelRadioSpectrum | null | undefined = radio?.spectrum
   const knobs = spectrum && !spectrum.problem
+  const hasSpan = knobs && spectrum.spansHz.length > 0
+  const hasSpeed = knobs && spectrum.speeds.length > 0
+  const hasRef =
+    knobs &&
+    Number.isFinite(spectrum.refMinDb) &&
+    Number.isFinite(spectrum.refMaxDb) &&
+    Number.isFinite(spectrum.refStepDb) &&
+    spectrum.refMinDb < spectrum.refMaxDb &&
+    spectrum.refStepDb > 0
+  const ref = hasRef ? Math.max(spectrum.refMinDb, Math.min(spectrum.refMaxDb, spectrum.refLevelDb ?? spectrum.refMinDb)) : 0
   const band = passband(radio?.mode)
   return {
     version: 1,
     width: 600,
     height: 24,
-    values: { floor: 0, average: 40, fps: 15, rows: 10, hoverHz: 0, hoverDb: 0, ref: spectrum?.refLevelDb ?? 0 },
+    values: { floor: 0, average: 40, fps: 15, rows: 10, hoverHz: 0, hoverDb: 0, ref },
     strings: {
-      span: spectrum?.spanHz != null ? String(spectrum.spanHz) : "",
-      speed: spectrum?.speed ?? "",
+      span: hasSpan && spectrum.spanHz != null && spectrum.spansHz.includes(spectrum.spanHz) ? String(spectrum.spanHz) : "",
+      speed: hasSpeed && spectrum.speed != null && spectrum.speeds.includes(spectrum.speed) ? spectrum.speed : "",
       display,
       step,
     },
@@ -65,7 +75,7 @@ export function scene(radio: PanelRadioState | null, display: Display, step = "1
       },
     ],
     controls: [
-      ...(knobs
+      ...(hasSpan
         ? [
             {
               id: "span",
@@ -75,6 +85,10 @@ export function scene(radio: PanelRadioState | null, display: Display, step = "1
               event: "span",
               options: spectrum.spansHz.map((hz) => ({ label: spanLabel(hz), value: String(hz) })),
             },
+          ]
+        : []),
+      ...(hasRef
+        ? [
             {
               id: "ref",
               label: "Reference level",
@@ -85,6 +99,10 @@ export function scene(radio: PanelRadioState | null, display: Display, step = "1
               max: spectrum.refMaxDb,
               step: spectrum.refStepDb,
             },
+          ]
+        : []),
+      ...(hasSpeed
+        ? [
             {
               id: "speed",
               label: "Speed",
@@ -100,7 +118,7 @@ export function scene(radio: PanelRadioState | null, display: Display, step = "1
       { id: "fps", label: "Panadapter FPS", kind: "nativeSlider" as const, value: "fps", min: 1, max: 30, step: 1 },
       { id: "rows", label: "Waterfall rows per second", kind: "nativeSlider" as const, value: "rows", min: 1, max: 30, step: 1 },
       // A control the layout does not place fails the scene: Ref's label goes with its slider.
-      ...[...(knobs ? ["Ref"] : []), "Contrast", "Avg", "FPS", "Rows"].map((text) => ({
+      ...[...(hasRef ? ["Ref"] : []), "Contrast", "Avg", "FPS", "Rows"].map((text) => ({
         id: `label-${text}`,
         label: text,
         kind: "nativeText" as const,
@@ -179,7 +197,9 @@ export function scene(radio: PanelRadioState | null, display: Display, step = "1
       column: [
         {
           wrap: [
-            ...(knobs ? [{ control: "span" }, labeled("Ref", "ref"), { control: "speed" }] : []),
+            ...(hasSpan ? [{ control: "span" }] : []),
+            ...(hasRef ? [labeled("Ref", "ref")] : []),
+            ...(hasSpeed ? [{ control: "speed" }] : []),
             labeled("Contrast", "floor"),
             labeled("Avg", "average"),
             labeled("FPS", "fps"),

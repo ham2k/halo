@@ -32,22 +32,30 @@ import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../spectrum.dart';
 import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
+import 'k4_spectrum.dart';
 import 'keyer_config.dart';
 import 'optional_read.dart';
 import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
+part 'k4_spectrum_session.dart';
+
 class KenwoodDriver extends EquipmentDriver {
-  const KenwoodDriver() : isK4 = false;
-  const KenwoodDriver.k4() : isK4 = true;
+  const KenwoodDriver() : isK4 = false, lanSpectrum = false;
+  const KenwoodDriver.k4({this.lanSpectrum = false}) : isK4 = true;
 
   /// Pinned by the model, never inferred from the optional voice dialect.
   final bool isK4;
+
+  /// Pinned by the Ethernet pairing: a serial node can retain a saved host
+  /// after switching variants, without that authorizing a second LAN link.
+  final bool lanSpectrum;
 
   /// What most of the Kenwood line ships set to, and what its CAT menu calls
   /// 9600. Only a default — a mismatch answers with garbage and no error, so
@@ -165,29 +173,45 @@ class KenwoodDriver extends EquipmentDriver {
   int get telemetryWatchBytes => kenwoodTxWatchBytes;
 
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => KenwoodSession(
-    sink,
-    isK4: isK4,
-    declaredModeOffset: switch (config[ifModeOffsetKey]) {
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
+    final modeOffset = switch (config[ifModeOffsetKey]) {
       final int offset when offset >= kenwoodFrequencyDigits => offset,
       _ => null,
-    },
-    cwDialect: cwDialectFrom(config),
-    voiceDialect: voiceDialectFrom(config),
-    voiceMemories: voiceMemoriesFrom(config),
-    voiceMemoryCeiling: voiceCeilingFromConfig(config),
-    dataMode: !isK4 && config[dataModeKey] == true,
-    passbandDialect: switch (passbandDialectFrom(config)) {
-      _ when isK4 => KenwoodPassbandDialect.elecraft,
-      // Without `DA` the session cannot tell SSB-DATA from SSB, and the
-      // TS-590SG gives each its own menu for what `SL`/`SH` mean.
-      KenwoodPassbandDialect.ts590sg when config[dataModeKey] != true => null,
-      final dialect => dialect,
-    },
-    antennaDialect: isK4 ? null : antennaDialectFrom(config),
-    modeDialect: isK4 ? null : modeDialectFrom(config),
-    config: config,
-  );
+    };
+    final host = lanSpectrum ? (config['host'] as String? ?? '').trim() : '';
+    if (lanSpectrum && host.isNotEmpty) {
+      return K4SpectrumSession(
+        sink,
+        spectrum: K4Spectrum(host: host, sink: sink is SpectrumSink ? sink as SpectrumSink : null),
+        declaredModeOffset: modeOffset,
+        cwDialect: cwDialectFrom(config),
+        voiceDialect: voiceDialectFrom(config),
+        voiceMemories: voiceMemoriesFrom(config),
+        voiceMemoryCeiling: voiceCeilingFromConfig(config),
+        config: config,
+      );
+    }
+    return KenwoodSession(
+      sink,
+      isK4: isK4,
+      declaredModeOffset: modeOffset,
+      cwDialect: cwDialectFrom(config),
+      voiceDialect: voiceDialectFrom(config),
+      voiceMemories: voiceMemoriesFrom(config),
+      voiceMemoryCeiling: voiceCeilingFromConfig(config),
+      dataMode: !isK4 && config[dataModeKey] == true,
+      passbandDialect: switch (passbandDialectFrom(config)) {
+        _ when isK4 => KenwoodPassbandDialect.elecraft,
+        // Without `DA` the session cannot tell SSB-DATA from SSB, and the
+        // TS-590SG gives each its own menu for what `SL`/`SH` mean.
+        KenwoodPassbandDialect.ts590sg when config[dataModeKey] != true => null,
+        final dialect => dialect,
+      },
+      antennaDialect: isK4 ? null : antennaDialectFrom(config),
+      modeDialect: isK4 ? null : modeDialectFrom(config),
+      config: config,
+    );
+  }
 
   /// The keyer facts, asked only where the entry did not pin them — the
   /// generic Kenwood and Elecraft — and only of a developer: which shape of

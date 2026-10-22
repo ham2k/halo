@@ -5450,6 +5450,9 @@ class Translations$settings$station$en {
 	/// en: 'The radio's spectrum data cannot reach this device'
 	String get spectrumNoUdp => 'The radio\'s spectrum data cannot reach this device';
 
+	/// en: 'Cannot receive the K4’s LAN spectrum. Retrying…'
+	String get spectrumK4Unavailable => 'Cannot receive the K4’s LAN spectrum. Retrying…';
+
 	/// en: 'The radio refused its scope commands'
 	String get spectrumScopeRefused => 'The radio refused its scope commands';
 
@@ -5642,8 +5645,8 @@ class Translations$settings$station$en {
 	/// en: 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet. This connection controls the radio and its keyers; it does not send audio to HaLo.'
 	String get k4SerialNotes => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.';
 
-	/// en: 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204. HaLo controls the radio and its keyers without streaming audio or panadapter data.'
-	String get k4TcpNotes => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.';
+	/// en: 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port. The spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.'
+	String get k4TcpNotes => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.';
 
 	/// en: 'K4 power was not changed because the radio did not confirm its output range. Try again.'
 	String get k4PowerTimeout => 'K4 power was not changed because the radio did not confirm its output range. Try again.';
@@ -10368,6 +10371,7 @@ extension on Translations {
 			'settings.station.spectrumNoPanadapter' => 'This slice has no panadapter on the radio',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'The radio refused a DAX IQ stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
+			'settings.station.spectrumK4Unavailable' => 'Cannot receive the K4’s LAN spectrum. Retrying…',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
@@ -10499,7 +10503,7 @@ extension on Translations {
 			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
-			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. This is CAT control, not the separate remote-audio connection on port 9204.\n\nHaLo controls the radio and its keyers without streaming audio or panadapter data.',
+			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -10813,9 +10817,9 @@ extension on Translations {
 			'commands.purgeTestsNothingToDo' => 'Nothing was purged',
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again',
 			'commands.receivedPurgesFailed' => 'Couldn\'t remove those Test Operations — try Review again',
-			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Test Operation was removed on another device', other: '${count} Test Operations were removed on another device', ), 
 			_ => null,
 		} ?? switch (path) {
+			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Test Operation was removed on another device', other: '${count} Test Operations were removed on another device', ), 
 			'commands.receivedPurgesReview' => 'Review',
 			'commands.settingOn' => 'On',
 			'commands.settingOff' => 'Off',

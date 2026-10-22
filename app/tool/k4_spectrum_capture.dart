@@ -11,9 +11,10 @@ import 'package:ham2k_logger/services/cat/drivers/k4_spectrum_codec.dart';
 
 const _usage = '''K4 LAN spectrum capture (receive-only; no CAT or stream commands).
 
-  mise run k4:capture -- capture --host <host> --output <new-directory>
+  cd app
+  dart run tool/k4_spectrum_capture.dart capture --host <host> --output <new-directory>
       [--port 9201] [--seconds 20] [--max-bytes 33554432] [--note <text>]
-  mise run k4:capture -- inspect <capture.bin>
+  dart run tool/k4_spectrum_capture.dart inspect <capture.bin>
 
 Capture writes capture.bin, chunks.jsonl, and summary.json. The output directory
 must not exist; its parent must exist. Duration is 1–300 seconds, measured after

@@ -2635,9 +2635,30 @@ radio's own knob moves it while nothing listens. `setSpectrum` on a stopped
 scope answers false, and the host API says `stopped`, rather than queueing a
 change for whenever a display next opens.
 
-Levels are dB on the radio's own scale — not dBm on any radio here — with the
-floor and ceiling the radio itself would draw them between, so a display maps
+Levels are dB on the radio's own scale — not calibrated dBm — with a drawing
+floor and ceiling reported by the radio or estimated locally. A display maps
 that range to its height and an operator's contrast moves from there.
+
+### Elecraft K4 (LAN TCP 9201)
+
+The K4 Ethernet pairing opens a separate spectrum connection to the same
+host on port 9201 while a visible display listens. It receives passively,
+decodes checksum-verified main-pan `A` frames, and closes when the last
+listener leaves or the CAT session stops. Failed or stalled spectrum links
+retry independently; they do not disconnect CAT or interrupt keying.
+
+The packet's center and sample rate place its 2048 ascending bins. Its
+center can stay fixed while VFO A moves, so the VFO only places the receive
+marker. Local zoom selects actual bins and reports their frequency endpoints;
+it never stretches the entire sampled width into the chosen visible span.
+Zoom is bounded by the available samples. The K4 controls which source
+window is available; HaLo sends no pan-center or span CAT commands.
+
+Reference adjustment and sweep-speed controls are local to HaLo. The
+existing noise-floor estimator supplies a drawing range, without claiming
+to reproduce the radio's AutoRef or calibrated dBm. USB spectrum, sub/mini-pan
+display and remote services on 9204/9205 are not part of this pairing.
+See [k4-cat.md](k4-cat.md) for wire fixtures and hardware evidence.
 
 ### Icom (CI-V `0x27`)
 

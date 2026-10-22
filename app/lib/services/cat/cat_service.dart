@@ -1924,11 +1924,7 @@ class CatService extends ChangeNotifier with _RadioControls implements PeerStati
         // outlives the command socket the silence watch is about.
         runtime.spectrum?.add(frame);
       },
-      onSpectrumSettings: (settings) {
-        if (runtime.connection != connection) return;
-        if (stateFor(uuid).spectrum == settings) return;
-        _setState(uuid, stateFor(uuid).copyWith(spectrum: settings));
-      },
+      onSpectrumSettings: _spectrumSettingsListener(uuid, runtime, connection),
       onSpectrumProblem: (message) {
         if (runtime.connection != connection || stateFor(uuid).spectrumProblem == message) return;
         _setState(uuid, stateFor(uuid).copyWith(spectrumProblem: message, clearSpectrumProblem: message == null));
