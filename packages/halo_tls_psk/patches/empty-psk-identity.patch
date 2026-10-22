@@ -1,0 +1,35 @@
+--- a/library/ssl_tls.c
++++ b/library/ssl_tls.c
+@@ -1,4 +1,7 @@
+ /*
++ * HaLo modification (2026-10-22): accept an empty TLS 1.2 PSK identity.
++ * See packages/halo_tls_psk/patches/empty-psk-identity.patch.
++ *
+  *  TLS shared functions
+  *
+  *  Copyright The Mbed TLS Contributors
+@@ -2123,8 +2126,7 @@
+ #if defined(MBEDTLS_SSL_HANDSHAKE_WITH_PSK_ENABLED)
+ int mbedtls_ssl_conf_has_static_psk(mbedtls_ssl_config const *conf)
+ {
+-    if (conf->psk_identity     == NULL ||
+-        conf->psk_identity_len == 0) {
++    if (conf->psk_identity == NULL) {
+         return 0;
+     }
+ 
+@@ -2176,13 +2178,12 @@
+ {
+     /* Identity len will be encoded on two bytes */
+     if (psk_identity               == NULL ||
+-        psk_identity_len           == 0    ||
+         (psk_identity_len >> 16) != 0    ||
+         psk_identity_len > MBEDTLS_SSL_OUT_CONTENT_LEN) {
+         return MBEDTLS_ERR_SSL_BAD_INPUT_DATA;
+     }
+ 
+-    conf->psk_identity = mbedtls_calloc(1, psk_identity_len);
++    conf->psk_identity = mbedtls_calloc(1, psk_identity_len ? psk_identity_len : 1);
+     if (conf->psk_identity == NULL) {
+         return MBEDTLS_ERR_SSL_ALLOC_FAILED;
+     }

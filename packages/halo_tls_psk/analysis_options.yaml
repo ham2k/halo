@@ -1,0 +1,22 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    # An implicit downcast from dynamic, a raw generic, or an inference that
+    # silently lands on dynamic is how a wrong-typed QSON value reaches a
+    # widget without a single line looking wrong.
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # A BuildContext used after an await is a use-after-dispose waiting for a
+    # slow device; as an info it hides in the noise.
+    use_build_context_synchronously: error
+
+linter:
+  rules:
+    - avoid_dynamic_calls
+    - unawaited_futures
+
+formatter:
+  page_width: 160

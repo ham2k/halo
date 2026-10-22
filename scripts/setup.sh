@@ -32,6 +32,34 @@ command -v npm >/dev/null 2>&1 || {
   exit 1
 }
 
+# TLS interop tests need an independent OpenSSL 3 peer, never macOS LibreSSL.
+# Match the test helper's discovery order; no OpenSSL executable ships in HaLo.
+find_openssl3() {
+  local candidate version
+  for candidate in "${HALO_TLS_TEST_OPENSSL:-}" /opt/homebrew/opt/openssl@3/bin/openssl /usr/local/opt/openssl@3/bin/openssl openssl; do
+    [[ -n "$candidate" ]] || continue
+    version="$("$candidate" version 2>/dev/null || true)"
+    if [[ "$version" == OpenSSL\ 3.* ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if ! TLS_OPENSSL="$(find_openssl3)"; then
+  if [[ "$(uname -s)" == "Darwin" ]] && command -v brew >/dev/null 2>&1; then
+    step "TLS tests: install the OpenSSL 3 test peer with Homebrew"
+    brew install openssl@3
+  fi
+  TLS_OPENSSL="$(find_openssl3)" || {
+    echo "OpenSSL 3 is required for TLS tests. macOS: brew install openssl@3; Debian/Ubuntu: sudo apt-get install openssl." >&2
+    echo "For another installation, set HALO_TLS_TEST_OPENSSL to its executable and rerun setup. See DEVELOPMENT.md." >&2
+    exit 1
+  }
+fi
+step "TLS tests: $TLS_OPENSSL ($("$TLS_OPENSSL" version))"
+
 # 1. The tracked git hooks. Per CLONE, not per worktree, so every worktree
 #    inherits it: .githooks/pre-push is what refuses a push to `main` whose
 #    tree is not the one the suite ran on.
@@ -50,15 +78,15 @@ fi
 step "extensions: npm ci, build bundles → app/assets/extensions/"
 (cd extensions && npm ci && npm run build)
 
-# 4. The host build of the JS engine. `flutter test` and `halo-ext` run in
-#    the host VM, where no platform build has produced a plugin library.
+# 4. QuickJS needs an explicit host build for tests and diagnostic tools.
+#    halo_tls_psk builds its native asset automatically through a Dart hook.
 step "halo_quickjs: build the host JS engine library"
 packages/halo_quickjs/tool/build_host.sh
 
 # 5. Dependencies for the app and every first-party package — the same set
 #    the gate walks (scripts/test.sh), so `flutter analyze` and a package's
 #    own `flutter test` work from a fresh checkout without the gate first.
-for pkg in app packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_widgets packages/halo_cli; do
+for pkg in app packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_tls_psk packages/halo_widgets packages/halo_cli; do
   step "$pkg: pub get"
   (cd "$pkg" && flutter pub get >/dev/null)
 done
