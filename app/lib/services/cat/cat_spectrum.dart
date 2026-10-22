@@ -39,6 +39,23 @@ extension CatServiceSpectrum on CatService {
     }
   }
 
+  void Function(SpectrumSettings) _spectrumSettingsListener(String uuid, _NodeRuntime runtime, EquipmentConnection connection) {
+    SpectrumCapabilities? lastCapabilities;
+    return (settings) {
+      if (runtime.connection != connection) return;
+      final capabilities = switch (runtime.session) {
+        final SpectrumSession session => session.spectrumCapabilities,
+        _ => null,
+      };
+      // A new sample rate may change the available zooms while the selected
+      // crop still has the same edges. Controls read capabilities from the
+      // session, so they need this notification even when settings match.
+      if (stateFor(uuid).spectrum == settings && lastCapabilities == capabilities) return;
+      lastCapabilities = capabilities;
+      _setState(uuid, stateFor(uuid).copyWith(spectrum: settings));
+    };
+  }
+
   /// Whether [uuid] is an SDR receiver rather than a radio.
   bool isSdr(String uuid) =>
       switch (nodeFor(uuid)) {

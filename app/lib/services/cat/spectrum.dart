@@ -17,8 +17,9 @@ import 'driver.dart';
 /// [levels] are dB on the radio's own scale, which is not dBm on any radio
 /// here: an Icom reports 0..160 steps of its screen, and a Flex mirrored
 /// through DAX IQ is dB below full scale. [floorDb]..[ceilingDb] is the
-/// range the radio itself would draw them in, so a display maps that range
-/// to its height and an operator's contrast setting moves from there.
+/// range for drawing them, reported by the radio or estimated locally when
+/// its display scale is unavailable. An operator's contrast setting moves
+/// from there; it does not turn that scale into calibrated dBm.
 @immutable
 class SpectrumFrame {
   final int lowHz;
@@ -46,7 +47,8 @@ enum SpectrumMode { center, fixed }
 /// How fast the radio sweeps — the three settings every scope here offers.
 enum SpectrumSpeed { slow, mid, fast }
 
-/// What the radio's scope is set to, as the radio last said.
+/// The scope's window and display settings, as the driver last reported.
+/// A driver may own local zoom and reference settings for a passive stream.
 @immutable
 class SpectrumSettings {
   final SpectrumMode mode;
@@ -120,6 +122,21 @@ class SpectrumCapabilities {
   int snapSpan(int hz) => spansHz.reduce((a, b) => (a - hz).abs() <= (b - hz).abs() ? a : b);
 
   double snapRef(double db) => ((db.clamp(refMinDb, refMaxDb) - refMinDb) / refStepDb).round() * refStepDb + refMinDb;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SpectrumCapabilities &&
+      listEquals(other.spansHz, spansHz) &&
+      other.refMinDb == refMinDb &&
+      other.refMaxDb == refMaxDb &&
+      other.refStepDb == refStepDb &&
+      setEquals(other.modes, modes) &&
+      setEquals(other.speeds, speeds) &&
+      other.canRecenter == canRecenter;
+
+  @override
+  int get hashCode =>
+      Object.hash(Object.hashAll(spansHz), refMinDb, refMaxDb, refStepDb, Object.hashAllUnordered(modes), Object.hashAllUnordered(speeds), canRecenter);
 }
 
 /// A change to the scope. Null fields are left as they are.

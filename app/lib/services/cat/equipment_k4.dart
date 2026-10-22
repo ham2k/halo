@@ -31,7 +31,7 @@ const k4Model = EquipmentModel(
     ),
     EquipmentVariant(
       key: 'k4-tcp',
-      driver: KenwoodDriver.k4(),
+      driver: KenwoodDriver.k4(lanSpectrum: true),
       transport: TcpTransport(portConfigKey: 'tcpPort'),
       defaultConfig: {'tcpPort': 9200},
       overrides: _keyers,
