@@ -150,6 +150,7 @@ const SetCommand = {
     return [
       {
         command: "SET",
+        keywords: ["SETTINGS", "PREFERENCES", "OPTIONS", "CONFIGURE"],
         params: t("catalogSetParams"),
         describe: t("catalogSet"),
         category: t("catalogCategory"),
@@ -161,7 +162,7 @@ const SetCommand = {
 
 /// SHOW and HIDE differ only in which way they push the toggle — the app
 /// works out what that means for a setting named `hide…` rather than `show…`.
-function visibilityCommand(kind: "show" | "hide", pattern: RegExp, describeKey: string, paramsKey: string) {
+function visibilityCommand(kind: "show" | "hide", pattern: RegExp, describeKey: string, paramsKey: string, keywords: string[]) {
   const word = kind.toUpperCase()
   return {
     async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
@@ -181,6 +182,7 @@ function visibilityCommand(kind: "show" | "hide", pattern: RegExp, describeKey: 
       return [
         {
           command: word,
+          keywords,
           params: t(paramsKey),
           describe: t(describeKey),
           category: t("catalogCategory"),
@@ -191,8 +193,8 @@ function visibilityCommand(kind: "show" | "hide", pattern: RegExp, describeKey: 
   }
 }
 
-const ShowCommand = visibilityCommand("show", SHOW_MATCH, "catalogShow", "catalogShowParams")
-const HideCommand = visibilityCommand("hide", HIDE_MATCH, "catalogHide", "catalogHideParams")
+const ShowCommand = visibilityCommand("show", SHOW_MATCH, "catalogShow", "catalogShowParams", ["SETTINGS", "ENABLE", "TURN ON"])
+const HideCommand = visibilityCommand("hide", HIDE_MATCH, "catalogHide", "catalogHideParams", ["SETTINGS", "DISABLE", "TURN OFF"])
 
 defineExtension({
   ...manifest,

@@ -124,6 +124,7 @@ class ExtensionService
   /// registrations may be INCOMPLETE for this generation. Consumers that
   /// treat the hook set as authoritative (the data-file orphan purge) must
   /// check this and stand down rather than act on a partial picture.
+  @override
   bool get activationIncomplete => _activationIncomplete;
   bool _activationIncomplete = false;
   ({String deviceKey, String operatorCall})? _lastSyncCredentials;

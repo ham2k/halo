@@ -1170,10 +1170,10 @@ interface CommandHook {
   catalog?(ctx): Promise<CommandCatalogEntry[]>
 }
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
-// CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
+// CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, needsTestData?, keywords?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, setPower?, updateQso?, addQso?,
 //   setKeyerSpeed?, showKeyer?, setEnterSends?, sendSpots?, autoRespot?, syncAll?, updateSettings?, updateSetting?, openSettings?,
-//   updateOperation?, markSegment?, findInLog?, setCallField?, setTime?, reloadDataFiles?, devNotice?, devStatus?,
+//   updateOperation?, markSegment?, findInLog?, navigate?, setCallField?, setTime?, reloadDataFiles?, devNotice?, devStatus?,
 //   devProgress?, devHammer?, devSplash?, devOnboard?, devTester?, devPopup?,
 //   devTimeTravel?, toggleExperiment?}
 ```
@@ -1366,9 +1366,12 @@ Three things differ from `interpret`, all deliberate:
 - **Called once and cached**, not per keystroke — dropped when the runtime is
   replaced (an extension enabled/disabled) or the hook context is
   invalidated (locale change, since `describe` is localized by the hook).
-- **Matching is host-side**, plain case-insensitive substring against
-  `command` and `describe`. Same rule `interpret`'s own matching follows: the
-  host never compiles extension-supplied patterns.
+- **Matching is host-side**, case-insensitive, at the start of a word in
+  `command` or in `keywords` — never mid-word, and `describe` is never
+  searched. Every word that should find a command belongs in its
+  `keywords`: the aliases it accepts when typed, and plain words for what it
+  does. Same rule `interpret`'s own matching follows: the host never
+  compiles extension-supplied patterns.
 - **List commands, not variants.** `radio-commands` advertises one BAND
   entry, not fifteen; `call-notes` advertises `//`, not every key the user
   has defined.

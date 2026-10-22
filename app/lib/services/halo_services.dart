@@ -784,6 +784,12 @@ class HaLoServices {
   /// dismissing itself over a command the operator never typed there.
   bool Function(String message, {bool failed})? commandResponseSink;
 
+  /// The last command response a ⌘K palette showed, and when that palette
+  /// closed — what reopening it soon after puts back (command_dialog.dart).
+  /// Kept here because every open is a fresh State.
+  ({String text, bool failed})? lastPaletteResponse;
+  int? lastPaletteClosedAt;
+
   /// Registers a newly opened Operation View and returns its entry, which the
   /// caller fills in as its operation loads and must pass back to
   /// [closeOperationContext] on dispose.

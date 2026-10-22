@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Every `CommandAction` an extension can return must have a branch in the
-// dispatchers that run it: the logging panel's (`logging_controls.dart`) and
+// dispatchers that run it: the logging panel's (`logging_controls_dispatch.dart`) and
 // the app's own for when no panel is open (`command_engine.dart`). Both are
 // hand-kept lists, and an action missing from one interprets fine — the
 // command describes itself, the operator confirms — and then does nothing
@@ -18,7 +18,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 const _types = '../extensions/sdk/src/types.ts';
-const _panel = '../packages/halo_widgets/lib/src/logging_controls.dart';
+const _panel = '../packages/halo_widgets/lib/src/logging_controls_dispatch.dart';
 const _engine = 'lib/views/command_engine.dart';
 
 /// Actions only a live logging panel can run — they act on the QSO being

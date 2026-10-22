@@ -61,6 +61,7 @@ const BandCommand = {
     return [
       {
         command: "20M",
+        keywords: ["BAND", "METERS"],
         params: "(80M, 20M, 70CM, 2MM…)",
         describe: t("catalogBand"),
         category: t("catalogCategory"),
@@ -93,6 +94,7 @@ const GigBandCommand = {
     return [
       {
         command: "10G",
+        keywords: ["BAND", "GHZ", "MICROWAVE"],
         params: "(1.2G, 24G, 47G…)",
         describe: t("catalogGigBand"),
         category: t("catalogCategory"),
@@ -143,6 +145,7 @@ const FrequencyCommand = {
     return [
       {
         command: "14.285",
+        keywords: ["FREQUENCY", "FREQ", "QRG", "VFO", "KHZ", "MHZ"],
         params: "(14285, 14.285…)",
         describe: t("catalogFreq"),
         category: t("catalogCategory"),
@@ -171,6 +174,7 @@ const ModeCommand = {
     return [
       {
         command: "CW",
+        keywords: ["MODE", "SSB", "USB", "LSB", "FM", "AM", "FT8", "FT4", "FT2", "RTTY"],
         params: "(CW, SSB, FT8…)",
         describe: t("catalogMode"),
         category: t("catalogCategory"),
@@ -198,6 +202,7 @@ const PowerCommand = {
     return [
       {
         command: "5W",
+        keywords: ["POWER", "WATTS", "PWR"],
         params: "(1W, 5W, 50W…)",
         describe: t("catalogPower"),
         category: t("catalogCategory"),
@@ -230,6 +235,7 @@ const WpmCommand = {
     return [
       {
         command: "20WPM",
+        keywords: ["SPEED", "WPM", "KEYER"],
         params: "(18WPM, 25WPM…)",
         describe: t("catalogWpm"),
         category: t("catalogCategory"),
@@ -260,6 +266,7 @@ const KeyerCommand = {
     return [
       {
         command: "KEYER",
+        keywords: ["MACROS", "MESSAGES", "CW"],
         params: "(MACROS)",
         describe: t("catalogKeyer"),
         category: t("catalogCategory"),
@@ -290,9 +297,16 @@ const EnterSendsCommand = {
     if (!esmEnabled(ctx)) return []
     const t = tFor(ctx)
     return [
-      { command: "ESM", params: "(OFF)", describe: t("catalogEsm"), category: t("catalogCategory"), suggest: true },
-      { command: "RUN", describe: t("catalogRun"), category: t("catalogCategory"), suggest: true },
-      { command: "SP", params: "(S&P)", describe: t("catalogSp"), category: t("catalogCategory"), suggest: true },
+      { command: "ESM", keywords: ["ENTER SENDS", "ENTER"], params: "(OFF)", describe: t("catalogEsm"), category: t("catalogCategory"), suggest: true },
+      { command: "RUN", keywords: ["RUNNING", "CQ", "ENTER SENDS"], describe: t("catalogRun"), category: t("catalogCategory"), suggest: true },
+      {
+        command: "SP",
+        keywords: ["S&P", "SEARCH AND POUNCE", "POUNCE", "ENTER SENDS"],
+        params: "(S&P)",
+        describe: t("catalogSp"),
+        category: t("catalogCategory"),
+        suggest: true,
+      },
     ]
   },
 }

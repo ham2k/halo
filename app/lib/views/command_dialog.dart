@@ -26,6 +26,7 @@ import '../config/dev_bridge.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
 import '../services/command_actions.dart';
+import '../services/command_picks.dart';
 import '../services/halo_services.dart';
 import '../services/settings_service.dart';
 import '../tools/operation_title.dart';
@@ -220,6 +221,19 @@ class _CommandDialogState extends State<CommandDialog> {
   /// Index into the *selectable* results. Enter activates this one.
   int _selected = 0;
 
+  /// How soon a reopen puts back the response the last palette closed over
+  /// ([HaLoServices.lastPaletteResponse]), for an operator who looked away as
+  /// it went by.
+  static const _recallWindow = Duration(seconds: 3);
+
+  /// [CommandPicks.commandPicks], read once per open — what the operator
+  /// has picked before, per typed text, which [_byPicks] ranks by.
+  late final Map<String, dynamic> _picks = widget.services.settings.commandPicks;
+
+  /// Whether THIS open showed a response. One that didn't forgets the last,
+  /// so a reopen never brings back an answer older than what was just seen.
+  bool _showedResponse = false;
+
   /// Keeps the field's element identity stable across any restructuring of
   /// the tree around it, so its platform text-input connection is never torn
   /// down and reopened. See the note in initState about why this stays.
@@ -258,10 +272,14 @@ class _CommandDialogState extends State<CommandDialog> {
       // Enter on a callsign must not wipe it: the lookup below the field IS
       // the result, and clearing would drop the palette back to suggestions.
       clearOnNoMatch: false,
+      // Long enough to read a confirmation, short enough that the palette is
+      // gone before the operator's next keystroke lands in it.
+      responseDuration: const Duration(milliseconds: 1200),
     )..attach(_controller);
     _engine.addListener(_onEngineChanged);
     _controller.addListener(_onTextChanged);
     _loadCatalog();
+    unawaited(_loadLooseTestContacts());
     // Focus requested ONCE rather than `autofocus: true` on the field.
     // Autofocus re-fires whenever the field's Focus node is re-attached, and
     // a re-request reopens the platform text-input connection.
@@ -282,6 +300,7 @@ class _CommandDialogState extends State<CommandDialog> {
     // stopped moving a single request sticks, so wait for it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      _recallLastResponse();
       final animation = ModalRoute.of(context)?.animation;
       if (animation == null || animation.isCompleted) {
         _focusNode.requestFocus();
@@ -356,8 +375,25 @@ class _CommandDialogState extends State<CommandDialog> {
     if (_engine.message != null) 'message': _engine.message,
   };
 
+  /// Puts back the response the previous palette closed over, when it closed
+  /// less than [_recallWindow] ago. Not on the response clock: a palette
+  /// reopened to read it stays until Enter or a keystroke, like any response.
+  void _recallLastResponse() {
+    final last = widget.services.lastPaletteResponse;
+    final closedAt = widget.services.lastPaletteClosedAt;
+    // Real time, not the app clock: this is how long ago the operator saw
+    // it, which developer time travel does not change (docs/design/time.md).
+    if (last == null || closedAt == null || realNowMillis() - closedAt >= _recallWindow.inMilliseconds) return;
+    _engine.showResponse(last.text, failed: last.failed);
+  }
+
   @override
   void dispose() {
+    if (_showedResponse) {
+      widget.services.lastPaletteClosedAt = realNowMillis();
+    } else {
+      widget.services.lastPaletteResponse = null;
+    }
     if (DevBridge.instance.commandBarStateProvider == _devState) {
       DevBridge.instance.commandTextHandler = null;
       DevBridge.instance.commandSubmitHandler = null;
@@ -383,8 +419,26 @@ class _CommandDialogState extends State<CommandDialog> {
   /// Only the commands that can actually run right now. An operation-scoped
   /// one (SEED, NOTE, SPOT) with nothing open isn't offered at all — listing
   /// something the user can't pick is just noise, and picking it would only
-  /// produce the hook's "needs an open operation" error.
-  List<Map<String, dynamic>> get _available => _hasOperation ? _catalog : _catalog.where((e) => e['needsOperation'] != true).toList();
+  /// produce the hook's "needs an open operation" error. Nor is one that
+  /// acts on test data (PURGETESTS) while the device holds none.
+  List<Map<String, dynamic>> _availableAmong(List<Operation> operations) {
+    final hasTestData = _hasLooseTestContacts || operations.any((op) => op.isTestOperation);
+    return [
+      for (final entry in _catalog)
+        if ((_hasOperation || entry['needsOperation'] != true) && (hasTestData || entry['needsTestData'] != true)) entry,
+    ];
+  }
+
+  /// Whether the device holds test contacts that belong to no operation —
+  /// test data no Test Operation shows, which PURGETESTS also clears. Read
+  /// once per open, like the catalog.
+  bool _hasLooseTestContacts = false;
+
+  Future<void> _loadLooseTestContacts() async {
+    final loose = await widget.services.qsos.testQsosWithoutOperation();
+    if (!mounted || loose.isEmpty) return;
+    setState(() => _hasLooseTestContacts = true);
+  }
 
   /// Two sample commands for an empty field, chosen once per open (not per
   /// keystroke — they must not reshuffle while the user reads them). Empty
@@ -396,13 +450,21 @@ class _CommandDialogState extends State<CommandDialog> {
   /// though all of them stay listed and searchable in the palette.
   List<Map<String, dynamic>> _pickSuggestions() {
     if (_opens > _suggestionsThreshold) return const [];
-    final pool = _available.where((e) => e['suggest'] == true).toList();
+    // No operations in hand here, so a Test Operation command never counts as
+    // available — and as a destructive one it is never volunteered anyway.
+    final pool = _availableAmong(const []).where((e) => e['suggest'] == true).toList();
     if (pool.length <= _suggestionCount) return pool;
     pool.shuffle();
     return pool.take(_suggestionCount).toList();
   }
 
-  void _onEngineChanged() => _scheduleRebuild();
+  void _onEngineChanged() {
+    if (_engine.isResponse) {
+      _showedResponse = true;
+      widget.services.lastPaletteResponse = (text: _engine.message!, failed: _engine.messageKind == CommandMessageKind.failure);
+    }
+    _scheduleRebuild();
+  }
 
   /// Any edit invalidates the highlighted row's position, so selection goes
   /// back to the top rather than pointing at whatever now occupies that index.
@@ -442,6 +504,10 @@ class _CommandDialogState extends State<CommandDialog> {
   void _close() {
     if (!mounted) return;
     final route = ModalRoute.of(context);
+    // Already on its way out: GO HOME pops everything above Home, this
+    // palette included, and removing a route that is popping trips the
+    // navigator.
+    if (route != null && !route.isActive) return;
     if (route == null || route.isCurrent) {
       Navigator.of(context).pop();
     } else {
@@ -452,7 +518,7 @@ class _CommandDialogState extends State<CommandDialog> {
   /// A command has run. The palette STAYS UP to show what it said — a
   /// command's answer belongs where it was typed, not in the status bar the
   /// operator isn't looking at — and dismisses itself once that answer has
-  /// had its five seconds ([_onResponseExpired]).
+  /// had its [CommandEngine.responseDuration] ([_onResponseExpired]).
   ///
   /// Two cases close at once instead. A command with nothing to say would
   /// otherwise hold an empty card open for no reason; and one whose action
@@ -465,7 +531,7 @@ class _CommandDialogState extends State<CommandDialog> {
     if (_engine.message == null || !(route?.isCurrent ?? true)) _close();
   }
 
-  /// The response has had its five seconds — unless the operator started
+  /// The response has had its [CommandEngine.responseDuration] — unless the operator started
   /// typing again, in which case the palette is back in use and the response
   /// was merely the last thing on the line.
   void _onResponseExpired() {
@@ -475,27 +541,28 @@ class _CommandDialogState extends State<CommandDialog> {
 
   bool get _hasOperation => widget.services.currentOperationContext != null;
 
-  /// Plain case-insensitive substring matching, host-side — the same rule
-  /// `interpret` follows about never compiling extension-supplied patterns.
-  bool _matches(String haystack, String needle) => haystack.toUpperCase().contains(needle);
+  /// Case-insensitive, anchored at a word start ([matchesWordStart]), and
+  /// host-side — the same rule `interpret` follows about never compiling
+  /// extension-supplied patterns.
+  bool _matches(String haystack, String needle) => matchesWordStart(haystack, needle);
 
   /// How well [entry] answers [query], lower being better; null means no
-  /// match at all. What the user typed is nearly always the start of a
-  /// command's NAME, so every name-based rank beats every description-based
-  /// one — otherwise typing "SET" puts 20M first (its description reads "Set
-  /// the band") ahead of every command actually called SET-something.
+  /// match at all. The command's own name first, then its `keywords` — the
+  /// aliases it accepts and the plain words for what it does.
+  ///
+  /// The description is never searched: prose matches whatever its words
+  /// happen to start with, so "dev" would find POSITION by "this device's".
+  /// A word that should find a command belongs in its keywords. Nothing
+  /// matches mid-word either ([matchesWordStart]).
   int? _rank(Map<String, dynamic> entry, String query) {
-    final command = (entry['command'] as String).toUpperCase();
-    final describe = ((entry['describe'] as String?) ?? '').toUpperCase();
+    final command = entry['command'] as String;
+    final keywords = (entry['keywords'] as List?)?.whereType<String>() ?? const <String>[];
 
-    if (command == query) return 0;
-    if (command.startsWith(query)) return 1;
-    if (command.contains(query)) return 2;
-    if (describe.startsWith(query)) return 3;
-    // Prefer a word-initial hit in the description ("… the Band") over one
-    // buried mid-word, which is usually coincidence.
-    if (RegExp('\\b${RegExp.escape(query)}').hasMatch(describe)) return 4;
-    if (describe.contains(query)) return 5;
+    if (command.toUpperCase() == query) return 0;
+    if (command.toUpperCase().startsWith(query)) return 1;
+    if (matchesWordStart(command, query)) return 2;
+    if (keywords.any((keyword) => keyword.toUpperCase() == query)) return 3;
+    if (keywords.any((keyword) => matchesWordStart(keyword, query))) return 4;
     return null;
   }
 
@@ -536,17 +603,18 @@ class _CommandDialogState extends State<CommandDialog> {
       return results;
     }
 
-    // Ranked, not catalog order — see [_rank]. `sort` is stable in Dart, so
-    // entries of equal rank keep hook-priority order.
-    final ranked = <({int rank, Map<String, dynamic> entry})>[];
-    for (final entry in _available) {
+    // Ranked, not catalog order — see [_rank]. Equal ranks keep hook-priority
+    // order by their catalog index: Dart's `sort` is not stable past 32
+    // elements, and a one-letter query matches more than that.
+    final ranked = <({int rank, int index, Map<String, dynamic> entry})>[];
+    for (final entry in _availableAmong(operations)) {
       final command = entry['command'] as String;
       // Already offered as "run what's typed" — don't list it twice.
       if (results.any((r) => r is _TypedResult && r.text.toUpperCase() == command.toUpperCase())) continue;
       final rank = _rank(entry, query);
-      if (rank != null) ranked.add((rank: rank, entry: entry));
+      if (rank != null) ranked.add((rank: rank, index: ranked.length, entry: entry));
     }
-    ranked.sort((a, b) => a.rank.compareTo(b.rank));
+    ranked.sort((a, b) => a.rank != b.rank ? a.rank.compareTo(b.rank) : a.index.compareTo(b.index));
     results.addAll(ranked.map((r) => _CatalogResult(r.entry)));
 
     for (final nav in _navResults(t)) {
@@ -561,7 +629,40 @@ class _CommandDialogState extends State<CommandDialog> {
       }
     }
 
-    return results;
+    return _byPicks(results, query);
+  }
+
+  /// [results] ranked by what the operator has picked for exactly this
+  /// [query] before: a row they keep scrolling down to comes up first, where
+  /// Enter runs it. Rows stay under their headings — a section moves as a
+  /// block, ahead of those with fewer picks, and its rows reorder within it.
+  /// Ties keep the order they came in, so text nobody has picked from ranks
+  /// exactly as before.
+  List<_Result> _byPicks(List<_Result> results, String query) {
+    final stored = _picks[query];
+    if (stored is! Map || stored.isEmpty) return results;
+    int picksOf(_Result result) => switch (stored[result.identity]) {
+      final num count => count.toInt(),
+      _ => 0,
+    };
+    // Index-tiebroken rather than relying on `sort`, which is not stable past
+    // 32 elements in Dart.
+    List<T> byCountThenOrder<T>(List<T> items, int Function(T) count) {
+      final indexed = [for (var i = 0; i < items.length; i++) (i, items[i])];
+      indexed.sort((a, b) {
+        final byCount = count(b.$2).compareTo(count(a.$2));
+        return byCount != 0 ? byCount : a.$1.compareTo(b.$1);
+      });
+      return [for (final (_, item) in indexed) item];
+    }
+
+    final t = context.t;
+    final sections = <String, List<_Result>>{};
+    for (final result in results) {
+      (sections[result.section(t)] ??= []).add(result);
+    }
+    final blocks = [for (final rows in sections.values) byCountThenOrder(rows, picksOf)];
+    return [for (final rows in byCountThenOrder(blocks, (rows) => picksOf(rows.first))) ...rows];
   }
 
   /// Navigation is done through [navigatorKey], not this dialog's own
@@ -623,6 +724,12 @@ class _CommandDialogState extends State<CommandDialog> {
   }
 
   Future<void> _activateResult(_Result result) async {
+    // Counted only when there was a choice to make: a lone row says nothing
+    // about which of several the operator wants for this text.
+    final query = _controller.text.trim().toUpperCase();
+    if (query.isNotEmpty && _selectableOf(_lastResults).length > 1) {
+      unawaited(widget.services.settings.recordCommandPick(query, result.identity));
+    }
     switch (result) {
       case _TypedResult():
         await _engine.submit();

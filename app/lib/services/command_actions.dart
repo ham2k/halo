@@ -2,14 +2,17 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Runs one command action and makes sure its answer reaches someone: the bar
-// that asked, or failing that the status bar. Two actions that need a
-// confirmation dialog are intercepted here; the rest go through
-// HaLoServices.handleCommandAction.
+// that asked, or failing that the status bar. The actions that need the UI —
+// two that confirm in a dialog, and GO's navigation — are intercepted here;
+// the rest go through HaLoServices.handleCommandAction.
 
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart' show asQsonString;
 
+import '../config/navigation.dart';
+import '../views/app_shell/home_rail_state.dart';
 import '../views/operation_dialogs.dart';
 
 import 'error_reporting_service.dart';
@@ -60,6 +63,8 @@ Future<bool> runCommandAction(HaLoServices services, String action, [Map<String,
       outcome = await _runPurgeTests(services, context);
     case 'syncAll':
       outcome = await _runSyncAll(services, context);
+    case 'navigate':
+      outcome = await _runNavigate(services, asQsonString(params?['to']) ?? '');
     default:
       outcome = await services.handleCommandAction(action, params);
   }
@@ -169,4 +174,54 @@ Future<CommandActionOutcome?> _runSyncAll(HaLoServices services, BuildContext? c
     return (text: 'A full resync needs the real clock — run DEVTT first', failed: true);
   }
   return (text: t.commands.fullResyncStarted, failed: false);
+}
+
+/// The Settings panels GO can open — the keys `SettingsView` selects by.
+const _goPanels = {'settings', 'profiles', 'station', 'sync', 'peers', 'accounts', 'extensions', 'developer', 'help', 'about'};
+
+/// GO (`navigation-commands`). Home's destinations leave any open operation
+/// and move the rail, through its leave guards like a press on the rail
+/// would; a Settings panel opens OVER what is on screen, the way every other
+/// entry point outside the rail reaches Settings.
+///
+/// A destination turned off here is an error, never a fallback: the rail
+/// would put Logs back to Operations and `SettingsView` would show its first
+/// panel instead of Peers, and either reads as GO going to the wrong place.
+Future<CommandActionOutcome?> _runNavigate(HaLoServices services, String to) async {
+  // Bypasses handleCommandAction's switch, so it fires the same usage event.
+  services.track('command_executed', {'command': 'navigate'});
+  final settings = services.settings;
+  CommandActionOutcome unavailable(String place) => (text: t.commands.goUnavailable(place: place), failed: true);
+  final home = switch (to) {
+    'operations' => HomeDestination.operations,
+    'maps' => HomeDestination.maps,
+    'logs' => HomeDestination.logs,
+    'chase' => HomeDestination.chase,
+    _ => null,
+  };
+  if (home != null) {
+    final offered = homeDestinationOffered(
+      home,
+      showLogs: settings.experimentEnabled('logs') /* stored key, see experiments.yaml */,
+      showChase: settings.experimentEnabled('chase') /* stored key, see experiments.yaml */,
+    );
+    if (!offered) return unavailable(home == HomeDestination.logs ? t.home.nav.logs : t.home.nav.chase);
+    // A dialog that refuses to close (an import in progress) stops the walk:
+    // `popUntil` does not ask PopScope, and a dialog popped out from under
+    // the code driving it has that code pop whatever is on top when it ends.
+    var blocked = false;
+    navigatorKey.currentState?.popUntil((route) {
+      if (route.isFirst) return true;
+      if (route.popDisposition == RoutePopDisposition.doNotPop) return blocked = true;
+      return false;
+    });
+    if (blocked) return (text: t.commands.goBlocked, failed: true);
+    await homeRail.leaveTo(home);
+    return null;
+  }
+  if (!_goPanels.contains(to)) return (text: t.commands.goUnknown(to: to), failed: true);
+  if (to == 'peers' && !settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) return unavailable(t.settings.panels.peers);
+  if (to == 'developer' && !settings.developerMode) return unavailable(t.settings.panels.developerSettings);
+  services.openSettingsPanel(to);
+  return null;
 }

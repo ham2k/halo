@@ -8,7 +8,7 @@
 
 import 'package:collection/collection.dart' show ListEquality, mergeSort;
 
-import 'package:halo_core/halo_core.dart' show Hooks;
+import 'package:halo_core/halo_core.dart' show Hooks, matchesWordStart;
 import 'extension_relevance.dart';
 
 /// Where an extension's code came from. Not cosmetic: [maySeeBuildSecrets]
@@ -67,13 +67,12 @@ mixin ExtensionSearchable {
   /// is the caller's decision, not a match.
   bool matchesSearch(String query, {required String locale}) {
     if (query.isEmpty) return false;
-    final needle = query.toLowerCase();
-    return key.toLowerCase().contains(needle) ||
-        name.toLowerCase().contains(needle) ||
-        nameFor(locale).toLowerCase().contains(needle) ||
-        (description ?? '').toLowerCase().contains(needle) ||
-        (descriptionFor(locale) ?? '').toLowerCase().contains(needle) ||
-        keywordsFor(locale).any((keyword) => keyword.toLowerCase().contains(needle));
+    return matchesWordStart(key, query) ||
+        matchesWordStart(name, query) ||
+        matchesWordStart(nameFor(locale), query) ||
+        matchesWordStart(description ?? '', query) ||
+        matchesWordStart(descriptionFor(locale) ?? '', query) ||
+        keywordsFor(locale).any((keyword) => matchesWordStart(keyword, query));
   }
 }
 

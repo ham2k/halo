@@ -1947,13 +1947,13 @@ class FormRendererState extends State<FormRenderer> with _ListFields {
             ...filtering
                 ? [
                     for (final opt in options)
-                      if (((opt['label'] as String?) ?? opt['value'].toString()).toLowerCase().contains(query)) opt,
+                      if (matchesWordStart((opt['label'] as String?) ?? opt['value'].toString(), query)) opt,
                   ]
                 : [
                     for (final opt in options)
                       if (tierOf(opt) <= level || pinned.contains(opt['value'])) opt,
                   ],
-            ...filtering ? unknownRows.where((r) => (r['label'] as String).toLowerCase().contains(query)) : unknownRows,
+            ...filtering ? unknownRows.where((r) => matchesWordStart(r['label'] as String, query)) : unknownRows,
           ];
           return HaloDialog(
             wide: !compact,
@@ -2274,7 +2274,7 @@ class _SelectDialogBodyState extends State<_SelectDialogBody> {
         ? widget.options
         : [
             for (final opt in widget.options)
-              if (((opt['label'] as String?) ?? '').toLowerCase().contains(query)) opt,
+              if (matchesWordStart((opt['label'] as String?) ?? '', query)) opt,
           ];
     final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
     return Column(

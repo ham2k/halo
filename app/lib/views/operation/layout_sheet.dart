@@ -16,6 +16,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:halo_core/halo_core.dart' show matchesWordStart;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -230,10 +231,7 @@ class _LayoutSheetState extends State<LayoutSheet> {
   /// "conditions", which is what its own author wrote).
   bool _matches(LayoutPanelEntry panel, String query) {
     if (query.isEmpty) return true;
-    final needle = query.toLowerCase();
-    return panel.title.toLowerCase().contains(needle) ||
-        (panel.description?.toLowerCase().contains(needle) ?? false) ||
-        (panel.extensionName?.toLowerCase().contains(needle) ?? false);
+    return matchesWordStart(panel.title, query) || matchesWordStart(panel.description ?? '', query) || matchesWordStart(panel.extensionName ?? '', query);
   }
 
   Future<void> _gain(Future<bool> Function() gain, String name) async {

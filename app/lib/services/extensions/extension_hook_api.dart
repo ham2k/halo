@@ -275,6 +275,8 @@ mixin _ExtensionHookApi {
   }
 
   SettingsService? get settings;
+  bool get activationIncomplete;
+  void invalidateHookContext();
   Future<void> start();
   void presentResultMessage(Map<String, dynamic> message, {String ns});
 
@@ -765,28 +767,71 @@ mixin _ExtensionHookApi {
   /// Entries keep hook priority order, so a higher-priority extension's
   /// commands list first, matching which one would actually win `interpret`.
   Future<List<Map<String, dynamic>>> getCommandCatalog() async {
+    // Developer mode decides which entries exist (the DEV commands, GO DEV),
+    // and nothing that flips it drops this cache — so a list kept from the
+    // other mode is stale, and so is the hook context it was built from.
+    final developerMode = settings?.developerMode ?? false;
+    if (_commandCatalog != null && _commandCatalogDeveloperMode != developerMode) invalidateHookContext();
     final cached = _commandCatalog;
     if (cached != null) return cached;
 
     final host = this.host;
     if (host == null) return const [];
     try {
+      // A runtime is published before its extensions finish activating — at
+      // boot, and again whenever it is replaced, which the preloaded-extension
+      // catch-up does seconds after launch. A hook not registered yet is
+      // simply not asked, so a read then comes back partial or empty, and
+      // caching it leaves the palette without those commands for the session.
+      // Not waited on again once boot has given up on it: every open would
+      // otherwise stall for the full wait.
+      var whole = true;
+      if (activationIncomplete) {
+        whole = false;
+      } else {
+        await host.activated.timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('[extensions] getCommandCatalog: activation did not settle within 5s — serving what answers, uncached');
+            whole = false;
+          },
+        );
+      }
       final entries = await host.invokeAll(Hooks.commandCatalog, timeout: const Duration(seconds: 2));
       final catalog = <Map<String, dynamic>>[];
       for (final entry in entries) {
-        // `catalog` is optional on CommandHook, so a hook that doesn't
-        // implement it reports not-ok here — that's expected, not a failure.
-        if (entry['ok'] != true || entry['value'] is! List) continue;
+        // Only hooks that implement `catalog` are asked at all, so a not-ok
+        // entry is one that threw — its commands are missing from this list.
+        if (entry['ok'] != true) {
+          debugPrint('[extensions] command catalog ${entry['key']} failed: ${entry['error']}');
+          whole = false;
+          continue;
+        }
+        if (entry['value'] is! List) continue;
         for (final item in entry['value'] as List) {
           if (item is! Map) continue;
-          final map = item.cast<String, dynamic>();
+          final map = {...item.cast<String, dynamic>()};
           // A malformed entry would render as a blank, unselectable row.
           if (map['command'] is! String || (map['command'] as String).isEmpty) continue;
+          // The palette matches every keystroke against these: one extension
+          // sending a bare string here would break search for all of them.
+          if (map['keywords'] case final List<dynamic> keywords) {
+            map['keywords'] = keywords.whereType<String>().toList();
+          } else {
+            map.remove('keywords');
+          }
           catalog.add(map);
         }
       }
-      _commandCatalog = List.unmodifiable(catalog);
-      return _commandCatalog!;
+      final answer = List<Map<String, dynamic>>.unmodifiable(catalog);
+      // Served but not kept when it may not be the current runtime's whole
+      // list — activation unsettled, a hook that threw, or the runtime
+      // replaced during the read — so the next open asks again.
+      if (whole && identical(host, this.host)) {
+        _commandCatalog = answer;
+        _commandCatalogDeveloperMode = developerMode;
+      }
+      return answer;
     } catch (e) {
       debugPrint('[extensions] getCommandCatalog failed: $e');
       // Not cached — a transient runtime failure shouldn't leave the palette
@@ -798,6 +843,9 @@ mixin _ExtensionHookApi {
   /// [getCommandCatalog]'s cache. Null means "not read yet"; an empty list is
   /// a real answer (no hook advertises anything).
   List<Map<String, dynamic>>? _commandCatalog;
+
+  /// The developer mode [_commandCatalog] was read under.
+  bool? _commandCatalogDeveloperMode;
 
   /// Descriptors for controls activities want on the logging panel. `qso` is
   /// the in-progress QSO (including any `their.guess` from the callsign

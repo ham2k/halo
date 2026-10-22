@@ -85,12 +85,19 @@ const TimeCommand = {
     const t = tFor(ctx)
     const category = t("catalogCategory")
     return [
-      { command: "+1M", params: "(+1, +30S, -1H, +3D…)", describe: t("catalogDelta"), category, needsOperation: true },
-      { command: "12:33", params: "(12:33:30)", describe: t("catalogTime"), category, needsOperation: true },
-      { command: ":34", describe: t("catalogMinute"), category, needsOperation: true },
-      { command: "::30", describe: t("catalogSecond"), category, needsOperation: true },
-      { command: ctx.dateOrder === "dmy" ? "18/3" : "3/18", describe: t("catalogDate"), category, needsOperation: true },
-      { command: "NOW", describe: t("catalogNow"), category, needsOperation: true },
+      {
+        command: "+1M",
+        keywords: ["TIME", "CLOCK", "ADJUST", "FORWARD", "BACK"],
+        params: "(+1, +30S, -1H, +3D…)",
+        describe: t("catalogDelta"),
+        category,
+        needsOperation: true,
+      },
+      { command: "12:33", keywords: ["TIME", "UTC", "CLOCK"], params: "(12:33:30)", describe: t("catalogTime"), category, needsOperation: true },
+      { command: ":34", keywords: ["MINUTES", "TIME"], describe: t("catalogMinute"), category, needsOperation: true },
+      { command: "::30", keywords: ["SECONDS", "TIME"], describe: t("catalogSecond"), category, needsOperation: true },
+      { command: ctx.dateOrder === "dmy" ? "18/3" : "3/18", keywords: ["DATE", "DAY"], describe: t("catalogDate"), category, needsOperation: true },
+      { command: "NOW", keywords: ["TIME", "LIVE", "CLOCK", "RESET"], describe: t("catalogNow"), category, needsOperation: true },
     ]
   },
 }

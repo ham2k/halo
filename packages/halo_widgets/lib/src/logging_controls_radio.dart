@@ -711,8 +711,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     return [...options, if (!options.contains(displayedMode)) displayedMode];
   }
 
-  /// Menu entries for the active [filter]: a case-insensitive contains
-  /// match. An empty filter (nothing typed, or cleared on focus) and a
+  /// Menu entries for the active [filter]: a case-insensitive match at a
+  /// word start ([matchesWordStart]). An empty filter (nothing typed, or cleared on focus) and a
   /// filter matching nothing both mean "no filter" — the latter so a typo
   /// shows the full menu rather than an empty one. The filter only ever
   /// holds genuinely typed text (see [_onDropdownTextChanged]), so typing a
@@ -720,24 +720,23 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   List<String> _filteredOptions(List<String> options, String filter) {
     final typed = filter.trim();
     if (typed.isEmpty) return options;
-    final q = typed.toLowerCase();
     final matches = [
       for (final o in options)
-        if (o.toLowerCase().contains(q)) o,
+        if (matchesWordStart(o, typed)) o,
     ];
     return matches.isEmpty ? options : matches;
   }
 
-  /// An exact (case-insensitive) match wins over the first contains-match,
-  /// so e.g. "2m" can never resolve to another band that merely contains
-  /// it as a substring.
+  /// An exact (case-insensitive) match wins over the first word-start match,
+  /// so e.g. "2m" can never resolve to another band that merely starts with
+  /// it.
   String? _firstMatch(List<String> options, String text) {
     final q = text.toLowerCase();
     for (final o in options) {
       if (o.toLowerCase() == q) return o;
     }
     for (final o in options) {
-      if (o.toLowerCase().contains(q)) return o;
+      if (matchesWordStart(o, text)) return o;
     }
     return null;
   }

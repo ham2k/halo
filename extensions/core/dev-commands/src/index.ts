@@ -50,7 +50,7 @@ import manifest from "../manifest.json" with { type: "json" }
 function devCatalog(
   command: string,
   describe: string,
-  opts: { always?: boolean; params?: string; needsOperation?: boolean; expectsParams?: boolean; suggest?: boolean } = {},
+  opts: { always?: boolean; params?: string; keywords?: string[]; needsOperation?: boolean; expectsParams?: boolean; suggest?: boolean } = {},
 ) {
   return async (ctx: HookContext): Promise<CommandCatalogEntry[]> => {
     if (!opts.always && !ctx.developerMode) return []
@@ -60,6 +60,7 @@ function devCatalog(
         describe,
         category: opts.always ? "Data files" : "Developer",
         ...(opts.params ? { params: opts.params } : {}),
+        ...(opts.keywords ? { keywords: opts.keywords } : {}),
         ...(opts.needsOperation ? { needsOperation: true } : {}),
         ...(opts.expectsParams ? { expectsParams: true } : {}),
         ...(opts.always && opts.suggest ? { suggest: true } : {}),
@@ -82,7 +83,7 @@ const DevModeCommand = {
     }
   },
 
-  catalog: devCatalog("DEVMODE", "Toggle developer mode"),
+  catalog: devCatalog("DEVMODE", "Toggle developer mode", { keywords: ["DEVELOPER"] }),
 }
 
 // Excludes whatever index was picked last time (tracked per-list, at module
@@ -239,7 +240,7 @@ const DevPopupCommand = {
     }
   },
 
-  catalog: devCatalog("DEVPOPUP", "Open the app in a standalone, phone-sized popup window"),
+  catalog: devCatalog("DEVPOPUP", "Open the app in a standalone, phone-sized popup window", { keywords: ["WINDOW", "PHONE"] }),
 }
 
 // "DEVSENTRY" / "DEVSENTRY custom message" -> push a synthetic error through
@@ -262,7 +263,7 @@ const DevSentryCommand = {
     }
   },
 
-  catalog: devCatalog("DEVSENTRY", "Send a test error report", { params: "[message]" }),
+  catalog: devCatalog("DEVSENTRY", "Send a test error report", { params: "[message]", keywords: ["ERROR REPORT", "SENTRY"] }),
 }
 
 // DEVBENCH [n]: log a synthetic CQ WW contest into a throwaway Test Operation
@@ -304,7 +305,7 @@ const DevBenchCommand = {
     }
   },
 
-  catalog: devCatalog("DEVBENCH", "Benchmark logging a contest", { params: "[qsos]" }),
+  catalog: devCatalog("DEVBENCH", "Benchmark logging a contest", { params: "[qsos]", keywords: ["BENCHMARK", "PERFORMANCE"] }),
 }
 
 // DEVLOGCAT: records every byte to and from the equipment, or stops and sends
@@ -321,7 +322,7 @@ const DevLogCatCommand = {
     }
   },
 
-  catalog: devCatalog("DEVLOGCAT", "Record radio traffic, or stop and send it"),
+  catalog: devCatalog("DEVLOGCAT", "Record radio traffic, or stop and send it", { keywords: ["CAT TRAFFIC", "RADIO TRAFFIC"] }),
 }
 
 const DevMapInfoCommand = {
@@ -334,7 +335,7 @@ const DevMapInfoCommand = {
     }
   },
 
-  catalog: devCatalog("DEVMAPINFO", "Show or hide the maps' zoom and viewport size"),
+  catalog: devCatalog("DEVMAPINFO", "Show or hide the maps' zoom and viewport size", { keywords: ["MAPS", "ZOOM"] }),
 }
 
 const DevIdleCommand = {
@@ -347,7 +348,7 @@ const DevIdleCommand = {
     }
   },
 
-  catalog: devCatalog("DEVIDLE", "Enable or disable idle metrics in the status bar"),
+  catalog: devCatalog("DEVIDLE", "Enable or disable idle metrics in the status bar", { keywords: ["IDLE", "METRICS"] }),
 }
 
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
@@ -374,7 +375,13 @@ const ReloadCommand = {
     }
   },
 
-  catalog: devCatalog("RELOAD", "Re-sync data files", { always: true, params: "<POTA|SOTA|ALL>", expectsParams: true, suggest: true }),
+  catalog: devCatalog("RELOAD", "Re-sync data files", {
+    always: true,
+    params: "<POTA|SOTA|ALL>",
+    keywords: ["RELOADALL", "DATA FILES", "REFRESH", "DOWNLOAD"],
+    expectsParams: true,
+    suggest: true,
+  }),
 }
 
 // "SEED" -> 10 QSOs; "SEED 20" -> 20; "SEED 15 3H" -> 15 spread over 3
@@ -484,7 +491,7 @@ const SeedCommand = {
     }
   },
 
-  catalog: devCatalog("SEED", "Fill the log with generated QSOs", { params: "[count] [hours]", needsOperation: true }),
+  catalog: devCatalog("SEED", "Fill the log with generated QSOs", { params: "[count] [hours]", keywords: ["GENERATE", "FAKE QSOS"], needsOperation: true }),
 }
 
 /// Every key in the Callsign Notes index, via call-notes' `callNotes` hook —
@@ -557,7 +564,7 @@ const ExpCommand = {
     }
   },
 
-  catalog: devCatalog("EXP", "Toggle an experimental feature", { params: "<name>", expectsParams: true }),
+  catalog: devCatalog("EXP", "Toggle an experimental feature", { params: "<name>", keywords: ["EXPERIMENTS", "FEATURES"], expectsParams: true }),
 }
 
 // LANG <code> switches the app's language, including the hidden locales the
@@ -586,7 +593,7 @@ const LangCommand = {
     }
   },
 
-  catalog: devCatalog("LANG", "Switch the app's language", { params: "<code>", expectsParams: true }),
+  catalog: devCatalog("LANG", "Switch the app's language", { params: "<code>", keywords: ["LANGUAGE", "LOCALE", "TRANSLATION"], expectsParams: true }),
 }
 
 // DEVTT / DEVTIMETRAVEL move the app clock (docs/design/time.md): "DEVTT +3h",

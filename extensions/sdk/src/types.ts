@@ -1778,6 +1778,15 @@ export interface CommandAction {
   /// (docs/design/logging-fields.md § Find in the log). Panel-only, like
   /// `sendSpots`: the command reports `needsOperation` without one.
   findInLog?: { query?: string }
+  /// GO (`navigation-commands`): takes the operator somewhere in the app.
+  /// `operations`, `maps`, `logs` and `chase` are Home's own destinations,
+  /// and leave whatever operation is open to reach them; anything else names
+  /// a Settings panel (`settings`, `profiles`, `station`, `sync`, `peers`,
+  /// `accounts`, `extensions`, `developer`, `help`, `about`), opened over
+  /// what is on screen. A destination this app has turned off (an
+  /// experiment, developer mode) is refused as an error rather than opening
+  /// something else.
+  navigate?: { to: string }
   /// Replaces the call field's entire text, cursor at the end — the
   /// call-notes extension's `//KEY` note expansion. The new text runs
   /// through the same change path as typing, so lookups, dupe checks and
@@ -2019,6 +2028,19 @@ export interface CommandCatalogEntry {
   /// no operation open the palette drops the entry entirely rather than
   /// letting the user pick it and get `interpret`'s `error` back.
   needsOperation?: boolean
+  /// True when the command only has something to act on while this device
+  /// holds test data — a Test Operation, or a test contact belonging to no
+  /// operation (PURGETESTS). Without any the palette drops the entry, as for
+  /// [needsOperation]; typing the command still runs it.
+  needsTestData?: boolean
+  /// Other words the palette finds this entry by: the aliases the command
+  /// accepts when typed in full (END for STOP, MACROS for KEYER) and plain
+  /// words for what it does (POWER for 5W, CAT for GO STATION). Matched at
+  /// the start of a word, like [command]. [describe] is never searched — its
+  /// prose matches whatever its words happen to start with ("dev" finding
+  /// POSITION by "this device's"), so every word that should find an entry
+  /// belongs here.
+  keywords?: string[]
   /// True when choosing the entry should leave the field open for typing
   /// instead of running the command straight away — the catalog counterpart
   /// of [CommandInterpretation.expectsParams], for commands whose bare form

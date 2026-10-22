@@ -86,6 +86,7 @@ async function syncAllCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> 
   return [
     {
       command: "SYNCALL",
+      keywords: ["SYNC", "RESYNC", "CLOUD"],
       describe: t("catalogSyncAll"),
       category: t("catalogCategory"),
     },
@@ -288,6 +289,7 @@ async function reportCatalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
   return [
     {
       command: "REPORT",
+      keywords: ["BUG", "FEEDBACK", "PROBLEM", "SUPPORT"],
       params: t("catalogReportParams"),
       describe: t("catalogReport"),
       category: t("catalogCategory"),

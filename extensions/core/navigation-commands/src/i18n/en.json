@@ -1,0 +1,25 @@
+{
+  "catalogCategory": "Navigation",
+  "goTo": "Go to {{place}}",
+  "choose": "Go to {{places}}",
+  "unknown": "Can't go to {{text}}: try {{places}}",
+  "place": {
+    "HOME": "the operations list",
+    "MAPS": "Maps",
+    "LOGS": "Logs",
+    "CHASE": "Chasing",
+    "HUNT": "Chasing",
+    "SETTINGS": "Settings",
+    "PROFILE": "your callsign and profile",
+    "STATION": "Station equipment",
+    "CAT": "Station equipment",
+    "SYNC": "Sync settings",
+    "PEERS": "Peers",
+    "ACCOUNTS": "Accounts & Data Sources",
+    "DATA": "Accounts & Data Sources",
+    "EXTENSIONS": "Extensions",
+    "DEV": "Developer Settings",
+    "HELP": "Help & Resources",
+    "ABOUT": "About"
+  }
+}

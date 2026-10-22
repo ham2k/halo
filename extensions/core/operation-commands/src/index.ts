@@ -44,6 +44,7 @@ const OperatorCommand = {
     return [
       {
         command: "OPER",
+        keywords: ["OPERATOR"],
         params: "<call>",
         describe: t("catalogOperator"),
         category: t("catalogCategory"),
@@ -77,6 +78,7 @@ const PositionCommand = {
     return [
       {
         command: "POSITION",
+        keywords: ["MULTI-OP", "SEAT"],
         params: "<number>",
         describe: t("catalogPosition"),
         category: t("catalogCategory"),
@@ -105,10 +107,10 @@ const SegmentCommand = {
     const t = tFor(ctx)
     const category = t("catalogCategory")
     return [
-      { command: "START", describe: t("catalogStart"), category, needsOperation: true },
-      { command: "BREAK", describe: t("catalogBreak"), category, needsOperation: true },
-      { command: "STOP", describe: t("catalogStop"), category, needsOperation: true },
-      { command: "ROVERQTH", describe: t("catalogRoverQth"), category, needsOperation: true },
+      { command: "START", keywords: ["BEGIN", "SEGMENT"], describe: t("catalogStart"), category, needsOperation: true },
+      { command: "BREAK", keywords: ["SEGMENT", "PAUSE"], describe: t("catalogBreak"), category, needsOperation: true },
+      { command: "STOP", keywords: ["END", "FINISH", "SEGMENT"], describe: t("catalogStop"), category, needsOperation: true },
+      { command: "ROVERQTH", keywords: ["ROVER", "MOVE", "LOCATION", "QTH", "GRID"], describe: t("catalogRoverQth"), category, needsOperation: true },
     ]
   },
 }
@@ -134,6 +136,7 @@ const FindCommand = {
     return [
       {
         command: "FIND",
+        keywords: ["SEARCH", "JUMP", "GOTO"],
         params: "[number or call]",
         describe: t("catalogFind"),
         category: t("catalogCategory"),

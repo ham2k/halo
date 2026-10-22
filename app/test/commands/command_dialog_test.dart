@@ -26,12 +26,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show AppClock;
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/command_picks.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
@@ -53,7 +55,12 @@ class _CannedExtensions extends ExtensionService {
 
   @override
   Future<List<Map<String, dynamic>>> getCommandCatalog() async => [
-    {'command': 'DEVMODE', 'describe': 'Toggle developer mode', 'category': 'Developer'},
+    {
+      'command': 'DEVMODE',
+      'describe': 'Toggle developer mode',
+      'category': 'Developer',
+      'keywords': ['DEVELOPER'],
+    },
     {'command': 'NOTE', 'params': '<text>', 'describe': 'Add a note to the log', 'category': 'Log annotations', 'needsOperation': true, 'expectsParams': true},
     {'command': 'SYNCALL', 'describe': 'Sync all operations now', 'category': 'Sync'},
     // Advertised in the catalog AND currently unrunnable, so a query for it
@@ -62,13 +69,21 @@ class _CannedExtensions extends ExtensionService {
     // open, which would empty the list and hide the very collision this
     // models (the real shape is SYNCALL erroring while sync is disabled).
     {'command': 'WIPEDB', 'describe': 'Erase the local database', 'category': 'Developer'},
-    // The ranking pair: "SET" is in SETUP's NAME and in 20M's
-    // DESCRIPTION, and the name match has to win. Also the only two
-    // `suggest` entries, so the empty-field samples are deterministic:
-    // DEVMODE and SYNCALL stand in for the commands that must never be
-    // volunteered.
+    // "SET" is in SETUP's NAME and only in 20M's DESCRIPTION, which is never
+    // searched; BAND is 20M's keyword and the start of BANDSCOPE's name, which
+    // has to win. SETUP and 20M are also the only two `suggest` entries, so
+    // the empty-field samples are deterministic: DEVMODE and SYNCALL stand in
+    // for the commands that must never be volunteered.
     {'command': 'SETUP', 'describe': 'Open the setup screen', 'category': 'App', 'suggest': true},
-    {'command': '20M', 'describe': 'Set the band to **20m**', 'category': 'Radio', 'suggest': true},
+    {
+      'command': '20M',
+      'describe': 'Set the band to **20m**',
+      'category': 'Radio',
+      'suggest': true,
+      'keywords': ['BAND'],
+    },
+    {'command': 'BANDSCOPE', 'describe': 'Show the band scope', 'category': 'Radio'},
+    {'command': 'PURGETESTS', 'describe': 'Delete every Test Operation on this device', 'category': 'Data', 'needsTestData': true},
   ];
 
   @override
@@ -404,27 +419,44 @@ void main() {
     await _unmount(tester);
   });
 
-  testWidgets('ranks name matches above description matches', (tester) async {
+  testWidgets('a description is never searched — only names and keywords', (tester) async {
     final services = await _services(tester);
     await _pumpDialog(tester, services);
 
-    // "SET" appears in SETUP's NAME and in 20M's description ("Set the
-    // band"). The name match has to win — ranking by catalog order alone put
-    // 20M first, which is what made typing "SET" feel broken.
+    // "SET" starts 20M's description ("Set the band"). Prose matches whatever
+    // its words happen to start with — "dev" found POSITION by "this
+    // device's" — so it must not put 20M on the list at all.
     await tester.enterText(find.byType(TextField), 'SET');
     await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('SETUP'), findsOneWidget);
+    expect(find.text('20M'), findsNothing);
 
-    final rows = tester.widgetList<Text>(find.byType(Text)).map((w) => w.data).whereType<String>().toList();
-    final setup = rows.indexWhere((t) => t.startsWith('SETUP'));
-    final band = rows.indexWhere((t) => t.startsWith('20M'));
-    expect(setup, isNonNegative);
-    expect(band, isNonNegative);
-    expect(setup, lessThan(band), reason: 'a command NAMED SETUP outranks one merely described as "Set the band"');
+    // A keyword does find it.
+    await tester.enterText(find.byType(TextField), 'BAND');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('20M'), findsOneWidget);
 
     await _unmount(tester);
   });
 
-  testWidgets('narrows the list to substring matches, on the command and on its description', (tester) async {
+  testWidgets('a command named for the text outranks one with it as a keyword', (tester) async {
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+
+    await tester.enterText(find.byType(TextField), 'BAND');
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final rows = tester.widgetList<Text>(find.byType(Text)).map((w) => w.data).whereType<String>().toList();
+    final scope = rows.indexWhere((t) => t.startsWith('BANDSCOPE'));
+    final band = rows.indexWhere((t) => t.startsWith('20M'));
+    expect(scope, isNonNegative);
+    expect(band, isNonNegative);
+    expect(scope, lessThan(band), reason: 'BANDSCOPE is NAMED for the text; 20M only lists it as a keyword');
+
+    await _unmount(tester);
+  });
+
+  testWidgets('narrows the list to word-start matches, on the command and on its keywords', (tester) async {
     final services = await _services(tester);
     await _pumpDialog(tester, services);
 
@@ -434,10 +466,15 @@ void main() {
     expect(find.text('SYNCALL'), findsOneWidget);
     expect(find.text('DEVMODE'), findsNothing);
 
-    // "developer" matches DEVMODE's describe, not just its name.
+    // "developer" is DEVMODE's keyword, not its name.
     await tester.enterText(find.byType(TextField), 'DEVELOPER');
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('DEVMODE'), findsOneWidget);
+    expect(find.text('SYNCALL'), findsNothing);
+
+    // "ALL" is inside SYNCALL, not the start of a word in it.
+    await tester.enterText(find.byType(TextField), 'ALL');
+    await tester.pump(const Duration(milliseconds: 200));
     expect(find.text('SYNCALL'), findsNothing);
 
     await _unmount(tester);
@@ -447,8 +484,8 @@ void main() {
     final services = await _services(tester);
     await _pumpDialog(tester, services);
 
-    // "S" ranks SYNCALL and SETUP first (both name matches), then 20M (its
-    // description starts with "Set"). One ↓ moves off SYNCALL onto SETUP.
+    // "S" ranks SYNCALL and SETUP first, both name matches. One ↓ moves off
+    // SYNCALL onto SETUP.
     await tester.enterText(find.byType(TextField), 'S');
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -466,7 +503,7 @@ void main() {
     expect(extensions.executed, contains('SETUP'));
     expect(extensions.executed, isNot(contains('SYNCALL')));
     // Running a command dismisses the palette, once its response has been on
-    // screen for its five seconds.
+    // screen for its response time.
     await tester.pump(const Duration(seconds: 6));
     await _settle(tester);
     expect(find.byType(CommandDialog), findsNothing);
@@ -489,7 +526,7 @@ void main() {
     expect((services.extensions as _CannedExtensions).executed, contains('DEVMODE'));
     expect(services.settings.developerMode, isTrue, reason: 'the action must actually be dispatched');
 
-    // The palette holds its response for five seconds and then dismisses
+    // The palette holds its response for its response time and then dismisses
     // itself — see the response tests below.
     expect(find.byType(CommandDialog), findsOneWidget);
     await tester.pump(const Duration(seconds: 6));
@@ -1098,7 +1135,7 @@ void main() {
 
     await tester.pump(const Duration(seconds: 6));
     await _settle(tester);
-    expect(find.byType(CommandDialog), findsNothing, reason: 'the response has had its five seconds');
+    expect(find.byType(CommandDialog), findsNothing, reason: 'the response has had its time');
     await _unmount(tester);
   });
 
@@ -1182,7 +1219,7 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await _settle(tester);
 
-    // Well past the five seconds, with the action still in flight.
+    // Well past the response time, with the action still in flight.
     await tester.pump(const Duration(seconds: 8));
     expect(find.byType(CommandDialog), findsOneWidget, reason: 'nothing has finished; there is nothing to dismiss for');
 
@@ -1198,7 +1235,7 @@ void main() {
   });
 
   testWidgets("an action's failure reads as one, not as a confirmation", (tester) async {
-    // Same line, same five seconds — but "Sync is not enabled" rendered in the
+    // Same line, same clock — but "Sync is not enabled" rendered in the
     // confirmation's accent wash is pixel-identical to "Band set to 20m", and
     // then auto-dismisses. The operator scanning it takes the styling for the
     // answer and reads success. Only the action knows which it is, so it says
@@ -1253,7 +1290,7 @@ void main() {
   testWidgets('an early action in a slow batch does not start the clock for the rest', (tester) async {
     // The clock belongs to the BATCH, not to whichever action spoke first.
     // `[updateSetting, syncAll]` is the real shape: the write's validator
-    // fails at once and the resync then runs for longer than five seconds —
+    // fails at once and the resync then runs for longer than the response time —
     // so a clock armed by that first message expires with dispatch still in
     // flight, dismissing the palette and sending everything the rest of the
     // batch has to say to the status bar behind an unrelated screen.
@@ -1320,7 +1357,7 @@ void main() {
   });
 
   testWidgets('typing again keeps the palette open past the response', (tester) async {
-    // The five-second dismissal is for a palette nobody is using. Closing one
+    // The timed dismissal is for a palette nobody is using. Closing one
     // out from under an operator mid-command is the worse failure by far.
     final services = await _services(tester);
     await _pumpDialog(tester, services);
@@ -1345,7 +1382,7 @@ void main() {
   testWidgets('Enter on a response dismisses the palette without waiting it out', (tester) async {
     // The field is empty behind the answer, so Enter has nothing to run and
     // would otherwise be the one key here that does nothing — leaving the
-    // operator to sit through the five seconds or reach for Escape.
+    // operator to sit through the response time or reach for Escape.
     final services = await _services(tester);
     await _pumpDialog(tester, services);
 
@@ -1368,7 +1405,7 @@ void main() {
   });
 
   testWidgets('a confirmation landing over text the operator typed does not close the palette', (tester) async {
-    // The one path where a response's five seconds run with text ALREADY in
+    // The one path where a response's clock runs with text ALREADY in
     // the field: the operator typed on while the command was executing, so
     // the engine puts the confirmation up over their new text (it is the only
     // record that a non-idempotent command ran) and starts the clock there.
@@ -1473,6 +1510,121 @@ void main() {
     await _settle(tester);
 
     expect(find.textContaining('Change band to'), findsOneWidget, reason: 'shown once, as the typed row\'s subtitle — not twice');
+    await _unmount(tester);
+  });
+
+  testWidgets('a command for test data is offered only while the device has a Test Operation', (tester) async {
+    // PURGETESTS on a device with nothing to purge is a destructive command
+    // on screen for no reason at all.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+    await tester.enterText(find.byType(TextField), 'PURGE');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('PURGETESTS'), findsNothing);
+    await _unmount(tester);
+
+    // runAsync: drift work never completes under the fake async a testWidgets
+    // body runs in, and the palette's operations stream is drift's.
+    await tester.runAsync(() => services.operations.create(stationCall: 'N0CALL/T'));
+    await _pumpDialog(tester, services);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.enterText(find.byType(TextField), 'PURGE');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('PURGETESTS'), findsOneWidget);
+    await _unmount(tester);
+  });
+
+  testWidgets('a command for test data is offered for stray test contacts too', (tester) async {
+    // PURGETESTS also clears test contacts that belong to no operation, and
+    // nothing else reaches them — so with no Test Operation on the device,
+    // those strays still have to make it listed.
+    final services = await _services(tester);
+    await tester.runAsync(
+      () => services.qsos.add('', {
+        'our': {'call': 'N0CALL/T'},
+        'their': {'call': 'LOOSE'},
+      }),
+    );
+    await _pumpDialog(tester, services);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.enterText(find.byType(TextField), 'PURGE');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('PURGETESTS'), findsOneWidget);
+    await _unmount(tester);
+  });
+
+  testWidgets('a row picked from further down comes first next time, for that same text', (tester) async {
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+    await tester.enterText(find.byType(TextField), 'S');
+    await tester.pump(const Duration(milliseconds: 200));
+    // SETUP sits below SYNCALL for "S".
+    await tester.tap(find.text('SETUP'));
+    await _settle(tester);
+    await _unmount(tester);
+
+    await _pumpDialog(tester, services);
+    await tester.enterText(find.byType(TextField), 'S');
+    await tester.pump(const Duration(milliseconds: 200));
+    final rows = tester.widgetList<Text>(find.byType(Text)).map((w) => w.data).whereType<String>().toList();
+    expect(rows.indexOf('SETUP'), lessThan(rows.indexOf('SYNCALL')), reason: 'the operator picked SETUP for "S" last time');
+
+    // First means Enter runs it — the point of learning it.
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+    expect((services.extensions as _CannedExtensions).executed, ['SETUP', 'SETUP']);
+
+    // Learned for "S" exactly, not for every text that SETUP matches.
+    expect(services.settings.commandPicks.keys, ['S']);
+    await _unmount(tester);
+  });
+
+  testWidgets('a lone row is not counted as a pick', (tester) async {
+    // With nothing to choose between, running it says nothing about which of
+    // several the operator wants for this text.
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+    await tester.enterText(find.byType(TextField), 'SYNCALL');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+    expect(services.settings.commandPicks, isEmpty);
+    await _unmount(tester);
+  });
+
+  testWidgets('reopening soon after a response puts it back; reopening later does not', (tester) async {
+    // The window is real time, which the app clock reads off the wall unless
+    // told to follow the test's fake one.
+    final followed = AppClock.followZoneClock;
+    AppClock.followZoneClock = true;
+    addTearDown(() => AppClock.followZoneClock = followed);
+
+    final services = await _services(tester);
+    await _pumpDialog(tester, services);
+    await tester.enterText(find.byType(TextField), 'DEVMODE');
+    await _settle(tester);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await _settle(tester);
+    expect(find.text('Developer mode activated'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 2));
+    await _settle(tester);
+    expect(find.byType(CommandDialog), findsNothing, reason: 'the response has had its time');
+
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('open'));
+    await _settle(tester);
+    expect(find.text('Developer mode activated'), findsOneWidget, reason: 'reopened within three seconds of closing');
+    // Not on the response clock: the operator reopened it to read it.
+    await tester.pump(const Duration(seconds: 3));
+    await _settle(tester);
+    expect(find.byType(CommandDialog), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await _settle(tester);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.tap(find.text('open'));
+    await _settle(tester);
+    expect(find.text('Developer mode activated'), findsNothing, reason: 'four seconds is past the window');
     await _unmount(tester);
   });
 }

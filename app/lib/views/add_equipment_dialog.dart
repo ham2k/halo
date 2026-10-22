@@ -12,6 +12,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart' show matchesWordStart;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -628,7 +629,7 @@ class _AddRow {
   /// as what its family is called. The brand is in the haystack because a
   /// model's name need not carry it, and because a brand with a group of its
   /// own is a heading the search has just thrown away.
-  bool matches(String query) => _haystack.contains(query);
+  bool matches(String query) => matchesWordStart(_haystack, query);
 }
 
 /// Either a device that announced itself (ready to add as-is) or a type to

@@ -129,6 +129,7 @@ export const bundles = [
   { key: "settings-commands", entry: "core/settings-commands/src/index.ts", kind: "extension" },
   { key: "test-ops-commands", entry: "core/test-ops-commands/src/index.ts", kind: "extension" },
   { key: "operation-commands", entry: "core/operation-commands/src/index.ts", kind: "extension" },
+  { key: "navigation-commands", entry: "core/navigation-commands/src/index.ts", kind: "extension" },
   { key: "time-commands", entry: "core/time-commands/src/index.ts", kind: "extension" },
   { key: "templates", entry: "core/templates/src/index.ts", kind: "extension" },
   // Built for the host's bridge tests, into [fixturesDir]; never shipped.

@@ -809,6 +809,9 @@ class _Translations$commands$qro extends Translations$commands$en {
 	@override String get sentryTestLocalOnly => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY';
 	@override String get noOperationOpen => 'THAT COMMAND NEEDS AN OPEN OPERATION';
 	@override String unknownSegmentKind({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'';
+	@override String goUnavailable({required Object place}) => '${place} ISN\'T TURNED ON IN THIS APP';
+	@override String goUnknown({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'';
+	@override String get goBlocked => 'CLOSE THE OPEN DIALOG FIRST';
 	@override String get operationAlreadyStarted => 'THIS OPERATION ALREADY HAS A START MARKER';
 	@override String get couldNotOpenLocation => 'ADDED THE BREAK, BUT COULD NOT OPEN THE LOCATION SCREEN';
 	@override String get noTestOperations => 'NO TEST OPERATIONS TO PURGE';
@@ -6106,6 +6109,9 @@ extension on TranslationsQro {
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',
+			'commands.goUnavailable' => ({required Object place}) => '${place} ISN\'T TURNED ON IN THIS APP',
+			'commands.goUnknown' => ({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'',
+			'commands.goBlocked' => 'CLOSE THE OPEN DIALOG FIRST',
 			'commands.operationAlreadyStarted' => 'THIS OPERATION ALREADY HAS A START MARKER',
 			'commands.couldNotOpenLocation' => 'ADDED THE BREAK, BUT COULD NOT OPEN THE LOCATION SCREEN',
 			'commands.noTestOperations' => 'NO TEST OPERATIONS TO PURGE',
@@ -6115,11 +6121,11 @@ extension on TranslationsQro {
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'PURGED ${purged} OF ${total} TEST OPERATIONS — THE REST FAILED; TRY PURGETESTS AGAIN',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'PURGED ${count} TEST CONTACT WITH NO OPERATION', other: 'PURGED ${count} TEST CONTACTS WITH NO OPERATION', ), 
 			'commands.purgeTestsContactsFailed' => 'PURGED THE TEST OPERATIONS, BUT THE TEST CONTACTS WITH NO OPERATION FAILED; TRY PURGETESTS AGAIN',
+			_ => null,
+		} ?? switch (path) {
 			'commands.purgeTestsNothingToDo' => 'NOTHING WAS PURGED',
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'REMOVED ${removed} OF ${total} TEST OPERATIONS — THE REST FAILED; TRY REVIEW AGAIN',
 			'commands.receivedPurgesFailed' => 'COULDN\'T REMOVE THOSE TEST OPERATIONS — TRY REVIEW AGAIN',
-			_ => null,
-		} ?? switch (path) {
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} TEST OPERATION WAS REMOVED ON ANOTHER DEVICE', other: '${count} TEST OPERATIONS WERE REMOVED ON ANOTHER DEVICE', ), 
 			'commands.receivedPurgesReview' => 'REVIEW',
 			'commands.settingOn' => 'ON',

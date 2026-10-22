@@ -65,6 +65,7 @@ function noteLikeCommand({
   describe,
   confirm,
   catalogKey,
+  keywords,
   extra,
 }: {
   pattern: RegExp
@@ -74,6 +75,7 @@ function noteLikeCommand({
   describe: (t: Translator, text: string) => string
   confirm: (t: Translator) => string
   catalogKey: string
+  keywords: string[]
   extra?: Record<string, JSONValue>
 }) {
   return {
@@ -110,6 +112,7 @@ function noteLikeCommand({
       return [
         {
           command: name,
+          keywords,
           params: t("catalogNoteParams"),
           describe: t(catalogKey),
           category: t("catalogCategory"),
@@ -130,6 +133,7 @@ const NoteCommand = noteLikeCommand({
   describe: (t, text) => t("addNote", { text }),
   confirm: (t) => t("noteAdded"),
   catalogKey: "catalogNote",
+  keywords: ["NOTES", "COMMENT"],
 })
 
 const TodoCommand = noteLikeCommand({
@@ -140,6 +144,7 @@ const TodoCommand = noteLikeCommand({
   describe: (t, text) => t("addTodo", { text }),
   confirm: (t) => t("todoAdded"),
   catalogKey: "catalogTodo",
+  keywords: ["TASK", "REMINDER"],
   extra: { data: { done: false } },
 })
 
@@ -219,6 +224,7 @@ const SolarCommand = {
     return [
       {
         command: "SOLAR",
+        keywords: ["PROPAGATION", "SFI", "K-INDEX", "CONDITIONS"],
         describe: t("catalogSolar"),
         category: t("catalogCategory"),
         suggest: true,
@@ -333,6 +339,7 @@ const WeatherCommand = {
     return [
       {
         command: "WEATHER",
+        keywords: ["WX", "TEMPERATURE", "CONDITIONS"],
         describe: t("catalogWeather"),
         category: t("catalogCategory"),
         suggest: true,

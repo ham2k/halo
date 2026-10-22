@@ -988,7 +988,9 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
     if (query.isEmpty) return qsos;
     return [
       for (final qso in qsos)
-        if (qso.theirCall.toLowerCase().contains(query) || (qso.theirName ?? '').toLowerCase().contains(query)) qso,
+        // A callsign is one token, so a suffix search ("ABC" for K1ABC) has to
+        // reach inside it; a name is words, and matches only at a word start.
+        if (qso.theirCall.toLowerCase().contains(query) || matchesWordStart(qso.theirName ?? '', query)) qso,
     ];
   }
 

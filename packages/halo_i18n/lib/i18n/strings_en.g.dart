@@ -1778,6 +1778,15 @@ class Translations$commands$en {
 	/// en: 'Don't know how to mark a '${kind}''
 	String unknownSegmentKind({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'';
 
+	/// en: '${place} isn't turned on in this app'
+	String goUnavailable({required Object place}) => '${place} isn\'t turned on in this app';
+
+	/// en: 'Don't know how to go to '${to}''
+	String goUnknown({required Object to}) => 'Don\'t know how to go to \'${to}\'';
+
+	/// en: 'Close the open dialog first'
+	String get goBlocked => 'Close the open dialog first';
+
 	/// en: 'This operation already has a start marker'
 	String get operationAlreadyStarted => 'This operation already has a start marker';
 
@@ -10805,6 +10814,9 @@ extension on Translations {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
+			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
+			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
+			'commands.goBlocked' => 'Close the open dialog first',
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',
@@ -10814,11 +10826,11 @@ extension on Translations {
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
 			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
+			_ => null,
+		} ?? switch (path) {
 			'commands.purgeTestsNothingToDo' => 'Nothing was purged',
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again',
 			'commands.receivedPurgesFailed' => 'Couldn\'t remove those Test Operations — try Review again',
-			_ => null,
-		} ?? switch (path) {
 			'commands.receivedPurgesPending' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} Test Operation was removed on another device', other: '${count} Test Operations were removed on another device', ), 
 			'commands.receivedPurgesReview' => 'Review',
 			'commands.settingOn' => 'On',

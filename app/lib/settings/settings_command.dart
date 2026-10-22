@@ -189,8 +189,9 @@ bool _isUnchanged(SettingsCatalogEntry entry, dynamic newValue) {
 ///
 /// Every split is scored and the best one wins. Simply taking the longest name
 /// that matches anything does not survive subsequence matching, which is far
-/// too easy to satisfy to decide this on its own: in `SET ZEROBEAT N` the whole string — trailing `N` included — is
-/// a subsequence of the label "Avoid Zero-Beating on Spots", so the value is
+/// too easy to satisfy to decide this on its own: in `SET ZEROBEAT ON` the
+/// whole string — trailing `ON` included, which starts the word "on" — is a
+/// subsequence of the label "Avoid Zero-Beating on Spots", so the value is
 /// swallowed into the name and nothing is ever written.
 ///
 /// The measure is score PER QUERY CHARACTER, not raw score. Raw score always
@@ -242,7 +243,7 @@ bool _isUnchanged(SettingsCatalogEntry entry, dynamic newValue) {
     // These words BEGIN a real setting's name — they are its name, not a
     // shorter name plus a value. Taken outright, longest first, because no
     // score comparison decides this reliably: `WIBBLE EXTRA` naming
-    // "Wibble Extra" and `ZEROBEAT N` naming "Avoid Zero-Beating on Spots"
+    // "Wibble Extra" and `ZEROBEAT ON` naming "Avoid Zero-Beating on Spots"
     // score within about 1% of their shorter alternatives, in opposite
     // directions.
     if (settingNameBeginsWith(entry, name, kind: kind)) return (matches, name, value);

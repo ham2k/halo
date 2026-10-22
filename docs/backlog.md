@@ -114,6 +114,18 @@ work:
   tap-to-blur (`TapToDismissEmptyField`), which would otherwise fight it on
   mobile.
 
+## Command keywords are English only
+
+The ⌘K palette finds a command by its name and its catalog `keywords`, never
+by its `describe` (hooks.md, catalog). The keywords are English literals in
+each extension's code, so an operator running the app in Spanish finds
+nothing for "banda" or "potencia" — where searching the translated
+descriptions used to find 20M and 5W. Decided to ship English-only and add
+translated keywords later: each extension with an i18n catalog would list
+them beside the English ones, and the palette match both. Revisit when a
+non-English tester reports the palette can't find a command, or when the
+next locale ships.
+
 ## Callsign lookup results are not cached
 
 app-polo caches lookup results in the `lookups` table; HaLo re-queries QRZ/

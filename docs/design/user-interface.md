@@ -713,10 +713,13 @@ One field, four kinds of result:
 
 - **Commands** extensions advertise through their `catalog` hook
   ([hooks.md](../extensions/hooks.md#catalog--advertising-commands-to-the-k-dialog)),
-  narrowed by substring as the user types and **ranked name-first**: every
-  match on a command's name outranks every match on its description, so
-  typing "SET" offers SETUP before a band command merely described as "Set
-  the band". Picking one with parameters types it into the field; picking one
+  narrowed as the user types by what **starts a word** in the command's name
+  or its `keywords` — never mid-word, and never in its description, whose
+  prose matches whatever its words happen to start with ("dev" finding
+  POSITION by "this device's"). A name match outranks a keyword match. Rows
+  the operator has picked from among several for exactly this text rank
+  first (`command_picks.dart`), so Enter runs what they keep scrolling down
+  to. Picking one with parameters types it into the field; picking one
   without runs it. The declaring extension's category shows as a trailing
   label rather than a grouping heading, since rows are ranked across
   categories.
@@ -758,11 +761,12 @@ or an interpret-time error stays small — that is commentary on text still
 being typed, not the thing Enter was pressed for.
 
 The palette therefore stays up after running a command and dismisses itself
-once the response has had its five seconds. It closes at once when the command
-had nothing to say; **Enter dismisses a response** rather than waiting it out,
-since the field behind it is empty and Enter would otherwise be the one key
-here that does nothing; and typing again cancels the dismissal, because those
-five seconds are for a palette nobody is using. The consequence to know about
+once the response has had its 1.2 seconds (`responseDuration` — the Home bar’s
+message line, which never closes, keeps the engine's default five). It closes
+at once when the command had nothing to say; **Enter dismisses a response**
+rather than waiting it out, since the field behind it is empty and Enter would
+otherwise be the one key here that does nothing; and typing again cancels the
+dismissal, because those seconds are for a palette nobody is using. The consequence to know about
 is that the palette holds focus for those seconds — an operator who runs a
 band change and immediately types the next callsign puts it in the palette,
 which then stays open.
@@ -788,7 +792,7 @@ answering seconds later on a palette that has since opened, blanking its card
 and dismissing it over a command that was never typed there. The Home bar's
 message line works identically, minus the closing.
 
-The five seconds start when the command **settles**, not when its confirm
+The response's seconds start when the command **settles**, not when its confirm
 appears: `syncAll` resyncs a whole account and a settings write can wait on an
 extension validator, and a clock started at the confirm expires mid-flight —
 closing the surface the action's own word was about to land on. If it lands

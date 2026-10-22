@@ -6,6 +6,11 @@
 // not next to each other — so `zrbt` finds "Avoid Zero Beat" and `dfrcw` finds
 // `defaultReportCW`.
 //
+// Each typed WORD is anchored, though: its first character must land on the
+// start of a word in the target (see [fuzzyQueryWordStarts]). Without that,
+// `and` finds "Bands" by the run buried in its middle, which is never what anyone
+// typing a word means.
+//
 // Being a subsequence is cheap to satisfy, so the SCORE is what does the real
 // work. Four things earn points, and they are what makes the results feel
 // right rather than merely correct:
@@ -105,13 +110,37 @@ bool _isAlnum(int c) => _isDigit(c) || _isUpper(c) || _isLower(c);
 /// this scores by actually live.
 String normalizeFuzzyQuery(String text) => text.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
 
+/// The positions in [normalizeFuzzyQuery]'s result for [text] where a typed
+/// word begins — the characters [fuzzyMatchScore] anchors to word starts in
+/// the target. Must drop exactly the characters [normalizeFuzzyQuery] drops,
+/// or the positions point at the wrong letters.
+Set<int> fuzzyQueryWordStarts(String text) {
+  final starts = <int>{};
+  var index = 0;
+  var inWord = false;
+  for (final c in text.toLowerCase().codeUnits) {
+    if (_isDigit(c) || _isLower(c)) {
+      if (!inWord) starts.add(index);
+      index++;
+      inWord = true;
+    } else {
+      inWord = false;
+    }
+  }
+  return starts;
+}
+
 /// How well [target] answers [query], or null when [query] isn't a
 /// subsequence of it at all. Higher is better; scores are only comparable
 /// between candidates for the SAME query.
 ///
 /// [query] must already be normalized by [normalizeFuzzyQuery]. An empty
 /// query scores 0 against everything — "no filter", not "no match".
-int? fuzzyMatchScore(String query, String target) {
+///
+/// The query characters at [wordStarts] (from [fuzzyQueryWordStarts]) only
+/// match at the start of a word in [target] — index 0, after a separator, or
+/// on a camelCase hump. The first character is always anchored.
+int? fuzzyMatchScore(String query, String target, {Set<int> wordStarts = const {0}}) {
   if (query.isEmpty) return 0;
   final n = target.length;
   final m = query.length;
@@ -153,7 +182,7 @@ int? fuzzyMatchScore(String query, String target) {
     final best = List<int>.filled(n, _negInf);
     var runningBest = _negInf;
     for (var j = 0; j < n; j++) {
-      if (lower.codeUnitAt(j) == query.codeUnitAt(i)) {
+      if (lower.codeUnitAt(j) == query.codeUnitAt(i) && (bonus[j] > 0 || (i != 0 && !wordStarts.contains(i)))) {
         if (i == 0) {
           final leading = j * _penaltyLeadingGap;
           ending[j] = _scoreMatch + bonus[j] + (leading < _maxLeadingPenalty ? _maxLeadingPenalty : leading);

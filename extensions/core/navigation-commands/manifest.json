@@ -1,0 +1,7 @@
+{
+  "key": "navigation-commands",
+  "name": "Navigation Commands",
+  "version": "0.0.1",
+  "description": "GO — goes to a part of the app: Home's operations, maps, logs and chasing, or a Settings panel",
+  "hooks": ["command"]
+}

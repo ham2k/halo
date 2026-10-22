@@ -26,6 +26,7 @@
 // by every settings write in the app (including the ones these very commands
 // make) to stay correct, and a stale answer here is a wrong answer.
 
+import 'package:halo_core/halo_core.dart' show matchesWordStart;
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'settings_fuzzy.dart';
@@ -198,10 +199,10 @@ List<String> _searchableNames(Map<String, dynamic> el) => [
 
 /// The best [fuzzyMatchScore] across [names], or null if [query] is a
 /// subsequence of none of them.
-int? _bestNameScore(String query, List<String> names) {
+int? _bestNameScore(String query, Set<int> wordStarts, List<String> names) {
   int? best;
   for (final name in names) {
-    final score = fuzzyMatchScore(query, name);
+    final score = fuzzyMatchScore(query, name, wordStarts: wordStarts);
     if (score != null && (best == null || score > best)) best = score;
   }
   return best;
@@ -242,18 +243,21 @@ int? elementSearchScore(Map<String, dynamic> el, String query) {
   final term = normalizeFuzzyQuery(query);
   if (term.isEmpty) return null;
 
-  final byName = _bestNameScore(term, _searchableNames(el));
+  final byName = _bestNameScore(term, fuzzyQueryWordStarts(query), _searchableNames(el));
   if (byName != null) return byName < _minNameScore ? _minNameScore : byName;
 
-  // The description is matched as typed and as a plain SUBSTRING, never as a
-  // subsequence: a subsequence of a whole sentence matches almost anything,
-  // which is why VS Code fuzzy-matches file names and not file contents.
   final description = el['description'];
-  if (description is String && description.toLowerCase().contains(query.toLowerCase())) {
-    return _descriptionPenalty;
-  }
+  if (description is String && _descriptionMentions(description, query)) return _descriptionPenalty;
   return null;
 }
+
+/// Whether [description] mentions [query] as typed, at a word start
+/// ([matchesWordStart]).
+///
+/// A plain SUBSTRING, never a subsequence: a subsequence of a whole sentence
+/// matches almost anything, which is why VS Code fuzzy-matches file names and
+/// not file contents.
+bool _descriptionMentions(String description, String query) => matchesWordStart(description, query);
 
 /// Strips a leading `show`/`hide` from [name], keeping the rest as written.
 /// `showGridField` → `GridField`, `"Show Grid Field"` → `"Grid Field"`. Case
@@ -333,6 +337,7 @@ bool settingNameEquals(SettingsCatalogEntry entry, String query, {SettingCommand
 List<SettingMatch> rankSettings(String query, List<SettingsCatalogEntry> entries, {SettingCommandKind kind = SettingCommandKind.set}) {
   final q = normalizeFuzzyQuery(query);
   if (q.isEmpty) return const [];
+  final wordStarts = fuzzyQueryWordStarts(query);
 
   // Paired with its catalog position, which the comparator falls back on —
   // see below.
@@ -340,10 +345,10 @@ List<SettingMatch> rankSettings(String query, List<SettingsCatalogEntry> entries
   for (var i = 0; i < entries.length; i++) {
     final entry = entries[i];
     if (kind != SettingCommandKind.set && !entry.isVisibilityToggle) continue;
-    final byName = _bestNameScore(q, _matchTermsFor(entry, kind));
+    final byName = _bestNameScore(q, wordStarts, _matchTermsFor(entry, kind));
     if (byName != null) {
       matches.add((i, (entry: entry, score: byName, viaDescription: false)));
-    } else if ((entry.description ?? '').toLowerCase().contains(query.toLowerCase())) {
+    } else if (_descriptionMentions(entry.description ?? '', query)) {
       matches.add((i, (entry: entry, score: _descriptionPenalty, viaDescription: true)));
     }
   }

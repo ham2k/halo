@@ -187,7 +187,8 @@ enum CommandMessageKind {
   /// input stays for editing.
   error,
 
-  /// A `confirm` from a command that just ran. Clears itself after 5s.
+  /// A `confirm` from a command that just ran. Clears itself after
+  /// [CommandEngine.responseDuration].
   confirmation,
 
   /// A command that RAN and reported that it did not work — an action's own
@@ -196,7 +197,7 @@ enum CommandMessageKind {
   /// Kept apart from [error], which is a command that never ran at all and
   /// leaves the operator's text in the field to be fixed. This one is a
   /// RESPONSE: the field is empty behind it, it reads in the error style, and
-  /// it lives on the same five-second clock as a [confirmation].
+  /// it lives on the same [responseDuration] clock as a [confirmation].
   failure,
 }
 
@@ -225,7 +226,7 @@ class CommandEngine extends ChangeNotifier {
   /// nothing.
   final void Function()? onExecuted;
 
-  /// Invoked when a just-run command's response has had its five seconds and
+  /// Invoked when a just-run command's response has had its [responseDuration] and
   /// cleared itself. The ⌘K dialog dismisses itself here — the response is
   /// what kept it open.
   ///
@@ -264,6 +265,11 @@ class CommandEngine extends ChangeNotifier {
   /// [_submit] holds open across the whole batch.
   final Future<void> Function(String action, Map<String, dynamic>? params) runAction;
 
+  /// How long a just-run command's response stays up. The Home bar's message
+  /// line sits beside the operations list and can afford the default; the ⌘K
+  /// palette covers the window, and dismisses itself when this runs out.
+  final Duration responseDuration;
+
   CommandEngine({
     required this.services,
     required this.operationContext,
@@ -272,6 +278,7 @@ class CommandEngine extends ChangeNotifier {
     this.onResponseExpired,
     this.canShowResponse,
     this.clearOnNoMatch = true,
+    this.responseDuration = const Duration(seconds: 5),
   });
 
   TextEditingController? _controller;
@@ -393,7 +400,7 @@ class CommandEngine extends ChangeNotifier {
     final text = trimmedText;
     // The push names the input it answers, and the field has usually moved on.
     if (text.isEmpty || event['input'] != text) return;
-    // A command that just ran owns the line for its five seconds: its
+    // A command that just ran owns the line for its [responseDuration]: its
     // execute-time answer is the newer news, and a push landing behind it
     // would replace that answer with a preview of the same command.
     if (isResponse) return;
@@ -648,7 +655,7 @@ class CommandEngine extends ChangeNotifier {
   /// What a command ACTION had to say about what it did — dispatched app-side
   /// (`runCommandAction`), so it lands after the hook's optimistic `confirm`
   /// and outranks it: the action is the one that knows whether the write
-  /// actually happened. Same line, same five seconds, and the clock restarts
+  /// actually happened. Same line, same [responseDuration], and the clock restarts
   /// so a slow action's news isn't half-expired by the time it arrives.
   ///
   /// Returns whether it was actually shown. This is reached through
@@ -676,13 +683,13 @@ class CommandEngine extends ChangeNotifier {
   }
 
   /// Puts a command's confirmation on the field's message line. Does NOT start
-  /// its five seconds — see [_armResponseClock]. Callers notify.
+  /// its [responseDuration] — see [_armResponseClock]. Callers notify.
   void _setConfirmation(String confirm) {
     _executeMessageTimer?.cancel();
     _setMessage(confirm, CommandMessageKind.confirmation);
   }
 
-  /// Starts (or restarts) the five seconds a response stays up, and with it
+  /// Starts (or restarts) the [responseDuration] a response stays up, and with it
   /// the ⌘K palette's own dismissal.
   ///
   /// Armed once the command has actually finished, never when its optimistic
@@ -694,7 +701,7 @@ class CommandEngine extends ChangeNotifier {
   void _armResponseClock() {
     if (!isResponse) return;
     _executeMessageTimer?.cancel();
-    _executeMessageTimer = Timer(const Duration(seconds: 5), () {
+    _executeMessageTimer = Timer(responseDuration, () {
       _setMessage(null, CommandMessageKind.describe);
       notifyListeners();
       onResponseExpired?.call();
@@ -745,7 +752,7 @@ class CommandEngine extends ChangeNotifier {
         if (confirm != null) {
           _setConfirmation(confirm);
           // Nothing is dispatched down this path, so the clock starts here.
-          // It is the one place a confirmation's five seconds run with text
+          // It is the one place a confirmation's [responseDuration] runs with text
           // already in the field — see [onResponseExpired].
           _armResponseClock();
           notifyListeners();
@@ -883,6 +890,8 @@ class CommandEngine extends ChangeNotifier {
         await runAction('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
       } else if (map['openSettings'] is Map) {
         await runAction('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
+      } else if (map['navigate'] is Map) {
+        await runAction('navigate', (map['navigate'] as Map).cast<String, dynamic>());
       } else if (map['updateOperation'] is Map) {
         // App-scoped like setPower below — the logging panel only contributes
         // the uuid, which the open operation's own context has too. Without
@@ -919,7 +928,7 @@ class CommandEngine extends ChangeNotifier {
         // sendSpots, autoRespot, setCallField) matched here where no QSO is in
         // progress, or a new CommandAction field with no matching branch
         // here yet. Either way this must not fail silently: see
-        // logging_controls.dart's own _dispatchActions and its regression
+        // logging_controls_dispatch.dart's own _dispatchActions and its regression
         // test for `reloadDataFiles` shipping without this branch.
         debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
       }

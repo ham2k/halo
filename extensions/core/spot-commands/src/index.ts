@@ -56,6 +56,7 @@ const SelfSpotCommand = {
     return [
       {
         command: "SPOT",
+        keywords: ["SPOTME", "SPME", "SELFSPOT", "QRV", "QRT", "QSY", "QRX", "CLUSTER", "SELF-SPOT"],
         params: "[comment]",
         describe: t("catalogSelfSpot"),
         category: t("catalogCategory"),
@@ -93,6 +94,7 @@ const LastSpotCommand = {
     return [
       {
         command: "SPOTLAST",
+        keywords: ["SPOTEM", "SPOTTHEM", "SPTHEM", "CLUSTER"],
         params: "[comment]",
         describe: t("catalogSpotLast"),
         category: t("catalogCategory"),
@@ -131,6 +133,7 @@ const RespotCommand = {
     return [
       {
         command: "RESPOT",
+        keywords: ["REPEAT", "AUTOMATIC", "CLUSTER", "SELF-SPOT"],
         params: "[minutes|OFF]",
         describe: t("catalogRespot"),
         category: t("catalogCategory"),

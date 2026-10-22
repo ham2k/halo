@@ -5,7 +5,7 @@
 // fields into `runAction` calls, and it does so through a hand-written chain
 // of `else if`s. A field added to the SDK types without a branch here still
 // interprets, still previews, still prints the hook's confirmation — and does
-// nothing at all. `logging_controls.dart` has its own copy of that chain and
+// nothing at all. `logging_controls_dispatch.dart` has its own copy of that chain and
 // its own regression test; this is the OTHER path, the one taken from ⌘K and
 // the Home bar when no operation is open, and it had none.
 

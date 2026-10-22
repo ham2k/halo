@@ -28,8 +28,10 @@ const PurgeTestsCommand = {
     return [
       {
         command: "PURGETESTS",
+        keywords: ["TEST OPERATIONS", "DELETE", "CLEAN UP"],
         describe: "Delete every Test Operation on this device",
         category: "Data",
+        needsTestData: true,
       },
     ]
   },

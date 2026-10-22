@@ -14,11 +14,19 @@
 //    (runtime replaced) or switching language (the describes are localized
 //    by the hook, so a stale cache leaves the palette in the old language).
 //  • A transient failure must not cache "empty" for the rest of the session.
+//  • Neither must a read made while a runtime is still activating, or across
+//    its replacement: the hooks not registered yet are simply not asked, and
+//    the boot-time preload catch-up replaces the runtime seconds after
+//    launch — exactly when an operator first reaches for ⌘K.
+
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+
+import '../support/halo_test_support.dart';
 
 class _CatalogHost implements ExtensionHost {
   /// What the next `command:*:catalog` fan-out returns.
@@ -29,7 +37,17 @@ class _CatalogHost implements ExtensionHost {
 
   int calls = 0;
 
+  /// Completes when every extension's activation has settled.
+  Completer<void> activation = Completer<void>()..complete();
+
+  /// Runs inside the fan-out, before it answers — where a runtime replaced
+  /// mid-read is replaced.
+  void Function()? duringRead;
+
   _CatalogHost(this.entries);
+
+  @override
+  Future<void> get activated => activation.future;
 
   @override
   Future<List<Map<String, dynamic>>> invokeHookAll(
@@ -41,6 +59,7 @@ class _CatalogHost implements ExtensionHost {
   }) async {
     if (category != 'command' || method != 'catalog') return const [];
     calls++;
+    duringRead?.call();
     if (fail) throw ExtensionHostException('runtime is down');
     return entries;
   }
@@ -50,7 +69,7 @@ class _CatalogHost implements ExtensionHost {
 }
 
 class _ServiceWithHost extends ExtensionService {
-  final _CatalogHost mockHost;
+  _CatalogHost mockHost;
   _ServiceWithHost(this.mockHost);
 
   @override
@@ -138,6 +157,90 @@ void main() {
 
     host.fail = false;
     expect((await service.getCommandCatalog()).map((e) => e['command']), ['SEED']);
+  });
+
+  test('a read waits for activation, so it never caches a partial list', () async {
+    final host = _CatalogHost([
+      _ok([
+        {'command': 'SEED', 'describe': 'Fill the log'},
+      ]),
+    ])..activation = Completer<void>();
+    final service = _ServiceWithHost(host);
+
+    final read = service.getCommandCatalog();
+    await Future<void>.delayed(Duration.zero);
+    expect(host.calls, 0, reason: 'asked now, the hooks still activating would not answer at all');
+
+    host.activation.complete();
+    expect((await read).map((e) => e['command']), ['SEED']);
+  });
+
+  test('a read that spans a runtime replacement is served but not cached', () async {
+    final old = _CatalogHost([_ok(const [])]);
+    final fresh = _CatalogHost([
+      _ok([
+        {'command': 'SEED', 'describe': 'Fill the log'},
+      ]),
+    ]);
+    final service = _ServiceWithHost(old);
+    old.duringRead = () => service.mockHost = fresh;
+
+    expect(await service.getCommandCatalog(), isEmpty);
+    expect((await service.getCommandCatalog()).map((e) => e['command']), ['SEED'], reason: 'the next open asks the runtime that is there now');
+  });
+
+  test('keywords that are not a list of strings are cleaned, not passed on', () async {
+    // The palette ranks every keystroke against these: one extension sending
+    // a bare string would otherwise break search for every command.
+    final host = _CatalogHost([
+      _ok([
+        {'command': 'A', 'describe': 'a', 'keywords': 'POWER'},
+        {
+          'command': 'B',
+          'describe': 'b',
+          'keywords': ['WATTS', 5, null],
+        },
+      ]),
+    ]);
+    final catalog = await _ServiceWithHost(host).getCommandCatalog();
+    expect(catalog.first.containsKey('keywords'), isFalse);
+    expect(catalog.last['keywords'], ['WATTS']);
+  });
+
+  test('a hook whose catalog throws leaves the list served but not cached', () async {
+    // Only hooks that implement `catalog` are asked, so a not-ok entry is one
+    // that threw — caching what the others said would leave its commands out
+    // of the palette for the session.
+    final host = _CatalogHost([
+      _ok([
+        {'command': 'SEED', 'describe': 'Fill the log'},
+      ]),
+      {'ok': false, 'key': 'broken', 'error': 'boom'},
+    ]);
+    final service = _ServiceWithHost(host);
+
+    expect((await service.getCommandCatalog()).map((e) => e['command']), ['SEED']);
+    await service.getCommandCatalog();
+    expect(host.calls, 2, reason: 'asked again, in case the hook answers this time');
+  });
+
+  test('a change of developer mode re-reads the list', () async {
+    // Developer mode decides which entries exist (the DEV commands, GO DEV),
+    // and nothing that flips it drops the cache.
+    final host = _CatalogHost([
+      _ok([
+        {'command': 'SEED', 'describe': 'Fill the log'},
+      ]),
+    ]);
+    final service = _ServiceWithHost(host)..settings = (await makeHaLoServices()).services.settings;
+
+    await service.getCommandCatalog();
+    await service.getCommandCatalog();
+    expect(host.calls, 1);
+
+    await service.settings!.setDeveloperMode(!service.settings!.developerMode);
+    await service.getCommandCatalog();
+    expect(host.calls, 2);
   });
 
   test('no runtime yet means an empty catalog, not a crash', () async {
