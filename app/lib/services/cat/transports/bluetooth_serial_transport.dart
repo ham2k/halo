@@ -28,6 +28,10 @@ class BluetoothSerialTransport extends SerialTransport {
       if (element['key'] != serialRtsHighConfigKey && element['key'] != serialDtrHighConfigKey) element,
   ];
 
+  /// No lines to set as a port is picked, for the same reason.
+  @override
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) => null;
+
   @override
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
     for (final entry in super.targetFor(config).entries)

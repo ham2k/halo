@@ -373,12 +373,21 @@ left alone). Two node settings say where they go (`rtsHigh`, `dtrHigh` in
 `serial_transport_config.dart`), and **both are off unless the operator turns them on**, on every
 entry in the catalogue but the few whose radio is known to wait for RTS — the Orions, whose port uses
 RTS/CTS as its handshake. Each of those prefills RTS high as a default the operator can turn off,
-and `cat_serial_lines_test.dart` names every one, so a new one is a deliberate edit:
+and `cat_serial_lines_test.dart` names every one, so a new one is a deliberate edit. The Yaesus
+reached through their own USB port raise it a different way, because the same entry is just as often
+used through a Digirig: their `port` restriction carries `rtsHigh: true`, and picking a port in the
+editor ticks **Hold RTS high** when the restriction suggests that port — the radio's CP2105 — and
+unticks it for any other, Windows' "Standard COM Port" included. On Linux and the web nothing tells
+the bridge's two ports apart, so the second (PTT and keying) ticks it too, and transmits if the
+radio's PC KEYING is set to RTS. A port no longer present leaves the box alone, an action that picks
+a port (the web's "add a USB device") sets it the same way, and a node keeps what it stored; nothing
+changes at connect:
 
 - **RTS** is the PTT line on a Digirig, a SignaLink and most home-made cables, so a high RTS keys the
   transmitter the moment the app connects. The radio that wants it is a Yaesu with CAT RTS on, which
-  waits for it before answering — the troubleshooting notes send that operator to the radio's menu
-  first, and the setting is the alternative.
+  waits for it before answering, and with RTS low it may answer once as the port opens — the burst
+  it was holding — and then nothing. The troubleshooting notes name both fixes: CAT RTS off at the
+  radio, or the setting.
 - **DTR** keys CW or PTT on many cables, and a radio's own USB port can be set to transmit from it
   (an Icom's USB SEND). What wants it high is an older RS-232 interface that draws its power from the
   line — some FT-817 cables — and the FT-8x7 notes say so.

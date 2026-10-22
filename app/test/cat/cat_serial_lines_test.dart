@@ -6,10 +6,12 @@
 // many more, so a wrong default here keys somebody's transmitter the moment
 // the app connects.
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/bluetooth_serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show serialLinesMismatch;
@@ -62,6 +64,106 @@ void main() {
     final type = registry.typeFor('ft817-serial')!;
     expect(type.targetFor({'port': 'COM3', serialDtrHighConfigKey: true})[serialDtrHighConfigKey], isTrue, reason: 'a cable powered from DTR');
     expect(type.targetFor({'port': 'COM3', serialRtsHighConfigKey: true})[serialRtsHighConfigKey], isTrue, reason: 'a Yaesu with CAT RTS on');
+  });
+
+  group('picking a port in the editor sets RTS for a Yaesu on its own USB port', () {
+    // A Yaesu with CAT RTS on answers nothing while RTS is low, but the same
+    // entry is just as often reached through a Digirig, where RTS is PTT —
+    // so the port picked is what decides, never the entry alone.
+    const enhanced = SerialPortOption(name: '/dev/ttyUSB0', description: 'CP2105 Dual USB to UART Bridge Controller', vendorId: 0x10C4, productId: 0xEA70);
+    const standard = SerialPortOption(name: '/dev/ttyUSB1', description: 'CP2105 Dual USB to UART Bridge Controller', vendorId: 0x10C4, productId: 0xEA70);
+    // Same maker, same vendor id: only the product says it is not the radio.
+    const digirig = SerialPortOption(name: '/dev/ttyUSB2', description: 'CP2102N USB to UART Bridge Controller', vendorId: 0x10C4, productId: 0xEA60);
+    final ownUsbPortTypes = [
+      for (final key in ['ft891-serial', 'ft991a-serial', 'ft710-serial', 'ftdx10-serial', 'ftx1-serial']) registry.typeFor(key)!,
+    ];
+
+    setUp(() => useSerialPortsForTest(const [enhanced, standard, digirig]));
+
+    test("the radio's own bridge ticks Hold RTS high", () {
+      for (final type in ownUsbPortTypes) {
+        expect(type.fieldChanged('port', enhanced.name), {serialRtsHighConfigKey: true}, reason: type.key);
+      }
+    });
+
+    test('a Digirig unticks it', () {
+      for (final type in ownUsbPortTypes) {
+        expect(type.fieldChanged('port', digirig.name), {serialRtsHighConfigKey: false}, reason: '${type.key} would key the transmitter through a Digirig');
+      }
+    });
+
+    test('a port that has gone leaves the box alone', () {
+      // Re-picking the stored port with the radio unplugged must not clear
+      // a tick that was right, under a fold the operator never opens.
+      expect(registry.typeFor('ftdx10-serial')!.fieldChanged('port', '/dev/ttyUSB9'), isNull);
+    });
+
+    test("Windows' Standard port unticks it, though the suggestion cannot tell it from the Enhanced", () {
+      const winEnhanced = SerialPortOption(
+        name: 'COM5',
+        description: 'Silicon Labs Dual CP2105 USB to UART Bridge: Enhanced COM Port',
+        vendorId: 0x10C4,
+        productId: 0xEA70,
+      );
+      const winStandard = SerialPortOption(
+        name: 'COM6',
+        description: 'Silicon Labs Dual CP2105 USB to UART Bridge: Standard COM Port',
+        vendorId: 0x10C4,
+        productId: 0xEA70,
+      );
+      useSerialPortsForTest(const [winEnhanced, winStandard]);
+      final type = registry.typeFor('ftdx10-serial')!;
+      expect(type.fieldChanged('port', winEnhanced.name), {serialRtsHighConfigKey: true});
+      expect(type.fieldChanged('port', winStandard.name), {serialRtsHighConfigKey: false}, reason: 'PTT and keying: RTS transmits with PC KEYING set to it');
+    });
+
+    test('a port an action picks sets the box too', () {
+      // The editor applies an action's updates without reporting them as
+      // changes — the web's "add a USB device" picks a port that way.
+      final ftdx10 = registry.typeFor('ftdx10-serial')!;
+      final type = EquipmentType(
+        ftdx10.model,
+        EquipmentVariant(key: ftdx10.key, driver: ftdx10.driver, transport: const _PickingTransport(), restrictions: ftdx10.restrictions),
+      );
+      expect(
+        type.runAction('grant', 'pick', const {}),
+        completion(isA<EquipmentActionResult>().having((r) => r.fieldUpdates, 'fieldUpdates', {serialRtsHighConfigKey: true, 'port': enhanced.name})),
+      );
+    });
+
+    test("where the platform tells the bridge's ports apart, its second port unticks it", () {
+      // The second is PTT and keying, and transmits from RTS with the
+      // radio's PC KEYING set to it. Elsewhere both ports tick, which is the
+      // risk this entry accepts.
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      const first = SerialPortOption(name: '/dev/cu.usbserial-00F8E1EB0', description: 'CP2105 Dual USB to UART Bridge Controller');
+      const second = SerialPortOption(name: '/dev/cu.usbserial-00F8E1EB1', description: 'CP2105 Dual USB to UART Bridge Controller');
+      useSerialPortsForTest(const [first, second]);
+      final type = registry.typeFor('ftdx10-serial')!;
+      expect(type.fieldChanged('port', first.name), {serialRtsHighConfigKey: true});
+      expect(type.fieldChanged('port', second.name), {serialRtsHighConfigKey: false});
+    });
+
+    test('an entry reached through some other cable leaves RTS where the operator put it', () {
+      for (final key in ['yaesu-serial', 'ft450-serial', 'ft817-serial', 'tentec-566-serial']) {
+        expect(registry.typeFor(key)!.fieldChanged('port', enhanced.name), isNull, reason: key);
+      }
+    });
+
+    test('a Bluetooth link of the same radio sets nothing', () {
+      // It has no lines, and the box it would tick belongs to the USB pairing
+      // rendered beside it.
+      final restrictions = registry.typeFor('ftdx10-serial')!.restrictions;
+      expect(const BluetoothSerialTransport().fieldChanged('port', enhanced.name, restrictions: restrictions), isNull);
+    });
+
+    test('a node keeps what it stored: connecting never decides', () {
+      // Every node saved through the editor stores the box, ticked or not;
+      // a port that later reads as the radio's own must not override it.
+      final type = registry.typeFor('ftdx10-serial')!;
+      expect(type.targetFor({'port': enhanced.name, serialRtsHighConfigKey: false})[serialRtsHighConfigKey], isFalse);
+    });
   });
 
   test('both lines are offered, and folded under Advanced Settings', () {
@@ -138,4 +240,14 @@ void main() {
       expect(reason, contains('hardware flow control'));
     });
   });
+}
+
+/// The serial transport, with an action that picks the radio's own port the
+/// way the web's "add a USB device" does.
+class _PickingTransport extends SerialTransport {
+  const _PickingTransport();
+
+  @override
+  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async =>
+      const EquipmentActionResult(fieldUpdates: {'port': '/dev/ttyUSB0'});
 }

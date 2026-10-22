@@ -27,6 +27,18 @@ const _ft817SerialKey = 'ft817-serial';
 const _ft857SerialKey = 'ft857-serial';
 const _ft897SerialKey = 'ft897-serial';
 
+/// The radio's own CP2105, whose CAT port takes RTS as the CAT handshake
+/// rather than PTT: picking a port this suggests turns Hold RTS high on in
+/// the editor, so a radio with its CAT RTS menu on keeps answering — with RTS
+/// low it sends nothing but the one burst opening the port lets out. Any
+/// other port turns it off, since that is a Digirig, a SignaLink or a
+/// home-made cable, where RTS is PTT. Where the platform cannot tell the
+/// bridge's two ports apart (Linux, the web), the second (PTT and keying)
+/// ticks it too, and keys the radio if its PC KEYING menu is set to RTS.
+///
+/// The pick decides, not a prefill: a new node's port is unknown until then.
+const _ownUsbCatPort = {...Ft891Driver.cp2105CatPort, serialRtsHighConfigKey: true};
+
 /// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
 ///
 /// Baud is the operator's to set, deliberately. app-polo hardcoded 4800 with
@@ -54,7 +66,7 @@ const ft891Model = EquipmentModel(
       // drivers/info/README.md. Named per ENTRY rather than per driver
       // because one driver serves the whole line and the scales do not.
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20, meterInfoConfigKey: 'yaesu/ft-891'},
-      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      restrictions: {'port': _ownUsbCatPort},
       // The failure this driver actually produces is silence: the commands
       // go out, nothing comes back, and nothing anywhere reports an error.
       // Every cause is a setting the operator has to change on the radio or
@@ -102,7 +114,7 @@ const ft991aModel = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20, meterInfoConfigKey: 'yaesu/ft-991a'},
-      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      restrictions: {'port': _ownUsbCatPort},
       notes: _yaesuUsbSerialNotes,
     ),
   ],
@@ -139,7 +151,7 @@ const ft710Model = EquipmentModel(
       },
       // Only a suggestion — an FT-710 has also answered on the Standard
       // port, so the picker leaves it one tap away.
-      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      restrictions: {'port': _ownUsbCatPort},
       notes: _yaesuUsbSerialNotes,
     ),
   ],
@@ -163,7 +175,7 @@ const ftdx10Model = EquipmentModel(
       defaultConfig: {'baudRate': 38400},
       // Ninety seconds a memory, on the SD card, per the Operation Manual.
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 90, meterInfoConfigKey: 'yaesu/ftdx10'},
-      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      restrictions: {'port': _ownUsbCatPort},
       notes: _yaesuUsbSerialNotes,
     ),
   ],
@@ -191,7 +203,7 @@ const ftx1Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 38400},
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, meterInfoConfigKey: 'yaesu/ftx-1', yaesuHeadPowerConfigKey: true},
-      restrictions: {'port': Ft891Driver.cp2105CatPort},
+      restrictions: {'port': _ownUsbCatPort},
       notes: _yaesuUsbSerialNotes,
     ),
   ],

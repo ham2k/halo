@@ -224,7 +224,8 @@ abstract class EquipmentTransport {
   Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async => null;
 
   /// Other fields to set when the operator changes [key] to [value] in the
-  /// editor — a picked Bluetooth LE device's name beside its handle. Null
-  /// (the default) for nothing to add.
-  Map<String, dynamic>? fieldChanged(String key, dynamic value) => null;
+  /// editor — a picked Bluetooth LE device's name beside its handle, or a
+  /// serial port's control lines where the entry's [restrictions] say what
+  /// its own port needs. Null (the default) for nothing to add.
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) => null;
 }

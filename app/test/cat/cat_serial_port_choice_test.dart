@@ -532,7 +532,8 @@ void main() {
         expect((port as Map)['index'], isA<int>(), reason: type.key);
         expect(port['index'] as int, isNonNegative, reason: type.key);
         expect(port['vendorId'], anyOf(isNull, isA<int>()), reason: type.key);
-        expect(port.keys.toSet().difference({'index', 'vendorId', 'suggest'}), isEmpty, reason: type.key);
+        expect(port.keys.toSet().difference({'index', 'vendorId', 'suggest', serialRtsHighConfigKey}), isEmpty, reason: type.key);
+        expect(port[serialRtsHighConfigKey], anyOf(isNull, isTrue), reason: type.key);
         final suggest = port['suggest'];
         if (suggest == null) continue;
         // Same reasoning as the index above, one level down: `{'matches':

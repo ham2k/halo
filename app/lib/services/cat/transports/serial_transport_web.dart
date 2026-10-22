@@ -76,7 +76,16 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final options = <SerialPortOption>[];
     for (var i = 0; i < ports.length; i++) {
       granted[keys[i]] = ports[i];
-      options.add(SerialPortOption(name: keys[i], description: describeWebSerialUsbId(infos[i].usbVendorId, infos[i].usbProductId)));
+      options.add(
+        SerialPortOption(
+          name: keys[i],
+          description: describeWebSerialUsbId(infos[i].usbVendorId, infos[i].usbProductId),
+          // What a restriction's `usb` clause reads; the description alone
+          // matches none of its patterns.
+          vendorId: infos[i].usbVendorId,
+          productId: infos[i].usbProductId,
+        ),
+      );
     }
     _grantedPorts = granted;
     _cachedPortOptions = options;

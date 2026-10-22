@@ -436,10 +436,31 @@ class EquipmentType {
   /// (a newly-granted device's port) is exactly the kind of thing the
   /// operator just did, so it's never something a radio definition would
   /// want to override out from under them.
-  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) => transport.runAction(actionKey, method, state);
+  ///
+  /// A field the action sets brings its [fieldChanged] companions with it,
+  /// as if the operator had picked it: the editor applies an action's
+  /// updates without reporting them as changes.
+  Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async {
+    final result = await transport.runAction(actionKey, method, state);
+    final updates = result?.fieldUpdates;
+    if (result == null || updates == null) return result;
+    return EquipmentActionResult(
+      message: result.message,
+      fieldUpdates: {for (final entry in updates.entries) ...?fieldChanged(entry.key, entry.value), ...updates},
+    );
+  }
 
-  /// See [EquipmentTransport.fieldChanged].
-  Map<String, dynamic>? fieldChanged(String key, dynamic value) => transport.fieldChanged(key, value);
+  /// See [EquipmentTransport.fieldChanged]. Never a field this pairing
+  /// fixes: the editor renders none for it.
+  Map<String, dynamic>? fieldChanged(String key, dynamic value) {
+    final updates = transport.fieldChanged(key, value, restrictions: restrictions);
+    return updates == null
+        ? null
+        : {
+            for (final entry in updates.entries)
+              if (!overrides.containsKey(entry.key)) entry.key: entry.value,
+          };
+  }
 }
 
 /// The operator-facing name of a transport, by key. Kept here rather than on

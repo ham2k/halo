@@ -175,10 +175,11 @@ class PortChoice {
 }
 
 /// Whether the connection holds RTS high for as long as it is open. Off
-/// unless the operator turns it on: on a Digirig, a SignaLink and most
-/// home-made cables RTS is the PTT line, so holding it high keys the
-/// transmitter. The operator who needs it has a Yaesu whose CAT RTS menu is
-/// on, which waits for it before answering.
+/// unless the operator or the entry turns it on: on a Digirig, a SignaLink
+/// and most home-made cables RTS is the PTT line, so holding it high keys
+/// the transmitter. The radio that needs it is a Yaesu whose CAT RTS menu is
+/// on, which waits for it before answering — on its own USB port the editor
+/// ticks it as that port is picked (see [SerialTransportConfig.fieldChanged]).
 const serialRtsHighConfigKey = 'rtsHigh';
 
 /// Whether the connection holds DTR high for as long as it is open. Off
@@ -257,6 +258,25 @@ mixin SerialTransportConfig implements EquipmentTransport {
         'advanced': true,
       },
   ];
+
+  /// A `port` restriction carrying `rtsHigh: true` says RTS is the CAT
+  /// handshake on the port it suggests: picking that port turns Hold RTS
+  /// high on, and picking any other turns it off, since on another cable RTS
+  /// may be PTT — as does a port Windows names its bridge's Standard one,
+  /// which the suggestion cannot tell from its sibling there. Only as the
+  /// operator picks, never at connect — a node keeps whatever it stored, and
+  /// the box says what the port will get. A port no longer present leaves
+  /// the box alone: nothing says what it is.
+  @override
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) {
+    final restriction = restrictions['port'];
+    if (key != 'port' || value is! String || restriction is! Map || restriction[serialRtsHighConfigKey] != true) return null;
+    final port = withInferredSiblings(availablePorts).where((port) => port.name == value).firstOrNull;
+    if (port == null) return null;
+    return {serialRtsHighConfigKey: portSuggests(restriction, port) && !_standardPort.hasMatch(port.label)};
+  }
+
+  static final _standardPort = RegExp(r'\bStandard COM Port\b', caseSensitive: false);
 
   /// The ports as enumerated, with a macOS multi-port bridge's siblings
   /// recognised as such.

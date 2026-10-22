@@ -210,7 +210,7 @@ class BleSerialTransport extends EquipmentTransport {
   /// Answered here, as the operator picks, because the stored handle alone
   /// names nothing a person would recognize.
   @override
-  Map<String, dynamic>? fieldChanged(String key, dynamic value) {
+  Map<String, dynamic>? fieldChanged(String key, dynamic value, {Map<String, dynamic> restrictions = const {}}) {
     if (key != bleDeviceConfigKey || value is! String) return null;
     final device = _known[value];
     return device == null ? null : (_pickedFields(device)..remove(bleDeviceConfigKey));
