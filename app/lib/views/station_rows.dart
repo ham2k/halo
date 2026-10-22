@@ -215,12 +215,20 @@ class TransceiverRow extends StatelessWidget {
       ),
       title: Row(
         children: [
-          Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
-          if (channel case final channel?) ...[
-            const SizedBox(width: Space.md),
-            StationPill(label: channel, background: theme.colorScheme.surfaceContainerHighest, foreground: theme.colorScheme.onSurfaceVariant),
-          ],
-          const Spacer(),
+          // Expanded, not a Flexible name beside a Spacer: the two would
+          // split the slack, and whatever a short name leaves of its half
+          // lands after the glyph, keeping it off the right edge.
+          Expanded(
+            child: Row(
+              children: [
+                Flexible(child: Text(name, overflow: TextOverflow.ellipsis)),
+                if (channel case final channel?) ...[
+                  const SizedBox(width: Space.md),
+                  StationPill(label: channel, background: theme.colorScheme.surfaceContainerHighest, foreground: theme.colorScheme.onSurfaceVariant),
+                ],
+              ],
+            ),
+          ),
           if (transportType case final type?) ...[
             const SizedBox(width: Space.lg),
             TransportIcons(types: [type]),
