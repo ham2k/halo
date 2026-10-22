@@ -376,9 +376,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// The call for which ESM's first step has gone out — the station called,
   /// or the caller given their exchange — so the next Enter completes the
-  /// contact. Compared against the call in the field rather than cleared on
-  /// each keystroke: a corrected call is a new contact to ESM, and one Enter
-  /// away from its own first step.
+  /// contact. Compared against the call in the field, so a corrected call is
+  /// a new contact one Enter from its own first step; forgotten by the wipe
+  /// and by an emptied call field ([_onCallChanged]).
   String? _esmAnsweredCall;
 
   /// The exchange fields ESM waits on: the contest's own, not the reports
@@ -431,19 +431,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       case EsmThen.toExchange:
         _esmAnsweredCall = call;
         final empty = exchange.where((field) => _exchange.valueOf(field.key).trim().isEmpty);
-        final fields = _primaryFields;
-        // No exchange at all (S&P with reports only): the field after the
-        // call, where the report they give us goes; nothing after it, and the
-        // call field keeps focus — [_esmAnsweredCall] still makes the next
-        // Enter the second step.
+        // Reports only: Rcvd, for the report they give us; with the reports
+        // hidden, State or Grid — never our own serial — else the call field
+        // keeps focus, and [_esmAnsweredCall] makes the next Enter the second.
         final target = empty.isNotEmpty
-            ? empty.first
+            ? empty.first.focus
             : exchange.isNotEmpty
-            ? exchange.first
-            : fields.length > 1
-            ? fields[1]
-            : null;
-        target?.focus.requestFocus();
+            ? exchange.first.focus
+            : widget.prefs.showRSTFields
+            ? _rcvdFocus
+            : _primaryFields.where((field) => field.key == 'state' || field.key == 'grid').firstOrNull?.focus;
+        target?.requestFocus();
         return true;
       case EsmThen.log:
         return false;
@@ -2496,6 +2494,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _onCallChanged() {
     final textChanged = _callController.text != _lastCallText;
     _lastCallText = _callController.text;
+    // An emptied call field ends ESM's contact: without this, the same call
+    // typed again could be thanked and logged without ever being answered.
+    if (_callController.text.trim().isEmpty) _esmAnsweredCall = null;
     if (_draft.isPopulating) return;
     // Past the guard, the change is the operator's own — typing, or the clear
     // that `_wipe` does — which is exactly what the spots list wants to hear

@@ -51,11 +51,14 @@ void main() {
       expect(step(running: false, canLog: false), isNull);
     });
 
-    // Reports only: nothing is left to receive once the caller has their
-    // exchange, so waiting for a second Enter would leave the thanks unsent
-    // and the contact unlogged for no reason.
-    test('running with reports only answers, thanks and logs in one Enter', () {
-      expect(step(), 'hisCall+exchange+thanks -> log');
+    // Reports only (a POTA activation): the caller's report comes back after
+    // their exchange, so a thanks keyed in the same Enter talks over it. The
+    // report has a default, so the second Enter never finds nothing copied
+    // and asks again — from the call field either.
+    test('running with reports only answers first, and the second Enter thanks and logs', () {
+      expect(step(), 'hisCall+exchange -> toExchange');
+      expect(step(answered: true), 'thanks -> log');
+      expect(step(answered: true, callFocused: true), 'thanks -> log');
     });
 
     // A `?` call is a partial being asked back: the step that would answer or
@@ -133,7 +136,25 @@ void main() {
       'input': {'kind': 'text', 'refType': 'contest', 'field': 'name'},
     };
 
-    Widget host({required EnterSends? Function() enterSends, bool contest = false, bool twoFields = false}) {
+    const serial = {
+      'key': 'contest/serial',
+      'label': 'Nr',
+      'icon': 'flag-checkered',
+      'input': {
+        'kind': 'serial',
+        'refType': 'contest',
+        'field': 'serial',
+        'sequence': {'key': 'serial'},
+      },
+    };
+
+    Widget host({
+      required EnterSends? Function() enterSends,
+      bool contest = false,
+      bool twoFields = false,
+      LoggingPreferences? prefs,
+      List<Map<String, dynamic>>? controls,
+    }) {
       final radio = _TunedVfoStore();
       return MaterialApp(
         home: Scaffold(
@@ -153,8 +174,9 @@ void main() {
               qsosRepository: qsos,
             ),
             session: LoggingSession(enterSends: enterSends),
+            prefs: prefs ?? const LoggingPreferences(),
             radio: RadioHookup(radioService: radio, radioUpdates: radio),
-            activities: ActivityHooks(activityControls: [if (contest && twoFields) name, if (contest) exchange]),
+            activities: ActivityHooks(activityControls: controls ?? [if (contest && twoFields) name, if (contest) exchange]),
           ),
         ),
       );
@@ -218,16 +240,75 @@ void main() {
       expect(await logged(tester), isEmpty);
     });
 
-    testWidgets('running with reports only, one Enter answers and logs', (tester) async {
+    testWidgets('running with reports only, the first Enter answers and the second thanks and logs', (tester) async {
       await tester.pumpWidget(host(enterSends: esm()));
       await tester.pump();
       await tester.enterText(field('Their call'), 'W1AW');
       await enter(tester);
 
-      // The call rides along with the messages: the log that follows wipes the
-      // draft, so a render that waited for it would key a blank call.
-      expect(sent, ['hisCall+exchange+thanks @ W1AW']);
+      expect(sent, ['hisCall+exchange @ W1AW']);
+      expect(await logged(tester), isEmpty, reason: 'their report has not come back yet');
+
+      await enter(tester);
+      expect(sent.last, 'thanks @ W1AW');
       expect((await logged(tester)).single.theirCall, 'W1AW');
+    });
+
+    // Sent is drawn first by default: focus to "the field after the call"
+    // would put their report in ours, and the log would carry both wrong.
+    testWidgets('with reports only, the first Enter moves to Rcvd, in either order', (tester) async {
+      for (final switchSentRcvd in [false, true]) {
+        for (final running in [true, false]) {
+          await tester.pumpWidget(
+            host(
+              enterSends: esm(running: running),
+              prefs: LoggingPreferences(switchSentRcvd: switchSentRcvd),
+            ),
+          );
+          await tester.pump();
+          await tester.enterText(field('Their call'), running ? 'W1AW' : 'K2XX');
+          await enter(tester);
+
+          expect(focused(tester, 'Rcvd'), isTrue, reason: 'switchSentRcvd: $switchSentRcvd, running: $running');
+        }
+      }
+    });
+
+    // With the reports hidden, the field after the call can be the serial WE
+    // send: their report or number typed there would be logged as ours.
+    testWidgets('with the reports hidden, the first Enter goes to State, never our own serial', (tester) async {
+      for (final showStateField in [true, false]) {
+        await tester.pumpWidget(
+          host(
+            enterSends: esm(),
+            contest: true,
+            controls: [serial],
+            prefs: LoggingPreferences(showRSTFields: false, showStateField: showStateField),
+          ),
+        );
+        await tester.pump();
+        await tester.enterText(field('Their call'), showStateField ? 'W1AW' : 'K2XX');
+        await enter(tester);
+
+        expect(sent.last, startsWith('hisCall+exchange'), reason: 'a serial is ours to send, not an exchange to wait for');
+        expect(focused(tester, 'Nr'), isFalse, reason: 'showStateField: $showStateField');
+        expect(focused(tester, showStateField ? 'State' : 'Their call'), isTrue, reason: 'showStateField: $showStateField');
+      }
+    });
+
+    // A station that faded, the field cleared, CQ called, and the same
+    // station back again: what went out before the CQ is not this exchange.
+    testWidgets('an emptied call field forgets the first step', (tester) async {
+      await tester.pumpWidget(host(enterSends: esm()));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'W1AW');
+      await enter(tester);
+      await tester.enterText(field('Their call'), '');
+      await tester.enterText(field('Their call'), 'W1AW');
+      await enter(tester);
+
+      expect(sent.last, 'hisCall+exchange @ W1AW');
+      expect(await logged(tester), isEmpty);
     });
 
     testWidgets('running a contest, the first Enter sends the exchange and moves to theirs', (tester) async {
@@ -302,10 +383,10 @@ void main() {
       await tester.pump();
       await tester.enterText(field('Their call'), 'KN2//KI2D//NK2Y//FR');
       await enter(tester);
+      await enter(tester);
 
-      expect(keyed, [
-        {'call': 'NK2Y', 'fullCall': 'NK2Y', 'partial': '', 'nextCall': 'KI2D', 'nextPartial': 'FR'},
-      ]);
+      const nk2y = {'call': 'NK2Y', 'fullCall': 'NK2Y', 'partial': '', 'nextCall': 'KI2D', 'nextPartial': 'FR'};
+      expect(keyed, [nk2y, nk2y], reason: 'the answer and the thanks');
       final saved = (await logged(tester)).single;
       expect(saved.theirCall, 'NK2Y');
       expect(saved.data.containsKey('callField'), isFalse, reason: 'a template value, never part of the record');
@@ -319,6 +400,7 @@ void main() {
       await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
       await tester.pump();
       await tester.enterText(field('Their call'), 'KN2//KI2D//NK2Y//FR');
+      await enter(tester);
       await enter(tester);
 
       expect((await logged(tester)).single.theirCall, 'NK2Y');
@@ -336,6 +418,7 @@ void main() {
       await tester.pump();
       await tester.enterText(field('Their call'), 'KR//KI2D');
       await enter(tester);
+      await enter(tester);
 
       expect((await logged(tester)).single.theirCall, 'KI2D');
       final draft = await tester.runAsync(() => after!);
@@ -347,6 +430,7 @@ void main() {
       await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
       await tester.pump();
       await tester.enterText(field('Their call'), 'W1AW');
+      await enter(tester);
       await tester.runAsync(db.close);
       await enter(tester);
       for (var i = 0; i < 5; i++) {

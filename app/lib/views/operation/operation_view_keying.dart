@@ -33,6 +33,9 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// has let it through. Read by [_sendCwMessage] and [_keyingPhone] only.
   Map<String, dynamic>? _latestDraftQso;
 
+  /// The last Enter Sends Messages step's CW send — see [_sendEsmMessages].
+  Future<void> _esmSending = Future.value();
+
   /// Whether the function keys play voice memories rather than key CW:
   /// the draft's mode is Phone. From the LATEST draft, and handed to the
   /// keyer area as a value, so the keys and the strip answer from one
@@ -155,9 +158,9 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// A slot with nothing in it is skipped rather than refused: a set with no
   /// TU still completes the contact.
   ///
-  /// In CW the thanks waits for [logged] and renders against the entry the
-  /// log left behind (see [EnterSends.send]), queued behind the rest so it is
-  /// still keyed last. Voice keeps one sequence at the keypress: a memory
+  /// In CW each step keys after the one before it, and a thanks waits for
+  /// [logged] too, rendering against the entry the log left behind (see
+  /// [EnterSends.send]). Voice keeps one sequence at the keypress: a memory
   /// renders nothing, and a second sequence would cut the first off.
   void _sendEsmMessages(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) {
     final services = widget.services;
@@ -176,28 +179,28 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       services.cat.playVoiceSequence(memories);
       return;
     }
-    List<({int n, String template})> templatesFor(Iterable<int> keys) => [
+    final templates = [
       for (final n in keys)
         if (services.settings.cwMessage(n).trim().isNotEmpty) (n: n, template: services.settings.cwMessage(n)),
     ];
-    final thanks = CwMessageSet.esmKeys[EsmMessage.thanks]!;
-    final deferred = logged != null ? templatesFor(keys.where((n) => n == thanks)) : const <({int n, String template})>[];
-    final now = templatesFor(keys.where((n) => logged == null || n != thanks));
-    final sent = now.isEmpty ? Future.value(true) : _sendCwMessages(now, qso: qso, once: true);
-    if (deferred.isEmpty) {
-      unawaited(sent);
-      return;
-    }
-    // Not [once]: every thanks is the same `TU`, and the one still waiting
-    // behind the last exchange belongs to the last contact, not this one. And
-    // none at all after a first part that failed — a TU to a station that
-    // never heard its call or report is not an exchange.
-    unawaited(() async {
-      final keyed = await sent;
-      final after = await logged!;
-      if (!keyed || after == null || !mounted) return;
-      await _sendCwMessages(deferred, qso: after);
-    }());
+    if (templates.isEmpty) return;
+    // Each step renders its messages one by one, so two Enters close
+    // together would otherwise race: a TU rendered while the answer before
+    // it is still rendering keys first. A step that logs and thanks is the
+    // thanks alone (esmStep); S&P's exchange logs too, but keys unwaited.
+    _esmSending = _esmSending.then((_) async {
+      try {
+        if (logged == null || !messages.contains(EsmMessage.thanks)) return await _sendCwMessages(templates, qso: qso, once: true);
+        // Not [once]: every thanks is the same `TU`, and the one still
+        // waiting behind the last exchange belongs to the last contact.
+        final after = await logged;
+        if (after != null && mounted) await _sendCwMessages(templates, qso: after);
+      } catch (e, st) {
+        // Reported rather than left on the chain, where it would stop every
+        // later step from keying at all.
+        ErrorReportingService.report(e, st, context: 'cw:esm-send');
+      }
+    });
   }
 
   /// The keyer area's message buttons: the same send the function keys make.
@@ -236,14 +239,10 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// it — is not queued again, so a second Enter before the first CQ or AGN?
   /// has finished doesn't send it twice. A DIFFERENT message still queues.
   ///
-  /// Answers false when they failed — a notice already says so — or the key
-  /// did not take them, so a caller keying more after them can hold back.
-  /// Rendering to nothing is not a failure: there was nothing to send.
-  ///
   /// [repeat] is a repeat chain's own send, which keys nothing if the chain
   /// ended while it rendered: an Escape, a tap or a QSY landing in that gap
   /// would otherwise key the CQ anyway and arm a fresh chain behind it.
-  Future<bool> _sendCwMessages(List<({int n, String template})> messages, {Map<String, dynamic>? qso, bool once = false, bool repeat = false}) async {
+  Future<void> _sendCwMessages(List<({int n, String template})> messages, {Map<String, dynamic>? qso, bool once = false, bool repeat = false}) async {
     final services = widget.services;
     final ctx = panelRenderContext;
     final parts = <String>[];
@@ -271,7 +270,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       // message behind too — nothing goes on the air from a view that is gone.
       if (!mounted) {
         services.cat.cancelKeyerRepeat();
-        return false;
+        return;
       }
       if (failure != null) {
         services.statusBar.showNotice(
@@ -281,7 +280,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           persist: false,
         );
         services.cat.cancelKeyerRepeat();
-        return false;
+        return;
       }
       if (text == null) {
         // No runtime to render with (restarting, or failed to load): a key
@@ -293,11 +292,11 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           persist: false,
         );
         services.cat.cancelKeyerRepeat();
-        return false;
+        return;
       }
       if (text.trim().isNotEmpty) parts.add(text.trim());
     }
-    if (repeat && !services.cat.keyerRepeating) return true;
+    if (repeat && !services.cat.keyerRepeating) return;
     final text = parts.join(' ');
     // A chain waits for the message to STOP keying before its next send, so
     // a send that keys nothing — a failed render, a dead runtime, a message
@@ -306,19 +305,19 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // buttons nor a countdown.
     if (text.trim().isEmpty) {
       services.cat.cancelKeyerRepeat();
-      return true;
+      return;
     }
     final progress = once && services.cat.cwSending ? services.cat.cwProgress.value : null;
     final sanitized = sanitizeCwText(text);
     final queued = progress != null && (progress.text == sanitized || progress.pending.contains(sanitized));
     if (!queued) {
-      final taken = services.cat.sendCw(text, hasMessageOne: messages.any((m) => m.n == 1));
+      services.cat.sendCw(text, hasMessageOne: messages.any((m) => m.n == 1));
       // Nothing keying after the send is a message the queue dropped (empty
       // once sanitized), a radio that went away, or a peer yet to report —
       // either way there is no end coming to start the next wait on.
       if (!services.cat.cwSending) {
         services.cat.cancelKeyerRepeat();
-        return taken;
+        return;
       }
     }
     // Message 1 only — see SettingsService.cwRepeatDelay. Armed after the
@@ -329,6 +328,6 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     if (messages.length == 1 && messages.single.n == 1 && delay > Duration.zero) {
       services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1, repeat: true));
     }
-    return true;
+    return;
   }
 }

@@ -144,14 +144,14 @@ void main() {
   });
 
   testWidgets('the messages of one step go out as ONE message, in N1MM order', (tester) async {
-    // F5 then F2 then F3 of the seeded set. Keyed as one so the keyer area
-    // shows the answer as it is heard, not as a message and a queue.
+    // F5 then F2 of the seeded set. Keyed as one so the keyer area shows the
+    // answer as it is heard, not as a message and a queue.
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
-    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft);
+    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
     await tester.pump();
     await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN TU');
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
     expect(services.cat.cwProgress.value?.pending, isEmpty);
     await unmount(tester);
   });
@@ -172,32 +172,30 @@ void main() {
   });
 
   testWidgets('an empty slot is skipped, not refused', (tester) async {
-    // A set with no TU must still answer the caller — the contact completes
-    // either way, and a missing thanks is the operator's choice.
-    await services.settings.setCwMessage(3, '');
+    // A set with no exchange message must still give the caller their call
+    // — a missing slot is the operator's choice, not a reason to key nothing.
+    await services.settings.setCwMessage(2, '');
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
-    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft);
+    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
     await tester.pump();
     await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+    expect(services.cat.cwProgress.value?.text, 'W1AW');
     await unmount(tester);
   });
 
   // The thanks closes the contact and speaks to the next one: on a stack,
   // "TU {{qso.call}}" rendered at the keypress would thank the station just
-  // logged instead of calling the one up next. It still has to go out LAST,
-  // though it renders after the log — ahead of the exchange is gibberish.
-  testWidgets('a step that logs keys its thanks against the entry the log left, after the rest', (tester) async {
+  // logged instead of calling the one up next.
+  testWidgets('a step that logs keys its thanks against the entry the log left', (tester) async {
     await services.settings.setCwMessage(3, 'TU {{qso.call}}');
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
     final logged = Completer<Map<String, dynamic>?>();
-    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: logged.future);
+    enterSends(tester)!.send([EsmMessage.thanks], cwDraft, logged: logged.future);
     await tester.pump();
     await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN', reason: 'the thanks waits for the log');
-    expect(services.cat.cwProgress.value?.pending, isEmpty);
+    expect(services.cat.cwProgress.value, isNull, reason: 'the thanks waits for the log');
 
     logged.complete(const {
       'their': {'call': 'K1ABC'},
@@ -205,8 +203,7 @@ void main() {
     });
     await tester.pump();
     await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
-    expect(services.cat.cwProgress.value?.pending, ['TU K1ABC']);
+    expect(services.cat.cwProgress.value?.text, 'TU K1ABC');
     await unmount(tester);
   });
 
@@ -251,55 +248,26 @@ void main() {
       'their': {'call': ''},
       'mode': 'CW',
     };
-    esm.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: Future.value(next));
+    esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value(next));
     await tester.pump();
     await tester.pump();
     esm.send(
-      [EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks],
+      [EsmMessage.hisCall, EsmMessage.exchange],
       const {
         'their': {'call': 'K2XX'},
         'mode': 'CW',
       },
-      logged: Future.value(next),
     );
+    await tester.pump();
+    await tester.pump();
+    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value(next));
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
     expect(services.cat.cwProgress.value?.pending, ['TU', 'K2XX 5NN', 'TU']);
-    await unmount(tester);
-  });
-
-  // "Half an exchange is not an exchange": with F2 failing, the station got
-  // neither its call nor its report, and a TU alone would close a contact
-  // the other side never had.
-  testWidgets('a thanks does not follow a first part that failed to render', (tester) async {
-    await services.settings.setCwMessage(2, '{%bad%}');
-    await pumpOperation(tester);
-    services.cat.setEnterSends(on: true);
-    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: Future.value(cwDraft));
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    expect(services.cat.cwProgress.value, isNull, reason: 'nothing keyed at all');
-    await unmount(tester);
-  });
-
-  // Only a first part that FAILED holds the thanks back. One that renders to
-  // nothing had nothing to say — like an empty slot, which never stopped a
-  // contact completing — and withholding the TU for it would do so silently.
-  testWidgets('a first part that renders to nothing still lets the thanks through', (tester) async {
-    await services.settings.setCwMessage(2, '{{qso.call}}');
-    await pumpOperation(tester);
-    services.cat.setEnterSends(on: true);
-    const blank = {
-      'their': {'call': ''},
-      'mode': 'CW',
-    };
-    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], blank, logged: Future.value(blank));
-    await tester.pump();
-    await tester.pump();
-    await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'TU');
     await unmount(tester);
   });
 
@@ -353,14 +321,70 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('a log that failed gets no thanks', (tester) async {
+  // A set with no TU still completes the contact: the second Enter of every
+  // reports-only run is a thanks-only step, and an empty F3 must neither
+  // throw nor leave the next step waiting behind it.
+  testWidgets('a thanks with an empty slot keys nothing and holds nothing up', (tester) async {
+    await services.settings.setCwMessage(3, '');
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
-    enterSends(tester)!.send([EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], cwDraft, logged: Future.value());
+    final esm = enterSends(tester)!;
+    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value(cwDraft));
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value, isNull);
+
+    esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
-    expect(services.cat.cwProgress.value?.pending, isEmpty);
+    await unmount(tester);
+  });
+
+  // A step renders its messages one at a time. A second Enter close behind
+  // the first would otherwise render its TU while "W1AW 5NN" is still
+  // rendering, and key the thanks before the answer it follows.
+  testWidgets('a thanks never keys ahead of the step before it', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    final esm = enterSends(tester)!;
+    extensions.hold = Completer<void>();
+    esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
+    await tester.pump();
+    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value(cwDraft));
+    await tester.pump();
+    await tester.pump();
+    expect(extensions.renders, 1, reason: 'the thanks waits for the answer before rendering at all');
+
+    extensions.hold!.complete();
+    for (var i = 0; i < 5; i++) {
+      await tester.pump();
+    }
+    expect(services.cat.cwProgress.value?.text, 'W1AW 5NN');
+    expect(services.cat.cwProgress.value?.pending, ['TU']);
+    await unmount(tester);
+  });
+
+  testWidgets('a log that failed gets no thanks', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    enterSends(tester)!.send([EsmMessage.thanks], cwDraft, logged: Future.value());
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value, isNull);
+    await unmount(tester);
+  });
+
+  // S&P's step that logs is its exchange, handed the log's future like any
+  // step that logs. Only the thanks waits for it: an exchange held for the
+  // log goes out after the contact is already closed.
+  testWidgets('a step that logs without a thanks keys at the keypress', (tester) async {
+    await pumpOperation(tester);
+    services.cat.setEnterSends(on: true);
+    enterSends(tester)!.send([EsmMessage.exchange], cwDraft, logged: Completer<Map<String, dynamic>?>().future);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, '5NN');
     await unmount(tester);
   });
 

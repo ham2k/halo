@@ -17,7 +17,7 @@ enum EsmThen {
   stay,
 
   /// Focus moves to the first exchange field still empty, or the first one
-  /// after the call when none is.
+  /// when none is — or, with reports only, to the received report.
   toExchange,
 
   /// The contact is logged, as a plain Enter would.
@@ -68,9 +68,10 @@ class EnterSends {
 /// is the one in the field now — asking again would not name it.
 ///
 /// [hasExchange] is whether the contact has fields to copy beyond the reports.
-/// Run with none is one Enter: the caller gets their exchange and a thanks,
-/// and the contact is logged, since nothing is left to receive. S&P is always
-/// two: the station has to be called before there is anything to log.
+/// With none, the second Enter always completes: the report they send back
+/// carries a default, so there is never nothing copied to ask again for. It is
+/// still two Enters, running or S&P — running, the caller's report comes back
+/// after their exchange, and a thanks keyed with it would talk over them.
 ///
 /// [incompleteCall] is a call with a `?` in it — a partial being asked back,
 /// running or S&P. It keys their call as typed, `?` and all, which is the
@@ -92,17 +93,15 @@ EsmStep? esmStep({
   if (incompleteCall) return (send: const [EsmMessage.hisCall], then: EsmThen.stay);
   // Not a callsign — the refusal a plain Enter gives is the right answer.
   if (!canLog) return null;
+  final copied = !hasExchange || exchangeCopied;
   if (running) {
-    if (!hasExchange) {
-      return (send: const [EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], then: EsmThen.log);
-    }
-    if (!answered || (callFocused && !exchangeCopied)) return (send: const [EsmMessage.hisCall, EsmMessage.exchange], then: EsmThen.toExchange);
-    if (!exchangeCopied) return (send: const [EsmMessage.again], then: EsmThen.toExchange);
+    if (!answered || (callFocused && !copied)) return (send: const [EsmMessage.hisCall, EsmMessage.exchange], then: EsmThen.toExchange);
+    if (!copied) return (send: const [EsmMessage.again], then: EsmThen.toExchange);
     return (send: const [EsmMessage.thanks], then: EsmThen.log);
   }
   if (!answered) return (send: const [EsmMessage.myCall], then: EsmThen.toExchange);
   // Nothing to ask again for in S&P: the station is the one running, and
   // the operator's missing copy is theirs to ask for by hand.
-  if (hasExchange && !exchangeCopied) return (send: const [], then: EsmThen.toExchange);
+  if (!copied) return (send: const [], then: EsmThen.toExchange);
   return (send: const [EsmMessage.exchange], then: EsmThen.log);
 }

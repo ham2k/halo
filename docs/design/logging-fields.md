@@ -575,24 +575,27 @@ depends on where the contact stands**, decided by `esmStep`:
 
 | | Call empty | Call, first Enter | Second Enter |
 |---|---|---|---|
-| **Run**, reports only | CQ (F1) | their call, exchange, thanks (F5 F2 F3) — and logs | — |
+| **Run**, reports only | CQ (F1) | their call, exchange (F5 F2); focus to Rcvd | thanks (F3), logs |
 | **Run**, exchange fields | CQ (F1) | their call, exchange (F5 F2); focus to their exchange | anything copied: thanks (F3), logs · nothing: again (F8) — or, from the call field, their call and exchange again (F5 F2) |
-| **S&P** | plain Enter | my call (F4); focus to their exchange | anything copied: exchange (F2), logs · nothing: nothing |
+| **S&P** | plain Enter | my call (F4); focus to their exchange (reports only: Rcvd) | anything copied: exchange (F2), logs · nothing: nothing |
 
 - **"Exchange fields" means the contest's own received fields** — the
   `text` and `options` controls a running activity puts on the row. The
   reports carry defaults and our serial is allocated, so neither is anything
-  to wait for; the State and Grid fields are the operator's layout, not the
+  to ask again for; the State and Grid fields are the operator's layout, not the
   contest's exchange.
 - **Copied means anything, not everything.** An exchange can legitimately
   come back short — a DX station's NAQP location, an optional pick — and
   asking again for a part that will never come would leave the contact
   unloggable from the keyboard. What to ask again for is the operator's
   judgement; ESM only asks when nothing was copied at all.
-- **Run with reports only is one Enter** because nothing is left to receive
-  once the caller has their report — waiting for a second Enter would only
-  delay the thanks and the log. **S&P is always two**: before the station
-  has been called there is no report of theirs to log.
+- **Reports only is still two Enters, running or S&P.** Running — a POTA
+  activation — the caller's report (often with their state) comes back after
+  their exchange, and a thanks keyed in the same Enter talks over it. In S&P,
+  before the station has been called there is no report of theirs to log.
+  The second Enter never asks again: the report they send has a default.
+  The first step's focus goes to Rcvd; with the reports hidden, to State or
+  Grid, never to the serial we send; with neither, the call field keeps it.
 - **The first step is remembered against the CALL, not the focus** — the
   one call Enter would log, so in a `//` stack it is the stacked call the
   cursor picks, not the field. A second Enter from the call field — no
@@ -602,7 +605,10 @@ depends on where the contact stands**, decided by `esmStep`:
   correcting it, and AGN? would not say which station is meant. A call
   corrected after the first step, or the cursor moved to another stacked
   call, is a different station, and starts over. The wipe after a log
-  forgets it, so the same call worked again starts over too.
+  forgets it, so the same call worked again starts over too — and so does
+  an emptied call field: a station that faded and came back after a CQ is a
+  new exchange, and with reports only, remembering the old one would thank
+  and log it without its call or report ever going out.
 - **It runs last in the ladder** — after commands, note expansion and
   stacking, and after the band-or-frequency refusal — so a thanks is never
   keyed for a contact that then refuses to log. Editing a logged contact is
@@ -625,9 +631,9 @@ depends on where the contact stands**, decided by `esmStep`:
   thanks waits for the log and renders against the entry the log LEFT —
   wiped, with the rest of a `//` stack back in the field — so
   `{{ qso.call }}` in it names the station up next, not the one just
-  logged; it is queued behind the step's other messages, so it is still
-  keyed last, and a log that fails thanks nobody. A stack's thanks can then
-  answer the next caller in the same breath
+  logged, and a log that fails thanks nobody. Only the thanks waits: S&P's
+  exchange, the other step that logs, keys at the Enter. A stack's thanks
+  can then answer the next caller in the same breath
   (`TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`,
   [templates.md](../extensions/templates.md)). Voice keeps one sequence at
   the Enter: a memory renders nothing, and a second sequence would cut the
@@ -637,9 +643,7 @@ depends on where the contact stands**, decided by `esmStep`:
   queued again, so a double Enter keys one CQ, not two, and a repeating CQ
   keeps its repeat; a different message still queues behind it. The thanks
   is the exception: every one reads `TU`, and the one still waiting belongs
-  to the last contact, so each contact gets its own. A thanks never follows
-  a first part that failed to render — a TU to a station that never heard
-  its call or report closes nothing.
+  to the last contact, so each contact gets its own.
 
 ## An incomplete call
 
