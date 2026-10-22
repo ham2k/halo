@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"183":
   changes:
     - "New panadapter and waterfall for Elecraft K4 radios over Ethernet"
     - "Added Ten-Tec Eagle, Orion and Orion II to the radio list (tell us how it behaves)"
