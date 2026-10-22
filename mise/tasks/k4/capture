@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Capture or inspect K4 LAN spectrum bytes (receive-only)"
+
+set -euo pipefail
+exec dart run app/tool/k4_spectrum_capture.dart "$@"
