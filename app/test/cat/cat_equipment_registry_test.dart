@@ -11,6 +11,7 @@
 // tested yet.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/civ_power.dart';
@@ -464,6 +465,21 @@ void main() {
       expect(type.targetFor({'port': '/dev/cu.usbmodem1', 'baudRate': 9600})['baudRate'], 115200, reason: key);
       expect([for (final e in type.configElements()) e['key']], isNot(contains('baudRate')), reason: key);
     }
+  });
+
+  // The shared CI-V note says to set the radio to "the same number shown
+  // here". On an entry whose speed is pinned there is no number shown, and
+  // the advice sends the operator looking for a field that is not there.
+  test('no entry without a speed field tells the operator to match the one shown', () {
+    final matchShown = t.settings.station.civAddressTroubleshooting;
+    for (final type in registry.types) {
+      if (type.transportKey != SerialTransport.transportKey) continue;
+      if ([for (final e in type.configElements()) e['key']].contains('baudRate')) continue;
+      for (final note in type.notes) {
+        expect(note['text'], isNot(contains(matchShown)), reason: type.key);
+      }
+    }
+    expect(registry.typeFor('ic7610-serial')!.notes.single['text'], contains(t.settings.station.ic7610UsbSpeed));
   });
 
   // These are what an operator reaches for when their radio is not in the

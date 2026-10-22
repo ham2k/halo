@@ -195,20 +195,23 @@ String _ic7300Name() => t.settings.station.models.ic7300;
 
 /// The shared CI-V "it connected and says nothing" note, plus whatever this
 /// radio adds to it — where to find the MK2, for the IC-7300.
-List<Map<String, dynamic>> _civSerialNotes({String extra = ''}) => [
+///
+/// An entry pinned to [_icomUsbBaud] passes [fixedSpeed] — the bullet that
+/// replaces "match the number shown here", since it shows no number.
+List<Map<String, dynamic>> _civSerialNotes({String extra = '', String? fixedSpeed}) => [
   {
     'type': 'markdown',
     'collapsible': true,
     'title': t.settings.station.troubleshootingNotes,
     'text':
         '**${t.settings.station.civAddressTroubleshootingTitle}**\n\n'
-        '${t.settings.station.civAddressTroubleshooting}$extra',
+        '${fixedSpeed == null ? t.settings.station.civAddressTroubleshooting : t.settings.station.civAddressFixedSpeedTroubleshooting(speed: fixedSpeed)}$extra',
   },
 ];
 
 List<Map<String, dynamic>> _ic7300SerialNotes() => _civSerialNotes(extra: t.settings.station.ic7300Mk2Note);
 
-List<Map<String, dynamic>> _ic7300mk2SerialNotes() => _civSerialNotes();
+List<Map<String, dynamic>> _ic7300mk2SerialNotes() => _civSerialNotes(fixedSpeed: t.settings.station.icomUsbSpeedFollows);
 
 /// The one CI-V speed the IC-7300 MK2, IC-7610 and IC-7760 entries offer —
 /// pinned, so there is no field. 115200 is what the scope needs
@@ -326,7 +329,8 @@ String _ic7100Name() => t.settings.station.models.ic7100;
 /// The address note plus the family's two-port one: this radio presents both
 /// ports and now has one of them marked, so the operator gets the reason for
 /// the marker and the escape hatch if it points the wrong way.
-List<Map<String, dynamic>> _ic7610SerialNotes() => _civSerialNotes(extra: '\n\n${t.settings.station.icomCivTroubleshooting}');
+List<Map<String, dynamic>> _ic7610SerialNotes() =>
+    _civSerialNotes(fixedSpeed: t.settings.station.ic7610UsbSpeed, extra: '\n\n${t.settings.station.icomCivTroubleshooting}');
 
 /// Icom IC-7610 over its built-in USB CI-V port.
 ///
@@ -369,7 +373,8 @@ const _ic7610Overrides = {
 
 String _ic7610Name() => t.settings.station.models.ic7610;
 
-List<Map<String, dynamic>> _ic7760SerialNotes() => _civSerialNotes(extra: t.settings.station.ic7760PortNote);
+List<Map<String, dynamic>> _ic7760SerialNotes() =>
+    _civSerialNotes(fixedSpeed: t.settings.station.icomUsbSpeedFollows, extra: t.settings.station.ic7760PortNote);
 
 /// Icom IC-7760 over CI-V.
 ///
