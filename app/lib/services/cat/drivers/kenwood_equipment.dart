@@ -7,8 +7,8 @@
 part of 'kenwood_driver.dart';
 
 class KenwoodDriver extends EquipmentDriver {
-  const KenwoodDriver() : isK4 = false, lanSpectrum = false;
-  const KenwoodDriver.k4({this.lanSpectrum = false}) : isK4 = true;
+  const KenwoodDriver() : isK4 = false, lanSpectrum = false, remote = false;
+  const KenwoodDriver.k4({this.lanSpectrum = false, this.remote = false}) : isK4 = true;
 
   /// Pinned by the model, never inferred from the optional voice dialect.
   final bool isK4;
@@ -16,6 +16,17 @@ class KenwoodDriver extends EquipmentDriver {
   /// Pinned by the Ethernet pairing: a serial node can retain a saved host
   /// after switching variants, without that authorizing a second LAN link.
   final bool lanSpectrum;
+  final bool remote;
+
+  @override
+  String? get channelKey => remote ? k4ReceiverConfigKey : null;
+  @override
+  List<String> get channelValues => remote ? k4ReceiverValues : const [];
+  @override
+  String? describeChannel(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => remote ? describeK4Receiver(config, overrides) : null;
+  @override
+  String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) =>
+      remote ? describeK4Receiver(config, overrides, suffix: true) : null;
 
   /// What most of the Kenwood line ships set to, and what its CAT menu calls
   /// 9600. Only a default — a mismatch answers with garbage and no error, so
@@ -173,6 +184,7 @@ class KenwoodDriver extends EquipmentDriver {
     return KenwoodSession(
       sink,
       isK4: isK4,
+      remote: remote,
       declaredModeOffset: modeOffset,
       cwDialect: cwDialectFrom(config),
       voiceDialect: voiceDialectFrom(config),
@@ -199,6 +211,7 @@ class KenwoodDriver extends EquipmentDriver {
   /// entry exists (docs/design/cat.md § Voice keying).
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    if (remote && !overrides.containsKey(k4ReceiverConfigKey)) k4ReceiverConfigElement(),
     if (!overrides.containsKey(cwDialectKey))
       {
         'type': 'field',
@@ -229,12 +242,13 @@ class KenwoodDriver extends EquipmentDriver {
         ],
       },
     if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
-    telemetryConfigElement(),
-    pollConfigElement(),
+    if (!remote) telemetryConfigElement(),
+    if (!remote) pollConfigElement(),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
+    k4ReceiverConfigKey when remote => validateK4Receiver(value),
     voiceMemoriesKey => validateVoiceMemories(value),
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
     pollIntervalConfigKey => validatePollInterval(value),

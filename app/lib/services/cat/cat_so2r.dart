@@ -150,6 +150,17 @@ mixin _So2r on _KeyingSurface {
   /// Whether both radios key for the operator: SO2R on, with a Radio B.
   bool get _twoKeyers => radio2 != null;
 
+  /// A CAT append is already ordered by the shared queue. An external keyer,
+  /// voice playback or a held PTT is independent and still needs a turn.
+  bool _canAppendSharedCw(String radio) {
+    final other = _otherRadio(radio), keyer = _keyerOf(other);
+    if (!keyer.cwSending || keyer.voiceStarting.value || keyer.voiceActivity.value != null || pttHeldOn(_radioUuid(other))) return false;
+    final first = _keyerOf(radio).station.keyInUse, second = keyer.station.keyInUse;
+    if (first == null || second == null || connectedSession(first) is! CwKeyerSession || connectedSession(second) is! CwKeyerSession) return false;
+    final device = logicalDeviceIdFor(first);
+    return device != null && device == logicalDeviceIdFor(second);
+  }
+
   static String _otherRadio(String radio) => radio == 'A' ? 'B' : 'A';
 
   /// Whether the app has [radio] on the air: its keyer keying, or the app's
@@ -189,8 +200,9 @@ mixin _So2r on _KeyingSurface {
   /// [SettingsService.so2rQueueMessages] is on — otherwise it stops what the
   /// other radio is sending. Either way an operator's message on one radio
   /// sends the other's repeating CQ again as soon as it is done.
-  bool _clearToSend(String radio, {required bool repeat}) {
+  bool _clearToSend(String radio, {required bool repeat, bool queuedCw = false}) {
     if (!_twoKeyers) return true;
+    if (queuedCw && !repeat && _canAppendSharedCw(radio)) return true;
     final other = _otherRadio(radio);
     if (!repeat) {
       _keyedAt[radio] = ++_keySequence;

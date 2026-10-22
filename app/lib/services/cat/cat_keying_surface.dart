@@ -239,6 +239,9 @@ class _RadioBKeyingStation implements KeyingStation {
   EquipmentState stateFor(String uuid) => _cat.stateFor(uuid);
 
   @override
+  String? logicalDeviceIdFor(String uuid) => _cat.logicalDeviceIdFor(uuid);
+
+  @override
   EquipmentSession? connectedSession(String uuid) => _cat.connectedSession(uuid);
 
   @override
@@ -254,7 +257,7 @@ class _RadioBKeyingStation implements KeyingStation {
   void yieldTransmitter(String? radio) => _cat._yieldTransmitter(_cat._keyerOf('B'), radio);
 
   @override
-  bool clearToSend({required bool repeat}) => _cat._clearToSend('B', repeat: repeat);
+  bool clearToSend({required bool repeat, bool queuedCw = false}) => _cat._clearToSend('B', repeat: repeat, queuedCw: queuedCw);
 }
 
 /// One radio's keyer, as a surface keying for that radio sees it — the same

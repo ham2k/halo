@@ -5769,6 +5769,9 @@ class Translations$settings$station$en {
 	/// en: 'Cannot receive the K4’s LAN spectrum. Retrying…'
 	String get spectrumK4Unavailable => 'Cannot receive the K4’s LAN spectrum. Retrying…';
 
+	/// en: 'Cannot receive the K4’s remote spectrum'
+	String get spectrumK4RemoteUnavailable => 'Cannot receive the K4’s remote spectrum';
+
 	/// en: 'The radio refused its scope commands'
 	String get spectrumScopeRefused => 'The radio refused its scope commands';
 
@@ -5984,6 +5987,36 @@ class Translations$settings$station$en {
 
 	/// en: 'K4 power was not changed because the radio did not confirm its output range. Try again.'
 	String get k4PowerTimeout => 'K4 power was not changed because the radio did not confirm its output range. Try again.';
+
+	/// en: 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely. Audio playback and microphone streaming are not supported.'
+	String get k4RemoteNotes => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.';
+
+	/// en: 'Receiver'
+	String get k4Receiver => 'Receiver';
+
+	/// en: 'Main'
+	String get k4ReceiverMain => 'Main';
+
+	/// en: 'Sub'
+	String get k4ReceiverSub => 'Sub';
+
+	/// en: 'Choose Main or Sub'
+	String get k4ReceiverInvalid => 'Choose Main or Sub';
+
+	/// en: 'That receiver is already configured for this K4'
+	String get k4ReceiverAlreadyConfigured => 'That receiver is already configured for this K4';
+
+	/// en: 'The K4 sub receiver is off'
+	String get k4SubReceiverOff => 'The K4 sub receiver is off';
+
+	/// en: 'Enter the K4’s network password to connect securely.'
+	String get k4RemotePasswordRequired => 'Enter the K4’s network password to connect securely.';
+
+	/// en: 'The K4 could not establish a secure connection. Check its network password and remote access settings.'
+	String get k4RemoteHandshakeFailed => 'The K4 could not establish a secure connection. Check its network password and remote access settings.';
+
+	/// en: 'The K4’s secure connection could not be reached. Check its address, port and remote access settings.'
+	String get k4RemoteUnreachable => 'The K4’s secure connection could not be reached. Check its address, port and remote access settings.';
 
 	/// en: 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.'
 	String get k4PowerRange => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.';
@@ -9172,6 +9205,9 @@ class Translations$settings$station$transports$en {
 	/// en: 'Network/WiFi'
 	String get network => 'Network/WiFi';
 
+	/// en: 'Secure Network/WiFi'
+	String get secureNetwork => 'Secure Network/WiFi';
+
 	/// en: 'USB Serial'
 	String get usbSerial => 'USB Serial';
 
@@ -11027,6 +11063,7 @@ extension on Translations {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'The radio refused a DAX IQ stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumK4Unavailable' => 'Cannot receive the K4’s LAN spectrum. Retrying…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'Cannot receive the K4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'The radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'The radio\'s scope cannot be shown on this band',
@@ -11147,6 +11184,7 @@ extension on Translations {
 			'settings.station.models.nesdr' => 'Nooelec NESDR',
 			'settings.station.models.sdrplay' => 'SDRplay RSP',
 			'settings.station.transports.network' => 'Network/WiFi',
+			'settings.station.transports.secureNetwork' => 'Secure Network/WiFi',
 			'settings.station.transports.usbSerial' => 'USB Serial',
 			'settings.station.transports.wifi' => 'Network/WiFi',
 			'settings.station.transports.bluetoothSerial' => 'Bluetooth Serial',
@@ -11171,6 +11209,16 @@ extension on Translations {
 			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
 			'settings.station.k4TcpNotes' => 'Connect the K4’s Ethernet socket to your local network. Enter its hostname or IP address and CAT port 9200. HaLo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the CAT port does not change the spectrum port.\n\nThe spectrum shows the main receiver. Its zoom, reference adjustment and speed controls affect only HaLo’s display. Audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'K4 power was not changed because the radio did not confirm its output range. Try again.',
+			'settings.station.k4RemoteNotes' => 'Enable remote access on your K4 and enter its network password. Main and Sub share one encrypted connection for radio control and spectrum. The default port is 9204; enter your forwarded port when connecting remotely.\n\nAudio playback and microphone streaming are not supported.',
+			'settings.station.k4Receiver' => 'Receiver',
+			'settings.station.k4ReceiverMain' => 'Main',
+			'settings.station.k4ReceiverSub' => 'Sub',
+			'settings.station.k4ReceiverInvalid' => 'Choose Main or Sub',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'That receiver is already configured for this K4',
+			'settings.station.k4SubReceiverOff' => 'The K4 sub receiver is off',
+			'settings.station.k4RemotePasswordRequired' => 'Enter the K4’s network password to connect securely.',
+			'settings.station.k4RemoteHandshakeFailed' => 'The K4 could not establish a secure connection. Check its network password and remote access settings.',
+			'settings.station.k4RemoteUnreachable' => 'The K4’s secure connection could not be reached. Check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'K4 power must be 0.1–110 W, or 0.0001–0.01 W when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf the radio does not respond, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us. The KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 has not been reported either way, so please say what happens if you run one. A K4 has its own entry.',
@@ -11400,6 +11448,8 @@ extension on Translations {
 			'settings.developer.deepLinks' => 'Deep links',
 			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
 			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.registerUrlSchemesDone' => 'This copy now opens com.ham2k:// links',
 			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',
 			'settings.developer.systemInformation' => 'System Information',
@@ -11412,8 +11462,6 @@ extension on Translations {
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerConnect' => 'Connect',
 			'settings.developer.extDevServerDisconnect' => 'Disconnect',
 			'settings.developer.extDevServerConnecting' => 'Connecting…',

@@ -147,7 +147,15 @@ extension _Connection on CatService {
 
     final EquipmentConnection connection;
     try {
-      connection = await transport.connect(type.targetFor(config), cancel: cancel);
+      connection = _isK4Remote(node)
+          ? await _k4Connections.acquire(
+              key: _k4Identity(node),
+              target: type.targetFor(config),
+              config: type.driverConfig({...config, _k4ConnectionId: _k4Identity(node)}),
+              open: transport.connect,
+              cancel: cancel,
+            )
+          : await transport.connect(type.targetFor(config), cancel: cancel);
     } on CatCancelledException {
       // A newer connect (or a disconnect) owns this node now — not a
       // failure, and not ours to report.
@@ -360,7 +368,19 @@ extension _Connection on CatService {
     // driverConfig, not config: a type may know something about its
     // protocol that is not a setting anyone should be asked for — the
     // IC-705's network controller address, for one.
-    final session = type.driver.createSession(sink, type.driverConfig(config));
+    final EquipmentSession session;
+    try {
+      session = connection is K4ReceiverConnection
+          ? connection.createSession(sink, receiver: _k4Receiver(node))
+          : type.driver.createSession(sink, type.driverConfig(config));
+    } catch (e, st) {
+      // A shared connection can end while its lease is awaiting attachment.
+      unawaited(connection.close());
+      ErrorReportingService.report(CatConnectFailure(node.typeKey, e), st, context: 'cat:create-session');
+      final friendly = friendlyConnectError(connectFailureReason(e), e);
+      _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == '$e' ? null : '$e'));
+      return _ConnectOutcome.failed;
+    }
 
     runtime.connection = connection;
     runtime.session = session;
@@ -372,7 +392,8 @@ extension _Connection on CatService {
     runtime.subscription = connection.data.listen((chunk) {
       // Not an SDR's IQ: megabytes a second of it would fill the log in
       // moments and end the recording of the CAT traffic it exists for.
-      if (type.category != kCategorySdr) trafficLog?.received(_logLabel(uuid), chunk);
+      // Shared K4 CAT is recorded once at the physical connection boundary.
+      if (type.category != kCategorySdr && connection is! K4ReceiverConnection) trafficLog?.received(_logLabel(uuid), chunk);
       runtime.heard(chunk);
       try {
         session.handleData(chunk);
@@ -553,7 +574,8 @@ extension _Connection on CatService {
   /// whether it may run at all.
   void _autoReconnectAfterDrop(String uuid) {
     if (_disposed || !_autoConnectTargets.contains(uuid)) return;
-    final last = _lastAutoReconnect[uuid];
+    final reconnectKey = logicalDeviceIdFor(uuid) ?? uuid;
+    final last = _lastAutoReconnect[reconnectKey];
     // Real time: this cooldown rate-limits real reconnect attempts against a
     // real radio, so a rescaled clock would let a storm through.
     final now = realNowUtc();
@@ -561,8 +583,10 @@ extension _Connection on CatService {
       debugPrint('[cat] auto-reconnect suppressed: last was ${now.difference(last).inSeconds}s ago');
       return;
     }
-    _lastAutoReconnect[uuid] = now;
-    unawaited(reconnectDesignatedRadio());
+    _lastAutoReconnect[reconnectKey] = now;
+    // Every lease closes together. Let their callbacks mark all logical
+    // receivers disconnected before the one permitted reconnect burst.
+    unawaited(Future<void>.microtask(reconnectDesignatedRadio));
   }
 
   Future<void> _reconnectWithRetries(String? uuid) async {

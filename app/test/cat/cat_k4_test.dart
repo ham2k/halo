@@ -85,10 +85,10 @@ KenwoodSession _session(_Sink sink, [String key = 'k4-serial']) {
 void main() {
   setUp(() => useSerialPortsForTest(const []));
 
-  test('one K4 model exposes serial and TCP with fixed keyer capabilities', () {
+  test('one K4 model exposes local and secure remote links with fixed keyer capabilities', () {
     final registry = EquipmentRegistry();
     final model = registry.models.singleWhere((m) => m.key == 'k4');
-    expect(model.variants.map((v) => v.key), ['k4-serial', 'k4-tcp', 'k4-ble', 'k4-placeholder']);
+    expect(model.variants.map((v) => v.key), ['k4-serial', 'k4-tcp', 'k4-remote', 'k4-ble', 'k4-placeholder']);
     final serial = registry.typeFor('k4-serial')!;
     final tcp = registry.typeFor('k4-tcp')!;
     expect(serial.defaultConfig['baudRate'], 38400);

@@ -9,7 +9,7 @@ import 'package:halo_core/halo_core.dart' show nowMillis, realNowMillis;
 import '../spectrum.dart';
 import '../spectrum_fft.dart';
 
-/// Presents K4 spectrum bins without changing the radio's own pan.
+/// Presents either K4 spectrum source without changing the radio's own pan.
 /// Source lifetimes and connection problems remain the caller's responsibility.
 class K4SpectrumPresenter {
   final SpectrumSink? sink;

@@ -63,9 +63,8 @@ class CatSpectrumSource implements SceneSpectrumSource {
       if (cat.sdrConnectionProblem(uuid) case final problem?) return problem;
     }
     if (state.status != EquipmentStatus.connected) return t.settings.station.spectrumNoRadio;
-    final session = cat.spectrumSessionFor(uuid);
-    if (session == null) return t.settings.station.spectrumUnsupported;
-    return session.spectrumUnavailable ?? state.spectrumProblem;
+    if (cat.spectrumCapabilitiesFor(uuid) == null) return t.settings.station.spectrumUnsupported;
+    return cat.spectrumProblemFor(uuid);
   }
 
   @override
@@ -104,7 +103,7 @@ class CatSpectrumSource implements SceneSpectrumSource {
 
   @override
   bool recenter(String uuid, int centerHz) {
-    if (!canCommand || !(cat.spectrumSessionFor(uuid)?.spectrumCapabilities.canRecenter ?? false)) return false;
+    if (!canCommand || !(cat.spectrumCapabilitiesFor(uuid)?.canRecenter ?? false)) return false;
     return cat.setSpectrum(uuid, SpectrumRequest(centerHz: centerHz));
   }
 

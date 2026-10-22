@@ -69,6 +69,8 @@ class PanelRadioService {
     return {
       'id': node?.uuid,
       'name': node == null ? null : cat.displayNameFor(node),
+      'deviceId': ?(node == null ? null : cat.logicalDeviceIdFor(node.uuid)),
+      'channel': ?(node == null ? null : cat.logicalChannelFor(node.uuid)),
       'status': state.status.name,
       'stale': state.stale,
       'problem': state.problem ?? state.error,

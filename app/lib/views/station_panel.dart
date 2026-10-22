@@ -430,7 +430,8 @@ class StationPanel extends StatelessWidget {
       // so on the address field rather than failing later at connect time.
       // Asks the pairing the form is currently on: a field belonging to a
       // transport the operator switched away from is not theirs to get right.
-      validator: (key, value, values) async => isSwitchPortRoutingFormKey(key) ? null : typeForState(values).validateEditorField(key, value, values),
+      validator: (key, value, values) async =>
+          isSwitchPortRoutingFormKey(key) ? null : _cat.validateEquipmentEditorField(typeForState(values), node, key, value, values),
       // A pairing's own field gets the companions its transport sets beside
       // it (a Bluetooth LE device's name). Routing a port is the one field
       // kind that acts as it is touched rather than on save: it is a command
