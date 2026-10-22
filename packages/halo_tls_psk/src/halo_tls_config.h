@@ -1,0 +1,35 @@
+// Copyright ©️ 2026 Robert Jackson <me@rwjblue.com>
+// SPDX-License-Identifier: MPL-2.0
+#ifndef HALO_TLS_CONFIG_H
+#define HALO_TLS_CONFIG_H
+// A client for TLS 1.2 ECDHE-PSK only. No certificate, legacy protocol,
+// renegotiation, session ticket, server, filesystem or network implementation.
+#define MBEDTLS_AES_C
+#define MBEDTLS_BIGNUM_C
+#define MBEDTLS_CHACHA20_C
+#define MBEDTLS_CHACHAPOLY_C
+#define MBEDTLS_CIPHER_C
+#define MBEDTLS_CIPHER_MODE_CBC
+#define MBEDTLS_CTR_DRBG_C
+#define MBEDTLS_ECDH_C
+#define MBEDTLS_ECP_C
+#define MBEDTLS_ECP_DP_SECP256R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP384R1_ENABLED
+#define MBEDTLS_ECP_DP_CURVE25519_ENABLED
+#define MBEDTLS_ECP_NIST_OPTIM
+#define MBEDTLS_ENTROPY_C
+#define MBEDTLS_ENTROPY_FORCE_SHA256
+#define MBEDTLS_KEY_EXCHANGE_ECDHE_PSK_ENABLED
+#define MBEDTLS_MD_C
+#define MBEDTLS_PLATFORM_C
+#define MBEDTLS_POLY1305_C
+#define MBEDTLS_SHA256_C
+#define MBEDTLS_SHA384_C
+#define MBEDTLS_SHA512_C
+#define MBEDTLS_SSL_CLI_C
+#define MBEDTLS_SSL_PROTO_TLS1_2
+#define MBEDTLS_SSL_TLS_C
+#define MBEDTLS_SSL_EXTENDED_MASTER_SECRET
+#define MBEDTLS_SSL_ENCRYPT_THEN_MAC
+#define MBEDTLS_PSK_MAX_LEN 256
+#endif

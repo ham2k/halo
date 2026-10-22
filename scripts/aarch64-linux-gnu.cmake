@@ -39,8 +39,8 @@ set(CMAKE_LIBRARY_ARCHITECTURE aarch64-linux-gnu)
 # With gcc that lookup either fails outright or - worse - finds the HOST's
 # /usr/bin/clang and hands the hook pipeline an x86-64 compiler for an arm64
 # build. clang is a cross compiler by construction, so `clang`/`clang++` sit
-# side by side and package:native_toolchain_c passes its own --target, which
-# makes the architecture right rather than merely undetected.
+# side by side. Native build hooks must also set --target explicitly: Flutter
+# forwards the compiler paths, but not CMake's compiler target/toolchain flags.
 #
 # find_program, NOT set(): a plain set() in a toolchain file creates a NORMAL
 # variable. CMake then records the compiler in CMakeFiles/*/CMakeCXXCompiler.cmake
