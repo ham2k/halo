@@ -287,6 +287,14 @@ interface LookupServiceHook {
   unset or name itself; tagging one `'prefix'` gets its coordinate
   discarded.
 
+- **A guess field of the wrong type is dropped.** The bridge enforces none of
+  `CallInfo`'s declared types, so the app normalizes the answer
+  (`normalizeLookupResult`, halo_core) before anything reads it: a field its
+  readers cannot use — a numeric `continent`, a boolean `emoji` — is dropped
+  and reported once by name, and the rest of the guess is still used. A
+  numeric string where a number is read (`cqZone: '05'`) is taken as that
+  number.
+
 Implemented by: `lookups` (key `core`). The merge algorithm itself
 (`mergeLookupIntoGuess`/`runLookupPipeline` in
 `extensions/core/lookups/src/mergeLookup.ts`) is a pure, host-independent

@@ -579,7 +579,7 @@ class CommandEngine extends ChangeNotifier {
   /// offline) must not wipe out what the offline pass already found.
   void _applyLookup(String call, Map<String, dynamic>? result, CallLookupStage stage) {
     if (result != null) {
-      _lookupGuess = (result['guess'] as Map?)?.cast<String, dynamic>();
+      _lookupGuess = asQsonMap(result['guess']);
       final records = result['lookups'];
       _lookupRecords = records is List ? records.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList() : const [];
     }

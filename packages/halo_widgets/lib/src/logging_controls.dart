@@ -2112,7 +2112,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The guessed state (e.g. from a callsign lookup), shown as a faint
   /// placeholder while the State field is empty — never pre-filled as a
   /// real value.
-  String? get _guessStateHint => _currentGuess?['state'] as String?;
+  String? get _guessStateHint => asQsonString(_currentGuess?['state']);
 
   /// Inserts a numbers-row key at the focused field's cursor as a keystroke
   /// would: through the field's input formatters and its `onChanged`, so
@@ -3657,7 +3657,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// QSO's own call. Empty map means "call known, nothing resolved yet."
   Map<String, dynamic>? get _currentGuess {
     final result = _lookup.resultForActiveCall;
-    final liveGuess = result == null ? null : (result['guess'] as Map<String, dynamic>? ?? const {});
+    final liveGuess = result == null ? null : (asQsonMap(result['guess']) ?? const {});
 
     Map<String, dynamic>? savedGuess;
     final editing = widget.session.editingQso;

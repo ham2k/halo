@@ -71,6 +71,20 @@ class MalformedSpotDataException implements Exception {
   String toString() => 'MalformedSpotDataException: hook "$hookKey" field "$field" is ${value.runtimeType}';
 }
 
+/// A callsign lookup answered a field of the wrong type, dropped by
+/// [normalizeLookupResult] on the way out of [ExtensionService.lookupCall].
+/// The guess is the lookup pipeline's merged answer, so this names the field
+/// and never the extension that wrote it; and the type, never the value,
+/// since guesses carry names and notes. Classified `report` in [ErrorPolicy]:
+/// the rest of the answer still reaches the operator.
+class MalformedLookupDataException implements Exception {
+  MalformedLookupDataException(this.violation);
+  final QsonTypeViolation violation;
+
+  @override
+  String toString() => 'MalformedLookupDataException: $violation';
+}
+
 /// The first top-level field on [spot] whose type spots_panel.dart's/
 /// spots_service.dart's readers don't tolerate, or null if every field
 /// present is shaped as expected. `their.call` and each `refs` entry are
@@ -654,7 +668,18 @@ mixin _ExtensionHookApi {
       );
       ErrorReportingService.recordSuccess(streakKey);
       if (result is! Map) return null;
-      return result.cast<String, dynamic>();
+      final violations = <QsonTypeViolation>[];
+      final answer = normalizeLookupResult(result.cast<String, dynamic>(), violations: violations);
+      for (final violation in violations) {
+        ErrorReportingService.reportIfRepeated(
+          'lookupCall:malformed:${violation.path}',
+          MalformedLookupDataException(violation),
+          null,
+          context: 'lookupCall:malformed',
+          threshold: 1,
+        );
+      }
+      return answer;
     } on ExtensionHostException catch (e, st) {
       // The lookup runs on a debounced keystroke, so an upstream service
       // that is merely slow or briefly down would otherwise upload one

@@ -269,7 +269,7 @@ class CallInfoSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final guess = data.guess;
-    final flag = guess?['flag'] as String?;
+    final flag = asQsonString(guess?['flag']);
     final nameInfo = _stationNameOrNote(guess);
     final notices = _notices;
 

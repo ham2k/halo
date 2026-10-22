@@ -28,6 +28,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -204,11 +205,11 @@ class FlagsService extends ChangeNotifier {
 
     try {
       final guess = normalizedCall.isEmpty ? null : await _annotateSafely(normalizedCall);
-      final baseCall = (guess?['baseCall'] as String?)?.toUpperCase() ?? normalizedCall;
-      final entityPrefix = guess?['entityPrefix'] as String?;
-      final continent = guess?['continent'] as String?;
-      final countryCode = guess?['countryCode'] as String?;
-      final ituRegion = (guess?['ituRegion'] as num?)?.toInt();
+      final baseCall = asQsonString(guess?['baseCall'])?.toUpperCase() ?? normalizedCall;
+      final entityPrefix = asQsonString(guess?['entityPrefix']);
+      final continent = asQsonString(guess?['continent']);
+      final countryCode = asQsonString(guess?['countryCode']);
+      final ituRegion = asQsonNum(guess?['ituRegion'])?.toInt();
       // Taken BEFORE the fetch, and announced on its own: the snapshot is
       // about the callsign, and an offline launch must not leave the catalog
       // ranking against nothing — the early return below, on a fetch that

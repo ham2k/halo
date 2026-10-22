@@ -148,6 +148,21 @@ void main() {
       expect(b.requested, ['defaults.json', 'entities/k.json', 'ki/ki2d.json', 'ki/ki2d-p.json']);
     });
 
+    // The guess comes from an extension's lookup, so no field's type is
+    // guaranteed. A cast on one field throws the whole refresh away, and the
+    // operator gets no flags or notices on any retry.
+    test('a wrong-typed field in the guess reads as absent, and the flags still load', () async {
+      final b = build(
+        {'defaults.json': {}, 'entities/k.json': {}, 'ki/ki2d.json': {}},
+        guess: {'baseCall': 'KI2D', 'entityPrefix': 'K', 'continent': 4, 'ituRegion': 'two'},
+      );
+      await b.service.refreshForCall('KI2D');
+      expect(b.requested, ['defaults.json', 'entities/k.json', 'ki/ki2d.json']);
+      expect(b.service.operatorGeo?.entityPrefix, 'K');
+      expect(b.service.operatorGeo?.continent, isNull);
+      expect(b.service.operatorGeo?.ituRegion, isNull);
+    });
+
     test('fetches only defaults when there is no callsign', () async {
       final b = build({'defaults.json': {}});
       await b.service.refreshForCall('');

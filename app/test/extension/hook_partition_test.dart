@@ -12,6 +12,7 @@ import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 
 import '../support/error_reporting_fakes.dart';
+import '../support/fake_extension_host.dart';
 
 Map<String, dynamic> ok(String key, List<Object?> value) => {'key': key, 'ok': true, 'value': value};
 
@@ -245,6 +246,41 @@ void main() {
 
         expect(valid, hasLength(1));
         expect(backend.exceptions, isEmpty);
+      }, backend: backend);
+    });
+  });
+
+  group('lookupCall', () {
+    ExtensionService answering(Object? result) => ExtensionServiceWithFakeHost(FakeExtensionHost({'lookupService:core:lookupCallInfo': result}));
+
+    // Every reader probes the guess, so a wrong-typed field already reads as
+    // absent there — and with nothing reported, nobody learns an extension
+    // gets it wrong. Dropped as a KEY, not left for the readers: editing a
+    // QSO merges the live guess over the saved one, and a wrong-typed live
+    // field left in place hides the saved field's good value.
+    test('drops a wrong-typed guess field, keeps the rest of the answer, and reports it', () async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        final result = await answering({
+          'guess': {'name': 'Hiram Percy', 'state': 4},
+        }).lookupCall('W1AW', qso: const {}, operation: const {}, online: false);
+
+        expect(result?['guess'], {'name': 'Hiram Percy'});
+        expect(backend.exceptions.single.error, isA<MalformedLookupDataException>());
+      }, backend: backend);
+    });
+
+    test('a field one extension keeps getting wrong is reported once', () async {
+      final backend = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        final extensions = answering({
+          'guess': {'state': 4},
+        });
+        for (final call in ['W1AW', 'K1ABC', 'N0DEV']) {
+          await extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
+        }
+
+        expect(backend.exceptions, hasLength(1));
       }, backend: backend);
     });
   });

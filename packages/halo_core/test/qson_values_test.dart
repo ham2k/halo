@@ -283,4 +283,35 @@ void main() {
       expect(normalized['lon'], closeTo(-74.542, 1e-9));
     });
   });
+
+  group('normalizeLookupResult', () {
+    // Extensions assemble a lookup's guess and the bridge enforces none of
+    // their types. A wrong-typed field left in place reads as absent at every
+    // reader with nothing reported, so nobody learns which field an extension
+    // gets wrong.
+    test('drops each wrong-typed guess field and names it, keeping the rest', () {
+      final violations = <QsonTypeViolation>[];
+      final result = normalizeLookupResult({
+        'guess': {'entityPrefix': 'K', 'continent': 4, 'emoji': true},
+      }, violations: violations);
+      expect(result['guess'], {'entityPrefix': 'K'});
+      expect(violations.map((v) => v.path), unorderedEquals(['guess.continent', 'guess.emoji']));
+    });
+
+    test('a numeric-string ITU region is the number it names, not a violation', () {
+      final violations = <QsonTypeViolation>[];
+      final result = normalizeLookupResult({
+        'guess': {'ituRegion': '2'},
+      }, violations: violations);
+      expect((result['guess'] as Map)['ituRegion'], 2);
+      expect(violations, isEmpty);
+    });
+
+    test('drops a guess that is not a map', () {
+      final violations = <QsonTypeViolation>[];
+      final result = normalizeLookupResult({'guess': 'DL'}, violations: violations);
+      expect(result.containsKey('guess'), isFalse);
+      expect(violations.single.path, 'guess');
+    });
+  });
 }

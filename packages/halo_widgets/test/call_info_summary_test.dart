@@ -216,4 +216,17 @@ void main() {
     await tester.tap(find.text('DUPLICATE'));
     expect(areaTaps, 1);
   });
+
+  // The guess comes from an extension's lookup, so no field's type is
+  // guaranteed. A cast on one field throws in build, and the operator loses
+  // the whole call-info area for that call.
+  testWidgets('a wrong-typed flag shows no flag, and the rest of the call info', (tester) async {
+    await tester.pumpWidget(
+      host(
+        data: const CallInfoData(call: 'W1AW', guess: {'flag': 42, 'name': 'Hiram Percy'}),
+      ),
+    );
+    expect(tester.takeException(), isNull);
+    expect(find.text('Hiram Percy'), findsOneWidget);
+  });
 }

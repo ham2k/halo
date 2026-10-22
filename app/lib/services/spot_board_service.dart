@@ -283,11 +283,17 @@ class SpotBoardService extends ChangeNotifier {
         // would cost that call its note and emoji for the session; left out,
         // the next refresh asks again.
         if (result == null) return null;
-        final guess = result['guess'] as Map?;
-        final emoji = guess?['emoji'] as String?;
-        final hasNote = guess != null && (emoji != null || guess['note'] != null);
-        final continent = guess?['continent'] as String?;
-        final entityPrefix = guess?['entityPrefix'] as String?;
+        // Probed, not cast: an extension answering one field with the wrong
+        // type throws a cast inside this Future.wait, and that loses the
+        // whole batch — every call goes uncached and the next refresh throws
+        // again.
+        final guess = asQsonMap(result['guess']);
+        final emoji = asQsonString(guess?['emoji']);
+        // A note the call-info area would show, not merely a key: it reads
+        // the note as a non-empty string, and the board's mark must agree.
+        final hasNote = guess != null && (emoji != null || (asQsonString(guess['note'])?.isNotEmpty ?? false));
+        final continent = asQsonString(guess?['continent']);
+        final entityPrefix = asQsonString(guess?['entityPrefix']);
         return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent, entityPrefix: entityPrefix));
       }),
     );

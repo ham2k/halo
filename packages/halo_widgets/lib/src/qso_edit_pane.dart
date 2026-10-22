@@ -138,8 +138,8 @@ bool theirIsUS(Map<String, dynamic>? their, Map<String, dynamic>? guess) =>
 /// could correct it. Null when the callsign hasn't resolved to one yet, which
 /// drops the field rather than showing an empty one.
 String? theirEntityDisplay(Map<String, dynamic>? their, Map<String, dynamic>? guess) {
-  final name = asQsonString(their?['entityName']) ?? guess?['entityName'] as String?;
-  final prefix = asQsonString(their?['entityPrefix']) ?? guess?['entityPrefix'] as String?;
+  final name = asQsonString(their?['entityName']) ?? asQsonString(guess?['entityName']);
+  final prefix = asQsonString(their?['entityPrefix']) ?? asQsonString(guess?['entityPrefix']);
   if (name == null || name.isEmpty) return null;
   return prefix == null || prefix.isEmpty ? name : '$name ($prefix)';
 }
@@ -238,12 +238,12 @@ Map<String, dynamic> buildQsoEditFormDefinition({
       // same "guess as a hint, never a pre-filled value" behaviour as the
       // primary Grid/State.
       {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': t.loggingControls.theirCall},
-      {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': tt.theirName, 'placeholder': guess?['name'] as String?},
+      {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': tt.theirName, 'placeholder': asQsonString(guess?['name'])},
       // Their address, coarse to fine. `city` is what ADIF calls QTH and what
       // a lookup answers with.
-      {'type': 'field', 'key': 'theirCity', 'fieldType': 'text', 'label': tt.theirCity, 'placeholder': guess?['city'] as String?},
-      {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': tt.theirState, 'uppercase': true, 'placeholder': guess?['state'] as String?},
-      if (us) {'type': 'field', 'key': 'theirCounty', 'fieldType': 'text', 'label': tt.theirCounty, 'placeholder': guess?['county'] as String?},
+      {'type': 'field', 'key': 'theirCity', 'fieldType': 'text', 'label': tt.theirCity, 'placeholder': asQsonString(guess?['city'])},
+      {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': tt.theirState, 'uppercase': true, 'placeholder': asQsonString(guess?['state'])},
+      if (us) {'type': 'field', 'key': 'theirCounty', 'fieldType': 'text', 'label': tt.theirCounty, 'placeholder': asQsonString(guess?['county'])},
       if (entity != null) {'type': 'field', 'key': 'theirEntity', 'fieldType': 'text', 'label': tt.theirEntity, 'disabled': true},
       {'type': 'field', 'key': 'theirCqZone', 'fieldType': 'number', 'label': tt.theirCqZone, 'placeholder': _numericGuess(guess, 'cqZone')},
       {'type': 'field', 'key': 'theirItuZone', 'fieldType': 'number', 'label': tt.theirItuZone, 'placeholder': _numericGuess(guess, 'ituZone')},
@@ -254,7 +254,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
           'fieldType': 'text',
           'label': tt.theirArrlSection,
           'uppercase': true,
-          'placeholder': guess?['arrlSection'] as String?,
+          'placeholder': asQsonString(guess?['arrlSection']),
         },
       {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': tt.theirGrid, 'uppercase': true, 'placeholder': guessGridDisplay(guess)},
       // Editable, and cleared by the grid above the moment it is edited (see

@@ -34,7 +34,8 @@ import 'package:halo_core/halo_core.dart'
     show DataFileImportShrank, LogFromNewerBuild, MalformedQsonDataException, N1mmCallHistoryUnavailable, QsonFieldType, QsonTypeViolation, SyncPullStuck;
 import 'package:ham2k_logger/services/extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'package:ham2k_logger/services/extensions/extension_scoring.dart' show ScoringHookFailure;
-import 'package:ham2k_logger/services/extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
+import 'package:ham2k_logger/services/extensions/extension_service.dart'
+    show ExtensionTimersSuspended, MalformedLookupDataException, MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailable, DataFileWait;
@@ -681,6 +682,17 @@ void main() {
         dispositionFor(MalformedQsonDataException('qsos:mergeFromSync', const QsonTypeViolation('mode', QsonFieldType.string, 'bool'))),
         ErrorDisposition.report,
       );
+    });
+  });
+
+  group('malformed lookup data', () {
+    // Uploaded, never noticed: the field is already dropped and the rest of
+    // the answer shown, so there is nothing for the operator to act on. It
+    // exists only to name the field an extension gets wrong. Loosened to
+    // `notify`, the first wrong-typed field would spend the session's one
+    // error notice on an extension's defect.
+    test('reported, not noticed', () {
+      expect(dispositionFor(MalformedLookupDataException(const QsonTypeViolation('guess.state', QsonFieldType.string, 'int'))), ErrorDisposition.report);
     });
   });
 

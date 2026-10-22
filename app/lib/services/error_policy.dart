@@ -45,7 +45,7 @@ import 'data_file_manager.dart' show DataFileRemoveHookFailed, DataFileUnavailab
 import 'extensions/extension_catalog_migration.dart' show BundleWouldNotEvaluate, CatalogNotWired, UpgradeLeftNoRuntime;
 import 'extensions/extension_chasing.dart' show ChasingHookFailure;
 import 'extensions/extension_scoring.dart' show ScoringHookFailure;
-import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedSpotDataException;
+import 'extensions/extension_service.dart' show ExtensionTimersSuspended, MalformedLookupDataException, MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'app_storage.dart' show PreferencesFileUnreadable;
@@ -495,6 +495,16 @@ class ErrorPolicy {
           'and the spot is already dropped so the panel\'s other sources are unaffected',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is MalformedSpotDataException,
+    ),
+    ErrorRule(
+      id: 'malformed-lookup-data',
+      reason:
+          'a callsign lookup answered a field of the wrong type (extension_hook_api.dart\'s '
+          'lookupCall) — a defect in an extension, not something the operator can act on, and the '
+          'field is already dropped so the rest of the answer still shows; it is uploaded purely to '
+          'name the field, which dropping it alone would leave unknown',
+      disposition: ErrorDisposition.report,
+      matches: (error, details) => error is MalformedLookupDataException,
     ),
     ErrorRule(
       id: 'malformed-qson-data',

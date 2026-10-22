@@ -235,11 +235,11 @@ class OperationRuntimeState extends ChangeNotifier {
       operation: operation.data,
       online: false,
     );
-    final ourGuess = ourInfo?['guess'] as Map<String, dynamic>?;
+    final ourGuess = asQsonMap(ourInfo?['guess']);
     if (_disposed) return;
-    _ourEntityPrefix = ourGuess?['entityPrefix'] as String?;
-    _ourItuRegion = (ourGuess?['ituRegion'] as num?)?.toInt();
-    _ourCountryCode = ourGuess?['countryCode'] as String?;
+    _ourEntityPrefix = asQsonString(ourGuess?['entityPrefix']);
+    _ourItuRegion = asQsonNum(ourGuess?['ituRegion'])?.toInt();
+    _ourCountryCode = asQsonString(ourGuess?['countryCode']);
     notifyListeners();
   }
 

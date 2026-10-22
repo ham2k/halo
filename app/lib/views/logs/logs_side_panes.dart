@@ -87,7 +87,7 @@ class _LogsInfoPanelState extends State<_LogsInfoPanel> {
             if (!mounted || widget.selected?.theirCall != call) return;
             setState(() {
               _resolvedFor = call;
-              _guess = result?['guess'] as Map<String, dynamic>?;
+              _guess = asQsonMap(result?['guess']);
               _lookups = asQsonList(result?['lookups'])?.whereType<Map<String, dynamic>>().toList() ?? const [];
             });
           },

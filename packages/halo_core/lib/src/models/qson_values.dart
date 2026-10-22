@@ -224,6 +224,23 @@ const _qsoTheirFields = <String, QsonFieldType>{
 /// suggestions only a guess carries.
 final _qsoGuessFields = <String, QsonFieldType>{..._qsoTheirFields, 'refs': QsonFieldType.list};
 
+/// A live lookup's guess, as the readers of a lookup result read it: a
+/// stored guess's fields, plus the ones those readers probe that
+/// [_qsoGuessFields] does not cover — emoji, note and continent, and the
+/// station's own country, ITU region and base call.
+final _lookupGuessFields = <String, QsonFieldType>{
+  ..._qsoGuessFields,
+  'emoji': QsonFieldType.string,
+  'note': QsonFieldType.string,
+  'continent': QsonFieldType.string,
+  'countryCode': QsonFieldType.string,
+  'baseCall': QsonFieldType.string,
+  'ituRegion': QsonFieldType.number,
+};
+
+const _lookupResultFields = <String, QsonFieldType>{'guess': QsonFieldType.map, 'lookups': QsonFieldType.list};
+final _lookupNested = <String, Map<String, QsonFieldType>>{'guess': _lookupGuessFields};
+
 /// `event`'s own kind, which [Qso.eventKind] reads.
 const _qsoEventFields = <String, QsonFieldType>{'event': QsonFieldType.string};
 
@@ -365,6 +382,13 @@ Map<String, dynamic> _normalize(
 /// keeps the read path to the scan alone.
 Map<String, dynamic> normalizeQsoQson(Map<String, dynamic> data, {List<QsonTypeViolation>? violations}) =>
     _normalize(data, _qsoFields, '', violations, _qsoNested);
+
+/// [normalizeQsoQson] for a callsign lookup's result, as the lookup hook
+/// answers it. Extensions assemble the guess, and the bridge enforces none of
+/// their declared types, so this is where a wrong-typed field is dropped and
+/// named once, rather than read as absent, unreported, by every reader.
+Map<String, dynamic> normalizeLookupResult(Map<String, dynamic> data, {List<QsonTypeViolation>? violations}) =>
+    _normalize(data, _lookupResultFields, '', violations, _lookupNested);
 
 /// [normalizeQsoQson] for an operation's QSON.
 Map<String, dynamic> normalizeOperationQson(Map<String, dynamic> data, {List<QsonTypeViolation>? violations}) =>

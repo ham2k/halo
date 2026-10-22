@@ -295,6 +295,24 @@ void main() {
       await settle();
     });
 
+    // The station's entity comes from an extension's lookup, so no field's
+    // type is guaranteed. A cast on one field throws away the whole answer,
+    // and the logging controls and scorers run with no entity at all.
+    test('a wrong-typed field in the station\'s lookup reads as absent, keeping the rest', () async {
+      final extensions = _Scripted();
+      final state = await makeState(extensions);
+
+      final resolving = state.resolveOurEntity(operation);
+      extensions.entityLookups.single.complete({
+        'guess': <dynamic, dynamic>{'entityPrefix': 'K', 'ituRegion': 2, 'countryCode': 840},
+      });
+      await resolving;
+
+      expect(state.ourEntityPrefix, 'K');
+      expect(state.ourItuRegion, 2);
+      expect(state.ourCountryCode, isNull);
+    });
+
     test('a runtime restart refetches only after a fetch failed', () async {
       final extensions = _Scripted();
       final state = await makeState(extensions);

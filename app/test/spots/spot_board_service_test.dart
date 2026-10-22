@@ -45,6 +45,9 @@ class _FakeExtensions extends ExtensionService {
   /// The state each call's lookup guesses.
   Map<String, String> states = const {};
 
+  /// Each call's whole lookup guess, replacing the [states] one.
+  Map<String, Object?> guesses = const {};
+
   /// The failure streaks the lookups were counted toward.
   final Set<String?> streakKeys = {};
 
@@ -111,6 +114,7 @@ class _FakeExtensions extends ExtensionService {
     lookedUp.add(call);
     streakKeys.add(streakKey);
     if (unanswered.contains(call)) return null;
+    if (guesses.containsKey(call)) return {'guess': guesses[call]};
     return {
       'guess': <String, dynamic>{'state': ?states[call]},
     };
@@ -141,10 +145,10 @@ void main() {
   /// Called inside each test rather than from setUp: the board's scoring
   /// debounce is a timer, and a test can only drive it on a fake clock if
   /// everything that arms it was built inside that clock's zone.
-  Future<void> openBoard() async {
+  Future<void> openBoard({Map<String, Object?> guesses = const {}}) async {
     SharedPreferences.setMockInitialValues({});
     settings = await SettingsService.load();
-    extensions = _FakeExtensions();
+    extensions = _FakeExtensions()..guesses = guesses;
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     services = HaLoServices(db, settings, extensions: extensions);
@@ -325,6 +329,50 @@ void main() {
       await services.spots.refresh();
       await pumpEventQueue();
       expect(services.spotBoard.callInfo.containsKey('K1ABC'), isTrue);
+    }),
+  );
+
+  // Lookup guesses come from extensions, so no field's type is guaranteed. A
+  // cast on one call's answer throws for the whole batch: no call on the
+  // board gets its emoji, continent or entity, and every refresh throws again.
+  test(
+    'a wrong-typed lookup field reads as absent, and costs no other call its info',
+    () => runOnFakeClock((_) async {
+      await openBoard(
+        guesses: {
+          'K1ABC': <String, dynamic>{'emoji': true, 'note': 42, 'continent': 4, 'entityPrefix': 291},
+          'W1AW': <dynamic, dynamic>{'emoji': '🎉', 'continent': 'NA', 'entityPrefix': 'K'},
+        },
+      );
+
+      final info = services.spotBoard.callInfo;
+      expect(info['K1ABC'], (hasNote: false, emoji: null, continent: null, entityPrefix: null));
+      expect(info['W1AW'], (hasNote: true, emoji: '🎉', continent: 'NA', entityPrefix: 'K'));
+    }),
+  );
+
+  // The board marks a call as noted, and the call-info area shows that note;
+  // a mark with nothing behind it sends the operator to look for a note that
+  // is not there.
+  test(
+    'an empty note does not mark the call as noted',
+    () => runOnFakeClock((_) async {
+      await openBoard(
+        guesses: {
+          'K1ABC': <String, dynamic>{'note': ''},
+        },
+      );
+      expect(services.spotBoard.callInfo['K1ABC']?.hasNote, isFalse);
+    }),
+  );
+
+  test(
+    'a lookup whose guess is not a map knows nothing about the call',
+    () => runOnFakeClock((_) async {
+      await openBoard(guesses: {'K1ABC': 'DL'});
+
+      expect(services.spotBoard.callInfo['K1ABC'], (hasNote: false, emoji: null, continent: null, entityPrefix: null));
+      expect(services.spotBoard.callInfo, contains('W1AW'));
     }),
   );
 

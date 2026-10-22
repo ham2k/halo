@@ -7,6 +7,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -65,7 +66,7 @@ class _ProfilesPanelState extends State<ProfilesPanel> {
     await widget.services.extensions.start();
     final info = await widget.services.extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
     if (!mounted || request != _resolveRequest) return;
-    final prefix = (info?['guess'] as Map<String, dynamic>?)?['entityPrefix'] as String?;
+    final prefix = asQsonString(asQsonMap(info?['guess'])?['entityPrefix']);
     if (prefix == null) {
       debugPrint('[settings] no DXCC entity for "$call" — the section field stays hidden');
       return;
