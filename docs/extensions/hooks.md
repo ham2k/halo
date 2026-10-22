@@ -73,6 +73,17 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   reads above it is cheap enough for the lookup path; it resolves `[]`
   whenever the cache is cold or the host keeps no spots. Used by
   `spot-history` to pull a hunted park or summit into the QSO being logged.
+* `host.suggestQso({qso, operationUuid?})` (extension API 12) — puts a
+  station into the logging fields of the operation in front, as tapping its
+  spot in the Spots Panel does: `qso.their.call`, and `freq`, `band`, `mode`
+  and `refs` where given; nothing else of `qso` reaches the fields. With
+  `operationUuid` — a panel's own `operation.uuid` — only that operation's
+  fields, so a panel never fills a log the operator is not looking at.
+  Answers `{accepted}`, false when no such operation is open. It tunes the
+  radio as a tap does, so it needs `requiresRadioWrite`, and it is refused
+  except from inside the extension's own panel `onEvent`: it answers the
+  operator clicking something, never a timer or a render, which would
+  overwrite what they are typing.
 * `getSpots?(options?)` — the whole spots board the host already holds,
   for a panel showing spots its own way. Like `getSpotsForCall` it reads the
   cache and never fetches, and resolves `[]` while the cache is cold. By
@@ -92,7 +103,12 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   ones the app already holds for the operation open on screen, so the call
   never waits on a scorer; another operation's spots, and that one's until
   its first verdicts land, come back unannotated rather than guessed.
-  `annotate: false` returns the spots as their sources gave them.
+  From extension API 12 each also carries `display` — `icon` (an MDI or
+  `fa-` name), `iconColor` (`#RRGGBB`, where the activity declares one) and
+  `emoji` (the call's note emoji, where it has one): what the Spots Panel's row
+  shows beside the call, the activity's icon and tint for the spot's first
+  reference, else the source's own icon. `annotate: false` returns the spots
+  as their sources gave them.
   A panel's `'spots'` trigger fires whenever this answer may have moved: a
   refresh, new verdicts, the operator's spot filters or bands, or the radio's
   band or mode. A malformed or unknown option rejects the call. The CLI host
@@ -1884,9 +1900,10 @@ drawing part of it.
 | `width`, `height` | The artwork's viewBox, in scene units. Size it to `environment.width`/`height` and a scene unit is a logical pixel. |
 | `values` | `{name: number}`: what bindings, numeric text and numeric controls read. At most 256. |
 | `strings` | `{name: string}`: what text fields and choices hold. At most 256, each up to 4096 characters. A name is in `values` or `strings`, never both. |
-| `layers` | Painted in order, each over the ones before: `svg` artwork or `text`. At most 128, and 1 MiB of artwork and text in all. |
-| `controls` | At most 64. Drawn or native; see below. |
+| `layers` | Painted in order, each over the ones before: `svg` artwork, `text`, or an `icon`. At most 512 (128 before extension API 12), and 1 MiB of artwork and text in all. |
+| `controls` | At most 256 (64 before extension API 12). Drawn or native; see below. |
 | `layout` | Optional. Where rect-less native controls and the artwork go; omitted, the artwork fills the pane. |
+| `scroll` | Optional, `{axis?, value, event?}` (extension API 12): a scene longer than its pane along `axis` (`y` by default), scrolled natively by the app — wheel, trackpad and drag, a drag begun on a button included — with no call to the extension. It fills the pane across and runs on past it. The position, in scene units, is written to the scene value `value`; a render that changes that value moves the view there, one that leaves it alone leaves the operator's scroll alone. `event` is sent as a `commit`, the position as `value`, once a scroll comes to rest. Layers and controls with `fixed: true` stay put over the pane, in pane coordinates. A drag along the scroll on a slider or knob that scrolls with the content is the scroll's: make one that must be dragged `fixed`. Not with `layout`. |
 | `radio` | Optional, `{node?}`: the host feeds that radio's live readings into the reserved `radio.*` values. `node` is an id from `listRadios`; omitted, the logging radio. See *Radio values*. |
 
 **Controls.** Every control has an `id` and a `label`, which is its accessible
@@ -1897,8 +1914,8 @@ the extension. `value` names what it shows and sets.
 | Kind | Binds to | Sends | Also takes |
 |---|---|---|---|
 | `button` | — | `activate` | `menu` |
-| `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover`, `valueLabels`, `continuous` |
-| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `valueLabels`, `continuous`, `menu`, a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
+| `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover`, `valueLabels`, `continuous`, `scrollThrough` |
+| `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `invertDrag`, `scrollThrough`, `valueLabels`, `continuous`, `menu`, a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
 | `nativeButton` | — | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |
 | `nativeSlider` | number | `commit` | `min`, `max`, `step`, `valueLabels`, `continuous` |
 | `nativeTextField` | string | `commit` on Enter, or on leaving it after typing | `placeholder`, `continuous` |
@@ -1909,6 +1926,7 @@ the extension. `value` names what it shows and sets.
 | `nativeChip` | number, 1 or 0; or none | `commit`; `activate` without a value | `icon`; needs `event` without a value |
 | `nativeText` | number, string, or none | nothing | `style` (a typography role), `align` (`start`, `center`, `end`) |
 | `spectrum` | — | `commit` with the frequency clicked; `activate` from an annotation | see *Spectrum* below |
+| `zoom` | — | `commit` with the factor, on release | `min`, `max` (the factors allowed); only in a scene with `scroll`; extension API 12 |
 
 The three drawn kinds are invisible hit areas over artwork the extension paints;
 the native kinds are Material widgets the app paints and themes. Every control
@@ -1920,11 +1938,36 @@ may also take:
 - `after`: with a rect, the layer it paints directly after.
 - `opacity`: 0 to 1, fixed or bound like a layer's. At 0 the control is gone.
 - `disabled`: shown, but no click, drag, key or screen-reader adjustment acts on it.
+- `hoverSet` (drawn kinds only; extension API 12): `{value, to}`. While the
+  pointer is over the control, the scene value `value` reads `to` — set by the
+  host, with no call to the extension — and leaving puts back the scene's own
+  value. A layer bound to it lights up under the pointer, and several controls
+  naming one value with different `to`s light up one thing each. It survives
+  renders while the pointer stays.
 
 `options` is `[{label, value}]`, up to 64, with each `value` unique. A choice's
 string is `""` or one of them; a `multi` choice holds its values joined with
 commas in option order, so no option may contain one. `menu` is
 `[{label, event}]`, up to 32: picking an item sends its `event` as the action.
+
+A `zoom` strip is drawn by nothing: it claims a drag that begins on it along a scrolling
+scene's axis. Away from the pane's middle zooms in and toward it zooms out, by the ratio of
+the two distances from the middle, clamped to `min`…`max`. While the drag lasts the app moves
+each layer and control to where the zoom puts its middle, keeping its size, so text and dots
+stay as drawn and only spread apart or close in; a layer with `stretch: true` — a background,
+a line the length of the scene — scales along the scroll instead. That preview holds until
+the render that answers the `commit` arrives, so a scene meant to zoom draws its pieces as
+layers of their own rather than as one picture. A tap on the strip still reaches the button there, and a drag that starts off it
+still scrolls.
+
+A scroll steps a slider or knob by its `step`, down and left lowering it; a one-axis
+control takes a sideways scroll by its own direction. A slider or knob with
+`scrollThrough` (API 12) also takes the scrolls landing on drawn buttons over it, so labels
+drawn over a knob that scrolls the artwork do not stop the scroll; anything else in the
+way — a native control, a `blocksPointer` layer, another slider or knob — keeps the scroll
+from it.
+A knob with `invertDrag` (API 12) moves the other way to a drag, as content held under
+the finger does — what a knob that scrolls the artwork wants — while its scroll is unchanged.
 
 A knob with `valueY` sets two numbers from one patch of artwork — a passband's
 shift across and its width up, say. Horizontal dragging, horizontal scrolling

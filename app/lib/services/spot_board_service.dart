@@ -21,6 +21,7 @@ import 'package:halo_core/halo_core.dart';
 
 import 'chase_service.dart';
 import 'extensions/extension_service.dart';
+import 'hook_payloads.dart';
 import 'radio_service.dart';
 import 'scoring_service.dart';
 import 'settings_service.dart';
@@ -94,6 +95,25 @@ class SpotBoardService extends ChangeNotifier {
   /// for cost a lookup. A view, not a copy — the panel reads it per spot.
   Map<String, SpotCallInfo> get callInfo => UnmodifiableMapView(_callInfo);
   final Map<String, SpotCallInfo> _callInfo = {};
+
+  /// The activities' logging controls for [operation] — what picks each
+  /// spot's activity icon and tint, as the Spots Panel's rows show them — for
+  /// `getSpots`' `display`. Fetched on the first read for an operation, not
+  /// on opening it: only a panel drawing spots its own way needs them. Empty
+  /// until they land, when the board bumps; a spot meanwhile falls back to
+  /// its source's icon. A fetch that fails outright is not retried for that
+  /// operation, as the Spots Panel's is not.
+  List<Map<String, dynamic>> activityControlsForDisplay() {
+    final operation = this.operation;
+    if (operation != null && _controlsFor != operation.uuid) {
+      _controlsFor = operation.uuid;
+      unawaited(_loadActivityControls(operation));
+    }
+    return _activityControls;
+  }
+
+  List<Map<String, dynamic>> _activityControls = const [];
+  String? _controlsFor;
 
   /// Scoring verdicts keyed by [spotCandidateKey] — what makes a spot show as
   /// worked, or accented for a new band/mode/day/reference/multiplier — for
@@ -184,6 +204,8 @@ class SpotBoardService extends ChangeNotifier {
     _withChase = {};
     _callInfo.clear();
     _candidateStates.clear();
+    _activityControls = const [];
+    _controlsFor = null;
   }
 
   /// Brings the verdicts in line with what the top viewer shows. Never
@@ -212,6 +234,8 @@ class SpotBoardService extends ChangeNotifier {
       // The pass made now answers whatever a pending debounce was waiting to.
       _scoreDebounce?.cancel();
       if (spots.loaded) scheduleMicrotask(() => unawaited(refreshScores()));
+      _activityControls = const [];
+      _controlsFor = null;
     } else if (moved) {
       _scheduleScores();
     }
@@ -257,6 +281,16 @@ class SpotBoardService extends ChangeNotifier {
   void _bump() {
     _revision++;
     notifyListeners();
+  }
+
+  Future<void> _loadActivityControls(Operation operation) async {
+    await extensions.start();
+    final result = await extensions.loggingControls(operationPayloadFor(operation));
+    // Partial is kept, as the Spots Panel keeps it: one slow activity must not
+    // cost the others their icons.
+    if (result.controls.isEmpty || _viewers.isEmpty || operation.uuid != _controlsFor) return;
+    _activityControls = result.controls;
+    _bump();
   }
 
   /// Looks up (and caches) each currently-fetched spot's callsign info.

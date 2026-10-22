@@ -311,6 +311,16 @@ export interface GetSpotsOptions {
   operationUuid?: string
 }
 
+/// What `host.suggestQso` puts into the logging fields: a spot's station and where it was heard.
+export interface SuggestedQso {
+  their: { call: string }
+  /// kHz, as QSON keeps it.
+  freq?: number
+  band?: string
+  mode?: string
+  refs?: SpotRef[]
+}
+
 /// A spot as the host holds it: what a source returned, plus the key of the
 /// source that offered it.
 ///
@@ -321,6 +331,11 @@ export interface GetSpotsOptions {
 /// them comma-joined (`'K1ABC,W2XYZ'`). Split it before looking a call up.
 export interface BoardSpot extends Spot {
   hookKey?: string
+  /// What the Spots Panel's row shows beside the call: the activity's icon and
+  /// tint for the spot's first reference (else the source's `icon`, else a
+  /// tower) and the call's note emoji. Absent with `annotate: false`, and on
+  /// hosts before extension API 12.
+  display?: { icon: string; iconColor?: string; emoji?: string }
   /// Present when the spots were judged against an operation.
   annotations?: SpotAnnotations
 }

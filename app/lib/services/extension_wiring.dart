@@ -39,6 +39,15 @@ void wireExtensions(HaLoServices services) {
   extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(services, key, subkey: subkey));
   extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(services, args: args, kind: kind);
   extensions.onGetSpots = ExtensionSpotsReader(services).read;
+  extensions.onSuggestQso = (qso, operationUuid) {
+    final front = services.frontOperationContext;
+    final suggest = front?.suggestSpot;
+    // The operation the panel belongs to, or none: filling another one's
+    // fields would put the station in a log the operator is not looking at.
+    if (suggest == null || (operationUuid != null && front!.uuid != operationUuid)) return false;
+    suggest(qso);
+    return true;
+  };
   // The boot starts the runtime before the services exist, so one quick to
   // come up has already run its catch-up — and stood it down, with no
   // settings to carry choices or record installs in. Without this that

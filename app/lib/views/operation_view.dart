@@ -396,6 +396,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // front-most one, without pushing a second copy of the view over it.
     // `measured` because only a deep link reaches this callback.
     _commandContext.suggestQso = (qso) => _suggestQso(qso, measured: true);
+    _commandContext.suggestSpot = _suggestQso;
     // Whether the operator can actually SEE this operation — false with
     // Settings, or another operation, pushed over it. A suggestion delivered
     // to a view nobody is looking at is not lost, but it is invisible, and

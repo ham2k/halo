@@ -37,12 +37,26 @@ class _FakeExtensions extends ExtensionService {
   bool noScorer = false;
 
   final Map<String, String> continents = {};
+  final Map<String, String> emojis = {};
   final List<String> lookedUp = [];
+
+  /// The activities' hunting controls, which name each ref type's icon and tint.
+  List<Map<String, dynamic>> activityControls = const [];
+  int controlFetches = 0;
+
+  @override
+  Future<ControlsResult> loggingControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async {
+    controlFetches++;
+    return (controls: activityControls, loadFailed: false);
+  }
 
   final ExtensionHost _host = FakeExtensionHost();
 
   @override
   ExtensionHost? get host => _host;
+
+  @override
+  Future<void> start() async {}
 
   @override
   Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async =>
@@ -74,17 +88,27 @@ class _FakeExtensions extends ExtensionService {
   }) async {
     lookedUp.add(call);
     return {
-      'guess': {'continent': continents[call]},
+      'guess': {'continent': continents[call], 'emoji': ?emojis[call]},
     };
   }
 }
 
-Map<String, dynamic> _spot(String call, {required String band, required String mode, required double freq, String hookKey = 'pota', int ageMinutes = 5}) => {
+Map<String, dynamic> _spot(
+  String call, {
+  required String band,
+  required String mode,
+  required double freq,
+  String hookKey = 'pota',
+  int ageMinutes = 5,
+  List<Map<String, dynamic>> refs = const [],
+  String? icon,
+}) => {
   'their': {'call': call},
   'freq': freq,
   'band': band,
   'mode': mode,
-  'refs': const <Map<String, dynamic>>[],
+  'refs': refs,
+  'icon': ?icon,
   'spot': {'timeInMillis': nowMillis() - ageMinutes * Duration.millisecondsPerMinute, 'source': hookKey},
   'hookKey': hookKey,
 };
@@ -102,11 +126,18 @@ void main() {
 
   /// Spots fetched and the board worked out over them, as an open Operation
   /// View keeps it.
-  Future<void> boot(List<Map<String, dynamic>> board, {Map<String, dynamic> filters = const {}, Map<String, String> continents = const {}}) async {
+  Future<void> boot(
+    List<Map<String, dynamic>> board, {
+    Map<String, dynamic> filters = const {},
+    Map<String, String> continents = const {},
+    Map<String, String> emojis = const {},
+  }) async {
     SharedPreferences.setMockInitialValues({});
     settings = await SettingsService.load();
     await settings.setSpottingFilters({'bandFilter': 'any', 'modeFilter': 'any', ...filters});
-    extensions = _FakeExtensions(board)..continents.addAll(continents);
+    extensions = _FakeExtensions(board)
+      ..continents.addAll(continents)
+      ..emojis.addAll(emojis);
     db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     services = HaLoServices(db, settings, extensions: extensions);
@@ -281,6 +312,55 @@ void main() {
         expect((spots.single as Map).containsKey('annotations'), isFalse, reason: '$params');
       }
     });
+  });
+
+  // A panel drawing spots its own way would otherwise guess at the activity
+  // behind each one, and show a park the Spots Panel shows as a summit.
+  test('display carries what the Spots Panel shows beside the call: its activity\'s icon and tint, else the source\'s icon, and its note emoji', () async {
+    await boot(
+      [
+        _spot(
+          'K1ABC',
+          band: '20m',
+          mode: 'SSB',
+          freq: 14250.0,
+          refs: [
+            {'type': 'pota', 'ref': 'US-1234'},
+          ],
+          icon: 'radio-handheld',
+        ),
+        _spot('W1AW', band: '20m', mode: 'CW', freq: 14030.0, icon: 'mountain'),
+        _spot('N0XYZ', band: '20m', mode: 'FT8', freq: 14074.0),
+      ],
+      emojis: {'W1AW': '🎂'},
+    );
+    extensions.activityControls = [
+      {
+        'input': {'refType': 'pota'},
+        'icon': 'pine-tree',
+        'color': '#2E7D32',
+      },
+    ];
+    await showOperation();
+    // Opening an operation costs no fetch: only a panel drawing spots its own way needs them.
+    expect(extensions.controlFetches, 0);
+    // The first read starts it, showing the sources' own icons until it lands and the board moves.
+    final revision = services.spotBoard.revision;
+    final first = {
+      for (final spot in await getSpots({'filter': 'all'}) as List) ((spot as Map)['their'] as Map)['call']: spot['display'],
+    };
+    expect(first['K1ABC'], {'icon': 'radio-handheld'});
+    await pumpEventQueue();
+    expect(services.spotBoard.revision, greaterThan(revision));
+    expect(extensions.controlFetches, 1);
+
+    final display = {
+      for (final spot in await getSpots({'filter': 'all'}) as List) ((spot as Map)['their'] as Map)['call']: spot['display'],
+    };
+    expect(display['K1ABC'], {'icon': 'pine-tree', 'iconColor': '#2e7d32'});
+    expect(display['W1AW'], {'icon': 'mountain', 'emoji': '🎂'});
+    expect(display['N0XYZ'], {'icon': 'radio-tower'});
+    expect(((await getSpots({'filter': 'all', 'annotate': false}) as List).first as Map).containsKey('display'), isFalse);
   });
 
   test('a malformed option rejects the call rather than answering the whole board', () async {

@@ -560,6 +560,623 @@ void main() {
     expect(find.text('0.080 MHz'), findsOneWidget);
   });
 
+  test('hoverSet belongs to a drawn control and names a scene number', () {
+    for (final control in [
+      // A native control is the app's widget, with hover states of its own.
+      {
+        'id': 'n',
+        'label': 'N',
+        'kind': 'nativeButton',
+        'x': 0,
+        'y': 0,
+        'width': 10,
+        'height': 10,
+        'event': 'go',
+        'hoverSet': {'value': 'v', 'to': 1},
+      },
+      {
+        'id': 'b',
+        'label': 'B',
+        'kind': 'button',
+        'x': 0,
+        'y': 0,
+        'width': 10,
+        'height': 10,
+        'hoverSet': {'value': 'missing', 'to': 1},
+      },
+      {'id': 'b', 'label': 'B', 'kind': 'button', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'hoverSet': 'v'},
+    ]) {
+      final doc = document(local: true);
+      (doc['controls'] as List).add(control);
+      expect(() => PanelScene(doc), throwsFormatException, reason: '$control');
+    }
+  });
+
+  group('scrolling a knob', () {
+    // A knob over the whole artwork that moves what it shows, with a button — a label — over part of it.
+    Map<String, dynamic> scroller({bool invertDrag = false, bool scrollThrough = true}) => document()
+      ..['controls'] = [
+        {
+          'id': 'pan',
+          'label': 'Pan',
+          'kind': 'knob',
+          'x': 0,
+          'y': 0,
+          'width': 400,
+          'height': 200,
+          'value': 'v',
+          'min': 0,
+          'max': 100,
+          'step': 5,
+          'sensitivity': 1,
+          'event': 'pan',
+          'invertDrag': ?(invertDrag ? true : null),
+          'scrollThrough': ?(scrollThrough ? true : null),
+        },
+        {'id': 'label', 'label': 'Label', 'kind': 'button', 'x': 300, 'y': 0, 'width': 100, 'height': 50, 'event': 'tune'},
+      ];
+
+    Future<List<(String?, Object?)>> scrolled(WidgetTester tester, Offset at, Offset delta, {Map<String, dynamic>? doc}) async {
+      final events = <(String?, Object?)>[];
+      await show(
+        tester,
+        doc ?? scroller()
+          ..['values'] = {'v': 50},
+        onEvent: (e) async {
+          events.add((e['action'] as String?, e['value']));
+          return {};
+        },
+      );
+      final origin = tester.getTopLeft(find.byType(PanelSceneView));
+      await tester.sendEventToBinding(PointerScrollEvent(position: origin + at, scrollDelta: delta));
+      await tester.pumpAndSettle();
+      return events;
+    }
+
+    // Labels cover much of a band map: a scroll stopped by each one would leave little to scroll on.
+    testWidgets('a scroll on a button over it still reaches it, once', (tester) async {
+      expect(await scrolled(tester, const Offset(350, 25), const Offset(0, -20)), [('pan', 55.0)]);
+    });
+
+    // A scene from before scrollThrough with a button over its tuning knob would start retuning the
+    // radio on a scroll it never asked to pass on.
+    testWidgets('a knob that did not ask for them leaves the scrolls on a button over it alone', (tester) async {
+      expect(await scrolled(tester, const Offset(350, 25), const Offset(0, -20), doc: scroller(scrollThrough: false)), isEmpty);
+    });
+
+    // Measured by rect alone, a scroll would go through a native field, or a cover laid over the
+    // knob to stop it, to reach the knob all the same.
+    testWidgets('a native control or a blocking layer between the button and the knob keeps the scroll', (tester) async {
+      final native = scroller();
+      (native['controls'] as List).insert(1, {'id': 'n', 'label': 'N', 'kind': 'nativeButton', 'x': 300, 'y': 0, 'width': 100, 'height': 50, 'event': 'go'});
+      final covered = scroller();
+      (covered['controls'] as List).first['after'] = 'readout';
+      (covered['layers'] as List).add({
+        'id': 'cover',
+        'x': 300,
+        'y': 0,
+        'width': 100,
+        'height': 50,
+        'blocksPointer': true,
+        'svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
+      });
+      for (final doc in [native, covered]) {
+        expect(await scrolled(tester, const Offset(350, 25), const Offset(0, -20), doc: doc), isEmpty);
+      }
+    });
+
+    testWidgets('a scroll on the knob itself moves it once', (tester) async {
+      expect(await scrolled(tester, const Offset(100, 100), const Offset(0, 20)), [('pan', 45.0)]);
+    });
+
+    // Read as an upward one, a sideways swipe would move the same way whichever way it went.
+    testWidgets('a sideways scroll moves a one-axis knob by its own direction', (tester) async {
+      expect(await scrolled(tester, const Offset(100, 100), const Offset(20, 0)), [('pan', 55.0)]);
+      expect(await scrolled(tester, const Offset(100, 100), const Offset(-20, 0)), [('pan', 45.0)]);
+    });
+
+    testWidgets('invertDrag moves the value the other way to a drag, as content held under it', (tester) async {
+      for (final (invert, moved) in [(false, greaterThan(50.0)), (true, lessThan(50.0))]) {
+        final events = <Object?>[];
+        await show(
+          tester,
+          scroller(invertDrag: invert)..['values'] = {'v': 50},
+          onEvent: (e) async {
+            events.add(e['value']);
+            return {};
+          },
+        );
+        await tester.dragFrom(tester.getTopLeft(find.byType(PanelSceneView)) + const Offset(100, 150), const Offset(0, -60));
+        await tester.pumpAndSettle();
+        expect(events.last, moved, reason: 'dragged up, invertDrag: $invert');
+      }
+    });
+
+    test('invertDrag is a knob\'s, and scrollThrough a slider\'s or knob\'s', () {
+      final doc = document(local: true);
+      (doc['controls'] as List).first['invertDrag'] = true;
+      expect(() => PanelScene(doc), throwsFormatException);
+      final button = document(local: true);
+      (button['controls'] as List).add({'id': 'b', 'label': 'B', 'kind': 'button', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'scrollThrough': true});
+      expect(() => PanelScene(button), throwsFormatException);
+    });
+  });
+
+  group('a scrolling scene', () {
+    // 400 wide like its panel, 800 tall: twice what the 400×200 panel shows. A label at 250 to read
+    // where the view is, a fixed one at the panel's top, and a button to start a drag on.
+    Map<String, dynamic> long({double at = 200, String? event = 'scrolled'}) => {
+      'version': 1,
+      'width': 400,
+      'height': 800,
+      'values': {'pos': at},
+      'scroll': {'axis': 'y', 'value': 'pos', 'event': ?event},
+      'layers': [
+        {
+          'id': 'mark',
+          'x': 0,
+          'y': 250,
+          'width': 200,
+          'height': 20,
+          'text': {'literal': 'Mark'},
+        },
+        {
+          'id': 'pinned',
+          'x': 0,
+          'y': 0,
+          'width': 200,
+          'height': 20,
+          'fixed': true,
+          'text': {'literal': 'Pinned'},
+        },
+      ],
+      'controls': [
+        {'id': 'b', 'label': 'Spot', 'kind': 'button', 'x': 0, 'y': 300, 'width': 400, 'height': 40, 'event': 'tune'},
+      ],
+    };
+
+    double top(WidgetTester tester, String text) => tester.getTopLeft(find.text(text)).dy - tester.getTopLeft(find.byType(PanelSceneView)).dy;
+
+    test('names a scene value, takes no layout, and keeps fixed and scrolling apart', () {
+      final layout = long()..['layout'] = {'scene': true};
+      final unknown = long()..['scroll'] = {'axis': 'y', 'value': 'nowhere'};
+      final unplaced = long()
+        ..['controls'] = [
+          {'id': 'n', 'label': 'N', 'kind': 'nativeButton', 'event': 'go', 'fixed': true},
+        ];
+      final straddling = long()
+        ..['controls'] = [
+          {'id': 'b', 'label': 'B', 'kind': 'button', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'after': 'pinned'},
+        ];
+      for (final doc in [layout, unknown, unplaced, straddling]) {
+        expect(() => PanelScene(doc), throwsFormatException);
+      }
+    });
+
+    testWidgets('opens where its value says, with fixed layers over the panel', (tester) async {
+      await show(tester, long());
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(50, 0.5));
+      expect(top(tester, 'Pinned'), closeTo(0, 0.5));
+    });
+
+    // A band map's calls cover it: a drag that had to start between them would hardly ever start.
+    testWidgets('scrolls natively under a drag begun on a button, telling the extension once it settles', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await show(
+        tester,
+        long(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      await tester.pump();
+      await tester.dragFrom(tester.getCenter(find.bySemanticsLabel('Spot')), const Offset(0, -100));
+      await tester.pumpAndSettle();
+      // Told once the scroll has stayed put a moment.
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(top(tester, 'Pinned'), closeTo(0, 0.5));
+      final moved = 50 - top(tester, 'Mark');
+      expect(moved, greaterThan(50));
+      expect(events.map((e) => (e['action'], e['phase'])), [('scrolled', 'commit')]);
+      expect(events.single['value'] as double, closeTo(200 + moved, 0.5));
+    });
+
+    // The scroll view moves the content itself; a readout of the position is drawn from the value,
+    // and stays where the scroll began until something redraws it.
+    testWidgets('artwork reading the scroll position follows the scroll', (tester) async {
+      final doc = long(event: null);
+      (doc['layers'] as List).add({
+        'id': 'where',
+        'x': 200,
+        'y': 0,
+        'width': 200,
+        'height': 20,
+        'fixed': true,
+        'text': {'value': 'pos', 'prefix': 'At '},
+      });
+      await show(tester, doc);
+      await tester.pump();
+      expect(find.text('At 200'), findsOneWidget);
+      await tester.drag(find.byType(PanelSceneView), const Offset(0, -100));
+      await tester.pumpAndSettle();
+      expect(find.text('At 200'), findsNothing);
+    });
+
+    // Laid out at no width, the scene's scale is zero: its length infinite, its position not a number.
+    testWidgets('a pane with no room draws nothing rather than failing', (tester) async {
+      await show(tester, long(), width: 0);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+
+    // The purge after a refused value keeps an action from acting on what the extension refused; a
+    // scroll refused leaves every value as it was, and the operator's tap must still go.
+    testWidgets('a refused settle event does not cancel a tap queued behind it', (tester) async {
+      final actions = <String?>[];
+      final settle = Completer<Map<String, Object>>();
+      await show(
+        tester,
+        long(),
+        onEvent: (e) {
+          actions.add(e['action'] as String?);
+          return e['action'] == 'scrolled' ? settle.future : Future.value(const {});
+        },
+      );
+      await tester.pump();
+      await tester.drag(find.byType(PanelSceneView), const Offset(0, -60));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(actions, ['scrolled']);
+      await tester.tap(find.bySemanticsLabel('Spot'));
+      await tester.pump();
+      settle.completeError(StateError('refused'));
+      await tester.pumpAndSettle();
+      expect(actions, ['scrolled', 'tune']);
+    });
+
+    // A zoom strip down the left 100 of the 400×200 pane, its middle at 100, with a button on it.
+    Map<String, dynamic> zoomable() => long()
+      ..['controls'] = [
+        {'id': 'z', 'label': 'Zoom', 'kind': 'zoom', 'x': 0, 'y': 0, 'width': 100, 'height': 800, 'event': 'stretch', 'min': 0.25, 'max': 4},
+        {'id': 'b', 'label': 'Spot', 'kind': 'button', 'x': 0, 'y': 300, 'width': 100, 'height': 40, 'event': 'tune'},
+      ];
+
+    test('a zoom strip is a scrolling scene\'s, and says the factors it allows', () {
+      final unscrolled = zoomable()..remove('scroll');
+      final unbounded = zoomable();
+      (unbounded['controls'] as List).first.remove('max');
+      // Placed among the layers it would be a drawn control, and a drag on it would set a value it has not got.
+      final layered = zoomable();
+      (layered['controls'] as List).first['after'] = 'mark';
+      for (final doc in [unscrolled, unbounded, layered]) {
+        expect(() => PanelScene(doc), throwsFormatException);
+      }
+    });
+
+    Future<List<(String?, Object?)>> dragged(WidgetTester tester, Offset from, Offset by) async {
+      final events = <(String?, Object?)>[];
+      await show(
+        tester,
+        zoomable(),
+        onEvent: (e) async {
+          events.add((e['action'] as String?, e['value']));
+          return {};
+        },
+      );
+      await tester.pump();
+      await tester.dragFrom(tester.getTopLeft(find.byType(PanelSceneView)) + from, by);
+      await tester.pumpAndSettle();
+      return events;
+    }
+
+    testWidgets('a drag on it away from the pane\'s middle zooms in, toward it zooms out, by the distance\'s ratio', (tester) async {
+      final out = await dragged(tester, const Offset(50, 150), const Offset(0, 40));
+      expect(out.single.$1, 'stretch');
+      expect(out.single.$2 as double, closeTo(90 / 50, 0.15));
+      final back = await dragged(tester, const Offset(50, 190), const Offset(0, -60));
+      expect(back.single.$2 as double, closeTo(30 / 90, 0.1));
+    });
+
+    // A stretched picture stretches its text too; the zoom moves the pieces apart at their own sizes.
+    testWidgets('while it is dragged, each piece moves to where the zoom puts it and keeps its size', (tester) async {
+      await show(tester, zoomable(), onEvent: (_) async => {});
+      await tester.pump();
+      final origin = tester.getTopLeft(find.byType(PanelSceneView));
+      final before = tester.getRect(find.text('Mark'));
+      final gesture = await tester.startGesture(origin + const Offset(50, 150));
+      await gesture.moveBy(const Offset(0, 30));
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+      final during = tester.getRect(find.text('Mark'));
+      // 50 from the middle to 100 doubles the view about it: Mark's middle, 60 below the pane's at
+      // 160, goes to 220; its height stays its own.
+      expect(during.height, closeTo(before.height, 0.01));
+      // Over the pane, not the content: the zoom has nothing to move it to.
+      expect(top(tester, 'Pinned'), closeTo(0, 0.5));
+      expect(during.center.dy - origin.dy, closeTo(before.center.dy - origin.dy + (before.center.dy - origin.dy - 100), 1));
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    // An extension that clamps the zoom away, or refuses it, sends back the scene it had: the preview
+    // must not go on showing a zoom the scene has not got.
+    testWidgets('a zoom answered with no new scene lets go of its preview', (tester) async {
+      await show(tester, zoomable(), onEvent: (_) async => {});
+      await tester.pump();
+      final before = top(tester, 'Mark');
+      await tester.dragFrom(tester.getTopLeft(find.byType(PanelSceneView)) + const Offset(50, 150), const Offset(0, 40));
+      await tester.pump();
+      expect(top(tester, 'Mark'), isNot(closeTo(before, 1)));
+      await tester.pump(const Duration(seconds: 3));
+      expect(top(tester, 'Mark'), closeTo(before, 0.5));
+    });
+
+    // Spots move on while a zoom waits for its answer; dropping the preview for that render would
+    // flick back to the old zoom, then on to the new one.
+    testWidgets('a render while the zoom waits keeps its preview, and the one answering it lets go', (tester) async {
+      final answer = Completer<Map<String, Object>>();
+      Future<Map<String, Object>> onEvent(Map<String, dynamic> e) => answer.future;
+      await show(tester, zoomable(), onEvent: onEvent);
+      await tester.pump();
+      final before = top(tester, 'Mark');
+      await tester.dragFrom(tester.getTopLeft(find.byType(PanelSceneView)) + const Offset(50, 150), const Offset(0, 40));
+      await tester.pump();
+      final zoomed = top(tester, 'Mark');
+      expect(zoomed, isNot(closeTo(before, 1)));
+      await show(tester, zoomable(), onEvent: onEvent);
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(zoomed, 0.5));
+      answer.complete(const {});
+      await tester.pump();
+      await show(tester, zoomable(), onEvent: onEvent);
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(before, 0.5));
+      await tester.pump(const Duration(seconds: 3));
+    });
+
+    // The strip lies under the scale's buttons: a click on one must still tune, not zoom.
+    testWidgets('a tap on it still reaches the button there, and a drag off it still scrolls', (tester) async {
+      final events = <(String?, Object?)>[];
+      await show(
+        tester,
+        zoomable(),
+        onEvent: (e) async {
+          events.add((e['action'] as String?, e['value']));
+          return {};
+        },
+      );
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Spot'));
+      await tester.pumpAndSettle();
+      final mark = top(tester, 'Mark');
+      await tester.dragFrom(tester.getTopLeft(find.byType(PanelSceneView)) + const Offset(300, 150), const Offset(0, -60));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(events.map((e) => e.$1), ['tune', 'scrolled']);
+      expect(top(tester, 'Mark'), lessThan(mark));
+    });
+
+    // An extension keeps the position it hears and renders it back; by then the operator may have
+    // scrolled on, and jumping to it would yank the view out from under them.
+    testWidgets('a render carrying back a position the host sent does not move the view', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await show(
+        tester,
+        long(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      await tester.pump();
+      await tester.drag(find.byType(PanelSceneView), const Offset(0, -60));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 400));
+      final heard = events.single['value'] as double;
+      await tester.drag(find.byType(PanelSceneView), const Offset(0, -60));
+      await tester.pumpAndSettle();
+      final scrolled = top(tester, 'Mark');
+      await show(tester, long(at: heard));
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(scrolled, 0.5));
+      await tester.pump(const Duration(milliseconds: 400));
+    });
+
+    // An echo is spent once heard: a later render asking for that same position — a band change back
+    // to where the operator once rested — is a move, and dropping it would leave the view elsewhere.
+    testWidgets('a render asking again for a position already heard back moves the view', (tester) async {
+      final heard = <double>[];
+      Future<Map<String, Object>> onEvent(Map<String, dynamic> e) async {
+        heard.add(e['value'] as double);
+        return const {};
+      }
+
+      await show(tester, long(), onEvent: onEvent);
+      await tester.pump();
+      for (var i = 0; i < 2; i++) {
+        await tester.drag(find.byType(PanelSceneView), const Offset(0, -60));
+        await tester.pumpAndSettle();
+        await tester.pump(const Duration(milliseconds: 400));
+        await show(tester, long(at: heard.last), onEvent: onEvent);
+        await tester.pump();
+      }
+      await show(tester, long(at: heard.first), onEvent: onEvent);
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(250 - heard.first, 0.5));
+      await tester.pump(const Duration(milliseconds: 400));
+    });
+
+    // A panel ticking once a second would otherwise snap the view back under the operator.
+    testWidgets('keeps the operator\'s scroll through a render that leaves the value alone, and moves for one that changes it', (tester) async {
+      await show(tester, long());
+      await tester.pump();
+      await tester.drag(find.byType(PanelSceneView), const Offset(0, -100));
+      await tester.pumpAndSettle();
+      final scrolled = top(tester, 'Mark');
+      await show(tester, long());
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(scrolled, 0.5));
+      await show(tester, long(at: 100));
+      await tester.pump();
+      expect(top(tester, 'Mark'), closeTo(150, 0.5));
+    });
+  });
+
+  test('a layer is SVG, text or a named icon, exactly one of them', () {
+    Map<String, dynamic> withLayer(Map<String, dynamic> layer) => document()
+      ..['layers'] = [
+        {'id': 'l', 'x': 0, 'y': 0, 'width': 20, 'height': 20, ...layer},
+      ];
+    expect(
+      PanelScene(
+        withLayer({
+          'icon': {'name': 'pine-tree', 'color': '#2E7D32'},
+        }),
+      ).layers.single.icon?.name,
+      'pine-tree',
+    );
+    for (final layer in [
+      {
+        'icon': {'name': 'pine-tree'},
+        'svg': '<svg xmlns="http://www.w3.org/2000/svg"/>',
+      },
+      {
+        'icon': {'name': 'pine-tree', 'color': 'green'},
+      },
+      {'icon': 'pine-tree'},
+    ]) {
+      expect(() => PanelScene(withLayer(layer)), throwsFormatException, reason: '$layer');
+    }
+  });
+
+  testWidgets('an icon layer draws the app\'s own icon for its name, in its colour', (tester) async {
+    final doc = document()
+      ..['layers'] = [
+        {
+          'id': 'l',
+          'x': 0,
+          'y': 0,
+          'width': 20,
+          'height': 20,
+          'icon': {'name': 'pine-tree', 'color': '#2E7D32'},
+        },
+      ];
+    await show(tester, doc);
+    final icon = tester.widget<Icon>(find.byIcon(resolveIconName('pine-tree')));
+    expect(icon.color, const Color(0xFF2E7D32));
+  });
+
+  // A band map gives every spot a label, a lit outline and a hover strip on
+  // its scale: 128 layers and 64 controls would hold barely thirty spots.
+  test('a scene holds 512 layers and 256 controls, and no more', () {
+    Map<String, dynamic> sized({int layers = 1, int controls = 0}) => document()
+      ..['layers'] = [
+        for (var i = 0; i < layers; i++) {'id': 'l$i', 'x': 0, 'y': 0, 'width': 1, 'height': 1, 'svg': '<svg xmlns="http://www.w3.org/2000/svg"/>'},
+      ]
+      ..['controls'] = [
+        for (var i = 0; i < controls; i++) {'id': 'c$i', 'label': 'C', 'kind': 'button', 'x': 0, 'y': 0, 'width': 1, 'height': 1},
+      ];
+    expect(PanelScene(sized(layers: 512, controls: 256)).controls, hasLength(256));
+    expect(() => PanelScene(sized(layers: 513)), throwsFormatException);
+    expect(() => PanelScene(sized(controls: 257)), throwsFormatException);
+  });
+
+  group('hoverSet', () {
+    // Two spots side by side, each lighting up its own number in one shared value. The slider
+    // sends events, so nothing else keeps `v` across a render.
+    Map<String, dynamic> spots({double value = 0}) {
+      final doc = document(value: value);
+      (doc['controls'] as List).addAll(<Map<String, Object>>[
+        for (final (id, x, to) in [('a', 200, 7), ('b', 300, 9)])
+          {
+            'id': id,
+            'label': 'Spot $id',
+            'kind': 'button',
+            'x': x,
+            'y': 0,
+            'width': 100,
+            'height': 50,
+            'event': 'tune',
+            'hoverSet': {'value': 'v', 'to': to},
+          },
+      ]);
+      return doc;
+    }
+
+    Future<TestGesture> mouse(WidgetTester tester) async {
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await gesture.addPointer(location: tester.getRect(find.byType(PanelSceneView)).bottomRight - const Offset(1, 1));
+      addTearDown(gesture.removePointer);
+      return gesture;
+    }
+
+    testWidgets('lights up under the pointer with no bridge call, and goes out on leaving', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await show(
+        tester,
+        spots(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final gesture = await mouse(tester);
+      await gesture.moveTo(tester.getRect(find.bySemanticsLabel('Spot a')).center);
+      await tester.pump();
+      expect(find.text('Value: 7'), findsOneWidget);
+      // Straight onto the neighbour, with no empty space between to reset through.
+      await gesture.moveTo(tester.getRect(find.bySemanticsLabel('Spot b')).center);
+      await tester.pump();
+      expect(find.text('Value: 9'), findsOneWidget);
+      await gesture.moveTo(tester.getRect(find.byType(PanelSceneView)).bottomRight - const Offset(1, 1));
+      await tester.pump();
+      expect(find.text('Value: 0'), findsOneWidget);
+      expect(events, isEmpty);
+    });
+
+    // An extension may set the value itself — the spot the radio is on — and must be heard when no
+    // pointer holds it.
+    testWidgets('follows the scene\'s renders while nothing is hovered', (tester) async {
+      await show(tester, spots(), onEvent: (_) async => {});
+      await show(tester, spots(value: 3), onEvent: (_) async => {});
+      expect(find.text('Value: 3'), findsOneWidget);
+    });
+
+    testWidgets('holds through a render while the pointer stays, then gives back the new scene value', (tester) async {
+      await show(tester, spots(), onEvent: (_) async => {});
+      final gesture = await mouse(tester);
+      await gesture.moveTo(tester.getRect(find.bySemanticsLabel('Spot a')).center);
+      await tester.pump();
+      // A panel ticking once a second would otherwise blink its highlight off under a still pointer.
+      await show(tester, spots(value: 3), onEvent: (_) async => {});
+      expect(find.text('Value: 7'), findsOneWidget);
+      await gesture.moveTo(tester.getRect(find.byType(PanelSceneView)).bottomRight - const Offset(1, 1));
+      await tester.pump();
+      expect(find.text('Value: 3'), findsOneWidget);
+    });
+
+    testWidgets('a hovered button still sends its click', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await show(
+        tester,
+        spots(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final gesture = await mouse(tester);
+      await gesture.moveTo(tester.getRect(find.bySemanticsLabel('Spot a')).center);
+      await tester.pump();
+      await gesture.down(tester.getRect(find.bySemanticsLabel('Spot a')).center);
+      await gesture.up();
+      await tester.pump();
+      expect(events.map((e) => e['controlId']), ['a']);
+    });
+  });
+
   testWidgets('local chart inspection survives refresh and makes no bridge call', (tester) async {
     var calls = 0;
     Future<Map<String, double>> handler(Map<String, dynamic> _) async {

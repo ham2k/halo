@@ -44,6 +44,12 @@ class PanelScene {
   /// Null: the artwork fills the panel and every control has a rect.
   final SceneLayoutNode? layout;
 
+  /// A scene longer than its panel along [axis] (`x` or `y`), scrolled natively: scaled to fill the
+  /// panel across, it runs on past it along the axis. The position, in scene units from the start,
+  /// is written to the scene value [value] as it scrolls; a render that changes that value moves
+  /// the view there. [event], when given, is sent once scrolling settles, with the position.
+  final ({String axis, String value, String? event})? scroll;
+
   PanelScene(Map<dynamic, dynamic> json)
     : width = number(json, 'width', min: 1, max: 8192),
       height = number(json, 'height', min: 1, max: 8192),
@@ -51,10 +57,17 @@ class PanelScene {
       hasRadio = json['radio'] is Map,
       radio = json['radio'] is Map && (json['radio'] as Map)['node'] != null ? string(json['radio'] as Map, 'node') : null,
       strings = parseStrings(json['strings'] ?? const {}),
-      layers = items(json['layers'], 128).map(SceneLayer.new).toList(),
-      controls = items(json['controls'] ?? [], 64).map(SceneControl.new).toList(),
+      layers = items(json['layers'], 512).map(SceneLayer.new).toList(),
+      controls = items(json['controls'] ?? [], 256).map(SceneControl.new).toList(),
       controlsById = {},
-      layout = json['layout'] == null ? null : SceneLayoutNode.parse(json['layout']) {
+      layout = json['layout'] == null ? null : SceneLayoutNode.parse(json['layout']),
+      scroll = json['scroll'] is Map
+          ? (
+              axis: _oneOf(json['scroll'] as Map<dynamic, dynamic>, 'axis', const ['x', 'y']) ?? 'y',
+              value: string(json['scroll'] as Map<dynamic, dynamic>, 'value'),
+              event: (json['scroll'] as Map)['event'] == null ? null : string(json['scroll'] as Map<dynamic, dynamic>, 'event'),
+            )
+          : null {
     if (json['version'] != 1) {
       throw const FormatException('Unsupported scene version');
     }
@@ -62,6 +75,9 @@ class PanelScene {
       throw const FormatException('A scene value is both a number and a string');
     }
     if (json['radio'] != null && json['radio'] is! Map) throw const FormatException('Invalid scene radio');
+    // A layout places the artwork among native controls; a scroll would leave them stranded.
+    if (json['scroll'] != null && (scroll == null || json['layout'] != null)) throw const FormatException('Invalid scene scroll');
+    if (scroll case final s? when !values.containsKey(s.value)) throw const FormatException('Unknown scroll value');
     if (values.keys.any(sceneRadioValues.contains) || strings.keys.any(sceneRadioValues.contains)) {
       throw const FormatException('A scene value uses a name the host reserves');
     }
@@ -70,8 +86,10 @@ class PanelScene {
       throw const FormatException('Scene artwork and text exceed 1 MiB');
     }
     final layerIds = <String>{};
+    final fixedLayers = <String>{};
     for (final layer in layers) {
       if (!layerIds.add(layer.id)) throw const FormatException('Duplicate layer ID');
+      if (layer.fixed) fixedLayers.add(layer.id);
       for (final binding in layer.bindings.values) {
         if (!known(binding.value)) {
           throw const FormatException('Unknown bound value');
@@ -110,6 +128,9 @@ class PanelScene {
       if (control.opacityBinding != null && !known(control.opacityBinding!.value)) {
         throw FormatException('Unknown opacity value: ${control.id}');
       }
+      if (control.hoverSet case final hover? when !values.containsKey(hover.value)) {
+        throw FormatException('Unknown hoverSet value: ${control.id}');
+      }
       if (control.spectrum?.valueNames.any((name) => !values.containsKey(name)) ?? false) {
         throw FormatException('Unknown spectrum value: ${control.id}');
       }
@@ -120,6 +141,14 @@ class PanelScene {
       // a place among the layers.
       if (control.after != null && (control.rect == null || !layerIds.contains(control.after))) {
         throw FormatException('Control cannot be placed after that layer: ${control.id}');
+      }
+      // Fixed and scrolling are drawn apart: a control can only sit among the layers it moves with.
+      if (control.after != null && fixedLayers.contains(control.after) != control.fixed) {
+        throw FormatException('Control cannot be placed after a layer that scrolls differently: ${control.id}');
+      }
+      if (control.fixed && control.rect == null) throw FormatException('A fixed control needs a rect: ${control.id}');
+      if (control.kind == 'zoom' && (scroll == null || control.fixed || control.event == null)) {
+        throw FormatException('A zoom strip belongs to a scrolling scene, scrolls with it, and sends an event: ${control.id}');
       }
     }
     // Every control is placed exactly once: by its rect over the artwork, or
@@ -266,9 +295,21 @@ class SceneLayer {
   final String? svg;
   final Map<dynamic, dynamic>? text;
 
+  /// A named icon (`icon.name`, MDI or `fa-`), drawn by the app at the
+  /// layer's size, in `icon.color` or the theme's.
+  final ({String name, Color? color})? icon;
+
   /// Whether the layer takes the clicks that land on it. Off, it is click-
   /// through: artwork drawn over a control does not stop the control working.
   final bool blocksPointer;
+
+  /// In a scrolling scene, drawn over the panel where it is, in panel coordinates, rather than
+  /// scrolled with the rest.
+  final bool fixed;
+
+  /// While a zoom strip is dragged, scaled along the scroll rather than moved at its size: for a
+  /// background, or a line that runs the whole way.
+  final bool stretch;
   final Map<String, SceneBinding> bindings;
   final Alignment pivot;
   final int transitionMs;
@@ -277,8 +318,11 @@ class SceneLayer {
     : id = string(json, 'id'),
       rect = bounds(json),
       blocksPointer = json['blocksPointer'] == true,
+      fixed = json['fixed'] == true,
+      stretch = json['stretch'] == true,
       svg = json['svg'] == null ? null : string(json, 'svg'),
       text = json['text'] as Map<dynamic, dynamic>?,
+      icon = json['icon'] is Map ? _layerIcon(json['icon'] as Map<dynamic, dynamic>) : null,
       bindings = {
         for (final key in ['rotation', 'translateX', 'translateY', 'scaleX', 'scaleY', 'opacity'])
           if (json[key] != null) key: SceneBinding(json[key] as Map<dynamic, dynamic>),
@@ -286,8 +330,8 @@ class SceneLayer {
       pivot = json['pivot'] == null ? Alignment.center : Alignment(pair(json['pivot'])[0] * 2 - 1, pair(json['pivot'])[1] * 2 - 1),
       transitionMs = number(json, 'transitionMs', fallback: 0, min: 0, max: 10000).round(),
       pulse = json['pulse'] as Map<dynamic, dynamic>? {
-    if ((svg == null) == (text == null)) {
-      throw const FormatException('Expected SVG or text');
+    if ([svg, text, json['icon']].nonNulls.length != 1 || (json['icon'] != null && icon == null)) {
+      throw const FormatException('Expected SVG, text or an icon');
     }
     if (svg != null && RegExp(r'<(?:image|script|foreignObject)\b|<!DOCTYPE|<!ENTITY', caseSensitive: false).hasMatch(svg!)) {
       throw const FormatException('Scene SVG must be self-contained vector artwork');
@@ -330,13 +374,26 @@ class SceneLayer {
   }
 }
 
+({String name, Color? color}) _layerIcon(Map<dynamic, dynamic> json) {
+  final color = json['color'] == null ? null : string(json, 'color');
+  if (color != null && !RegExp(r'^#[0-9a-fA-F]{6}$').hasMatch(color)) throw const FormatException('Invalid icon color');
+  return (name: string(json, 'name'), color: color == null ? null : Color(0xff000000 | int.parse(color.substring(1), radix: 16)));
+}
+
 /// What a control kind's `value` names.
 enum SceneBinds { number, string, optionalNumber, any, none, unchecked }
 
 /// Drawn by the extension's artwork, with an invisible hit area on top.
 // A drawn button's `value` may name anything, or nothing: published scenes do.
 // Its event carries what the name resolves to, `text` or `value`, null for none.
-const _drawnKinds = {'button': SceneBinds.unchecked, 'slider': SceneBinds.number, 'knob': SceneBinds.number};
+const _drawnKinds = {
+  'button': SceneBinds.unchecked,
+  'slider': SceneBinds.number,
+  'knob': SceneBinds.number,
+  // A strip of a scrolling scene where a drag along the scroll zooms it about the pane's middle;
+  // its event carries the factor, as `value`. Drawn by nothing: it only claims the drag.
+  'zoom': SceneBinds.none,
+};
 
 /// Material widgets, themed by the app.
 const _nativeKinds = {
@@ -364,6 +421,15 @@ class SceneControl {
   final Rect? rect;
   final double min, max, step, sensitivity;
   final bool hover, discrete, continuous, multi, disabled;
+
+  /// A knob's drag moves its value the other way: content held under the finger, not a dial.
+  final bool invertDrag;
+
+  /// A slider or knob takes the scrolls that land on drawn buttons over it.
+  final bool scrollThrough;
+
+  /// In a scrolling scene, placed over the panel rather than scrolled; see [SceneLayer.fixed].
+  final bool fixed;
   final List<String>? valueLabels;
   final List<({String label, String event})>? menu;
   final List<({String label, String value})>? options;
@@ -379,6 +445,11 @@ class SceneControl {
 
   /// Set on a `spectrum` control, and only on one.
   final SceneSpectrumSpec? spectrum;
+
+  /// A drawn control's `hoverSet`: while the pointer is over it, the scene
+  /// value [hoverSet.value] reads [hoverSet.to], set by the host with no call
+  /// to the extension, so artwork bound to it lights up under the pointer.
+  final ({String value, double to})? hoverSet;
 
   /// A knob's second axis, from `valueY`: vertical motion sets it while
   /// horizontal motion sets [value] — a passband's width and its shift on
@@ -405,6 +476,9 @@ class SceneControl {
             }, isYAxis: true),
       after = json['after'] == null ? null : string(json, 'after'),
       spectrum = json['kind'] == 'spectrum' ? SceneSpectrumSpec(json) : null,
+      hoverSet = json['hoverSet'] is Map
+          ? (value: string(json['hoverSet'] as Map<dynamic, dynamic>, 'value'), to: number(json['hoverSet'] as Map<dynamic, dynamic>, 'to'))
+          : null,
       opacity = json['opacity'] is Map ? 1 : number(json, 'opacity', fallback: 1, min: 0, max: 1),
       opacityBinding = json['opacity'] is Map ? SceneBinding(json['opacity'] as Map<dynamic, dynamic>) : null,
       menu = json['menu'] == null ? null : items(json['menu'], 32).map((m) => (label: string(m, 'label'), event: string(m, 'event'))).toList(),
@@ -425,6 +499,9 @@ class SceneControl {
       style = _oneOf(json, 'style', panelTextRoles),
       align = _oneOf(json, 'align', const ['start', 'center', 'end']),
       hover = json['hover'] == true,
+      invertDrag = json['invertDrag'] == true,
+      scrollThrough = json['scrollThrough'] == true,
+      fixed = json['fixed'] == true,
       continuous = json['continuous'] == true,
       discrete = json['discrete'] == true,
       valueLabels = json['valueLabels'] == null ? null : (json['valueLabels'] as List).map((v) => string({'v': v}, 'v')).toList(),
@@ -438,6 +515,11 @@ class SceneControl {
         (_drawnKinds[kind] ?? _nativeKinds[kind]) == null ||
         min >= max ||
         (hover && (kind != 'slider' || event != null)) ||
+        // A zoom's range is the factors it allows, so it must say them.
+        (kind == 'zoom' && (json['min'] == null || json['max'] == null || min <= 0)) ||
+        // Drawn by nothing, a zoom strip has no place among the layers.
+        (kind == 'zoom' && json['after'] != null) ||
+        (json['hoverSet'] != null && (json['hoverSet'] is! Map || !_drawnKinds.containsKey(kind))) ||
         (valueLabels != null && (valueLabels!.isEmpty || valueLabels!.length > 4096)) ||
         // A choice needs something to choose from, and a value can be chosen once.
         (const {'nativeDropdown', 'nativeRadio', 'nativeSegmented'}.contains(kind) != (choices != null)) ||
@@ -454,6 +536,8 @@ class SceneControl {
         !only(style, {'nativeText'}) ||
         !only(align, {'nativeText'}) ||
         !only(continuous, {'slider', 'knob', 'nativeSlider', 'nativeTextField'}) ||
+        !only(json['invertDrag'], {'knob'}) ||
+        !only(json['scrollThrough'], {'slider', 'knob'}) ||
         (json['valueY'] != null && kind != 'knob') ||
         // An event carries no other mark of which axis moved: the second needs its own.
         (!isYAxis && json['valueY'] != null && json['event'] != null && (json['eventY'] == null || json['eventY'] == json['event'])) ||

@@ -14,6 +14,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../panel_environment.dart';
 import 'scene_model.dart';
 import 'scene_spectrum.dart';
+import 'scene_gestures.dart';
+
+part 'scene_layer_view.dart';
 
 /// Sends one control event and answers with the values to show: a patch keyed
 /// by value name, a double for a number and a String for a string.
@@ -72,6 +75,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     super.initState();
     _values = {...widget.scene.values};
     _strings = {...widget.scene.strings};
+    if (widget.scene.scroll case final scroll?) _scrollTo = widget.scene.values[scroll.value];
     _readRadio();
     _listenToRadio(null, widget);
     WidgetsBinding.instance.addObserver(this);
@@ -131,7 +135,25 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       ...widget.scene.controls.where((c) => c.event == null && !c.isAction && c.kind != 'nativeText').map((c) => c.value),
       // Written by the pointer, never by the extension.
       for (final c in widget.scene.controls) ...[?c.spectrum?.hoverHz, ?c.spectrum?.hoverDb],
+      // A hover value is the pointer's only while it is over the control; otherwise a render's.
+      ..._hovering,
     };
+    // A zoom previewed gives way to the render that answers it: the first new scene once its event
+    // has been heard. One drawn while it waits — the spots moving on — is still at the old zoom, and
+    // dropping the preview for it would flick back to the old zoom and then on to the new.
+    if (_zoomStrip == null && !identical(oldWidget.scene, widget.scene) && !_zoomWaiting) _zoom = 1;
+    // The scroll position is the operator's until a render moves it: see [_scrollTo].
+    if (widget.scene.scroll case final s?) {
+      local.add(s.value);
+      final asked = widget.scene.values[s.value];
+      if (oldWidget.scene.scroll == null || oldWidget.scene.values[s.value] != asked) {
+        final echoed = asked == null ? -1 : _scrollsSent.indexWhere((sent) => (sent - asked).abs() < 0.5);
+        // Heard back, that position and every one sent before it are spent: the extension has caught
+        // up past them, and asking for one again is a move.
+        _scrollsSent = echoed < 0 ? const [] : _scrollsSent.sublist(echoed + 1);
+        if (echoed < 0) _scrollTo = asked;
+      }
+    }
     bool keep(String key) => _dirty.contains(key) || _active.contains(key) || local.contains(key);
     _values = {for (final entry in widget.scene.values.entries) entry.key: keep(entry.key) ? _values[entry.key] ?? entry.value : entry.value};
     _strings = {for (final entry in widget.scene.strings.entries) entry.key: keep(entry.key) ? _strings[entry.key] ?? entry.value : entry.value};
@@ -199,7 +221,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         if (_strings.containsKey(control.value)) 'text': _strings[control.value] else 'value': _values[control.value],
     };
     // Buttons are disabled while outstanding; repeated control commits keep
-    // only their newest desired value. Bound by the scene's 64 controls, and
+    // only their newest desired value. Bound by the scene's 256 controls, and
     // a spectrum's 64 annotations each.
     // Move a replacement to the end, preserving commit order across controls
     // that share a value (for example a tuning knob and its band slider).
@@ -247,7 +269,10 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
           // the extension has, not the one the operator just gave it.
           // An annotation's click carries its own frequency, so it does not
           // act on a value the extension refused, and still goes.
-          if (event['phase'] != 'activate') _queue.removeWhere((_, queued) => queued['phase'] == 'activate' && queued['annotation'] == null);
+          // A scroll or zoom refused moves only the view, and leaves what an action acts on alone.
+          if (event['phase'] != 'activate' && !_viewEvent(event)) {
+            _queue.removeWhere((_, queued) => queued['phase'] == 'activate' && queued['annotation'] == null);
+          }
           if (event['sequence'] == _sequence) {
             for (final key in _dirty) {
               if (_active.contains(key)) continue;
@@ -270,6 +295,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
 
   @override
   void dispose() {
+    _zoomHold?.cancel();
+    _settle?.cancel();
+    _scroller.dispose();
     _sinceTransmitTick?.cancel();
     if (widget.scene.hasRadio) widget.spectrum?.readingChanges.removeListener(_onRadioReading);
     WidgetsBinding.instance.removeObserver(this);
@@ -288,8 +316,34 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       excluding: hidden,
       child: IgnorePointer(
         ignoring: hidden,
-        child: Opacity(opacity: opacity, child: child),
+        child: _hovered(control, Opacity(opacity: opacity, child: child)),
       ),
+    );
+  }
+
+  /// A control's `hoverSet`, kept on the host: entering sets the value and
+  /// leaving puts back the scene's own. The pointer leaves one control before
+  /// it enters the next, so moving straight onto a neighbour lights that one.
+  /// The `hoverSet` values the pointer holds right now.
+  final _hovering = <String>{};
+
+  Widget _hovered(SceneControl control, Widget child) {
+    final hover = control.hoverSet;
+    if (hover == null) return child;
+    return MouseRegion(
+      opaque: false,
+      onEnter: (_) => setState(() {
+        _hovering.add(hover.value);
+        _values[hover.value] = hover.to;
+      }),
+      onExit: (_) {
+        if (!mounted) return;
+        setState(() {
+          _hovering.remove(hover.value);
+          _values[hover.value] = widget.scene.values[hover.value] ?? 0;
+        });
+      },
+      child: child,
     );
   }
 
@@ -347,95 +401,376 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       return Positioned.fromRect(
         key: ValueKey('control:${control.id}'),
         rect: rect,
-        child: Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: SizedBox(width: rect.width, child: _native(control)),
+        child: _zoomed(
+          control.fixed ? null : rect,
+          false,
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: SizedBox(width: rect.width, child: _native(control)),
+          ),
         ),
       );
     }
     return Positioned.fromRect(
       key: ValueKey('control:${control.id}'),
       rect: rect,
-      child: _faded(
-        control,
-        _ControlView(
-          key: ValueKey(control.id),
-          control: control,
-          value: _values[control.value] ?? 0,
-          valueY: control.yAxis == null ? null : _values[control.yAxis!.value] ?? 0,
-          disabled: control.disabled || (control.isAction && _actionPending),
-          // A two-axis knob holds each value only once that axis moves: a drag commits only the
-          // axes it moved, and one held without a commit would stop following the document.
-          onStart: () {
-            if (control.yAxis == null) _active.add(control.value ?? '');
-          },
-          onCancel: () {
-            setState(() {
-              for (final key in [control.value, control.yAxis?.value]) {
-                _active.remove(key);
-                _dirty.remove(key);
-                if (key != null) _values[key] = scene.values[key]!;
-              }
-            });
-          },
-          onChange: (v) {
-            if (control.yAxis != null) _active.add(control.value!);
-            _change(control, v);
-          },
-          onCommit: () => _commit(control),
-          onChangeY: control.yAxis == null
-              ? null
-              : (v) {
-                  _active.add(control.yAxis!.value!);
-                  _change(control.yAxis!, v);
-                },
-          onCommitY: control.yAxis == null ? null : () => _commit(control.yAxis!),
-          onSelect: (action) => _sendControl(control, 'activate', action: action),
-        ),
-      ),
-    );
-  }
-
-  Widget _artwork(bool reduceMotion) {
-    final scene = widget.scene;
-    return Center(
-      child: FittedBox(
-        fit: BoxFit.contain,
-        child: SizedBox(
-          width: scene.width,
-          height: scene.height,
-          child: ClipRect(
-            child: Stack(
-              children: [
-                for (final layer in scene.layers) ...[
-                  // Keyed, as is each control's: without it, a layer added
-                  // before a control shifts the Stack's children, and the
-                  // control remounts and drops a text field's typing.
-                  Positioned.fromRect(
-                    key: ValueKey('layer:${layer.id}'),
-                    rect: layer.rect,
-                    child: _SceneLayerView(
-                      key: ValueKey(layer.id),
-                      layer: layer,
-                      values: _values,
-                      strings: _strings,
-                      immediate: reduceMotion || layer.bindings.values.any((b) => _dirty.contains(b.value)),
-                      reduceMotion: reduceMotion,
-                    ),
-                  ),
-                  for (final control in scene.controls)
-                    if (control.after == layer.id) _placed(control),
-                ],
-                // Placed after no layer: above every layer.
-                for (final control in scene.controls)
-                  if (control.rect != null && control.after == null) _placed(control),
-              ],
+      child: _zoomed(
+        control.fixed ? null : rect,
+        false,
+        _faded(
+          control,
+          _scrollsThrough(
+            control,
+            _ControlView(
+              key: ValueKey(control.id),
+              control: control,
+              value: _values[control.value] ?? 0,
+              valueY: control.yAxis == null ? null : _values[control.yAxis!.value] ?? 0,
+              disabled: control.disabled || (control.isAction && _actionPending),
+              // A two-axis knob holds each value only once that axis moves: a drag commits only the
+              // axes it moved, and one held without a commit would stop following the document.
+              onStart: () {
+                if (control.yAxis == null) _active.add(control.value ?? '');
+              },
+              onCancel: () {
+                setState(() {
+                  for (final key in [control.value, control.yAxis?.value]) {
+                    _active.remove(key);
+                    _dirty.remove(key);
+                    if (key != null) _values[key] = scene.values[key]!;
+                  }
+                });
+              },
+              onChange: (v) {
+                if (control.yAxis != null) _active.add(control.value!);
+                _change(control, v);
+              },
+              onCommit: () => _commit(control),
+              onChangeY: control.yAxis == null
+                  ? null
+                  : (v) {
+                      _active.add(control.yAxis!.value!);
+                      _change(control.yAxis!, v);
+                    },
+              onCommitY: control.yAxis == null ? null : () => _commit(control.yAxis!),
+              onSelect: (action) => _sendControl(control, 'activate', action: action),
             ),
           ),
         ),
       ),
     );
   }
+
+  /// A scroll that lands on a drawn button — one the hit test reached, so nothing above it took the
+  /// pointer — goes on beneath it, past other buttons, to a slider or knob with `scrollThrough`: a
+  /// label over a knob that scrolls the artwork must not stop the scroll. Anything else on the way
+  /// keeps it from there — a native control, a layer that blocks the pointer, a slider or knob that
+  /// did not ask — so a scene that never asked keeps its scrolls where they land.
+  Widget _scrollsThrough(SceneControl button, Widget child) => button.kind != 'button'
+      ? child
+      : Listener(behavior: HitTestBehavior.translucent, onPointerSignal: (event) => _scrollThrough(button, event), child: child);
+
+  void _scrollThrough(SceneControl button, PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return;
+    final target = _scrolledBeneath(button, button.rect!.topLeft + event.localPosition);
+    if (target == null) return;
+    GestureBinding.instance.pointerSignalResolver.register(event, (_) {
+      final step = sceneScrollStep(target, event.scrollDelta);
+      final axis = step.second ? target.yAxis! : target;
+      if (target.yAxis != null) _active.add(axis.value!);
+      _change(axis, (_values[axis.value] ?? 0) + step.delta);
+      _commit(axis);
+    });
+  }
+
+  /// Positions are compared only within [button]'s own stack: a fixed control's rect is in pane
+  /// coordinates, a scrolling one's in the content's.
+  SceneControl? _scrolledBeneath(SceneControl button, Offset at) {
+    final painted = _painted(button.fixed).toList();
+    for (final piece in painted.sublist(0, painted.indexOf(button)).reversed) {
+      switch (piece) {
+        case SceneLayer layer when layer.blocksPointer && layer.rect.contains(at) && (layer.bindings['opacity']?.evaluate(_values) ?? 1) > 0:
+          return null;
+        case SceneControl control when (control.rect?.contains(at) ?? false) && control.opacityAt(_values) > 0:
+          if (control.kind == 'button') continue;
+          return control.scrollThrough && !control.disabled ? control : null;
+      }
+    }
+    return null;
+  }
+
+  /// A scrolling scene's view of its content, and the scale it is drawn at.
+  final _scroller = ScrollController();
+  double _scrollScale = 1;
+
+  /// Where a render asked the view to be, in scene units, until the view gets there.
+  double? _scrollTo;
+
+  /// The position last told to the extension, and those it has not yet been heard keeping: a render
+  /// carrying one of them back is the extension keeping what it heard, not asking to move — jumping
+  /// there would yank the view from under an operator who has scrolled on since.
+  double? _scrollSent;
+  List<double> _scrollsSent = const [];
+  Timer? _settle;
+
+  /// A drag on a `zoom` strip: the strip, how far from the pane's middle it began, and the factor
+  /// shown — held after release until the extension's render at that zoom replaces it.
+  final _pane = GlobalKey();
+  SceneControl? _zoomStrip;
+  double _zoomFrom = 0, _zoom = 1;
+
+  /// The pane's length along the scroll, in scene units.
+  double _paneLength = 0;
+
+  /// While a zoom strip is dragged, each scrolling piece moves to where the zoom puts its middle
+  /// and keeps its size — text stays text-sized, a dot a dot — and a `stretch` layer scales along
+  /// the scroll instead: a background, or a line that runs the whole way. About the pane's middle.
+  /// A null [rect] — a `fixed` piece, over the pane rather than the content — stays put.
+  Widget _zoomed(Rect? rect, bool stretch, Widget child) {
+    if (rect == null || _zoom == 1 || widget.scene.scroll == null) return child;
+    final vertical = widget.scene.scroll!.axis == 'y';
+    final middle = (_scroller.hasClients ? _scroller.offset / _scrollScale : 0) + _paneLength / 2;
+    if (stretch) {
+      return Transform(
+        origin: vertical ? Offset(0, middle - rect.top) : Offset(middle - rect.left, 0),
+        transform: Matrix4.diagonal3Values(vertical ? 1 : _zoom, vertical ? _zoom : 1, 1),
+        child: child,
+      );
+    }
+    final moved = ((vertical ? rect.center.dy : rect.center.dx) - middle) * (_zoom - 1);
+    return Transform.translate(offset: vertical ? Offset(0, moved) : Offset(moved, 0), child: child);
+  }
+
+  SceneControl? _zoomStripAt(Offset at) => widget.scene.controls.where((c) => c.kind == 'zoom' && !c.disabled && (c.rect?.contains(at) ?? false)).lastOrNull;
+
+  /// How far [global] is from the pane's middle, along the scroll.
+  double _fromMiddle(Offset global) {
+    final box = _pane.currentContext!.findRenderObject()! as RenderBox, at = box.globalToLocal(global);
+    return widget.scene.scroll?.axis == 'x' ? (at.dx - box.size.width / 2).abs() : (at.dy - box.size.height / 2).abs();
+  }
+
+  void _zoomStart(DragStartDetails details) {
+    _zoomStrip = _zoomStripAt(details.localPosition);
+    // A start right on the middle would make every pixel a leap.
+    _zoomFrom = math.max(16, _fromMiddle(details.globalPosition));
+  }
+
+  void _zoomUpdate(DragUpdateDetails details) {
+    final strip = _zoomStrip;
+    if (strip == null) return;
+    setState(() => _zoom = (_fromMiddle(details.globalPosition) / _zoomFrom).clamp(strip.min, strip.max).toDouble());
+  }
+
+  Map<Type, GestureRecognizerFactory> _zoomGestures(bool vertical) {
+    bool allowedAt(Offset at) => _zoomStripAt(at) != null;
+    // Measured from where the finger came down, not where the drag was recognised past its slop.
+    void handlers(DragGestureRecognizer drag) => drag
+      ..dragStartBehavior = DragStartBehavior.down
+      ..onStart = _zoomStart
+      ..onUpdate = _zoomUpdate
+      ..onEnd = _zoomEnd
+      ..onCancel = () => setState(() {
+        _zoomStrip = null;
+        _zoom = 1;
+      });
+    return vertical
+        ? {VerticalZoomDrag: GestureRecognizerFactoryWithHandlers<VerticalZoomDrag>(() => VerticalZoomDrag(allowedAt), handlers)}
+        : {HorizontalZoomDrag: GestureRecognizerFactoryWithHandlers<HorizontalZoomDrag>(() => HorizontalZoomDrag(allowedAt), handlers)};
+  }
+
+  void _zoomEnd(DragEndDetails _) {
+    final strip = _zoomStrip;
+    _zoomStrip = null;
+    if (strip == null || (_zoom - 1).abs() < 0.02) return setState(() => _zoom = 1);
+    _sendControl(strip, 'commit', value: _zoom);
+    // An answer that redraws nothing — a zoom the extension clamps away, or refuses — must not
+    // leave the preview standing: it would show a zoom the scene does not have.
+    _zoomHold?.cancel();
+    _zoomHold = Timer(const Duration(seconds: 2), () {
+      if (mounted && _zoomStrip == null && _zoom != 1) setState(() => _zoom = 1);
+    });
+  }
+
+  Timer? _zoomHold;
+
+  bool _zoomEvent(Map<String, dynamic>? event) => event != null && widget.scene.controlsById[event['controlId']]?.kind == 'zoom';
+
+  /// Whether a zoom's event is queued or in flight: the render that answers it is still to come.
+  bool get _zoomWaiting => _zoomEvent(_inFlight) || _queue.values.any(_zoomEvent);
+
+  /// A scroll's settle event, or a zoom's: news of the view, not of a value an action acts on.
+  bool _viewEvent(Map<String, dynamic> event) => event['controlId'] == '' || _zoomEvent(event);
+
+  /// Whether any layer or control is bound to the scroll's value.
+  bool get _boundToScroll {
+    final scene = widget.scene;
+    if (!identical(_boundFor, scene)) {
+      _boundFor = scene;
+      final value = scene.scroll?.value;
+      _bound =
+          value != null &&
+          (scene.layers.any((l) => l.text?['value'] == value || l.bindings.values.any((b) => b.value == value)) ||
+              scene.controls.any((c) => c.opacityBinding?.value == value));
+    }
+    return _bound;
+  }
+
+  PanelScene? _boundFor;
+  bool _bound = false;
+
+  /// The operator's scroll: kept in its value, with no render, and told once it settles.
+  bool _onScroll(ScrollNotification note) {
+    final scroll = widget.scene.scroll;
+    if (scroll == null || note.depth != 0) return false;
+    final at = note.metrics.pixels / _scrollScale;
+    if (_values[scroll.value] != at) {
+      // Redrawn only for artwork that reads the position — a readout of where the view is; the
+      // scroll view moves the rest itself, and a rebuild per frame of scrolling would be for nothing.
+      if (_boundToScroll) {
+        setState(() => _values[scroll.value] = at);
+      } else {
+        _values[scroll.value] = at;
+      }
+    }
+    // A drag that flings ends twice — the drag, then the coast — and a wheel ends at every notch: only
+    // where the scroll has come to rest, and stayed a moment, is news.
+    if (note is ScrollEndNotification && scroll.event != null && widget.onEvent != null) {
+      _settle?.cancel();
+      _settle = Timer(const Duration(milliseconds: 300), () {
+        final at = _values[scroll.value];
+        if (!mounted || at == null || !_scroller.hasClients || _scroller.position.isScrollingNotifier.value || _scrollSent == at) return;
+        _scrollSent = at;
+        _scrollsSent = [..._scrollsSent.skip(_scrollsSent.length >= 8 ? 1 : 0), at];
+        _queue['\u0000scroll'] = {'controlId': '', 'action': scroll.event, 'phase': 'commit', 'sequence': _sequence, 'value': at};
+        _drain();
+      });
+    }
+    return false;
+  }
+
+  Widget _artwork(bool reduceMotion) {
+    final scene = widget.scene;
+    final scroll = scene.scroll;
+    if (scroll == null) {
+      return Center(
+        child: FittedBox(
+          fit: BoxFit.contain,
+          child: SizedBox(
+            width: scene.width,
+            height: scene.height,
+            child: ClipRect(child: _stack(reduceMotion)),
+          ),
+        ),
+      );
+    }
+    final vertical = scroll.axis == 'y';
+    return LayoutBuilder(
+      builder: (context, box) {
+        // Filling the panel across the scroll, as a contained scene would; along it, running on past.
+        final scale = vertical ? box.maxWidth / scene.width : box.maxHeight / scene.height;
+        // A pane with no room across the scroll, or unbounded: there is no size to draw at, and the
+        // scale would put an infinity in the position told to the extension.
+        if (!(scale > 0) || !scale.isFinite) return const SizedBox.shrink();
+        _scrollScale = scale;
+        final panel = Size(vertical ? scene.width : box.maxWidth / scale, vertical ? box.maxHeight / scale : scene.height);
+        _paneLength = vertical ? panel.height : panel.width;
+        if (_scrollTo != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final to = _scrollTo;
+            if (!mounted || to == null || !_scroller.hasClients) return;
+            _scrollTo = null;
+            final pixels = (to * _scrollScale).clamp(0.0, _scroller.position.maxScrollExtent);
+            // The extension's own move, not news to send it back.
+            _scrollSent = pixels / _scrollScale;
+            _scroller.jumpTo(pixels);
+          });
+        }
+        return ClipRect(
+          key: _pane,
+          child: Stack(
+            children: [
+              NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                child: ScrollConfiguration(
+                  // Dragged with a mouse too: on a desktop the artwork is a thing to pull along, not text to select.
+                  behavior: ScrollConfiguration.of(context).copyWith(dragDevices: PointerDeviceKind.values.toSet(), scrollbars: false),
+                  child: SingleChildScrollView(
+                    controller: _scroller,
+                    scrollDirection: vertical ? Axis.vertical : Axis.horizontal,
+                    child: SizedBox(
+                      width: scene.width * scale,
+                      height: scene.height * scale,
+                      child: FittedBox(
+                        child: SizedBox(
+                          width: scene.width,
+                          height: scene.height,
+                          child: RawGestureDetector(
+                            // Over the whole content, so a drag begun on a zoom strip is the strip's
+                            // whatever lies on it — a tap there still reaches the button it lands on.
+                            behavior: HitTestBehavior.translucent,
+                            gestures: _zoomGestures(vertical),
+                            child: _stack(reduceMotion, fixed: false),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: FittedBox(
+                  alignment: Alignment.topLeft,
+                  child: SizedBox.fromSize(size: panel, child: _stack(reduceMotion, fixed: true)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// The scene's layers and the controls placed among them, in paint order, bottom first: all of
+  /// them, or with [fixed] only the ones that are, or only the ones that are not.
+  Iterable<Object> _painted(bool? fixed) sync* {
+    final scene = widget.scene;
+    bool drawn(bool isFixed) => fixed == null || isFixed == fixed;
+    for (final layer in scene.layers) {
+      if (!drawn(layer.fixed)) continue;
+      yield layer;
+      yield* scene.controls.where((c) => c.after == layer.id);
+    }
+    // Placed after no layer: above every layer.
+    yield* scene.controls.where((c) => c.rect != null && c.after == null && c.kind != 'zoom' && drawn(c.fixed));
+  }
+
+  Widget _stack(bool reduceMotion, {bool? fixed}) => Stack(
+    children: [
+      for (final piece in _painted(fixed))
+        if (piece is SceneLayer)
+          // Keyed, as is each control's: without it, a layer added
+          // before a control shifts the Stack's children, and the
+          // control remounts and drops a text field's typing.
+          Positioned.fromRect(
+            key: ValueKey('layer:${piece.id}'),
+            rect: piece.rect,
+            child: _zoomed(
+              piece.fixed ? null : piece.rect,
+              piece.stretch,
+              _SceneLayerView(
+                key: ValueKey(piece.id),
+                layer: piece,
+                values: _values,
+                strings: _strings,
+                immediate: reduceMotion || piece.bindings.values.any((b) => _dirty.contains(b.value)),
+                reduceMotion: reduceMotion,
+              ),
+            ),
+          )
+        else
+          _placed(piece as SceneControl),
+    ],
+  );
 
   /// [room]: whether the parent row or column has a bounded main axis to
   /// share. A row that is itself an unflexed child of a row has none, and a
@@ -504,171 +839,6 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       ),
     );
   }
-}
-
-class _SceneLayerView extends StatelessWidget {
-  final SceneLayer layer;
-  final Map<String, double> values;
-  final Map<String, String> strings;
-  final bool immediate, reduceMotion;
-  const _SceneLayerView({super.key, required this.layer, required this.values, required this.strings, required this.immediate, required this.reduceMotion});
-  @override
-  Widget build(BuildContext context) {
-    final text = layer.text;
-    final samples = text?['samples'] as List<dynamic>?;
-    final bound = strings[text?['value']];
-    final rawValue = text?['value'] == null || bound != null ? 0.0 : values[text!['value']]!;
-    final sampledValue = bound ?? (samples == null || !rawValue.isFinite ? rawValue : samples[rawValue.round().clamp(0, samples.length - 1)]);
-    var textValue = sampledValue is num ? sampledValue * (text?['scale'] as num? ?? 1) : sampledValue;
-    // A radio value with no reading is negative infinity, which floor() and round() throw on.
-    if (textValue is num && textValue.isFinite) {
-      if (text?['truncate'] == true) textValue = (textValue + 1e-7).floor();
-      if (text?['modulo'] case final num modulus) textValue = textValue % modulus;
-    }
-    final decimals = (text?['decimals'] as num? ?? 0).toInt();
-    // A radio value with no reading.
-    final formatted = textValue is num && !textValue.isFinite
-        ? '—'
-        : textValue is num
-        ? textValue.toStringAsFixed(decimals).padLeft((text?['minIntegerDigits'] as num? ?? 1).toInt() + (decimals > 0 ? decimals + 1 : 0), '0')
-        : textValue.toString();
-    Widget artwork = layer.svg != null
-        ? SvgPicture.string(layer.svg!, fit: BoxFit.fill, errorBuilder: (_, error, stack) => const Icon(MdiIcons.imageBroken))
-        : Align(
-            alignment: switch (text?['align']) {
-              'center' => Alignment.center,
-              'end' => AlignmentDirectional.centerEnd,
-              _ => AlignmentDirectional.centerStart,
-            },
-            child: Text(
-              text!['literal'] as String? ?? '${text['prefix'] ?? ''}$formatted${text['suffix'] ?? ''}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: (text['size'] as num? ?? 20).toDouble(),
-                fontFeatures: const [FontFeature.tabularFigures()],
-                fontFamily: text['fontFamily'] as String? ?? Theme.of(context).textTheme.bodyMedium?.fontFamily,
-                fontFamilyFallback: Theme.of(context).textTheme.bodyMedium?.fontFamilyFallback,
-                fontWeight: FontWeight.values[((text['fontWeight'] as num? ?? 400) / 100).round().clamp(1, 9) - 1],
-                height: (text['lineHeight'] as num? ?? 1.2).toDouble(),
-                letterSpacing: (text['letterSpacing'] as num? ?? 0).toDouble(),
-                color: text['color'] == null ? null : Color(0xff000000 | int.parse((text['color'] as String).substring(1), radix: 16)),
-                // A halo that keeps light text legible over whatever it is drawn on: a tight
-                // shadow for the edge, a wider one for the glow.
-                shadows: switch (text['glow']) {
-                  final String glow => [
-                    for (final blur in const [1.5, 4.0]) Shadow(color: Color(0xff000000 | int.parse(glow.substring(1), radix: 16)), blurRadius: blur),
-                  ],
-                  _ => null,
-                },
-              ),
-            ),
-          );
-    artwork = RepaintBoundary(child: artwork);
-    if (layer.pulse != null && !reduceMotion) {
-      artwork = _Pulse(config: layer.pulse!, child: artwork);
-    }
-    // A single tween interpolates the four properties without rebuilding the
-    // artwork. flutter_svg caches unchanged source; no XML parsing per frame.
-    final target = _Pose(
-      layer.bindings['rotation']?.evaluate(values) ?? 0,
-      layer.bindings['translateX']?.evaluate(values) ?? 0,
-      layer.bindings['translateY']?.evaluate(values) ?? 0,
-      (layer.bindings['opacity']?.evaluate(values) ?? 1).clamp(0, 1).toDouble(),
-      layer.bindings['scaleX']?.evaluate(values) ?? 1,
-      layer.bindings['scaleY']?.evaluate(values) ?? 1,
-    );
-    // Inside the transforms, so a blocking layer blocks where it is drawn;
-    // and only while it can be seen, as with controls, or a layer faded out
-    // would leave the controls under it dead.
-    artwork = layer.blocksPointer && target.opacity > 0 ? AbsorbPointer(child: artwork) : IgnorePointer(child: artwork);
-    return TweenAnimationBuilder<_Pose>(
-      tween: _PoseTween(end: target),
-      duration: Duration(milliseconds: immediate ? 0 : layer.transitionMs),
-      curve: Curves.easeOut,
-      child: artwork,
-      builder: (_, pose, child) => Transform.translate(
-        offset: Offset(pose.x, pose.y),
-        child: Transform.rotate(
-          angle: pose.angle * math.pi / 180,
-          alignment: layer.pivot,
-          child: Transform(
-            transform: Matrix4.diagonal3Values(pose.sx, pose.sy, 1),
-            alignment: layer.pivot,
-            child: Opacity(opacity: pose.opacity, child: child),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Pose {
-  final double angle, x, y, opacity, sx, sy;
-  const _Pose(this.angle, this.x, this.y, this.opacity, this.sx, this.sy);
-  @override
-  bool operator ==(Object other) =>
-      other is _Pose && other.angle == angle && other.x == x && other.y == y && other.opacity == opacity && other.sx == sx && other.sy == sy;
-  @override
-  int get hashCode => Object.hash(angle, x, y, opacity, sx, sy);
-}
-
-class _PoseTween extends Tween<_Pose> {
-  _PoseTween({required super.end});
-  @override
-  _Pose lerp(double t) {
-    final a = begin ?? end!;
-    final b = end!;
-    double mix(double x, double y) => x + (y - x) * t;
-    return _Pose(mix(a.angle, b.angle), mix(a.x, b.x), mix(a.y, b.y), mix(a.opacity, b.opacity), mix(a.sx, b.sx), mix(a.sy, b.sy));
-  }
-}
-
-class _Pulse extends StatefulWidget {
-  final Map<dynamic, dynamic> config;
-  final Widget child;
-  const _Pulse({required this.config, required this.child});
-  @override
-  State<_Pulse> createState() => _PulseState();
-}
-
-class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
-  late final AnimationController _clock = AnimationController(
-    vsync: this,
-    duration: Duration(milliseconds: (widget.config['periodMs'] as num).round()),
-  )..repeat();
-  @override
-  void initState() {
-    super.initState();
-    _clock;
-  }
-
-  @override
-  void didUpdateWidget(_Pulse old) {
-    super.didUpdateWidget(old);
-    if (old.config['periodMs'] != widget.config['periodMs']) {
-      _clock.duration = Duration(milliseconds: (widget.config['periodMs'] as num).round());
-      _clock.repeat();
-    }
-  }
-
-  @override
-  void dispose() {
-    _clock.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _clock,
-    child: widget.child,
-    builder: (_, child) {
-      final phase = _clock.value * math.pi * 2;
-      final wave = widget.config['flicker'] == true ? (math.sin(phase * 7) + math.sin(phase * 13) + 2) / 4 : (math.sin(phase) + 1) / 2;
-      final min = (widget.config['minOpacity'] as num).toDouble();
-      return Opacity(opacity: min + (1 - min) * wave, child: child);
-    },
-  );
 }
 
 class _ControlView extends StatefulWidget {
@@ -874,15 +1044,8 @@ class _ControlViewState extends State<_ControlView> {
                       if (event is PointerScrollEvent) {
                         final d = event.scrollDelta;
                         GestureBinding.instance.pointerSignalResolver.register(event, (_) {
-                          // With a second axis a sideways scroll is the first axis's and an
-                          // up-and-down one the second's; without, any scroll is the one value.
-                          if (c.yAxis case final y? when d.dy.abs() >= d.dx.abs()) {
-                            _adjustY(d.dy > 0 ? -y.step : y.step);
-                          } else if (c.yAxis != null) {
-                            _adjust(d.dx > 0 ? c.step : -c.step);
-                          } else {
-                            _adjust(d.dy > 0 ? -c.step : c.step);
-                          }
+                          final step = sceneScrollStep(c, d);
+                          step.second ? _adjustY(step.delta) : _adjust(step.delta);
                         });
                       }
                     },
@@ -932,20 +1095,22 @@ class _ControlViewState extends State<_ControlView> {
                           // a slow drag whose deltas are under half a step would never
                           // move. Unclamped, a drag past an end stop owes the same
                           // distance back before the value moves again.
+                          // `invertDrag`: the value moves the other way, as content held under the finger does.
+                          final delta = c.invertDrag ? -d.delta : d.delta;
                           if (c.yAxis case final y?) {
                             // Each axis its own: across for the first value, up for the second.
-                            if (d.delta.dx != 0) {
+                            if (delta.dx != 0) {
                               _movedX = true;
-                              _dragValue = (_dragValue + d.delta.dx * c.sensitivity).clamp(c.min, c.max).toDouble();
+                              _dragValue = (_dragValue + delta.dx * c.sensitivity).clamp(c.min, c.max).toDouble();
                               widget.onChange(_dragValue);
                             }
-                            if (d.delta.dy != 0) {
+                            if (delta.dy != 0) {
                               _movedY = true;
-                              _dragValueY = (_dragValueY - d.delta.dy * y.sensitivity).clamp(y.min, y.max).toDouble();
+                              _dragValueY = (_dragValueY - delta.dy * y.sensitivity).clamp(y.min, y.max).toDouble();
                               widget.onChangeY!(_dragValueY);
                             }
                           } else {
-                            _dragValue = (_dragValue + (d.delta.dx - d.delta.dy) * c.sensitivity).clamp(c.min, c.max).toDouble();
+                            _dragValue = (_dragValue + (delta.dx - delta.dy) * c.sensitivity).clamp(c.min, c.max).toDouble();
                             widget.onChange(_dragValue);
                           }
                         }

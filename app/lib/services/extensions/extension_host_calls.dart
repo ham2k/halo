@@ -27,6 +27,7 @@ class _ExtensionHostCalls {
       'getQsoChanges' => _getQsoChanges(params),
       'getSpotsForCall' => _getSpotsForCall(params),
       'getSpots' => _getSpots(params),
+      'suggestQso' => _suggestQso(params),
       'getHistoryForCall' => _getHistoryForCall(params),
       'dbLookupSelectOne' => _dbLookupSelectOne(params),
       'dbLookupSelectAll' => _dbLookupSelectAll(params),
@@ -268,6 +269,49 @@ class _ExtensionHostCalls {
     final maxAgeMinutes = params['maxAgeMinutes'];
     if (call == null || _service.spots == null) return const <Map<String, dynamic>>[];
     return _service.spots!.spotsForCall(call, maxAge: Duration(minutes: maxAgeMinutes is num ? maxAgeMinutes.toInt() : 30));
+  }
+
+  /// Backs `host.suggestQso`. Only what a tapped spot carries reaches the
+  /// logging fields — the station, where and how it was heard, and its
+  /// references — so an extension can prefill a contact but never write the
+  /// rest of one.
+  ///
+  /// It tunes the radio to the spot, as a tap does, so it is a radio command:
+  /// `requiresRadioWrite`. And it answers the operator using the caller's
+  /// panel, so only while one of its `panel.onEvent` calls runs — from a
+  /// timer or a render it would overwrite a half-typed call with nothing on
+  /// screen asking for it. `extensionKey` and `duringPanelEvent` are the
+  /// kernel's stamps (kernel.ts `IDENTITY_HOST_METHODS`), not the caller's.
+  Future<dynamic> _suggestQso(Map<String, dynamic> params) async {
+    final extensionKey = params['extensionKey'] as String?;
+    if (!_service.radioCalls.canWrite(extensionKey)) {
+      throw ExtensionHostException("suggestQso blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresRadioWrite");
+    }
+    if (params['duringPanelEvent'] != true) {
+      throw ExtensionHostException("suggestQso blocked: extension '$extensionKey' called it outside its panel's onEvent");
+    }
+    final qso = params['qso'];
+    final call = qso is Map ? (qso['their'] is Map ? (qso['their'] as Map)['call'] : null) : null;
+    if (call is! String || call.trim().isEmpty) throw const FormatException('suggestQso needs qso.their.call');
+    qso as Map;
+    final suggestion = <String, dynamic>{
+      'their': {'call': call.trim()},
+      if (qso['freq'] is num) 'freq': (qso['freq'] as num).toDouble(),
+      if (qso['band'] is String) 'band': qso['band'],
+      if (qso['mode'] is String) 'mode': qso['mode'],
+      // Each ref's plain fields, as a tapped spot passes its whole ref — a
+      // park's name, a summit's points — and nothing nested.
+      'refs': [
+        for (final ref in qso['refs'] is List ? qso['refs'] as List : const [])
+          if (ref is Map && ref['type'] is String && ref['ref'] is String)
+            {
+              for (final MapEntry(:key, :value) in ref.entries)
+                if (key is String && (value is String || value is num || value is bool)) key: value,
+            },
+      ],
+    };
+    final operationUuid = params['operationUuid'] is String ? params['operationUuid'] as String : null;
+    return {'accepted': _service.onSuggestQso?.call(suggestion, operationUuid) ?? false};
   }
 
   Future<dynamic> _getSpots(Map<String, dynamic> params) async {

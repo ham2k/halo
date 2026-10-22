@@ -21,6 +21,16 @@ export interface PanelScene {
    * is missing. A missing reading binds as the bottom of a binding's range and shows as `—`.
    */
   radio?: { node?: string }
+  /**
+   * A scene longer than its pane along `axis` (default `y`), scrolled by the app itself — wheel,
+   * trackpad and drag, a drag begun on a button included — with no call to the extension. Scaled
+   * to fill the pane across, it runs on past it along the axis. The position, in scene units from
+   * the start, is written to the scene value `value` as it scrolls; a render that changes that
+   * value moves the view there, and one that leaves it alone leaves the operator's scroll alone.
+   * `event`, when given, is sent as a `commit` with the position as `value` once scrolling comes
+   * to rest. Layers and controls marked `fixed` stay put over the pane. No `layout`. Extension API 12.
+   */
+  scroll?: { axis?: "x" | "y"; value: string; event?: string }
 }
 
 /** Host-fed values of a scene with `radio`: its meters, and `radio.transmitting` as 1 or 0. Reserved: a scene may not declare them. */
@@ -55,13 +65,25 @@ export interface PanelSceneLayer {
   y: number
   width: number
   height: number
-  /** Supply exactly one of svg or text. SVG must be self-contained. */
+  /** Supply exactly one of svg, text or icon. SVG must be self-contained. */
   svg?: string
+  /**
+   * A named icon — MDI, or FontAwesome with `fa-` — drawn by the app to fit the layer, in `color`
+   * (`#RRGGBB`) or the theme's. Extension API 12.
+   */
+  icon?: { name: string; color?: string }
   /**
    * Take the clicks that land on this layer. Off by default: layers are click-through, so
    * artwork painted over a control does not stop it working. On, it covers the controls under it.
    */
   blocksPointer?: boolean
+  /** In a scene with `scroll`: drawn over the pane where it is, in pane coordinates, not scrolled. Extension API 12. */
+  fixed?: boolean
+  /**
+   * While a `zoom` strip is dragged, scaled along the scroll about the pane's middle, rather than
+   * moved there at its own size: for a background, or a line that runs the whole way. Extension API 12.
+   */
+  stretch?: boolean
   /** Exactly one of literal/value. A value naming a string shows it as-is. Use text layers, not SVG <text>, for font support.
    * Size is unscaled; the host applies OS text scaling once. */
   text?: {
@@ -118,6 +140,12 @@ export interface PanelSceneLayer {
  *   reach the extension. Needs `requiresRadioRead`; a host without the feature, or a radio
  *   without a scope, shows why instead. A click sends `commit` with the frequency as `value`.
  *   Takes no `value`; see `PanelSceneSpectrum` for the rest. Extension API 6: declare `"api": 6`.
+ * - `zoom`: a strip of a scene with `scroll`, drawn by nothing, where a drag along the scroll zooms
+ *   about the pane's middle — away from it in, toward it out, by the ratio of the distances. While
+ *   the drag lasts the app moves each layer and control to where the zoom puts its middle, at its
+ *   own size (a `stretch` layer scales instead), and on release sends `commit` with the factor as
+ *   `value`; `min` and `max` are the factors allowed. A tap on it still reaches what lies there,
+ *   and a drag elsewhere still scrolls. Needs `event`. Extension API 12.
  *
  * `label` is every control's accessible name. There are no tooltips.
  */
@@ -136,6 +164,7 @@ export type PanelSceneControlKind =
   | "nativeChip"
   | "nativeText"
   | "spectrum"
+  | "zoom"
 
 /** A literal, or the name of a scene value — which a slider with no `event` retunes with no bridge call. */
 export type PanelSceneSpectrumNumber = number | string
@@ -364,6 +393,15 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   multi?: boolean
   /** Shown but inert: no clicks, drags, keys or screen-reader adjustments act on it. */
   disabled?: boolean
+  /** In a scene with `scroll`: placed over the pane, in pane coordinates, not scrolled. Needs a rect. Extension API 12. */
+  fixed?: boolean
+  /**
+   * A drawn control only (`button`, `slider`, `knob`): while the pointer is over it, the scene value
+   * `value` reads `to`, set by the host with no call to the extension; leaving puts back the scene's
+   * own value. Artwork bound to it lights up under the pointer — a spot's line with its call.
+   * Survives renders while the pointer stays. Extension API 12.
+   */
+  hoverSet?: { value: string; to: number }
   /**
    * 0 to 1, fixed or bound like a layer's. At 0 the control is gone: it takes no clicks,
    * keyboard focus or screen-reader node. Anything between is only drawn fainter.
@@ -390,6 +428,17 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   valueLabels?: string[]
   /** Knobs use relative horizontal/upward dragging. Value per scene unit; default 1. */
   sensitivity?: number
+  /**
+   * A knob only: a drag moves the value the other way — content held under the finger, scrolled
+   * by dragging, rather than a dial turned. Scrolling is unchanged. Extension API 12.
+   */
+  invertDrag?: boolean
+  /**
+   * A slider or knob only: it also takes the scrolls that land on drawn buttons over it — labels
+   * drawn over a knob that scrolls the artwork. A native control, a `blocksPointer` layer or another
+   * slider or knob in between keeps the scroll. Extension API 12.
+   */
+  scrollThrough?: boolean
   /**
    * A knob's second axis: with `valueY`, horizontal scrolling, dragging and the left/right keys set
    * `value`, and vertical ones (and up/down) set `valueY` — sent as its own event, `eventY`, which a

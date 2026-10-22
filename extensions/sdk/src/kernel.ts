@@ -423,7 +423,14 @@ const IDENTITY_HOST_METHODS = new Set([
   "webSocketOpen",
   "webSocketSend",
   "webSocketClose",
+  "suggestQso",
 ])
+
+/// How many of each extension's `panel.onEvent` calls are running. `suggestQso` is stamped with
+/// whether its caller has one: filling the logging fields answers the operator using that
+/// extension's panel, and from anywhere else — a timer, a render, a hook of another kind — it
+/// would overwrite what they are typing with nothing on screen asking for it.
+const panelEventsRunning = new Map<string, number>()
 
 /// Internal, trusted dispatch — everything on the wire goes through here.
 function dispatchHostCall(method: string, params: Record<string, unknown>): Promise<unknown> {
@@ -456,6 +463,7 @@ function boundHostCallFor(extensionKey: string) {
   return (method: string, params: Record<string, unknown>): Promise<unknown> => {
     if (!IDENTITY_HOST_METHODS.has(method)) return dispatchHostCall(method, params)
     const bound: Record<string, unknown> = { ...params, ns: extensionKey, extensionKey }
+    if (method === "suggestQso") bound.duringPanelEvent = (panelEventsRunning.get(extensionKey) ?? 0) > 0
     if (method === "getAccount" || method === "setAccountSession") {
       bound.kvKey = kernel.getAccountKvKey(extensionKey)
     }
@@ -597,7 +605,15 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>
       ((await dispatchHostCall("getHistoryForCall", { ...options, call })) as Record<string, unknown>[] | null) ?? [],
   }
-  return await member.call(record.hook, args, ctx)
+  if (record.category !== "panel" || method !== "onEvent") return await member.call(record.hook, args, ctx)
+  panelEventsRunning.set(record.extensionKey, (panelEventsRunning.get(record.extensionKey) ?? 0) + 1)
+  try {
+    return await member.call(record.hook, args, ctx)
+  } finally {
+    const running = (panelEventsRunning.get(record.extensionKey) ?? 1) - 1
+    if (running > 0) panelEventsRunning.set(record.extensionKey, running)
+    else panelEventsRunning.delete(record.extensionKey)
+  }
 }
 
 /// What `runHook` throws when nothing registers the category: an answer about

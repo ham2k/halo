@@ -37,6 +37,7 @@ import type {
   ClusterLine,
   ClusterPostSpotRequest,
   ClusterReply,
+  SuggestedQso,
   ClusterStatus,
 } from "./types.ts"
 
@@ -350,6 +351,17 @@ export const host = {
   /** Sends any one command line, in the operator's name. Needs `requiresClusterCommand` and extension API 10. */
   async clusterSend(command: string): Promise<ClusterReply> {
     return (await hostCallFn()("clusterSend", { command })) as ClusterReply
+  },
+  /**
+   * Puts a station into the logging fields of the operation in front, as tapping its spot in the
+   * Spots Panel does — call, frequency, band, mode and references; nothing else of `qso` is used.
+   * With `operationUuid` (a panel's `operation.uuid`), only that operation's: `accepted` is false
+   * when it is not the one in front, or none is open. It tunes the radio as a tap does, so it needs
+   * `requiresRadioWrite`, and it is refused outside the extension's own panel `onEvent`. Extension
+   * API 12.
+   */
+  async suggestQso(args: { qso: SuggestedQso; operationUuid?: string }): Promise<{ accepted: boolean }> {
+    return (await hostCallFn()("suggestQso", { ...args })) as { accepted: boolean }
   },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()("fetch", { url, ...options })) as FetchResponse

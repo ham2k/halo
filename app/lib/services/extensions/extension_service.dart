@@ -820,6 +820,11 @@ class ExtensionService
   /// empty board.
   Future<List<Map<String, dynamic>>> Function(Map<String, dynamic> params)? onGetSpots;
 
+  /// Puts a spot's station into the logging fields of the operation in
+  /// front — [operationUuid]'s only, when given — as tapping it in the Spots
+  /// Panel does. False when no such operation is open to take it.
+  bool Function(Map<String, dynamic> qso, String? operationUuid)? onSuggestQso;
+
   /// Deterministic offline lookups: with `--dart-define=HALO_STUB_LOOKUPS=1`
   /// in a dev build, [lookupCall] returns a fixed canned result instead of
   /// invoking the (network/credentialed) lookup extensions. `debugEnvFlag`

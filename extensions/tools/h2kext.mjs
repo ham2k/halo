@@ -42,8 +42,12 @@ import yazl from "yazl"
 /// `chasing` hook category; 10 adds the DX cluster connection — the
 /// `requiresCluster*` grants, the `host.cluster*` calls and the `cluster`
 /// hook category; 11 adds `n1mm-history:` data-file urls, and
-/// `host.sendRadioRaw` with its `requiresRadioRaw` grant.
-export const H2KEXT_API_VERSION = 11
+/// `host.sendRadioRaw` with its `requiresRadioRaw` grant; 12 adds scene
+/// controls' `hoverSet`, `icon` layers, room for 512 layers and 256 controls,
+/// knobs' `invertDrag` and scrolls passing through buttons to the knob beneath,
+/// scenes that scroll natively (`scroll`, with `fixed` layers and controls,
+/// and `zoom` strips), `getSpots`' `display`, and `host.suggestQso`.
+export const H2KEXT_API_VERSION = 12
 
 /// The first API with `host.webSocket`. A manifest declaring `webSockets`
 /// under an older one is refused: an older app would install it and fail only
@@ -171,6 +175,7 @@ SHARED_MODULES_BY_API[8] = SHARED_MODULES_BY_API[7]
 SHARED_MODULES_BY_API[9] = SHARED_MODULES_BY_API[8]
 SHARED_MODULES_BY_API[10] = SHARED_MODULES_BY_API[9]
 SHARED_MODULES_BY_API[11] = SHARED_MODULES_BY_API[10]
+SHARED_MODULES_BY_API[12] = SHARED_MODULES_BY_API[11]
 
 /// What a scaffolded extension declares on day one: the eight modules the SDK
 /// barrel itself reaches, so a project that has written no code yet still

@@ -30,6 +30,12 @@ class OperationCommandContext {
   /// through — which is exactly when [dispatch] is null.
   void Function(Map<String, dynamic> qso)? suggestQso;
 
+  /// The same prefill as a spot tapped in the Spots Panel, for a spot shown
+  /// elsewhere — an extension's band map (`host.suggestQso`). Unlike
+  /// [suggestQso] its frequency is where the station was spotted, not where
+  /// the radio is, so the zero-beat offset applies as it does to a tap.
+  void Function(Map<String, dynamic> qso)? suggestSpot;
+
   /// Whether this operation is the route the operator is actually looking at.
   /// False with Settings, or a nested operation, pushed over it — where a
   /// suggestion still lands correctly but nothing on screen shows it.

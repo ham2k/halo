@@ -82,6 +82,14 @@ assets, which ship wholesale, and only the host's bridge tests load it. To try i
   A slider can opt into `discrete` equal-width step buckets and local-only `hover`.
   `valueLabels` supplies accessible descriptions indexed by `(value - min) / step`.
   Hover is rejected on event-producing controls; it cannot dispatch hardware actions.
+  A scene can be longer than its pane and scrolled by the app (`scroll`): the scroll view is the
+  app's own, so momentum, a drag begun on a button and a wheel over anything all work without a
+  bridge call, and the extension hears the position once it settles. `fixed` layers and controls
+  stay over the pane. Moving the view is the extension's by changing the value; leaving it alone
+  in a render leaves the operator's scroll where it is.
+  Any drawn control may instead take `hoverSet`, which writes a fixed number into a
+  scene value while the pointer is over it and puts the scene's own back when it
+  leaves — a highlight, never an event — so a button can still be clicked.
 - Eased transitions and deterministic pulse/flicker run entirely in Flutter.
   Artwork stays a child of animated transforms; XML is not regenerated per frame.
   LED glow uses an SVG radial gradient rather than animated blur filters.

@@ -13,7 +13,9 @@
 // its own would re-enter; neither may wait on a scorer pass or a fan-out of
 // lookups.
 
+import 'package:flutter/painting.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import 'halo_services.dart';
 import 'spot_board.dart';
@@ -56,12 +58,40 @@ class ExtensionSpotsReader {
     }
 
     final narrowed = query.narrow(spots);
+    if (!query.annotate) return narrowed;
+    final displayed = _display(narrowed);
     final operation = board.operation;
     // Unannotated rather than "nothing worked" until the board has judged
     // this operation: a lookup reading once has no repaint to correct it.
     final scores = query.operationUuid == null ? null : board.scoresFor(query.operationUuid!);
-    if (!query.annotate || scores == null || operation == null) return narrowed;
-    return _annotate(narrowed, operation, scores);
+    if (scores == null || operation == null) return displayed;
+    return _annotate(displayed, operation, scores);
+  }
+
+  /// Copies of [spots], each with `display` — the icon, its tint and the note
+  /// emoji the Spots Panel's row shows beside the call, resolved the way
+  /// spots_panel_tile.dart resolves them: the activity's icon and colour for
+  /// the first reference, else the source's icon, else a tower; the emoji of
+  /// the first operator with a note.
+  List<Map<String, dynamic>> _display(List<Map<String, dynamic>> spots) {
+    final board = _services.spotBoard;
+    final controls = board.activityControlsForDisplay(), callInfo = board.callInfo;
+    String? refTypeOf(Map<String, dynamic> spot) => switch (spot['refs']) {
+      [{'type': final String type}, ...] => type,
+      _ => null,
+    };
+    String? hex(Color? color) => color == null ? null : '#${(color.toARGB32() & 0xffffff).toRadixString(16).padLeft(6, '0')}';
+    return [
+      for (final spot in spots)
+        {
+          ...spot,
+          'display': {
+            'icon': iconForRefType(controls, refTypeOf(spot)) ?? (spot['icon'] is String ? spot['icon'] as String : null) ?? 'radio-tower',
+            'iconColor': ?hex(colorForRefType(controls, refTypeOf(spot))),
+            'emoji': ?spotOperatorCalls(spot).map((call) => callInfo[call]?.emoji).nonNulls.firstOrNull,
+          },
+        },
+    ];
   }
 
   /// Copies of [spots], each with `annotations` — `worked`, `isSelf` and
