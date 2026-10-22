@@ -38,6 +38,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'call_field_text.dart';
 import 'call_info_summary.dart';
+import 'key_bindings.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_catalog.dart';
@@ -2492,8 +2493,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// editing, the operator reaching for Cmd/Ctrl+Z means the last keystroke,
   /// not the whole record.
   ///
-  /// Alt+W resets the whole draft either way: with something composed it is
-  /// the wipe button's path and its undo offer, and with nothing composed it
+  /// Alt+W (unless rebound — `logging.wipe`) resets the whole draft either
+  /// way: with something composed it is the wipe button's path and its undo
+  /// offer, and with nothing composed it
   /// still clears what [QsoDraft.hasComposedValues] does not count — a report,
   /// a power entry, a pending frequency edit — which no other gesture resets.
   /// It is claimed in every state, and on key repeat too: unclaimed, macOS
@@ -2508,12 +2510,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// delete disables every field here, so the event cannot arrive by focus.
   KeyEventResult _handleChord(KeyEvent event) {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    final keyboard = HardwareKeyboard.instance;
-    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
-    final alt = keyboard.isAltPressed;
-    if (keyboard.isShiftPressed || command == alt) return KeyEventResult.ignored;
-
-    if (alt && event.logicalKey == LogicalKeyboardKey.keyW) {
+    if (keyBindings.value.claim('logging.wipe', event) != null) {
       if (event is KeyDownEvent && widget.session.editingQso == null && !_fieldsLocked) {
         if (_draft.hasComposedValues) {
           _handleWipeTap();
@@ -2524,7 +2521,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
       return KeyEventResult.handled;
     }
-    if (event is KeyDownEvent && command && event.logicalKey == LogicalKeyboardKey.keyZ) {
+    final keyboard = HardwareKeyboard.instance;
+    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
+    if (keyboard.isShiftPressed || keyboard.isAltPressed || !command) return KeyEventResult.ignored;
+    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.keyZ) {
       // Not while the staged delete is being committed: un-staging then would
       // show Delete again over a record that is already on its way out.
       if (_pendingDelete && !_isLogging) {

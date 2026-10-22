@@ -812,6 +812,40 @@ void main() {
     expect(tester.widget<TextField>(call).controller!.text, 'K2HAM');
   });
 
+  // Rebound (`logging.wipe`), the wipe leaves Alt+W behind entirely: a key
+  // still answering to its old chord would wipe a contact the operator meant
+  // to type a character into.
+  testWidgets('a rebound wipe answers to its new key and not to Alt+W', (tester) async {
+    keyBindings.value = const KeyBindingOverrides().withCommand('logging.wipe', [KeyChord.parse('F9')!]).resolve();
+    addTearDown(() => keyBindings.value = LegacyKeyBindings());
+    await tester.pumpWidget(host());
+
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(call, 'W1AW');
+    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+    expect(tester.widget<TextField>(call).controller!.text, 'W1AW');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.f9);
+    await tester.pump();
+    expect(tester.widget<TextField>(call).controller!.text, isEmpty);
+  });
+
+  // A bare `]` in the call field is the shortcut's — no callsign has one —
+  // but in a free-text field it is the operator's character.
+  testWidgets('a wipe on a bare key fires in the call field', (tester) async {
+    keyBindings.value = const KeyBindingOverrides().withCommand('logging.wipe', [KeyChord.parse(']')!]).resolve();
+    addTearDown(() => keyBindings.value = LegacyKeyBindings());
+    await tester.pumpWidget(host());
+
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(call, 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.bracketRight, character: ']');
+    await tester.pump();
+    expect(tester.widget<TextField>(call).controller!.text, isEmpty);
+  });
+
   // The undo offer outlives the operator starting the next contact. A Cmd+Z
   // aimed at a typo in it must not swap that contact for the wiped one — the
   // slot is single-use, so there would be nothing left to take THAT back.

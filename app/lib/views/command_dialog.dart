@@ -38,14 +38,18 @@ import 'settings_view.dart';
 /// Opens the command dialog over whatever's on screen. Escape and a tap
 /// outside both dismiss it (the barrier), matching every other dialog in the
 /// app (docs/design/user-interface.md).
-Future<void> showCommandDialog(BuildContext context, HaLoServices services) {
+/// [initialText] starts the field with a command typed — one a key ran that
+/// still waits for its text.
+Future<void> showCommandDialog(BuildContext context, HaLoServices services, {String? initialText}) {
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: haloBarrierColor(context, lightColor: Colors.black.withValues(alpha: 0.45)),
     transitionDuration: const Duration(milliseconds: 140),
-    pageBuilder: (context, _, _) => HoldSizeWhileCovered(child: CommandDialog(services: services)),
+    pageBuilder: (context, _, _) => HoldSizeWhileCovered(
+      child: CommandDialog(services: services, initialText: initialText),
+    ),
     transitionBuilder: (context, animation, _, child) {
       final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
       return FadeTransition(
@@ -150,8 +154,9 @@ class _OperationResult extends _Result {
 
 class CommandDialog extends StatefulWidget {
   final HaLoServices services;
+  final String? initialText;
 
-  const CommandDialog({super.key, required this.services});
+  const CommandDialog({super.key, required this.services, this.initialText});
 
   @override
   State<CommandDialog> createState() => _CommandDialogState();
@@ -278,6 +283,14 @@ class _CommandDialogState extends State<CommandDialog> {
     )..attach(_controller);
     _engine.addListener(_onEngineChanged);
     _controller.addListener(_onTextChanged);
+    // Typed after the listeners, so the command is read as though the
+    // operator had typed it.
+    if (widget.initialText case final text?) {
+      _controller.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
     _loadCatalog();
     unawaited(_loadLooseTestContacts());
     // Focus requested ONCE rather than `autofocus: true` on the field.

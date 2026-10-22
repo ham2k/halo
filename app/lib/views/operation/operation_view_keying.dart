@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Operation view's keyer keys: F1-F8 and ⌥1-⌥8 messages, Enter Sends
-// Messages, ['] PTT, and rendering a message against the draft contact.
+// The Operation view's keyer keys: the messages (F1-F8 and ⌥1-⌥8 unless
+// rebound), Enter Sends Messages, PTT, and rendering a message against the draft contact.
 
 part of '../operation_view.dart';
 
@@ -45,18 +45,18 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// takes: turning PTT on mid-operation publishes nothing new to hear.
   bool get _keyingPhone => superModeForMode((_latestDraftQso?['mode'] as String?) ?? widget.services.radio.vfoA.mode) == 'Phone';
 
-  /// Which radio ['] keys from this view (cat_ptt.dart): radio1, while this
-  /// view is in front, the draft is in a Phone mode, and the field with the
-  /// keyboard does not take ['] as a character.
+  /// Which radio the PTT key keys from this view (cat_ptt.dart): radio1,
+  /// while this view is in front and the draft is in a Phone mode.
   String? _pttTarget() {
     final services = widget.services;
     if (!mounted || testerOverlayCovering.value || !(ModalRoute.of(context)?.isCurrent ?? false)) return null;
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ || !services.settings.pttKey) return null;
-    if (!_keyingPhone || !services.cat.canPtt || !quoteKeysPtt(FocusManager.instance.primaryFocus?.context)) return null;
+    if (!_keyingPhone || !services.cat.canPtt) return null;
     return services.cat.localRadio1;
   }
 
-  /// F1-F8 key the matching CW message through the key in use — or, while
+  /// The message keys (F1-F8 and ⌥1-⌥8 unless rebound) key the matching CW
+  /// message through the key in use — or, while
   /// the draft contact is in a Phone mode, play the matching voice memory
   /// of radio1; Escape stops every message, chain and repeat. Only while
   /// this view is the front-most route — a dialog over it (the message
@@ -73,30 +73,19 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // hears every way a call is entered and not only a hardware key.
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     final cat = services.cat;
-    final keyboard = HardwareKeyboard.instance;
-    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
-    final alt = keyboard.isAltPressed;
-    final shift = keyboard.isShiftPressed;
+    final bindings = keyBindings.value;
 
-    // ⌥K / Alt+K turns the keyer area's keyboard mode on or off. By the
-    // PHYSICAL key: on a Mac, Option turns K into '˚', and the logical key
-    // a browser reports is that character. Not ⌘K, which is the command
+    // Keyboard mode on or off. Not ⌘K by default, which is the command
     // dialog's (halo_app.dart).
-    if (alt && !command && !shift && event.physicalKey == PhysicalKeyboardKey.keyK) {
+    if (bindings.claim('keyer.keyboardMode', event) != null) {
       if (_keyingPhone || !cat.canKeyCw) return false;
       cat.toggleKeyboardMode();
       return true;
     }
 
-    final int? n;
-    if (command || alt) {
-      // ⌥1-⌥8 (Alt+1-8) stand in for F1-F8 on a keyboard without them; any
-      // other chord is not the keyer's. Not in free text: on a Spanish,
-      // Nordic or German Mac layout ⌥2 is how '@' is typed, and ⌥5-⌥8 are
-      // '[' ']' '|' '{' — a note would key a message in their place.
-      n = alt && !command && !shift && !_focusInFreeText() ? cwMessageIndexForDigit(event.physicalKey) : null;
-      if (n == null) return false;
-    } else if (event.logicalKey == LogicalKeyboardKey.escape) {
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      final keyboard = HardwareKeyboard.instance;
+      if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
       // Stops a message from wherever focus is. NOT what keeps the logging
       // fields from also acting on the same keystroke — a handler's answer
       // here never stops the focus tree's dispatch — that is
@@ -106,8 +95,18 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       // message keyed just before the draft went to SSB is still the one
       // to stop, on a station whose radio plays no voice at all.
       return cat.stopKeying();
-    } else {
-      n = cwMessageIndexForKey(event.logicalKey);
+    }
+
+    int? n;
+    for (var i = 1; i <= SettingsService.cwMessageCount; i++) {
+      final chord = bindings.match('keyer.message$i', event);
+      if (chord == null) continue;
+      // Not where a field takes the character: on a Spanish, Nordic or German
+      // Mac layout ⌥2 is how '@' is typed, and ⌥5-⌥8 are '[' ']' '|' '{' — a
+      // note would key a message in their place.
+      if (bindings.yieldsToField('keyer.message$i', chord, event)) return false;
+      n = i;
+      break;
     }
 
     // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
@@ -133,16 +132,6 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     _endChainsForKey();
     unawaited(_sendCwMessage(n, template));
     return true;
-  }
-
-  /// Whether the keyboard is in a text field other than the main logging
-  /// fields — notes, comments, keyboard mode's own field — where an ⌥-digit
-  /// is a character the operator is typing. The call, RST and exchange
-  /// fields (the entry row) never take one, so a chord there is the keyer's.
-  bool _focusInFreeText() {
-    final context = FocusManager.instance.primaryFocus?.context;
-    if (context == null || context.findAncestorWidgetOfExactType<EditableText>() == null) return false;
-    return context.findAncestorWidgetOfExactType<LoggingEntryRow>() == null;
   }
 
   /// A message key ends whatever repeat or sequence is running: another

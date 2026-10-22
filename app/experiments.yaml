@@ -118,3 +118,12 @@ experiments:
     name: Named Layouts
     description: Keep several layouts per view, switch between them, and export or import them as files.
     aliases: [dashboards]
+  # Keyboard shortcuts as settings (docs/design/keyboard-shortcuts.md): the
+  # Keyboard Shortcuts panel, keys bound to commands and to typed command
+  # text, and `.h2kkey` files. Gated because it changes what keys do even
+  # untouched: the defaults hold only the platform's own command key, so ⌃K
+  # and ⌃F go back to text editing on a Mac.
+  - key: kb
+    name: Keyboard Shortcuts
+    description: Choose the keys for commands, bind keys to typed commands, and export or import them as files.
+    aliases: [keys, shortcuts]

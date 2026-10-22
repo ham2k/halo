@@ -10,7 +10,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey, PhysicalKeyboardKey;
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -33,7 +33,6 @@ import 'panel_use_tracker.dart';
 import 'operation/adif_import_flow.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
-import 'operation/cw_function_keys.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/log_find_bar.dart';

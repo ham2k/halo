@@ -3,8 +3,8 @@
 //
 // ['] PTT through the operation view (docs/design/cat.md § PTT): the key
 // handler, the draft's mode it reads, the radio at the end of it — and where
-// ['] is PTT and where it is a character (cw_function_keys.dart's
-// quoteKeysPtt).
+// ['] is PTT and where it is a character (key_bindings.dart's
+// fieldTakesKey).
 //
 // The radio tests run a placeholder with no voice memories, on a station with
 // no CW messages: ['] needs the draft's mode, and a view that tracked the
@@ -22,14 +22,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:halo_widgets/halo_widgets.dart' show MdiIcons;
+import 'package:halo_widgets/halo_widgets.dart' show MdiIcons, fieldTakesKey;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/driver.dart' show voiceMemoriesConfigKey;
 import 'package:ham2k_logger/services/cat/equipment.dart' show kCategoryKey;
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
-import 'package:ham2k_logger/views/operation/cw_function_keys.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -45,7 +44,7 @@ void main() {
   /// physical Quote key, typing the character.
   Future<void> pressApostrophe(WidgetTester tester) => tester.sendKeyEvent(apostrophe, platform: 'web', physicalKey: PhysicalKeyboardKey.quote, character: "'");
 
-  bool quoteIsPtt() => quoteKeysPtt(FocusManager.instance.primaryFocus?.context);
+  bool quoteIsPtt() => !fieldTakesKey(FocusManager.instance.primaryFocus?.context, "'");
 
   Future<HaLoServices> pumpOperation(
     WidgetTester tester, {

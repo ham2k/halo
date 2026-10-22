@@ -21,6 +21,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:halo_widgets/halo_widgets.dart' show keyBindings, pttCommandId;
 
 import '../error_reporting_service.dart';
 import 'driver.dart';
@@ -113,15 +114,17 @@ class CatPtt {
   }
 }
 
-/// Which radio ['] keys from where the operator is — asked of each surface
-/// that can key (today, an operation view), and null from all but the one in
-/// front, and from it whenever ['] is not PTT there.
+/// Which radio the PTT key keys from where the operator is — asked of each
+/// surface that can key (today, an operation view), and null from all but
+/// the one in front.
 typedef PttKeyTarget = String? Function();
 
-/// The station's ['] and Escape for PTT: one handler, however many surfaces
-/// can key, so two of them never disagree about whether the key is held.
+/// The station's PTT key (['] unless rebound — `radio.ptt`,
+/// docs/design/keyboard-shortcuts.md) and Escape for PTT: one handler,
+/// however many surfaces can key, so two of them never disagree about
+/// whether the key is held.
 ///
-/// While a key is held, ['] or Escape drops it from anywhere — another
+/// While a key is held, the PTT key or Escape drops it from anywhere — another
 /// field, a dialog, Settings — because the transmitter is on and the key that
 /// put it there has to take it off. Only keying asks the surfaces.
 class PttKeyboard {
@@ -168,13 +171,20 @@ class PttKeyboard {
       return true;
     }
     final keyboard = HardwareKeyboard.instance;
-    if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
-    if (event.logicalKey == LogicalKeyboardKey.escape) return held.value && escape();
-    // The character typed, not the key's name: US Shift+['] types ["], and
-    // a German or Swiss layout types ['] with Shift — the platforms disagree
-    // about which key name either one reports.
-    if (event.character != "'") return false;
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
+      return held.value && escape();
+    }
+    // A key that types a character is matched by the character typed, not
+    // the key's name (KeyChord.matches): US Shift+['] types ["], and a German
+    // or Swiss layout types ['] with Shift — the platforms disagree about
+    // which key name either one reports.
+    final bindings = keyBindings.value;
+    final chord = bindings.match(pttCommandId, event);
+    if (chord == null) return false;
     if (!release()) {
+      // Where a field takes the character, the key types it instead.
+      if (bindings.yieldsToField(pttCommandId, chord, event)) return false;
       final radio = _targets.map((target) => target()).nonNulls.firstOrNull;
       if (radio == null) return false;
       toggle(radio);

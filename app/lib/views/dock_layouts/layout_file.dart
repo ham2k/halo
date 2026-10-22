@@ -12,6 +12,7 @@ import 'package:yaml/yaml.dart';
 import '../../services/panel_service.dart' show PanelDefinition, PanelService;
 import '../dock_host.dart' show DockLayoutClass;
 import '../operation/pane_layout_options.dart';
+import 'yaml_reader.dart';
 import 'yaml_writer.dart' as yaml_writer;
 
 /// The top-level key that marks a layout file, and the format version it
@@ -367,7 +368,7 @@ class LayoutFile {
     try {
       return _parse(text);
     } on StackOverflowError {
-      // Block nesting, which [_nestsTooDeep] does not count: one line of
+      // Block nesting, which [loadPlainYaml] does not count: one line of
       // `- - - …` a hundred thousand deep runs the parser out of stack, and
       // an Error is nothing the import catches.
       throw const LayoutFileException(LayoutFileProblem.tooLarge, 'nested too deeply to read');
@@ -377,8 +378,9 @@ class LayoutFile {
   static LayoutFile _parse(String text) {
     final Object? document;
     try {
-      if (_nestsTooDeep(text)) throw const LayoutFileException(LayoutFileProblem.tooLarge, 'nested more than $_maxLayoutFileDepth deep');
-      document = _plainJson(loadYaml(text), _NodeBudget());
+      document = loadPlainYaml(text);
+    } on YamlTooLargeException catch (e) {
+      throw LayoutFileException(LayoutFileProblem.tooLarge, e.detail);
     } on YamlException catch (e) {
       throw LayoutFileException(LayoutFileProblem.notYaml, e.message, line: e.span == null ? null : e.span!.start.line + 1);
     }
@@ -423,52 +425,3 @@ O? _keptSplit<I, O>(List<I> children, List<double> weights, O? Function(I child)
 }
 
 Map<String, dynamic> _stringMap(Object? json) => json is Map ? {for (final e in json.entries) '${e.key}': e.value} : const {};
-
-/// How many values a layout file may hold once its aliases are expanded —
-/// far past any layout, far short of what stalls the app.
-const _maxLayoutFileNodes = 100000;
-
-class _NodeBudget {
-  var _left = _maxLayoutFileNodes;
-
-  void spend() {
-    if (--_left < 0) throw const LayoutFileException(LayoutFileProblem.tooLarge, 'more than $_maxLayoutFileNodes values');
-  }
-}
-
-/// How deep a layout file's brackets may nest — far past any layout.
-const _maxLayoutFileDepth = 200;
-
-/// Whether [text]'s `[` and `{` nest deeper than [_maxLayoutFileDepth],
-/// checked before the parser sees it: its time grows with the square of the
-/// depth, and a line of a hundred thousand brackets holds the app for
-/// seconds. Counted with no regard for quoting, so an upper bound — the
-/// layout writer nests by indentation, and a name's brackets are never two
-/// hundred left open.
-bool _nestsTooDeep(String text) {
-  var depth = 0;
-  for (final unit in text.codeUnits) {
-    if (unit == 0x5B || unit == 0x7B) {
-      if (++depth > _maxLayoutFileDepth) return true;
-    } else if ((unit == 0x5D || unit == 0x7D) && depth > 0) {
-      depth--;
-    }
-  }
-  return false;
-}
-
-/// `package:yaml`'s nodes as plain maps and lists, so nothing downstream
-/// meets a `YamlMap` that refuses to be written to.
-///
-/// Counted against [budget]: an alias is one node the parser hands back
-/// wherever it is named, and copying it out copies it every time. Ten
-/// levels of ten aliases each is a line of text per level and ten billion
-/// values to copy.
-Object? _plainJson(Object? node, _NodeBudget budget) {
-  budget.spend();
-  return switch (node) {
-    final Map<dynamic, dynamic> map => {for (final e in map.entries) '${e.key}': _plainJson(e.value, budget)},
-    final List<dynamic> list => [for (final item in list) _plainJson(item, budget)],
-    _ => node,
-  };
-}

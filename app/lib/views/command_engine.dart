@@ -20,6 +20,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/halo_services.dart';
@@ -823,115 +824,185 @@ class CommandEngine extends ChangeNotifier {
     return false;
   }
 
-  /// Applies a command's returned `CommandAction`s.
-  ///
-  /// When a logging panel is live it gets the WHOLE batch: only it can apply
-  /// the QSO-scoped fields (`setVfo`, `addQso`, `updateQso`, `setCallField`,
-  /// `sendSpots`, `autoRespot`), which need the in-progress QSO and its controllers, and it
-  /// handles the app-scoped ones too — so routing everything there makes a
-  /// command run from the ⌘K dialog behave exactly as if it had been typed
-  /// into the call field, ordering included. Splitting the batch would break
-  /// commands that return several actions at once (SAT returns `setVfo` +
-  /// `updateQso`).
-  ///
-  /// The local branches below are the no-operation-open case (the Home bar,
-  /// or the dialog with nothing open), where only app-scoped actions can
-  /// possibly apply.
-  Future<void> dispatchActions(List<dynamic> actions, {bool skipOnlineLookup = false}) async {
-    final dispatch = services.currentCommandDispatch;
-    if (dispatch != null) {
-      await dispatch(actions, skipOnlineLookup: skipOnlineLookup);
-      return;
-    }
+  /// [dispatchCommandActions] with this engine's [runAction].
+  Future<void> dispatchActions(List<dynamic> actions, {bool skipOnlineLookup = false}) =>
+      dispatchCommandActions(services, actions, runAction, skipOnlineLookup: skipOnlineLookup);
+}
 
-    for (final action in actions) {
-      if (action is! Map) continue;
-      final map = action.cast<String, dynamic>();
-      if (map.containsKey('updateSettings')) {
-        final params = (map['updateSettings'] as Map).cast<String, dynamic>();
-        if (params.containsKey('developerMode')) {
-          await services.settings.setDeveloperMode(params['developerMode'] as bool);
-        }
-      } else if (map.containsKey('syncAll')) {
-        await runAction('syncAll', null);
-      } else if (map['purgeTests'] is Map) {
-        await runAction('purgeTests', (map['purgeTests'] as Map).cast<String, dynamic>());
-      } else if (map['devNotice'] is Map) {
-        await runAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
-      } else if (map['devStatus'] is Map) {
-        await runAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
-      } else if (map['devProgress'] is Map) {
-        await runAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
-      } else if (map['devHammer'] is Map) {
-        await runAction('devHammer', (map['devHammer'] as Map).cast<String, dynamic>());
-      } else if (map['devSplash'] is Map) {
-        await runAction('devSplash', null);
-      } else if (map['devOnboard'] is Map) {
-        await runAction('devOnboard', null);
-      } else if (map['devTester'] is Map) {
-        await runAction('devTester', null);
-      } else if (map['devPopup'] is Map) {
-        await runAction('devPopup', null);
-      } else if (map['devTimeTravel'] is Map) {
-        await runAction('devTimeTravel', (map['devTimeTravel'] as Map).cast<String, dynamic>());
-      } else if (map['devBench'] is Map) {
-        await runAction('devBench', (map['devBench'] as Map).cast<String, dynamic>());
-      } else if (map['devLogCat'] is Map) {
-        await runAction('devLogCat', null);
-      } else if (map['devMapInfo'] is Map) {
-        await runAction('devMapInfo', null);
-      } else if (map['devIdle'] is Map) {
-        await runAction('devIdle', null);
-      } else if (map['reloadDataFiles'] is Map) {
-        await runAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
-      } else if (map['toggleExperiment'] is Map) {
-        await runAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
-      } else if (map['updateSetting'] is Map) {
-        await runAction('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
-      } else if (map['openSettings'] is Map) {
-        await runAction('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
-      } else if (map['navigate'] is Map) {
-        await runAction('navigate', (map['navigate'] as Map).cast<String, dynamic>());
-      } else if (map['updateOperation'] is Map) {
-        // App-scoped like setPower below — the logging panel only contributes
-        // the uuid, which the open operation's own context has too. Without
-        // this branch OPER/POSITION run from the ⌘K dialog while no logging
-        // panel is mounted would show their "Operator: KI2D" confirmation and
-        // write nothing. With no operation open there is no uuid, and the
-        // action reports that rather than going quiet.
-        await runAction('updateOperation', {
-          ...(map['updateOperation'] as Map).cast<String, dynamic>(),
-          if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
-        });
-      } else if (map['markSegment'] is Map) {
-        // Operation-scoped like updateOperation above: the uuid is the open
-        // operation's, and the app owns the event rows and the location screen.
-        await runAction('markSegment', {
-          ...(map['markSegment'] as Map).cast<String, dynamic>(),
-          if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
-        });
-      } else if (map['setPower'] is Map) {
-        // Not QSO-scoped, unlike the actions this fallback path can't serve
-        // (addQso, updateQso, setCallField — see the comment below) — so,
-        // unlike those, it runs here whether or not a logging panel is live.
-        await runAction('setPower', (map['setPower'] as Map).cast<String, dynamic>());
-      } else if (map['setKeyerSpeed'] is Map) {
-        // App-scoped like setPower: the keyer is radio1's, not the QSO's.
-        await runAction('setKeyerSpeed', (map['setKeyerSpeed'] as Map).cast<String, dynamic>());
-      } else if (map['showKeyer'] is Map) {
-        await runAction('showKeyer', null);
-      } else if (map['setEnterSends'] is Map) {
-        await runAction('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
-      } else {
-        // Nothing above recognized this action's key(s) — most likely a
-        // command that's scoped to the logging panel (addQso, updateQso,
-        // sendSpots, autoRespot, setCallField) matched here where no QSO is in
-        // progress, or a new CommandAction field with no matching branch
-        // here yet. Either way this must not fail silently: see
-        // logging_controls_dispatch.dart's own _dispatchActions and its regression
-        // test for `reloadDataFiles` shipping without this branch.
-        debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
+/// Applies a command's returned `CommandAction`s.
+///
+/// When a logging panel is live it gets the WHOLE batch: only it can apply
+/// the QSO-scoped fields (`setVfo`, `addQso`, `updateQso`, `setCallField`,
+/// `sendSpots`, `autoRespot`), which need the in-progress QSO and its controllers, and it
+/// handles the app-scoped ones too — so routing everything there makes a
+/// command run from the ⌘K dialog behave exactly as if it had been typed
+/// into the call field, ordering included. Splitting the batch would break
+/// commands that return several actions at once (SAT returns `setVfo` +
+/// `updateQso`).
+///
+/// The local branches below are the no-operation-open case (the Home bar,
+/// or the dialog with nothing open), where only app-scoped actions can
+/// possibly apply.
+Future<void> dispatchCommandActions(
+  HaLoServices services,
+  List<dynamic> actions,
+  Future<void> Function(String action, Map<String, dynamic>? params) runAction, {
+  bool skipOnlineLookup = false,
+}) async {
+  final dispatch = services.currentCommandDispatch;
+  if (dispatch != null) {
+    await dispatch(actions, skipOnlineLookup: skipOnlineLookup);
+    return;
+  }
+
+  for (final action in actions) {
+    if (action is! Map) continue;
+    final map = action.cast<String, dynamic>();
+    if (map.containsKey('updateSettings')) {
+      final params = (map['updateSettings'] as Map).cast<String, dynamic>();
+      if (params.containsKey('developerMode')) {
+        await services.settings.setDeveloperMode(params['developerMode'] as bool);
       }
+    } else if (map.containsKey('syncAll')) {
+      await runAction('syncAll', null);
+    } else if (map['purgeTests'] is Map) {
+      await runAction('purgeTests', (map['purgeTests'] as Map).cast<String, dynamic>());
+    } else if (map['devNotice'] is Map) {
+      await runAction('devNotice', (map['devNotice'] as Map).cast<String, dynamic>());
+    } else if (map['devStatus'] is Map) {
+      await runAction('devStatus', (map['devStatus'] as Map).cast<String, dynamic>());
+    } else if (map['devProgress'] is Map) {
+      await runAction('devProgress', (map['devProgress'] as Map).cast<String, dynamic>());
+    } else if (map['devHammer'] is Map) {
+      await runAction('devHammer', (map['devHammer'] as Map).cast<String, dynamic>());
+    } else if (map['devSplash'] is Map) {
+      await runAction('devSplash', null);
+    } else if (map['devOnboard'] is Map) {
+      await runAction('devOnboard', null);
+    } else if (map['devTester'] is Map) {
+      await runAction('devTester', null);
+    } else if (map['devPopup'] is Map) {
+      await runAction('devPopup', null);
+    } else if (map['devTimeTravel'] is Map) {
+      await runAction('devTimeTravel', (map['devTimeTravel'] as Map).cast<String, dynamic>());
+    } else if (map['devBench'] is Map) {
+      await runAction('devBench', (map['devBench'] as Map).cast<String, dynamic>());
+    } else if (map['devLogCat'] is Map) {
+      await runAction('devLogCat', null);
+    } else if (map['devMapInfo'] is Map) {
+      await runAction('devMapInfo', null);
+    } else if (map['devIdle'] is Map) {
+      await runAction('devIdle', null);
+    } else if (map['reloadDataFiles'] is Map) {
+      await runAction('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
+    } else if (map['toggleExperiment'] is Map) {
+      await runAction('toggleExperiment', (map['toggleExperiment'] as Map).cast<String, dynamic>());
+    } else if (map['updateSetting'] is Map) {
+      await runAction('updateSetting', (map['updateSetting'] as Map).cast<String, dynamic>());
+    } else if (map['openSettings'] is Map) {
+      await runAction('openSettings', (map['openSettings'] as Map).cast<String, dynamic>());
+    } else if (map['navigate'] is Map) {
+      await runAction('navigate', (map['navigate'] as Map).cast<String, dynamic>());
+    } else if (map['updateOperation'] is Map) {
+      // App-scoped like setPower below — the logging panel only contributes
+      // the uuid, which the open operation's own context has too. Without
+      // this branch OPER/POSITION run from the ⌘K dialog while no logging
+      // panel is mounted would show their "Operator: KI2D" confirmation and
+      // write nothing. With no operation open there is no uuid, and the
+      // action reports that rather than going quiet.
+      await runAction('updateOperation', {
+        ...(map['updateOperation'] as Map).cast<String, dynamic>(),
+        if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
+      });
+    } else if (map['markSegment'] is Map) {
+      // Operation-scoped like updateOperation above: the uuid is the open
+      // operation's, and the app owns the event rows and the location screen.
+      await runAction('markSegment', {
+        ...(map['markSegment'] as Map).cast<String, dynamic>(),
+        if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
+      });
+    } else if (map['setPower'] is Map) {
+      // Not QSO-scoped, unlike the actions this fallback path can't serve
+      // (addQso, updateQso, setCallField — see the comment below) — so,
+      // unlike those, it runs here whether or not a logging panel is live.
+      await runAction('setPower', (map['setPower'] as Map).cast<String, dynamic>());
+    } else if (map['setKeyerSpeed'] is Map) {
+      // App-scoped like setPower: the keyer is radio1's, not the QSO's.
+      await runAction('setKeyerSpeed', (map['setKeyerSpeed'] as Map).cast<String, dynamic>());
+    } else if (map['showKeyer'] is Map) {
+      await runAction('showKeyer', null);
+    } else if (map['setEnterSends'] is Map) {
+      await runAction('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
+    } else {
+      // Nothing above recognized this action's key(s) — most likely a
+      // command that's scoped to the logging panel (addQso, updateQso,
+      // sendSpots, autoRespot, setCallField) matched here where no QSO is in
+      // progress, or a new CommandAction field with no matching branch
+      // here yet. Either way this must not fail silently: see
+      // logging_controls_dispatch.dart's own _dispatchActions and its regression
+      // test for `reloadDataFiles` shipping without this branch.
+      debugPrint('[extensions] no dispatch branch for command action: ${map.keys}');
     }
   }
 }
+
+/// What became of command text run from a key.
+enum CommandTextOutcome { ran, failed, needsParams }
+
+/// The commands in bound command text: `20M; CW; SPOT` is three, run in
+/// that order. A `;` always separates, so no command in a chain can take one
+/// in its own text.
+List<String> commandTextParts(String text) => [
+  for (final part in text.split(';'))
+    if (part.trim().replaceAll(RegExp(r'\s+'), ' ') case final command when command.isNotEmpty) command,
+];
+
+/// Runs [text] the way the ⌘K dialog runs what is typed into it, for a key
+/// bound to it (docs/design/keyboard-shortcuts.md § Command text): against
+/// the operation in front, with the hooks' word on the status bar, since no
+/// field is there to show it. A chain runs its commands in turn, each after
+/// the one before has dispatched, and stops at the first that cannot run.
+///
+/// A command still waiting for its text (NOTE) runs nothing and ends the
+/// chain with [CommandTextOutcome.needsParams] and that command as [text]:
+/// the caller's to open somewhere it can be typed.
+Future<({CommandTextOutcome outcome, String text})> runCommandText(
+  HaLoServices services,
+  String text,
+  Future<void> Function(String action, Map<String, dynamic>? params) runAction,
+) async {
+  const messageKey = 'keyBinding:command';
+  final confirmations = <String>[];
+  void say(String message) => services.statusBar.setMessage(key: messageKey, icon: 'keyboard', text: message, dismissAfter: _boundCommandMessageTime);
+  // A failure partway names what already ran ahead of it: the chain stops,
+  // but the commands before it did their part.
+  CommandTextOutcome fail(String message) {
+    say([...confirmations, message].join(' · '));
+    return CommandTextOutcome.failed;
+  }
+
+  final parts = commandTextParts(text);
+  if (parts.isEmpty) return (outcome: fail(t.keyboardShortcuts.unknownCommand(command: text)), text: text);
+  for (final command in parts) {
+    final operation = services.currentOperationContext;
+    final preview = await services.extensions.interpretCommand(command, operation);
+    if (preview == null) return (outcome: fail(t.keyboardShortcuts.unknownCommand(command: command)), text: command);
+    if (preview['error'] case final String error) return (outcome: fail(error), text: command);
+    if (preview['expectsParams'] == true) return (outcome: CommandTextOutcome.needsParams, text: command);
+    final executable = await services.extensions.interpretCommand(command, operation, null, true);
+    // The preview read it, so a null now is the hook failing as it ran.
+    if (executable == null) return (outcome: fail(t.extensionService.commandFailed), text: command);
+    if (executable['error'] case final String error) return (outcome: fail(error), text: command);
+    if (executable['confirm'] case final String confirm when confirm.isNotEmpty) {
+      confirmations.add(confirm);
+      say(confirmations.join(' · '));
+    }
+    if (executable['commands'] case final List<dynamic> commands) {
+      await dispatchCommandActions(services, commands, runAction, skipOnlineLookup: executable['skipOnlineLookup'] == true);
+    }
+  }
+  return (outcome: CommandTextOutcome.ran, text: text);
+}
+
+/// As long as the ⌘K dialog keeps a response up.
+const _boundCommandMessageTime = Duration(seconds: 5);

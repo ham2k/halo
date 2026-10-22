@@ -139,7 +139,7 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
         // ⌘F's twin, for a device with no keyboard to press it on.
         (
           icon: 'magnify',
-          label: effectiveContext.t.qsoList.find.menuItem(shortcut: findChordLabel),
+          label: findMenuItemLabel(effectiveContext.t),
           onTap: () {
             Navigator.of(effectiveContext).pop();
             _openFind();

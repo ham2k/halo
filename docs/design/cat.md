@@ -1921,7 +1921,8 @@ about whether it is held — the one behind would unkey and the one in front key
 press. The auto-repeats and the release of a press that went to PTT go nowhere, or holding `'` down to
 talk would type a run of apostrophes into the field.
 
-**Where the keyboard is decides whether `'` keys** (`quoteKeysPtt`, cw_function_keys.dart). In the
+**Where the keyboard is decides whether `'` keys** (`fieldTakesKey`, key_bindings.dart — the rule
+every shortcut on a typing key follows, [keyboard-shortcuts.md](keyboard-shortcuts.md)). In the
 main fields — the call, the reports and every exchange field, a name or a state included — `'` is PTT:
 that is where the operator works a contact. The one exception is the call field while it reads a
 command that takes free text, as NOTE does, which keeps the character; it is asked of the field's own

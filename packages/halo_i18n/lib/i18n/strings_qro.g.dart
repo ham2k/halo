@@ -60,6 +60,7 @@ class TranslationsQro extends Translations with BaseTranslations<AppLocale, Tran
 	@override late final _Translations$settings$qro settings = _Translations$settings$qro._(_root);
 	@override late final _Translations$commands$qro commands = _Translations$commands$qro._(_root);
 	@override late final _Translations$commandDialog$qro commandDialog = _Translations$commandDialog$qro._(_root);
+	@override late final _Translations$keyboardShortcuts$qro keyboardShortcuts = _Translations$keyboardShortcuts$qro._(_root);
 	@override late final _Translations$expiredBuild$qro expiredBuild = _Translations$expiredBuild$qro._(_root);
 	@override late final _Translations$staleness$qro staleness = _Translations$staleness$qro._(_root);
 	@override late final _Translations$spotting$qro spotting = _Translations$spotting$qro._(_root);
@@ -875,6 +876,44 @@ class _Translations$commandDialog$qro extends Translations$commandDialog$en {
 	@override String get sectionSuggestions => 'TRY';
 	@override String get lookingUp => 'LOOKING UP CALLSIGN…';
 	@override String get blockedByPane => 'CANNOT USE COMMANDS WHILE A PANEL OR DIALOG IS OPEN';
+}
+
+// Path: keyboardShortcuts
+class _Translations$keyboardShortcuts$qro extends Translations$keyboardShortcuts$en {
+	_Translations$keyboardShortcuts$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'KEYBOARD SHORTCUTS';
+	@override String get description => 'CUSTOMIZE KEY MAPPINGS';
+	@override String get search => 'SEARCH COMMANDS AND KEYS';
+	@override String get import => 'IMPORT…';
+	@override String get export => 'EXPORT…';
+	@override String get resetAll => 'RESET ALL';
+	@override String get resetAllTitle => 'RESET EVERY SHORTCUT?';
+	@override String get resetAllBody => 'EVERY COMMAND GOES BACK TO ITS DEFAULT KEYS, AND THE KEYS BOUND TO TYPED COMMANDS ARE REMOVED.';
+	@override String get reset => 'RESET';
+	@override String get noKey => 'NO KEY';
+	@override String get changed => 'CHANGED';
+	@override String conflict({required Object keys, required Object commands}) => '${keys} IS ALSO BOUND TO ${commands}';
+	@override String get groupApp => 'APP';
+	@override String get groupKeying => 'KEYING';
+	@override String get groupLogging => 'LOGGING';
+	@override String get groupCommands => 'COMMANDS';
+	@override String get groupFixed => 'FIXED KEYS';
+	@override String get contextApp => 'ANYWHERE';
+	@override String get contextLogView => 'OPERATION, CHASING AND LOGS VIEWS';
+	@override String get contextOperation => 'OPERATION VIEW, KEYING A CAT RADIO';
+	@override String get contextLogging => 'IN THE LOGGING PANEL';
+	@override String get addCommand => 'ADD A COMMAND…';
+	@override String unknownCommand({required Object command}) => 'UNKNOWN COMMAND: ${command}';
+	@override late final _Translations$keyboardShortcuts$command$qro command = _Translations$keyboardShortcuts$command$qro._(_root);
+	@override late final _Translations$keyboardShortcuts$fixed$qro fixed = _Translations$keyboardShortcuts$fixed$qro._(_root);
+	@override late final _Translations$keyboardShortcuts$editor$qro editor = _Translations$keyboardShortcuts$editor$qro._(_root);
+	@override late final _Translations$keyboardShortcuts$file$qro file = _Translations$keyboardShortcuts$file$qro._(_root);
+	@override late final _Translations$keyboardShortcuts$modifier$qro modifier = _Translations$keyboardShortcuts$modifier$qro._(_root);
+	@override late final _Translations$keyboardShortcuts$platform$qro platform = _Translations$keyboardShortcuts$platform$qro._(_root);
 }
 
 // Path: expiredBuild
@@ -1967,6 +2006,7 @@ class _Translations$qsoList$find$qro extends Translations$qsoList$find$en {
 
 	// Translations
 	@override String menuItem({required Object shortcut}) => 'FIND IN LOG (${shortcut})';
+	@override String get menuItemNoShortcut => 'FIND IN LOG';
 	@override String get hint => 'QSO NUMBER OR CALLSIGN';
 	@override String get noMatches => 'NO MATCH';
 }
@@ -2991,6 +3031,130 @@ class _Translations$settings$gridPrecisionDescription$qro extends Translations$s
 	// Translations
 	@override String get six => '6 DIGITS';
 	@override String get eight => '8 DIGITS';
+}
+
+// Path: keyboardShortcuts.command
+class _Translations$keyboardShortcuts$command$qro extends Translations$keyboardShortcuts$command$en {
+	_Translations$keyboardShortcuts$command$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get commandDialog => 'OPEN THE COMMAND DIALOG';
+	@override String get toggleTheme => 'SWITCH BETWEEN LIGHT AND DARK';
+	@override String get toggleLanguage => 'SWITCH BETWEEN ENGLISH AND SPANISH';
+	@override String get fontScaleUp => 'LARGER TEXT';
+	@override String get fontScaleDown => 'SMALLER TEXT';
+	@override String get fontScaleReset => 'NORMAL TEXT SIZE';
+	@override String get densityLooser => 'ROOMIER LAYOUT';
+	@override String get densityDenser => 'DENSER LAYOUT';
+	@override String get densityAuto => 'AUTOMATIC LAYOUT DENSITY';
+	@override String get find => 'FIND IN THE LOG';
+	@override String keyerMessage({required Object n}) => 'SEND MESSAGE ${n}';
+	@override String get keyboardMode => 'KEYBOARD MODE ON OR OFF';
+	@override String get ptt => 'PUSH TO TALK';
+	@override String get wipe => 'CLEAR THE CONTACT BEING LOGGED';
+}
+
+// Path: keyboardShortcuts.fixed
+class _Translations$keyboardShortcuts$fixed$qro extends Translations$keyboardShortcuts$fixed$en {
+	_Translations$keyboardShortcuts$fixed$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get callsign => 'TYPING CALLSIGNS';
+	@override String get escape => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE';
+	@override String get enter => 'LOG THE CONTACT';
+	@override String get space => 'NEXT FIELD';
+	@override String get tab => 'NEXT OR PREVIOUS FIELD';
+	@override String get arrows => 'MOVE BETWEEN FIELDS, CONTROLS AND THE LOG';
+	@override String get walk => 'PAGE THROUGH THE LOG, OR GO TO ITS ENDS';
+	@override String get undo => 'TAKE BACK A WIPE OR A DELETE';
+}
+
+// Path: keyboardShortcuts.editor
+class _Translations$keyboardShortcuts$editor$qro extends Translations$keyboardShortcuts$editor$en {
+	_Translations$keyboardShortcuts$editor$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get addShortcut => 'ADD SHORTCUT';
+	@override String get listening => 'PRESS THE KEYS FOR THE SHORTCUT…';
+	@override String get listeningHint => 'ESC STOPS LISTENING';
+	@override String get add => 'ADD';
+	@override String refusedFixed({required Object keys}) => '${keys} BELONGS TO THE LOGGING FIELDS OR A DIALOG, AND CAN’T BE CHANGED.';
+	@override String refusedCallsign({required Object keys}) => '${keys} IS HOW CALLSIGNS ARE TYPED. HOLD CMD, CTRL OR ALT WITH IT.';
+	@override String reserved({required Object keys}) => 'THE SYSTEM MAY TAKE ${keys} BEFORE THE APP SEES IT.';
+	@override String already({required Object keys}) => '${keys} IS ALREADY ONE OF THIS COMMAND’S KEYS.';
+	@override String takeIt({required Object keys, required Object command}) => 'TAKE ${keys} FROM “${command}”';
+	@override String get resetDefault => 'RESET TO DEFAULT';
+	@override String get remove => 'REMOVE';
+	@override String get commandLabel => 'COMMAND';
+	@override String get commandHint => 'ENTER ANY VALID COMMAND, OR MULTIPLE COMMANDS SEPARATED BY ";"';
+	@override String get removeCommand => 'REMOVE COMMAND';
+	@override String commandUnknown({required Object text}) => 'NO COMMAND READS “${text}”';
+	@override String get noShortcuts => 'NO KEY YET';
+}
+
+// Path: keyboardShortcuts.file
+class _Translations$keyboardShortcuts$file$qro extends Translations$keyboardShortcuts$file$en {
+	_Translations$keyboardShortcuts$file$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String exported({required Object location}) => 'SHORTCUTS SAVED TO ${location}';
+	@override String exportFailed({required Object error}) => 'COULDN’T EXPORT THE SHORTCUTS: ${error}';
+	@override String importPickerFailed({required Object error}) => 'COULDN’T OPEN THE FILE: ${error}';
+	@override String importUnreadable({required Object filename, required Object problem}) => '${filename} ISN’T A SHORTCUTS FILE THIS APP CAN READ: ${problem}';
+	@override String problemNotYaml({required Object line}) => 'THE TEXT ISN’T VALID YAML (LINE ${line})';
+	@override String get problemNotKeysFile => 'IT ISN’T A HAM2K KEYBOARD SHORTCUTS FILE';
+	@override String get problemNewerVersion => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP';
+	@override String get problemMalformed => 'PART OF IT DOESN’T FOLLOW THE SHORTCUTS FORMAT';
+	@override String get problemTooLarge => 'IT IS TOO LARGE';
+	@override String get importTitle => 'IMPORT SHORTCUTS';
+	@override String writtenOn({required Object platform}) => 'WRITTEN ON ${platform}.';
+	@override String get writtenOnUnknown => 'THE FILE DOESN’T SAY WHICH KEYBOARD IT WAS WRITTEN ON.';
+	@override String get translate => 'WHAT SHOULD EACH OF THESE KEYS BE ON THIS KEYBOARD?';
+	@override String get leaveOut => 'LEAVE THOSE SHORTCUTS OUT';
+	@override String get replace => 'REPLACE THIS DEVICE’S CONFIG';
+	@override String get replaceHint => 'EVERY SHORTCUT NOT IN THE FILE GOES BACK TO ITS DEFAULT.';
+	@override String get merge => 'ADD TO THIS DEVICE’S CONFIG';
+	@override String get mergeHint => 'THE FILE’S SHORTCUTS REPLACE THIS DEVICE’S FOR THE SAME COMMANDS, AND THE REST STAY.';
+	@override String unknown({required Object commands}) => 'NOT KNOWN IN THIS VERSION, SO LEFT OUT: ${commands}';
+	@override String unreadableChords({required Object chords}) => 'NOT SHORTCUTS, SO LEFT OUT: ${chords}';
+	@override String refusedChords({required Object chords}) => 'KEYS THE APP KEEPS FOR ITSELF, SO LEFT OUT: ${chords}';
+	@override String conflicts({required Object keys}) => 'BOUND TO MORE THAN ONE COMMAND AFTER THE IMPORT: ${keys}';
+	@override String get importAction => 'IMPORT';
+	@override String get imported => 'SHORTCUTS IMPORTED';
+}
+
+// Path: keyboardShortcuts.modifier
+class _Translations$keyboardShortcuts$modifier$qro extends Translations$keyboardShortcuts$modifier$en {
+	_Translations$keyboardShortcuts$modifier$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get cmd => '⌘ COMMAND';
+	@override String get ctrl => 'CTRL';
+	@override String get meta => 'WINDOWS / SUPER';
+}
+
+// Path: keyboardShortcuts.platform
+class _Translations$keyboardShortcuts$platform$qro extends Translations$keyboardShortcuts$platform$en {
+	_Translations$keyboardShortcuts$platform$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get macos => 'MACOS';
+	@override String get ios => 'IPADOS';
+	@override String get windows => 'WINDOWS';
+	@override String get linux => 'LINUX';
+	@override String get android => 'ANDROID';
 }
 
 // Path: home.logs.sheet
@@ -5121,6 +5285,7 @@ extension on TranslationsQro {
 			'qsoList.yesterday' => 'YESTERDAY',
 			'qsoList.tomorrow' => 'TOMORROW',
 			'qsoList.find.menuItem' => ({required Object shortcut}) => 'FIND IN LOG (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'FIND IN LOG',
 			'qsoList.find.hint' => 'QSO NUMBER OR CALLSIGN',
 			'qsoList.find.noMatches' => 'NO MATCH',
 			'loggingPanel.stats' => 'OPERATION STATS',
@@ -5606,9 +5771,9 @@ extension on TranslationsQro {
 			'settings.station.reportTitle' => 'REPORT THIS RADIO',
 			'settings.station.reportIntro' => 'TELL US WHAT RADIO THIS REALLY IS AND HOW IT WENT. YOUR REPORT BECOMES A CARD THE HAM2K TEAM READS, AND WHAT YOU WRITE ABOUT GETTING IT WORKING MAY END UP HELPING THE NEXT OPERATOR WITH THE SAME RIG.',
 			'settings.station.reportManufacturer' => 'MANUFACTURER',
-			'settings.station.reportManufacturerDescription' => 'WHO MAKES IT — ICOM, YAESU, KENWOOD, ELECRAFT…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.reportManufacturerDescription' => 'WHO MAKES IT — ICOM, YAESU, KENWOOD, ELECRAFT…',
 			'settings.station.reportManufacturerRequired' => 'A MANUFACTURER IS REQUIRED',
 			'settings.station.reportModel' => 'MODEL',
 			'settings.station.reportModelDescription' => 'THE MODEL, AS THE RADIO ITSELF CALLS IT — "IC-7300", "FT-991A".',
@@ -6120,9 +6285,9 @@ extension on TranslationsQro {
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'PURGED ${count} TEST OPERATION', other: 'PURGED ${count} TEST OPERATIONS', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'PURGED ${purged} OF ${total} TEST OPERATIONS — THE REST FAILED; TRY PURGETESTS AGAIN',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: 'PURGED ${count} TEST CONTACT WITH NO OPERATION', other: 'PURGED ${count} TEST CONTACTS WITH NO OPERATION', ), 
-			'commands.purgeTestsContactsFailed' => 'PURGED THE TEST OPERATIONS, BUT THE TEST CONTACTS WITH NO OPERATION FAILED; TRY PURGETESTS AGAIN',
 			_ => null,
 		} ?? switch (path) {
+			'commands.purgeTestsContactsFailed' => 'PURGED THE TEST OPERATIONS, BUT THE TEST CONTACTS WITH NO OPERATION FAILED; TRY PURGETESTS AGAIN',
 			'commands.purgeTestsNothingToDo' => 'NOTHING WAS PURGED',
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'REMOVED ${removed} OF ${total} TEST OPERATIONS — THE REST FAILED; TRY REVIEW AGAIN',
 			'commands.receivedPurgesFailed' => 'COULDN\'T REMOVE THOSE TEST OPERATIONS — TRY REVIEW AGAIN',
@@ -6159,6 +6324,99 @@ extension on TranslationsQro {
 			'commandDialog.sectionSuggestions' => 'TRY',
 			'commandDialog.lookingUp' => 'LOOKING UP CALLSIGN…',
 			'commandDialog.blockedByPane' => 'CANNOT USE COMMANDS WHILE A PANEL OR DIALOG IS OPEN',
+			'keyboardShortcuts.title' => 'KEYBOARD SHORTCUTS',
+			'keyboardShortcuts.description' => 'CUSTOMIZE KEY MAPPINGS',
+			'keyboardShortcuts.search' => 'SEARCH COMMANDS AND KEYS',
+			'keyboardShortcuts.import' => 'IMPORT…',
+			'keyboardShortcuts.export' => 'EXPORT…',
+			'keyboardShortcuts.resetAll' => 'RESET ALL',
+			'keyboardShortcuts.resetAllTitle' => 'RESET EVERY SHORTCUT?',
+			'keyboardShortcuts.resetAllBody' => 'EVERY COMMAND GOES BACK TO ITS DEFAULT KEYS, AND THE KEYS BOUND TO TYPED COMMANDS ARE REMOVED.',
+			'keyboardShortcuts.reset' => 'RESET',
+			'keyboardShortcuts.noKey' => 'NO KEY',
+			'keyboardShortcuts.changed' => 'CHANGED',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} IS ALSO BOUND TO ${commands}',
+			'keyboardShortcuts.groupApp' => 'APP',
+			'keyboardShortcuts.groupKeying' => 'KEYING',
+			'keyboardShortcuts.groupLogging' => 'LOGGING',
+			'keyboardShortcuts.groupCommands' => 'COMMANDS',
+			'keyboardShortcuts.groupFixed' => 'FIXED KEYS',
+			'keyboardShortcuts.contextApp' => 'ANYWHERE',
+			'keyboardShortcuts.contextLogView' => 'OPERATION, CHASING AND LOGS VIEWS',
+			'keyboardShortcuts.contextOperation' => 'OPERATION VIEW, KEYING A CAT RADIO',
+			'keyboardShortcuts.contextLogging' => 'IN THE LOGGING PANEL',
+			'keyboardShortcuts.addCommand' => 'ADD A COMMAND…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'UNKNOWN COMMAND: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'OPEN THE COMMAND DIALOG',
+			'keyboardShortcuts.command.toggleTheme' => 'SWITCH BETWEEN LIGHT AND DARK',
+			'keyboardShortcuts.command.toggleLanguage' => 'SWITCH BETWEEN ENGLISH AND SPANISH',
+			'keyboardShortcuts.command.fontScaleUp' => 'LARGER TEXT',
+			'keyboardShortcuts.command.fontScaleDown' => 'SMALLER TEXT',
+			'keyboardShortcuts.command.fontScaleReset' => 'NORMAL TEXT SIZE',
+			'keyboardShortcuts.command.densityLooser' => 'ROOMIER LAYOUT',
+			'keyboardShortcuts.command.densityDenser' => 'DENSER LAYOUT',
+			'keyboardShortcuts.command.densityAuto' => 'AUTOMATIC LAYOUT DENSITY',
+			'keyboardShortcuts.command.find' => 'FIND IN THE LOG',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'SEND MESSAGE ${n}',
+			'keyboardShortcuts.command.keyboardMode' => 'KEYBOARD MODE ON OR OFF',
+			'keyboardShortcuts.command.ptt' => 'PUSH TO TALK',
+			'keyboardShortcuts.command.wipe' => 'CLEAR THE CONTACT BEING LOGGED',
+			'keyboardShortcuts.fixed.callsign' => 'TYPING CALLSIGNS',
+			'keyboardShortcuts.fixed.escape' => 'STOP SENDING, BACK OUT ONE STEP, OR CLOSE',
+			'keyboardShortcuts.fixed.enter' => 'LOG THE CONTACT',
+			'keyboardShortcuts.fixed.space' => 'NEXT FIELD',
+			'keyboardShortcuts.fixed.tab' => 'NEXT OR PREVIOUS FIELD',
+			'keyboardShortcuts.fixed.arrows' => 'MOVE BETWEEN FIELDS, CONTROLS AND THE LOG',
+			'keyboardShortcuts.fixed.walk' => 'PAGE THROUGH THE LOG, OR GO TO ITS ENDS',
+			'keyboardShortcuts.fixed.undo' => 'TAKE BACK A WIPE OR A DELETE',
+			'keyboardShortcuts.editor.addShortcut' => 'ADD SHORTCUT',
+			'keyboardShortcuts.editor.listening' => 'PRESS THE KEYS FOR THE SHORTCUT…',
+			'keyboardShortcuts.editor.listeningHint' => 'ESC STOPS LISTENING',
+			'keyboardShortcuts.editor.add' => 'ADD',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} BELONGS TO THE LOGGING FIELDS OR A DIALOG, AND CAN’T BE CHANGED.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} IS HOW CALLSIGNS ARE TYPED. HOLD CMD, CTRL OR ALT WITH IT.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'THE SYSTEM MAY TAKE ${keys} BEFORE THE APP SEES IT.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} IS ALREADY ONE OF THIS COMMAND’S KEYS.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'TAKE ${keys} FROM “${command}”',
+			'keyboardShortcuts.editor.resetDefault' => 'RESET TO DEFAULT',
+			'keyboardShortcuts.editor.remove' => 'REMOVE',
+			'keyboardShortcuts.editor.commandLabel' => 'COMMAND',
+			'keyboardShortcuts.editor.commandHint' => 'ENTER ANY VALID COMMAND, OR MULTIPLE COMMANDS SEPARATED BY ";"',
+			'keyboardShortcuts.editor.removeCommand' => 'REMOVE COMMAND',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'NO COMMAND READS “${text}”',
+			'keyboardShortcuts.editor.noShortcuts' => 'NO KEY YET',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'SHORTCUTS SAVED TO ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'COULDN’T EXPORT THE SHORTCUTS: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'COULDN’T OPEN THE FILE: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} ISN’T A SHORTCUTS FILE THIS APP CAN READ: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'THE TEXT ISN’T VALID YAML (LINE ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'IT ISN’T A HAM2K KEYBOARD SHORTCUTS FILE',
+			'keyboardShortcuts.file.problemNewerVersion' => 'IT WAS WRITTEN BY A NEWER VERSION OF THE APP',
+			'keyboardShortcuts.file.problemMalformed' => 'PART OF IT DOESN’T FOLLOW THE SHORTCUTS FORMAT',
+			'keyboardShortcuts.file.problemTooLarge' => 'IT IS TOO LARGE',
+			'keyboardShortcuts.file.importTitle' => 'IMPORT SHORTCUTS',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'WRITTEN ON ${platform}.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'THE FILE DOESN’T SAY WHICH KEYBOARD IT WAS WRITTEN ON.',
+			'keyboardShortcuts.file.translate' => 'WHAT SHOULD EACH OF THESE KEYS BE ON THIS KEYBOARD?',
+			'keyboardShortcuts.file.leaveOut' => 'LEAVE THOSE SHORTCUTS OUT',
+			'keyboardShortcuts.file.replace' => 'REPLACE THIS DEVICE’S CONFIG',
+			'keyboardShortcuts.file.replaceHint' => 'EVERY SHORTCUT NOT IN THE FILE GOES BACK TO ITS DEFAULT.',
+			'keyboardShortcuts.file.merge' => 'ADD TO THIS DEVICE’S CONFIG',
+			'keyboardShortcuts.file.mergeHint' => 'THE FILE’S SHORTCUTS REPLACE THIS DEVICE’S FOR THE SAME COMMANDS, AND THE REST STAY.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'NOT KNOWN IN THIS VERSION, SO LEFT OUT: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'NOT SHORTCUTS, SO LEFT OUT: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'KEYS THE APP KEEPS FOR ITSELF, SO LEFT OUT: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'BOUND TO MORE THAN ONE COMMAND AFTER THE IMPORT: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'IMPORT',
+			'keyboardShortcuts.file.imported' => 'SHORTCUTS IMPORTED',
+			'keyboardShortcuts.modifier.cmd' => '⌘ COMMAND',
+			'keyboardShortcuts.modifier.ctrl' => 'CTRL',
+			'keyboardShortcuts.modifier.meta' => 'WINDOWS / SUPER',
+			'keyboardShortcuts.platform.macos' => 'MACOS',
+			'keyboardShortcuts.platform.ios' => 'IPADOS',
+			'keyboardShortcuts.platform.windows' => 'WINDOWS',
+			'keyboardShortcuts.platform.linux' => 'LINUX',
+			'keyboardShortcuts.platform.android' => 'ANDROID',
 			'expiredBuild.title' => 'THIS BUILD HAS EXPIRED',
 			'expiredBuild.body' => 'PLEASE VISIT HAM2K.COM AND GET A NEWER VERSION.',
 			'expiredBuild.visit' => 'VISIT HAM2K.COM',

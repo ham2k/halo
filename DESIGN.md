@@ -310,7 +310,9 @@ and subscribing to DB streams:
   Enter-to-log, ESC-to-wipe, function keys. This is the biggest UX payoff of
   going desktop and the hardest thing to retrofit. The logging fields' own
   focus and navigation contract is specified in
-  [docs/design/logging-fields.md](docs/design/logging-fields.md).
+  [docs/design/logging-fields.md](docs/design/logging-fields.md), and the
+  shortcuts the operator can rebind in
+  [docs/design/keyboard-shortcuts.md](docs/design/keyboard-shortcuts.md).
 
 The concrete size breakpoints, resizable splits, and modal-pane mechanics
 are specified in [docs/design/layouts.md](docs/design/layouts.md).

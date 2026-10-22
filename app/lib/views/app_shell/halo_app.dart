@@ -14,10 +14,12 @@ import 'package:halo_core/halo_core.dart' show DevLog;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../command_dialog.dart';
+import '../command_engine.dart' show CommandTextOutcome, runCommandText;
 import '../home_view.dart';
 import '../tester_overlay.dart';
 import '../../config/dev_bridge.dart';
 
+import '../../services/command_actions.dart';
 import '../../services/settings_service.dart';
 import '../../services/status_bar_service.dart';
 import '../../services/window_chrome_service.dart';
@@ -66,6 +68,7 @@ class _HaLoAppState extends State<HaLoApp> {
   @override
   void initState() {
     super.initState();
+    widget.services.keyBindingsService;
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
     _keyCommandHandlerOwner = this;
     _keyCommandChannel.setMethodCallHandler(_handleNativeKeyCommand);
@@ -91,24 +94,24 @@ class _HaLoAppState extends State<HaLoApp> {
     super.dispose();
   }
 
-  /// One `run` call per native UIKeyCommand in AppDelegate.swift, naming the
-  /// same actions `_handleKeyEvent` dispatches by key/modifier below — kept
-  /// as a single switch so the two paths can't drift apart.
+  /// One `run` call per native UIKeyCommand in AppDelegate.swift: a command
+  /// id or bound command text sent by [KeyBindingsService], or one of the
+  /// names AppDelegate.swift's own list sends.
   Future<void> _handleNativeKeyCommand(MethodCall call) async {
-    if (call.method != 'run') return;
-    switch (call.arguments as String) {
-      case 'commandDialog':
-        _toggleCommandDialog();
-      case 'themeToggle':
-        _toggleTheme();
-      case 'localeToggle':
-        _toggleLocale();
-      case 'zoomIn':
-        unawaited(widget.services.settings.increaseFontScale());
-      case 'zoomOut':
-        unawaited(widget.services.settings.decreaseFontScale());
-      case 'zoomReset':
-        unawaited(widget.services.settings.setFontScale(FontScale.normal));
+    if (call.method != 'run' || keyChordRecording.value) return;
+    final id = switch (call.arguments as String) {
+      'commandDialog' => 'app.commandDialog',
+      'themeToggle' => 'app.toggleTheme',
+      'localeToggle' => 'app.toggleLanguage',
+      'zoomIn' => 'app.fontScaleUp',
+      'zoomOut' => 'app.fontScaleDown',
+      'zoomReset' => 'app.fontScaleReset',
+      final id => id,
+    };
+    if (id.startsWith(textCommandPrefix)) {
+      unawaited(_runCommandText(id.substring(textCommandPrefix.length)));
+    } else {
+      _runAppCommand(id);
     }
   }
 
@@ -172,7 +175,7 @@ class _HaLoAppState extends State<HaLoApp> {
   /// Opens the ⌘K dialog, unless it's already up. Shared by the shortcut and
   /// the dev bridge (which exists because synthetic modifier combos can't
   /// reach the Flutter canvas — see DevBridge).
-  void _openCommandDialog() {
+  void _openCommandDialog({String? initialText}) {
     if (_commandDialogOpen) return;
     // Not over a top modal pane, such as the operation setup sheet: the
     // dialog's Go home pops straight past one, and such a pane commits its
@@ -195,7 +198,7 @@ class _HaLoAppState extends State<HaLoApp> {
     final context = navigatorKey.currentContext;
     if (context == null) return;
     _commandDialogOpen = true;
-    unawaited(showCommandDialog(context, widget.services).whenComplete(() => _commandDialogOpen = false));
+    unawaited(showCommandDialog(context, widget.services, initialText: initialText).whenComplete(() => _commandDialogOpen = false));
   }
 
   void _closeCommandDialog() {
@@ -232,76 +235,70 @@ class _HaLoAppState extends State<HaLoApp> {
     // ahead of the focus tree), and acting here would fire chords into
     // chrome the overlay hides — ⌘K would open the command dialog invisibly
     // beneath it and steal its focus.
-    if (testerOverlayCovering.value) return false;
+    if (testerOverlayCovering.value || keyChordRecording.value) return false;
     if (event is! KeyDownEvent) return false;
 
-    final isMetaPressed = HardwareKeyboard.instance.isMetaPressed;
-    final isControlPressed = HardwareKeyboard.instance.isControlPressed;
-    final hasModifier = isMetaPressed || isControlPressed;
+    final bindings = keyBindings.value;
+    for (final id in _appCommands) {
+      if (bindings.match(id, event) case final chord?) return !bindings.yieldsToField(id, chord, event) && _runAppCommand(id);
+    }
+    if (bindings.textCommandFor(event) case (:final text, :final chord)) {
+      if (bindings.yieldsToField(textCommandId(text), chord, event)) return false;
+      unawaited(_runCommandText(text));
+      return true;
+    }
+    return false;
+  }
 
-    if (!hasModifier) return false;
+  /// The commands [_runAppCommand] runs, in the order a key is tried
+  /// against them.
+  static final _appCommands = [
+    for (final spec in keyCommandSpecs)
+      if (spec.id.startsWith('app.')) spec.id,
+  ];
 
-    final key = event.logicalKey;
+  /// Runs the app-wide command [id]; false for an id that is not one.
+  bool _runAppCommand(String id) {
     final settings = widget.services.settings;
-
-    if (key == LogicalKeyboardKey.keyK) {
-      // ⌘K (⌃K on Windows/Linux) opens the command dialog. ⌘⇧K is accepted
-      // as the same action — iOS reserves plain ⌘K for its own software
-      // keyboard toggle, so AppDelegate.swift only gets ⌘⇧K to work with there.
-      _toggleCommandDialog();
-      return true;
-    }
-
-    if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyD) {
-      // ⌘⇧D (⌃⇧D on non-Mac): flip between light and dark themes.
-      _toggleTheme();
-      return true;
-    }
-
-    if (HardwareKeyboard.instance.isShiftPressed && key == LogicalKeyboardKey.keyL) {
-      // ⌘⇧L (⌃⇧L on non-Mac): toggle language between English and Spanish.
-      _toggleLocale();
-      return true;
-    }
-
-    // ⌘⇧-/⌘⇧=/⌘⇧0 (⌃⇧ on non-Mac): step the Layout Density, on the same keys
-    // as Font Scale one modifier up. The two are the same question — how much
-    // fits on screen — so an operator reaching for one is already thinking
-    // about the other.
-    //
-    // This block MUST precede the Font Scale one: the shifted forms of those
-    // keys are exactly what it matches (`+` IS shift-equal, `_` IS
-    // shift-minus), so ⌘⇧= would otherwise have zoomed rather than loosened.
-    // Claiming them costs ⌘+ and ⌘_ as aliases for ⌘= and ⌘-, which is the
-    // deliberate trade.
-    if (HardwareKeyboard.instance.isShiftPressed) {
-      final denser = key == LogicalKeyboardKey.minus || key == LogicalKeyboardKey.underscore || key == LogicalKeyboardKey.numpadSubtract;
-      final sparser = key == LogicalKeyboardKey.equal || key == LogicalKeyboardKey.add || key == LogicalKeyboardKey.numpadAdd;
-      if (denser || sparser) {
-        _stepDensity(denser: denser);
-        return true;
-      }
-      if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) {
+    switch (id) {
+      case 'app.commandDialog':
+        _toggleCommandDialog();
+      case 'app.toggleTheme':
+        _toggleTheme();
+      case 'app.toggleLanguage':
+        _toggleLocale();
+      // Layout Density sits on the Font Scale keys one modifier up by
+      // default: the two are the same question — how much fits on screen —
+      // so an operator reaching for one is already thinking about the other.
+      case 'app.densityDenser' || 'app.densityLooser':
+        _stepDensity(denser: id == 'app.densityDenser');
+      case 'app.densityAuto':
         // Back to Auto, not to Normal: Auto is the default, and "reset" here
         // means "stop overriding" rather than "pick the middle rung".
         settings.setDensityPreference(DensityPreference.auto);
         _announceDensity(DensityPreference.auto);
-        return true;
-      }
+      case 'app.fontScaleUp':
+        unawaited(settings.increaseFontScale());
+      case 'app.fontScaleDown':
+        unawaited(settings.decreaseFontScale());
+      case 'app.fontScaleReset':
+        unawaited(settings.setFontScale(FontScale.normal));
+      default:
+        return false;
     }
+    return true;
+  }
 
-    if (key == LogicalKeyboardKey.equal || key == LogicalKeyboardKey.add || key == LogicalKeyboardKey.numpadAdd) {
-      settings.increaseFontScale();
-      return true;
-    } else if (key == LogicalKeyboardKey.minus || key == LogicalKeyboardKey.numpadSubtract || key == LogicalKeyboardKey.underscore) {
-      settings.decreaseFontScale();
-      return true;
-    } else if (key == LogicalKeyboardKey.digit0 || key == LogicalKeyboardKey.numpad0) {
-      settings.setFontScale(FontScale.normal);
-      return true;
-    }
-
-    return false;
+  /// Runs command text a key is bound to; a command in it still waiting for
+  /// its text opens the command dialog with that command typed.
+  Future<void> _runCommandText(String text) async {
+    final services = widget.services;
+    final (:outcome, text: stoppedAt) = await runCommandText(
+      services,
+      text,
+      (action, params) => runCommandAction(services, action, params, navigatorKey.currentContext),
+    );
+    if (outcome == CommandTextOutcome.needsParams && mounted) _openCommandDialog(initialText: '$stoppedAt ');
   }
 
   /// The template editors' sample preview. A method, not a closure in

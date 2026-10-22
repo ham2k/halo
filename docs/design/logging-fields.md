@@ -927,7 +927,9 @@ same 5-second undo offer as the button. It resets the whole draft, references
 included, and goes one step past the button: with nothing the button counts
 as composed — a lone report, a power entry — it still clears that and returns
 to the callsign field, with no undo offer, since no other gesture resets it.
-**Cmd/Ctrl+Z** takes back a wipe while that offer lasts, or a staged delete.
+Alt+W is the one key in the panel the operator can rebind (`logging.wipe`,
+[keyboard-shortcuts.md](keyboard-shortcuts.md)); every other key here is
+fixed. **Cmd/Ctrl+Z** takes back a wipe while that offer lasts, or a staged delete.
 It restores only onto a form with nothing composed since: the offer outlives
 the operator starting the next contact, and a Cmd/Ctrl+Z aimed at a typo in
 it must not swap that contact for the wiped one (the button still will — it

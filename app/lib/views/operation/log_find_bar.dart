@@ -5,9 +5,8 @@
 // What its text means is LogFindQuery's (tools/log_find_query.dart); what it
 // does to the list is the panel's (LoggingPanel).
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey;
+import 'package:flutter/services.dart' show KeyDownEvent, KeyEvent, LogicalKeyboardKey;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -114,17 +113,15 @@ class LogFindBar extends StatelessWidget {
   }
 }
 
-/// [isFindChord] as the operator would press it, for a label beside what it
-/// opens: ⌘F on Apple platforms (a browser's included), Ctrl+F elsewhere.
-String get findChordLabel => switch (defaultTargetPlatform) {
-  TargetPlatform.macOS || TargetPlatform.iOS => '⌘F',
-  _ => 'Ctrl+F',
+/// The menu item that opens Find, naming [isFindChord] as the operator would
+/// press it: ⌘F on Apple platforms (a browser's included), Ctrl+F elsewhere,
+/// unless rebound — and no key at all with none bound.
+String findMenuItemLabel(Translations t) => switch (keyBindings.value.label('logView.find')) {
+  final shortcut? => t.qsoList.find.menuItem(shortcut: shortcut),
+  null => t.qsoList.find.menuItemNoShortcut,
 };
 
-/// ⌘F, or Ctrl+F off a Mac: what opens Find in a view whose context is a log.
-/// Taken either way on every platform, the way ⌘K is (halo_app.dart).
-bool isFindChord(KeyEvent event) {
-  if (event is! KeyDownEvent || event.logicalKey != LogicalKeyboardKey.keyF) return false;
-  final keyboard = HardwareKeyboard.instance;
-  return (keyboard.isMetaPressed || keyboard.isControlPressed) && !keyboard.isShiftPressed && !keyboard.isAltPressed;
-}
+/// What opens Find in a view whose context is a log: ⌘F, or Ctrl+F off a
+/// Mac, unless rebound (`logView.find`). Taken on every platform, the way ⌘K
+/// is (halo_app.dart).
+bool isFindChord(KeyEvent event) => event is KeyDownEvent && keyBindings.value.claim('logView.find', event) != null;

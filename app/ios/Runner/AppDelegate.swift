@@ -8,9 +8,14 @@ import UIKit
   // UIKit's key-command discovery (which walks the responder chain up to the
   // app delegate, since FlutterAppDelegate is itself a UIResponder) intercepts
   // them before the embedder does, unless the app registers UIKeyCommands
-  // itself. These mirror the modifier shortcuts in app/lib/main.dart's
-  // `_handleKeyEvent`, which covers every other platform.
+  // itself. The list below mirrors the default shortcuts in halo_app.dart's
+  // `_handleKeyEvent`, which covers every other platform; with Keyboard
+  // Shortcuts on, KeyBindingsService sends the operator's list in its place.
   private var keyCommandChannel: FlutterMethodChannel?
+
+  // The operator's ⌘ chords, from KeyBindingsService's `setKeyCommands`;
+  // nil keeps the built-in list.
+  private var boundKeyCommands: [UIKeyCommand]?
 
   // Physical-keyboard presence for the logging fields' focus rules
   // (docs/design/logging-fields.md): Flutter has no keyboard-presence API, so
@@ -118,6 +123,30 @@ import UIKit
       name: "ham2k/key_commands",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
+    keyCommandChannel?.setMethodCallHandler { [weak self] call, result in
+      guard call.method == "setKeyCommands" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      // nil puts the built-in list back; anything else must read whole, or
+      // the Dart side hears why rather than believing its list is in force.
+      if call.arguments == nil || call.arguments is NSNull {
+        self?.boundKeyCommands = nil
+        result(nil)
+        return
+      }
+      guard let entries = call.arguments as? [[String: Any]] else {
+        result(FlutterError(code: "bad-key-commands", message: "setKeyCommands takes a list of maps", details: nil))
+        return
+      }
+      let commands = entries.compactMap(AppDelegate.boundKeyCommand)
+      guard commands.count == entries.count else {
+        result(FlutterError(code: "bad-key-commands", message: "\(entries.count - commands.count) key command(s) could not be read", details: nil))
+        return
+      }
+      self?.boundKeyCommands = commands
+      result(nil)
+    }
     hardwareKeyboardChannel = FlutterMethodChannel(
       name: "ham2k/hardware_keyboard",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
@@ -214,7 +243,8 @@ import UIKit
   // UIKit matches a UIKeyCommand only on an EXACT modifierFlags match, so ⌘K
   // and ⌘⇧K are naturally distinct commands — no shift bookkeeping needed here.
   override var keyCommands: [UIKeyCommand]? {
-    [
+    if let bound = boundKeyCommands { return bound }
+    return [
       // Plain ⌘K is reserved by iOS itself (show/hide the software keyboard)
       // and never reaches this handler on a hardware keyboard — registered
       // anyway in case a future iOS version frees it up. ⌘⇧K is reserved
@@ -246,6 +276,27 @@ import UIKit
 
   private func sendKeyCommand(_ action: String) {
     keyCommandChannel?.invokeMethod("run", arguments: action)
+  }
+
+  // One entry of `setKeyCommands`: {id, input, modifiers: [cmd|ctrl|alt|shift]}.
+  // The id rides as the command's property list, so one action serves them all.
+  private static func boundKeyCommand(_ entry: [String: Any]) -> UIKeyCommand? {
+    guard let id = entry["id"] as? String, let input = entry["input"] as? String else { return nil }
+    var flags: UIKeyModifierFlags = []
+    for modifier in entry["modifiers"] as? [String] ?? [] {
+      switch modifier {
+      case "cmd": flags.insert(.command)
+      case "ctrl": flags.insert(.control)
+      case "alt": flags.insert(.alternate)
+      case "shift": flags.insert(.shift)
+      default: return nil
+      }
+    }
+    return UIKeyCommand(title: "", action: #selector(runBoundKeyCommand(_:)), input: input, modifierFlags: flags, propertyList: id)
+  }
+
+  @objc private func runBoundKeyCommand(_ sender: UIKeyCommand) {
+    if let id = sender.propertyList as? String { sendKeyCommand(id) }
   }
 }
 

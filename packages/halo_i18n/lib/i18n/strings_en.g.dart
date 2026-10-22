@@ -62,6 +62,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$settings$en settings = Translations$settings$en.internal(_root);
 	late final Translations$commands$en commands = Translations$commands$en.internal(_root);
 	late final Translations$commandDialog$en commandDialog = Translations$commandDialog$en.internal(_root);
+	late final Translations$keyboardShortcuts$en keyboardShortcuts = Translations$keyboardShortcuts$en.internal(_root);
 	late final Translations$expiredBuild$en expiredBuild = Translations$expiredBuild$en.internal(_root);
 	late final Translations$staleness$en staleness = Translations$staleness$en.internal(_root);
 	late final Translations$spotting$en spotting = Translations$spotting$en.internal(_root);
@@ -1939,6 +1940,91 @@ class Translations$commandDialog$en {
 
 	/// en: 'Cannot use commands while a panel or dialog is open'
 	String get blockedByPane => 'Cannot use commands while a panel or dialog is open';
+}
+
+// Path: keyboardShortcuts
+class Translations$keyboardShortcuts$en {
+	Translations$keyboardShortcuts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Keyboard Shortcuts'
+	String get title => 'Keyboard Shortcuts';
+
+	/// en: 'Customize key mappings'
+	String get description => 'Customize key mappings';
+
+	/// en: 'Search commands and keys'
+	String get search => 'Search commands and keys';
+
+	/// en: 'Import…'
+	String get import => 'Import…';
+
+	/// en: 'Export…'
+	String get export => 'Export…';
+
+	/// en: 'Reset All'
+	String get resetAll => 'Reset All';
+
+	/// en: 'Reset every shortcut?'
+	String get resetAllTitle => 'Reset every shortcut?';
+
+	/// en: 'Every command goes back to its default keys, and the keys bound to typed commands are removed.'
+	String get resetAllBody => 'Every command goes back to its default keys, and the keys bound to typed commands are removed.';
+
+	/// en: 'Reset'
+	String get reset => 'Reset';
+
+	/// en: 'No key'
+	String get noKey => 'No key';
+
+	/// en: 'Changed'
+	String get changed => 'Changed';
+
+	/// en: '${keys} is also bound to ${commands}'
+	String conflict({required Object keys, required Object commands}) => '${keys} is also bound to ${commands}';
+
+	/// en: 'App'
+	String get groupApp => 'App';
+
+	/// en: 'Keying'
+	String get groupKeying => 'Keying';
+
+	/// en: 'Logging'
+	String get groupLogging => 'Logging';
+
+	/// en: 'Commands'
+	String get groupCommands => 'Commands';
+
+	/// en: 'Fixed Keys'
+	String get groupFixed => 'Fixed Keys';
+
+	/// en: 'Anywhere'
+	String get contextApp => 'Anywhere';
+
+	/// en: 'Operation, Chasing and Logs views'
+	String get contextLogView => 'Operation, Chasing and Logs views';
+
+	/// en: 'Operation view, keying a CAT radio'
+	String get contextOperation => 'Operation view, keying a CAT radio';
+
+	/// en: 'In the logging panel'
+	String get contextLogging => 'In the logging panel';
+
+	/// en: 'Add a Command…'
+	String get addCommand => 'Add a Command…';
+
+	/// en: 'Unknown command: ${command}'
+	String unknownCommand({required Object command}) => 'Unknown command: ${command}';
+
+	late final Translations$keyboardShortcuts$command$en command = Translations$keyboardShortcuts$command$en.internal(_root);
+	late final Translations$keyboardShortcuts$fixed$en fixed = Translations$keyboardShortcuts$fixed$en.internal(_root);
+	late final Translations$keyboardShortcuts$editor$en editor = Translations$keyboardShortcuts$editor$en.internal(_root);
+	late final Translations$keyboardShortcuts$file$en file = Translations$keyboardShortcuts$file$en.internal(_root);
+	late final Translations$keyboardShortcuts$modifier$en modifier = Translations$keyboardShortcuts$modifier$en.internal(_root);
+	late final Translations$keyboardShortcuts$platform$en platform = Translations$keyboardShortcuts$platform$en.internal(_root);
 }
 
 // Path: expiredBuild
@@ -4220,6 +4306,9 @@ class Translations$qsoList$find$en {
 
 	/// en: 'Find in Log (${shortcut})'
 	String menuItem({required Object shortcut}) => 'Find in Log (${shortcut})';
+
+	/// en: 'Find in Log'
+	String get menuItemNoShortcut => 'Find in Log';
 
 	/// en: 'QSO number or callsign'
 	String get hint => 'QSO number or callsign';
@@ -6585,6 +6674,270 @@ class Translations$settings$gridPrecisionDescription$en {
 
 	/// en: '8 digits'
 	String get eight => '8 digits';
+}
+
+// Path: keyboardShortcuts.command
+class Translations$keyboardShortcuts$command$en {
+	Translations$keyboardShortcuts$command$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Open the command dialog'
+	String get commandDialog => 'Open the command dialog';
+
+	/// en: 'Switch between light and dark'
+	String get toggleTheme => 'Switch between light and dark';
+
+	/// en: 'Switch between English and Spanish'
+	String get toggleLanguage => 'Switch between English and Spanish';
+
+	/// en: 'Larger text'
+	String get fontScaleUp => 'Larger text';
+
+	/// en: 'Smaller text'
+	String get fontScaleDown => 'Smaller text';
+
+	/// en: 'Normal text size'
+	String get fontScaleReset => 'Normal text size';
+
+	/// en: 'Roomier layout'
+	String get densityLooser => 'Roomier layout';
+
+	/// en: 'Denser layout'
+	String get densityDenser => 'Denser layout';
+
+	/// en: 'Automatic layout density'
+	String get densityAuto => 'Automatic layout density';
+
+	/// en: 'Find in the log'
+	String get find => 'Find in the log';
+
+	/// en: 'Send message ${n}'
+	String keyerMessage({required Object n}) => 'Send message ${n}';
+
+	/// en: 'Keyboard mode on or off'
+	String get keyboardMode => 'Keyboard mode on or off';
+
+	/// en: 'Push to talk'
+	String get ptt => 'Push to talk';
+
+	/// en: 'Clear the contact being logged'
+	String get wipe => 'Clear the contact being logged';
+}
+
+// Path: keyboardShortcuts.fixed
+class Translations$keyboardShortcuts$fixed$en {
+	Translations$keyboardShortcuts$fixed$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Typing callsigns'
+	String get callsign => 'Typing callsigns';
+
+	/// en: 'Stop sending, back out one step, or close'
+	String get escape => 'Stop sending, back out one step, or close';
+
+	/// en: 'Log the contact'
+	String get enter => 'Log the contact';
+
+	/// en: 'Next field'
+	String get space => 'Next field';
+
+	/// en: 'Next or previous field'
+	String get tab => 'Next or previous field';
+
+	/// en: 'Move between fields, controls and the log'
+	String get arrows => 'Move between fields, controls and the log';
+
+	/// en: 'Page through the log, or go to its ends'
+	String get walk => 'Page through the log, or go to its ends';
+
+	/// en: 'Take back a wipe or a delete'
+	String get undo => 'Take back a wipe or a delete';
+}
+
+// Path: keyboardShortcuts.editor
+class Translations$keyboardShortcuts$editor$en {
+	Translations$keyboardShortcuts$editor$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Add Shortcut'
+	String get addShortcut => 'Add Shortcut';
+
+	/// en: 'Press the keys for the shortcut…'
+	String get listening => 'Press the keys for the shortcut…';
+
+	/// en: 'Esc stops listening'
+	String get listeningHint => 'Esc stops listening';
+
+	/// en: 'Add'
+	String get add => 'Add';
+
+	/// en: '${keys} belongs to the logging fields or a dialog, and can’t be changed.'
+	String refusedFixed({required Object keys}) => '${keys} belongs to the logging fields or a dialog, and can’t be changed.';
+
+	/// en: '${keys} is how callsigns are typed. Hold Cmd, Ctrl or Alt with it.'
+	String refusedCallsign({required Object keys}) => '${keys} is how callsigns are typed. Hold Cmd, Ctrl or Alt with it.';
+
+	/// en: 'The system may take ${keys} before the app sees it.'
+	String reserved({required Object keys}) => 'The system may take ${keys} before the app sees it.';
+
+	/// en: '${keys} is already one of this command’s keys.'
+	String already({required Object keys}) => '${keys} is already one of this command’s keys.';
+
+	/// en: 'Take ${keys} from “${command}”'
+	String takeIt({required Object keys, required Object command}) => 'Take ${keys} from “${command}”';
+
+	/// en: 'Reset to Default'
+	String get resetDefault => 'Reset to Default';
+
+	/// en: 'Remove'
+	String get remove => 'Remove';
+
+	/// en: 'Command'
+	String get commandLabel => 'Command';
+
+	/// en: 'Enter any valid command, or multiple commands separated by ";"'
+	String get commandHint => 'Enter any valid command, or multiple commands separated by ";"';
+
+	/// en: 'Remove Command'
+	String get removeCommand => 'Remove Command';
+
+	/// en: 'No command reads “${text}”'
+	String commandUnknown({required Object text}) => 'No command reads “${text}”';
+
+	/// en: 'No key yet'
+	String get noShortcuts => 'No key yet';
+}
+
+// Path: keyboardShortcuts.file
+class Translations$keyboardShortcuts$file$en {
+	Translations$keyboardShortcuts$file$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Shortcuts saved to ${location}'
+	String exported({required Object location}) => 'Shortcuts saved to ${location}';
+
+	/// en: 'Couldn’t export the shortcuts: ${error}'
+	String exportFailed({required Object error}) => 'Couldn’t export the shortcuts: ${error}';
+
+	/// en: 'Couldn’t open the file: ${error}'
+	String importPickerFailed({required Object error}) => 'Couldn’t open the file: ${error}';
+
+	/// en: '${filename} isn’t a shortcuts file this app can read: ${problem}'
+	String importUnreadable({required Object filename, required Object problem}) => '${filename} isn’t a shortcuts file this app can read: ${problem}';
+
+	/// en: 'the text isn’t valid YAML (line ${line})'
+	String problemNotYaml({required Object line}) => 'the text isn’t valid YAML (line ${line})';
+
+	/// en: 'it isn’t a Ham2K keyboard shortcuts file'
+	String get problemNotKeysFile => 'it isn’t a Ham2K keyboard shortcuts file';
+
+	/// en: 'it was written by a newer version of the app'
+	String get problemNewerVersion => 'it was written by a newer version of the app';
+
+	/// en: 'part of it doesn’t follow the shortcuts format'
+	String get problemMalformed => 'part of it doesn’t follow the shortcuts format';
+
+	/// en: 'it is too large'
+	String get problemTooLarge => 'it is too large';
+
+	/// en: 'Import Shortcuts'
+	String get importTitle => 'Import Shortcuts';
+
+	/// en: 'Written on ${platform}.'
+	String writtenOn({required Object platform}) => 'Written on ${platform}.';
+
+	/// en: 'The file doesn’t say which keyboard it was written on.'
+	String get writtenOnUnknown => 'The file doesn’t say which keyboard it was written on.';
+
+	/// en: 'What should each of these keys be on this keyboard?'
+	String get translate => 'What should each of these keys be on this keyboard?';
+
+	/// en: 'Leave those shortcuts out'
+	String get leaveOut => 'Leave those shortcuts out';
+
+	/// en: 'Replace this device’s config'
+	String get replace => 'Replace this device’s config';
+
+	/// en: 'Every shortcut not in the file goes back to its default.'
+	String get replaceHint => 'Every shortcut not in the file goes back to its default.';
+
+	/// en: 'Add to this device’s config'
+	String get merge => 'Add to this device’s config';
+
+	/// en: 'The file’s shortcuts replace this device’s for the same commands, and the rest stay.'
+	String get mergeHint => 'The file’s shortcuts replace this device’s for the same commands, and the rest stay.';
+
+	/// en: 'Not known in this version, so left out: ${commands}'
+	String unknown({required Object commands}) => 'Not known in this version, so left out: ${commands}';
+
+	/// en: 'Not shortcuts, so left out: ${chords}'
+	String unreadableChords({required Object chords}) => 'Not shortcuts, so left out: ${chords}';
+
+	/// en: 'Keys the app keeps for itself, so left out: ${chords}'
+	String refusedChords({required Object chords}) => 'Keys the app keeps for itself, so left out: ${chords}';
+
+	/// en: 'Bound to more than one command after the import: ${keys}'
+	String conflicts({required Object keys}) => 'Bound to more than one command after the import: ${keys}';
+
+	/// en: 'Import'
+	String get importAction => 'Import';
+
+	/// en: 'Shortcuts imported'
+	String get imported => 'Shortcuts imported';
+}
+
+// Path: keyboardShortcuts.modifier
+class Translations$keyboardShortcuts$modifier$en {
+	Translations$keyboardShortcuts$modifier$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '⌘ Command'
+	String get cmd => '⌘ Command';
+
+	/// en: 'Ctrl'
+	String get ctrl => 'Ctrl';
+
+	/// en: 'Windows / Super'
+	String get meta => 'Windows / Super';
+}
+
+// Path: keyboardShortcuts.platform
+class Translations$keyboardShortcuts$platform$en {
+	Translations$keyboardShortcuts$platform$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'macOS'
+	String get macos => 'macOS';
+
+	/// en: 'iPadOS'
+	String get ios => 'iPadOS';
+
+	/// en: 'Windows'
+	String get windows => 'Windows';
+
+	/// en: 'Linux'
+	String get linux => 'Linux';
+
+	/// en: 'Android'
+	String get android => 'Android';
 }
 
 // Path: home.logs.sheet
@@ -9826,6 +10179,7 @@ extension on Translations {
 			'qsoList.yesterday' => 'Yesterday',
 			'qsoList.tomorrow' => 'Tomorrow',
 			'qsoList.find.menuItem' => ({required Object shortcut}) => 'Find in Log (${shortcut})',
+			'qsoList.find.menuItemNoShortcut' => 'Find in Log',
 			'qsoList.find.hint' => 'QSO number or callsign',
 			'qsoList.find.noMatches' => 'No match',
 			'loggingPanel.stats' => 'Operation Stats',
@@ -10311,9 +10665,9 @@ extension on Translations {
 			'settings.station.reportTitle' => 'Report this radio',
 			'settings.station.reportIntro' => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
 			'settings.station.reportManufacturer' => 'Manufacturer',
-			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
 			'settings.station.reportModel' => 'Model',
 			'settings.station.reportModelDescription' => 'The model, as the radio itself calls it — "IC-7300", "FT-991A".',
@@ -10825,9 +11179,9 @@ extension on Translations {
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 
-			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
 			_ => null,
 		} ?? switch (path) {
+			'commands.purgeTestsContactsFailed' => 'Purged the Test Operations, but the test contacts with no operation failed; try PURGETESTS again',
 			'commands.purgeTestsNothingToDo' => 'Nothing was purged',
 			'commands.receivedPurgesSomeFailed' => ({required Object removed, required Object total}) => 'Removed ${removed} of ${total} Test Operations — the rest failed; try Review again',
 			'commands.receivedPurgesFailed' => 'Couldn\'t remove those Test Operations — try Review again',
@@ -10864,6 +11218,99 @@ extension on Translations {
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'commandDialog.blockedByPane' => 'Cannot use commands while a panel or dialog is open',
+			'keyboardShortcuts.title' => 'Keyboard Shortcuts',
+			'keyboardShortcuts.description' => 'Customize key mappings',
+			'keyboardShortcuts.search' => 'Search commands and keys',
+			'keyboardShortcuts.import' => 'Import…',
+			'keyboardShortcuts.export' => 'Export…',
+			'keyboardShortcuts.resetAll' => 'Reset All',
+			'keyboardShortcuts.resetAllTitle' => 'Reset every shortcut?',
+			'keyboardShortcuts.resetAllBody' => 'Every command goes back to its default keys, and the keys bound to typed commands are removed.',
+			'keyboardShortcuts.reset' => 'Reset',
+			'keyboardShortcuts.noKey' => 'No key',
+			'keyboardShortcuts.changed' => 'Changed',
+			'keyboardShortcuts.conflict' => ({required Object keys, required Object commands}) => '${keys} is also bound to ${commands}',
+			'keyboardShortcuts.groupApp' => 'App',
+			'keyboardShortcuts.groupKeying' => 'Keying',
+			'keyboardShortcuts.groupLogging' => 'Logging',
+			'keyboardShortcuts.groupCommands' => 'Commands',
+			'keyboardShortcuts.groupFixed' => 'Fixed Keys',
+			'keyboardShortcuts.contextApp' => 'Anywhere',
+			'keyboardShortcuts.contextLogView' => 'Operation, Chasing and Logs views',
+			'keyboardShortcuts.contextOperation' => 'Operation view, keying a CAT radio',
+			'keyboardShortcuts.contextLogging' => 'In the logging panel',
+			'keyboardShortcuts.addCommand' => 'Add a Command…',
+			'keyboardShortcuts.unknownCommand' => ({required Object command}) => 'Unknown command: ${command}',
+			'keyboardShortcuts.command.commandDialog' => 'Open the command dialog',
+			'keyboardShortcuts.command.toggleTheme' => 'Switch between light and dark',
+			'keyboardShortcuts.command.toggleLanguage' => 'Switch between English and Spanish',
+			'keyboardShortcuts.command.fontScaleUp' => 'Larger text',
+			'keyboardShortcuts.command.fontScaleDown' => 'Smaller text',
+			'keyboardShortcuts.command.fontScaleReset' => 'Normal text size',
+			'keyboardShortcuts.command.densityLooser' => 'Roomier layout',
+			'keyboardShortcuts.command.densityDenser' => 'Denser layout',
+			'keyboardShortcuts.command.densityAuto' => 'Automatic layout density',
+			'keyboardShortcuts.command.find' => 'Find in the log',
+			'keyboardShortcuts.command.keyerMessage' => ({required Object n}) => 'Send message ${n}',
+			'keyboardShortcuts.command.keyboardMode' => 'Keyboard mode on or off',
+			'keyboardShortcuts.command.ptt' => 'Push to talk',
+			'keyboardShortcuts.command.wipe' => 'Clear the contact being logged',
+			'keyboardShortcuts.fixed.callsign' => 'Typing callsigns',
+			'keyboardShortcuts.fixed.escape' => 'Stop sending, back out one step, or close',
+			'keyboardShortcuts.fixed.enter' => 'Log the contact',
+			'keyboardShortcuts.fixed.space' => 'Next field',
+			'keyboardShortcuts.fixed.tab' => 'Next or previous field',
+			'keyboardShortcuts.fixed.arrows' => 'Move between fields, controls and the log',
+			'keyboardShortcuts.fixed.walk' => 'Page through the log, or go to its ends',
+			'keyboardShortcuts.fixed.undo' => 'Take back a wipe or a delete',
+			'keyboardShortcuts.editor.addShortcut' => 'Add Shortcut',
+			'keyboardShortcuts.editor.listening' => 'Press the keys for the shortcut…',
+			'keyboardShortcuts.editor.listeningHint' => 'Esc stops listening',
+			'keyboardShortcuts.editor.add' => 'Add',
+			'keyboardShortcuts.editor.refusedFixed' => ({required Object keys}) => '${keys} belongs to the logging fields or a dialog, and can’t be changed.',
+			'keyboardShortcuts.editor.refusedCallsign' => ({required Object keys}) => '${keys} is how callsigns are typed. Hold Cmd, Ctrl or Alt with it.',
+			'keyboardShortcuts.editor.reserved' => ({required Object keys}) => 'The system may take ${keys} before the app sees it.',
+			'keyboardShortcuts.editor.already' => ({required Object keys}) => '${keys} is already one of this command’s keys.',
+			'keyboardShortcuts.editor.takeIt' => ({required Object keys, required Object command}) => 'Take ${keys} from “${command}”',
+			'keyboardShortcuts.editor.resetDefault' => 'Reset to Default',
+			'keyboardShortcuts.editor.remove' => 'Remove',
+			'keyboardShortcuts.editor.commandLabel' => 'Command',
+			'keyboardShortcuts.editor.commandHint' => 'Enter any valid command, or multiple commands separated by ";"',
+			'keyboardShortcuts.editor.removeCommand' => 'Remove Command',
+			'keyboardShortcuts.editor.commandUnknown' => ({required Object text}) => 'No command reads “${text}”',
+			'keyboardShortcuts.editor.noShortcuts' => 'No key yet',
+			'keyboardShortcuts.file.exported' => ({required Object location}) => 'Shortcuts saved to ${location}',
+			'keyboardShortcuts.file.exportFailed' => ({required Object error}) => 'Couldn’t export the shortcuts: ${error}',
+			'keyboardShortcuts.file.importPickerFailed' => ({required Object error}) => 'Couldn’t open the file: ${error}',
+			'keyboardShortcuts.file.importUnreadable' => ({required Object filename, required Object problem}) => '${filename} isn’t a shortcuts file this app can read: ${problem}',
+			'keyboardShortcuts.file.problemNotYaml' => ({required Object line}) => 'the text isn’t valid YAML (line ${line})',
+			'keyboardShortcuts.file.problemNotKeysFile' => 'it isn’t a Ham2K keyboard shortcuts file',
+			'keyboardShortcuts.file.problemNewerVersion' => 'it was written by a newer version of the app',
+			'keyboardShortcuts.file.problemMalformed' => 'part of it doesn’t follow the shortcuts format',
+			'keyboardShortcuts.file.problemTooLarge' => 'it is too large',
+			'keyboardShortcuts.file.importTitle' => 'Import Shortcuts',
+			'keyboardShortcuts.file.writtenOn' => ({required Object platform}) => 'Written on ${platform}.',
+			'keyboardShortcuts.file.writtenOnUnknown' => 'The file doesn’t say which keyboard it was written on.',
+			'keyboardShortcuts.file.translate' => 'What should each of these keys be on this keyboard?',
+			'keyboardShortcuts.file.leaveOut' => 'Leave those shortcuts out',
+			'keyboardShortcuts.file.replace' => 'Replace this device’s config',
+			'keyboardShortcuts.file.replaceHint' => 'Every shortcut not in the file goes back to its default.',
+			'keyboardShortcuts.file.merge' => 'Add to this device’s config',
+			'keyboardShortcuts.file.mergeHint' => 'The file’s shortcuts replace this device’s for the same commands, and the rest stay.',
+			'keyboardShortcuts.file.unknown' => ({required Object commands}) => 'Not known in this version, so left out: ${commands}',
+			'keyboardShortcuts.file.unreadableChords' => ({required Object chords}) => 'Not shortcuts, so left out: ${chords}',
+			'keyboardShortcuts.file.refusedChords' => ({required Object chords}) => 'Keys the app keeps for itself, so left out: ${chords}',
+			'keyboardShortcuts.file.conflicts' => ({required Object keys}) => 'Bound to more than one command after the import: ${keys}',
+			'keyboardShortcuts.file.importAction' => 'Import',
+			'keyboardShortcuts.file.imported' => 'Shortcuts imported',
+			'keyboardShortcuts.modifier.cmd' => '⌘ Command',
+			'keyboardShortcuts.modifier.ctrl' => 'Ctrl',
+			'keyboardShortcuts.modifier.meta' => 'Windows / Super',
+			'keyboardShortcuts.platform.macos' => 'macOS',
+			'keyboardShortcuts.platform.ios' => 'iPadOS',
+			'keyboardShortcuts.platform.windows' => 'Windows',
+			'keyboardShortcuts.platform.linux' => 'Linux',
+			'keyboardShortcuts.platform.android' => 'Android',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',

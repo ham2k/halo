@@ -84,6 +84,7 @@ import 'operation_title_service.dart';
 import 'chase_service.dart';
 import 'claims_service.dart';
 import 'scoring_service.dart';
+import 'key_bindings_service.dart';
 import 'settings_service.dart';
 import 'spot_board_service.dart';
 import 'spots_service.dart';
@@ -514,6 +515,10 @@ class HaLoServices {
   /// overriding manager keeps its own notifier, so this one never ticks.
   final ValueNotifier<int> dataRevision = ValueNotifier<int>(0);
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
+
+  /// Touched first by HaLoApp, which is what puts the operator's shortcuts in
+  /// force; until then every key is the legacy one.
+  late final KeyBindingsService keyBindingsService = KeyBindingsService(settings);
 
   /// Holds the device awake while the logging view is in use or a sync is
   /// moving, when the operator has asked for it (see WakeLockService).

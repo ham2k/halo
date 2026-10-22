@@ -14,6 +14,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
+import '../services/key_bindings_service.dart' show keyBindingsExperiment;
 import 'panel_use_tracker.dart';
 import '../services/link_opener.dart';
 import '../services/settings_service.dart';
@@ -33,6 +34,7 @@ import 'settings/data_files_panel.dart';
 import 'settings/developer_panel.dart';
 import 'settings/extension_settings_panel.dart';
 import 'settings/profiles_panel.dart';
+import 'settings/keyboard_shortcuts_panel.dart';
 import 'settings/settings_category.dart';
 import 'settings/settings_pane_width.dart';
 import 'settings/sync_panel.dart';
@@ -266,6 +268,15 @@ class _SettingsViewState extends State<SettingsView> {
         order: _stationPanelOrder,
         description: t.settings.panels.stationDescription,
       ),
+      // After Extensions & Features (40), before the extensions' own (50).
+      if (settings.experimentEnabled(keyBindingsExperiment))
+        _SettingsPanelEntry(
+          key: 'keyboard',
+          title: t.keyboardShortcuts.title,
+          icon: MdiIcons.keyboard,
+          order: 45,
+          description: t.keyboardShortcuts.description,
+        ),
       // Between Sync (10) and Accounts (20): both are about where the log
       // goes — cloud first, then the devices beside you.
       if (settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ )
@@ -587,6 +598,8 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
       content = SyncPanel(services: services);
     case 'peers':
       content = PeersPanel(services: services);
+    case 'keyboard':
+      content = KeyboardShortcutsPanel(services: services);
     case 'accounts':
       // Service credentials and the offline data they and the extensions
       // feed, in one scroll.

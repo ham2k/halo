@@ -737,7 +737,7 @@ class _ChaseViewState extends State<ChaseView> with DockHost<ChaseView> {
                     actions: [
                       (
                         icon: 'magnify',
-                        label: context.t.qsoList.find.menuItem(shortcut: findChordLabel),
+                        label: findMenuItemLabel(context.t),
                         onTap: () {
                           Navigator.of(context).pop();
                           _openFind();
