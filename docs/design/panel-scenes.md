@@ -208,6 +208,12 @@ is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
   scene's radio values.) Subscribing to
   the sweeps is what starts the radio's scope, so the control subscribes only
   while its pane and the app are visible.
+- **One spectrum per selected radio.** Each control resolves its spectrum
+  from its radio ID, including logical receivers that share a physical radio.
+  Receiver-specific CAT state supplies its marker and tuning target. Stable
+  control IDs retain separate waterfall histories when layout slots change;
+  an opacity-zero slot stops demand while preserving its history. Changing
+  the source or radio clears that history.
 - **Display settings are the host's; scope settings are the radio's.**
   Averaging, frame rate, waterfall pace, colors, the gap, labels, overlays and
   annotations are applied after a sweep arrives and mean the same on every

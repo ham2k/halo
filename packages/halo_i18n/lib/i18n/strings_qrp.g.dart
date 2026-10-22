@@ -2597,6 +2597,7 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String spectrumStreamRefused({required Object code}) => 'the radio refused a dax iq stream (error ${code})';
 	@override String get spectrumNoUdp => 'the radio\'s spectrum data cannot reach this device';
 	@override String get spectrumK4Unavailable => 'cannot receive the k4’s lan spectrum. retrying…';
+	@override String get spectrumK4RemoteUnavailable => 'cannot receive the k4’s remote spectrum';
 	@override String get spectrumScopeRefused => 'the radio refused its scope commands';
 	@override String get spectrumOutOfRange => 'the radio\'s scope is set outside the range it can show';
 	@override String get spectrumBandUnsupported => 'the radio\'s scope cannot be shown on this band';
@@ -2669,6 +2670,16 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get k4SerialNotes => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.';
 	@override String get k4TcpNotes => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.';
 	@override String get k4PowerTimeout => 'k4 power was not changed because the radio did not confirm its output range. try again.';
+	@override String get k4RemoteNotes => 'enable remote access on your k4 and enter its network password. main and sub share one encrypted connection for radio control and spectrum. the default port is 9204; enter your forwarded port when connecting remotely.\n\naudio playback and microphone streaming are not supported.';
+	@override String get k4Receiver => 'receiver';
+	@override String get k4ReceiverMain => 'main';
+	@override String get k4ReceiverSub => 'sub';
+	@override String get k4ReceiverInvalid => 'choose main or sub';
+	@override String get k4ReceiverAlreadyConfigured => 'that receiver is already configured for this k4';
+	@override String get k4SubReceiverOff => 'the k4 sub receiver is off';
+	@override String get k4RemotePasswordRequired => 'enter the k4’s network password to connect securely.';
+	@override String get k4RemoteHandshakeFailed => 'the k4 could not establish a secure connection. check its network password and remote access settings.';
+	@override String get k4RemoteUnreachable => 'the k4’s secure connection could not be reached. check its address, port and remote access settings.';
 	@override String get k4PowerRange => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.';
 	@override String get elecraftTroubleshootingTitle => 'if the radio connects but shows no frequency';
 	@override String get elecraftTroubleshooting => 'elecraft rigs speak kenwood cat, and a kx2 and a kx3 have both been run this way — vfo in both directions, mode switching and cw zero-beat all working.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the rate set under **rs232** in the radio\'s menu. 38400 is what these ship on. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\n**if the frequency is right but the mode is wrong**, tell us. the kx2 and kx3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nthe k3 has not been reported either way, so please say what happens if you run one. a k4 has its own entry.';
@@ -4173,6 +4184,7 @@ class _Translations$settings$station$transports$qrp extends Translations$setting
 
 	// Translations
 	@override String get network => 'network/wifi';
+	@override String get secureNetwork => 'secure network/wifi';
 	@override String get usbSerial => 'usb serial';
 	@override String get wifi => 'network/wifi';
 	@override String get bluetoothSerial => 'bluetooth serial';
@@ -5881,6 +5893,7 @@ extension on TranslationsQrp {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'the radio refused a dax iq stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'the radio\'s spectrum data cannot reach this device',
 			'settings.station.spectrumK4Unavailable' => 'cannot receive the k4’s lan spectrum. retrying…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'cannot receive the k4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
 			'settings.station.spectrumBandUnsupported' => 'the radio\'s scope cannot be shown on this band',
@@ -5996,6 +6009,7 @@ extension on TranslationsQrp {
 			'settings.station.models.nesdr' => 'nooelec nesdr',
 			'settings.station.models.sdrplay' => 'sdrplay rsp',
 			'settings.station.transports.network' => 'network/wifi',
+			'settings.station.transports.secureNetwork' => 'secure network/wifi',
 			'settings.station.transports.usbSerial' => 'usb serial',
 			'settings.station.transports.wifi' => 'network/wifi',
 			'settings.station.transports.bluetoothSerial' => 'bluetooth serial',
@@ -6019,6 +6033,16 @@ extension on TranslationsQrp {
 			'settings.station.k4SerialNotes' => 'connect the k4’s rear usb-b (pc) socket. either usb-pc1 or usb-pc2 works for cat; choose an unused port and match its serial usb-pcn: baud rate setting on the radio. halo prefills 38400; change it if needed. another application must use the other port or ethernet.\n\nthis connection controls the radio and its keyers; it does not send audio to halo.',
 			'settings.station.k4TcpNotes' => 'connect the k4’s ethernet socket to your local network. enter its hostname or ip address and cat port 9200. halo uses the same host on fixed port 9201 when a panadapter or waterfall is visible; changing the cat port does not change the spectrum port.\n\nthe spectrum shows the main receiver. its zoom, reference adjustment and speed controls affect only halo’s display. audio streaming is not supported.',
 			'settings.station.k4PowerTimeout' => 'k4 power was not changed because the radio did not confirm its output range. try again.',
+			'settings.station.k4RemoteNotes' => 'enable remote access on your k4 and enter its network password. main and sub share one encrypted connection for radio control and spectrum. the default port is 9204; enter your forwarded port when connecting remotely.\n\naudio playback and microphone streaming are not supported.',
+			'settings.station.k4Receiver' => 'receiver',
+			'settings.station.k4ReceiverMain' => 'main',
+			'settings.station.k4ReceiverSub' => 'sub',
+			'settings.station.k4ReceiverInvalid' => 'choose main or sub',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'that receiver is already configured for this k4',
+			'settings.station.k4SubReceiverOff' => 'the k4 sub receiver is off',
+			'settings.station.k4RemotePasswordRequired' => 'enter the k4’s network password to connect securely.',
+			'settings.station.k4RemoteHandshakeFailed' => 'the k4 could not establish a secure connection. check its network password and remote access settings.',
+			'settings.station.k4RemoteUnreachable' => 'the k4’s secure connection could not be reached. check its address, port and remote access settings.',
 			'settings.station.k4PowerRange' => 'k4 power must be 0.1–110 w, or 0.0001–0.01 w when the transverter milliwatt output is active.',
 			'settings.station.elecraftTroubleshootingTitle' => 'if the radio connects but shows no frequency',
 			'settings.station.elecraftTroubleshooting' => 'elecraft rigs speak kenwood cat, and a kx2 and a kx3 have both been run this way — vfo in both directions, mode switching and cw zero-beat all working.\n\nif the radio does not respond, almost always one of:\n\n- **speed must match** the rate set under **rs232** in the radio\'s menu. 38400 is what these ship on. with a mismatch, the radio sends back garbage or nothing, and never an error.\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.\n\n**if the frequency is right but the mode is wrong**, tell us. the kx2 and kx3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nthe k3 has not been reported either way, so please say what happens if you run one. a k4 has its own entry.',
@@ -6302,6 +6326,8 @@ extension on TranslationsQrp {
 			'settings.numberFormatDescription.comma' => 'always using comma for decimals',
 			'settings.numberFormatSeparators.comma' => 'comma',
 			'settings.numberFormatSeparators.period' => 'period',
+			_ => null,
+		} ?? switch (path) {
 			'settings.gridPrecision' => 'grid precision',
 			'settings.gridPrecisionOpts.six' => '6 digits (fn31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 digits (fn31pr55)',
@@ -6314,8 +6340,6 @@ extension on TranslationsQrp {
 			'commands.reloadingAll' => 'reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
-			_ => null,
-		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'test error report sent to sentry',

@@ -266,6 +266,7 @@ void main() {
       'kx3-serial',
       'k4-serial',
       'k4-tcp',
+      'k4-remote',
       'elecraft-serial',
       'ic7300-serial',
       'ic7300mk2-serial',
@@ -834,12 +835,13 @@ void main() {
     ];
 
     for (final type in connectable) {
-      test('${type.key} — ${pushes.contains(type.driver.key) ? 'pushes' : 'polls'}', () {
+      final pushesUpdates = pushes.contains(type.driver.key) || type.key == 'k4-remote';
+      test('${type.key} — ${pushesUpdates ? 'pushes' : 'polls'}', () {
         final session = type.driver.createSession(_SilentSink(), type.defaultConfig);
         addTearDown(session.teardown);
         final interval = session.expectedUpdateInterval;
 
-        if (pushes.contains(type.driver.key)) {
+        if (pushesUpdates) {
           expect(interval, isNull, reason: 'a pushing driver reports changes as they happen');
         } else {
           expect(interval, isNotNull, reason: 'a polling driver must say how long silence proves nothing');

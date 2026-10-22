@@ -86,6 +86,32 @@ void main() {
   setUp(() => useSerialPortsForTest(const []));
 
   group('the tracker', () {
+    test('disposing from the start report leaves no polling or delayed stop', () {
+      fakeAsync((async) {
+        final reports = <VoiceActivity?>[];
+        var polls = 0;
+        var stops = 0;
+        late final VoiceActivityTracker tracker;
+        tracker = VoiceActivityTracker(
+          report: (activity) {
+            reports.add(activity);
+            if (activity != null) tracker.dispose();
+          },
+          poll: () => polls++,
+          stop: () => stops++,
+          ceiling: () => voiceActivityCeiling,
+        );
+
+        tracker.start(playing3);
+        expect(reports, [playing3, null]);
+        expect(tracker.active, isFalse);
+        expect(async.pendingTimers, isEmpty, reason: 'a disconnected receiver must not rearm activity timers');
+        async.elapse(voiceActivityCeiling + voiceActivityPollInterval);
+        expect(polls, 0);
+        expect(stops, 0, reason: 'the abandoned activity must not later stop another receiver\'s playback');
+      });
+    });
+
     test('reports the start, polls every second, and at the ceiling STOPS the radio and ends', () {
       fakeAsync((async) {
         final reports = <VoiceActivity?>[];

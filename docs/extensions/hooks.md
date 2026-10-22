@@ -2220,6 +2220,14 @@ rate. Extension API 7 adds to the answer:
   taken with RF out (null when there were none), and when it ended, in real
   milliseconds to compare with `clock.realNowMillis` — or null.
 
+Logical receivers retain separate radio `id` values. When several receivers
+share a physical radio, the answer may also include `deviceId`, an opaque
+string shared by those receivers, and `channel: {key, label}`. For secure K4
+receivers, `key` is `main` or `sub` and `label` is localized. These optional
+fields are absent for radios that do not expose this grouping. Use them to
+group receiver choices; commands and spectrum controls still address the
+receiver's radio `id`, not `deviceId` or a spectrum-channel parameter.
+
 `host.setRadio({id, selection?, ...settings})` sets any of these on that same
 radio, through the existing VFO/CAT service. It and the keying calls below are
 extension API 7: a bundle using them declares `"api": 7`.

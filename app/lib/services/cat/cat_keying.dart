@@ -62,6 +62,10 @@ abstract class KeyingStation {
   EquipmentType? typeFor(EquipmentNode node);
   EquipmentState stateFor(String uuid);
 
+  /// Physical device identity for logical radios sharing one transmitter.
+  /// Null for independent radios, whose node UUID is their identity.
+  String? logicalDeviceIdFor(String uuid);
+
   /// [uuid]'s session, but only while that node is connected — a keyer that
   /// dropped answers null rather than throwing at whatever is keyed into it.
   EquipmentSession? connectedSession(String uuid);
@@ -744,13 +748,13 @@ class CatKeying {
     if (session == null) return;
     // A peer's memory 1 is not this operator's CQ, the same rule the CW
     // request states at [handleRequest].
-    if (uuid == station.localRadio1) _voiceMessageOne = false;
+    if (_sameTransmitter(uuid, station.localRadio1)) _voiceMessageOne = false;
     try {
       // Measured only on radio1, which is the rig whose memory lengths this
       // device stores — a second offered radio's memories are timed by
       // whoever has it as their radio1.
       station.yieldTransmitter(uuid);
-      if (uuid == station.localRadio1) _startMeasurement(n);
+      if (_sameTransmitter(uuid, station.localRadio1)) _startMeasurement(n);
       session.playVoiceMemory(n);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
@@ -763,7 +767,7 @@ class CatKeying {
     // stopped for a peer must not start playing again on this operator's
     // repeat delay.
     chain.cancel();
-    if (uuid == station.localRadio1) {
+    if (_sameTransmitter(uuid, station.localRadio1)) {
       cancelVoiceSequence();
       // What a stop cut short is not a measurement, the same rule
       // [stopVoice] applies to this operator's own.
@@ -1160,13 +1164,19 @@ class CatKeying {
     onKeyingChanged();
   }
 
-  /// Stops the CW and voice of every transceiver but [radio] — its half of
-  /// one transmitter at a time; the PTT key is the station's to drop. A
-  /// keyer that is no radio is left alone: it keys for radio1, and a message
-  /// about to go to it queues behind what it is sending.
+  bool _sameTransmitter(String? a, String? b) {
+    if (a == b) return true;
+    if (a == null || b == null) return false;
+    final device = station.logicalDeviceIdFor(a);
+    return device != null && device == station.logicalDeviceIdFor(b);
+  }
+
+  /// Stops the CW and voice of other physical transmitters. Logical receiver
+  /// siblings share the target's queue, so stopping one would cancel the
+  /// message this send must queue behind. A standalone keyer is left alone.
   void quietOthers(String? radio) {
     for (final node in station.nodes) {
-      if (node.uuid == radio) continue;
+      if (_sameTransmitter(node.uuid, radio)) continue;
       if (station.connectedSession(node.uuid) is! TransceiverSession) continue;
       final session = station.connectedSession(node.uuid);
       try {

@@ -13,6 +13,8 @@ dependencies:
     sdk: flutter
   halo_extension_host:
     path: ../packages/halo_extension_host
+  halo_tls_psk:
+    path: ../packages/halo_tls_psk
   halo_core:
     path: ../packages/halo_core
   halo_i18n:

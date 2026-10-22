@@ -3239,6 +3239,10 @@ export interface PanelEnvironment {
 export interface PanelRadioState {
   id: string | null
   name: string | null
+  /** Physical device shared by logical radios, when the host exposes more than one receiver. */
+  deviceId?: string
+  /** Receiver identity within the device. Keys are opaque; labels are for display. */
+  channel?: { key: string; label: string }
   status: "disconnected" | "connecting" | "connected" | "disconnecting" | "error"
   stale: boolean
   problem: string | null

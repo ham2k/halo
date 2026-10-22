@@ -904,6 +904,45 @@ void main() {
     expect(tester.widget<TextField>(field).controller!.text, 'My Radio');
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+  testWidgets('an occupied K4 receiver stays in the editor with a field validation message', (tester) async {
+    final services = await pumpSettings(
+      tester,
+      secureStorage: FakeSecureStorage(),
+      equipment: {
+        'version': 3,
+        'nodes': {
+          'k4-main': {
+            'typeKey': 'k4-remote',
+            'name': 'My K4 Main',
+            'config': {'host': '192.0.2.4', 'remotePort': 9204, 'receiver': 'main', 'k4ConnectionId': 'k4-main'},
+          },
+          'k4-sub': {
+            'typeKey': 'k4-remote',
+            'name': 'My K4 Sub',
+            'config': {'host': '192.0.2.4', 'remotePort': 9204, 'receiver': 'sub', 'k4ConnectionId': 'k4-main'},
+          },
+        },
+      },
+    );
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('2 transceivers'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('My K4 Main').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<dynamic>, t.settings.station.k4Receiver));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.settings.station.k4ReceiverSub).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.settings.station.k4ReceiverAlreadyConfigured), findsOneWidget);
+    expect(find.text('Save'), findsWidgets, reason: 'validation must keep the editor open for correction');
+    expect(services.cat.nodeFor('k4-main')!.config['receiver'], 'main');
+    expect(tester.takeException(), isNull, reason: 'an occupied receiver is a form error, not an unhandled exception');
+  });
+
   testWidgets('a radio with two ways in asks which, and only that one has to validate', (tester) async {
     // The trap this exists to catch: FormRenderer registers EVERY declared
     // field, visible or not, and `submit` runs the validator over all of them

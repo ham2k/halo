@@ -78,7 +78,7 @@ clock is the entire point of the feature.
 |---|---|
 | `icom_network_transport_io.dart` — handshake deadline | A protocol timeout |
 | `cat_service.dart` — auto-reconnect cooldown, knob-speed clock | Rate limiting a real radio; real-world physics |
-| `k4_spectrum_presenter.dart` — display frame pacing | Limits rendered sweeps per real second for LAN packets; frame timestamps still follow the app clock. `k4_spectrum_test.dart` verifies that time travel does not alter pacing |
+| `k4_spectrum_presenter.dart` — display frame pacing | Limits rendered sweeps per real second for LAN and remote packets; frame timestamps still follow the app clock. `k4_spectrum_test.dart` verifies that time travel does not alter pacing |
 | `extension_panel.dart` — render throttle | Its remainder becomes a `Timer` duration |
 | `sync_engine.dart` — debounce window | Same |
 | `bootstrap.dart` — panel-catalog boot budget; `halo_services.dart` — DEVHAMMER's run length | Real work, real seconds |

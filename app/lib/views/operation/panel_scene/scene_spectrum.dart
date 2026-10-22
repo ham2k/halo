@@ -108,6 +108,9 @@ class SceneSpectrumView extends StatefulWidget {
 class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   StreamSubscription<SpectrumFrame>? _subscription;
   String? _uuid;
+  ({SceneSpectrumSource? source, String? uuid})? _historyIdentity;
+  int _subscriptionEpoch = 0;
+  int _rowEpoch = 0;
 
   /// The last sweep, its levels averaged — what the trace draws.
   SpectrumFrame? _frame;
@@ -201,25 +204,31 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   }
 
   void _onSourceChanged() {
-    final uuid = widget.source?.resolve(_spec.radio);
-    if (uuid != _uuid) {
-      _follow();
-    } else if (mounted) {
-      setState(() {});
-    }
+    _follow();
+    if (mounted) setState(() {});
   }
 
   /// Subscribes to the radio this control names, while it is seen.
   void _follow() {
-    final uuid = widget.awake ? widget.source?.resolve(_spec.radio) : null;
-    if (uuid == _uuid && (_subscription != null) == (uuid != null)) return;
+    final resolved = widget.source?.resolve(_spec.radio);
+    final identity = (source: widget.source, uuid: resolved);
+    final changed = identity != _historyIdentity;
+    if (changed) {
+      _historyIdentity = identity;
+      _clearHistory();
+    }
+    final uuid = widget.awake ? resolved : null;
+    if (!changed && uuid == _uuid && (_subscription != null) == (uuid != null)) return;
+    final epoch = ++_subscriptionEpoch;
     _subscription?.cancel();
     _subscription = null;
     _staleTimer?.cancel();
     _staleTimer = null;
     _uuid = uuid;
     if (uuid == null) return;
-    _subscription = widget.source!.frames(uuid).listen(_onFrame);
+    _subscription = widget.source!.frames(uuid).listen((frame) {
+      if (epoch == _subscriptionEpoch) _onFrame(frame);
+    });
     _staleTimer?.cancel();
     _staleTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_stale && realNowMillis() - _lastFrameMillis > _staleAfter.inMilliseconds) setState(() => _stale = true);
@@ -310,8 +319,9 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
       pixels[i] = _palette[t.isFinite ? (t.clamp(0.0, 1.0) * 255).round() : 0];
     }
     final (lowHz, highHz) = (frame.lowHz, frame.highHz);
+    final epoch = _rowEpoch;
     ui.decodeImageFromPixels(pixels.buffer.asUint8List(), levels.length, 1, ui.PixelFormat.rgba8888, (image) {
-      if (!mounted) {
+      if (!mounted || epoch != _rowEpoch) {
         image.dispose();
         return;
       }
@@ -324,14 +334,30 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   }
 
   void _clearRows() {
+    _rowEpoch++;
     for (final row in _rows) {
       row.image.dispose();
     }
     _rows.clear();
   }
 
+  void _clearHistory() {
+    _clearRows();
+    _frame = null;
+    _rowPeak = null;
+    _peakFrame = null;
+    _stale = true;
+    _lastFrameMillis = 0;
+    _lastRowMillis = 0;
+    _lastPaintMillis = 0;
+    _lastRecenterMillis = 0;
+    _annotationHits.clear();
+    _overClickable = false;
+  }
+
   @override
   void dispose() {
+    _subscriptionEpoch++;
     widget.source?.changes.removeListener(_onSourceChanged);
     _subscription?.cancel();
     _staleTimer?.cancel();

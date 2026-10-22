@@ -24,6 +24,10 @@ extension CatServiceSpectrum on CatService {
     _ => null,
   };
 
+  SpectrumCapabilities? spectrumCapabilitiesFor(String uuid) => spectrumSessionFor(uuid)?.spectrumCapabilities;
+
+  String? spectrumProblemFor(String uuid) => spectrumSessionFor(uuid)?.spectrumUnavailable ?? stateFor(uuid).spectrumProblem;
+
   /// Changes [uuid]'s scope; the settings come back the usual way, as the
   /// radio reports them. False when no scope is running to change; a driver
   /// that throws is reported and rethrown, since "not running" would be a

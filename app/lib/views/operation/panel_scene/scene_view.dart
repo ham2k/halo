@@ -46,6 +46,9 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   late Map<String, double> _values;
   late Map<String, String> _strings;
   final _active = <String>{};
+  // A receiver's display keeps its history when the layout changes wrappers
+  // between a zero-height hidden slot and a visible flexible slot.
+  final _spectrumKeys = <String, GlobalKey>{};
 
   /// Text fields holding typing not yet committed, by control id: how to
   /// commit each. An action commits them first, so it never reaches the
@@ -128,6 +131,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   @override
   void didUpdateWidget(PanelSceneView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _spectrumKeys.removeWhere((id, _) => widget.scene.controlsById[id]?.spectrum == null);
     // Local-only values (inspection cursor, a switch that sends nothing)
     // survive document refreshes. A `nativeText` has no event and is not
     // one: it only shows its value, so it follows the document.
@@ -302,6 +306,7 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
     if (widget.scene.hasRadio) widget.spectrum?.readingChanges.removeListener(_onRadioReading);
     WidgetsBinding.instance.removeObserver(this);
     _queue.clear();
+    _spectrumKeys.clear();
     super.dispose();
   }
 
@@ -352,10 +357,10 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   Widget _spectrumView(SceneControl control) {
     final spec = control.spectrum!;
     return SceneSpectrumView(
-      key: ValueKey('${control.id}:${control.kind}'),
+      key: _spectrumKeys.putIfAbsent(control.id, GlobalKey.new),
       control: control,
       source: widget.spectrum,
-      awake: _appVisible && DockPaneVisibility.of(context),
+      awake: _appVisible && DockPaneVisibility.of(context) && control.opacityAt(_values) > 0,
       values: _values,
       onHover: spec.hoverHz == null && spec.hoverDb == null
           ? null

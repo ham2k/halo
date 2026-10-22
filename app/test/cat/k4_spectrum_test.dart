@@ -194,7 +194,7 @@ void main() {
     });
   });
 
-  test('sub and mini pans are ignored, and corrupted fragmented data recovers to the next main pan', () {
+  test('Main-only demand ignores Sub and mini pans, and corrupt data recovers to the next main pan', () {
     fakeAsync((async) {
       spectrum.start();
       final connection = transport.accept(async);
@@ -214,12 +214,14 @@ void main() {
     });
   });
 
-  test('a missing main pan times out even when other pans arrive, then retries without overlapping', () {
+  test('Sub and mini pans cannot mask a stalled Main spectrum stream or overlap retries', () {
     fakeAsync((async) {
       spectrum.start();
       final connection = transport.accept(async);
       async.elapse(const Duration(seconds: 4));
-      connection.incoming.add(_packet(pan: 'B'));
+      for (final pan in ['B', 'Y', 'Z']) {
+        connection.incoming.add(_packet(pan: pan));
+      }
       async.elapse(const Duration(milliseconds: 999));
       expect(sink.problems, isEmpty);
       async.elapse(const Duration(milliseconds: 1));
