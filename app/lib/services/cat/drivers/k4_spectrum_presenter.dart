@@ -26,6 +26,10 @@ class K4SpectrumPresenter {
   int? _rate;
   int? _centerHz;
   int? _binCount;
+
+  /// The operator's choice, kept apart from [_spanHz] so a stream that
+  /// narrows and widens again gets that choice back rather than the clamp.
+  int _requestedSpanHz = 10000;
   int _spanHz = 10000;
   double _refLevelDb = 0;
   SpectrumSpeed _speed = SpectrumSpeed.fast;
@@ -71,7 +75,10 @@ class K4SpectrumPresenter {
     if (!_wanted || request.centerHz != null || (request.mode != null && request.mode != SpectrumMode.fixed)) return false;
     if (request.refLevelDb case final ref? when !ref.isFinite) return false;
     if (request.spanHz case final span? when span <= 0) return false;
-    if (request.spanHz case final span?) _spanHz = capabilities.snapSpan(span);
+    if (request.spanHz case final span?) {
+      _requestedSpanHz = span;
+      _spanHz = capabilities.snapSpan(span);
+    }
     if (request.refLevelDb case final ref?) _refLevelDb = capabilities.snapRef(ref);
     if (request.speed case final speed?) _speed = speed;
     _lastEmitMillis = null;
@@ -86,7 +93,7 @@ class K4SpectrumPresenter {
     if (sourceChanged) {
       _rate = sampleRateHz;
       _binCount = levels.length;
-      _spanHz = capabilities.snapSpan(math.min(_spanHz, sampleRateHz ~/ 2));
+      _spanHz = capabilities.snapSpan(_requestedSpanHz);
       _noise.reset();
       _lastEmitMillis = null;
     }

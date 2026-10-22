@@ -178,7 +178,7 @@ class KenwoodDriver extends EquipmentDriver {
       final int offset when offset >= kenwoodFrequencyDigits => offset,
       _ => null,
     };
-    final host = lanSpectrum ? (config['host'] as String? ?? '').trim() : '';
+    final host = lanSpectrum ? trimmedHost(config) : '';
     if (lanSpectrum && host.isNotEmpty) {
       return K4SpectrumSession(
         sink,

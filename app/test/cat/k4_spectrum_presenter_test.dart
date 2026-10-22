@@ -67,6 +67,22 @@ void main() {
     });
   });
 
+  test('a zoom clamped by a narrow stream comes back when the stream widens again', () {
+    fakeAsync((async) {
+      presenter.start();
+      final levels = Float32List.fromList(List.filled(1024, -120));
+      // Before any packet the width is unknown; the choice must not be
+      // narrowed to the placeholder width the capabilities assume meanwhile.
+      presenter.set(const SpectrumRequest(spanHz: 80000));
+      presenter.add(centerHz: 14045000, sampleRateHz: 192000, levels: levels);
+      expect(sink.settings.last.spanHz, 80000);
+      presenter.add(centerHz: 14045000, sampleRateHz: 24000, levels: levels);
+      expect(sink.settings.last.spanHz, 12000, reason: 'a narrower stream shows all it has');
+      presenter.add(centerHz: 14045000, sampleRateHz: 192000, levels: levels);
+      expect(sink.settings.last.spanHz, 80000, reason: 'narrowing the radio for a moment must not lose the operator\'s zoom');
+    });
+  });
+
   test('a carrier retains its frequency when the source bin count changes', () {
     fakeAsync((async) {
       presenter.start();

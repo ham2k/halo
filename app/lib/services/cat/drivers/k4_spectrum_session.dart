@@ -29,12 +29,9 @@ class K4SpectrumSession extends KenwoodSession implements SpectrumSession {
   @override
   bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
 
-  @override
-  void stopUpdates() {
-    stopSpectrum();
-    super.stopUpdates();
-  }
-
+  // No stopUpdates override: CatService alone starts and stops the scope
+  // (runtime.spectrumStarted), and a stop it did not make leaves an open
+  // display blank after the next startUpdates.
   @override
   void teardown() {
     _spectrum.teardown();

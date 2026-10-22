@@ -26,9 +26,14 @@ class K4Spectrum {
 
   K4Spectrum({required this.host, required this.sink, this.transport = const TcpTransport(), this.port = 9201});
 
-  static const _retryDelay = Duration(seconds: 2);
+  // Doubles per failure: a port that refuses (older firmware, a firewall,
+  // another client holding the stream) is otherwise dialed every two
+  // seconds for as long as a display stays open.
+  static const _firstRetryDelay = Duration(seconds: 2);
+  static const _maxRetryDelay = Duration(seconds: 60);
   static const _packetDeadline = Duration(seconds: 5);
 
+  Duration _retryDelay = _firstRetryDelay;
   bool _wanted = false;
   bool _disposed = false;
   int _epoch = 0;
@@ -46,6 +51,7 @@ class K4Spectrum {
   void start() {
     if (_wanted || _disposed) return;
     _wanted = true;
+    _retryDelay = _firstRetryDelay;
     _presenter.start();
     _reportProblem(null);
     unawaited(_open());
@@ -125,6 +131,8 @@ class K4Spectrum {
       _retry = null;
       unawaited(_open());
     });
+    final doubled = _retryDelay * 2;
+    _retryDelay = doubled < _maxRetryDelay ? doubled : _maxRetryDelay;
   }
 
   void _release() {
@@ -159,6 +167,7 @@ class K4Spectrum {
     // stream narrower than two hertz.
     if (packet.sampleRateHz < 2) return;
     _armWatchdog(epoch);
+    _retryDelay = _firstRetryDelay;
     _reportProblem(null);
     if (!_current(epoch)) return;
     _presenter.add(centerHz: packet.centerHz, sampleRateHz: packet.sampleRateHz, levels: packet.levels);

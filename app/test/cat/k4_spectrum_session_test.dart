@@ -272,7 +272,7 @@ void main() {
     expect(connection.isClosed, isTrue);
   });
 
-  test('stopping updates cancels a pending spectrum connect and closes its late result', () async {
+  test('stopping CAT updates leaves the scope to CatService', () async {
     final sink = _Sink();
     final transport = _Transport(completeImmediately: false);
     final session = K4SpectrumSession(
@@ -282,8 +282,25 @@ void main() {
     addTearDown(session.teardown);
     session.startSpectrum();
     await pumpEventQueue();
-    final attempt = transport.attempts.single;
     session.stopUpdates();
+    expect(
+      transport.attempts.single.cancel.isCancelled,
+      isFalse,
+      reason: 'CatService still counts the scope as started, so a stop made here is never undone and an open display stays blank',
+    );
+  });
+
+  test('a disconnect cancels a pending spectrum connect and closes its late result', () async {
+    final sink = _Sink();
+    final transport = _Transport(completeImmediately: false);
+    final session = K4SpectrumSession(
+      sink,
+      spectrum: K4Spectrum(host: '192.0.2.4', sink: sink, transport: transport),
+    );
+    session.startSpectrum();
+    await pumpEventQueue();
+    final attempt = transport.attempts.single;
+    session.teardown();
     expect(attempt.cancel.isCancelled, isTrue, reason: 'disconnect must cancel even before CAT updates have started');
     final late = attempt.succeed();
     await pumpEventQueue();

@@ -278,6 +278,29 @@ void main() {
     });
   });
 
+  test('repeated failures back off to a minute, and a working stream starts the count over', () {
+    fakeAsync((async) {
+      spectrum.start();
+      for (final seconds in [2, 4, 8, 16, 32, 60, 60]) {
+        transport.attempts.last.result.completeError(TimeoutException('refused'));
+        async.flushMicrotasks();
+        final dialed = transport.attempts.length;
+        async.elapse(Duration(seconds: seconds) - const Duration(milliseconds: 1));
+        expect(transport.attempts, hasLength(dialed), reason: 'a refusing port must not be redialed every two seconds all session');
+        async.elapse(const Duration(milliseconds: 1));
+        expect(transport.attempts, hasLength(dialed + 1));
+      }
+      final connection = transport.accept(async);
+      connection.incoming.add(_packet());
+      connection.gone.complete();
+      async.flushMicrotasks();
+      final dialed = transport.attempts.length;
+      async.elapse(const Duration(seconds: 2));
+      expect(transport.attempts, hasLength(dialed + 1), reason: 'a link that worked again is retried promptly when it next drops');
+      spectrum.stop();
+    });
+  });
+
   test('a closed socket retries once; stale completion and bytes cannot stop its replacement', () {
     fakeAsync((async) {
       spectrum.start();
