@@ -2671,6 +2671,33 @@ to reproduce the radio's AutoRef or calibrated dBm. USB spectrum, sub/mini-pan
 display and remote services on 9204/9205 are not part of this pairing.
 See [k4-cat.md](k4-cat.md) for wire fixtures and hardware evidence.
 
+### Elecraft KX3 (stereo I/Q audio)
+
+The named KX3 pairing can opt into local stereo I/Q capture on every HaLo
+platform: macOS, Windows, Linux, Android, iOS and web. CAT
+continues over its existing serial connection; a visible spectrum opens the
+explicitly selected audio input, and the last listener leaving releases it.
+An audio failure reports a spectrum problem without interrupting CAT/keying.
+There is no audio permission retry loop: reopen the display after fixing the
+input or permissions. Nothing is recorded to a file.
+
+The source must supply two channels at the selected 48/96/192 kHz rate.
+Native capture rejects mono inputs, missing devices and mismatched rates;
+it never substitutes the default microphone or upsampling for RF bandwidth.
+Web capture validates the browser-delivered track and worklet channels;
+browser APIs cannot attest the physical ADC clock. Mobile and web users
+grant access through the input selector before choosing the interface.
+The complex FFT labels its bins around the last CAT dial plus the operator's
+center correction. I/Q swap, zoom, reference and sweep speed are local.
+Tuning discards FFT history while preserving stereo frame alignment.
+
+KX3 RX SHFT, mode and passband choices need hardware calibration against a
+known signal. HaLo neither guesses these offsets nor manipulates radio
+menus to read them. The PX3's buffered I/Q output can supply the same audio,
+but its serial screenshots cannot supply a live waterfall. Stock KX2 has
+no external I/Q output. See [kx3-panadapter.md](kx3-panadapter.md) for wiring,
+source references and the remaining hardware validation.
+
 ### Icom (CI-V `0x27`)
 
 The IC-705/7300/7610/7760/9700/905/7850/7851 entries pin `civScope`. Captured from an IC-705 over

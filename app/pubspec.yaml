@@ -131,6 +131,7 @@ dependencies:
   # in-memory channel instead of a real socket.
   stream_channel: ^2.1.4
   universal_ble: ^2.1.1
+  record: ^7.1.2
 
 dev_dependencies:
   flutter_test:
@@ -150,6 +151,10 @@ dev_dependencies:
   # allowlist — see link_opener_test.dart. Same rule as fake_async: transitive
   # via url_launcher, but imported directly, so declared directly.
   plugin_platform_interface: ^2.1.8
+  # Fake the capture boundary to check permission, format and disposal paths.
+  record_platform_interface: any
+  # Exercise the ALSA contract with injected native calls on any test host.
+  record_linux: any
   url_launcher_platform_interface: ^2.3.2
   # Faking the native updater to pin AutoUpdateService's once-per-process
   # setFeedURL contract — see auto_update_service_test.dart. Same rule again:
@@ -180,6 +185,19 @@ dev_dependencies:
 # the kernel snapshot on an interface member the vendored copy still uses.
 # Re-vendor and move these together or not at all.
 dependency_overrides:
+  # I/Q requires an explicit stereo source and verified capture format.
+  # Tracked manifests permit pub get; sources are downloaded and verified by
+  # Windows CMake or `mise run prepare-record` on other build paths.
+  record_android:
+    path: ../packages/record_android_patched
+  record_ios:
+    path: ../packages/record_ios_patched
+  record_linux:
+    path: ../packages/record_linux_patched
+  record_macos:
+    path: ../packages/record_macos_patched
+  record_windows:
+    path: ../packages/record_windows_patched
   flutter_inappwebview_platform_interface: 1.4.0-beta.3
   # The interface pulls this one with a CARET (`^1.3.0`), so it is the family
   # member a `pub upgrade` is still free to move while every other pin holds.

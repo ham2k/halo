@@ -48,6 +48,10 @@ endfunction()
 
 # Flutter library and tool build rules.
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
+# Package discovery uses tracked manifests; native sources must be ready before
+# CMake reads the plugins and before Flutter assembles the application.
+include("${FLUTTER_MANAGED_DIR}/ephemeral/generated_config.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/prepare_record.cmake")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
 # Application build; see runner/CMakeLists.txt.

@@ -1,0 +1,78 @@
+--- a/macos/record_macos/Sources/record_macos/delegate/RecorderStreamDelegate.swift
++++ b/macos/record_macos/Sources/record_macos/delegate/RecorderStreamDelegate.swift
+@@ -6,6 +6,7 @@
+   var config: RecordConfig?
+ 
+   private var m_audioEngine: AVAudioEngine?
++  private var m_configurationObserver: NSObjectProtocol?
+   private var m_processor: AudioStreamProcessor?
+   private var m_isPaused = false
+   private let m_lock = NSLock()
+@@ -30,8 +31,14 @@
+   func start(config: RecordConfig, recordEventHandler: RecordStreamHandler) throws {
+     let engine = AVAudioEngine()
+ 
+-    if let deviceId = config.device?.id,
+-       let inputDeviceId = getAudioDeviceIDFromUID(uid: deviceId) {
++    if let deviceId = config.device?.id {
++      // A missing selected device must not open the default microphone.
++      guard let inputDeviceId = getAudioDeviceIDFromUID(uid: deviceId) else {
++        throw RecorderError.error(
++          message: "iq_audio_device_unavailable",
++          details: "The selected audio input is no longer available."
++        )
++      }
+       do {
+         try engine.inputNode.auAudioUnit.setDeviceID(inputDeviceId)
+       } catch {
+@@ -45,6 +52,21 @@
+     try setVoiceProcessing(echoCancel: config.echoCancel, autoGain: config.autoGain, audioEngine: engine)
+ 
+     let srcFormat = engine.inputNode.inputFormat(forBus: 0)
++    // I/Q channels are separate measurements. Upmixing mono or mixing a
++    // multichannel interface down to stereo fabricates a mirrored spectrum.
++    if config.encoder == AudioEncoder.pcm16bits.rawValue && config.numChannels == 2 && srcFormat.channelCount != 2 {
++      throw RecorderError.error(
++        message: "iq_audio_invalid_format",
++        details: "I/Q capture requires exactly two source channels; this input has \(srcFormat.channelCount)."
++      )
++    }
++    // Upsampling cannot supply the wider RF window the requested rate names.
++    if config.encoder == AudioEncoder.pcm16bits.rawValue && config.numChannels == 2 && abs(srcFormat.sampleRate - Double(config.sampleRate)) > 1 {
++      throw RecorderError.error(
++        message: "iq_audio_sample_rate_mismatch",
++        details: "The input runs at \(srcFormat.sampleRate) Hz; I/Q capture requests \(config.sampleRate) Hz."
++      )
++    }
+     let processor = try AudioStreamProcessor(config: config, srcFormat: srcFormat)
+ 
+     engine.inputNode.installTap(
+@@ -64,6 +86,17 @@
+     }
+ 
+     m_audioEngine = engine
++    // Device loss or a source-format change invalidates the I/Q pairing.
++    // Finish this stream; never restart it against a different audio route.
++    m_configurationObserver = NotificationCenter.default.addObserver(
++      forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
++    ) { [weak self, weak engine] _ in
++      guard let self, let engine else { return }
++      self.m_queue.async {
++        guard self.m_audioEngine === engine else { return }
++        self.stop()
++      }
++    }
+     m_lock.withLock { m_processor = processor }
+     self.config = config
+     m_onRecord()
+@@ -71,6 +104,10 @@
+ 
+   @discardableResult
+   func stop() -> String? {
++    if let observer = m_configurationObserver {
++      NotificationCenter.default.removeObserver(observer)
++      m_configurationObserver = nil
++    }
+     if let engine = m_audioEngine {
+       do { try setVoiceProcessing(echoCancel: false, autoGain: false, audioEngine: engine) } catch {}
+       engine.inputNode.removeTap(onBus: m_bus)

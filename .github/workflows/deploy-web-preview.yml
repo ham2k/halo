@@ -99,6 +99,7 @@ jobs:
       # build, it is the only build identity shown. Matches deploy-web.yml.
       - name: Build Flutter web app
         run: |
+          (cd packages/halo_build_tools && dart run bin/prepare_record.dart)
           cd app
           sha=$(git rev-parse --short HEAD) || { echo "::error::cannot read the commit being built"; exit 1; }
           flutter pub get

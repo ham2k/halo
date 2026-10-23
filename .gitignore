@@ -15,6 +15,12 @@ build/
 # pub.dev published (see their PATCH.md).
 .swiftpm/
 
+# Recorder sources are generated; only first-party discovery scaffolds are tracked.
+/packages/record_*_patched/**
+!/packages/record_*_patched/**/
+!/packages/record_*_patched/pubspec.yaml
+!/packages/record_android_patched/android/src/main/kotlin/com/ham2k/halo/record/HaloRecordPlugin.kt
+
 # Generated plugin bundles (built from plugins/ by `npm run build`)
 app/assets/extensions/
 

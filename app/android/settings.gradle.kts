@@ -24,3 +24,15 @@ plugins {
 }
 
 include(":app")
+
+// flutter_libserialport 0.6.0 still references jcenter(), removed by Gradle 9.
+// Use a local build definition but preserve the published sources, including
+// when the checkout and Pub cache are on different Windows drives.
+val serialPortProject = project(":flutter_libserialport")
+val serialPortSourceDir = serialPortProject.projectDir
+serialPortProject.projectDir = file("compat/flutter_libserialport")
+gradle.beforeProject {
+    if (path == ":flutter_libserialport") {
+        extra["haloSerialPortSourceDir"] = serialPortSourceDir
+    }
+}

@@ -13,7 +13,7 @@ flutter = {
 [tasks]
 setup = {
   run = "./scripts/setup.sh",
-  description = "First-run setup, idempotent: git hooks, secrets template, extension bundles, host JS engine, pub get"
+  description = "First-run setup, idempotent: git hooks, secrets template, extension bundles, host JS engine, patched packages, pub get"
 }
 deploy-web = {
   run = "./scripts/deploy-web.sh",
@@ -27,7 +27,7 @@ ext = {
   run = "cd packages/halo_cli && dart run bin/halo_ext.dart",
   description = "halo-ext CLI: run extension hooks outside the app — `mise run ext -- lookup KI2D`"
 }
-run-ios = { run = "open -a Simulator && cd app && sha=$(git rev-parse --short HEAD) && flutter run -d iphone --dart-define=HALO_GIT_SHA=\"$sha\"", description = "Boot iOS Simulator and run the app" }
+run-ios = { run = "open -a Simulator && cd app && sha=$(git rev-parse --short HEAD) && flutter run -d iphone --dart-define=HALO_GIT_SHA=\"$sha\"", depends = ["prepare-record"], description = "Boot iOS Simulator and run the app" }
 strings = {
   run = "cd packages/halo_i18n && dart run tool/generate_hidden_locales.dart && dart run slang",
   description = "Regenerate the app's strings after editing packages/halo_i18n/lib/i18n/en.i18n.json"
@@ -49,22 +49,27 @@ test = {
   description = "Full gate: typecheck + test extensions, rebuild bundles, analyze + test every Dart package. Subsets: `mise run test -- --list | --changed | <group>...`"
 }
 android = {
+  depends = ["prepare-record"],
   run = "cd app && sha=$(git rev-parse --short HEAD) && flutter run -d android --dart-define=HALO_GIT_SHA=\"$sha\"",
   description = "Run the app on an Android device or emulator"
 }
 mac = {
+  depends = ["prepare-record"],
   run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d macos --dart-define=HALO_GIT_SHA=\"$sha\")",
   description = "Build & run macOS app"
 }
 web = {
+  depends = ["prepare-record"],
   run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d web-server --web-port 8765 --dart-define=HALO_GIT_SHA=\"$sha\")",
   description = "Run the app as a web server on :8765"
 }
 windows = {
+  depends = ["prepare-record"],
   run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d windows --dart-define=HALO_GIT_SHA=\"$sha\")",
   description = "Run the app on Windows"
 }
 linux = {
+  depends = ["prepare-record"],
   run = "(cd extensions && npm run build && cd ../app && sha=$(git rev-parse --short HEAD) && flutter run -d linux --dart-define=HALO_GIT_SHA=\"$sha\")",
   description = "Run the app on Linux"
 }

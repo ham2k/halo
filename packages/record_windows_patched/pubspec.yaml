@@ -1,0 +1,23 @@
+# Copyright ©️ 2026 Robert Jackson <me@rwjblue.com>
+# SPDX-License-Identifier: MPL-2.0
+
+name: record_windows
+description: Pinned windows recorder backend with HaLo I/Q source validation.
+version: 2.3.0
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  record_platform_interface: ^2.1.0
+
+flutter:
+  plugin:
+    implements: record
+    platforms:
+      windows:
+        pluginClass: RecordWindowsPluginCApi

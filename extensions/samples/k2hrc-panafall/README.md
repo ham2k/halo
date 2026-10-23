@@ -12,6 +12,10 @@ Needs a supported radio:
   port 9201 alongside CAT. It displays the main panadapter with local zoom,
   reference and speed controls. Levels are displayed as received, without an
   RF calibration claim.
+- Elecraft KX3, with RX I/Q connected to a true stereo audio input
+  alongside CAT. Enable it in the KX3 equipment settings and follow the
+  [I/Q setup notes](../../../docs/design/kx3-panadapter.md). Levels are relative;
+  live radio and audio-interface validation is still required.
 
 The panel shows only the controls each radio supports; contrast, averaging,
 frame rate and waterfall rows remain local.

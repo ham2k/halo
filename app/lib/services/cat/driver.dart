@@ -20,6 +20,7 @@ import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'drivers/meter_calibration.dart';
 import 'telemetry_poller.dart';
+import 'transport.dart' show EquipmentActionResult;
 import 'transports/config_field_helpers.dart';
 
 /// What a session is allowed to do: write bytes, and report what it read.
@@ -674,6 +675,15 @@ abstract class EquipmentDriver {
   /// radio itself, and app-polo's IC-705 attempt is on record as having lost
   /// bench time to a wrong address it had no way to change.
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config);
+
+  /// Refresh device choices needed by synchronous [configElements], such as
+  /// an optional I/Q audio input. Does not open or request access to a device.
+  Future<void> prepareConfigElements() async {}
+
+  /// Starts this driver's form action within the button's user gesture.
+  /// Null means the action belongs to the transport. Keeping that decision
+  /// synchronous preserves browser permission gestures for either owner.
+  Future<EquipmentActionResult?>? runAction(String actionKey, String method, Map<String, dynamic> state) => null;
 
   /// FormRenderer elements for this driver's own protocol settings (a CI-V
   /// bus address, for one). Nothing about how the bytes get there — that's

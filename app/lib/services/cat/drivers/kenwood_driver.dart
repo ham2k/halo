@@ -38,6 +38,11 @@ import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
 import 'k4_spectrum.dart';
+import 'kx3_iq_spectrum.dart';
+import '../transports/iq_audio.dart';
+import '../transports/iq_audio_errors.dart';
+import '../transport.dart';
+import '../../error_reporting_service.dart';
 import 'keyer_config.dart';
 import 'optional_read.dart';
 import 'poll_config.dart';
@@ -45,6 +50,7 @@ import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 part 'k4_spectrum_session.dart';
+part 'kx3_driver.dart';
 
 class KenwoodDriver extends EquipmentDriver {
   const KenwoodDriver() : isK4 = false, lanSpectrum = false;

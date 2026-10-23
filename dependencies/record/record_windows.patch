@@ -1,0 +1,178 @@
+--- a/windows/CMakeLists.txt
++++ b/windows/CMakeLists.txt
+@@ -17,6 +17,10 @@
+   "record_windows_plugin.cpp"
+   "record_windows_plugin.h"
+   "record_config.h"
++  "iq_source_validation.h"
++  "iq_pcm.h"
++  "iq_capture.h"
++  "iq_capture.cpp"
+   "platform_thread.h"
+   "platform_thread.cpp"
+   "recorder_dispatcher.h"
+@@ -102,6 +106,7 @@
+     "test/recorder_dispatcher_test.cpp"
+     "test/platform_thread_test.cpp"
+     "test/reader_callback_test.cpp"
++    "test/iq_source_validation_test.cpp"
+     "test/recorder_wrapper_test.cpp"
+     "test/recorder_stop_test.cpp"
+     ${PLUGIN_SOURCES}
+--- a/windows/audio_device/record_audio_device.cpp
++++ b/windows/audio_device/record_audio_device.cpp
+@@ -1,6 +1,7 @@
+ #include "audio_device/record_audio_device.h"
+ #include "encoder/codec_caps.h"
+ #include "record_config.h"
++#include "iq_source_validation.h"
+ #include "utils.h"
+ 
+ #include <mfapi.h>
+@@ -179,7 +180,7 @@
+ 						rateList.push_back(flutter::EncodableValue((int)wf->nSamplesPerSec));
+ 				}
+ 
+-				devices.push_back(flutter::EncodableMap({
++				devices.emplace_back(flutter::EncodableMap({
+ 					{flutter::EncodableValue("id"),          flutter::EncodableValue(Utf8FromUtf16(pwszId))},
+ 					{flutter::EncodableValue("label"),       flutter::EncodableValue(label)},
+ 					{flutter::EncodableValue("type"),        flutter::EncodableValue(type)},
+@@ -256,6 +257,55 @@
+ 	return hr;
+ }
+ 
++HRESULT ValidateIqDevice(const RecordConfig& config)
++{
++	if (config.deviceId.empty()) return kIqDeviceUnavailable;
++	IMMDeviceEnumerator* pEnumerator = NULL;
++	IMMDevice*           pDevice     = NULL;
++	IPropertyStore*      pProps      = NULL;
++
++	HRESULT hr = CoCreateInstance(
++		__uuidof(MMDeviceEnumerator), NULL,
++		CLSCTX_ALL, IID_PPV_ARGS(&pEnumerator)
++	);
++
++	if (SUCCEEDED(hr))
++	{
++		auto deviceId = Utf16FromUtf8(config.deviceId);
++		hr = deviceId.empty() ? kIqDeviceUnavailable : pEnumerator->GetDevice(deviceId.c_str(), &pDevice);
++	}
++
++	if (SUCCEEDED(hr))
++		hr = pDevice->OpenPropertyStore(STGM_READ, &pProps);
++
++	if (SUCCEEDED(hr))
++	{
++		PROPVARIANT varFormat;
++		PropVariantInit(&varFormat);
++
++		hr = pProps->GetValue(kAudioEngineDeviceFormat, &varFormat);
++		if (SUCCEEDED(hr) && varFormat.vt == VT_BLOB &&
++		    varFormat.blob.cbSize >= sizeof(WAVEFORMATEX) && varFormat.blob.pBlobData)
++		{
++			auto* wf = reinterpret_cast<const WAVEFORMATEX*>(varFormat.blob.pBlobData);
++			hr = ValidateIqSource(wf->nChannels, wf->nSamplesPerSec, config.sampleRate);
++		}
++		else
++		{
++			hr = kIqInvalidFormat;
++		}
++
++		PropVariantClear(&varFormat);
++	}
++
++	SafeRelease(&pProps);
++	SafeRelease(&pDevice);
++	SafeRelease(&pEnumerator);
++
++	// I/Q must prove its source format; guessing can mirror or mislabel RF.
++	return hr;
++}
++
+ HRESULT AdjustConfigToDeviceCaps(RecordConfig& config)
+ {
+ 	IMMDeviceEnumerator* pEnumerator = NULL;
+--- a/windows/audio_device/record_audio_device.h
++++ b/windows/audio_device/record_audio_device.h
+@@ -11,6 +11,7 @@
+ 
+ HRESULT ListInputDevices(flutter::EncodableList& devices);
+ HRESULT IsEncoderSupported(const std::string& encoderName, bool* supported);
++HRESULT ValidateIqDevice(const RecordConfig& config);
+ HRESULT AdjustConfigToDeviceCaps(RecordConfig& config);
+ HRESULT AdjustConfigToCodecCaps(RecordConfig& config);
+ void    WarmCodecCapsAsync();
+--- a/windows/record/record.cpp
++++ b/windows/record/record.cpp
+@@ -65,6 +65,20 @@
+ 		AssertOnDispatcher();
+ 		if (m_disposed) return E_ABORT;
+ 
++		if (config->encoderName == AudioEncoder::pcm16bits && config->numChannels == 2)
++		{
++			HRESULT hr = EndRecording();
++			if (FAILED(hr)) return hr;
++			m_iqCapture = std::make_unique<IqCapture>(m_dispatcher,
++				[this](std::vector<uint8_t> data) {
++					if (m_callbacks.onChunk) m_callbacks.onChunk(std::move(data));
++				}, [this] { Stop(); });
++			hr = m_iqCapture->Start(*config);
++			if (SUCCEEDED(hr)) UpdateState(RecordState::record);
++			else m_iqCapture.reset();
++			return hr;
++		}
++
+ 		const auto& enc = config->encoderName;
+ 		const bool isAac = enc == AudioEncoder::aacLc;
+ 		const bool isPcm = enc == AudioEncoder::pcm16bits;
+@@ -244,6 +258,8 @@
+ 
+ 	HRESULT Recorder::EndRecording()
+ 	{
++		m_iqCapture.reset();
++
+ 		HRESULT hr = S_OK;
+ 
+ 		SafeRelease(m_pReader);
+--- a/windows/record/record.h
++++ b/windows/record/record.h
+@@ -19,6 +19,7 @@
+ #include "amplitude/amplitude_tracker.h"
+ #include "record/reader_callback.h"
+ #include "recorder_dispatcher.h"
++#include "iq_capture.h"
+ 
+ namespace record_windows
+ {
+@@ -87,6 +88,7 @@
+ 		IMFSinkWriter*             m_pWriter;
+ 		IMFMediaType*              m_pMediaType;
+ 		std::unique_ptr<IStreamEncoder> m_pStreamEncoder;
++		std::unique_ptr<IqCapture> m_iqCapture;
+ 		std::wstring               m_recordingPath;
+ 
+ 		bool     m_bFirstSample = true;
+--- a/windows/record_windows_plugin.cpp
++++ b/windows/record_windows_plugin.cpp
+@@ -1,6 +1,7 @@
+ #include "record_windows_plugin.h"
+ #include "audio_device/record_audio_device.h"
+ #include "record_config.h"
++#include "iq_source_validation.h"
+ #include <exception>
+ #include <mutex>
+ 
+@@ -11,6 +12,11 @@
+ 
+ 	static void ErrorFromHR(HRESULT hr, MethodResult<EncodableValue>& result)
+ 	{
++		if (const char* reason = IqErrorMessage(hr))
++		{
++			result.Error("Record", reason);
++			return;
++		}
+ 		_com_error err(hr);
+ 		std::string errorText = Utf8FromUtf16(err.ErrorMessage());
+ 
