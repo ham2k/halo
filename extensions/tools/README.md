@@ -6,6 +6,9 @@ Build and package extensions for the [Ham2K Logger](https://ham2k.com).
 npm install --save-dev @ham2k/extension-tools esbuild
 ```
 
+The minor version is the newest extension API the packer accepts — 1.12 packs
+bundles up to `"api": 12` — and matches `@ham2k/extension-sdk`'s.
+
 ## Starting one
 
 ```sh

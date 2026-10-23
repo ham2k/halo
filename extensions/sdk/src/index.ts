@@ -45,6 +45,15 @@ import { base64ToBytes, bytesToBase64 } from "./base64.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
 import { adoptExtensionTimers, clearInterval, clearTimeout, setInterval, setTimeout } from "./timers.ts"
 
+/**
+ * The extension API this SDK describes: the highest `api` a manifest written
+ * against it can declare, and the one its types and host calls are for. The
+ * SDK's and `@ham2k/extension-tools`' minor version is this number, so a
+ * `^1.<api>.0` range names the oldest API an extension needs and admits every
+ * later one.
+ */
+export const API_VERSION = 12
+
 export * from "./types.ts"
 export * from "./hookCategories.ts"
 export * from "./panelScene.ts"

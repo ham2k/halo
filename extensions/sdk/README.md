@@ -53,6 +53,13 @@ offline and describe the version installed here rather than whatever the
 repository says today. If an agent is writing your extension, point it at
 `node_modules/@ham2k/extension-sdk/AGENTS.md` — `h2kext-init` does that for you.
 
+## Versions
+
+The minor version is the extension API: SDK 1.12 describes API 12, and
+exports it as `API_VERSION`. `@ham2k/extension-tools` follows the same rule,
+so a `^1.12.0` range says the extension needs API 12 and admits every later
+one. A major version is a change that breaks an extension already written.
+
 ## Export types and settings
 
 Export hooks can register shared types with `getExportTypes()`. Use

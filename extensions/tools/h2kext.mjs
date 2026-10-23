@@ -26,6 +26,10 @@ import yazl from "yazl"
 /// was built against and the host refuses one it does not speak, so an old app
 /// meeting a newer bundle says so instead of failing at a call site.
 ///
+/// It is also the minor version of this package and of `@ham2k/extension-sdk`,
+/// whose `API_VERSION` repeats it: raising it is a minor release of both
+/// (sdk/src/apiVersion.test.ts holds the three together).
+///
 /// Raised when a bundle using something new could not work at all on an app
 /// without it — not for every addition. 2 adds `host.webSocket` and the
 /// manifest's `webSockets` grant; 3 adds timers and `onShow`/`onHide`; 4 lets
