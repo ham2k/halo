@@ -30,6 +30,7 @@ import 'semantic_id.dart';
 import 'spacing.dart';
 import 'theme.dart';
 
+part 'qso_list_headers.dart';
 part 'qso_list_metrics.dart';
 
 /// Horizontal gap between the row's fields (Number/Time/Frequency/Mode/
@@ -49,6 +50,17 @@ String _utcTimeLabel(DateTime? time) => time == null ? '--:--z' : '${time.hour.t
 /// Every time label is the same six mono characters wide, so one measurement
 /// stands in for the whole column.
 const _timeLabelSample = '00:00z';
+
+/// The UTC date an [QsoList.otherQsos] row shows in the time column —
+/// `YYYY-MM-DD`, every one the same ten mono characters as [_dateLabelSample].
+String _utcDateLabel(DateTime? time) =>
+    time == null ? '----------' : '${time.year.toString().padLeft(4, '0')}-${time.month.toString().padLeft(2, '0')}-${time.day.toString().padLeft(2, '0')}';
+
+const _dateLabelSample = '0000-00-00';
+
+/// The blank between the log and its [QsoList.otherQsos] section, in
+/// ordinary rows.
+const _otherQsosGapRows = 2;
 
 /// The plain row's own mono font size — also [AnnotationRow]'s time label.
 /// Named so [_QsoListState.didChangeDependencies]'s row-height measurement
@@ -155,6 +167,9 @@ class QsoList extends StatefulWidget {
   static double rowHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).qsoRowHeight;
 
   final List<Qso> qsos;
+
+  /// The message for an empty list — or, with [otherQsos] to show, the line
+  /// that stands in for the log's rows.
   final String? noQsosLabel;
 
   /// Whether the empty-state message should read as a warning to check the
@@ -248,6 +263,23 @@ class QsoList extends StatefulWidget {
   /// The list then rests at its top rather than its bottom.
   final bool newestFirst;
 
+  /// Contacts from outside the log [qsos] belongs to, oldest first — the
+  /// Find bar's exact callsign worked in other operations. Drawn after the
+  /// log's own matches in either order, two rows' gap from them and under a
+  /// pinned [otherQsosLabel] header, and the list rests on the log's newest
+  /// row rather than on the section's end. With no matches in the log, its
+  /// last day's header and [noQsosLabel] hold the log's place, so the
+  /// section never reads as the log's own.
+  ///
+  /// View only: never selected, walked to or numbered. No day header groups
+  /// them, so each row shows its date where the log's rows show the time.
+  /// Their columns are sized among themselves, so the log's rows keep the
+  /// widths they have in the whole log ([log]).
+  final List<Qso> otherQsos;
+
+  /// The [otherQsos] section's header, its count included.
+  final String? otherQsosLabel;
+
   const QsoList({
     super.key,
     required this.qsos,
@@ -268,7 +300,9 @@ class QsoList extends StatefulWidget {
     this.dxFlags = DxFlags.dx,
     this.daySections = const [],
     this.newestFirst = false,
-  });
+    this.otherQsos = const [],
+    this.otherQsosLabel,
+  }) : assert(otherQsos.length == 0 || otherQsosLabel != null, 'otherQsos need a label for their header');
 
   @override
   State<QsoList> createState() => _QsoListState();
@@ -308,6 +342,10 @@ class _QsoListState extends State<QsoList> {
   /// warranted it, and the key that produced them. Null until first build.
   _QsoListMetricsKey? _cachedMetricsKey;
   _QsoListMetrics? _cachedMetrics;
+
+  /// The same for [QsoList.otherQsos], which are sized apart from the log.
+  _QsoListMetricsKey? _cachedOtherMetricsKey;
+  _QsoListMetrics? _cachedOtherMetrics;
 
   @override
   void didChangeDependencies() {
@@ -405,7 +443,10 @@ class _QsoListState extends State<QsoList> {
     // Only follow new QSOs when the user is already looking at the live
     // edge — someone scrolled away to review earlier contacts shouldn't get
     // yanked back by the next logged QSO.
-    final atLiveEdge = _isNearLiveEdge();
+    // Against the list the position was laid out for: the rest point moves
+    // with the other contacts, and closing a find that showed them would
+    // otherwise measure the log's end against where the section's ended.
+    final atLiveEdge = _isNearLiveEdge(oldWidget);
     if (grew && atLiveEdge) {
       _wasNearLiveEdge = true;
       WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToLiveEdge());
@@ -549,13 +590,26 @@ class _QsoListState extends State<QsoList> {
     _scrollTo(position.pixels + top, position.pixels + top + box.size.height);
   }
 
-  /// Whether the newest QSO is in view, or nearly — the bottom of the list,
-  /// or its top when it runs [QsoList.newestFirst].
-  bool _isNearLiveEdge() {
+  /// Whether the newest QSO is in view, or nearly — see [_liveEdgeOf].
+  bool _isNearLiveEdge([QsoList? list]) {
     if (!_scrollController.hasClients) return true;
     final position = _scrollController.position;
-    if (widget.newestFirst) return position.pixels - position.minScrollExtent < 120;
-    return position.maxScrollExtent - position.pixels < 120;
+    return (position.pixels - _liveEdgeOf(position, list ?? widget)).abs() < 120;
+  }
+
+  /// The offset the list rests at: its top when it runs
+  /// [QsoList.newestFirst], otherwise its bottom — or, with
+  /// [QsoList.otherQsos] drawn below the log, the log's newest row at the
+  /// bottom of the viewport. Resting on the list's end there would open a
+  /// find on the other contacts with the log's own matches scrolled away.
+  double _liveEdgeOf(ScrollPosition position, QsoList list) {
+    if (list.newestFirst) return position.minScrollExtent;
+    if (list.otherQsos.isEmpty) return position.maxScrollExtent;
+    final log = list.qsos;
+    final row = _metrics.qsoRowHeight * _rowHeightScale;
+    // An empty log is held by a day header and one line.
+    final logEnd = (log.isEmpty ? _metrics.sectionHeaderHeight * _rowHeightScale : _estimatedTopOf(log.length - 1, qsos: log)) + row;
+    return (logEnd - position.viewportDimension).clamp(position.minScrollExtent, position.maxScrollExtent);
   }
 
   /// Contacts arrived at the TOP of a newest-first list while the operator
@@ -605,8 +659,7 @@ class _QsoListState extends State<QsoList> {
 
   void _jumpToLiveEdge() {
     if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    _scrollController.jumpTo(widget.newestFirst ? position.minScrollExtent : position.maxScrollExtent);
+    _scrollController.jumpTo(_liveEdgeOf(_scrollController.position, widget));
     _wasNearLiveEdge = true;
   }
 
@@ -640,6 +693,45 @@ class _QsoListState extends State<QsoList> {
     super.dispose();
   }
 
+  /// The log's place in a list holding only [QsoList.otherQsos]: the whole
+  /// log's last day under its header, and [QsoList.noQsosLabel] where its
+  /// rows would be.
+  Widget _noLogQsos(BuildContext context, {required double headerExtent, required double rowExtent}) {
+    final theme = Theme.of(context);
+    final millis = widget.log?.lastOrNull?.startAtMillis ?? nowMillis();
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _DayHeaderDelegate(
+            extent: headerExtent,
+            child: DayHeaderRow(dayMillis: millis - (millis % _dayInMillis), onTap: widget.onTapDayHeader),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: rowExtent,
+            child: Material(
+              color: theme.colorScheme.surface,
+              child: Padding(
+                padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    widget.noQsosLabel ?? '',
+                    style: _headerRowStyle(theme)?.copyWith(color: theme.colorScheme.outline),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final qsos = widget.qsos;
@@ -659,7 +751,8 @@ class _QsoListState extends State<QsoList> {
     _keyedRowUuid = null;
 
     final theme = Theme.of(context);
-    if (qsos.isEmpty) {
+    final others = widget.otherQsos;
+    if (qsos.isEmpty && others.isEmpty) {
       // The warning only fires while the VFO actually needs attention (the
       // same signal that opens the Radio control on mount) — a band picked
       // by hand with no frequency, or a frequency with no band, already
@@ -729,18 +822,38 @@ class _QsoListState extends State<QsoList> {
           ));
     _cachedMetricsKey = metricsKey;
     final numbers = metrics.numbers;
-    final numberWidth = metrics.numberWidth;
-    final callsignWidth = metrics.callsignWidth;
-    final dxStateWidth = metrics.dxStateWidth;
-    final freqWidth = metrics.freqWidth;
-    final rstWidth = metrics.rstWidth;
-    final exchangeWidth = metrics.exchangeWidth;
-    final refsWidth = metrics.refsWidth;
-    final refsAreNotesOnly = metrics.refsAreNotesOnly;
-    final hzDigits = metrics.hzDigits;
-    final usesMultipleModes = metrics.usesMultipleModes;
     final dayKeys = metrics.dayKeys;
     final dayGroups = metrics.dayGroups;
+
+    // The other contacts' own pass, unnumbered and cached the same way.
+    final otherMetricsKey = _QsoListMetricsKey(
+      qsos: others,
+      log: null,
+      activityControls: activityControls,
+      ourEntityPrefix: ourEntityPrefix,
+      dxFlags: dxFlags,
+      showQsoNumbers: false,
+      theme: theme,
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+    final cachedOtherKey = _cachedOtherMetricsKey;
+    final otherMetrics = others.isEmpty
+        ? null
+        : cachedOtherKey != null && cachedOtherKey.matches(otherMetricsKey)
+        ? _cachedOtherMetrics!
+        : (_cachedOtherMetrics = _computeMetrics(
+            context: context,
+            qsos: others,
+            log: null,
+            activityControls: activityControls,
+            ourEntityPrefix: ourEntityPrefix,
+            dxFlags: dxFlags,
+            showQsoNumbers: false,
+            mono: mono,
+            monoDim: monoDim,
+            callStyle: callStyle,
+          ));
+    _cachedOtherMetricsKey = otherMetricsKey;
 
     // See [_rowHeightScale]'s doc — every row/header below is forced into an
     // exact box (HALO-258), so its extent has to grow with the OS text
@@ -757,8 +870,11 @@ class _QsoListState extends State<QsoList> {
         if (section['day'] is num) (section['day'] as num).toInt(): section['scores'] as Map<String, dynamic>?,
     };
 
-    Widget buildRowContent(BuildContext context, int chronologicalIndex, _ColumnPlan plan) {
-      final qso = qsos[chronologicalIndex];
+    /// A row of the log, by its [chronologicalIndex] in [qsos] — or, with
+    /// [other] set, of [QsoList.otherQsos]: dated rather than timed, and inert.
+    Widget buildRowContent(BuildContext context, int chronologicalIndex, _ColumnPlan plan, {bool other = false}) {
+      final qso = (other ? others : qsos)[chronologicalIndex];
+      final _QsoListMetrics(:numberWidth, :callsignWidth, :dxStateWidth, :freqWidth, :rstWidth, :exchangeWidth, :hzDigits) = other ? otherMetrics! : metrics;
 
       if (qso.isEvent) {
         // Operation segment markers keep their centered-label treatment;
@@ -782,8 +898,8 @@ class _QsoListState extends State<QsoList> {
         );
       }
 
-      final number = numbers[chronologicalIndex];
-      final timeLabel = _utcTimeLabel(qso.startAt);
+      final number = other ? 0 : numbers[chronologicalIndex];
+      final timeLabel = other ? _utcDateLabel(qso.startAt) : _utcTimeLabel(qso.startAt);
       final selected = qso.uuid == selectedUuid;
       final highlighted = !selected && qso.uuid == highlightedUuid;
 
@@ -903,7 +1019,9 @@ class _QsoListState extends State<QsoList> {
       // #236: stable id for agent/browser tooling — per-callsign so a specific
       // logged QSO's row is targetable.
       return semanticId(
-        'qso.row.${qso.theirCall}',
+        // Apart from the log's rows, whose ids tooling expects to be unique
+        // per call.
+        other ? 'qso.otherRow.${qso.theirCall}' : 'qso.row.${qso.theirCall}',
         Container(
           // foregroundDecoration paints over the already-laid-out child
           // instead of insetting it (unlike Container's `decoration`,
@@ -920,8 +1038,8 @@ class _QsoListState extends State<QsoList> {
                 ? Color.alphaBlend(theme.colorScheme.secondaryContainer.withValues(alpha: 0.4), theme.colorScheme.surface)
                 : theme.colorScheme.surface,
             child: InkWell(
-              onTap: () => onSelect(qso),
-              mouseCursor: SystemMouseCursors.click,
+              onTap: other ? null : () => onSelect(qso),
+              mouseCursor: other ? MouseCursor.defer : SystemMouseCursors.click,
               child: Padding(
                 padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
                 child: Row(
@@ -1064,7 +1182,13 @@ class _QsoListState extends State<QsoList> {
     // to the pixel. Budgeting to the exact measurement leaves a row one
     // rounding difference away from overflowing by a fraction of a pixel —
     // still a logged error.
-    final mandatoryWidth = textWidth(context, _timeLabelSample, monoDim) + _columnGap + freqWidth + _columnGap + callsignWidth + _columnGap + _fitSlack;
+    //
+    // The other contacts' rows lead with a date, and are sized by their own
+    // pass.
+    double mandatoryWidthOf(_QsoListMetrics m, String timeSample) =>
+        textWidth(context, timeSample, monoDim) + _columnGap + m.freqWidth + _columnGap + m.callsignWidth + _columnGap + _fitSlack;
+    final mandatoryWidth = mandatoryWidthOf(metrics, _timeLabelSample);
+    final otherMandatoryWidth = otherMetrics == null ? 0.0 : mandatoryWidthOf(otherMetrics, _dateLabelSample);
 
     // What each optional column costs, INCLUDING the [_columnGap] it brings
     // with it, and whether it has earned its place on content at all (#354,
@@ -1074,27 +1198,28 @@ class _QsoListState extends State<QsoList> {
     // It is a list, not the argument order of a constructor, precisely so
     // that reordering it is a deliberate act rather than something a tidy-up
     // can do by accident.
-    final columns = <({_Column id, bool earned, double width})>[
-      (id: _Column.numbers, earned: showQsoNumbers, width: numberWidth + _columnGap),
-      (id: _Column.dxState, earned: dxStateWidth > 0, width: dxStateWidth + _columnGap),
-      (id: _Column.mode, earned: usesMultipleModes, width: _modeWidth + _columnGap),
-      (id: _Column.rst, earned: showRSTFields, width: rstWidth),
+    List<({_Column id, bool earned, double width})> columnsOf(_QsoListMetrics m, {required bool numbered}) => [
+      (id: _Column.numbers, earned: numbered, width: m.numberWidth + _columnGap),
+      (id: _Column.dxState, earned: m.dxStateWidth > 0, width: m.dxStateWidth + _columnGap),
+      (id: _Column.mode, earned: m.usesMultipleModes, width: _modeWidth + _columnGap),
+      (id: _Column.rst, earned: showRSTFields, width: m.rstWidth),
       // A reference or a duplicate serial is logged data and outranks the
       // exchange; a notes marker only says the edit pane holds more, so a
       // column of nothing else yields to it. Without the split, one note in
       // a contest log costs every row its exchange in a narrow pane.
-      if (!refsAreNotesOnly) (id: _Column.refs, earned: refsWidth > 0, width: refsWidth),
-      (id: _Column.exchange, earned: exchangeWidth > 0, width: exchangeWidth + _columnGap),
-      if (refsAreNotesOnly) (id: _Column.refs, earned: refsWidth > 0, width: refsWidth),
+      if (!m.refsAreNotesOnly) (id: _Column.refs, earned: m.refsWidth > 0, width: m.refsWidth),
+      (id: _Column.exchange, earned: m.exchangeWidth > 0, width: m.exchangeWidth + _columnGap),
+      if (m.refsAreNotesOnly) (id: _Column.refs, earned: m.refsWidth > 0, width: m.refsWidth),
     ];
 
     /// Keeps the optional columns that still fit, best-earned first. The
     /// running total is what the [Row] will actually lay out, so a column
     /// that survives here is one the row has room to draw.
-    _ColumnPlan planFor(double available) {
-      var used = mandatoryWidth;
+    /// [other] plans the other contacts' rows.
+    _ColumnPlan planFor(double available, {bool other = false}) {
+      var used = other ? otherMandatoryWidth : mandatoryWidth;
       final shown = <_Column>{};
-      for (final column in columns) {
+      for (final column in other ? columnsOf(otherMetrics!, numbered: false) : columnsOf(metrics, numbered: showQsoNumbers)) {
         if (!column.earned) continue;
         if (used + column.width > available) continue;
         used += column.width;
@@ -1122,9 +1247,39 @@ class _QsoListState extends State<QsoList> {
           // out at its minimum instead, letting the ClipRect above trim the
           // right edge: rows that are cut off but internally consistent, rather
           // than rows whose columns overflow and land on top of each other.
-          final minWidth = mandatoryWidth + padding.horizontal;
+          final minWidth = (otherMandatoryWidth > mandatoryWidth ? otherMandatoryWidth : mandatoryWidth) + padding.horizontal;
           final width = constraints.maxWidth < minWidth ? minWidth : constraints.maxWidth;
-          final plan = planFor(width - padding.horizontal);
+          // Each section plans against the width it is actually seen at: the
+          // log's own minimum, not the section's wider one, so a column the
+          // pane cannot show never pushes the log's callsign out of it.
+          final logWidth = constraints.maxWidth < mandatoryWidth + padding.horizontal ? mandatoryWidth + padding.horizontal : constraints.maxWidth;
+          final plan = planFor(logWidth - padding.horizontal);
+          final otherPlan = otherMetrics == null ? null : planFor(width - padding.horizontal, other: true);
+          // Blank list background between the log and the section.
+          final otherSection = [
+            if (otherPlan != null) ...[
+              SliverToBoxAdapter(child: SizedBox(height: _otherQsosGapRows * rowExtent)),
+              // A group of its own, so the header pins over its own rows only.
+              SliverMainAxisGroup(
+                slivers: [
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _DayHeaderDelegate(
+                      extent: headerExtent,
+                      child: _OtherQsosHeaderRow(label: widget.otherQsosLabel ?? ''),
+                    ),
+                  ),
+                  SliverFixedExtentList(
+                    itemExtent: rowExtent,
+                    delegate: SliverChildBuilderDelegate((context, i) {
+                      final index = widget.newestFirst ? others.length - 1 - i : i;
+                      return _RowDivider(draw: i < others.length - 1, child: buildRowContent(context, index, otherPlan, other: true));
+                    }, childCount: others.length),
+                  ),
+                ],
+              ),
+            ],
+          ];
           return OverflowBox(
             alignment: Alignment.topLeft,
             minWidth: width,
@@ -1141,6 +1296,7 @@ class _QsoListState extends State<QsoList> {
                   child: CustomScrollView(
                     controller: _scrollController,
                     slivers: [
+                      if (qsos.isEmpty) _noLogQsos(context, headerExtent: headerExtent, rowExtent: rowExtent),
                       for (final g in widget.newestFirst ? [for (var d = dayGroups.length - 1; d >= 0; d--) d] : [for (var d = 0; d < dayGroups.length; d++) d])
                         // Groups each day's header with its own rows so Flutter's sliver
                         // protocol coordinates pinning *between* groups — without this,
@@ -1194,6 +1350,7 @@ class _QsoListState extends State<QsoList> {
                             ),
                           ],
                         ),
+                      ...otherSection,
                     ],
                   ),
                 ),
@@ -1248,218 +1405,6 @@ class _RowDivider extends StatelessWidget {
         border: Border(bottom: BorderSide(width: 1, color: DividerTheme.of(context).color ?? Theme.of(context).dividerColor)),
       ),
       child: child,
-    );
-  }
-}
-
-/// Pins [DayHeaderRow] to the top of [QsoList]'s `CustomScrollView` while its
-/// day's QSOs are in view, per issue #62 ("pinned headers that show the day
-/// and scoring summaries").
-class _DayHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final Widget child;
-
-  /// Resolved by the caller, not read from context here: `build` below is not
-  /// the only place the extent is needed — `minExtent`/`maxExtent` are asked
-  /// for outside it, with no context to read.
-  final double extent;
-
-  const _DayHeaderDelegate({required this.child, required this.extent});
-
-  @override
-  double get minExtent => extent;
-
-  @override
-  double get maxExtent => extent;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Forces the child to exactly [extent] regardless of its own intrinsic
-    // size — a pinned sliver header's declared extent must match what it
-    // actually paints, or Flutter throws a "layoutExtent exceeds
-    // paintExtent" assertion the instant [child]'s content (font size,
-    // padding, border width) doesn't add up to precisely that.
-    return SizedBox(height: extent, child: child);
-  }
-
-  @override
-  bool shouldRebuild(covariant _DayHeaderDelegate oldDelegate) => oldDelegate.child != child || oldDelegate.extent != extent;
-}
-
-/// One UTC-day divider in [QsoList]: the day's date, its real-contact count,
-/// and (once scored) score badges for that day — see `DayScoreSummary` and
-/// `ScoreTally` in the extension SDK. `qsoCount` is skipped among the score
-/// badges since [count] already shows it as a label.
-class DayHeaderRow extends StatelessWidget {
-  /// The extent this header pins at — an ordinary QSO row's own height (4px
-  /// vertical padding either side of a 14px line at its natural, un-inflated
-  /// line height, see `build`'s `rowStyle`) plus a little headroom.
-  ///
-  /// Public so tests can assert that a row revealed by
-  /// `_QsoListState._revealSelected` clears the header pinned above it.
-  static double pinnedHeightOf(BuildContext context) => LayoutDensity.metricsOf(context).sectionHeaderHeight;
-
-  final int dayMillis;
-  final int count;
-  final Map<String, dynamic>? scores;
-
-  /// Tapping the header opens the operation's own info — the day divider is
-  /// the list's stand-in for "this operation", the way a QSO row is for a
-  /// contact. Null leaves the header inert.
-  final VoidCallback? onTap;
-
-  /// Overrides "now" for the relative-date label below — tests only; a real
-  /// header always compares against the current moment.
-  final DateTime? now;
-
-  const DayHeaderRow({super.key, required this.dayMillis, required this.count, this.scores, this.now, this.onTap});
-
-  /// Same tiering as app-polo/web-lofi's `fmtDateDynamicZulu(compact: true)`
-  /// (lib-format-tools' `fmtDateDynamic`): "Today"/"Yesterday" for the
-  /// obvious cases, weekday+day within the last week, month+day within the
-  /// last 9 months, and month+day+year beyond that — so a long-running log
-  /// still reads as calendar dates instead of an ever-scrolling "N days ago".
-  /// The weekday and month abbreviations come from `intl` for the widget's
-  /// locale, the relative words from `t` — both follow the app's language.
-  static String _dayLabel(BuildContext context, int dayMillis, DateTime now) {
-    final d = DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true);
-    final locale = Localizations.maybeLocaleOf(context)?.toLanguageTag();
-    String weekday() => DateFormat.E(locale).format(d);
-    String month() => DateFormat.MMM(locale).format(d);
-    final diffInDays = now.difference(d).inMilliseconds / _dayInMillis;
-    final absDiffInDays = diffInDays.abs();
-
-    // Order matters: a day two-plus in the future has diffInDays <= -1, which
-    // must NOT fall through to the "Yesterday" (diffInDays <= 2) branch —
-    // future days get their calendar-date label like any other non-adjacent
-    // day, so a date typo or clock-skewed device reads "Jul 20", not
-    // "Yesterday".
-    if (diffInDays > -1 && diffInDays <= 0) return t.qsoList.tomorrow;
-    if (diffInDays > 0 && diffInDays <= 1) return t.qsoList.today;
-    if (diffInDays > 1 && diffInDays <= 2) return t.qsoList.yesterday;
-    if (absDiffInDays <= 7) return '${weekday()} ${d.day}';
-    if (absDiffInDays <= 274) return '${month()} ${d.day}';
-    return '${month()} ${d.day} ${d.year}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Same base size as the QSO rows below it (app-polo's QSOHeader reuses
-    // its row font wholesale, just bolding the date) — labelLarge/labelMedium
-    // read visibly larger than the row text and make the header feel like a
-    // different, heavier UI element instead of a divider within the list.
-    // `height: 1.0` overrides bodyMedium's Material 3 line-height multiplier
-    // (1.43, meant for prose) back down to the font's natural metric — same
-    // as the row's own `haloMonoStyle`, which never sets an explicit
-    // `height` either — so the header doesn't come out visibly taller than
-    // an ordinary QSO row despite using the same 14px font size.
-    final rowStyle = theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant, height: 1.0);
-
-    final badges = <Widget>[];
-    for (final entry in (scores ?? const <String, dynamic>{}).entries) {
-      final tally = entry.value;
-      if (tally is! Map) continue;
-      // Key off the tally's own `key`, not the map key: with several scorers
-      // active the caller namespaces those (`core.qsoCount`), and the count is
-      // already shown by the header itself.
-      if (tally['key'] == 'qsoCount') continue;
-      final icon = tally['icon'] as String?;
-      final summary = tally['summary'] as String?;
-      if (icon == null || summary == null || summary.isEmpty) continue;
-      // An activity tally reports `activated: true` once every reference it
-      // covers has cleared its threshold — the badge goes green to say the
-      // goal for this day (or the operation) is already met.
-      final activated = tally['activated'] == true;
-      badges.add(
-        Padding(
-          padding: const EdgeInsets.only(left: Space.md),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(resolveIconName(icon), size: 14, color: activated ? HaLoColors.of(context).important : theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: Space.xs),
-              Text(summary, style: rowStyle),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Material(
-      // `surfaceContainerHigh` isn't one of the tones `buildHaLoTheme`
-      // overrides (theme.dart), so it falls back to Flutter's default — an
-      // almost-white tint that doesn't read as "gray" against the QSO
-      // rows' plain `surface`. `surfaceContainerHighest` is an
-      // explicitly-set, visibly gray tone (already used to fill the list's
-      // own empty space above/below its rows), so it actually shows up as
-      // a distinct header background. It sits on the Material, not on the
-      // Container below, so the InkWell's splash isn't painted over.
-      color: theme.colorScheme.surfaceContainerHighest,
-      child: InkWell(
-        onTap: onTap,
-        mouseCursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
-        child: Container(
-          // `foregroundDecoration`, not `decoration` — same reason the row's own
-          // selected-treatment border below uses it: `Container` auto-insets
-          // its child by a `BoxDecoration`'s border width when the border lives
-          // in `decoration`, which would make the header taller than a plain
-          // QSO row for the same padding. Painting over the already-laid-out
-          // box instead keeps the header exactly row-height while still
-          // reading as a stronger break than the 1px hairline between ordinary
-          // QSO rows — matching app-polo's QSOHeader (`headerRow`'s
-          // `borderBottomWidth: 2`) — using `outline`, not `outlineVariant`,
-          // since `outlineVariant` is nearly the same color as the header's own
-          // background and the border all but disappears against it.
-          foregroundDecoration: BoxDecoration(
-            border: Border(bottom: BorderSide(color: theme.colorScheme.outline, width: 3)),
-          ),
-          child: Padding(
-            // Same vertical padding as a QSO row (see `buildRow`'s own
-            // `Padding` above) so the header comes out exactly row-height.
-            padding: PaneSafeArea.symmetricOf(context, horizontal: Space.lg, vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV),
-            child: Row(
-              children: [
-                // The header lives inside the same minimum width the QSO rows do,
-                // so at that minimum the date and count have to give rather than
-                // overflow. `Expanded` pushes the badges right (what a bare
-                // `Spacer` would do) while also capping the pair.
-                //
-                // That makes the score badges the one thing here that never
-                // yields, which is deliberate: they are fixed-size chips with
-                // nothing to ellipsize into, while a shortened date still reads.
-                // Within the pair the date gives first and the count second, so
-                // the day stays identifiable for as long as there is room for it.
-                Expanded(
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          _dayLabel(context, dayMillis, now ?? nowUtc()),
-                          style: rowStyle?.copyWith(fontWeight: FontWeight.w700, color: theme.colorScheme.onSurface),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: Space.md),
-                      // Deliberately NOT Flexible. Two loose Flexibles in one Row
-                      // split the space proportionally and never hand back what
-                      // they don't use, so the date would ellipsize at half the
-                      // header even when the count is short. Non-flex, the count
-                      // takes its natural width and the date gets the rest —
-                      // which is the behaviour we want everywhere except a count
-                      // label wider than the list's whole minimum width, and that
-                      // needs ~25 characters of "N QSOs".
-                      // Same "1 QSO"/"N QSOs" vocabulary the info area's stats line uses.
-                      Text(count == 1 ? t.loggingControls.info.qsoCountOne : t.loggingControls.info.qsoCountOther(count: count), style: rowStyle),
-                    ],
-                  ),
-                ),
-                ...badges,
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

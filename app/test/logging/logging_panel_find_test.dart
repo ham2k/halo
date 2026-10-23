@@ -19,9 +19,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
+import 'package:ham2k_logger/services/logging_scope.dart';
 import 'package:ham2k_logger/services/lookup_queue_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
+import 'package:ham2k_logger/views/operation/log_find_bar.dart';
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
 
 /// Answers `FIND <query>` the way operation-commands does, without booting a
@@ -80,27 +82,35 @@ void main() {
     ];
   });
 
-  Widget panel({int findRequest = 0, List<Qso>? log, bool controlsAboveLog = false}) => TranslationProvider(
-    child: MaterialApp(
-      home: Scaffold(
-        body: LoggingPanel(
-          operation: operation,
-          services: services,
-          qsos: log ?? qsos,
-          loggingControls: const [],
-          onCommandAction: (action, [params]) async {},
-          findRequest: findRequest,
-          controlsAboveLog: controlsAboveLog,
+  Widget panel({int findRequest = 0, List<Qso>? log, bool controlsAboveLog = false, LoggingScope scope = LoggingScope.operation, Operation? op}) =>
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: LoggingPanel(
+              operation: op ?? operation,
+              services: services,
+              qsos: log ?? qsos,
+              loggingControls: const [],
+              onCommandAction: (action, [params]) async {},
+              findRequest: findRequest,
+              controlsAboveLog: controlsAboveLog,
+              scope: scope,
+            ),
+          ),
         ),
-      ),
-    ),
-  );
+      );
 
   /// Pumps the panel, then bumps its find request the way a host's ⌘F does.
-  Future<void> openFind(WidgetTester tester, {List<Qso>? log, bool controlsAboveLog = false}) async {
-    await tester.pumpWidget(panel(log: log, controlsAboveLog: controlsAboveLog));
+  Future<void> openFind(
+    WidgetTester tester, {
+    List<Qso>? log,
+    bool controlsAboveLog = false,
+    LoggingScope scope = LoggingScope.operation,
+    Operation? op,
+  }) async {
+    await tester.pumpWidget(panel(log: log, controlsAboveLog: controlsAboveLog, scope: scope, op: op));
     await tester.pump(const Duration(milliseconds: 100));
-    await tester.pumpWidget(panel(findRequest: 1, log: log, controlsAboveLog: controlsAboveLog));
+    await tester.pumpWidget(panel(findRequest: 1, log: log, controlsAboveLog: controlsAboveLog, scope: scope, op: op));
     await tester.pump();
     await tester.pump();
   }
@@ -184,6 +194,101 @@ void main() {
 
     expect(find.text('K1AB'), findsOneWidget);
     expect(find.text('K1ABC'), findsNothing);
+  });
+
+  // An exact call asks about one station, and its contacts elsewhere are the
+  // rest of the answer. A partial call is a search of this log, which every
+  // other operation's matches would bury. This log's own contact must not
+  // come back a second time among the others.
+  testWidgets('an exact call also shows the station\'s contacts from other operations, under their own header', (tester) async {
+    await tester.runAsync(() async {
+      final other = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Other Op');
+      for (final call in ['K1AB', 'K1ABC']) {
+        await services.qsos.add(other.uuid, {
+          'their': {'call': call},
+          'mode': 'CW',
+          'startAtMillis': DateTime.utc(2025, 3, 14, 12).millisecondsSinceEpoch,
+        });
+      }
+    });
+    const header = '1 QSO outside of this operation';
+    Finder inList(String text) => find.descendant(of: find.byType(QsoList), matching: find.text(text));
+    await openFind(tester);
+
+    await type(tester, 'K1AB');
+    expect(find.text(header), findsNothing);
+
+    await type(tester, 'K1AB.');
+    await tester.pump();
+    expect(find.text(header), findsOneWidget);
+    expect(inList('K1AB'), findsNWidgets(2), reason: 'this log\'s contact, and the other operation\'s');
+    expect(inList('2025-03-14'), findsOneWidget);
+    expect(inList('K1ABC'), findsNothing);
+    expect(
+      find.descendant(of: find.byType(LogFindBar), matching: find.text('1 QSO')),
+      findsOneWidget,
+      reason: 'the bar still counts this log\'s matches',
+    );
+
+    await tester.tap(inList('2025-03-14'));
+    await tester.pump();
+    expect(loadedCall(tester), isEmpty, reason: 'another operation\'s contact is not this log\'s to edit');
+  });
+
+  // "No match" over a list of the station's contacts contradicts the rows
+  // under it; the line has to say where there are none.
+  testWidgets('an exact call worked only elsewhere says this operation has none, above the others', (tester) async {
+    await tester.runAsync(() async {
+      final other = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Other Op');
+      await services.qsos.add(other.uuid, {
+        'their': {'call': 'W7ZZZ'},
+        'mode': 'CW',
+        'startAtMillis': DateTime.utc(2025, 3, 14, 12).millisecondsSinceEpoch,
+      });
+    });
+    await openFind(tester);
+    await type(tester, 'W7ZZZ.');
+    await tester.pump();
+    Finder inList(String text) => find.descendant(of: find.byType(QsoList), matching: find.text(text));
+    final none = inList('No QSOs in this operation');
+    expect(none, findsOneWidget);
+    expect(inList('No match'), findsNothing);
+    expect(tester.getTopLeft(none).dy, lessThan(tester.getTopLeft(find.text('1 QSO outside of this operation')).dy));
+
+    await type(tester, 'W6ZZZ.');
+    await tester.pump();
+    expect(inList('No match'), findsOneWidget, reason: 'with nothing elsewhere either, the empty message stays');
+  });
+
+  // Chasing logs against a stand-in with no uuid, so every chase — this
+  // period's and every earlier one — is a loose contact with the same empty
+  // operation. Telling "past" apart by operation finds none of them; what the
+  // log on screen holds is the only line between the two. And the chasing log
+  // is not an operation, so "outside of this operation" names nothing.
+  testWidgets('chasing, earlier chases show as past QSOs', (tester) async {
+    late List<Qso> period;
+    await tester.runAsync(() async {
+      Future<Qso> chase(DateTime at) => services.qsos.add('', {
+        'their': {'call': 'W9XYZ'},
+        'our': {'call': 'N0CALL'},
+        'mode': 'CW',
+        'startAtMillis': at.millisecondsSinceEpoch,
+      });
+      await chase(DateTime.utc(2025, 3, 14, 12));
+      period = [await chase(DateTime.utc(2026, 10, 22, 12))];
+    });
+    const chasing = Operation(uuid: '', data: {'stationCall': 'N0CALL'});
+    await openFind(tester, scope: LoggingScope.chase, op: chasing, log: period);
+    await type(tester, 'W9XYZ.');
+    await tester.pump();
+    expect(find.text('1 past QSO'), findsOneWidget);
+    expect(find.descendant(of: find.byType(QsoList), matching: find.text('2025-03-14')), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(QsoList), matching: find.text('W9XYZ')),
+      findsNWidgets(2),
+      reason: 'this period\'s chase, and the earlier one',
+    );
+    expect(find.textContaining('outside of this operation'), findsNothing);
   });
 
   testWidgets('Enter on a number loads that contact, closes the bar, and puts the keyboard in the call field', (tester) async {

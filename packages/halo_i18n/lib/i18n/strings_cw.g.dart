@@ -2009,6 +2009,12 @@ class _Translations$qsoList$find$cw extends Translations$qsoList$find$en {
 	@override String get menuItemNoShortcut => '··—· ·· —· —·· / ·· —· / ·—·· ——— ——·';
 	@override String get hint => '——·— ··· ——— / —· ··— —— —··· · ·—· / ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·';
 	@override String get noMatches => '—· ——— / —— ·— — —·—· ····';
+	@override String get noOperationQsos => '—· ——— / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get noPeriodQsos => '—· ——— / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ·——· · ·—· ·· ——— —··';
+	@override String get outsideQsosOne => '·———— / ——·— ··· ——— / ——— ··— — ··· ·· —·· · / ——— ··—· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String outsideQsosOther({required Object count}) => '${count} / ——·— ··· ——— ··· / ——— ··— — ··· ·· —·· · / ——— ··—· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·';
+	@override String get pastQsosOne => '·———— / ·——· ·— ··· — / ——·— ··· ———';
+	@override String pastQsosOther({required Object count}) => '${count} / ·——· ·— ··· — / ——·— ··· ——— ···';
 }
 
 // Path: callInfo.history
@@ -5296,6 +5302,12 @@ extension on TranslationsCw {
 			'qsoList.find.menuItemNoShortcut' => '··—· ·· —· —·· / ·· —· / ·—·· ——— ——·',
 			'qsoList.find.hint' => '——·— ··· ——— / —· ··— —— —··· · ·—· / ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·',
 			'qsoList.find.noMatches' => '—· ——— / —— ·— — —·—· ····',
+			'qsoList.find.noOperationQsos' => '—· ——— / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'qsoList.find.noPeriodQsos' => '—· ——— / ——·— ··· ——— ··· / ·· —· / — ···· ·· ··· / ·——· · ·—· ·· ——— —··',
+			'qsoList.find.outsideQsosOne' => '·———— / ——·— ··· ——— / ——— ··— — ··· ·· —·· · / ——— ··—· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} / ——·— ··· ——— ··· / ——— ··— — ··· ·· —·· · / ——— ··—· / — ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			'qsoList.find.pastQsosOne' => '·———— / ·——· ·— ··· — / ——·— ··· ———',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} / ·——· ·— ··· — / ——·— ··· ——— ···',
 			'loggingPanel.stats' => '——— ·——· · ·—· ·— — ·· ——— —· / ··· — ·— — ···',
 			'loggingPanel.scoring' => '··· —·—· ——— ·—· ·· —· ——·',
 			'loggingPanel.dxccEntities' => '—·· —··— —·—· —·—· / · —· — ·· — ·· · ···',
@@ -5773,14 +5785,14 @@ extension on TranslationsCw {
 			'settings.station.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.station.remove' => '·—· · —— ——— ···— ·',
 			'settings.station.removeTitle' => ({required Object name}) => '·—· · —— ——— ···— · / ${name} ··——··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.removeMessage' => '— ···· ·· ··· / ——— —· ·—·· —·—— / ·—· · —— ——— ···— · ··· / ·· — / ··—· ·—· ——— —— / — ···· · / ·— ·——· ·——· ·—·—·— / — ···· · / · ——·— ··— ·· ·——· —— · —· — ·————· ··· / ··· · — — ·· —· ——· ··· / ··· — ·— —·—— / ·— ··· / — ···· · —·—— / ·— ·—· · ·—·—·—',
 			'settings.station.unknownType' => ({required Object typeKey}) => '··— —· ·—· · —·—· ——— ——· —· ·· ——·· · —·· / · ——·— ··— ·· ·——· —— · —· — / — —·—— ·——· · / ·—··—· ${typeKey} ·—··—·',
 			'settings.station.report' => '·—· · ·——· ——— ·—· —',
 			'settings.station.reportTitle' => '·—· · ·——· ——— ·—· — / — ···· ·· ··· / ·—· ·— —·· ·· ———',
 			'settings.station.reportIntro' => '— · ·—·· ·—·· / ··— ··· / ·—— ···· ·— — / ·—· ·— —·· ·· ——— / — ···· ·· ··· / ·—· · ·— ·—·· ·—·· —·—— / ·· ··· / ·— —· —·· / ···· ——— ·—— / ·· — / ·—— · —· — ·—·—·— / —·—— ——— ··— ·—· / ·—· · ·——· ——— ·—· — / —··· · —·—· ——— —— · ··· / ·— / —·—· ·— ·—· —·· / — ···· · / ···· ·— —— ··——— —·— / — · ·— —— / ·—· · ·— —·· ··· ——··—— / ·— —· —·· / ·—— ···· ·— — / —·—— ——— ··— / ·—— ·—· ·· — · / ·— —··· ——— ··— — / ——· · — — ·· —· ——· / ·· — / ·—— ——— ·—· —·— ·· —· ——· / —— ·— —·—— / · —· —·· / ··— ·——· / ···· · ·—·· ·——· ·· —· ——· / — ···· · / —· · —··— — / ——— ·——· · ·—· ·— — ——— ·—· / ·—— ·· — ···· / — ···· · / ··· ·— —— · / ·—· ·· ——· ·—·—·—',
 			'settings.station.reportManufacturer' => '—— ·— —· ··— ··—· ·— —·—· — ··— ·—· · ·—·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportManufacturerDescription' => '·—— ···· ——— / —— ·— —·— · ··· / ·· — / — / ·· —·—· ——— —— ——··—— / —·—— ·— · ··· ··— ——··—— / —·— · —· ·—— ——— ——— —·· ——··—— / · ·—·· · —·—· ·—· ·— ··—· — …',
 			'settings.station.reportManufacturerRequired' => '·— / —— ·— —· ··— ··—· ·— —·—· — ··— ·—· · ·—· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.reportModel' => '—— ——— —·· · ·—··',
@@ -6287,14 +6299,14 @@ extension on TranslationsCw {
 			'commands.sentryTestSent' => '— · ··· — / · ·—· ·—· ——— ·—· / ·—· · ·——· ——— ·—· — / ··· · —· — / — ——— / ··· · —· — ·—· —·——',
 			'commands.idleMetricsEnabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / · —· ·— —··· ·—·· · —·· / ·· —· / — ···· · / ··· — ·— — ··— ··· / —··· ·— ·—·',
 			'commands.idleMetricsDisabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / —·· ·· ··· ·— —··· ·—·· · —··',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => '··· · —· — ·—· —·—— / ·· ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ·· —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· / — / — · ··· — / · ·—· ·—· ——— ·—· / ·—·· ——— ——· ——· · —·· / ·—·· ——— —·—· ·— ·—·· ·—·· —·—— / ——— —· ·—·· —·——',
 			'commands.noOperationOpen' => '— ···· ·— — / —·—· ——— —— —— ·— —· —·· / —· · · —·· ··· / ·— —· / ——— ·——· · —· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'commands.unknownSegmentKind' => ({required Object kind}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / —— ·— ·—· —·— / ·— / ·————· ${kind} ·————·',
 			'commands.goUnavailable' => ({required Object place}) => '${place} / ·· ··· —· ·————· — / — ··— ·—· —· · —·· / ——— —· / ·· —· / — ···· ·· ··· / ·— ·——· ·——·',
 			'commands.goUnknown' => ({required Object to}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / ——· ——— / — ——— / ·————· ${to} ·————·',
 			'commands.goBlocked' => '—·—· ·—·· ——— ··· · / — ···· · / ——— ·——· · —· / —·· ·· ·— ·—·· ——— ——· / ··—· ·· ·—· ··· —',
-			_ => null,
-		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => '— ···· ·· ··· / ——— ·——· · ·—· ·— — ·· ——— —· / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ··· / ·— / ··· — ·— ·—· — / —— ·— ·—· —·— · ·—·',
 			'commands.couldNotOpenLocation' => '·— —·· —·· · —·· / — ···· · / —··· ·—· · ·— —·— ——··—— / —··· ··— — / —·—· ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· / — ···· · / ·—·· ——— —·—· ·— — ·· ——— —· / ··· —·—· ·—· · · —·',
 			'commands.noTestOperations' => '—· ——— / — · ··· — / ——— ·——· · ·—· ·— — ·· ——— —· ··· / — ——— / ·——· ··— ·—· ——· ·',

@@ -4315,6 +4315,24 @@ class Translations$qsoList$find$en {
 
 	/// en: 'No match'
 	String get noMatches => 'No match';
+
+	/// en: 'No QSOs in this operation'
+	String get noOperationQsos => 'No QSOs in this operation';
+
+	/// en: 'No QSOs in this period'
+	String get noPeriodQsos => 'No QSOs in this period';
+
+	/// en: '1 QSO outside of this operation'
+	String get outsideQsosOne => '1 QSO outside of this operation';
+
+	/// en: '${count} QSOs outside of this operation'
+	String outsideQsosOther({required Object count}) => '${count} QSOs outside of this operation';
+
+	/// en: '1 past QSO'
+	String get pastQsosOne => '1 past QSO';
+
+	/// en: '${count} past QSOs'
+	String pastQsosOther({required Object count}) => '${count} past QSOs';
 }
 
 // Path: callInfo.history
@@ -10206,6 +10224,12 @@ extension on Translations {
 			'qsoList.find.menuItemNoShortcut' => 'Find in Log',
 			'qsoList.find.hint' => 'QSO number or callsign',
 			'qsoList.find.noMatches' => 'No match',
+			'qsoList.find.noOperationQsos' => 'No QSOs in this operation',
+			'qsoList.find.noPeriodQsos' => 'No QSOs in this period',
+			'qsoList.find.outsideQsosOne' => '1 QSO outside of this operation',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} QSOs outside of this operation',
+			'qsoList.find.pastQsosOne' => '1 past QSO',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} past QSOs',
 			'loggingPanel.stats' => 'Operation Stats',
 			'loggingPanel.scoring' => 'Scoring',
 			'loggingPanel.dxccEntities' => 'DXCC entities',
@@ -10683,14 +10707,14 @@ extension on Translations {
 			'settings.station.disconnect' => 'Disconnect',
 			'settings.station.remove' => 'Remove',
 			'settings.station.removeTitle' => ({required Object name}) => 'Remove ${name}?',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.removeMessage' => 'This only removes it from the app. The equipment\'s settings stay as they are.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
 			'settings.station.report' => 'Report',
 			'settings.station.reportTitle' => 'Report this radio',
 			'settings.station.reportIntro' => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
 			'settings.station.reportManufacturer' => 'Manufacturer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
 			'settings.station.reportModel' => 'Model',
@@ -11197,14 +11221,14 @@ extension on Translations {
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.idleMetricsEnabled' => 'Idle metrics enabled in the status bar',
 			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'Close the open dialog first',
-			_ => null,
-		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',

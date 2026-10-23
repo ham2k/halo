@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "New control and serial port fields on Icom network connections"
+    - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
 
 "183":
   changes:

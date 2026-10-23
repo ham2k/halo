@@ -473,6 +473,37 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   _LogFindView? _findView;
 
+  /// The callsign an exact find last named, with its contacts from outside
+  /// the log, oldest first. Read once per callsign, and shown only while the
+  /// find still names that callsign exactly.
+  ({String call, List<Qso> qsos})? _otherQsos;
+
+  List<Qso> get _shownOtherQsos {
+    final query = _findQuery;
+    final others = _otherQsos;
+    return query != null && query.exact && others != null && others.call == query.call ? others.qsos : const [];
+  }
+
+  Future<void> _loadOtherQsos(String call) async {
+    final history = await widget.services.qsos.historyForCall(call);
+    final query = _findQuery;
+    // A find that moved on while this read ran keeps what it has.
+    if (!mounted || query == null || !query.exact || query.call != call) return;
+    // Outside the log is whatever the log does not hold, not another
+    // operation's: Chasing's log is the loose contacts of one period and
+    // station, and its past chases are loose contacts too.
+    final inLog = {for (final qso in widget.qsos) qso.uuid};
+    setState(
+      () => _otherQsos = (
+        call: call,
+        qsos: [
+          for (final qso in history.reversed)
+            if (!inLog.contains(qso.uuid)) qso,
+        ],
+      ),
+    );
+  }
+
   /// What the list shows under the find, cached against the log and the
   /// query by identity: it is a pass over the whole log, and the list keys
   /// its own measuring pass on the identity of the rows it is handed.
@@ -529,7 +560,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void _applyFind(LogFindQuery? query) {
     _findTimer?.cancel();
     _findTimer = null;
-    if (mounted) setState(() => _findQuery = query);
+    if (!mounted) return;
+    setState(() => _findQuery = query);
+    if (query != null && query.exact && _otherQsos?.call != query.call) unawaited(_loadOtherQsos(query.call));
   }
 
   /// Applies what was typed now, if its pause is still running — a key that
@@ -594,6 +627,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     setState(() {
       _findOpen = false;
       _findQuery = null;
+      _otherQsos = null;
     });
     if (returnFocus && hadFocus && (!isMobilePlatform || hardwareKeyboardAttached.value)) _loggingController.focusLastPrimaryField();
   }
@@ -967,11 +1001,18 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final daySections = mergedDaySections(scoring);
     final shown = _shown;
     final filtering = !identical(shown.qsos, widget.qsos);
+    final others = _shownOtherQsos;
+    final findStrings = context.t.qsoList.find;
+    final othersCount = formatNumber(others.length);
     final list = QsoList(
       qsos: shown.qsos,
       log: filtering ? widget.qsos : null,
       highlightedUuid: shown.target?.uuid,
-      noQsosLabel: filtering ? context.t.qsoList.find.noMatches : context.t.qsoList.empty,
+      noQsosLabel: !filtering
+          ? context.t.qsoList.empty
+          : others.isEmpty
+          ? findStrings.noMatches
+          : (widget.scope == LoggingScope.chase ? findStrings.noPeriodQsos : findStrings.noOperationQsos),
       // The warning is about an empty log, and a filter that matches nothing
       // is not one.
       needsBandOrMode: !filtering && _needsBandOrMode,
@@ -987,6 +1028,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
       dxFlags: widget.dxFlags,
       daySections: daySections,
       newestFirst: widget.controlsAboveLog,
+      otherQsos: others,
+      // Chasing has no operation for the others to be outside of.
+      otherQsosLabel: widget.scope == LoggingScope.chase
+          ? (others.length == 1 ? findStrings.pastQsosOne : findStrings.pastQsosOther(count: othersCount))
+          : (others.length == 1 ? findStrings.outsideQsosOne : findStrings.outsideQsosOther(count: othersCount)),
     );
 
     // Escape deselecting a QSO regardless of what has focus (e.g. the QSO

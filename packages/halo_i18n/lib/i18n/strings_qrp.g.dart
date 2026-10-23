@@ -2009,6 +2009,12 @@ class _Translations$qsoList$find$qrp extends Translations$qsoList$find$en {
 	@override String get menuItemNoShortcut => 'find in log';
 	@override String get hint => 'qso number or callsign';
 	@override String get noMatches => 'no match';
+	@override String get noOperationQsos => 'no qsos in this operation';
+	@override String get noPeriodQsos => 'no qsos in this period';
+	@override String get outsideQsosOne => '1 qso outside of this operation';
+	@override String outsideQsosOther({required Object count}) => '${count} qsos outside of this operation';
+	@override String get pastQsosOne => '1 past qso';
+	@override String pastQsosOther({required Object count}) => '${count} past qsos';
 }
 
 // Path: callInfo.history
@@ -5296,6 +5302,12 @@ extension on TranslationsQrp {
 			'qsoList.find.menuItemNoShortcut' => 'find in log',
 			'qsoList.find.hint' => 'qso number or callsign',
 			'qsoList.find.noMatches' => 'no match',
+			'qsoList.find.noOperationQsos' => 'no qsos in this operation',
+			'qsoList.find.noPeriodQsos' => 'no qsos in this period',
+			'qsoList.find.outsideQsosOne' => '1 qso outside of this operation',
+			'qsoList.find.outsideQsosOther' => ({required Object count}) => '${count} qsos outside of this operation',
+			'qsoList.find.pastQsosOne' => '1 past qso',
+			'qsoList.find.pastQsosOther' => ({required Object count}) => '${count} past qsos',
 			'loggingPanel.stats' => 'operation stats',
 			'loggingPanel.scoring' => 'scoring',
 			'loggingPanel.dxccEntities' => 'dxcc entities',
@@ -5773,14 +5785,14 @@ extension on TranslationsQrp {
 			'settings.station.disconnect' => 'disconnect',
 			'settings.station.remove' => 'remove',
 			'settings.station.removeTitle' => ({required Object name}) => 'remove ${name}?',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.removeMessage' => 'this only removes it from the app. the equipment\'s settings stay as they are.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'unrecognized equipment type "${typeKey}"',
 			'settings.station.report' => 'report',
 			'settings.station.reportTitle' => 'report this radio',
 			'settings.station.reportIntro' => 'tell us what radio this really is and how it went. your report becomes a card the ham2k team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
 			'settings.station.reportManufacturer' => 'manufacturer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportManufacturerDescription' => 'who makes it — icom, yaesu, kenwood, elecraft…',
 			'settings.station.reportManufacturerRequired' => 'a manufacturer is required',
 			'settings.station.reportModel' => 'model',
@@ -6287,14 +6299,14 @@ extension on TranslationsQrp {
 			'commands.sentryTestSent' => 'test error report sent to sentry',
 			'commands.idleMetricsEnabled' => 'idle metrics enabled in the status bar',
 			'commands.idleMetricsDisabled' => 'idle metrics disabled',
+			_ => null,
+		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'close the open dialog first',
-			_ => null,
-		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'this operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'no test operations to purge',

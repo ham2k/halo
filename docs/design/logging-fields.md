@@ -991,6 +991,20 @@ decides what it does (`LogFindQuery`):
 - **Anything else** filters the list to the contacts whose callsign holds it
   anywhere, and **a trailing period** to that exact callsign. The rows keep
   the numbers and the column widths they have in the whole log.
+- **An exact callsign** also brings every contact with that station the
+  log does not hold — other operations', and in the Chasing view, earlier
+  periods' and other station calls' chases — in a section after the log's
+  own matches, whichever way up the list runs: two rows' blank from them,
+  under a pinned header drawn as a day header is, "3 QSOs outside of this
+  operation", or "3 past QSOs" in the Chasing view, which is not an
+  operation. With no match in the log, the log's last day header and "No
+  QSOs in this operation" ("in this period" when chasing) hold its place,
+  so the section never reads as the log's own matches. The section runs in
+  the list's own order, each row showing its date where a log row shows its
+  time, its columns sized among themselves. The list rests on the log's
+  newest match, not the section's end, and the section, read after the find
+  applies, leaves the list where it was when it arrives. They are there to
+  be read: never loaded, walked to or counted in the bar's result.
 - **Down** loads the contact a number names, whatever row was loaded
   before, or else the row nearest the bar. The keyboard goes to the
   callsign field — the same as arriving in the list from the pills, with

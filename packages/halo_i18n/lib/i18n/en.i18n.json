@@ -1253,7 +1253,13 @@
       "menuItem": "Find in Log (${shortcut})",
       "menuItemNoShortcut": "Find in Log",
       "hint": "QSO number or callsign",
-      "noMatches": "No match"
+      "noMatches": "No match",
+      "noOperationQsos": "No QSOs in this operation",
+      "noPeriodQsos": "No QSOs in this period",
+      "outsideQsosOne": "1 QSO outside of this operation",
+      "outsideQsosOther": "${count} QSOs outside of this operation",
+      "pastQsosOne": "1 past QSO",
+      "pastQsosOther": "${count} past QSOs"
     }
   },
   "loggingPanel": {
