@@ -21,6 +21,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/header_profile_label.dart';
+import 'package:ham2k_logger/views/home_quick_lookup.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 

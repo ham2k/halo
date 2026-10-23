@@ -43,14 +43,12 @@ const _slack = 100;
 const _ceilings = <String, int>{
   '../packages/halo_widgets/lib/src/logging_controls.dart': 3841,
   '../packages/halo_widgets/lib/src/form_renderer.dart': 2550,
-  'lib/services/cat/cat_service.dart': 2628,
-  'lib/views/dock_host.dart': 2094,
+  'lib/services/cat/cat_service.dart': 2499,
+  'lib/views/dock_host.dart': 1942,
   '../packages/halo_widgets/lib/src/qso_list.dart': 1659,
-  'lib/services/halo_services.dart': 1987,
+  'lib/services/halo_services.dart': 1900,
   '../packages/halo_widgets/lib/src/dock_layout.dart': 1817,
-  'lib/views/home_view.dart': 1684,
-  '../packages/halo_core/lib/src/sync/sync_engine.dart': 1553,
-  'lib/services/settings_service.dart': 1690,
+  'lib/services/settings_service.dart': 1608,
 };
 
 /// Every non-generated `.dart` file under the first-party `lib/` roots.

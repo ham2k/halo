@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Smart VFO Snap: the rules (vfo_snap.dart) and the wiring that applies
-// them to the designated radio (cat_service.dart).
+// them to the designated radio (cat_vfo_snap.dart).
 //
 // The trap this whole feature has to avoid is fighting the operator. Most of
 // what's asserted here is a refusal to move the radio: fine tuning, CW, a

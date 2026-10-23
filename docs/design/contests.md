@@ -357,7 +357,7 @@ mechanisms make derived scoring actively harmful there:
    regression test pins this: *"caching scores never bumps updatedAtMillis — the
    invariant live rescore depends on"* (`repositories_test.dart:331`).
 3. **Cross-device staleness.** `_buildPayload` uploads `{...q.data, …}`
-   (`sync_engine.dart:392-396`) and `mergeFromSync` replaces `data` wholesale
+   (`sync_wire.dart`) and `mergeFromSync` replaces `data` wholesale
    under last-write-wins. Verdicts depend on which *extension version* produced
    them, so devices would clobber each other's scores — and they would replicate
    into app-polo, which persists whole QSO objects but has no code that reads or

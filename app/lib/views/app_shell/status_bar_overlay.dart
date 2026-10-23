@@ -12,7 +12,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../home_navigation_rail.dart';
-import '../home_view.dart';
+import '../home_quick_lookup.dart';
 
 import '../../services/connectivity_service.dart';
 import '../offline_indicator.dart';

@@ -24,7 +24,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_engine.dart';
-import 'package:ham2k_logger/views/home_view.dart';
+import 'package:ham2k_logger/views/home_quick_lookup.dart';
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 
 import '../support/halo_test_support.dart';

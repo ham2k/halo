@@ -2054,7 +2054,8 @@ re-adopted when that rig reconnects, as a phantom message over a quiet transmitt
 
 Off by default, and it is the only thing in the app that moves the operator's radio without being
 asked to — so almost all of its design is about when to keep its hands off. The rules are
-`app/lib/services/cat/vfo_snap.dart`; when to ask them is `CatService._noteSnapReading`.
+`app/lib/services/cat/vfo_snap.dart`; when to ask them is `_noteSnapReading` in
+`app/lib/services/cat/cat_vfo_snap.dart`.
 
 The shape: the knob's own moves are watched, and once the VFO has held still for the settle delay
 the app decides whether the operator was *arriving somewhere* or *tuning a signal*. Arriving
@@ -2331,15 +2332,15 @@ The number is what is printed beside the socket on the back of the box; the
 name is what an operator with three antennas actually knows them by. Neither
 alone matches a row to a piece of coax.
 
-**The operator's antennas are linked to the switch's ports, not renamed by
-it.** A switch calls its port whatever somebody typed into the switch's own
-web page, possibly years ago; the app already has antenna nodes with the
-operator's own names and band coverage. The link field is emitted by
-`station_panel.dart`, not by the driver, for exactly the reason the antenna
-`bands` field beside it is: a driver is pure catalogue data with no access to
-the station's inventory. When the switch is disconnected the editor falls back
-to `EquipmentDriver.antennaPortCount` — the case that matters, since setting a
-switch up is something an operator does before ever connecting it.
+**The operator's antennas are linked to the switch's ports, not renamed by it.**
+A switch calls its port whatever somebody typed into the switch's own web page,
+possibly years ago; the app already has antenna nodes with the operator's own
+names and band coverage. The link field is emitted by the station panel
+(`station_panel_annotations.dart`), not by the driver, for exactly the reason
+the antenna `bands` field beside it is: a driver is pure catalogue data with no
+access to the station's inventory. When the switch is disconnected the editor
+falls back to `EquipmentDriver.antennaPortCount` — the case that matters, since
+setting a switch up is something an operator does before ever connecting it.
 
 ### 4O3A Antenna Genius
 

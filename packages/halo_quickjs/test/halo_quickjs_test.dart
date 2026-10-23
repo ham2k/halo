@@ -63,7 +63,7 @@ void main() {
 
   group('re-entrancy', () {
     test('the host can re-enter eval from inside the callback', () {
-      // halo_extension_host.dart's kvGet/kvSet path reaches hostResponse with
+      // host_core.dart's kvGet/kvSet path reaches hostResponse with
       // no await, so JS_Eval genuinely runs nested inside sendMessage.
       js.onSend((_, _) => js.eval("globalThis.fromNested = 'set'"));
       final r = js.eval("sendMessage('polo','x'); globalThis.fromNested");

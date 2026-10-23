@@ -101,11 +101,12 @@ as its containment boundary, and a non-configurable property makes that delete
 fail silently, degrading the kernel to a throwing shadow.
 `JS_SetPropertyStr`'s default flags satisfy this.
 
-**Re-entrancy is mandatory, not incidental.** `halo_extension_host.dart`'s
-`kvGet`/`kvSet` cases reach `_js.hostResponse(...)` with **no `await`** in
-between, so the enclosing `async` function runs straight through and re-enters
-`JS_Eval` *from inside* the `sendMessage` callback. The shim therefore keeps no
-per-call scratch state, and nesting is exercised to three levels.
+**Re-entrancy is mandatory, not incidental.** The `kvGet`/`kvSet` cases in
+`packages/halo_extension_host/lib/src/host_core.dart` reach
+`_js.hostResponse(...)` with **no `await`** in between, so the enclosing `async`
+function runs straight through and re-enters `JS_Eval` *from inside* the
+`sendMessage` callback. The shim therefore keeps no per-call scratch state, and
+nesting is exercised to three levels.
 
 Two behaviours the Dart side must design around:
 

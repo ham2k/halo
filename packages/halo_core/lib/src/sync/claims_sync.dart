@@ -45,7 +45,7 @@ extension _ClaimsSide on SyncEngine {
     SyncBatch batch, {
     required bool requested,
   }) async {
-    final rejected = SyncEngine._rejectedUuids(response, 'claims');
+    final rejected = _rejectedUuids(response, 'claims');
     _reportRejections(rejected, 'claims');
     _reportUnreadable(response, 'claims');
     _quarantine(rejected.keys, _quarantinedClaims);
@@ -85,10 +85,10 @@ extension _ClaimsSide on SyncEngine {
       final candidate = sentCursor != null ? latest - 1 : latest;
       if (candidate > ((settings.state[SyncEngine.claimWatermarkKey] as num?)?.toInt() ?? 0)) updates[SyncEngine.claimWatermarkKey] = candidate;
     }
-    final cursor = SyncEngine._cursorFrom(meta, 'claims');
+    final cursor = _cursorFrom(meta, 'claims');
     if (cursor != null) {
       updates[SyncEngine.claimCursorKey] = cursor;
-    } else if (inbound.isNotEmpty || SyncEngine._cursorRefused(response, 'claims')) {
+    } else if (inbound.isNotEmpty || _cursorRefused(response, 'claims')) {
       updates[SyncEngine.claimCursorKey] = null;
     }
     final side = meta['claims'];

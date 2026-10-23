@@ -52,7 +52,7 @@ keep these tables complete, because they are what an audit greps against:
 |---|---|
 | `operations_repository.dart`, `qsos_repository.dart` — `updatedAtMillis` | The sync revision stamp |
 | `sequences.dart` — `updatedAtMillis` | Same |
-| `sync_engine.dart` — `backfillFrom` | Leaves as `syncedUntilMillis`; the server pages backwards from it |
+| `sync_wire.dart` — `backfillFrom` | Leaves as `syncedUntilMillis`; the server pages backwards from it |
 | `data_file_manager.dart` — `data_file_updated_*` | Persists, and outlives the travel that wrote it |
 | `switch_accounts_dialog.dart` — the challenge clock | Compared against the server's `challenge_expires_at` |
 | `peer_trust.dart` — `pairedAtMillis`, `lastSeenAtMillis` | Per-peer, and outlives the session that paired |

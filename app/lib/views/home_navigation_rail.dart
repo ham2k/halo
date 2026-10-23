@@ -9,7 +9,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'app_shell/home_rail_state.dart';
 import 'ham2k_logo.dart';
-import 'home_view.dart';
+import 'home_quick_lookup.dart';
 
 /// The Home view's left-edge navigation rail (docs/design/layouts.md).
 ///

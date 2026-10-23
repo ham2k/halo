@@ -172,7 +172,7 @@ class LocalizedDecimalMarkFormatter extends TextInputFormatter {
 /// "crashes/ every time".
 ///
 /// Public (not `_`-prefixed) so other callsign-entry fields — e.g.
-/// HomeQuickLookup in app/lib/views/home_view.dart — can reuse it instead
+/// HomeQuickLookup in app/lib/views/home_quick_lookup.dart — can reuse it instead
 /// of leaving the same mobile keyboard quirk unhandled there.
 class MobileDotToSlashFormatter extends TextInputFormatter {
   static final _callsignPrefix = RegExp(r'^([A-Z]|[0-9][A-Z]|[./][./A-Z])', caseSensitive: false);

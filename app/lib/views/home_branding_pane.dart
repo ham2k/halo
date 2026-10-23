@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The home view's right column on two-pane layouts — the release photo, the
-// brand, and what build this is. Its own file because home_view.dart is at
-// its size ceiling (test/guards/file_size_budget_test.dart).
+// brand, and what build this is.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';

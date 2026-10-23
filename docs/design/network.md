@@ -56,7 +56,7 @@ User-Agent.** Concretely:
   `views/settings/accounts_panel.dart` and downloads in `data_file_manager.dart`.
 - **Extensions** — you get this for free. Every `host.fetch` is stamped with the
   canonical UA by the extension host
-  ([`packages/halo_extension_host/lib/halo_extension_host.dart`](../../packages/halo_extension_host/lib/halo_extension_host.dart),
+  ([`packages/halo_extension_host/lib/src/host_core.dart`](../../packages/halo_extension_host/lib/src/host_core.dart),
   `_hostFetch`), which the app seeds via `ExtensionHost.start(userAgent: …)`.
   The host sets it **last**, so it overrides any `User-Agent` an extension puts
   in its `headers` — **do not set your own** in an extension; it will be ignored,
@@ -82,7 +82,7 @@ the canonical one, so no request goes out unidentified.
 This is an escape hatch, not a default: **no extension is whitelisted today**,
 and consistency is the goal. Prefer the canonical UA unless a service forces
 otherwise. The gate lives in `resolveFetchUserAgent`
-([`halo_extension_host.dart`](../../packages/halo_extension_host/lib/halo_extension_host.dart)),
+([`fetch_policy.dart`](../../packages/halo_extension_host/lib/src/fetch_policy.dart)),
 seeded by the app from the manifest capability.
 
 ## Not covered here

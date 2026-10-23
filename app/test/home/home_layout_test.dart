@@ -22,6 +22,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
+import 'package:ham2k_logger/views/home_quick_lookup.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/operation/clock/clock_panel.dart';
 import 'package:ham2k_logger/views/operation/radio/radio_panel.dart';
