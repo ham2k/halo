@@ -263,8 +263,12 @@ void main() {
   Future<void> paired() async {
     await shack.service.trust.trust('device-a', name: 'Tablet');
     await tablet.service.trust.trust('device-b', name: 'Shack PC');
-    await shack.service.setEnabled(true);
+    // The tablet first: it is the side that dials, so the shack machine's
+    // first beacon must land on a tablet already listening. The other way
+    // round that beacon goes to nobody and the dial waits a whole announce
+    // interval for the next one — in every test in this file.
     await tablet.service.setEnabled(true);
+    await shack.service.setEnabled(true);
     await waitFor(
       'both sessions established',
       () => (shack.service.peers['device-a']?.session?.established ?? false) && (tablet.service.peers['device-b']?.session?.established ?? false),
