@@ -123,6 +123,8 @@
 	<true/>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Used to control your radio through a Bluetooth LE interface, and to find and sync with your own paired devices when peer device sync is on and no shared network is available.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Used to display your KX3 panadapter from the stereo audio input you select. Capture starts only while its spectrum is open.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Used to suggest nearby activities (parks, summits), set the operation's grid square, and — when peer device sync is on — share your position with your own paired devices.</string>
 	<key>UIApplicationSceneManifest</key>

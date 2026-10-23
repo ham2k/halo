@@ -24,6 +24,13 @@ mise install && mise trust && mise run setup   # tools, extension bundles, JS en
 cd app && flutter run -d macos                 # or any other device
 ```
 
+Setup prepares the generated recorder dependencies before resolving the app.
+Windows builds prepare recorder sources automatically during CMake configuration.
+For direct analysis/tests or native builds on other platforms, run
+`mise run prepare-record` first and again after pulling recorder changes. The
+[dependency setup notes](DEVELOPMENT.md#patched-recorder-dependencies) include
+the equivalent Windows PowerShell command.
+
 [DEVELOPMENT.md](DEVELOPMENT.md) covers the environment, running on each
 platform, the flags that skip onboarding (`ONBOARD_AS`) and label a build
 (`DEV_LABEL`), and the developer commands typed into the call field.

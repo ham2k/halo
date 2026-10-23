@@ -100,6 +100,7 @@ jobs:
       # the ref checked out above, matching build-macos.sh's convention.
       - name: Build Flutter web app
         run: |
+          (cd packages/halo_build_tools && dart run bin/prepare_record.dart)
           cd app
           sha=$(git rev-parse --short HEAD) || { echo "::error::cannot read the commit being built"; exit 1; }
           flutter pub get

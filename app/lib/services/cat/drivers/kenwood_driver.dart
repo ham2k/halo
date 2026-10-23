@@ -41,6 +41,10 @@ import 'k4_codec.dart';
 import 'k4_setting_switch.dart';
 import 'k4_spectrum.dart';
 import 'k4_shared_session_config.dart';
+import 'kx3_iq_spectrum.dart';
+import '../transports/iq_audio.dart';
+import '../transports/iq_audio_errors.dart';
+import '../transport.dart';
 import 'keyer_config.dart';
 import 'meter_calibration.dart';
 import 'optional_read.dart';
@@ -51,6 +55,7 @@ import 'voice_activity_tracker.dart';
 part 'k4_spectrum_session.dart';
 part 'kenwood_equipment.dart';
 part 'kenwood_lab599.dart';
+part 'kx3_driver.dart';
 
 /// `IF;` out, and the ~38-byte status packet back — much the largest TX
 /// watch of any driver here, because Kenwood is the only line with no

@@ -5843,6 +5843,66 @@ class Translations$settings$station$en {
 	/// en: 'The radio's spectrum data cannot reach this device'
 	String get spectrumNoUdp => 'The radio\'s spectrum data cannot reach this device';
 
+	/// en: 'Show KX3 I/Q panadapter'
+	String get kx3IqEnabled => 'Show KX3 I/Q panadapter';
+
+	/// en: 'Connect RX I/Q (or the PX3 RX I/Q PC output) to a true stereo line input. Enable RX I/Q on the KX3. A mono microphone cannot provide a panadapter. Audio is captured only while the spectrum is displayed; levels are relative, not calibrated dBm.'
+	String get kx3IqDescription => 'Connect RX I/Q (or the PX3 RX I/Q PC output) to a true stereo line input. Enable RX I/Q on the KX3. A mono microphone cannot provide a panadapter. Audio is captured only while the spectrum is displayed; levels are relative, not calibrated dBm.';
+
+	/// en: 'Stereo I/Q input'
+	String get kx3IqDevice => 'Stereo I/Q input';
+
+	/// en: 'Allow audio input and refresh devices'
+	String get kx3IqAllowInput => 'Allow audio input and refresh devices';
+
+	/// en: 'Refresh audio inputs'
+	String get kx3IqRefreshInputs => 'Refresh audio inputs';
+
+	/// en: 'I/Q sample rate'
+	String get kx3IqRate => 'I/Q sample rate';
+
+	/// en: 'Swap I and Q channels'
+	String get kx3IqSwap => 'Swap I and Q channels';
+
+	/// en: 'I/Q center correction (Hz)'
+	String get kx3IqOffset => 'I/Q center correction (Hz)';
+
+	/// en: 'Added to the CAT dial frequency to locate the center of the captured spectrum. Check a known signal after changing RX SHFT, band or mode. Leave blank for 0 Hz.'
+	String get kx3IqOffsetDescription => 'Added to the CAT dial frequency to locate the center of the captured spectrum. Check a known signal after changing RX SHFT, band or mode. Leave blank for 0 Hz.';
+
+	/// en: 'Select the stereo input connected to the KX3.'
+	String get kx3IqSelectDevice => 'Select the stereo input connected to the KX3.';
+
+	/// en: 'Choose 48, 96 or 192 kHz.'
+	String get kx3IqInvalidRate => 'Choose 48, 96 or 192 kHz.';
+
+	/// en: 'Enter a whole number from -24000 to 24000 Hz.'
+	String get kx3IqInvalidOffset => 'Enter a whole number from -24000 to 24000 Hz.';
+
+	/// en: 'Opening the KX3 stereo I/Q input…'
+	String get kx3IqStarting => 'Opening the KX3 stereo I/Q input…';
+
+	/// en: 'Waiting for the KX3 frequency.'
+	String get kx3IqWaitingForRadio => 'Waiting for the KX3 frequency.';
+
+	/// en: 'Allow audio input in the KX3 input selector and your system or browser settings, then reopen the spectrum.'
+	String get kx3IqPermissionDenied => 'Allow audio input in the KX3 input selector and your system or browser settings, then reopen the spectrum.';
+
+	/// en: 'The selected I/Q input is unavailable. Connect it, select it in the KX3 settings, then reopen the spectrum.'
+	String get kx3IqDeviceUnavailable => 'The selected I/Q input is unavailable. Connect it, select it in the KX3 settings, then reopen the spectrum.';
+
+	/// en: 'Audio capture is unavailable in this environment. In a browser, use HTTPS and allow microphone access.'
+	String get kx3IqUnsupported => 'Audio capture is unavailable in this environment. In a browser, use HTTPS and allow microphone access.';
+
+	/// en: 'The I/Q input must provide two audio channels. Select a true stereo line input.'
+	String get kx3IqInvalidFormat => 'The I/Q input must provide two audio channels. Select a true stereo line input.';
+
+	/// en: 'The input could not capture at the selected I/Q sample rate. Choose a supported rate in HaLo and the device settings, then reopen the spectrum.'
+	String get kx3IqSampleRateMismatch => 'The input could not capture at the selected I/Q sample rate. Choose a supported rate in HaLo and the device settings, then reopen the spectrum.';
+
+	/// en: 'The I/Q audio stream stopped or could not start. Check the stereo input, then reopen the spectrum.'
+	String get kx3IqFailed => 'The I/Q audio stream stopped or could not start. Check the stereo input, then reopen the spectrum.';
+
 	/// en: 'Cannot receive the K4’s LAN spectrum. Retrying…'
 	String get spectrumK4Unavailable => 'Cannot receive the K4’s LAN spectrum. Retrying…';
 
@@ -11772,6 +11832,26 @@ extension on Translations {
 			'settings.station.spectrumNoPanadapter' => 'This slice has no panadapter on the radio',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'The radio refused a DAX IQ stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'The radio\'s spectrum data cannot reach this device',
+			'settings.station.kx3IqEnabled' => 'Show KX3 I/Q panadapter',
+			'settings.station.kx3IqDescription' => 'Connect RX I/Q (or the PX3 RX I/Q PC output) to a true stereo line input. Enable RX I/Q on the KX3. A mono microphone cannot provide a panadapter. Audio is captured only while the spectrum is displayed; levels are relative, not calibrated dBm.',
+			'settings.station.kx3IqDevice' => 'Stereo I/Q input',
+			'settings.station.kx3IqAllowInput' => 'Allow audio input and refresh devices',
+			'settings.station.kx3IqRefreshInputs' => 'Refresh audio inputs',
+			'settings.station.kx3IqRate' => 'I/Q sample rate',
+			'settings.station.kx3IqSwap' => 'Swap I and Q channels',
+			'settings.station.kx3IqOffset' => 'I/Q center correction (Hz)',
+			'settings.station.kx3IqOffsetDescription' => 'Added to the CAT dial frequency to locate the center of the captured spectrum. Check a known signal after changing RX SHFT, band or mode. Leave blank for 0 Hz.',
+			'settings.station.kx3IqSelectDevice' => 'Select the stereo input connected to the KX3.',
+			'settings.station.kx3IqInvalidRate' => 'Choose 48, 96 or 192 kHz.',
+			'settings.station.kx3IqInvalidOffset' => 'Enter a whole number from -24000 to 24000 Hz.',
+			'settings.station.kx3IqStarting' => 'Opening the KX3 stereo I/Q input…',
+			'settings.station.kx3IqWaitingForRadio' => 'Waiting for the KX3 frequency.',
+			'settings.station.kx3IqPermissionDenied' => 'Allow audio input in the KX3 input selector and your system or browser settings, then reopen the spectrum.',
+			'settings.station.kx3IqDeviceUnavailable' => 'The selected I/Q input is unavailable. Connect it, select it in the KX3 settings, then reopen the spectrum.',
+			'settings.station.kx3IqUnsupported' => 'Audio capture is unavailable in this environment. In a browser, use HTTPS and allow microphone access.',
+			'settings.station.kx3IqInvalidFormat' => 'The I/Q input must provide two audio channels. Select a true stereo line input.',
+			'settings.station.kx3IqSampleRateMismatch' => 'The input could not capture at the selected I/Q sample rate. Choose a supported rate in HaLo and the device settings, then reopen the spectrum.',
+			'settings.station.kx3IqFailed' => 'The I/Q audio stream stopped or could not start. Check the stereo input, then reopen the spectrum.',
 			'settings.station.spectrumK4Unavailable' => 'Cannot receive the K4’s LAN spectrum. Retrying…',
 			'settings.station.spectrumK4RemoteUnavailable' => 'Cannot receive the K4’s remote spectrum',
 			'settings.station.spectrumScopeRefused' => 'The radio refused its scope commands',
@@ -12018,6 +12098,8 @@ extension on Translations {
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.antennaTypes.dipole' => 'Dipole',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Beam',
@@ -12038,8 +12120,6 @@ extension on Translations {
 			'settings.station.otherBrands' => 'Other Brands',
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
 			'settings.station.newAntenna' => 'New Antenna',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
@@ -12532,6 +12612,8 @@ extension on Translations {
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
 			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
+			_ => null,
+		} ?? switch (path) {
 			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
 			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened, and new contacts will not be saved. Open this log with that newer version instead.',
@@ -12552,8 +12634,6 @@ extension on Translations {
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
 			'confirmDevice.lookUp' => 'Look Up',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.codeNotFound' => 'No request matches that code. Codes expire after 10 minutes — ask the other device for a fresh one.',
 			'confirmDevice.linkExpired' => 'That link has expired. Ask the other device to show a new QR code.',
 			'confirmDevice.areYouSure' => ({required Object device}) => 'Link ${device} to this account?',

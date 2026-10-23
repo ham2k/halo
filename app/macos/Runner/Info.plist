@@ -99,7 +99,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Used to record the voice messages the app plays into your radio, from the microphone or sound device you choose.</string>
+	<string>Used to record voice messages from your chosen microphone or sound device, and display your radio's I/Q spectrum from a selected stereo input.</string>
 	<key>NSLocationUsageDescription</key>
 	<string>Used to suggest nearby activities (parks, summits), set the operation's grid square, and — when peer device sync is on — share your position with your own paired devices.</string>
 	<key>NSMainNibFile</key>
