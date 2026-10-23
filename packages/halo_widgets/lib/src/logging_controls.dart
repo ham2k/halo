@@ -1854,7 +1854,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         case 'power':
           specs.add(powerControlSpec(_radio, keyboardType: _decimalKeyboardType));
         case 'spotting':
-          specs.add(spottingControlSpec(_spotting, theme, selected: _selectedControlKey == 'spotting'));
+          specs.add(spottingControlSpec(_spotting, theme, selected: _selectedControlKey == 'spotting', onPressed: _focusCallAfterSpotPress));
         case 'notes':
           specs.add(notesControlSpec(theme, controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
         case 'more':
@@ -2537,6 +2537,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
     }
     return KeyEventResult.ignored;
+  }
+
+  /// The Spotting control's button — a spot, or starting or stopping
+  /// auto-respotting: either way the next thing to type is a callsign, not
+  /// more of a comment. Not on mobile without a
+  /// physical keyboard unless the comment already had one up — a tap with
+  /// nothing focused must not pop an uninvited one (logging-fields.md).
+  void _focusCallAfterSpotPress() {
+    if (!isMobilePlatform || hardwareKeyboardAttached.value || _spotting.commentFocus.hasFocus) _callFocus.requestFocus();
   }
 
   /// [focusCall] false leaves the focus where it is — for a wipe the operator

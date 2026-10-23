@@ -173,10 +173,10 @@ belongs there.
 
 That is an invariant, not a starting condition. The field's `autofocus`
 takes it at mount and a handful of paths assert it on purpose (a spot tap,
-the wipe after a log), but focus can fall to *nothing* in ways no caller is
-part of — a dialog or sheet closing over a panel that had nothing focused, a
-menu closing, a field in another pane being disposed, a stray `unfocus()` —
-and each one would leave the operator typing into nothing. So the panel
+the Spotting control's button, the wipe after a log), but focus can fall to
+*nothing* in ways no caller is part of — a dialog or sheet closing over a
+panel that had nothing focused, a menu closing, a field in another pane
+being disposed, a stray `unfocus()` — and each one would leave the operator typing into nothing. So the panel
 listens to the `FocusManager` and, whenever primary focus lands on nothing,
 gives it back to the callsign field at the end of the frame. "Nothing" is a null primary focus, one of the
 callsign field's own ancestor scopes — the root, the route's, the panel's —
@@ -224,8 +224,8 @@ it down; one opened over an idle phone never pops a keyboard nobody asked
 for. Keyboard state can draw none of these lines — it is down at every pop,
 and still up at the instant of either kind of blur — which is why the panel
 remembers instead. Nor does the hardware-keyboard flag override a
-dismissal, though it governs the autofocus and the spot tap: a device can
-report a hardware keyboard and still show the on-screen one (the simulator
+dismissal, though it governs the autofocus, the spot tap and the Spotting
+control's button: a device can report a hardware keyboard and still show the on-screen one (the simulator
 always does; an iPad in a keyboard case can), and then the dismissal the
 operator just made is the only thing worth believing.
 
@@ -274,6 +274,15 @@ focus itself (a deeplinked cold start gets it from the field's autofocus).
 Not on mobile without a physical keyboard, per the carve-out above: there
 the suggestion fills the fields without popping a keyboard over the call
 info the tap just surfaced.
+
+**Pressing the Spotting control's button focuses the callsign field.** The
+spot takes the comment with it, and the next thing to type is a callsign —
+focus left in the emptied comment would have it typed there. The control
+stays open, its source icons showing how the spot went. On mobile without a
+physical keyboard it does so only if the comment had the keyboard up: a
+press with nothing focused leaves it that way. Enter in the comment is the
+ladder's instead (see "Focus and the secondary controls"): it sends, closes
+the control, and returns to the main field the operator was last in.
 
 **Showing a hidden panel again returns the keyboard to it.** A host that
 keeps its panel mounted while another view is up — the Chasing view, behind

@@ -948,7 +948,7 @@ String _spotSkippedText(List<Map<String, dynamic>> sources, Map<String, Map<Stri
 /// The Spotting control's expanded row: the comment field, the send button,
 /// and one status icon per source on offer.
 class SpottingControlFields extends StatelessWidget {
-  const SpottingControlFields({super.key, required this.model, required this.state, required this.theme});
+  const SpottingControlFields({super.key, required this.model, required this.state, required this.theme, required this.onPressed});
 
   final SpottingControlModel model;
 
@@ -958,6 +958,10 @@ class SpottingControlFields extends StatelessWidget {
 
   /// The panel's accent theme — the row is painted on it.
   final ThemeData theme;
+
+  /// A press of the button is done with the comment — the panel puts the
+  /// keyboard back where it belongs.
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -1002,7 +1006,12 @@ class SpottingControlFields extends StatelessWidget {
             foregroundColor: theme.colorScheme.onTertiaryContainer,
             disabledBackgroundColor: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4),
           ),
-          onPressed: state.enabled && !model.sending ? model.press : null,
+          onPressed: state.enabled && !model.sending
+              ? () {
+                  onPressed();
+                  unawaited(model.press());
+                }
+              : null,
           icon: model.sending ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(MdiIcons.handWave),
           // Counting down to the next auto-respot: re-read every second.
           label: model.autoRespotting ? OncePerSecond(builder: (_, _) => Text(model.state.buttonLabel)) : Text(state.buttonLabel),
@@ -1098,7 +1107,7 @@ const spottingChipIcon = MdiIcons.handWave;
 
 /// The Spotting chip and its expanded fields, read from [model]. [selected]
 /// is the chip's own; see [spotOutcomeColor].
-SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData theme, {required bool selected}) {
+SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData theme, {required bool selected, required VoidCallback onPressed}) {
   final state = model.state;
   final outcome = model.outcome;
   final soon = model.respotSoon ? respotSoonColor(theme, selected: selected) : null;
@@ -1114,6 +1123,6 @@ SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData t
     liveIconColor: soon != null || outcome == null
         ? null
         : (base) => Color.lerp(base, spotOutcomeColor(theme, outcome, selected: selected), model.outcomeStrength)!,
-    expandedBuilder: (context) => SpottingControlFields(model: model, state: state, theme: theme),
+    expandedBuilder: (context) => SpottingControlFields(model: model, state: state, theme: theme, onPressed: onPressed),
   );
 }

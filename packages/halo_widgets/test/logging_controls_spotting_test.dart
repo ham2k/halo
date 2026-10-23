@@ -312,6 +312,105 @@ void main() {
     });
   });
 
+  group('Spotting button', () {
+    final comments = <String?>[];
+    Future<List<Map<String, dynamic>>> oneSource({required Map<String, dynamic> operation, Map<String, dynamic>? qso}) async => [
+      {'hookKey': 'pota'},
+    ];
+    Future<Map<String, Map<String, dynamic>>> recordingSend({
+      required List<Map<String, dynamic>> sources,
+      required Map<String, dynamic> operation,
+      Map<String, dynamic>? qso,
+      double? freq,
+      String? mode,
+      String? comment,
+      String? spotterCall,
+    }) async {
+      comments.add(comment);
+      return {
+        'pota': {'ok': true},
+      };
+    }
+
+    setUp(comments.clear);
+
+    FocusNode callFocus(WidgetTester tester) => tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).focusNode!;
+
+    Future<void> typeCommentAndPress(WidgetTester tester) async {
+      await tester.pumpWidget(
+        host(
+          spotting: SpottingHooks(suggestSpotSources: oneSource, sendSpot: recordingSend),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Self-spotting'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Comment'), 'CQ POTA');
+      await tester.pump();
+      await tester.tap(find.textContaining('Self-spot at'));
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Focus left in the comment, which the spot just emptied, has the next
+    // callsign typed into it. On a phone a touch outside the comment does
+    // not blur it, so nothing but the panel moves focus off it. (On desktop
+    // the click's blur lets the backstop reclaim the callsign field anyway,
+    // which would keep a test there green with the fix deleted.)
+    testWidgets('on mobile, the keyboard the comment had up moves to the callsign field', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await typeCommentAndPress(tester);
+        expect(comments, ['CQ POTA']);
+        expect(callFocus(tester).hasFocus, isTrue);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    Future<void> pressWithNothingFocused(WidgetTester tester) async {
+      await tester.pumpWidget(
+        host(
+          spotting: SpottingHooks(suggestSpotSources: oneSource, sendSpot: recordingSend),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Self-spotting'));
+      await tester.pumpAndSettle();
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pump();
+      await tester.tap(find.textContaining('Self-spot at'));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(comments, [null]);
+    }
+
+    // A press on an idle phone, nothing focused, must not pop a virtual
+    // keyboard nobody asked for (the mobile carve-out).
+    testWidgets('on mobile with nothing focused, a press leaves focus alone', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        await pressWithNothingFocused(tester);
+        expect(callFocus(tester).hasFocus, isFalse);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    // The keyboard clause, not the platform clause: with it dropped, an iPad
+    // keyboard user who clicks the button has nowhere for the next callsign
+    // to go.
+    testWidgets('on mobile with a hardware keyboard, a press focuses the callsign field', (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      hardwareKeyboardAttached.value = true;
+      try {
+        await pressWithNothingFocused(tester);
+        expect(callFocus(tester).hasFocus, isTrue);
+      } finally {
+        hardwareKeyboardAttached.value = false;
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  });
+
   group('Spotting control pill label', () {
     // The collapsed pill is always one of the two short, fixed labels —
     // never the longer dynamic button text ("Self-spot at 7.200", "First

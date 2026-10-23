@@ -357,7 +357,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SpottingControlFields(model: h.model, state: h.model.state, theme: theme),
+            body: SpottingControlFields(model: h.model, state: h.model.state, theme: theme, onPressed: () {}),
           ),
         ),
       );
@@ -375,7 +375,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: SpottingControlFields(model: h.model, state: h.model.state, theme: buildHaLoTheme(Brightness.light)),
+            body: SpottingControlFields(model: h.model, state: h.model.state, theme: buildHaLoTheme(Brightness.light), onPressed: () {}),
           ),
         ),
       );
@@ -1210,7 +1210,7 @@ void main() {
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
-              body: SpottingControlFields(model: h.model, state: h.model.state, theme: theme),
+              body: SpottingControlFields(model: h.model, state: h.model.state, theme: theme, onPressed: () {}),
             ),
           ),
         );
@@ -1225,7 +1225,7 @@ void main() {
       final h = await selfSpot(tester, pota: true, sota: true);
       await h.model.press();
       final theme = buildHaLoTheme(Brightness.light);
-      SecondaryControlSpec spec() => spottingControlSpec(h.model, theme, selected: false);
+      SecondaryControlSpec spec() => spottingControlSpec(h.model, theme, selected: false, onPressed: () {});
       await tester.pump(_every - const Duration(milliseconds: 20500)); // 20.5 s left
       expect(h.model.respotSoon, isFalse);
       expect(spec().liveTint, isNull);
@@ -1267,7 +1267,7 @@ void main() {
       await h.model.press();
       await tester.pump(_every - const Duration(seconds: 10));
       expect(h.model.respotSoon, isFalse);
-      expect(spottingControlSpec(h.model, buildHaLoTheme(Brightness.light), selected: false).liveTint, isNull);
+      expect(spottingControlSpec(h.model, buildHaLoTheme(Brightness.light), selected: false, onPressed: () {}).liveTint, isNull);
       h.model.dispose();
     });
 
