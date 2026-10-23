@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:halo_widgets/halo_widgets.dart' show MdiIcons;
+import 'package:halo_widgets/halo_widgets.dart' show EsmFacts, MdiIcons;
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
@@ -95,7 +95,13 @@ void main() {
   }
 
   final sent = <int>[];
-  Widget host({bool suppressed = false, PanelRenderContext? templateContext, bool phone = false, bool enterSends = false}) => TranslationProvider(
+  Widget host({
+    bool suppressed = false,
+    PanelRenderContext? templateContext,
+    bool phone = false,
+    bool enterSends = false,
+    ValueNotifier<EsmFacts?>? esmFacts,
+  }) => TranslationProvider(
     child: MaterialApp(
       home: Scaffold(
         body: Column(
@@ -108,6 +114,7 @@ void main() {
               templateContext: templateContext,
               phone: phone,
               enterSends: enterSends,
+              esmFacts: esmFacts,
             ),
           ],
         ),
@@ -145,6 +152,82 @@ void main() {
     await tester.pump();
     // Off comes back as Run, so the next tap starts where a contest does.
     expect(services.cat.enterSends.value, (on: false, running: true));
+  });
+
+  group('the next Enter', () {
+    const answering = (callEmpty: false, canLog: true, answered: false, hasExchange: true, exchangeCopied: false, callFocused: false, incompleteCall: false);
+
+    bool tinted(WidgetTester tester, String label) {
+      final button = find.ancestor(of: find.widgetWithText(InkWell, label), matching: find.byType(Material)).first;
+      return tester.widget<Material>(button).color != Colors.transparent;
+    }
+
+    // The tint is the operator's read of what Enter is about to key, so it
+    // must follow the same step table Enter does — the side of the pileup
+    // as much as the entry — and show nothing the Enter would not send.
+    testWidgets('tints the messages ESM would key, by the side of the pileup', (tester) async {
+      await connectPlaceholder(tester);
+      for (final (n, label) in [(1, 'CQ'), (2, 'EXCH'), (3, 'TU'), (4, 'MY'), (5, 'HIS'), (8, 'AGN')]) {
+        await services.settings.setCwMessage(n, label);
+        await services.settings.setCwMessageLabel(n, label);
+      }
+      final facts = ValueNotifier<EsmFacts?>(null);
+      addTearDown(facts.dispose);
+      services.cat.setEnterSends(on: true, running: true);
+      await tester.pumpWidget(host(enterSends: true, esmFacts: facts));
+      services.cat.showKeyerArea();
+      await tester.pump(const Duration(seconds: 1));
+      // A tinted label, and `+log` on the one carrying the submit button's
+      // icon: an Enter that logs must say so, and one that does not must not.
+      List<String> lit() => [
+        for (final label in ['CQ', 'EXCH', 'TU', 'MY', 'HIS', 'AGN'])
+          if (tinted(tester, label))
+            find.descendant(of: find.widgetWithText(InkWell, label), matching: find.byIcon(MdiIcons.upload)).evaluate().isEmpty ? label : '$label+log',
+      ];
+
+      expect(lit(), isEmpty, reason: 'nothing published: no Enter would reach ESM');
+
+      facts.value = (callEmpty: true, canLog: false, answered: false, hasExchange: true, exchangeCopied: false, callFocused: true, incompleteCall: false);
+      await tester.pump();
+      expect(lit(), ['CQ']);
+
+      facts.value = answering;
+      await tester.pump();
+      expect(lit(), ['EXCH', 'HIS']);
+
+      facts.value = (callEmpty: false, canLog: true, answered: true, hasExchange: true, exchangeCopied: true, callFocused: false, incompleteCall: false);
+      await tester.pump();
+      expect(lit(), ['TU+log']);
+
+      services.cat.setEnterSends(running: false);
+      await tester.pump();
+      expect(lit(), ['EXCH+log'], reason: 'S&P sends the exchange and logs');
+
+      facts.value = answering;
+      await tester.pump();
+      expect(lit(), ['MY'], reason: 'S&P calls with our call');
+
+      services.cat.setEnterSends(on: false);
+      await tester.pump();
+      expect(lit(), isEmpty, reason: 'with ESM off Enter only logs');
+    });
+
+    // Voice plays memories and the operator says the call: a memory tinted
+    // for their call would be one Enter does not play.
+    testWidgets('in a Phone mode, tints the memories but never their call', (tester) async {
+      await connectPlaceholder(tester);
+      final facts = ValueNotifier<EsmFacts?>(answering);
+      addTearDown(facts.dispose);
+      services.cat.setEnterSends(on: true, running: true);
+      await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true, enterSends: true, esmFacts: facts));
+      services.cat.showKeyerArea();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(tinted(tester, 'M2'), isTrue);
+      expect(tinted(tester, 'M5'), isFalse);
+      expect(tinted(tester, 'M1'), isFalse);
+    });
   });
 
   testWidgets('takes no room while nothing has been keyed', (tester) async {

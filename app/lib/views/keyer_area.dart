@@ -30,6 +30,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -83,6 +84,11 @@ class KeyerArea extends StatefulWidget {
   /// Whether the Enter Sends Messages pill is offered — its experiment.
   final bool enterSends;
 
+  /// What the next Enter would hand ESM ([LoggingSession.onEsmFacts]): the
+  /// buttons it would key are tinted, so the operator sees what Enter sends
+  /// before pressing it. Null tints nothing.
+  final ValueListenable<EsmFacts?>? esmFacts;
+
   const KeyerArea({
     super.key,
     required this.cat,
@@ -92,6 +98,7 @@ class KeyerArea extends StatefulWidget {
     this.phone = false,
     this.suppressed = false,
     this.enterSends = false,
+    this.esmFacts,
   });
 
   @override
@@ -341,11 +348,16 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                               Visibility(
                                 visible: !widget.phone && typing == null && progress == null && voice == null && !waiting,
                                 maintainState: true,
-                                child: _MessageButtons(services: widget.services, onSendMessage: widget.onSendMessage, templateContext: widget.templateContext),
+                                child: _MessageButtons(
+                                  services: widget.services,
+                                  onSendMessage: widget.onSendMessage,
+                                  templateContext: widget.templateContext,
+                                  esmFacts: widget.enterSends ? widget.esmFacts : null,
+                                ),
                               ),
                               Visibility(
                                 visible: widget.phone && progress == null && voice == null && !waiting,
-                                child: _VoiceButtons(services: widget.services),
+                                child: _VoiceButtons(services: widget.services, esmFacts: widget.enterSends ? widget.esmFacts : null),
                               ),
                               // Keyed on the message's id, so a new one restarts the
                               // animation from its own beginning — while a re-report of
@@ -417,6 +429,21 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
 /// the bridge one render per label, not one per letter.
 const cwLabelRenderDelay = Duration(milliseconds: 300);
 
+/// The messages the next Enter keys, by number — none while ESM is off or
+/// that Enter keys nothing (docs/design/logging-fields.md § Enter Sends
+/// Messages) — and [logs], the last of them when that Enter also logs the
+/// contact. [phone] leaves out their call, which no memory holds.
+({Set<int> keys, int? logs}) _esmNext(CatService cat, EsmFacts? facts, {bool phone = false}) {
+  final esm = cat.enterSends.value;
+  final step = facts == null || !esm.on ? null : esmStepFor(facts, running: esm.running);
+  if (step == null) return (keys: const {}, logs: null);
+  final keys = [
+    for (final message in step.send)
+      if (!phone || message != EsmMessage.hisCall) CwMessageSet.esmKeys[message]!,
+  ];
+  return (keys: keys.toSet(), logs: step.then == EsmThen.log ? keys.lastOrNull : null);
+}
+
 /// While nothing is keying: one outlined button per message that has text,
 /// its key's number and its label (the key itself when there is none) —
 /// the function keys for a mouse or a finger. A label written as a template
@@ -426,8 +453,9 @@ class _MessageButtons extends StatefulWidget {
   final HaLoServices services;
   final void Function(int n)? onSendMessage;
   final PanelRenderContext? templateContext;
+  final ValueListenable<EsmFacts?>? esmFacts;
 
-  const _MessageButtons({required this.services, required this.onSendMessage, required this.templateContext});
+  const _MessageButtons({required this.services, required this.onSendMessage, required this.templateContext, required this.esmFacts});
 
   @override
   State<_MessageButtons> createState() => _MessageButtonsState();
@@ -583,13 +611,14 @@ class _MessageButtonsState extends State<_MessageButtons> {
     final settings = services.settings;
     final m = context.t.settings.radio.cwMessages;
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, services.cat]),
+      listenable: Listenable.merge([settings, services.cat, services.cat.enterSends, ?widget.esmFacts]),
       builder: (context, _) {
         final theme = Theme.of(context);
         // Nothing to key CW with at all, connected or not — say so where the
         // buttons would be, rather than drawing buttons that can never work.
         if (!services.cat.designatedKeyIsKeyer) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
         final enabled = services.cat.canKeyCw && widget.onSendMessage != null;
+        final next = enabled ? _esmNext(services.cat, widget.esmFacts?.value) : (keys: const <int>{}, logs: null);
         // The pill's geometry and type, outlined in the chips' accent
         // rather than filled: these ACT, the pill only shows.
         var color = theme.colorScheme.tertiary;
@@ -611,10 +640,12 @@ class _MessageButtonsState extends State<_MessageButtons> {
                   Padding(
                     padding: const EdgeInsets.only(right: Space.sm),
                     child: Material(
-                      color: Colors.transparent,
+                      // What the next Enter keys: a faint wash of the accent,
+                      // the outline heavier.
+                      color: next.keys.contains(n) ? theme.colorScheme.tertiary.withValues(alpha: 0.18) : Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: borderRadius,
-                        side: BorderSide(color: color),
+                        side: BorderSide(color: color, width: next.keys.contains(n) ? 2 : 1),
                       ),
                       child: InkWell(
                         borderRadius: borderRadius,
@@ -638,6 +669,8 @@ class _MessageButtonsState extends State<_MessageButtons> {
                                 _labelFor(n, m.key(n: n)),
                                 style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
                               ),
+                              // The submit button's icon: this Enter logs too.
+                              if (next.logs == n) ...[const SizedBox(width: Space.xs), Icon(MdiIcons.upload, size: 14, color: textColor)],
                             ],
                           ),
                         ),
@@ -674,8 +707,9 @@ class _NotSupported extends StatelessWidget {
 /// worth seeing before the rig is on.
 class _VoiceButtons extends StatelessWidget {
   final HaLoServices services;
+  final ValueListenable<EsmFacts?>? esmFacts;
 
-  const _VoiceButtons({required this.services});
+  const _VoiceButtons({required this.services, required this.esmFacts});
 
   @override
   Widget build(BuildContext context) {
@@ -683,11 +717,12 @@ class _VoiceButtons extends StatelessWidget {
     final cat = services.cat;
     final m = context.t.settings.radio.voiceMessages;
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, cat]),
+      listenable: Listenable.merge([settings, cat, cat.enterSends, ?esmFacts]),
       builder: (context, _) {
         // A radio with no voice memories to play — see the CW buttons.
         if (!cat.radio1HasVoiceMemories) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
         final enabled = cat.canPlayVoice;
+        final next = enabled ? _esmNext(cat, esmFacts?.value, phone: true) : (keys: const <int>{}, logs: null);
         final count = enabled ? cat.voiceMemoryCount : SettingsService.voiceMessageCount;
         final theme = Theme.of(context);
         var color = theme.colorScheme.tertiary;
@@ -709,10 +744,12 @@ class _VoiceButtons extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(right: Space.sm),
                     child: Material(
-                      color: Colors.transparent,
+                      // What the next Enter keys: a faint wash of the accent,
+                      // the outline heavier.
+                      color: next.keys.contains(n) ? theme.colorScheme.tertiary.withValues(alpha: 0.18) : Colors.transparent,
                       shape: RoundedRectangleBorder(
                         borderRadius: borderRadius,
-                        side: BorderSide(color: color),
+                        side: BorderSide(color: color, width: next.keys.contains(n) ? 2 : 1),
                       ),
                       child: InkWell(
                         borderRadius: borderRadius,
@@ -735,6 +772,8 @@ class _VoiceButtons extends StatelessWidget {
                                 voiceMessageLabelFor(cat, n, m.key(n: n)),
                                 style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
                               ),
+                              // The submit button's icon — see the CW buttons.
+                              if (next.logs == n) ...[const SizedBox(width: Space.xs), Icon(MdiIcons.upload, size: 14, color: textColor)],
                             ],
                           ),
                         ),

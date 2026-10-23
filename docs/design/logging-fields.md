@@ -647,6 +647,18 @@ depends on where the contact stands**, decided by `esmStep`:
   [templates.md](../extensions/templates.md)). Voice keeps one sequence at
   the Enter: a memory renders nothing, and a second sequence would cut the
   first off.
+- **The keyer area shows what the next Enter keys.** Its buttons for that
+  step's messages get a faint wash of the accent and a heavier outline. On
+  a step that also logs, the last of those buttons carries the submit
+  button's upload icon. The panel publishes the facts `esmStep` reads
+  (`LoggingSession.onEsmFacts`) each time one changes, read once the
+  change has settled, since a populate writes the call before the exchange.
+  The keyer area combines them with the pill's side of the pileup. Enter
+  reads the same getter, so the tint and the keying cannot disagree.
+  Nothing is tinted when the Enter would stop before ESM (a locked form,
+  an edit, a command in the call field, the band-or-frequency refusal) or
+  would key nothing. In a Phone mode their call is never tinted, because
+  no memory plays it.
 - **An Enter never queues what is already going out.** A step's message
   whose text is keying or waiting in the queue — whoever sent it — is not
   queued again, so a double Enter keys one CQ, not two, and a repeating CQ

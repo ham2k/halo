@@ -400,16 +400,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Completed by the log an ESM step handed off to — see [EnterSends.send].
   Completer<Map<String, dynamic>?>? _esmLogged;
 
-  /// Enter Sends Messages: keys what [esmStep] picks and answers whether this
-  /// Enter ends here. False means go on and log.
-  bool _enterSendsMessages(EnterSends esm) {
+  /// What [esmStep] reads off the entry as it stands — one reading for the
+  /// Enter and for [_publishEsmFacts], so what the app shows is what the
+  /// Enter does.
+  EsmFacts get _esmFacts {
     final exchange = _esmExchangeFields;
     // The call the messages key, not the field: on a stack, answering NK2Y
     // and then moving to KI2D is a new station to answer, not KI2D's thanks.
-    final calls = _callText.templateCalls;
-    final call = calls.call;
-    final step = esmStep(
-      running: esm.running,
+    final call = _callText.templateCalls.call;
+    return (
       callEmpty: _callController.text.trim().isEmpty,
       canLog: _canLog,
       answered: call.isNotEmpty && _esmAnsweredCall == call,
@@ -418,6 +417,47 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       callFocused: _callFocus.hasFocus,
       incompleteCall: isIncompleteCall(call),
     );
+  }
+
+  /// What [LoggingSession.onEsmFacts] last heard — starting with nothing, so
+  /// the first publish always goes out.
+  EsmFacts? _publishedEsmFacts;
+  bool _esmFactsPublished = false;
+  bool _esmFactsScheduled = false;
+
+  /// Tells the app what the next Enter would hand ESM, when that changed.
+  /// Null for an Enter that stops before ESM in [_log]: a locked form, an
+  /// edit, a command, the band-or-frequency refusal.
+  ///
+  /// Read in a microtask, once per burst of changes: the call field
+  /// notifies first in a populate or a caret move, and the exchange values
+  /// written after it notify nobody, so a reading taken at the notification
+  /// would describe an entry half-written.
+  void _publishEsmFacts() {
+    if (_esmFactsScheduled || widget.session.onEsmFacts == null) return;
+    _esmFactsScheduled = true;
+    scheduleMicrotask(() {
+      _esmFactsScheduled = false;
+      final publish = widget.session.onEsmFacts;
+      if (publish == null || !mounted) return;
+      final facts =
+          _writeRefusal != null || widget.session.editingQso != null || _command.hasExecutableCommand || (_canLog && _radio.freq == null && _radio.band == null)
+          ? null
+          : _esmFacts;
+      if (_esmFactsPublished && facts == _publishedEsmFacts) return;
+      _esmFactsPublished = true;
+      _publishedEsmFacts = facts;
+      publish(facts);
+    });
+  }
+
+  /// Enter Sends Messages: keys what [esmStep] picks and answers whether this
+  /// Enter ends here. False means go on and log.
+  bool _enterSendsMessages(EnterSends esm) {
+    final exchange = _esmExchangeFields;
+    final calls = _callText.templateCalls;
+    final call = calls.call;
+    final step = esmStepFor(_esmFacts, running: esm.running);
     if (step == null) return false;
     // A step that logs hands over what the entry is AFTER the log too, for
     // the messages that speak to it — the thanks, which may name the next
@@ -433,6 +473,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         return true;
       case EsmThen.toExchange:
         _esmAnsweredCall = call;
+        _publishEsmFacts();
         final empty = exchange.where((field) => _exchange.valueOf(field.key).trim().isEmpty);
         // Reports only: Rcvd, for the report they give us; with the reports
         // hidden, State or Grid — never our own serial — else the call field
@@ -488,6 +529,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// singleton and the notification can land mid-teardown.
   void _onClockTravelChanged() {
     if (mounted) setState(() {});
+    _publishEsmFacts();
   }
 
   /// Whether the form is a read-only view: a staged delete, an
@@ -654,6 +696,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     _time.seedFields();
     _callController.addListener(_onCallChanged);
+    // From the call field, a second Enter with nothing copied answers again
+    // rather than asking again (esmStep's callFocused).
+    _callFocus.addListener(_publishEsmFacts);
+    _publishEsmFacts();
     _command.bind(widget.commands.interpretationUpdates);
     _radio.bind();
     _time.bind();
@@ -803,6 +849,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _syncController(oldWidget);
     _syncRadioUpdates(oldWidget);
     if (widget.spotting.respotInterval != oldWidget.spotting.respotInterval) _spotting.followIntervalSetting();
+    // An edit opening or closing, or a contest's exchange fields arriving —
+    // none of them touches a field this hears otherwise.
+    _publishEsmFacts();
     if (_syncEditingQso(oldWidget)) return;
     // Nothing below applies while editing an existing QSO — a suggestion or
     // a refs change must never clobber an in-progress edit.
@@ -1384,6 +1433,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _onModelChanged() {
     if (!mounted) return;
     setState(() {});
+    _publishEsmFacts();
   }
 
   /// Seeds the Radio control from the operation's `vfoA`
@@ -2336,6 +2386,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // An emptied call field ends ESM's contact: without this, the same call
     // typed again could be thanked and logged without ever being answered.
     if (_callController.text.trim().isEmpty) _esmAnsweredCall = null;
+    _publishEsmFacts();
     if (_draft.isPopulating) return;
     // Past the guard, the change is the operator's own — typing, or the clear
     // that `_wipe` does — which is exactly what the spots list wants to hear

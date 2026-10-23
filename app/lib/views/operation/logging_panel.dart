@@ -299,6 +299,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// _onSettingsChanged like _keyerEnabled.
   late bool _esmEnabled = widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
 
+  /// What the next Enter would hand ESM, as the panel last published it —
+  /// what the keyer area highlights the next messages from.
+  final _esmFacts = ValueNotifier<EsmFacts?>(null);
+
   // Whether the Radio control's icon should read as CAT-configured.
   late bool _hasConfiguredRadio = _computeHasConfiguredRadio();
 
@@ -439,6 +443,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   @override
   void dispose() {
+    _esmFacts.dispose();
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.radio.removeListener(_onRadioChanged);
     widget.services.cat.removeListener(_onCatChanged);
@@ -1127,6 +1132,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         // A call typed over a CQ stops it — see CatService.stopMessageOne.
         onCallTyped: _keyerEnabled ? widget.services.cat.stopMessageOne : null,
         enterSends: _enterSends,
+        onEsmFacts: _keyerEnabled && _esmEnabled ? (facts) => _esmFacts.value = facts : null,
         editingQso: _selectedQso,
         suggestedQso: widget.suggestedQso,
         logRequest: widget.logRequest,
@@ -1238,6 +1244,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 templateContext: widget.cwTemplateContext,
                 phone: widget.keyingPhone,
                 enterSends: _esmEnabled,
+                esmFacts: _esmFacts,
                 suppressed: _selectedQso != null,
               )
             : null,

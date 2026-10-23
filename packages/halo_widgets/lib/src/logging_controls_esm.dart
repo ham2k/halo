@@ -105,3 +105,20 @@ EsmStep? esmStep({
   if (!copied) return (send: const [], then: EsmThen.toExchange);
   return (send: const [EsmMessage.exchange], then: EsmThen.log);
 }
+
+/// What [esmStep] reads off the entry — all of it but the side of the
+/// pileup, which the app holds. A record, so a repeat compares equal and
+/// publishes nothing.
+typedef EsmFacts = ({bool callEmpty, bool canLog, bool answered, bool hasExchange, bool exchangeCopied, bool callFocused, bool incompleteCall});
+
+/// [esmStep] for [facts], on the side [running] says.
+EsmStep? esmStepFor(EsmFacts facts, {required bool running}) => esmStep(
+  running: running,
+  callEmpty: facts.callEmpty,
+  canLog: facts.canLog,
+  answered: facts.answered,
+  hasExchange: facts.hasExchange,
+  exchangeCopied: facts.exchangeCopied,
+  callFocused: facts.callFocused,
+  incompleteCall: facts.incompleteCall,
+);

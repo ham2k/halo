@@ -249,6 +249,7 @@ class LoggingSession {
     this.onWalkQsoList,
     this.escapeClaimed,
     this.enterSends,
+    this.onEsmFacts,
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.controller,
@@ -371,6 +372,14 @@ class LoggingSession {
   /// asks — it is a deliberate "log this", not the keyboard's rhythm through
   /// an exchange.
   final EnterSends? Function()? enterSends;
+
+  /// What the next keyboard Enter would hand [esmStep], each time it changes
+  /// — so the app can show which messages that Enter keys before it is
+  /// pressed. Null while no Enter would reach ESM: editing a logged contact,
+  /// a command in the call field, a contact the band check would refuse.
+  /// Pushed rather than asked like [enterSends]: these are the panel's own
+  /// facts, and nothing outside it hears them change.
+  final ValueChanged<EsmFacts?>? onEsmFacts;
 
   /// Notifies the host that the QSO being composed changed — every field,
   /// not just the callsign, and no more than once per distinct draft.

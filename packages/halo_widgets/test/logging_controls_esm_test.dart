@@ -154,8 +154,10 @@ void main() {
       bool twoFields = false,
       LoggingPreferences? prefs,
       List<Map<String, dynamic>>? controls,
+      ValueChanged<EsmFacts?>? onEsmFacts,
+      _TunedVfoStore? radio,
     }) {
-      final radio = _TunedVfoStore();
+      radio ??= _TunedVfoStore();
       return MaterialApp(
         home: Scaffold(
           body: LoggingControls(
@@ -173,7 +175,7 @@ void main() {
                   : operation,
               qsosRepository: qsos,
             ),
-            session: LoggingSession(enterSends: enterSends),
+            session: LoggingSession(enterSends: enterSends, onEsmFacts: onEsmFacts),
             prefs: prefs ?? const LoggingPreferences(),
             radio: RadioHookup(radioService: radio, radioUpdates: radio),
             activities: ActivityHooks(activityControls: controls ?? [if (contest && twoFields) name, if (contest) exchange]),
@@ -489,7 +491,65 @@ void main() {
       expect(sent.last, 'myCall @ W1AW');
       expect(await logged(tester), hasLength(1));
     });
+
+    // The app tints the messages the next Enter keys from what the panel
+    // publishes, so every fact that moves the step must be published when it
+    // moves: the call typed, the first step remembered, the focus back in the
+    // call field, the exchange copied, the wipe. A highlight that trails any
+    // of them shows the operator a message other than the one Enter keys.
+    testWidgets('what the panel publishes predicts what each Enter keys', (tester) async {
+      EsmFacts? published;
+      await tester.pumpWidget(host(enterSends: esm(), contest: true, onEsmFacts: (facts) => published = facts));
+      await tester.pump();
+
+      Future<void> enterAsPredicted(String reason) async {
+        final step = published == null ? null : esmStepFor(published!, running: true);
+        final predicted = step?.send.map((m) => m.name).join('+');
+        sent.clear();
+        await enter(tester);
+        expect(sent.map((s) => s.split(' @ ').first).firstOrNull, predicted, reason: reason);
+      }
+
+      await tester.tap(field('Their call'));
+      await tester.pump();
+      await enterAsPredicted('the empty call field');
+      await tester.enterText(field('Their call'), 'W1AW');
+      await enterAsPredicted('the call typed');
+      await enterAsPredicted('answered, nothing copied');
+      // By way of Rcvd, and by focus alone — the keyboard's way back, which
+      // moves no caret: leaving an exchange field and tapping into the call
+      // field each publish on their own, so neither would show a call
+      // field's focus going unheard.
+      await tester.tap(field('Rcvd'));
+      await tester.pump();
+      tester.widget<TextField>(field('Their call')).focusNode!.requestFocus();
+      await tester.pump();
+      await enterAsPredicted('back in the call field');
+      await tester.enterText(field('Exch'), 'MA');
+      await enterAsPredicted('the exchange copied');
+      expect(await logged(tester), hasLength(1));
+      await enterAsPredicted('the entry the log wiped');
+    });
+
+    // Enter refuses a contact with neither band nor frequency before ESM is
+    // asked, so nothing it would key may be shown as about to go.
+    testWidgets('a contact the band check would refuse publishes nothing to key', (tester) async {
+      EsmFacts? published;
+      await tester.pumpWidget(host(enterSends: esm(), radio: _UntunedVfoStore(), onEsmFacts: (facts) => published = facts));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'W1AW');
+      await tester.pump();
+
+      expect(published, isNull);
+      await enter(tester);
+      expect(sent, isEmpty);
+    });
   });
+}
+
+class _UntunedVfoStore extends _TunedVfoStore {
+  @override
+  Vfo get vfoA => const Vfo();
 }
 
 class _TunedVfoStore extends ChangeNotifier implements VfoStore {
