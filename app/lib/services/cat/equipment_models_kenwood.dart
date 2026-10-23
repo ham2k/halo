@@ -4,11 +4,13 @@
 // The radios that speak Kenwood CAT: Kenwood's own, Elecraft's, and the QRP
 // Labs, BG2FX and Lab599 rigs that answer the same protocol.
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'driver.dart';
 import 'drivers/kenwood_cat_codec.dart' show kxVoiceMemoryCount;
 import 'drivers/kenwood_driver.dart';
+import 'drivers/meter_calibration.dart' show meterInfoConfigKey;
 import 'equipment.dart';
 import 'equipment_brands.dart';
 import 'equipment_registry.dart';
@@ -337,8 +339,8 @@ List<Map<String, dynamic>> _elecraftSerialNotes() => [
 /// Lab599 TX-500, over a CAT cable of the operator's own (Lab599's AD-502,
 /// or a LiNK500's) at the 9600 the radio ships on.
 ///
-/// Written from Lab599's getting-started guide and a third-party command
-/// reference (github.com/rdcm/lab599-cat), not from a capture. The radio
+/// Written from Lab599's getting-started guide and its CAT protocol
+/// reference, rev. 3, not from a capture. The radio
 /// offers two CAT protocols in its menu, and the session tells them apart by
 /// `ID;` — see [KenwoodModeDialect.lab599]. No keyer, no voice memories and
 /// no `DA`: none is in that reference.
@@ -361,9 +363,9 @@ const tx500Model = EquipmentModel(
 
 /// Lab599 TX-500MP — the same protocol as [tx500Model], answering `ID505;`
 /// instead of `ID500;` on LAB599. Over USB through a LiNK500MP or an AD-511
-/// cable, or over Bluetooth through a LiNK500MP: Classic Bluetooth on a
-/// computer, where it pairs as two serial ports and CAT is one of them, and
-/// Bluetooth LE in its iOS mode (the derived `tx500mp-ble`). It can mix its
+/// cable, or over Bluetooth through a LiNK500MP: Classic Bluetooth in its
+/// Mode 3, on a computer, where it pairs as two serial ports and CAT is one
+/// of them, and Bluetooth LE in its Mode 4 (the derived `tx500mp-ble`). It can mix its
 /// GPS receiver's NMEA into the CAT channel, which the session drops — see
 /// `AsciiCatFramer.dropsNmea`. Lab599's other interface, the LiNK500 for any
 /// radio, carries CAT over USB only; its Bluetooth reaches the TNC.
@@ -397,12 +399,16 @@ const _lab599Overrides = {
   KenwoodDriver.cwDialectKey: '',
   KenwoodDriver.voiceDialectKey: '',
   KenwoodDriver.voiceMemoriesKey: 0,
+  'maxWatts': 10,
+  meterInfoConfigKey: 'lab599/tx500',
 };
 
 String _tx500Name() => t.settings.station.models.tx500;
 
 String _tx500mpName() => t.settings.station.models.tx500mp;
 
+/// On iOS only the Bluetooth LE pairing is offered (an iPhone has no serial
+/// port), so the notes there are that one connection's, Mode 4 first.
 List<Map<String, dynamic>> _lab599Notes() => [
   {
     'type': 'markdown',
@@ -410,6 +416,6 @@ List<Map<String, dynamic>> _lab599Notes() => [
     'title': t.settings.station.troubleshootingNotes,
     'text':
         '**${t.settings.station.lab599TroubleshootingTitle}**\n\n'
-        '${t.settings.station.lab599Troubleshooting}',
+        '${!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS ? t.settings.station.lab599TroubleshootingIos : t.settings.station.lab599Troubleshooting}',
   },
 ];

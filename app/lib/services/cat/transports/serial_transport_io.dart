@@ -221,6 +221,13 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   @override
   String get key => transportKey;
 
+  /// iOS gives an app no serial port: no USB serial host, and a Bluetooth
+  /// serial profile only to MFi accessories. A radio reaches an iPhone or
+  /// iPad over a Bluetooth LE bridge or the network instead. Covers
+  /// `BluetoothSerialTransport` too, which is this transport.
+  @override
+  bool get isSupportedOnThisPlatform => defaultTargetPlatform != TargetPlatform.iOS;
+
   @override
   List<SerialPortOption> get availablePorts => debugPortEnumerator?.call() ?? (Platform.isAndroid ? _cachedAndroidPortOptions : availableSerialPorts());
 

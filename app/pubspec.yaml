@@ -254,6 +254,7 @@ flutter:
     - lib/services/cat/drivers/info/yaesu/
     - lib/services/cat/drivers/info/icom/
     - lib/services/cat/drivers/info/kenwood/
+    - lib/services/cat/drivers/info/lab599/
     - assets/images/
     - assets/images/releases/
     - assets/release-notes.yaml

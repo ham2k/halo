@@ -39,12 +39,14 @@ import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
 import 'k4_spectrum.dart';
 import 'keyer_config.dart';
+import 'meter_calibration.dart';
 import 'optional_read.dart';
 import 'poll_config.dart';
 import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 part 'k4_spectrum_session.dart';
+part 'kenwood_lab599.dart';
 
 class KenwoodDriver extends EquipmentDriver {
   const KenwoodDriver() : isK4 = false, lanSpectrum = false;
@@ -167,10 +169,29 @@ class KenwoodDriver extends EquipmentDriver {
     passbandDialectKey,
     antennaDialectKey,
     modeDialectKey,
+    meterInfoConfigKey,
+    'maxWatts',
   };
 
   @override
   int get telemetryWatchBytes => kenwoodTxWatchBytes;
+
+  /// Per node: only the TX-500 line reads meters, so any other Kenwood's
+  /// placeholder is its watch's alone.
+  @override
+  Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
+    const {},
+    cycleBytes: kenwoodTxWatchBytes + (modeDialectFrom(config) == KenwoodModeDialect.lab599 ? lab599PttBytes + lab599MeterBytes : 0),
+    baudRate: serialBaudRateOrNull(config),
+  );
+
+  /// Only the TX-500 line, whose `SM0;` reads power out and `VL;` the supply
+  /// without touching the front panel. Every other radio here meters through
+  /// `RM`, which changes the meter the operator is looking at.
+  @override
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) => modeDialectFrom(config) != KenwoodModeDialect.lab599
+      ? const {}
+      : {if (calibrationFor(config)?.has(MeterTable.powerFraction) ?? false) RadioMeter.powerOut, RadioMeter.supplyVolts};
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
@@ -284,7 +305,9 @@ const kenwoodPassbandReadEvery = 5;
 const kenwoodAntennaReadEvery = 5;
 
 class KenwoodSession
+    with _Lab599
     implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
+  @override
   final EquipmentSink _sink;
   final bool isK4;
   num? _pendingK4Power;
@@ -309,17 +332,27 @@ class KenwoodSession
   late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestState, slow: idlePollIntervalFor(_config));
 
   /// Watches for the operator to key the rig, by asking for the `IF` packet
-  /// that carries the flag — see [_handleInfo].
+  /// that carries the flag — see [_handleInfo] — and on a TX-500 for `PT`
+  /// besides, see [_watchLab599Ptt].
   ///
-  /// The watch has no meter half. Kenwood's meter reads (`RM`) require
-  /// SELECTING which meter the radio displays, so reading SWR would change
-  /// what is on the operator's own front panel; and the scale behind the
-  /// answer is unpublished besides. That is a bench question, not a
-  /// guess-in-code one, so this driver declares no meters at all.
+  /// The watch has no meter half but on the TX-500 line. Kenwood's meter
+  /// reads (`RM`) require SELECTING which meter the radio displays, so
+  /// reading SWR would change what is on the operator's own front panel; and
+  /// the scale behind the answer is unpublished besides. The TX-500's `SM0;`
+  /// and `VL;` select nothing — see [_readLab599Meters].
+  @override
   late final TelemetryPoller _telemetry = TelemetryPoller(
-    onPoll: (_) => _send(buildKenwoodReadInfoCommand()),
-    idleInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes, baudRate: serialBaudRateOrNull(_config)),
-    txInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes, baudRate: serialBaudRateOrNull(_config)),
+    onPoll: (transmitting) {
+      if (transmitting && _lab599) _readLab599Meters();
+      if (_lab599) _watchLab599Ptt();
+      _send(buildKenwoodReadInfoCommand());
+    },
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes + (_lab599 ? lab599PttBytes : 0), baudRate: serialBaudRateOrNull(_config)),
+    txInterval: telemetryIntervalFor(
+      _config,
+      cycleBytes: _txWatchBytes + (_lab599 ? lab599PttBytes + lab599MeterBytes : 0),
+      baudRate: serialBaudRateOrNull(_config),
+    ),
   );
 
   /// `IF;` out, and the ~38-byte status packet back — much the largest TX
@@ -328,6 +361,7 @@ class KenwoodSession
   static const _txWatchBytes = kenwoodTxWatchBytes;
 
   /// What was last reported upward, so a repeat can be told from a move.
+  @override
   VfoReading? _lastReported;
 
   /// What a specific radio's definition says its `IF` layout is, if anything.
@@ -431,21 +465,15 @@ class KenwoodSession
        _config = config;
 
   /// The node's merged config, kept for [_telemetry]'s cadence.
+  @override
   final Map<String, dynamic> _config;
 
   /// See [KenwoodDriver.dataModeKey].
   final bool dataMode;
 
   /// See [KenwoodDriver.modeDialectKey].
+  @override
   final KenwoodModeDialect? modeDialect;
-
-  /// Whether a [KenwoodModeDialect.lab599] radio's CAT menu is on the LAB599
-  /// protocol, from its `ID;` answer. Null until it answers. Only that
-  /// protocol has a command for DIG: on TS-2000 a DIG request is sent as its
-  /// USB base, as on a radio without a DATA submode.
-  bool? _lab599Protocol;
-
-  bool get _digSettable => modeDialect == KenwoodModeDialect.lab599 && _lab599Protocol == true;
 
   /// Whether the DATA submode was last reported on, and the base mode it was
   /// last reported against — `MD` and `IF` never say DATA, so [_withData]
@@ -478,6 +506,7 @@ class KenwoodSession
   @override
   Duration? get expectedUpdateInterval => _poller.interval;
 
+  @override
   void _send(String command) => _sink.send(ascii.encode(command));
 
   /// An extension's raw commands, written as given: every answer names the
@@ -505,6 +534,10 @@ class KenwoodSession
       _requestPassband();
       return;
     }
+    // Until it answers. The protocol is a menu setting and does not change
+    // while connected, but an `ID;` sent before the operator hands CAT to a
+    // LiNK500MP goes unanswered — and without it `PT`, `VL` and DIG stay off.
+    if (_lab599 && _lab599Protocol == null) _send(buildKenwoodReadIdCommand());
     // DATA first: `MD` and `IF` are reported against the flag as it stands,
     // and a flag read after them would report the base mode alone in between.
     if (dataMode) _send(buildKenwoodReadDataModeCommand());
@@ -867,8 +900,14 @@ class KenwoodSession
           }
           return;
         }
-        final watts = parseKenwoodPowerParams(command.params);
-        if (watts != null) _sink.reportPower(watts);
+        final level = parseKenwoodPowerParams(command.params);
+        if (level != null) _sink.reportPower(_lab599 ? lab599WattsForLevel(level, ratedWatts: _lab599RatedWatts) : level);
+
+      case 'SM' || 'VL' when _lab599:
+        _handleLab599Meter(command);
+
+      case 'PT' when _lab599:
+        _handleLab599Ptt(command.params);
 
       case 'KS':
         if (cwDialect == null) return;
@@ -974,9 +1013,8 @@ class KenwoodSession
             return;
         }
         _passbandAnswered();
-      case 'ID' when modeDialect == KenwoodModeDialect.lab599:
-        _lab599Protocol = lab599ProtocolIds.contains(command.params);
-        _sink.reportDiagnostic('CAT protocol ${_lab599Protocol! ? 'LAB599' : 'TS-2000, no DIG'} (ID${command.params})');
+      case 'ID' when _lab599:
+        _lab599Identified(command.params);
       case 'ER':
         if (isK4) _sink.reportDiagnostic('K4 refused a command: ER${command.params}');
       case 'TQ':
@@ -1018,6 +1056,7 @@ class KenwoodSession
     // reports nothing rather than a character read from the wrong place.
     if (learned != null) {
       final transmitting = parseKenwoodInfoTransmittingBeforeMode(params, learned);
+      if (_lab599) _lab599TransmitSays(transmitting: transmitting);
       if (transmitting != null && _telemetry.noteTransmitting(transmitting)) {
         _sink.reportTransmitting(transmitting);
       }
@@ -1136,6 +1175,13 @@ class KenwoodSession
 
   @override
   void setPower(num watts) {
+    if (_lab599) {
+      // Read back: the level is clamped to 10–100%, and what is shown must be
+      // what the radio took.
+      _send(buildLab599SetPowerCommand(watts, ratedWatts: _lab599RatedWatts));
+      _send(buildKenwoodReadPowerCommand());
+      return;
+    }
     if (!isK4) {
       _send(buildKenwoodSetPowerCommand(watts));
       return;
@@ -1400,6 +1446,7 @@ class KenwoodSession
     _antennaPollsToSkip = 0;
     _antennaRead.reset();
     _lab599Protocol = null;
+    _lab599Dots = null;
     _started = true;
     // K4n clears K2 meta mode; K31 explicitly includes the DATA submode in
     // IF. Do this before AI or any reads, on each USB or TCP connection.
@@ -1407,9 +1454,6 @@ class KenwoodSession
     if (declaredModeOffset != null) {
       _sink.reportDiagnostic('IF mode offset $declaredModeOffset (declared)');
     }
-    // Once: the protocol is a menu setting, not something that changes while
-    // connected.
-    if (modeDialect == KenwoodModeDialect.lab599) _send(buildKenwoodReadIdCommand());
     _send(buildKenwoodAutoInformationCommand(true));
     _requestState();
     _telemetry.start();

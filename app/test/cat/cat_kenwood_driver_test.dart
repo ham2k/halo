@@ -13,6 +13,7 @@
 // evidence is ambiguous, stale, or contradicted.
 
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
@@ -22,8 +23,10 @@ import 'package:ham2k_logger/services/cat/drivers/cat_ascii_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/meter_calibration.dart';
 
 class _FakeSink implements EquipmentSink {
   final problems = <String?>[];
@@ -718,6 +721,25 @@ void main() {
       expect(sink.sent, isNot(contains('ID;')));
     });
 
+    test('a TX-500 asks its ID until it answers, and then no more', () {
+      // An ID; sent before the operator hands CAT to the LiNK500MP goes
+      // unanswered. Asked once, the session runs without PT, VL or DIG.
+      fakeAsync((async) {
+        final session = sessionFor('tx500mp-serial');
+        session.startUpdates();
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 10));
+        expect(sink.sent, contains('ID;'));
+
+        receive(session, 'ID505;');
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 10));
+        expect(sink.sent, contains('FA;'), reason: 'still polling');
+        expect(sink.sent, isNot(contains('ID;')));
+        session.teardown();
+      });
+    });
+
     test('DIG goes out as MD6 only on the LAB599 protocol', () {
       // On TS-2000 the radio refuses MD6, which would leave it in whatever
       // mode it was in. Its USB base is what a radio without DIG gets.
@@ -821,6 +843,153 @@ void main() {
         // The K4 marks its sub receiver with `$`. Filtered, its `MD$2;` sub
         // report would come out as `MD2;`, the main receiver's.
         expect(AsciiCatFramer().add(r'MD$2;'), [const AsciiCatCommand('MD', r'$2')]);
+      });
+    });
+
+    group('power', () {
+      test('PC is a share of the rated output, not watts', () {
+        // Read as watts, a TX-500 at full power shows 100 W.
+        final session = sessionFor('tx500mp-ble');
+        receive(session, 'FA00014074000;PC100;PC055;');
+        expect(sink.powers, [10, 5.5]);
+      });
+
+      test('on 6 m the rated output is 7 W', () {
+        final session = sessionFor('tx500mp-serial');
+        receive(session, 'FA00050313000;PC100;');
+        expect(sink.powers, [7]);
+      });
+
+      test('a set goes out as a share, inside the 10–100 the radio takes, and is read back', () {
+        // Sent as watts, 5 W is PC005: below 10, which the radio ignores.
+        final session = sessionFor('tx500mp-ble');
+        receive(session, 'FA00014074000;');
+        session.setPower(5);
+        session.setPower(0.5);
+        session.setPower(20);
+        expect(sink.sent, ['PC050;', 'PC;', 'PC010;', 'PC;', 'PC100;', 'PC;']);
+      });
+
+      test('the entries cap the power control at the radio\'s 10 W', () {
+        for (final key in ['tx500-serial', 'tx500mp-serial', 'tx500mp-ble']) {
+          expect(EquipmentRegistry().typeFor(key)!.driverConfig(const {})['maxWatts'], 10, reason: key);
+        }
+      });
+    });
+
+    group('meters', () {
+      // The TX flag sits one character ahead of the mode.
+      const txInfo = 'IF00014074000${'0000+00001'}2;';
+      const rxInfo = 'IF00014074000${'0000+00000'}2;';
+
+      // Learns the IF offset, then reports the radio keyed.
+      void keyed(KenwoodSession session) {
+        receive(session, 'FA00014074000;ID505;');
+        for (final freq in ['00014074000', '00014075000']) {
+          receive(session, 'MD2;IF$freq${'0000+00000'}2;');
+        }
+        receive(session, txInfo);
+      }
+
+      setUp(() {
+        final json = File('lib/services/cat/drivers/info/lab599/tx500.json').readAsStringSync();
+        MeterCalibrations.instance.setForTesting({'lab599/tx500': MeterCalibration.fromJson(jsonDecode(json) as Map<String, dynamic>)});
+        addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+      });
+
+      test('the TX-500 entries read power out and volts, and no other Kenwood reads any', () {
+        // Every other Kenwood meters through RM, which changes the meter on
+        // the operator's own panel.
+        for (final key in ['tx500-serial', 'tx500mp-serial', 'tx500mp-ble']) {
+          final type = EquipmentRegistry().typeFor(key)!;
+          expect(type.driver.telemetryMetersWith(type.driverConfig(const {})), {RadioMeter.powerOut, RadioMeter.supplyVolts}, reason: key);
+        }
+        final kenwood = EquipmentRegistry().typeFor('kenwood-serial')!;
+        expect(kenwood.driver.telemetryMetersWith(kenwood.driverConfig(const {})), isEmpty);
+      });
+
+      test('keyed, SM0 is read as power out on the calibration file\'s scale, and VL as volts', () {
+        fakeAsync((async) {
+          final session = sessionFor('tx500mp-ble');
+          keyed(session);
+          expect(sink.sent, containsAllInOrder(['SM0;', 'VL;', 'PT;', 'IF;']), reason: 'the PT or IF after SM is what confirms it');
+          expect(sink.sent, isNot(contains(startsWith('RM'))), reason: 'RM changes the meter on the radio');
+
+          receive(session, 'SM00015;VL11.7 ;$txInfo');
+          expect(sink.meterReports, [(RadioMeter.supplyVolts, 11.7), (RadioMeter.powerOut, 5.0)]);
+          session.teardown();
+        });
+      });
+
+      test('an SM answer while receiving is the S-meter, and is not reported as power', () {
+        // Even when the PT after it finds the radio keyed: held while
+        // receiving, an S9 would open the over as its first power-out.
+        final session = sessionFor('tx500mp-ble');
+        receive(session, 'ID505;SM00015;PT1;');
+        expect(sink.meterReports, isEmpty);
+      });
+
+      test('an SM answer the next IF finds unkeyed is the S-meter, and is not reported as power', () {
+        // Reported, an S9 would stand on the strip as power out for the
+        // meter linger after every over the radio unkeyed mid-cycle.
+        fakeAsync((async) {
+          final session = sessionFor('tx500mp-ble');
+          keyed(session);
+          receive(session, 'SM00015;$rxInfo');
+          expect(sink.meterReports, isEmpty);
+          session.teardown();
+        });
+      });
+
+      test('in DIG, where IF goes unanswered, PT still sees the radio keyed and confirms its meter', () {
+        // Lab599's reference: IF cannot read the status in Data mode. Watched
+        // through IF alone, an FT8 over is never seen, and never metered.
+        fakeAsync((async) {
+          final session = sessionFor('tx500mp-ble');
+          session.startUpdates();
+          receive(session, 'FA00014074000;MD6;ID505;');
+          async.elapse(const Duration(seconds: 1));
+          expect(sink.sent, contains('PT;'), reason: 'asked while receiving, or keying is never seen');
+
+          receive(session, 'PT1;');
+          expect(sink.txReports, [true]);
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 1));
+          expect(sink.sent, containsAllInOrder(['SM0;', 'PT;']));
+
+          receive(session, 'SM00030;PT1;');
+          expect(sink.meterReports, [(RadioMeter.powerOut, 10.0)]);
+          receive(session, 'SM00015;PT0;');
+          expect(sink.meterReports, hasLength(1), reason: 'answered after the unkey, SM is the S-meter');
+          expect(sink.txReports, [true, false]);
+          session.teardown();
+        });
+      });
+
+      test('only the TX-500 line\'s placeholder cadence counts its meter reads', () {
+        // Every Kenwood shares the driver: counted for all, a TS-590 at 9600
+        // shows a slower default than it runs at.
+        final kenwood = EquipmentRegistry().typeFor('kenwood-serial')!;
+        expect(kenwood.defaultTelemetryIntervalFor(const {'baudRate': 9600}), kTelemetryInterval);
+        final tx500 = EquipmentRegistry().typeFor('tx500mp-serial')!;
+        expect(
+          tx500.defaultTelemetryIntervalFor(const {'baudRate': 9600}),
+          telemetryFloor(cycleBytes: kenwoodTxWatchBytes + lab599PttBytes + lab599MeterBytes, baudRate: 9600),
+        );
+      });
+
+      test('the TS-2000 protocol, which has no VL or PT, is not asked for either', () {
+        fakeAsync((async) {
+          final session = sessionFor('tx500mp-ble');
+          keyed(session);
+          sink.sent.clear();
+          receive(session, 'ID019;');
+          async.elapse(const Duration(seconds: 1));
+          expect(sink.sent, contains('SM0;'));
+          expect(sink.sent, isNot(contains('VL;')));
+          expect(sink.sent, isNot(contains('PT;')));
+          session.teardown();
+        });
       });
     });
   });

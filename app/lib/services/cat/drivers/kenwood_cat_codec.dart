@@ -37,9 +37,9 @@ enum KenwoodModeDialect {
   lab599,
 }
 
-/// [KenwoodModeDialect.lab599]'s table, from the third-party protocol
-/// reference (github.com/rdcm/lab599-cat, `docs/cat-protocol-en.md`) rather
-/// than from a capture.
+/// [KenwoodModeDialect.lab599]'s table, from Lab599's own CAT protocol
+/// reference, rev. 3 (downloads.lab599.com/DOCS/Lab599-CAT-protocol-r3.pdf),
+/// the spec every `lab599` command here is written from.
 const lab599ModeCodes = <String, String>{'LSB': '1', 'USB': '2', 'CW': '3', 'FM': '4', 'AM': '5', 'DATA-USB': '6', 'CW-R': '7'};
 
 /// What a TX-500 or TX-500MP answers `ID;` with while its CAT menu is set to
@@ -112,6 +112,57 @@ String buildKenwoodReadPowerCommand() => 'PC;';
 /// `PC100;` → 100. Null unless it's exactly three digits, the same
 /// discipline [parseKenwoodFrequencyParams] applies to `FA`.
 int? parseKenwoodPowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+
+/// What a [KenwoodModeDialect.lab599] radio's `PC` level is a percentage of:
+/// its rated output, 10 W, or 7 W on 6 m. Its `PC` is that share, 10–100 —
+/// Lab599's manual (menu 08, "Power, 10–100%") and its CAT reference —
+/// so read as watts, a full-power TX-500 shows 100 W, and a 5 W set is a
+/// `PC005` the radio ignores.
+num lab599RatedWatts(double? freqKHz) => freqKHz != null && freqKHz >= 50000 && freqKHz <= 54000 ? 7 : 10;
+
+/// Clamped to the radio's own 10–100: below 10 it ignores the write.
+String buildLab599SetPowerCommand(num watts, {required num ratedWatts}) => 'PC${(watts / ratedWatts * 100).round().clamp(10, 100).toString().padLeft(3, '0')};';
+
+/// To a tenth of a watt: one level of a 10 W radio is 0.1 W.
+num lab599WattsForLevel(int level, {required num ratedWatts}) => (level * ratedWatts / 10).round() / 10;
+
+/// `SM0;` reads the bar graph: the S-meter while receiving, power out while
+/// transmitting — 0 to 30 dots, on a scale the reference does not state. Read only while
+/// transmitting, and only ever through a calibration file's table.
+String buildLab599ReadMeterCommand() => 'SM0;';
+
+/// `SM00015;` → 15.
+int? parseLab599MeterParams(String params) => RegExp(r'^0\d{4}$').hasMatch(params) ? int.parse(params.substring(1)) : null;
+
+/// `VL;` reads the supply voltage, in volts, on the LAB599 protocol only.
+String buildLab599ReadVoltageCommand() => 'VL;';
+
+/// `VL11.7 ;` → 11.7. The decimal point is required: a bare `0117` is a
+/// reading no reference shows, and taken as volts it would be 117.
+double? parseLab599VoltageParams(String params) {
+  final text = params.trim();
+  return RegExp(r'^\d{1,2}\.\d{1,2}$').hasMatch(text) ? double.parse(text) : null;
+}
+
+/// `SM0;` and `VL;`, and their answers — what a LAB599 meter cycle adds to
+/// the `IF` watch.
+const lab599MeterBytes = 4 + 8 + 3 + 8;
+
+/// `PT;` reads whether the radio is transmitting, on the LAB599 protocol.
+/// The TX watch asks it beside `IF;`, which the reference says goes
+/// unanswered while the radio is in DIG — without it, keying for FT8 would
+/// never be seen.
+String buildLab599ReadPttCommand() => 'PT;';
+
+/// `PT1;` → true, `PT0;` → false.
+bool? parseLab599PttParams(String params) => switch (params) {
+  '1' => true,
+  '0' => false,
+  _ => null,
+};
+
+/// `PT;` and its `PT0;` — what the LAB599 protocol adds to every `IF` watch.
+const lab599PttBytes = 3 + 4;
 
 /// `AC;` reads the antenna tuner on the TS-480/590/890/990 line. The answer
 /// is `ACP1P2P3;`: P1 the receive-side AT (`0` through, `1` in), P2 the

@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/foundation.dart' show TargetPlatform, debugDefaultTargetPlatformOverride;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
@@ -25,6 +26,8 @@ import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/ble_serial_gateway.dart';
 import 'package:ham2k_logger/services/cat/transports/ble_serial_profiles.dart';
 import 'package:ham2k_logger/services/cat/transports/ble_serial_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/bluetooth_serial_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
 const _nusService = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
 const _nusRx = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
@@ -468,6 +471,61 @@ void main() {
     test('a model reached only by network or a bridge program gets none', () {
       expect(registry.typeFor('flexradio-ble'), isNull);
       expect(registry.typeFor('flrig-ble'), isNull);
+    });
+
+    group('on iOS', () {
+      setUp(() {
+        BleSerialTransport.debugGateway = _FakeGateway();
+        addTearDown(() => BleSerialTransport.debugGateway = null);
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      });
+
+      List<String> offeredTransports() => [for (final type in registry.offeredVariants(tx500mpModel, tx500Experiment: true)) type.transportKey];
+
+      test('a radio is offered over Bluetooth LE, and never over a serial port iOS does not have', () {
+        // An iPhone has no USB serial and no Classic Bluetooth serial; picked
+        // there, either pairing only fails once the operator has set it up.
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        expect(offeredTransports(), contains(BleSerialTransport.transportKey));
+        expect(offeredTransports(), isNot(contains(SerialTransport.transportKey)));
+        expect(offeredTransports(), isNot(contains(BluetoothSerialTransport.transportKey)));
+
+        debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+        expect(offeredTransports(), containsAll([SerialTransport.transportKey, BluetoothSerialTransport.transportKey, BleSerialTransport.transportKey]));
+      });
+
+      test('a radio iOS can reach only as a placeholder is not offered, unless a node is already on it', () {
+        // The placeholder is supported everywhere, so without the iOS rule
+        // every serial-only rig stays in the catalogue with nothing behind it.
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        expect(registry.offeredVariants(ft891Model, tx500Experiment: false), isEmpty);
+        expect([for (final type in registry.offeredVariants(ft891Model, tx500Experiment: true)) type.transportKey], contains(BleSerialTransport.transportKey));
+        expect(registry.offeredVariants(ic705Model, tx500Experiment: false), isNotEmpty);
+        expect(registry.offeredVariants(placeholderRadioModel, tx500Experiment: false), isNotEmpty);
+        final saved = registry.typeFor(placeholderVariantFor(ft891Model.key).key);
+        expect(registry.offeredVariants(ft891Model, tx500Experiment: false, current: saved), [saved]);
+
+        debugDefaultTargetPlatformOverride = TargetPlatform.android;
+        expect(registry.offeredVariants(ft891Model, tx500Experiment: false), isNotEmpty);
+      });
+
+      test('a node already on a serial pairing keeps it in its editor on iOS', () {
+        // Dropped, the node opens to a form with no connection to show and
+        // no other pairing to move it to.
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        final saved = registry.typeFor('ft891-serial')!;
+        expect(registry.offeredVariants(ft891Model, tx500Experiment: false, current: saved), contains(saved));
+      });
+
+      test('the TX-500 notes give the LiNK500MP\'s Mode 4 alone, and elsewhere Mode 3 beside it', () {
+        // Mode 3 is Classic Bluetooth, which iOS does not offer: set to it,
+        // the LiNK500MP never shows up in the iPhone's scan.
+        String notes() => [for (final note in registry.typeFor('tx500mp-ble')!.notes) note['text']].join();
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        expect(notes(), allOf(contains('Mode 4'), isNot(contains('Mode 3'))));
+        debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+        expect(notes(), allOf(contains('Mode 4'), contains('Mode 3')));
+      });
     });
   });
 }

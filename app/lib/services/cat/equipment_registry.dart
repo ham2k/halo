@@ -28,6 +28,7 @@
 // new radio never needs to re-declare a serial port picker or re-parse a hex
 // address.
 
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'discovery.dart';
 import 'driver.dart';
@@ -616,12 +617,26 @@ class EquipmentRegistry {
   /// no raw sockets and no serial, so a model can be reachable everywhere
   /// but here — less what `EXP 500MP` holds back ([isBehindTx500Experiment])
   /// while [tx500Experiment] is off, and never less [current]: the node being
-  /// edited keeps its own pairing in the choice.
-  List<EquipmentType> offeredVariants(EquipmentModel model, {required bool tx500Experiment, EquipmentType? current}) => [
-    for (final variant in model.variants)
-      if (typeFor(variant.key) case final type?)
-        if (type.isSupportedOnThisPlatform && (tx500Experiment || type == current || !isBehindTx500Experiment(type))) type,
-  ];
+  /// edited keeps its own pairing in the choice, even one this platform
+  /// cannot connect — without it, its editor has no connection to show and
+  /// nothing to move the node to.
+  ///
+  /// On iOS a radio with no pairing left but its placeholder is not offered
+  /// at all: an iPhone reaches a radio over the network or Bluetooth LE, and
+  /// a catalogue full of rigs that can only ever be placeholders there reads
+  /// as a list of radios the app connects to. Elsewhere the placeholder alone
+  /// still keeps a radio listed — on web it is how an operator names a
+  /// networked rig on the log.
+  List<EquipmentType> offeredVariants(EquipmentModel model, {required bool tx500Experiment, EquipmentType? current}) {
+    final offered = [
+      for (final variant in model.variants)
+        if (typeFor(variant.key) case final type?)
+          if (type == current || type.isSupportedOnThisPlatform && (tx500Experiment || !isBehindTx500Experiment(type))) type,
+    ];
+    final placeholderOnly = model.offersPlaceholder && offered.length == 1 && offered.single.key == placeholderVariantFor(model.key).key;
+    if (placeholderOnly && offered.single != current && !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) return const [];
+    return offered;
+  }
 
   EquipmentType? typeFor(String? key) {
     for (final type in types) {

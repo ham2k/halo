@@ -116,7 +116,8 @@ Two consequences worth stating, because both are load-bearing:
 - **Every real transceiver also runs as the placeholder.** The registry derives one more variant
   per model with a maker (key `<model>-placeholder`, `placeholderVariantFor`): the model's name on
   the placeholder radio's driver and transport, offered last in the editor's connection choice. It is
-  how an operator puts their own rig on the log before there is a cable or an address for it.
+  how an operator puts their own rig on the log before there is a cable or an address for it —
+  except on iOS, where a radio with no other pairing is left out of the catalogue (§ Bluetooth LE serial).
   Bridges and the stand-alone placeholder get none. The keys are derived but still persisted, so
   the shipped-key test lists them one by one.
 - **A node with no port or address is *unconfigured*, not invalid.** `EquipmentTransport.isUnconfigured`
@@ -297,8 +298,13 @@ what the user configured; everything about a connection is rebuilt at runtime.
   TX-500 and TX-500MP have no RTTY, and in their LAB599 CAT protocol `MD6` is DIG — so `6` reads and
   sets as DATA-USB there, and RTTY is not offered. The same radios also offer the TS-2000 protocol,
   which has no command for DIG, and the operator picks between them in the radio's own menu. The
-  session asks `ID;` once to know which: `500`/`505` is LAB599, `019` is TS-2000, and on TS-2000 a DIG
-  request goes out as its USB base, as on any radio without a DATA submode.
+  session asks `ID;` on each poll until it answers (one sent before the operator hands CAT to a LiNK500MP
+  goes unanswered): `500`/`505` is LAB599, `019` is TS-2000, and on TS-2000 a DIG
+  request goes out as its USB base, as on any radio without a DATA submode. The spec for all of it is
+  Lab599's CAT protocol reference, rev. 3 (downloads.lab599.com/DOCS/Lab599-CAT-protocol-r3.pdf).
+  Its `PC` is a share of the rated output too, not watts: 10–100% of 10 W, or of 7 W on 6 m (the
+  manual's menu 08). Sets are clamped to that 10–100 — below it the radio ignores the write — and
+  read back. The entries carry `maxWatts: 10`.
 - **The TX-500 line's stream drops GPS sentences.** The LiNK500MP can mix its GPS receiver's NMEA-0183
   into the CAT channel, and a sentence holds no `;`: framed as CAT it fuses with the command after it
   and loses that command. So the LAB599 dialect's framer cuts each `$`-led sentence out through its
@@ -692,10 +698,16 @@ gate (`isBehindTx500Experiment`, applied by `EquipmentRegistry.offeredVariants`)
 back only the catalogue's offer — the Lab599 models, and the `-ble` pairing of every radio. A node
 already on one keeps it in its editor and keeps connecting with the experiment off.
 
-A BLE serial bridge — a LiNK500MP in its iOS mode, an HM-10 module on a CAT cable — carries a radio's
-serial CAT without the OS ever presenting a port. `BleSerialTransport` scans for the bridge,
-connects, and moves the bytes through two GATT characteristics itself. That is what reaches iOS,
-which has no serial ports at all and no Classic Bluetooth serial without Apple's MFi program.
+A BLE serial bridge — a LiNK500MP in its Mode 4 (Mode 3 is its Classic Bluetooth), an HM-10 module
+on a CAT cable — carries a radio's serial CAT without the OS ever presenting a port.
+`BleSerialTransport` scans for the bridge, connects, and moves the bytes through two GATT
+characteristics itself. That is what reaches iOS, which has no serial ports at all and no Classic
+Bluetooth serial without Apple's MFi program — so there `SerialTransport`, and with it Bluetooth
+serial, reports itself unsupported, and the catalogue offers no pairing that could only fail. A
+radio left with nothing on iOS but its placeholder pairing is not offered at all (a node already on
+it keeps it); elsewhere the placeholder alone still lists a radio, which on web is how a networked
+rig gets named on the log. The TX-500 entries' notes follow suit: on iOS they are the LiNK500MP's
+Mode 4 alone.
 
 - **Every serial radio gets it, derived.** `bleSerialVariantFor` gives each real transceiver with a
   serial variant a `<model>-ble` one: the same driver, with the driver's own pins, prefills and
@@ -1710,13 +1722,21 @@ generic Yaesu entry names none.
 | FlexRadio | `interlock state=`, PUSHED — costs nothing | power out and SWR: the transmitter's `FWDPWR` (dBm, turned to watts) and `SWR` meters, from the VITA-49 meter stream that carries the slice's LEVEL; tenths, at most four a second |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
 | Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
-| Kenwood | the flag in `IF`, one place ahead of the mode | none — see below |
+| Kenwood | the flag in `IF`, one place ahead of the mode; on a TX-500 in LAB599, `PT;` too, which still answers in DIG, where `IF` does not | none — see below — but on the TX-500 line: power out from `SM0;`, volts from `VL;` |
 
 Two things are still deliberately missing:
 
 - **Kenwood's meter reads require SELECTING which meter the radio displays**, so reading SWR would
   change what is on the operator's own front panel, and the scale behind the answer is unpublished
   besides. (Yaesu's do not: `MS` is a separate command, so `RM4/5/6/8` leave the panel alone.)
+  Lab599's TX-500 line is the exception: `SM0;` reads its bar graph, which is power out while it
+  transmits, and `VL;` its supply in volts (LAB599 protocol only), and neither selects anything. The
+  bar graph's 0–30 dots have no published scale, so `info/lab599/tx500.json` is PROVISIONAL: linear
+  to the rated output, until a dummy-load capture replaces it. An `SM` answer arriving after the
+  radio unkeys is the S-meter, so each cycle asks `SM0;` before `PT;` and `IF;` and reports the dots
+  only if the first of those to answer still says keyed. SWR and ALC stay off: a bare `RM;` reads
+  only whichever meter the operator has selected on the panel, again in dots of no stated scale. The
+  TX-500 side of the session is the `_Lab599` mixin in `kenwood_lab599.dart`.
 - **An Icom's supply voltage.** Icom's Vd scale is a two-segment curve for a 13.8 V radio, and the
   CI-V file describes the whole line — an IC-705 runs on USB, a battery or external DC and almost
   certainly does not share it. The battery-derating check above is unaffected: it compares the raw
