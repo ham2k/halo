@@ -10,12 +10,23 @@ import 'scene_model.dart';
 
 /// A drag along a scrolling scene's axis, claimed only where it begins on a `zoom` strip. Deeper
 /// than the scroll view, it wins a drag there that the scroll view would otherwise take.
+///
+/// Never a trackpad's two-finger swipe: that arrives as a pan-zoom, which [isPointerAllowed] never
+/// sees, and is the operator scrolling — on the strip as anywhere else. Without this the zoom drag
+/// claims every swipe in the pane, and nothing scrolls. A pinch on the strip zooms by its own
+/// scale instead (`_pinchUpdate` in scene_view.dart).
+///
+/// Two twins rather than one mixin: [DragGestureRecognizer] is sealed, and [GestureRecognizer]'s
+/// narrower [isPointerAllowed] leaves a mixin on it no way to call the drag's own.
 class VerticalZoomDrag extends VerticalDragGestureRecognizer {
   VerticalZoomDrag(this.allowedAt);
   final bool Function(Offset at) allowedAt;
 
   @override
   bool isPointerAllowed(PointerEvent event) => allowedAt(event.localPosition) && super.isPointerAllowed(event);
+
+  @override
+  bool isPointerPanZoomAllowed(PointerPanZoomStartEvent event) => false;
 }
 
 class HorizontalZoomDrag extends HorizontalDragGestureRecognizer {
@@ -24,6 +35,9 @@ class HorizontalZoomDrag extends HorizontalDragGestureRecognizer {
 
   @override
   bool isPointerAllowed(PointerEvent event) => allowedAt(event.localPosition) && super.isPointerAllowed(event);
+
+  @override
+  bool isPointerPanZoomAllowed(PointerPanZoomStartEvent event) => false;
 }
 
 /// What a scroll of [d] does to [c]: one step of its value, or of its second axis's for an

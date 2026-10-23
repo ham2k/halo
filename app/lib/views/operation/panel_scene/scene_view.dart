@@ -513,8 +513,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
   List<double> _scrollsSent = const [];
   Timer? _settle;
 
-  /// A drag on a `zoom` strip: the strip, how far from the pane's middle it began, and the factor
-  /// shown — held after release until the extension's render at that zoom replaces it.
+  /// A drag or pinch on a `zoom` strip: the strip, how far from the pane's middle a drag began, and
+  /// the factor shown — held after release until the extension's render at that zoom replaces it.
   final _pane = GlobalKey();
   SceneControl? _zoomStrip;
   double _zoomFrom = 0, _zoom = 1;
@@ -578,7 +578,30 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
         : {HorizontalZoomDrag: GestureRecognizerFactoryWithHandlers<HorizontalZoomDrag>(() => HorizontalZoomDrag(allowedAt), handlers)};
   }
 
-  void _zoomEnd(DragEndDetails _) {
+  /// The strip a trackpad gesture began on: it zooms only once it pinches, a swipe being a scroll.
+  SceneControl? _pinchStrip;
+
+  void _pinchStart(PointerPanZoomStartEvent event) => _pinchStrip = _zoomStripAt(event.localPosition);
+
+  /// The pinch's own scale is the factor, as a drag's ratio of distances is: no anchor to measure from.
+  void _pinchUpdate(PointerPanZoomUpdateEvent event) {
+    final strip = _pinchStrip;
+    if (strip == null || (_zoomStrip == null && (event.scale - 1).abs() < 0.02)) return;
+    setState(() {
+      _zoomStrip = strip;
+      _zoom = event.scale.clamp(strip.min, strip.max).toDouble();
+    });
+  }
+
+  void _pinchEnd(PointerPanZoomEndEvent _) {
+    final pinched = _pinchStrip != null && _zoomStrip == _pinchStrip;
+    _pinchStrip = null;
+    if (pinched) _zoomCommit();
+  }
+
+  void _zoomEnd(DragEndDetails _) => _zoomCommit();
+
+  void _zoomCommit() {
     final strip = _zoomStrip;
     _zoomStrip = null;
     if (strip == null || (_zoom - 1).abs() < 0.02) return setState(() => _zoom = 1);
@@ -704,12 +727,20 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
                         child: SizedBox(
                           width: scene.width,
                           height: scene.height,
-                          child: RawGestureDetector(
-                            // Over the whole content, so a drag begun on a zoom strip is the strip's
-                            // whatever lies on it — a tap there still reaches the button it lands on.
+                          child: Listener(
+                            // A trackpad pinch begun on a zoom strip; outside the gesture arena, so
+                            // the swipe it may carry still scrolls.
                             behavior: HitTestBehavior.translucent,
-                            gestures: _zoomGestures(vertical),
-                            child: _stack(reduceMotion, fixed: false),
+                            onPointerPanZoomStart: _pinchStart,
+                            onPointerPanZoomUpdate: _pinchUpdate,
+                            onPointerPanZoomEnd: _pinchEnd,
+                            child: RawGestureDetector(
+                              // Over the whole content, so a drag begun on a zoom strip is the strip's
+                              // whatever lies on it — a tap there still reaches the button it lands on.
+                              behavior: HitTestBehavior.translucent,
+                              gestures: _zoomGestures(vertical),
+                              child: _stack(reduceMotion, fixed: false),
+                            ),
                           ),
                         ),
                       ),

@@ -1961,7 +1961,8 @@ stay as drawn and only spread apart or close in; a layer with `stretch: true` â€
 a line the length of the scene â€” scales along the scroll instead. That preview holds until
 the render that answers the `commit` arrives, so a scene meant to zoom draws its pieces as
 layers of their own rather than as one picture. A tap on the strip still reaches the button there, and a drag that starts off it
-still scrolls.
+still scrolls. A trackpad's two-finger swipe scrolls on the strip as anywhere else; a trackpad
+pinch begun on it zooms by the pinch's own scale, clamped the same way, and commits as a drag does.
 
 A scroll steps a slider or knob by its `step`, down and left lowering it; a one-axis
 control takes a sideways scroll by its own direction. A slider or knob with

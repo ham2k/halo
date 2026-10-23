@@ -958,6 +958,81 @@ void main() {
       expect(top(tester, 'Mark'), lessThan(mark));
     });
 
+    // The same scrolling sideways: 1600 across the 400×200 pane, Mark at 450, the strip along the bottom 50.
+    Map<String, dynamic> zoomableAcross() {
+      final doc = zoomable()
+        ..['width'] = 1600
+        ..['height'] = 200
+        ..['scroll'] = {'axis': 'x', 'value': 'pos', 'event': 'scrolled'};
+      (doc['layers'] as List).first
+        ..['x'] = 450
+        ..['y'] = 20;
+      (doc['controls'] as List).first
+        ..['y'] = 150
+        ..['width'] = 1600
+        ..['height'] = 50;
+      return doc;
+    }
+
+    Future<void> trackpad(WidgetTester tester, Offset at, {Offset pan = Offset.zero, List<double> scales = const []}) async {
+      final where = tester.getTopLeft(find.byType(PanelSceneView)) + at;
+      final gesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+      await gesture.panZoomStart(where);
+      if (pan != Offset.zero) await gesture.panZoomUpdate(where, pan: pan);
+      for (final scale in scales) {
+        await gesture.panZoomUpdate(where, scale: scale);
+      }
+      await gesture.panZoomEnd();
+      await tester.pumpAndSettle();
+    }
+
+    // A trackpad's two-finger swipe reaches recognizers as a pan-zoom, which the strip's own check
+    // never sees: unless the zoom drag refuses it, it claims the swipe anywhere in the pane and
+    // nothing scrolls.
+    for (final vertical in [true, false]) {
+      testWidgets('a trackpad swipe scrolls, on the strip and off it, and does not zoom (${vertical ? 'down' : 'across'})', (tester) async {
+        final events = <String?>[];
+        await show(
+          tester,
+          vertical ? zoomable() : zoomableAcross(),
+          onEvent: (e) async {
+            events.add(e['action'] as String?);
+            return {};
+          },
+        );
+        await tester.pump();
+        double mark() => vertical ? top(tester, 'Mark') : tester.getTopLeft(find.text('Mark')).dx - tester.getTopLeft(find.byType(PanelSceneView)).dx;
+        final spots = vertical ? const [Offset(300, 150), Offset(50, 150)] : const [Offset(200, 50), Offset(200, 175)];
+        for (final at in spots) {
+          final before = mark();
+          await trackpad(tester, at, pan: vertical ? const Offset(0, -60) : const Offset(-60, 0));
+          expect(mark(), lessThan(before), reason: 'swiped at $at');
+        }
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(events, contains('scrolled'));
+        expect(events, isNot(contains('stretch')));
+      });
+    }
+
+    // A trackpad has no drag to zoom with but a click held down: its own zoom is the pinch.
+    testWidgets('a trackpad pinch on the strip zooms by its scale, and off it does nothing', (tester) async {
+      final events = <(String?, Object?)>[];
+      await show(
+        tester,
+        zoomable(),
+        onEvent: (e) async {
+          events.add((e['action'] as String?, e['value']));
+          return {};
+        },
+      );
+      await tester.pump();
+      await trackpad(tester, const Offset(300, 150), scales: const [1.5, 2]);
+      expect(events, isEmpty);
+      await trackpad(tester, const Offset(50, 150), scales: const [1.5, 2]);
+      expect(events.single.$1, 'stretch');
+      expect(events.single.$2 as double, closeTo(2, 0.001));
+    });
+
     // An extension keeps the position it hears and renders it back; by then the operator may have
     // scrolled on, and jumping to it would yank the view out from under them.
     testWidgets('a render carrying back a position the host sent does not move the view', (tester) async {
