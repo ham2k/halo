@@ -60,6 +60,12 @@ size. Using one **without** declaring it fails the build rather than quietly
 shipping a private copy; pass `inline: ['liquidjs']` if that copy is what you
 want, which is how you use a version the host does not carry.
 
+It then activates the built bundle against a stand-in host, and fails the build
+if the bundle registers a settings panel that your manifest's `hooks` does not
+list: the app does not show an undeclared panel. If activation needs more than
+the stand-in provides, or waits on a timer or the host, the build succeeds and
+prints a warning that this check did not run.
+
 ## Packaging
 
 ```sh

@@ -763,6 +763,7 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override late final _Translations$settings$radio$cw radio = _Translations$settings$radio$cw._(_root);
 	@override late final _Translations$settings$help$cw help = _Translations$settings$help$cw._(_root);
 	@override late final _Translations$settings$exports$cw exports = _Translations$settings$exports$cw._(_root);
+	@override late final _Translations$settings$extensionSections$cw extensionSections = _Translations$settings$extensionSections$cw._(_root);
 	@override late final _Translations$settings$map$cw map = _Translations$settings$map$cw._(_root);
 	@override late final _Translations$settings$privacy$cw privacy = _Translations$settings$privacy$cw._(_root);
 	@override String get operatorCall => '——— ·——· · ·—· ·— — ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —·';
@@ -2271,6 +2272,20 @@ class _Translations$settings$exports$cw extends Translations$settings$exports$en
 
 	// Translations
 	@override String get title => '· —··— ·——· ——— ·—· — ···';
+}
+
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$cw extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$cw._(TranslationsCw root) : this._root = root, super.internal(root);
+
+	final TranslationsCw _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => '·— —·—· — ·· ···— ·· — ·· · ···';
+	@override String get hunting => '···· ··— —· — ·· —· ——·';
+	@override String get contests => '—·—· ——— —· — · ··· — ···';
+	@override String get lookups => '·—·· ——— ——— —·— ··— ·——· ···';
+	@override String get dashboard => '—·· ·— ··· ···· —··· ——— ·— ·—· —··';
 }
 
 // Path: settings.map
@@ -5607,6 +5622,11 @@ extension on TranslationsCw {
 			'settings.help.contact' => '—·—· ——— —· — ·— —·—· — / ··— ···',
 			'settings.help.contactDescription' => '···· · ·—·· ·——· ·——·—· ···· ·— —— ··——— —·— ·—·—·— —·—· ——— —— / — / —··· ··— — / — ·—· —·—— / — ···· · / ··—· ——— ·—· ··— —— ··· / ——— ·—· / —·—· ···· ·— — / ··—· ·· ·—· ··· — —·—·——',
 			'settings.exports.title' => '· —··— ·——· ——— ·—· — ···',
+			'settings.extensionSections.activities' => '·— —·—· — ·· ···— ·· — ·· · ···',
+			'settings.extensionSections.hunting' => '···· ··— —· — ·· —· ——·',
+			'settings.extensionSections.contests' => '—·—· ——— —· — · ··· — ···',
+			'settings.extensionSections.lookups' => '·—·· ——— ——— —·— ··— ·——· ···',
+			'settings.extensionSections.dashboard' => '—·· ·— ··· ···· —··· ——— ·— ·—· —··',
 			'settings.map.title' => '—— ·— ·——· ···',
 			'settings.map.style.title' => '—— ·— ·——· / ··· — —·—— ·—·· ·',
 			'settings.map.showCallsigns.title' => '··· ···· ——— ·—— / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ···',
@@ -5780,13 +5800,13 @@ extension on TranslationsCw {
 			'settings.station.hostDescription' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ···· ——— ··· — —· ·— —— · / ——— ·—· / ·· ·——· / ·— —·· —·· ·—· · ··· ··· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— ·—·—·—',
 			'settings.station.port' => '·——· ——— ·—· —',
 			'settings.station.hostRequired' => '·— —· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.portInvalid' => '·——· ——— ·—· — / —— ··— ··· — / —··· · / —··· · — ·—— · · —· / ·———— / ·— —· —·· / —···· ····· ····· ···—— ·····',
 			'settings.station.connect' => '—·—· ——— —· —· · —·—· —',
 			'settings.station.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.station.remove' => '·—· · —— ——— ···— ·',
 			'settings.station.removeTitle' => ({required Object name}) => '·—· · —— ——— ···— · / ${name} ··——··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.removeMessage' => '— ···· ·· ··· / ——— —· ·—·· —·—— / ·—· · —— ——— ···— · ··· / ·· — / ··—· ·—· ——— —— / — ···· · / ·— ·——· ·——· ·—·—·— / — ···· · / · ——·— ··— ·· ·——· —— · —· — ·————· ··· / ··· · — — ·· —· ——· ··· / ··· — ·— —·—— / ·— ··· / — ···· · —·—— / ·— ·—· · ·—·—·—',
 			'settings.station.unknownType' => ({required Object typeKey}) => '··— —· ·—· · —·—· ——— ——· —· ·· ——·· · —·· / · ——·— ··— ·· ·——· —— · —· — / — —·—— ·——· · / ·—··—· ${typeKey} ·—··—·',
 			'settings.station.report' => '·—· · ·——· ——— ·—· —',
@@ -6294,13 +6314,13 @@ extension on TranslationsCw {
 			'commands.reloadingAll' => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.reloadingTarget' => ({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.unknownExperiment' => ({required Object token}) => '··— —· —·— —· ——— ·—— —· / · —··— ·——· · ·—· ·· —— · —· — / ·—··—· ${token} ·—··—·',
+			_ => null,
+		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} / —·· ·· ··· ·— —··· ·—·· · —··',
 			'commands.sentryTestSent' => '— · ··· — / · ·—· ·—· ——— ·—· / ·—· · ·——· ——— ·—· — / ··· · —· — / — ——— / ··· · —· — ·—· —·——',
 			'commands.idleMetricsEnabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / · —· ·— —··· ·—·· · —·· / ·· —· / — ···· · / ··· — ·— — ··— ··· / —··· ·— ·—·',
 			'commands.idleMetricsDisabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / —·· ·· ··· ·— —··· ·—·· · —··',
-			_ => null,
-		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => '··· · —· — ·—· —·—— / ·· ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ·· —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· / — / — · ··· — / · ·—· ·—· ——— ·—· / ·—·· ——— ——· ——· · —·· / ·—·· ——— —·—· ·— ·—·· ·—·· —·—— / ——— —· ·—·· —·——',
 			'commands.noOperationOpen' => '— ···· ·— — / —·—· ——— —— —— ·— —· —·· / —· · · —·· ··· / ·— —· / ——— ·——· · —· / ——— ·——· · ·—· ·— — ·· ——— —·',
 			'commands.unknownSegmentKind' => ({required Object kind}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / —— ·— ·—· —·— / ·— / ·————· ${kind} ·————·',

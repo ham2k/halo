@@ -2385,6 +2385,33 @@ export interface ExtensionRelevance {
   interests?: string[]
 }
 
+/// A settings section an extension may place its panel in without review —
+/// the key of one of the app's own settings groups. The first six are where
+/// a panel usually belongs, by the extension's main purpose; the other four
+/// suit one that tunes something the app already has a section for (`radio`
+/// is CAT Control, `map` is Maps). See docs/extensions/settings.md.
+export type SettingsSection = "activities" | "hunting" | "contests" | "lookups" | "spotting" | "dashboard" | "logging" | "radio" | "map" | "exports"
+
+/// Where an extension's settings panels appear in the app's Settings — the
+/// manifest's `settings`. The catalog reads manifests and never runs a
+/// bundle, so this is what it reviews, and the app holds every panel to it:
+/// what a panel's own `section`/`sidebar` ask for and the manifest does not
+/// declare, it does not get. See docs/extensions/settings.md, "Where an
+/// extension's settings go".
+export interface ExtensionSettingsPlacement {
+  /// The section the extension's panels show in, as one row each that opens
+  /// the panel in a dialog. One of [SettingsSection] needs no review;
+  /// any other key, or none at all for an extension with a `settingsPanel`
+  /// (a category of its own), is held for an admin.
+  section?: SettingsSection | (string & {})
+  /// An entry in Settings' sidebar too, for a panel that is a category of
+  /// its own; one placed in a section never has one. Reviewed.
+  sidebar?: boolean
+  /// Fields flagged `common: true` also shown in Common Preferences.
+  /// Reviewed; without it the flag is ignored.
+  common?: boolean
+}
+
 /// The static, public identity of an extension — everything about it that
 /// can be known without running its code. Lives in the package's
 /// manifest.json (single source: extensions import it and spread it into
@@ -2474,6 +2501,10 @@ export interface ExtensionManifest {
   /// [ExtensionRelevance]. Relevance, not access: the catalog and the
   /// Extensions panel rank by it, and nothing hides an extension over it.
   relevance?: ExtensionRelevance
+  /// Where this extension's settings panels go — see
+  /// [ExtensionSettingsPlacement]. Needed by any extension that registers a
+  /// `settingsPanel`.
+  settings?: ExtensionSettingsPlacement
   /// Per-locale overrides for name/description plus extra localized search
   /// keywords, keyed by language code. Localized keywords ADD to the base
   /// `keywords` (both are searchable), they don't replace them.
@@ -2963,6 +2994,10 @@ export interface SettingsPanelDescriptor {
   /// top-level settings navigation (the sidebar list of panels).
   /// Independent of [dataFilesSection] below — this only controls the
   /// top-level nav, not where else (if anywhere) the panel surfaces.
+  ///
+  /// For an extension the app did not ship, the entry also needs the
+  /// manifest's `settings.sidebar: true`, which the catalog reviews; without
+  /// it this reads as false (docs/extensions/settings.md).
   sidebar?: boolean
 
   /// Defaults false. Set true to also show this panel as a row in the Data
@@ -2985,6 +3020,11 @@ export interface SettingsPanelDescriptor {
   /// spot source's destinations under Spotting. An app without that section
   /// — an older one, or a key it does not know — shows the panel as it would
   /// without this, so setting it needs no newer API level.
+  ///
+  /// Declare the same section in the manifest's `settings.section`: the app
+  /// places an extension's panels by its manifest, and reads this only for
+  /// one whose manifest names none — and then only a [SettingsSection]. An
+  /// app older than the manifest field reads this alone.
   section?: string
 }
 

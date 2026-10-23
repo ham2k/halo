@@ -71,6 +71,13 @@ class _SwappableExtensions extends ExtensionService {
   @override
   bool get ready => current != null;
 
+  /// The app's own, so each panel keeps the sidebar entry it asks for — an
+  /// installed one would need its manifest to declare it (settings_placement.dart).
+  @override
+  List<ExtensionInfo> get availableExtensions => [
+    for (final key in const ['ext', 'old', 'new', 'first', 'second']) ExtensionInfo(key: key, file: '$key.js', core: true, name: key),
+  ];
+
   @override
   Future<void> start() async {}
 }

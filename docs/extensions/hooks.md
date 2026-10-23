@@ -2478,6 +2478,12 @@ schema, kernel dispatch, `ExtensionService`, and `SettingsView` wiring; see
 [settings.md](./settings.md). Complementary to `account`, not a replacement.
 Implemented by: `settings` (the core General panel).
 
+An extension puts all its settings in one panel, placed in the section that
+fits its main purpose and declared in the manifest's `settings` — see
+[Where an extension's settings go](./settings.md#where-an-extensions-settings-go).
+A category of its own, a sidebar entry or Common Preferences rows are reviewed
+on the catalog.
+
 ## ✅ `account` — account connections
 
 Account connections (QRZ, LoFi, SOTA): credential fields, `testCredentials`,

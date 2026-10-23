@@ -1687,6 +1687,7 @@ class Translations$settings$en {
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
 	late final Translations$settings$help$en help = Translations$settings$help$en.internal(_root);
 	late final Translations$settings$exports$en exports = Translations$settings$exports$en.internal(_root);
+	late final Translations$settings$extensionSections$en extensionSections = Translations$settings$extensionSections$en.internal(_root);
 	late final Translations$settings$map$en map = Translations$settings$map$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
 
@@ -4789,6 +4790,30 @@ class Translations$settings$exports$en {
 
 	/// en: 'Exports'
 	String get title => 'Exports';
+}
+
+// Path: settings.extensionSections
+class Translations$settings$extensionSections$en {
+	Translations$settings$extensionSections$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Activities'
+	String get activities => 'Activities';
+
+	/// en: 'Hunting'
+	String get hunting => 'Hunting';
+
+	/// en: 'Contests'
+	String get contests => 'Contests';
+
+	/// en: 'Lookups'
+	String get lookups => 'Lookups';
+
+	/// en: 'Dashboard'
+	String get dashboard => 'Dashboard';
 }
 
 // Path: settings.map
@@ -10529,6 +10554,11 @@ extension on Translations {
 			'settings.help.contact' => 'Contact Us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
 			'settings.exports.title' => 'Exports',
+			'settings.extensionSections.activities' => 'Activities',
+			'settings.extensionSections.hunting' => 'Hunting',
+			'settings.extensionSections.contests' => 'Contests',
+			'settings.extensionSections.lookups' => 'Lookups',
+			'settings.extensionSections.dashboard' => 'Dashboard',
 			'settings.map.title' => 'Maps',
 			'settings.map.style.title' => 'Map Style',
 			'settings.map.showCallsigns.title' => 'Show Callsigns',
@@ -10702,13 +10732,13 @@ extension on Translations {
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
 			'settings.station.port' => 'Port',
 			'settings.station.hostRequired' => 'An address is required',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.portInvalid' => 'Port must be between 1 and 65535',
 			'settings.station.connect' => 'Connect',
 			'settings.station.disconnect' => 'Disconnect',
 			'settings.station.remove' => 'Remove',
 			'settings.station.removeTitle' => ({required Object name}) => 'Remove ${name}?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.removeMessage' => 'This only removes it from the app. The equipment\'s settings stay as they are.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'Unrecognized equipment type "${typeKey}"',
 			'settings.station.report' => 'Report',
@@ -11216,13 +11246,13 @@ extension on Translations {
 			'commands.reloadingAll' => 'Reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
+			_ => null,
+		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'Test error report sent to Sentry',
 			'commands.idleMetricsEnabled' => 'Idle metrics enabled in the status bar',
 			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
-			_ => null,
-		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',

@@ -763,6 +763,7 @@ class _Translations$settings$qro extends Translations$settings$en {
 	@override late final _Translations$settings$radio$qro radio = _Translations$settings$radio$qro._(_root);
 	@override late final _Translations$settings$help$qro help = _Translations$settings$help$qro._(_root);
 	@override late final _Translations$settings$exports$qro exports = _Translations$settings$exports$qro._(_root);
+	@override late final _Translations$settings$extensionSections$qro extensionSections = _Translations$settings$extensionSections$qro._(_root);
 	@override late final _Translations$settings$map$qro map = _Translations$settings$map$qro._(_root);
 	@override late final _Translations$settings$privacy$qro privacy = _Translations$settings$privacy$qro._(_root);
 	@override String get operatorCall => 'OPERATOR CALLSIGN';
@@ -2271,6 +2272,20 @@ class _Translations$settings$exports$qro extends Translations$settings$exports$e
 
 	// Translations
 	@override String get title => 'EXPORTS';
+}
+
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$qro extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'ACTIVITIES';
+	@override String get hunting => 'HUNTING';
+	@override String get contests => 'CONTESTS';
+	@override String get lookups => 'LOOKUPS';
+	@override String get dashboard => 'DASHBOARD';
 }
 
 // Path: settings.map
@@ -5607,6 +5622,11 @@ extension on TranslationsQro {
 			'settings.help.contact' => 'CONTACT US',
 			'settings.help.contactDescription' => 'HELP@HAM2K.COM — BUT TRY THE FORUMS OR CHAT FIRST!',
 			'settings.exports.title' => 'EXPORTS',
+			'settings.extensionSections.activities' => 'ACTIVITIES',
+			'settings.extensionSections.hunting' => 'HUNTING',
+			'settings.extensionSections.contests' => 'CONTESTS',
+			'settings.extensionSections.lookups' => 'LOOKUPS',
+			'settings.extensionSections.dashboard' => 'DASHBOARD',
 			'settings.map.title' => 'MAPS',
 			'settings.map.style.title' => 'MAP STYLE',
 			'settings.map.showCallsigns.title' => 'SHOW CALLSIGNS',
@@ -5780,13 +5800,13 @@ extension on TranslationsQro {
 			'settings.station.hostDescription' => 'THE RADIO\'S HOSTNAME OR IP ADDRESS ON YOUR NETWORK.',
 			'settings.station.port' => 'PORT',
 			'settings.station.hostRequired' => 'AN ADDRESS IS REQUIRED',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.portInvalid' => 'PORT MUST BE BETWEEN 1 AND 65535',
 			'settings.station.connect' => 'CONNECT',
 			'settings.station.disconnect' => 'DISCONNECT',
 			'settings.station.remove' => 'REMOVE',
 			'settings.station.removeTitle' => ({required Object name}) => 'REMOVE ${name}?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.removeMessage' => 'THIS ONLY REMOVES IT FROM THE APP. THE EQUIPMENT\'S SETTINGS STAY AS THEY ARE.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'UNRECOGNIZED EQUIPMENT TYPE "${typeKey}"',
 			'settings.station.report' => 'REPORT',
@@ -6294,13 +6314,13 @@ extension on TranslationsQro {
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
+			_ => null,
+		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',
 			'commands.sentryTestSent' => 'TEST ERROR REPORT SENT TO SENTRY',
 			'commands.idleMetricsEnabled' => 'IDLE METRICS ENABLED IN THE STATUS BAR',
 			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
-			_ => null,
-		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',

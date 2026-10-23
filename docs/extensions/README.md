@@ -210,8 +210,12 @@ it into `defineExtension`, and `build.mjs` reads it to produce
 extensions, whose bundles are never evaluated, so the metadata has to be
 readable without running any JS. The build fails if a manifest's `key`
 doesn't match its bundle entry. `hooks` is declarative — the kernel still
-learns the actual hooks from `registerHook` — but its `ref:<type>` entries are
-read by the host: an operation carrying a reference of a type no loaded
+learns the actual hooks from `registerHook` — but two kinds of entry are read
+by the host. `settingsPanel` must be listed by an extension that registers
+one: the catalog decides what to review by it, so the app does not show a
+settings panel its manifest leaves out (see
+[settings.md](./settings.md#where-an-extensions-settings-go)). And its
+`ref:<type>` entries: an operation carrying a reference of a type no loaded
 extension handles offers to enable the switched-off extension that declares
 it, or to install one from the catalog, so an activity that leaves them out is
 never offered that way. List only the types the extension publishes a control

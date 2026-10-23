@@ -425,7 +425,10 @@ mixin _ExtensionInstalls {
     );
     // Panels, settings panels and the command catalog are all cached against
     // this counter; the reloaded extension may contribute a different set.
+    // The metadata is read back first: settings panels are placed by their
+    // owner's manifest, and with the memo empty every panel has no owner.
     _commandCatalog = null;
+    await loadAvailableExtensions();
     runtimeGeneration.value++;
   }
 

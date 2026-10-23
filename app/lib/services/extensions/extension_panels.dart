@@ -15,6 +15,7 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
   Future<void> restartRuntime({bool fresh});
   FlutterSecureStorage get _secureStorage;
   Future<Map<String, String>?> getAccountCredentials(String kvKey);
+  List<ExtensionInfo> get availableExtensions;
 
   /// Every panel across every extension's `settingsPanel` registration, one
   /// entry per PANEL (not per registration — a Tier 2 hook's `getPanels()`
@@ -24,6 +25,11 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
   /// back to the right registered object; `panelKey` is what's passed as
   /// `args.panelKey`. They're equal for Tier 1; only a multi-panel Tier 2
   /// registration tells them apart.
+  ///
+  /// Each is placed as its extension's manifest allows ([placeSettingsPanel]):
+  /// `section` and `sidebar` say where it actually goes, which may not be
+  /// where the code asked, and `mayBeCommon` whether its `common: true`
+  /// fields reach Common Preferences.
   Future<List<Map<String, dynamic>>> getSettingsPanels() async {
     final host = this.host;
     if (host == null) return const [];
@@ -32,7 +38,23 @@ mixin _ExtensionPanels implements PanelExtensionSource, PanelEventSource {
       final panels = <Map<String, dynamic>>[];
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
-          panels.add((entry['value'] as Map).cast<String, dynamic>());
+          final panel = (entry['value'] as Map).cast<String, dynamic>();
+          final extensionKey = panel['extensionKey'];
+          final owner = extensionKey is String ? owningExtension(extensionKey, availableExtensions, (ExtensionInfo info) => info.key) : null;
+          // Only what the app shipped is trusted with whatever it registers.
+          // A panel nobody can be found to own gets the narrowest placement.
+          // One whose manifest does not declare `settingsPanel` is not shown:
+          // the catalog reviews a category of its own by that declaration,
+          // so an undeclared panel is one no reviewer was asked about.
+          final trusted = owner?.source == ExtensionSource.asset;
+          if (owner != null && !trusted && !owner.hooks.contains(HookCategories.settingsPanel)) {
+            debugPrint(
+              '[extensions] settings panel ${panel['panelKey']} not shown: "${owner.key}" does not declare "${HookCategories.settingsPanel}" in its manifest hooks',
+            );
+            continue;
+          }
+          if (owner == null) debugPrint('[extensions] settings panel ${panel['panelKey']} from "$extensionKey" has no owning extension, placed as undeclared');
+          panels.add(placeSettingsPanel(panel, trusted: trusted, declared: owner?.settings));
         }
       }
       panels.sort((a, b) => ((a['order'] as num?) ?? 0).compareTo((b['order'] as num?) ?? 0));

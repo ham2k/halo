@@ -23,6 +23,7 @@ import { readFileSync } from "node:fs"
 import { copyFile, mkdir, readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import { dirname, join, resolve } from "node:path"
+import vm from "node:vm"
 
 import { H2KEXT_API_VERSION, MANIFEST_ENTRY, TIMERS_API_VERSION, sharedModulesFor } from "./h2kext.mjs"
 
@@ -345,6 +346,8 @@ export async function buildExtension(esbuild, { dir, entry = "src/index.ts", out
     }),
   )
 
+  await checkSettingsPanelDeclared({ bundle: join(out, "index.js"), manifest, dir })
+
   // The packer reads both from one directory, so the manifest the bundle was
   // built against is the manifest that ships with it. Copied rather than left
   // for the author to remember: a stale manifest beside a fresh bundle is a
@@ -352,4 +355,103 @@ export async function buildExtension(esbuild, { dir, entry = "src/index.ts", out
   await copyFile(join(dir, MANIFEST_ENTRY), join(out, MANIFEST_ENTRY))
 
   return { outDir: out, manifest }
+}
+
+/// Fails the build when the bundle registers a `settingsPanel` hook its
+/// manifest's `hooks` does not list.
+///
+/// The app shows an installed extension's settings panel only when its
+/// manifest declares the hook (docs/extensions/settings.md), so the panel
+/// would build, pack, publish and install cleanly and then never appear —
+/// with nothing but a line in the app's console to say why.
+///
+/// Asked of the code rather than the source: the bundle is evaluated against
+/// a recording stand-in for the kernel and activated, so a panel registered
+/// from a loop or behind an await counts the same as a literal one. The
+/// libraries the host carries come from the author's own node_modules.
+///
+/// An extension whose activation needs more than the stand-in answers — or
+/// does not finish within [ACTIVATION_DEADLINE_MS] — is not failed for it,
+/// since that would be the check's shortcoming, not the author's, but it is
+/// told the check did not run.
+const ACTIVATION_DEADLINE_MS = 2000
+
+async function checkSettingsPanelDeclared({ bundle, manifest, dir }) {
+  const require = createRequire(resolve(dir, "noop.js"))
+  const sharedModules = new Proxy(
+    {},
+    {
+      get(_, pkg) {
+        if (typeof pkg !== "string") return undefined
+        try {
+          return require(pkg)
+        } catch {
+          // Left undefined, as on a host without it: a bundle that touches it
+          // while activating fails there, and the warning below says so.
+          return undefined
+        }
+      },
+    },
+  )
+  const hostCall = async (method) => (method === "getSettings" ? {} : method.startsWith("dbLookup") ? [] : null)
+  const definitions = []
+  const sandbox = {
+    console: { log() {}, info() {}, warn() {}, error() {}, debug() {} },
+    sendMessage: () => {},
+    __polo: {
+      defineExtension: (definition) => definitions.push(definition),
+      hostCall,
+      log: () => {},
+      invokeLocal: async () => [],
+      invokeLocalSequential: async () => [],
+      updateInterpretation: () => {},
+      getAccountKvKey: (extensionKey) => extensionKey,
+      registerDynamicForm: () => {},
+      unregisterDynamicForm: () => {},
+      host: { showForm: async () => null },
+      sharedModules,
+      sharedVersions: {},
+    },
+  }
+  sandbox.globalThis = sandbox
+
+  const registered = new Set()
+  let deadline
+  try {
+    vm.runInContext(await readFile(bundle, "utf8"), vm.createContext(sandbox), { filename: bundle, timeout: ACTIVATION_DEADLINE_MS })
+    const activation = (async () => {
+      for (const definition of definitions) {
+        await definition.onActivation?.({
+          hostCall,
+          timers: { set: () => 0, clear: () => {} },
+          registerHook: (category) => registered.add(category),
+        })
+      }
+    })()
+    // The stand-in's timers never fire, so an activation that waits on one
+    // never settles — and a pending promise does not keep Node running, so
+    // the build would end right here, silently, without copying the manifest.
+    await Promise.race([
+      activation,
+      new Promise((_, reject) => {
+        deadline = setTimeout(
+          () => reject(new Error(`activation had not finished after ${ACTIVATION_DEADLINE_MS / 1000}s, waiting on a timer or the host`)),
+          ACTIVATION_DEADLINE_MS,
+        )
+      }),
+    ])
+  } catch (e) {
+    console.warn(`warning: could not activate the built bundle to check its "hooks" against what it registers, so that check did not run — ${e?.message ?? e}`)
+    return
+  } finally {
+    clearTimeout(deadline)
+  }
+
+  if (registered.has("settingsPanel") && !(manifest.hooks ?? []).includes("settingsPanel")) {
+    throw new BuildError(
+      `the extension registers a settings panel, but ${MANIFEST_ENTRY} does not list "settingsPanel" in "hooks" — ` +
+        `the app would never show the panel. Add it to "hooks", and say where it goes with "settings" ` +
+        `(docs/extensions/settings.md).`,
+    )
+  }
 }

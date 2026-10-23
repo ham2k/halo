@@ -35,34 +35,51 @@ import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
 
+/// The extension every panel here belongs to: installed, with a manifest
+/// that declares the sidebar entry and Common Preferences rows these tests
+/// look for — without them the app would place its panel more narrowly
+/// (settings_placement.dart).
+const _myext = ExtensionInfo(
+  key: 'myext',
+  file: 'myext.js',
+  core: false,
+  name: 'My Extension',
+  source: ExtensionSource.installed,
+  hooks: ['settingsPanel'],
+  settings: ExtensionSettingsPlacement(sidebar: true, common: true),
+);
+
 Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async {
   SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = ExtensionServiceWithFakeHost(
-    FakeExtensionHost({
-      'settingsPanel:*:getPanels': [
-        {
-          'key': 'myext',
-          'ok': true,
-          'value': {'panelKey': 'myext', 'hookKey': 'myext', 'extensionKey': 'myext', 'title': 'My Extension', 'kind': 'dynamic', 'order': 50},
-        },
-      ],
-      'settingsPanel:myext:getDefinition': {
-        'title': 'My Extension',
-        'elements': [
-          {'type': 'field', 'fieldType': 'text', 'key': 'foo', 'label': 'Foo Field'},
-          // common: true — should reach Common Preferences too, same as a
-          // core group's flagged field.
-          {'type': 'field', 'fieldType': 'text', 'key': 'bar', 'label': 'Bar Field', 'common': true},
-          // environment excludes macOS specifically — a platform gate, not
-          // a common-vs-everything one: it should vanish from EVERY
-          // settings surface on macOS, and show normally elsewhere.
-          {'type': 'field', 'fieldType': 'text', 'key': 'baz', 'label': 'Baz Field', 'environment': '-macos'},
-        ],
-      },
-    }),
-  )..settings = settings;
+  final extensions =
+      ExtensionServiceWithFakeHost(
+          FakeExtensionHost({
+            'settingsPanel:*:getPanels': [
+              {
+                'key': 'myext',
+                'ok': true,
+                'value': {'panelKey': 'myext', 'hookKey': 'myext', 'extensionKey': 'myext', 'title': 'My Extension', 'kind': 'dynamic', 'order': 50},
+              },
+            ],
+            'settingsPanel:myext:getDefinition': {
+              'title': 'My Extension',
+              'elements': [
+                {'type': 'field', 'fieldType': 'text', 'key': 'foo', 'label': 'Foo Field'},
+                // common: true — should reach Common Preferences too, same as a
+                // core group's flagged field.
+                {'type': 'field', 'fieldType': 'text', 'key': 'bar', 'label': 'Bar Field', 'common': true},
+                // environment excludes macOS specifically — a platform gate, not
+                // a common-vs-everything one: it should vanish from EVERY
+                // settings surface on macOS, and show normally elsewhere.
+                {'type': 'field', 'fieldType': 'text', 'key': 'baz', 'label': 'Baz Field', 'environment': '-macos'},
+              ],
+            },
+          }),
+        )
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [_myext]);
   return HaLoServices(db, settings, extensions: extensions);
 }
 
@@ -410,7 +427,13 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     final host = _StatefulPanelHost();
-    final services = HaLoServices(db, settings, extensions: _ServiceWithHost(host)..settings = settings);
+    final services = HaLoServices(
+      db,
+      settings,
+      extensions: _ServiceWithHost(host)
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [_myext]),
+    );
     await pumpSettings(tester, services);
 
     // skipOffstage: false — the extension's own category is shut, and a shut
@@ -539,7 +562,13 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     final host = _StatefulPanelHost();
-    final services = HaLoServices(db, settings, extensions: _ServiceWithHost(host)..settings = settings);
+    final services = HaLoServices(
+      db,
+      settings,
+      extensions: _ServiceWithHost(host)
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [_myext]),
+    );
     await pumpSettings(tester, services);
 
     final keyBefore = tester.widget<CustomScrollView>(find.byType(CustomScrollView).first).key;

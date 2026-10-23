@@ -91,6 +91,7 @@ import 'spots_service.dart';
 import 'status_bar_service.dart';
 import 'web_popup.dart';
 import '../settings/core_settings_groups.dart';
+import '../settings/extension_sections_group.dart';
 import '../settings/settings_command.dart';
 import '../settings/settings_registry.dart';
 import '../settings/settings_target_dialog.dart';
@@ -722,6 +723,8 @@ class HaLoServices with _TimeTravel {
       ),
     )
     ..register(MapSettingsGroup(settings))
+    // Empty until an extension places a panel in one (docs/extensions/settings.md).
+    ..registerAll(ExtensionSectionGroup.all())
     ..register(PrivacySettingsGroup(settings))
     ..register(ExportsSettingsGroup(settings, extensions))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));

@@ -528,6 +528,15 @@ export async function main(
     const result = await publish({ bytes, manifest, channel, catalog, token }, { fetch })
     say(`published ${result.key} ${result.version} → ${result.channel} (${STATUS_WORDS[result.status] ?? result.status})`)
     if (result.url) say(result.url)
+    // The catalog names what about the settings placement an admin looks at
+    // (docs/extensions/settings.md), or which earlier version's identical
+    // placement one already approved.
+    const review = result.settingsReview
+    if (review?.acceptedIn) {
+      say(`settings placement as approved in ${review.acceptedIn}`)
+    } else {
+      for (const reason of review?.reasons ?? []) say(`settings placement for review: ${reason.message ?? reason.code}`)
+    }
 
     if (notes !== undefined) {
       try {

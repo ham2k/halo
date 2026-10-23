@@ -19,7 +19,7 @@ import { join, isAbsolute, relative as relativePath } from "node:path"
 
 // @ts-ignore — deliberately plain JS, like the packer it sits beside: both are
 // meant to be lifted into a published package unchanged.
-import { buildExtension, sharedModulesPlugin } from "./h2kext-build.mjs"
+import { BuildError, buildExtension, sharedModulesPlugin } from "./h2kext-build.mjs"
 // @ts-ignore
 import { findSharedModuleReferences, H2KEXT_API_VERSION } from "./h2kext.mjs"
 
@@ -294,4 +294,101 @@ test("an SDK too old for timers builds, but says so, rather than leaving setTime
 
   assert.equal(warn.mock.callCount(), 1)
   assert.match(String(warn.mock.calls[0].arguments[0]), /with timers — this one has none/)
+})
+
+/// Builds an extension whose activation registers a settings panel, after an
+/// await and through a library the host carries — the shapes a parse of the
+/// source would miss. The library is the author's own copy, a stand-in that
+/// names the hook.
+async function settingsPanelExtension({ hooks, activation }: { hooks?: string[]; activation?: string } = {}) {
+  const dir = await mkdtemp(join(tmpdir(), "h2kext-build-panel-"))
+  await mkdir(join(dir, "src"), { recursive: true })
+  await writeFile(
+    join(dir, "src/index.ts"),
+    activation ??
+      `import i18next from "i18next"
+       globalThis.__polo.defineExtension({
+         key: "w7abc-t",
+         async onActivation({ registerHook }) {
+           await null
+           registerHook(i18next.hookName, { hook: {}, key: "w7abc-t" })
+         },
+       })`,
+  )
+  await writeFile(
+    join(dir, "manifest.json"),
+    JSON.stringify({ key: "w7abc-t", api: H2KEXT_API_VERSION, sharedDependencies: { i18next: "^23.0.0" }, ...(hooks ? { hooks } : {}) }),
+  )
+  await mkdir(join(dir, "node_modules/i18next"), { recursive: true })
+  await writeFile(join(dir, "node_modules/i18next/package.json"), JSON.stringify({ name: "i18next", version: "23.0.0", main: "index.js" }))
+  await writeFile(join(dir, "node_modules/i18next/index.js"), 'module.exports = { hookName: "settingsPanel" }')
+  return dir
+}
+
+test("a settings panel the manifest's hooks do not list fails the build", async (t) => {
+  // The app shows an installed extension's panel only when its manifest
+  // declares the hook, so this one would publish and install cleanly and never
+  // appear. The trap is a check that cannot activate the bundle — the shared
+  // library missing, say — and quietly passes it instead.
+  const warn = t.mock.method(console, "warn", () => {})
+  const dir = await settingsPanelExtension({ hooks: ["spots"] })
+
+  await assert.rejects(
+    () => buildExtension(build, { dir }),
+    (e: Error) => {
+      assert.ok(e instanceof BuildError)
+      assert.match(e.message, /registers a settings panel/)
+      assert.match(e.message, /"settingsPanel" in "hooks"/)
+      return true
+    },
+  )
+  assert.equal(warn.mock.callCount(), 0)
+})
+
+test("a settings panel the manifest declares builds", async (t) => {
+  const warn = t.mock.method(console, "warn", () => {})
+  const { outDir } = await buildExtension(build, { dir: await settingsPanelExtension({ hooks: ["settingsPanel"] }) })
+
+  assert.equal(warn.mock.callCount(), 0)
+  assert.ok((await readFile(join(outDir, "manifest.json"), "utf8")).includes("settingsPanel"))
+})
+
+test("a bundle the check cannot activate builds, and says the check did not run", async (t) => {
+  // Failing it would blame the author for what the stand-in kernel lacks.
+  const warn = t.mock.method(console, "warn", () => {})
+  const dir = await settingsPanelExtension({
+    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation() { throw new Error("needs a radio") } })`,
+  })
+
+  await buildExtension(build, { dir })
+
+  assert.equal(warn.mock.callCount(), 1)
+  assert.match(String(warn.mock.calls[0].arguments[0]), /check did not run — needs a radio/)
+})
+
+test("an activation that never finishes builds, says the check did not run, and still copies the manifest", async (t) => {
+  // The stand-in's timers never fire. Awaited without a deadline, the pending
+  // activation lets Node exit mid-build — no error, no manifest beside the bundle.
+  const warn = t.mock.method(console, "warn", () => {})
+  const dir = await settingsPanelExtension({
+    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation: () => new Promise(() => {}) })`,
+  })
+
+  const { outDir } = await buildExtension(build, { dir })
+
+  assert.equal(warn.mock.callCount(), 1)
+  assert.match(String(warn.mock.calls[0].arguments[0]), /check did not run — activation had not finished/)
+  assert.ok((await readFile(join(outDir, "manifest.json"), "utf8")).includes("w7abc-t"))
+})
+
+test("a bundle that throws something other than an Error still builds with the warning", async (t) => {
+  const warn = t.mock.method(console, "warn", () => {})
+  const dir = await settingsPanelExtension({
+    activation: `globalThis.__polo.defineExtension({ key: "w7abc-t", onActivation: () => Promise.reject() })`,
+  })
+
+  await buildExtension(build, { dir })
+
+  assert.equal(warn.mock.callCount(), 1)
+  assert.match(String(warn.mock.calls[0].arguments[0]), /check did not run — undefined/)
 })

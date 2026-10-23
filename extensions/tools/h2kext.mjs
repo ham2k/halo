@@ -332,6 +332,63 @@ export function validateAdifFieldsScope(manifest) {
   ]
 }
 
+/// The settings sections a manifest's `settings.section` may name without
+/// review — keys of the app's own settings groups. `preferred` is where a
+/// panel usually belongs, by the extension's main purpose; `other` suits one
+/// that tunes something the app already has a section for. The app holds the
+/// same list (`extensionSettingsSections`, app/lib/services/extensions/
+/// settings_placement.dart) and the catalog its own copy; see
+/// docs/extensions/settings.md.
+export const SETTINGS_SECTIONS = {
+  preferred: ["activities", "hunting", "contests", "lookups", "spotting", "dashboard"],
+  other: ["logging", "radio", "map", "exports"],
+}
+
+const SETTINGS_KEYS = ["section", "sidebar", "common"]
+
+/// Everything wrong with the SHAPE of a manifest's `settings`, as a list —
+/// empty for a valid one and for an absent one. What it places is not
+/// checked here: a section outside [SETTINGS_SECTIONS], a sidebar entry or
+/// Common Preferences rows are allowed, and reviewed (see
+/// [settingsReviewReasons]).
+export function validateSettingsPlacement(settings) {
+  if (settings === undefined) return []
+  if (typeof settings !== "object" || settings === null || Array.isArray(settings)) {
+    return [`'settings' must be an object of ${SETTINGS_KEYS.join(" / ")}`]
+  }
+  const problems = []
+  for (const key of Object.keys(settings)) {
+    if (!SETTINGS_KEYS.includes(key)) problems.push(`'settings' has an unknown key '${key}' — only ${SETTINGS_KEYS.join(", ")} are read`)
+  }
+  if (settings.section !== undefined && (typeof settings.section !== "string" || !/^[a-z][a-z0-9-]*$/.test(settings.section))) {
+    problems.push(`'settings.section' must be a settings section's key, such as "${SETTINGS_SECTIONS.preferred[0]}"`)
+  }
+  for (const key of ["sidebar", "common"]) {
+    if (settings[key] !== undefined && typeof settings[key] !== "boolean") problems.push(`'settings.${key}' must be true or false`)
+  }
+  return problems
+}
+
+/// Why the catalog would hold this manifest's settings for an admin's review,
+/// as a list — empty when they go where any extension's may. The app shows
+/// a placement the manifest does not declare as if it were not asked for, so
+/// the manifest is the whole of what is reviewed.
+export function settingsReviewReasons(manifest) {
+  const settings = manifest?.settings
+  const hasPanel = Array.isArray(manifest?.hooks) && manifest.hooks.includes("settingsPanel")
+  const declared = typeof settings === "object" && settings !== null && !Array.isArray(settings) ? settings : {}
+  const reasons = []
+  const allowed = [...SETTINGS_SECTIONS.preferred, ...SETTINGS_SECTIONS.other]
+  if (typeof declared.section === "string") {
+    if (!allowed.includes(declared.section)) reasons.push(`'settings.section' is "${declared.section}", which is not one of ${allowed.join(", ")}`)
+  } else if (hasPanel) {
+    reasons.push(`'hooks' lists 'settingsPanel' but 'settings.section' names no section, so the panel would be a category of its own`)
+  }
+  if (declared.sidebar === true) reasons.push(`'settings.sidebar' asks for an entry in the Settings sidebar`)
+  if (declared.common === true) reasons.push(`'settings.common' asks to add fields to Common Preferences`)
+  return reasons
+}
+
 /// Everything wrong with a candidate bundle, as a list — an author fixing one
 /// problem per run is an author running this five times.
 export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName = false } = {}) {
@@ -438,6 +495,8 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
   for (const problem of validateRelevance(manifest.relevance)) say(problem)
 
   for (const problem of validateAdifFieldsScope(manifest)) say(problem)
+
+  for (const problem of validateSettingsPlacement(manifest.settings)) say(problem)
 
   return problems
 }

@@ -106,6 +106,11 @@ class _MockHostService extends ExtensionService {
   @override
   ExtensionHost? get host => mockHost;
 
+  /// The app's own, so its panel keeps the sidebar entry it asks for — an
+  /// installed one would need its manifest to declare it (settings_placement.dart).
+  @override
+  List<ExtensionInfo> get availableExtensions => const [ExtensionInfo(key: 'myext', file: 'myext.js', core: true, name: 'myext')];
+
   @override
   Future<void> start() async {}
 

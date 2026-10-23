@@ -144,6 +144,28 @@ The packer refuses:
 The matcher reads a key it cannot parse as "does not gate", so each of the
 shape errors would otherwise ship the bundle as worldwide.
 
+### Settings
+
+An extension with a `settingsPanel` says where its panel goes:
+
+```json
+"settings": { "section": "activities" }
+```
+
+`section` is one of the app's settings sections, picked by the extension's
+main purpose; `sidebar: true` asks for a sidebar entry for a panel that is a
+category of its own, and `common: true` for Common Preferences rows. The section list, and what the app does with a
+placement the manifest does not declare, are in
+[settings.md](./settings.md#where-an-extensions-settings-go).
+
+The packer refuses a `settings` that is not an object, a key inside it other
+than those three, a `section` that is not a section key, and a `sidebar` or
+`common` that is not `true` or `false`. It does not refuse a placement beyond
+the usual — a section outside the list, no section for a `settingsPanel`, a
+sidebar entry, Common Preferences — but prints `held for review on the
+catalog` for each, because the catalog holds such an upload for an admin
+even from a trusted publisher.
+
 ## Using the host's libraries
 
 The host carries a set of libraries and hands every extension the same

@@ -20,6 +20,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/settings/extension_settings_panel.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
@@ -73,7 +74,13 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
       ],
     },
   });
-  final extensions = ExtensionServiceWithFakeHost(mockHost)..settings = settings;
+  // The app's own, so each panel keeps the sidebar entry it asks for — an
+  // installed one would need its manifest to declare it (settings_placement.dart).
+  final extensions = ExtensionServiceWithFakeHost(mockHost)
+    ..settings = settings
+    ..debugSetAvailableExtensions([
+      for (final key in const ['call-notes', 'radio-commands']) ExtensionInfo(key: key, file: '$key.js', core: true, name: key),
+    ]);
   final services = HaLoServices(db, settings, extensions: extensions);
 
   await tester.pumpWidget(

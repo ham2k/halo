@@ -763,6 +763,7 @@ class _Translations$settings$qrp extends Translations$settings$en {
 	@override late final _Translations$settings$radio$qrp radio = _Translations$settings$radio$qrp._(_root);
 	@override late final _Translations$settings$help$qrp help = _Translations$settings$help$qrp._(_root);
 	@override late final _Translations$settings$exports$qrp exports = _Translations$settings$exports$qrp._(_root);
+	@override late final _Translations$settings$extensionSections$qrp extensionSections = _Translations$settings$extensionSections$qrp._(_root);
 	@override late final _Translations$settings$map$qrp map = _Translations$settings$map$qrp._(_root);
 	@override late final _Translations$settings$privacy$qrp privacy = _Translations$settings$privacy$qrp._(_root);
 	@override String get operatorCall => 'operator callsign';
@@ -2271,6 +2272,20 @@ class _Translations$settings$exports$qrp extends Translations$settings$exports$e
 
 	// Translations
 	@override String get title => 'exports';
+}
+
+// Path: settings.extensionSections
+class _Translations$settings$extensionSections$qrp extends Translations$settings$extensionSections$en {
+	_Translations$settings$extensionSections$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get activities => 'activities';
+	@override String get hunting => 'hunting';
+	@override String get contests => 'contests';
+	@override String get lookups => 'lookups';
+	@override String get dashboard => 'dashboard';
 }
 
 // Path: settings.map
@@ -5607,6 +5622,11 @@ extension on TranslationsQrp {
 			'settings.help.contact' => 'contact us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the forums or chat first!',
 			'settings.exports.title' => 'exports',
+			'settings.extensionSections.activities' => 'activities',
+			'settings.extensionSections.hunting' => 'hunting',
+			'settings.extensionSections.contests' => 'contests',
+			'settings.extensionSections.lookups' => 'lookups',
+			'settings.extensionSections.dashboard' => 'dashboard',
 			'settings.map.title' => 'maps',
 			'settings.map.style.title' => 'map style',
 			'settings.map.showCallsigns.title' => 'show callsigns',
@@ -5780,13 +5800,13 @@ extension on TranslationsQrp {
 			'settings.station.hostDescription' => 'the radio\'s hostname or ip address on your network.',
 			'settings.station.port' => 'port',
 			'settings.station.hostRequired' => 'an address is required',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.portInvalid' => 'port must be between 1 and 65535',
 			'settings.station.connect' => 'connect',
 			'settings.station.disconnect' => 'disconnect',
 			'settings.station.remove' => 'remove',
 			'settings.station.removeTitle' => ({required Object name}) => 'remove ${name}?',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.removeMessage' => 'this only removes it from the app. the equipment\'s settings stay as they are.',
 			'settings.station.unknownType' => ({required Object typeKey}) => 'unrecognized equipment type "${typeKey}"',
 			'settings.station.report' => 'report',
@@ -6294,13 +6314,13 @@ extension on TranslationsQrp {
 			'commands.reloadingAll' => 'reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
+			_ => null,
+		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'test error report sent to sentry',
 			'commands.idleMetricsEnabled' => 'idle metrics enabled in the status bar',
 			'commands.idleMetricsDisabled' => 'idle metrics disabled',
-			_ => null,
-		} ?? switch (path) {
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',

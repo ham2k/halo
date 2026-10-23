@@ -26,6 +26,122 @@ There are two tiers, discriminated by a required `kind` tag.
 
 ---
 
+## Where an extension's settings go
+
+**Put all of an extension's settings in one panel, and that panel in the
+section that fits the extension's main purpose.** The panel shows there as a
+single row that opens it in a dialog. An extension does not add a category of
+its own to Application Preferences, an entry to the Settings sidebar, or
+fields to Common Preferences — not without an admin's review on the catalog.
+
+These sections take an extension's panel without review:
+
+| `section` | Shown as | For |
+|---|---|---|
+| `activities` | Activities | an activity program — POTA, SOTA, WWFF |
+| `hunting` | Hunting | chasing and awards: what an operator works rather than activates |
+| `contests` | Contests | a contest or event |
+| `lookups` | Lookups | callsign lookups, notes and history |
+| `spotting` | Spotting | a spot source or destination |
+| `dashboard` | Dashboard | a dashboard panel's app-wide preferences |
+| `logging` | Logging | something that changes how QSOs are entered |
+| `radio` | CAT Control | radios, rigs and keyers |
+| `map` | Maps | the map views |
+| `exports` | Exports | export files and formats |
+
+Prefer the first six — they say what the extension is. The last four suit an
+extension that tunes something the app already has a section for. A section
+holding no panel is not shown.
+
+The section is declared twice: in the **manifest**, which is what the catalog
+reviews and what the app places the panel by, and on the **panel**, for an app
+older than the manifest field. In `manifest.json`:
+
+```json
+{
+  "key": "w7abc-park-notes",
+  "category": "activity",
+  "hooks": ["settingsPanel"],
+  "settings": { "section": "activities" }
+}
+```
+
+And where the panel is registered:
+
+```ts
+api.registerHook('settingsPanel', {
+  hook: {
+    kind: 'simple',
+    title: 'Park Notes',
+    section: 'activities',
+    sidebar: false,
+    fields: [ /* … */ ],
+  },
+});
+```
+
+`settings` has three keys, all optional:
+
+- **`section`** — the key of the section, from the table above.
+- **`sidebar: true`** — a panel that is a category of its own (no `section`,
+  or one the app does not have) may also have an entry in the Settings
+  sidebar. A panel placed in a section is a row there and never has one.
+  Reviewed.
+- **`common: true`** — the panel's fields flagged `common: true` may also show
+  in Common Preferences. Reviewed.
+
+### What is reviewed
+
+The catalog reads a manifest and never runs a bundle, so the manifest is what
+it reviews. An upload is held for an admin — even one from a trusted
+publisher, whose uploads otherwise skip the queue — when its manifest:
+
+- lists `settingsPanel` in `hooks` and names no `settings.section` — the panel
+  would be a category of its own;
+- names a `settings.section` outside the table above — a new category, which
+  the app also has to know (a section the app does not know is shown as a
+  category of its own);
+- sets `settings.sidebar` or `settings.common`.
+
+A placement an admin has approved stays approved: a later version whose
+`settings` are unchanged is not held for it again. To ask for a new category
+or a sidebar entry, declare it and say why in the release notes; the reviewer
+reads both. `npm run pack` (`h2kext-pack`) prints `held for review on the
+catalog` for each of these, so it is no surprise.
+
+### What the app enforces
+
+The manifest is a promise the code could break, so the app holds every
+extension it did not ship to its manifest, whatever the panel asks for:
+
+- the panel goes in the manifest's `settings.section`; with none declared, in
+  the panel's own `section` if it is one of the table's; otherwise it is a
+  category of its own;
+- it has a sidebar entry only when it is a category of its own, the panel's
+  `sidebar` is not false AND the manifest declares `sidebar: true` — so with
+  no `settings`, `sidebar` reads as false;
+- its `common: true` fields reach Common Preferences only when the manifest
+  declares `common: true`; otherwise the flag is ignored and the fields stay
+  in the panel.
+
+A panel from an extension whose manifest `hooks` does not list
+`settingsPanel` is not shown at all: the catalog decides what to review by
+that list, so an undeclared panel is one nobody was asked about.
+`buildExtension` fails the build when the bundle registers a panel its
+manifest does not declare, unless it cannot activate the bundle to find out,
+in which case it warns.
+
+An extension installed from a `.h2kext` file never passed through the
+catalog, so nobody reviewed its manifest: the app takes its `settings` as
+written, `sidebar` and `common` included. Installing a file is the
+operator's own choice to trust it.
+
+Everything else about a panel is untouched: `dataFilesSection` still adds its
+row to the Data Files screen, and `target` still reaches the Logging and
+Developer dialogs (see [Settings targets](#settings-targets)).
+
+---
+
 ## Key namespacing
 
 Wherever an extension can define more than one of something under one
@@ -76,7 +192,9 @@ export interface SimpleSettingsPanel {
   order?: number;
   // Defaults true. Set false to keep this panel out of the app's top-level
   // settings navigation (the sidebar list). Independent of dataFilesSection
-  // below — this only controls the top-level nav.
+  // below — this only controls the top-level nav. An extension the app did
+  // not ship also needs the manifest's `settings.sidebar: true`, which is
+  // reviewed; see "Where an extension's settings go".
   sidebar?: boolean;
   // Defaults false. Set true to also show this panel as a row in the Data
   // Files screen's own "Extensions" section — leave this false for anything
@@ -85,10 +203,12 @@ export interface SimpleSettingsPanel {
   // the type level — inferring this from `sidebar: false` alone would sweep
   // any sidebar-opt-out panel in here.
   dataFilesSection?: boolean;
-  // The key of one of the app's own settings sections ('spotting', the
-  // Spotting section) to show this panel inside, as one row that opens it
-  // in a dialog — instead of a section of its own in Settings and a sidebar
-  // entry, whatever `sidebar` says. An app without that section (an older
+  // The key of one of the app's own settings sections ('activities',
+  // 'spotting', … — see "Where an extension's settings go") to show this
+  // panel inside, as one row that opens it in a dialog — instead of a
+  // section of its own in Settings and a sidebar entry, whatever `sidebar`
+  // says. Declare the same key as the manifest's `settings.section`, which is
+  // what the app places the panel by. An app without that section (an older
   // one, or a key it doesn't know) shows the panel as if this weren't set,
   // so it needs no newer API level.
   section?: string;
@@ -363,8 +483,11 @@ override) without it cluttering the panel for regular users:
 A panel with nothing to show at the current developer-mode setting is left
 out of the Settings screen's list of categories rather than shown as an empty
 heading, so a panel whose every field is `devMode` appears there only while
-developer mode is on. Its sidebar entry is not: give such a panel
-`sidebar: false`, or the entry opens on an empty page.
+developer mode is on. A panel placed in a `section` is treated the same way:
+its row there is a developer-mode row when every field it has is `devMode`,
+and it has no row at all when it has no fields on this platform. Its sidebar
+entry is not: give such a panel `sidebar: false`, or the entry opens on an
+empty page.
 
 ## `aliases`: short names for the SET command
 
@@ -404,7 +527,10 @@ maintained as a separate list somewhere else in the app. Any field, link, or
 action (core-declared or extension-declared, Tier 1 or Tier 2 alike) can set:
 
 - **`common: true`** — also show this element in the Common Preferences
-  section, on top of its own group's. Off by default. Not the same thing as
+  section, on top of its own group's. Off by default. An extension's
+  `common` fields reach Common Preferences only when its manifest declares
+  `settings.common: true`, which is reviewed — see
+  [Where an extension's settings go](#where-an-extensions-settings-go). Not the same thing as
   `FormFieldOption.common`/`uncommon` above — that's a `multiselect`
   option's own disclosure tier (upfront vs. behind "Show more"), a
   different scope (an option inside one field, not the field itself).

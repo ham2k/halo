@@ -10,6 +10,7 @@ import 'package:collection/collection.dart' show ListEquality, mergeSort;
 
 import 'package:halo_core/halo_core.dart' show Hooks, matchesWordStart;
 import 'extension_relevance.dart';
+import 'settings_placement.dart';
 
 /// Where an extension's code came from. Not cosmetic: [maySeeBuildSecrets]
 /// hangs off it, and so does whether the loader reads the source from the
@@ -325,6 +326,10 @@ class ExtensionInfo with ExtensionSearchable {
   /// extension to offer (docs/extensions/README.md).
   final List<String> hooks;
 
+  /// Where the manifest says its settings panels go (its `settings`), null
+  /// when it says nothing — see [placeSettingsPanel] for what that allows.
+  final ExtensionSettingsPlacement? settings;
+
   /// Per-locale overrides for [name]/[description] plus extra localized
   /// search [keywords] (manifest.json `translations`, baked into index.json
   /// so they're readable without running any JS, same as the base
@@ -372,6 +377,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.accentColor,
     this.keywords = const [],
     this.hooks = const [],
+    this.settings,
     this.translations = const {},
   });
 
@@ -410,6 +416,7 @@ class ExtensionInfo with ExtensionSearchable {
     accentColor: json['accentColor'] as String?,
     keywords: ((json['keywords'] as List?) ?? const []).cast<String>(),
     hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
+    settings: ExtensionSettingsPlacement.fromJson(json['settings']),
     translations: {for (final entry in ((json['translations'] as Map?) ?? const {}).entries) entry.key as String: (entry.value as Map).cast<String, Object?>()},
   );
 }

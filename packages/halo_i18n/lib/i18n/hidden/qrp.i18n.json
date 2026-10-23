@@ -1655,6 +1655,13 @@
     "exports": {
       "title": "exports"
     },
+    "extensionSections": {
+      "activities": "activities",
+      "hunting": "hunting",
+      "contests": "contests",
+      "lookups": "lookups",
+      "dashboard": "dashboard"
+    },
     "map": {
       "title": "maps",
       "style": {

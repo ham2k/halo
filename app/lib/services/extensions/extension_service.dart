@@ -39,6 +39,7 @@ import '../location_service.dart';
 import '../panel_service.dart';
 import 'cluster_host_calls.dart';
 import 'radio_host_calls.dart';
+import 'settings_placement.dart';
 import '../settings_service.dart';
 import '../spots_service.dart';
 import '../status_bar_service.dart';
@@ -62,6 +63,7 @@ import 'engine_load_monitor.dart';
 
 // The types callers pair with the runtime: one import serves both.
 export 'extension_info.dart';
+export 'settings_placement.dart' show ExtensionSettingsPlacement;
 export 'extension_ref_results.dart';
 
 // One class, one library, several files. The pieces share the runtime's

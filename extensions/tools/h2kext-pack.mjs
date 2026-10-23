@@ -10,7 +10,7 @@
 // The directory holds a built `index.js`, a `manifest.json`, and optionally an
 // `assets/` folder. Nothing here compiles anything — see h2kext.mjs.
 
-import { pack, PackError, H2KEXT_API_VERSION, RESERVED_PREFIX } from "./h2kext.mjs"
+import { pack, PackError, H2KEXT_API_VERSION, RESERVED_PREFIX, settingsReviewReasons } from "./h2kext.mjs"
 
 const args = process.argv.slice(2)
 
@@ -66,6 +66,11 @@ try {
   }
   if (result.manifest.webSockets?.length) {
     console.log(`  may hold connections to: ${result.manifest.webSockets.join(", ")}`)
+  }
+  // Not a refusal: placements beyond the usual are allowed, once an admin has
+  // looked. Said now so a publish that waits in the queue is no surprise.
+  for (const reason of settingsReviewReasons(result.manifest)) {
+    console.log(`  held for review on the catalog: ${reason}`)
   }
 } catch (e) {
   if (e instanceof PackError) {

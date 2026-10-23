@@ -137,6 +137,12 @@ class SettingsRegistry {
     _groups.sort((a, b) => a.order.compareTo(b.order));
   }
 
+  void registerAll(Iterable<SettingsGroup> groups) {
+    for (final group in groups) {
+      register(group);
+    }
+  }
+
   List<SettingsGroup> get groups => List.unmodifiable(_groups);
 
   SettingsGroup? operator [](String key) {

@@ -9,6 +9,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -743,11 +744,72 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   bool _reloadPending = false;
   int? _lastRowIdentity;
 
+  /// What each placed panel has to show, by `panelKey`: `devOnly` when every
+  /// row it has is `devMode`, so its own row here is too; absent while not
+  /// yet asked, and for a panel with no rows at all on this platform, which
+  /// gets no row — a row that opens an empty dialog says nothing useful.
+  /// The same rule [ExtensionSettingsPanel] applies to a category.
+  Map<String, ({bool devOnly})> _placedRows = const {};
+
+  /// Which [_loadPlacedRows] call is the latest: only its answer is kept.
+  /// Not the list's identity — the parent builds a new one every time it
+  /// rebuilds, which another category's first load does mid-request.
+  int _placedRowsRequest = 0;
+
   @override
   void initState() {
     super.initState();
     _load();
+    _loadPlacedRows();
     widget.group.listenable?.addListener(_load);
+  }
+
+  @override
+  void didUpdateWidget(_SettingsGroupForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    String keys(List<Map<String, dynamic>> panels) => panels.map((panel) => panel['panelKey']).join('\n');
+    if (keys(oldWidget.placedPanels) != keys(widget.placedPanels)) _loadPlacedRows();
+  }
+
+  Future<void> _loadPlacedRows() async {
+    final request = ++_placedRowsRequest;
+    final placed = widget.placedPanels;
+    if (placed.isEmpty) {
+      if (_placedRows.isNotEmpty) _setPlacedRows(const {});
+      return;
+    }
+    final rows = <String, ({bool devOnly})>{};
+    for (final panel in placed) {
+      final panelKey = panel['panelKey'] as String;
+      final definition = await widget.services.extensions.getSettingsPanelDefinition(
+        hookKey: panel['hookKey'] as String,
+        panelKey: panelKey,
+        kind: panel['kind'] as String,
+      );
+      // One that failed to load keeps its row: the dialog says it failed,
+      // where a missing row would say nothing at all.
+      if (definition == null) {
+        rows[panelKey] = (devOnly: false);
+        continue;
+      }
+      final elements = filterElementsForEnvironment(((definition['elements'] as List?) ?? const []).cast<Map<String, dynamic>>());
+      if (elements.isEmpty) continue;
+      rows[panelKey] = (devOnly: elements.every((el) => el['devMode'] == true));
+    }
+    if (!mounted || request != _placedRowsRequest) return;
+    _setPlacedRows(rows);
+  }
+
+  /// Rows appearing or going under the list move its rows, so the list is
+  /// told, as [_load] tells it ([_SettingsGroupForm.onRowsChanged]) — after
+  /// the frame, since emptying them happens inside the parent's build.
+  void _setPlacedRows(Map<String, ({bool devOnly})> rows) {
+    final changed = !mapEquals(rows, _placedRows);
+    setState(() => _placedRows = rows);
+    if (!changed) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onRowsChanged?.call();
+    });
   }
 
   @override
@@ -817,13 +879,15 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       elements = [
         ...elements,
         for (final panel in widget.placedPanels)
-          {
-            'type': 'link',
-            'key': 'extension:${panel['panelKey']}',
-            'label': (panel['title'] as String?) ?? panel['panelKey'],
-            'icon': panel['icon'],
-            'panel': panel['panelKey'],
-          },
+          if (_placedRows[panel['panelKey']] case final row?)
+            {
+              'type': 'link',
+              'key': 'extension:${panel['panelKey']}',
+              'label': (panel['title'] as String?) ?? panel['panelKey'],
+              'icon': panel['icon'],
+              'panel': panel['panelKey'],
+              if (row.devOnly) 'devMode': true,
+            },
       ];
     }
     if (elements == null) {
@@ -835,8 +899,11 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       );
     }
     // A group can decline to contribute anything at all. Its title is chrome
-    // for the rows below it, so with no rows there is nothing to head.
+    // for the rows below it, so with no rows there is nothing to head — nor
+    // with only developer-mode rows outside developer mode, as a section
+    // holding just a developer-only extension panel has.
     if (elements.isEmpty) return _box(const SizedBox.shrink());
+    if (!widget.services.settings.developerMode && elements.every((el) => el['devMode'] == true)) return _box(const SizedBox.shrink());
     if (widget.commonOnly) {
       elements = [
         for (final el in elements)
@@ -1327,16 +1394,19 @@ class _CommonSettingsCategory extends StatelessWidget {
             _SettingsGroupForm(services: services, group: group, commonOnly: true, sliver: true, onRowsChanged: onRowsChanged),
           if (panels != null)
             for (final descriptor in panels)
-              ExtensionSettingsPanel(
-                key: ValueKey(descriptor['panelKey']),
-                services: services,
-                descriptor: descriptor,
-                embedded: true,
-                commonOnly: true,
-                sliver: true,
-                sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
-                onRowsChanged: onRowsChanged,
-              ),
+              // Only an extension whose manifest declares `common` may add to
+              // the list every operator sees first (placeSettingsPanel).
+              if (descriptor['mayBeCommon'] == true)
+                ExtensionSettingsPanel(
+                  key: ValueKey(descriptor['panelKey']),
+                  services: services,
+                  descriptor: descriptor,
+                  embedded: true,
+                  commonOnly: true,
+                  sliver: true,
+                  sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
+                  onRowsChanged: onRowsChanged,
+                ),
         ],
       ),
     );

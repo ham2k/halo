@@ -17,7 +17,7 @@ import { dirname, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 import { buildOptionsFor as extensionBuildOptions } from "./tools/h2kext-build.mjs"
-import { validateAdifFieldsScope, validateRelevance } from "./tools/h2kext.mjs"
+import { validateAdifFieldsScope, validateRelevance, validateSettingsPlacement } from "./tools/h2kext.mjs"
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, "../app/assets/extensions")
@@ -210,6 +210,12 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
   if (relevanceProblems.length) {
     throw new Error(`manifest for '${bundleKey}' has an invalid 'relevance': ${relevanceProblems.join("; ")} (${manifestPath})`)
   }
+  // Copied into index.json and read by the host to place settings panels;
+  // the format's rules, as for `relevance`.
+  const settingsProblems = validateSettingsPlacement(manifest.settings)
+  if (settingsProblems.length) {
+    throw new Error(`manifest for '${bundleKey}' has an invalid 'settings': ${settingsProblems.join("; ")} (${manifestPath})`)
+  }
   // Same rule the packer applies, imported for the same reason: an extension
   // whose fields the full ADIF export would never ask for builds green here
   // otherwise, and ships a hook that does nothing.
@@ -283,6 +289,10 @@ export function indexEntryFor({ key, manifest: m }) {
     ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
+    // Read by the host to place the extension's settings panels; without it
+    // a dev-served extension's panel would be placed as though it declared
+    // nothing, which is not how it will install.
+    ...(m.settings ? { settings: m.settings } : {}),
     core: !m.category,
     ...(m.category
       ? {

@@ -234,6 +234,28 @@ test("a 201 prints the result line the spec promises, with the status in words",
   assert.match(approved.stdout, /\(approved\)$/m)
 })
 
+test("the catalog's settings-review reasons are printed, so a held upload says why", async () => {
+  const file = await bundleFile()
+  const held = await run(
+    [file],
+    catalogAnswering(201, {
+      ...accepted,
+      settingsReview: { reasons: [{ code: "sidebar", message: "asks for an entry in the Settings sidebar" }], acceptedIn: null },
+    }),
+  )
+  assert.match(held.stdout, /^settings placement for review: asks for an entry in the Settings sidebar$/m)
+
+  const carried = await run(
+    [file],
+    catalogAnswering(201, { ...accepted, status: "approved", settingsReview: { reasons: [{ code: "sidebar", message: "x" }], acceptedIn: "1.2.2" } }),
+  )
+  assert.match(carried.stdout, /^settings placement as approved in 1\.2\.2$/m)
+  assert.doesNotMatch(carried.stdout, /for review/)
+
+  const plain = await run([file], catalogAnswering(201, accepted))
+  assert.doesNotMatch(plain.stdout, /settings placement/)
+})
+
 test("a refusal prints the server's error and code, and exits 1", async () => {
   // The catalog names what is wrong in `error` and machine-tags it in `code`;
   // an exit code alone would send the author to the site to find out which of

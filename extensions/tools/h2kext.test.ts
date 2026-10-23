@@ -25,6 +25,9 @@ import {
   RESERVED_PREFIX,
   validateRelevance,
   validateManifest,
+  validateSettingsPlacement,
+  settingsReviewReasons,
+  SETTINGS_SECTIONS,
 } from "./h2kext.mjs"
 
 const validManifest = {
@@ -467,4 +470,40 @@ test("index.json carries version for every extension, and relevance when declare
   })
   assert.equal(listed.version, "2.0.0")
   assert.deepEqual(listed.relevance, relevance)
+})
+
+test("a well-formed 'settings' packs, whatever it places", () => {
+  assert.deepEqual(validateManifest({ ...validManifest, settings: { section: "activities" } }), [])
+  assert.deepEqual(validateManifest({ ...validManifest, settings: { section: "w7abc-things", sidebar: true, common: false } }), [])
+  assert.deepEqual(validateSettingsPlacement(undefined), [])
+})
+
+test("a malformed 'settings' is refused, naming what is wrong", () => {
+  assert.match(validateSettingsPlacement("activities")[0], /must be an object/)
+  assert.match(validateSettingsPlacement({ sectoin: "activities" })[0], /unknown key 'sectoin'/)
+  assert.match(validateSettingsPlacement({ section: "Activities" })[0], /settings section's key/)
+  assert.match(validateSettingsPlacement({ section: "activities", sidebar: "yes" })[0], /'settings.sidebar' must be true or false/)
+  assert.equal(validateManifest({ ...validManifest, settings: [] }).length, 1)
+})
+
+test("a panel in one of the listed sections needs no review", () => {
+  for (const section of [...SETTINGS_SECTIONS.preferred, ...SETTINGS_SECTIONS.other]) {
+    assert.deepEqual(settingsReviewReasons({ hooks: ["settingsPanel"], settings: { section } }), [], section)
+  }
+  assert.deepEqual(settingsReviewReasons({ hooks: ["lookup"] }), [])
+})
+
+test("a category of its own, an unlisted section, a sidebar entry and Common Preferences are each a reason for review", () => {
+  assert.match(settingsReviewReasons({ hooks: ["settingsPanel"] })[0], /category of its own/)
+  assert.match(settingsReviewReasons({ hooks: ["settingsPanel"], settings: { section: "privacy" } })[0], /"privacy", which is not one of/)
+  const all = settingsReviewReasons({ hooks: ["settingsPanel"], settings: { section: "lookups", sidebar: true, common: true } })
+  assert.equal(all.length, 2)
+  assert.match(all[0], /sidebar/)
+  assert.match(all[1], /Common Preferences/)
+})
+
+test("index.json carries 'settings', so a dev-served extension is placed as it will install", () => {
+  const entry = indexEntryFor({ key: "w7abc-notes", manifest: { ...validManifest, settings: { section: "lookups" } } })
+  assert.deepEqual(entry.settings, { section: "lookups" })
+  assert.equal("settings" in indexEntryFor({ key: "w7abc-notes", manifest: validManifest }), false)
 })
