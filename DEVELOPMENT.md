@@ -149,6 +149,12 @@ ones run on the plain Dart VM, where `dart:ui` does not exist, and
 `flutter test` would supply it and hide a Flutter import that breaks them
 (docs/extensions/cli.md).
 
+Every Dart package is analyzed and format-checked before any Dart test runs.
+The app suite and then the browser-platform step run beside a second lane
+holding every other package's suite, one after another. The first lane to
+fail stops the other and fails the gate; the side lane's output is printed
+after the app lane's.
+
 CI runs `./scripts/test.sh --quick` on every push to `main` and nothing else
 (`.github/workflows/checks.yml`): the source-scanning guards, the extensions'
 typecheck, and `dart analyze` for every package — never the suite. The

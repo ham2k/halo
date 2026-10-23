@@ -450,7 +450,7 @@ ensure_pub() {
 # But a skip must never be reported as a pass. Nothing else covers web number
 # semantics — no CI runs any test — so a full run that skipped this ends with a
 # verdict that says so rather than "all checks passed" (AGENTS.md Rule 12).
-run_browser_tests() {
+run_browser_tests() { # [extra flutter test flags…]
   # `-x`, not just `-n`: a CHROME_EXECUTABLE left over from an uninstall
   # would otherwise read as "Chrome present" and skip (or fail) for the wrong
   # reason.
@@ -460,7 +460,7 @@ run_browser_tests() {
     || command -v chromium-browser >/dev/null 2>&1 \
     || [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
     echo "▶ app: browser-platform tests (web number semantics, platform-view shields, extension store)"
-    (cd "$ROOT_DIR/app" && flutter test --platform chrome test/settings/settings_fuzzy_test.dart test/web/platform_view_shield_web_test.dart test/web/bundle_storage_web_test.dart)
+    (cd "$ROOT_DIR/app" && flutter test "$@" --platform chrome test/settings/settings_fuzzy_test.dart test/web/platform_view_shield_web_test.dart test/web/bundle_storage_web_test.dart)
   elif [[ "${BROWSER_REQUIRED:-0}" -eq 1 ]]; then
     echo "❌ browser-platform tests: no Chrome found, and this run requires one." >&2
     exit 1
@@ -967,26 +967,132 @@ if [[ -d "$ROOT_DIR/app_dist" ]]; then
 fi
 
 for pkg in "${PACKAGES[@]}"; do
-  if [[ "$QUICK" -eq 1 ]]; then
-    echo "▶ $pkg: pub get, analyze (quick mode: no tests)"
-  else
-    echo "▶ $pkg: pub get, analyze, test"
-  fi
+  echo "▶ $pkg: pub get, analyze"
   cd "$ROOT_DIR/$pkg"
   flutter pub get
   # Infos are fatal too: the count is zero, and zero is the only number
   # that stays meaningful. A deprecation that arrives with a Flutter bump is
   # fixed or carries a reasoned `// ignore:` naming the card that owns it.
   flutter analyze
-  if [[ "$QUICK" -eq 0 ]]; then
-    $(test_runner_for "$pkg")
-  fi
 done
 
 check_dart_format "${PACKAGES[@]}"
 
+# [pid] and every process under it: a lane's test runs sit two or three
+# subshells down, out of reach of a plain `pkill -P`.
+tree_pids() {
+  local child
+  for child in $(pgrep -P "$1" 2>/dev/null || true); do tree_pids "$child"; done
+  echo "$1"
+}
+
+# Stops a lane and waits for its descendants to be gone: a `flutter test`
+# being torn down prints its testers' SIGTERM traces for a moment, and those
+# must not land after the verdict. [pid] itself is the caller's to `wait` for
+# — as this shell's child it lingers as a zombie until then.
+kill_tree() {
+  local pids p alive tries=0
+  pids=$(tree_pids "$1")
+  # shellcheck disable=SC2086
+  kill -TERM $pids 2>/dev/null || true
+  while [[ "$tries" -lt 50 ]]; do
+    alive=""
+    for p in $pids; do [[ "$p" != "$1" ]] && kill -0 "$p" 2>/dev/null && alive=1; done
+    [[ -z "$alive" ]] && return 0
+    sleep 0.2
+    tries=$((tries + 1))
+  done
+  # shellcheck disable=SC2086
+  kill -KILL $pids 2>/dev/null || true
+}
+
+# The app suite is most of the gate, and it ends on a few tests waiting out
+# real deadlines with the CPU idle. The other packages' suites run BESIDE it
+# rather than after it, one at a time in a second lane, so the machine
+# carries two test runs and never more. The side lane runs at a fixed small
+# concurrency: the app suite already starts a worker per core, and a second
+# full pool would only slow both.
+#
+# The browser step stays in the app's lane, after its suite: every run in a
+# package shares its build/ directory, and `flutter test` deletes and
+# rewrites build/unit_test_assets whenever an asset is newer than its
+# manifest — which the bundle build above makes true on every gate. Both app
+# runs pass --no-pub for the same reason, one file over: the loop above has
+# resolved every package already.
+#
+# The first lane to fail stops the other, so a red package suite is reported
+# as soon as it fails rather than after the app suite. The side lane's output
+# is held and printed after the app lane's, so the two never interleave.
+LANE_APP_PID=""
+LANE_SIDE_PID=""
+LANE_SIDE_LOG=""
+stop_lanes() {
+  [[ -n "$LANE_APP_PID" ]] && kill_tree "$LANE_APP_PID"
+  [[ -n "$LANE_SIDE_PID" ]] && kill_tree "$LANE_SIDE_PID"
+  echo "⚠️  gate interrupted — the side lane's output so far is in $LANE_SIDE_LOG" >&2
+}
+
+run_test_lanes() {
+  local app_status="" side_status="" said_waiting=0 pkg
+  LANE_SIDE_LOG=$(mktemp "${TMPDIR:-/tmp}/halo-gate-side-lane.XXXXXX")
+  (
+    for pkg in "${PACKAGES[@]}"; do
+      [[ "$pkg" == app ]] && continue
+      echo "▶ $pkg: test"
+      cd "$ROOT_DIR/$pkg"
+      $(test_runner_for "$pkg") --concurrency=4
+    done
+  ) > "$LANE_SIDE_LOG" 2>&1 &
+  LANE_SIDE_PID=$!
+  echo "▶ app: test, then the browser-platform step (the other packages' suites run beside it; their output follows)"
+  (
+    cd "$ROOT_DIR/app"
+    flutter test --no-pub
+    run_browser_tests --no-pub
+    # A variable set in this subshell never reaches the verdict below.
+    if [[ "${BROWSER_SKIPPED:-0}" -eq 1 ]]; then touch "$LANE_SIDE_LOG.browser-skipped"; fi
+  ) &
+  LANE_APP_PID=$!
+  # An interrupted gate must not leave either lane's test runs behind.
+  trap stop_lanes EXIT
+
+  # Polled: macOS bash 3.2 has no `wait -n`. A finished child stays waitable
+  # after `kill -0` stops seeing it, so its status is never lost.
+  while [[ -z "$app_status" || -z "$side_status" ]]; do
+    if [[ -z "$app_status" ]] && ! kill -0 "$LANE_APP_PID" 2>/dev/null; then
+      if wait "$LANE_APP_PID"; then app_status=0; else app_status=$?; fi
+    fi
+    if [[ -z "$side_status" ]] && ! kill -0 "$LANE_SIDE_PID" 2>/dev/null; then
+      if wait "$LANE_SIDE_PID"; then side_status=0; else side_status=$?; fi
+    fi
+    [[ "${app_status:-0}" -ne 0 || "${side_status:-0}" -ne 0 ]] && break
+    if [[ "$app_status" == 0 && -z "$side_status" && "$said_waiting" == 0 ]]; then
+      echo "▶ app lane done; waiting on the side lane, now at: $(grep '^▶' "$LANE_SIDE_LOG" | tail -1) (output so far: $LANE_SIDE_LOG)"
+      said_waiting=1
+    fi
+    sleep 1
+  done
+  trap - EXIT
+  if [[ -z "$app_status" ]]; then kill_tree "$LANE_APP_PID"; wait "$LANE_APP_PID" 2>/dev/null || true; fi
+  if [[ -z "$side_status" ]]; then kill_tree "$LANE_SIDE_PID"; wait "$LANE_SIDE_PID" 2>/dev/null || true; fi
+
+  echo
+  echo "▶ side lane: the other packages' suites"
+  cat "$LANE_SIDE_LOG"
+  if [[ -f "$LANE_SIDE_LOG.browser-skipped" ]]; then BROWSER_SKIPPED=1; fi
+  rm -f "$LANE_SIDE_LOG" "$LANE_SIDE_LOG.browser-skipped"
+
+  if [[ "${app_status:-0}" -ne 0 || "${side_status:-0}" -ne 0 ]]; then
+    [[ "${app_status:-0}" -ne 0 ]] && echo "❌ app lane failed (exit $app_status) — the app suite or the browser-platform step, above the side lane's output" >&2
+    [[ "${side_status:-0}" -ne 0 ]] && echo "❌ side lane failed (exit $side_status) — the last ▶ step above is the one that failed" >&2
+    [[ -z "$app_status" ]] && echo "   the app lane was stopped, not finished" >&2
+    [[ -z "$side_status" ]] && echo "   the side lane was stopped, not finished" >&2
+    exit 1
+  fi
+}
+
 if [[ "$QUICK" -eq 0 ]]; then
-  run_browser_tests
+  run_test_lanes
 else
   # The one set of tests quick mode runs: the conventions the analyzer has no
   # lint for, in seconds. Without this a guard violation reaches `main` and
