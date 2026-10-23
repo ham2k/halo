@@ -17,7 +17,8 @@
 // `IcomNetworkTransport.debugSocketBinder` (a test seam, same pattern as
 // ErrorPolicy.debugTreatAsWeb) hands the transport these fakes instead of
 // real sockets, in the fixed order it always binds them: control, serial,
-// audio.
+// audio. The same doubles record where each packet goes, which is how the
+// configured radio ports are checked too.
 
 import 'dart:async';
 import 'dart:collection';
@@ -26,6 +27,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/transports/icom_network_protocol.dart' show icomControlPort, icomSerialPort;
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.dart';
 
 import '../support/fake_clock.dart';
@@ -65,6 +67,7 @@ class _FakeIcomSocket extends Stream<RawSocketEvent> implements RawDatagramSocke
   final _incoming = Queue<Datagram>();
 
   final sent = <List<int>>[];
+  final sentToPorts = <int>{};
   var closeCalled = false;
   void Function(List<int> bytes)? onSend;
 
@@ -86,6 +89,7 @@ class _FakeIcomSocket extends Stream<RawSocketEvent> implements RawDatagramSocke
   int send(List<int> buffer, InternetAddress address, int port) {
     final copy = List<int>.from(buffer);
     sent.add(copy);
+    sentToPorts.add(port);
     onSend?.call(copy);
     return copy.length;
   }
@@ -360,6 +364,26 @@ void main() {
 
     await expectLater(const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken()), throwsA(isA<SocketException>()));
   }, timeout: const Timeout(Duration(seconds: 10)));
+
+  test('each session talks to the port the node names, and to the factory one when it names none', () async {
+    // The radio's menu and a port forward can both move these. Without
+    // them reaching the sockets, a radio on 50101 is dialled on 50001 and
+    // the login simply times out.
+    _wireSession(control);
+    _wireSession(serial);
+    final moved = await const IcomNetworkTransport().connect({..._target(), 'controlPort': 50101, 'serialPort': 50202}, cancel: CatCancelToken());
+    await moved.close();
+    expect(control.sentToPorts, {50101});
+    expect(serial.sentToPorts, {50202});
+
+    bindFakeSockets();
+    _wireSession(control);
+    _wireSession(serial);
+    final factory = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+    await factory.close();
+    expect(control.sentToPorts, {icomControlPort});
+    expect(serial.sentToPorts, {icomSerialPort});
+  });
 
   test('a socket error once the session is up routes through onLost, same as the radio going quiet', () async {
     // Post-handshake, this is the ping-timeout path's own mechanism

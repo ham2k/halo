@@ -129,6 +129,8 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
     final host = target['host'] as String? ?? '';
     final username = target['username'] as String? ?? '';
     final password = target['password'] as String? ?? '';
+    final radioControlPort = target[IcomNetworkTransportConfig.controlPortConfigKey] as int? ?? icomControlPort;
+    final radioSerialPort = target[IcomNetworkTransportConfig.serialPortConfigKey] as int? ?? icomSerialPort;
     if (username.isEmpty || password.isEmpty) {
       throw const IcomCredentialsMissing();
     }
@@ -178,7 +180,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
     }
 
     try {
-      control = await _IcomSession.open(address, icomControlPort, 'control');
+      control = await _IcomSession.open(address, radioControlPort, 'control');
       onSetupLost(control);
       if (cancel.isCancelled) throw const CatCancelledException();
 
@@ -195,7 +197,7 @@ class IcomNetworkTransport extends EquipmentTransport with IcomNetworkTransportC
       // still surfaces a control failure from during either wait, in place
       // of whatever these two produce on their own if the same outage
       // takes them down too.
-      final serialSession = await preferLostCause(() => _IcomSession.open(address, icomSerialPort, 'serial'));
+      final serialSession = await preferLostCause(() => _IcomSession.open(address, radioSerialPort, 'serial'));
       serial = serialSession;
       onSetupLost(serialSession);
       final audioSocket = await preferLostCause(() => _bindSocket(InternetAddress.anyIPv4, 0));

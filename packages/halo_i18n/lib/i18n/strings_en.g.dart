@@ -5662,6 +5662,21 @@ class Translations$settings$station$en {
 	/// en: 'The WinKeyer stopped responding while sending; the message was dropped'
 	String get winkeyerStoppedAnswering => 'The WinKeyer stopped responding while sending; the message was dropped';
 
+	/// en: 'Control port (UDP)'
+	String get icomControlPort => 'Control port (UDP)';
+
+	/// en: 'The radio's Control Port (UDP) — 50001 unless changed in its network settings, or forwarded to another.'
+	String get icomControlPortDescription => 'The radio\'s Control Port (UDP) — 50001 unless changed in its network settings, or forwarded to another.';
+
+	/// en: 'Serial port (UDP)'
+	String get icomSerialPort => 'Serial port (UDP)';
+
+	/// en: 'The radio's Serial Port (UDP) — 50002 unless changed in its network settings, or forwarded to another.'
+	String get icomSerialPortDescription => 'The radio\'s Serial Port (UDP) — 50002 unless changed in its network settings, or forwarded to another.';
+
+	/// en: 'The control and serial ports must differ'
+	String get icomPortsDiffer => 'The control and serial ports must differ';
+
 	/// en: 'Radio username'
 	String get radioUser => 'Radio username';
 
@@ -5924,11 +5939,11 @@ class Translations$settings$station$en {
 	/// en: 'If the radio never responds'
 	String get ic705TroubleshootingTitle => 'If the radio never responds';
 
-	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled. - **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session stuck on the radio. A **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.'
-	String get ic705Troubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.';
+	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled. - **The ports must match** the radio's Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off. - **Power-cycle the radio's WLAN** if it stays stuck. That reliably clears a session stuck on the radio. A **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.'
+	String get ic705Troubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **The ports must match** the radio\'s Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.';
 
-	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview, RS-BA1 or Icom's Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio. - **If it connects but never answers**, the CI-V address here must match the radio's CI-V ADDRESS menu. This entry prefills the address the model ships with. - **Turn the radio off and on** if it stays stuck.'
-	String get icomLanTroubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.';
+	/// en: 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it. - **Close any other client.** wfview, RS-BA1 or Icom's Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does. - **Check the radio's network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio. - **The ports must match** the radio's Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off. - **If it connects but never answers**, the CI-V address here must match the radio's CI-V ADDRESS menu. This entry prefills the address the model ships with. - **Turn the radio off and on** if it stays stuck.'
+	String get icomLanTroubleshooting => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **The ports must match** the radio\'s Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.';
 
 	/// en: 'Not responding'
 	String get statusStale => 'Not responding';
@@ -10781,6 +10796,11 @@ extension on Translations {
 			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer responded on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped responding while sending; the message was dropped',
+			'settings.station.icomControlPort' => 'Control port (UDP)',
+			'settings.station.icomControlPortDescription' => 'The radio\'s Control Port (UDP) — 50001 unless changed in its network settings, or forwarded to another.',
+			'settings.station.icomSerialPort' => 'Serial port (UDP)',
+			'settings.station.icomSerialPortDescription' => 'The radio\'s Serial Port (UDP) — 50002 unless changed in its network settings, or forwarded to another.',
+			'settings.station.icomPortsDiffer' => 'The control and serial ports must differ',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s Network → Remote login, not your WiFi password.',
@@ -10932,8 +10952,8 @@ extension on Translations {
 			'settings.station.commanderTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.commanderTroubleshooting' => 'This connects to **DXLab Commander, running on your computer**, not to the radio directly — Commander talks to the radio.\n\n- **Commander must already be running** and connected to the radio.\n- **Its network service must be on**: the **Net Serv** button in the Radio panel of Commander\'s Configuration window.\n- **Port** is 52002, the third port of the block starting at Net Serv\'s **Base Port** (52000 unless you changed it).\n- **From another machine**, make sure your firewall lets the connection through.\n\nThis entry was written from Commander\'s published TCP messages and has not been run against Commander. If it half-works, that is worth reporting.',
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never responds',
-			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.',
-			'settings.station.icomLanTroubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.',
+			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** WLAN must be on, the radio must be on the same network, and its remote-control (Network) function must be enabled.\n- **The ports must match** the radio\'s Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session stuck on the radio.\n\nA **wrong password is refused explicitly**, not met with silence. If you got here rather than a "rejected" message, the password is not the problem.',
+			'settings.station.icomLanTroubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview, RS-BA1 or Icom\'s Remote Utility connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings.** Its LAN port must be connected to the same network as this device, its **Network Control** must be on, and the username and password must be set up as a network user on the radio.\n- **The ports must match** the radio\'s Control Port and Serial Port (UDP), or the ports forwarded to them. A wrong port is met with silence, the same as a radio that is off.\n- **If it connects but never answers**, the CI-V address here must match the radio\'s CI-V ADDRESS menu. This entry prefills the address the model ships with.\n- **Turn the radio off and on** if it stays stuck.',
 			'settings.station.statusStale' => 'Not responding',
 			'settings.station.statusDisconnected' => 'Not connected',
 			'settings.station.statusConnecting' => 'Connecting…',
@@ -11183,13 +11203,13 @@ extension on Translations {
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',
 			'commands.goBlocked' => 'Close the open dialog first',
+			_ => null,
+		} ?? switch (path) {
 			'commands.operationAlreadyStarted' => 'This operation already has a start marker',
 			'commands.couldNotOpenLocation' => 'Added the break, but could not open the location screen',
 			'commands.noTestOperations' => 'No Test Operations to purge',
 			'commands.purgeTestsUnavailable' => 'PURGETESTS needs to show a confirmation dialog, which isn\'t available here',
 			'commands.syncAllUnavailable' => 'SYNCALL needs to show a confirmation dialog, which isn\'t available here',
-			_ => null,
-		} ?? switch (path) {
 			'commands.testOperationsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} Test Operation', other: 'Purged ${count} Test Operations', ), 
 			'commands.purgeTestsSomeFailed' => ({required Object purged, required Object total}) => 'Purged ${purged} of ${total} Test Operations — the rest failed; try PURGETESTS again',
 			'commands.testContactsPurged' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Purged ${count} test contact with no operation', other: 'Purged ${count} test contacts with no operation', ), 

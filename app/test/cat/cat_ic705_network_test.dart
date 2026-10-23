@@ -475,7 +475,7 @@ void main() {
       expect(type.category, kCategoryTransceiver);
     });
 
-    test('asks for host, username and password — the password as a secret', () {
+    test('asks for host, the radio\'s two ports, username and password — the password as a secret', () {
       final elements = type.configElements();
       // Fields only: the form also carries a divider and the troubleshooting
       // note, which have no key and ask the operator for nothing.
@@ -484,7 +484,7 @@ void main() {
           for (final e in elements)
             if (e['type'] == 'field') e['key'],
         ],
-        ['host', 'username', 'password', telemetryIntervalConfigKey, pollIntervalConfigKey],
+        ['host', 'controlPort', 'serialPort', 'username', 'password', telemetryIntervalConfigKey, pollIntervalConfigKey],
       );
       final password = elements.firstWhere((e) => e['key'] == 'password');
       expect(password['fieldType'], 'secret', reason: 'obscured in the editor');
@@ -496,6 +496,55 @@ void main() {
       expect(type.validate({'host': '10.0.0.1', 'username': 'op'}), isNull);
       expect(type.validate({'host': '', 'username': 'op'}), isNotNull);
       expect(type.validate({'host': '10.0.0.1', 'username': ''}), isNotNull);
+    });
+
+    // Each is the radio's own menu setting, and a port forward moves it too.
+    // A port out of range is caught here; left to the socket it fails as a
+    // timeout that reads as a radio that is off.
+    test('a port outside 1-65535 is refused in the editor', () {
+      final ok = {'host': '10.0.0.1', 'username': 'op'};
+      expect(type.validate({...ok, 'controlPort': 50101, 'serialPort': 50102}), isNull);
+      expect(type.validate({...ok, 'controlPort': 0}), isNotNull);
+      expect(type.validate({...ok, 'serialPort': 70000}), isNotNull);
+      expect(type.validate({...ok, 'serialPort': 'abc'}), isNotNull);
+    });
+
+    test('a port the operator typed is never swapped for a guess', () {
+      // The editor stores a number field it cannot parse — "5001-", or one
+      // cleared — as null, and "50.002" in a locale with a decimal point
+      // as 50.002. Taking the first as the factory port, or the second as
+      // port 50, connects somewhere the operator never asked for, and the
+      // silence that follows reads as a radio that is off.
+      final ok = {'host': '10.0.0.1', 'username': 'op'};
+      expect(type.validate({...ok, 'controlPort': null}), isNotNull);
+      expect(type.validate({...ok, 'serialPort': ''}), isNotNull);
+      expect(type.validate({...ok, 'controlPort': 50.002}), isNotNull);
+      expect(type.validate({...ok, 'controlPort': 50101.0, 'serialPort': 50102}), isNull);
+    });
+
+    test('the same port for control and serial is refused', () {
+      // The serial session would open on the control port, and the radio
+      // answers it with silence.
+      final ok = {'host': '10.0.0.1', 'username': 'op'};
+      expect(type.validate({...ok, 'controlPort': 50101, 'serialPort': 50101}), isNotNull);
+      expect(type.validate({...ok, 'controlPort': icomSerialPort}), isNotNull, reason: 'against the factory serial port it falls back to');
+    });
+
+    test('a node saved without ports connects on the radio\'s factory ports', () {
+      // Every node saved before the fields existed holds neither, and it
+      // has always connected on 50001/50002. Reading the absence as 0
+      // would leave each of them unable to connect at all.
+      final saved = {'host': '10.0.0.9', 'username': 'op', 'password': 'pw'};
+      expect(type.validate(saved), isNull);
+      final target = type.targetFor(saved);
+      expect([target['controlPort'], target['serialPort']], [icomControlPort, icomSerialPort]);
+    });
+
+    test('the list row names a control port only when it is not the factory one', () {
+      // Two radios behind one router differ only in their forwarded ports,
+      // and rows that read the same cannot be told apart.
+      expect(type.describeTarget({'host': 'home.example.net', 'controlPort': 50101}), 'home.example.net:50101');
+      expect(type.describeTarget({'host': '10.0.0.9', 'controlPort': icomControlPort}), '10.0.0.9');
     });
 
     test('the list row shows only the host — A4 is a network protocol constant, not the operator\'s to see', () {
@@ -786,7 +835,7 @@ void main() {
   // A wrong CI-V address is answered with silence. Each network entry has
   // to address the radio its serial entry ships for — and on a LAN radio,
   // whose CI-V ADDRESS is in its menu, let the operator change it.
-  test('every Icom network entry addresses its own radio', () {
+  test('every Icom network entry addresses its own radio, on its factory ports', () {
     final registry = EquipmentRegistry();
     final networked = registry.types.where((type) => type.transportKey == IcomNetworkTransport.transportKey);
     expect(networked.map((type) => type.model.key), unorderedEquals(['ic705', 'ic7300mk2', 'ic7610', 'ic7760', 'ic9700', 'ic905', 'ic7850', 'ic7851']));
@@ -795,6 +844,7 @@ void main() {
       final config = type.driverConfig({...type.defaultConfig, 'host': '10.0.0.9', 'username': 'op'});
       expect(config['civAddress'], serial.defaultConfig['civAddress'], reason: type.key);
       expect(config['civControllerAddress'], icomNetworkControllerAddress, reason: type.key);
+      expect([type.defaultConfig['controlPort'], type.defaultConfig['serialPort']], [icomControlPort, icomSerialPort], reason: type.key);
       if (type.key == 'ic705-network') continue;
       final fields = [for (final e in type.configElements()) e['key']];
       expect(fields, contains('civAddress'), reason: type.key);

@@ -2925,6 +2925,15 @@ variant on the same transport. None has been connected. Each pins the network co
 0xE1 and prefills its factory CI-V address — a prefill rather than the IC-705's pinned A4, because
 CI-V ADDRESS is in each radio's menu and nothing shows the network ignores it.
 
+Every network entry, the IC-705's included, takes the radio's **Control Port** and **Serial Port**
+(UDP) as fields named after the radio's own menu, prefilled with the factory 50001 and 50002. Both
+can be changed on the radio, and a radio reached from outside its network is forwarded to on
+whatever ports the router gives it. A node saved without them connects on the factory port, which is
+what every such node always did; in the editor, a cleared or unparseable port, a fractional one and
+the same port for both are refused rather than replaced by a guess. The list row names the control port only
+when it is not 50001, so two radios behind one router read differently. The audio port is not a
+field: the radio's audio port is never addressed, and the one the stream request names is our own.
+
 The radio names itself. Its unsolicited `0xa8` carries, after the stream token at 66, a 32-byte
 zero-padded name at 82 (`IC-705` on the capture; then `ICOM_VAUDIO` at 114 and the CI-V address
 at 148), and the `0x90` stream request sends that name back in the same field. So nothing

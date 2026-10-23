@@ -18,6 +18,7 @@ import 'equipment_registry.dart';
 import 'transports/bluetooth_serial_transport.dart';
 import 'transports/icom_network_protocol.dart';
 import 'transports/icom_network_transport.dart';
+import 'transports/icom_network_transport_config.dart';
 import 'transports/serial_transport.dart';
 
 const _icomGenericSerialKey = 'icom-generic-serial';
@@ -41,6 +42,11 @@ const _ic7850SerialKey = 'ic7850-serial';
 const _ic7850NetworkKey = 'ic7850-network';
 const _ic7851SerialKey = 'ic7851-serial';
 const _ic7851NetworkKey = 'ic7851-network';
+
+/// Every network entry's prefill for the radio's two UDP ports: its factory
+/// ones, shown so the operator has the number to change when the radio's
+/// menu or a port forward says otherwise.
+const _icomLanPorts = {IcomNetworkTransportConfig.controlPortConfigKey: icomControlPort, IcomNetworkTransportConfig.serialPortConfigKey: icomSerialPort};
 
 // The modes each named radio has — see [civRadioModesConfigKey].
 const _civHfModes = ['LSB', 'USB', 'AM', 'CW', 'CW-R', 'RTTY', 'RTTY-R', 'FM'];
@@ -247,7 +253,7 @@ const ic7300mk2Model = EquipmentModel(
       key: _ic7300mk2NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': 'B6'},
+      defaultConfig: {'civAddress': 'B6', ..._icomLanPorts},
       overrides: {..._ic7300mk2Overrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -355,7 +361,7 @@ const ic7610Model = EquipmentModel(
       key: _ic7610NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': '98'},
+      defaultConfig: {'civAddress': '98', ..._icomLanPorts},
       overrides: {..._ic7610Overrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -401,7 +407,7 @@ const ic7760Model = EquipmentModel(
       key: _ic7760NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': 'B2'},
+      defaultConfig: {'civAddress': 'B2', ..._icomLanPorts},
       overrides: {..._ic7760Overrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -447,7 +453,7 @@ const ic9700Model = EquipmentModel(
       key: _ic9700NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': 'A2'},
+      defaultConfig: {'civAddress': 'A2', ..._icomLanPorts},
       overrides: {..._ic9700Overrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -500,7 +506,7 @@ const ic905Model = EquipmentModel(
       key: _ic905NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': 'AC'},
+      defaultConfig: {'civAddress': 'AC', ..._icomLanPorts},
       overrides: {..._ic905Overrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -561,7 +567,7 @@ const ic7850Model = EquipmentModel(
       key: _ic7850NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': '8E'},
+      defaultConfig: {'civAddress': '8E', ..._icomLanPorts},
       overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -589,7 +595,7 @@ const ic7851Model = EquipmentModel(
       key: _ic7851NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
-      defaultConfig: {'civAddress': '8E'},
+      defaultConfig: {'civAddress': '8E', ..._icomLanPorts},
       overrides: {..._ic785xOverrides, 'civControllerAddress': icomNetworkControllerAddress},
       notes: _icomLanNotes,
     ),
@@ -703,6 +709,7 @@ const ic705Model = EquipmentModel(
       key: _ic705NetworkKey,
       driver: IcomCivDriver(),
       transport: IcomNetworkTransport(),
+      defaultConfig: _icomLanPorts,
       overrides: {
         civRadioModesConfigKey: _ic705Modes,
         'civAddress': 'A4',

@@ -32,8 +32,10 @@
 // disconnect, or the radio keeps the login alive and refuses every later
 // one. polo built a disconnect it never called and had no logout at all.
 
-/// The three UDP ports the radio listens on. Audio is never read; a socket
-/// is bound for it only because the stream request must name a real port.
+/// The three UDP ports the radio listens on, as it ships. Control and serial
+/// are the node's to change (`IcomNetworkTransportConfig`); these are what
+/// it falls back to. Audio is never read; a socket is bound for it only
+/// because the stream request must name a real port.
 const icomControlPort = 50001;
 const icomSerialPort = 50002;
 const icomAudioPort = 50003;
