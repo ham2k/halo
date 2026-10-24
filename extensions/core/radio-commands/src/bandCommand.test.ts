@@ -22,6 +22,15 @@ test("parseBandCommand: a metre band, with or without its unit", () => {
   assert.equal(parseBandCommand("70 cm"), "70cm")
 })
 
+// The only mark a comma-decimal keypad offers. Stripped as grouping, "1,25"
+// names no band and falls through to the frequency command, which tunes the
+// radio to 1.25 MHz.
+test("parseBandCommand: a comma is a period first, then grouping", () => {
+  assert.equal(parseBandCommand("1,25"), "1.25m")
+  assert.equal(parseBandCommand("1,25cm"), "1.25cm")
+  assert.equal(parseBandCommand("2,190m"), "2190m")
+})
+
 // Every band the app offers has to be reachable, or the command silently
 // stops at whatever subset it was first written with — which is how it sat at
 // fifteen metre bands out of the thirty-three the app knows.

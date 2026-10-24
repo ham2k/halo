@@ -200,7 +200,7 @@ class RadioLcdPainter extends CustomPainter {
 ///
 /// [digitsBeforeDot] is how many MHz-and-kHz digits to reserve. Six covers
 /// every band a transceiver with a CAT port is likely to be on, through
-/// 70 cm at 435,000 kHz. A frequency wider than the reserve is NOT truncated
+/// 70 cm at 435.000 kHz. A frequency wider than the reserve is NOT truncated
 /// — it takes the extra column it needs — so 23 cm and up render correctly
 /// and simply sit wider. Reserving seven for them instead would spend a
 /// blank column on every operator who never leaves HF.

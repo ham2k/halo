@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A `number` field under the operator's Number Formatting setting.
+// A `number` field under the device's number conventions.
 //
 // The trap this file pins: on a device set to comma conventions the numeric
 // keyboard's decimal key IS a comma, so a field whose input formatter admits

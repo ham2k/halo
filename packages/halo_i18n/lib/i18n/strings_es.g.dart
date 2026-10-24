@@ -744,10 +744,6 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$about$es about = _Translations$settings$about$es._(_root);
 	@override late final _Translations$settings$panels$es panels = _Translations$settings$panels$es._(_root);
 	@override String get showMoreSettings => 'Mostrar más ajustes';
-	@override String get numberFormat => 'Formato de números';
-	@override late final _Translations$settings$numberFormatOpts$es numberFormatOpts = _Translations$settings$numberFormatOpts$es._(_root);
-	@override late final _Translations$settings$numberFormatDescription$es numberFormatDescription = _Translations$settings$numberFormatDescription$es._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$es numberFormatSeparators = _Translations$settings$numberFormatSeparators$es._(_root);
 	@override String get gridPrecision => 'Precisión del localizador';
 	@override late final _Translations$settings$gridPrecisionOpts$es gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$es._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$es gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$es._(_root);
@@ -2735,41 +2731,6 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Control CAT y más opciones';
 	@override String get peers => 'Dispositivos';
 	@override String get peersDescription => 'Conéctate con otros dispositivos cercanos';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$es extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Seguir la configuración del sistema';
-	@override String get period => 'Usar siempre punto para decimales';
-	@override String get comma => 'Usar siempre coma para decimales';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$es extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Configuración del sistema (usando ${separator} para decimales)';
-	@override String get period => 'Usando siempre punto para decimales';
-	@override String get comma => 'Usando siempre coma para decimales';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$es extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'coma';
-	@override String get period => 'punto';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5478,15 +5439,6 @@ extension on TranslationsEs {
 			'settings.panels.peers' => 'Dispositivos',
 			'settings.panels.peersDescription' => 'Conéctate con otros dispositivos cercanos',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
-			'settings.numberFormat' => 'Formato de números',
-			'settings.numberFormatOpts.locale' => 'Seguir la configuración del sistema',
-			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
-			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Configuración del sistema (usando ${separator} para decimales)',
-			'settings.numberFormatDescription.period' => 'Usando siempre punto para decimales',
-			'settings.numberFormatDescription.comma' => 'Usando siempre coma para decimales',
-			'settings.numberFormatSeparators.comma' => 'coma',
-			'settings.numberFormatSeparators.period' => 'punto',
 			'settings.gridPrecision' => 'Precisión del localizador',
 			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
@@ -5747,8 +5699,6 @@ extension on TranslationsEs {
 			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
-			_ => null,
-		} ?? switch (path) {
 			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
 			'exportSettings.defaultsDescription' => 'Ajustes base para todas las exportaciones, con plantillas de nombre de archivo y título separadas para actividades con referencia y otras actividades. Cada tipo de exportación puede proporcionar sus propios valores predeterminados o ajustes personalizados.',
 			'exportSettings.referenceActivities' => 'Actividades con referencia',
@@ -5758,6 +5708,8 @@ extension on TranslationsEs {
 			'exportSettings.retry' => 'Reintentar',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
+			_ => null,
+		} ?? switch (path) {
 			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
 			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',

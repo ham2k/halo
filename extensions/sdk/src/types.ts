@@ -21,10 +21,15 @@ export interface HookContext {
   /// The user's distance-units preference ('kilometers' | 'miles') — for
   /// extensions that localize units (e.g. WEATHER's °F vs °C).
   distanceUnits?: string
-  /// The characters this operator writes numbers with, already resolved from
-  /// their Number Formatting setting — `'.'`/`','` by default, `','`/`'.'`
-  /// under comma conventions. For a hook that PARSES what someone typed
-  /// (a frequency in a command) or formats a number back to them.
+  /// The characters this operator writes numbers with, resolved from the
+  /// device's own conventions — `'.'`/`','` in the US, `','`/`'.'` in much
+  /// of Europe. For a hook that PARSES a number someone typed or formats one
+  /// back to them.
+  ///
+  /// Not for frequencies: those are written with periods for grouping and
+  /// decimal alike (`14.285.5`) whatever the device says, as `fmtFreq` in
+  /// `@ham2k/lib-format-tools` writes them and its `parseFreq` (1.3.0 on)
+  /// reads them.
   ///
   /// Never use these on anything machine-facing: ADIF, a spot posted to an
   /// external service and every other wire format take a plain

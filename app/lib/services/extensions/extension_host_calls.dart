@@ -132,11 +132,10 @@ class _ExtensionHostCalls {
       'themeMode': _service.settings?.themeMode.name ?? 'system',
       'fontScale': _service.settings?.fontScale.name ?? 'normal',
       'distanceUnits': _service.settings?.distanceUnits.name ?? 'kilometers',
-      // The RESOLVED characters, not the preference name: an extension
-      // parsing what an operator typed needs to know which mark is the
-      // decimal, and "use the device's settings" is not an answer it
-      // could act on. Read from the same singleton every Dart surface
-      // reads, so a hook and the field beside it cannot disagree.
+      // The device's resolved characters, for ordinary numbers — not
+      // frequencies, which are always written with periods. Read from the
+      // same singleton every Dart number field reads, so a hook and the
+      // field beside it cannot disagree.
       'decimalSeparator': NumberFormatting.instance.decimalSeparator,
       'groupingSeparator': NumberFormatting.instance.groupingSeparator,
       // The device's region, not the app's language: English on a British

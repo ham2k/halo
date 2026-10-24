@@ -255,10 +255,9 @@ _QsoListMetrics _computeMetrics({
     final parts = freqDisplayParts(f, hzDigits: hzDigits);
     // Exactly what the row draws, grouping and the sub-MHz case included —
     // this measures the column, so anything narrower here under-reserves it.
-    final decimal = NumberFormatting.instance.decimalSeparator;
     final mhzValue = int.parse(parts.mhz);
-    final whole = mhzValue > 0 ? '${groupDigits(parts.mhz)}${NumberFormatting.instance.groupingSeparator}${parts.khz}' : int.parse(parts.khz).toString();
-    final s = parts.hz != null ? '$whole$decimal${parts.hz}' : whole;
+    final whole = mhzValue > 0 ? '${groupDigits(parts.mhz)}$frequencyMark${parts.khz}' : int.parse(parts.khz).toString();
+    final s = parts.hz != null ? '$whole$frequencyMark${parts.hz}' : whole;
     if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
   }
   final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);

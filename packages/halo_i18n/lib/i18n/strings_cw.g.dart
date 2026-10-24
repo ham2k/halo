@@ -780,10 +780,6 @@ class _Translations$settings$cw extends Translations$settings$en {
 	@override late final _Translations$settings$about$cw about = _Translations$settings$about$cw._(_root);
 	@override late final _Translations$settings$panels$cw panels = _Translations$settings$panels$cw._(_root);
 	@override String get showMoreSettings => '··· ···· ——— ·—— / —— ——— ·—· · / ··· · — — ·· —· ——· ···';
-	@override String get numberFormat => '—· ··— —— —··· · ·—· / ··—· ——— ·—· —— ·— — — ·· —· ——·';
-	@override late final _Translations$settings$numberFormatOpts$cw numberFormatOpts = _Translations$settings$numberFormatOpts$cw._(_root);
-	@override late final _Translations$settings$numberFormatDescription$cw numberFormatDescription = _Translations$settings$numberFormatDescription$cw._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$cw numberFormatSeparators = _Translations$settings$numberFormatSeparators$cw._(_root);
 	@override String get gridPrecision => '——· ·—· ·· —·· / ·——· ·—· · —·—· ·· ··· ·· ——— —·';
 	@override late final _Translations$settings$gridPrecisionOpts$cw gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$cw._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$cw gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$cw._(_root);
@@ -3005,41 +3001,6 @@ class _Translations$settings$panels$cw extends Translations$settings$panels$en {
 	@override String get stationDescription => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·— —· —·· / —— ——— ·—· · / ——— ·——· — ·· ——— —· ···';
 	@override String get peers => '·——· · · ·—· / —·· · ···— ·· —·—· · ···';
 	@override String get peersDescription => '—·—· ——— —· —· · —·—· — / — ——— / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ··· / —· · ·— ·—· —··· —·——';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$cw extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$cw._(TranslationsCw root) : this._root = root, super.internal(root);
-
-	final TranslationsCw _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => '··—· ——— ·—·· ·—·· ——— ·—— / ··· —·—— ··· — · —— / ··· · — — ·· —· ——· ···';
-	@override String get period => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· · / ·——· · ·—· ·· ——— —·· / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···';
-	@override String get comma => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· · / —·—· ——— —— —— ·— / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$cw extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$cw._(TranslationsCw root) : this._root = root, super.internal(root);
-
-	final TranslationsCw _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => '··· —·—— ··· — · —— / ··· · — — ·· —· ——· ··· / —·——· ··— ··· ·· —· ——· / ${separator} / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ··· —·——·—';
-	@override String get period => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· ·· —· ——· / ·——· · ·—· ·· ——— —·· / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···';
-	@override String get comma => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· ·· —· ——· / —·—· ——— —— —— ·— / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$cw extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$cw._(TranslationsCw root) : this._root = root, super.internal(root);
-
-	final TranslationsCw _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => '—·—· ——— —— —— ·—';
-	@override String get period => '·——· · ·—· ·· ——— —··';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -6297,15 +6258,6 @@ extension on TranslationsCw {
 			'settings.panels.peers' => '·——· · · ·—· / —·· · ···— ·· —·—· · ···',
 			'settings.panels.peersDescription' => '—·—· ——— —· —· · —·—· — / — ——— / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ··· / —· · ·— ·—· —··· —·——',
 			'settings.showMoreSettings' => '··· ···· ——— ·—— / —— ——— ·—· · / ··· · — — ·· —· ——· ···',
-			'settings.numberFormat' => '—· ··— —— —··· · ·—· / ··—· ——— ·—· —— ·— — — ·· —· ——·',
-			'settings.numberFormatOpts.locale' => '··—· ——— ·—·· ·—·· ——— ·—— / ··· —·—— ··· — · —— / ··· · — — ·· —· ——· ···',
-			'settings.numberFormatOpts.period' => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· · / ·——· · ·—· ·· ——— —·· / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···',
-			'settings.numberFormatOpts.comma' => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· · / —·—· ——— —— —— ·— / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => '··· —·—— ··· — · —— / ··· · — — ·· —· ——· ··· / —·——· ··— ··· ·· —· ——· / ${separator} / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ··· —·——·—',
-			'settings.numberFormatDescription.period' => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· ·· —· ——· / ·——· · ·—· ·· ——— —·· / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···',
-			'settings.numberFormatDescription.comma' => '·— ·—·· ·—— ·— —·—— ··· / ··— ··· ·· —· ——· / —·—· ——— —— —— ·— / ··—· ——— ·—· / —·· · —·—· ·· —— ·— ·—·· ···',
-			'settings.numberFormatSeparators.comma' => '—·—· ——— —— —— ·—',
-			'settings.numberFormatSeparators.period' => '·——· · ·—· ·· ——— —··',
 			'settings.gridPrecision' => '——· ·—· ·· —·· / ·——· ·—· · —·—· ·· ··· ·· ——— —·',
 			'settings.gridPrecisionOpts.six' => '—···· / —·· ·· ——· ·· — ··· / —·——· ··—· —· ···—— ·———— ·——· ·—· —·——·—',
 			'settings.gridPrecisionOpts.eight' => '———·· / —·· ·· ——· ·· — ··· / —·——· ··—· —· ···—— ·———— ·——· ·—· ····· ····· —·——·—',
@@ -6316,8 +6268,6 @@ extension on TranslationsCw {
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
 			'commands.reloadFailed' => ({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'commands.reloadingAll' => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
-			_ => null,
-		} ?? switch (path) {
 			'commands.reloadingTarget' => ({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.unknownExperiment' => ({required Object token}) => '··— —· —·— —· ——— ·—— —· / · —··— ·——· · ·—· ·· —— · —· — / ·—··—· ${token} ·—··—·',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··',
@@ -6327,6 +6277,8 @@ extension on TranslationsCw {
 			'commands.idleMetricsDisabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / —·· ·· ··· ·— —··· ·—·· · —··',
 			'commands.sentryTestLocalOnly' => '··· · —· — ·—· —·—— / ·· ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ·· —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· / — / — · ··· — / · ·—· ·—· ——— ·—· / ·—·· ——— ——· ——· · —·· / ·—·· ——— —·—· ·— ·—·· ·—·· —·—— / ——— —· ·—·· —·——',
 			'commands.noOperationOpen' => '— ···· ·— — / —·—· ——— —— —— ·— —· —·· / —· · · —·· ··· / ·— —· / ——— ·——· · —· / ——— ·——· · ·—· ·— — ·· ——— —·',
+			_ => null,
+		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / —— ·— ·—· —·— / ·— / ·————· ${kind} ·————·',
 			'commands.goUnavailable' => ({required Object place}) => '${place} / ·· ··· —· ·————· — / — ··— ·—· —· · —·· / ——— —· / ·· —· / — ···· ·· ··· / ·— ·——· ·——·',
 			'commands.goUnknown' => ({required Object to}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / ——· ——— / — ——— / ·————· ${to} ·————·',

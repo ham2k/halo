@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The QSO row's frequency is a kHz reading, like the spots panel and the
-// radio controls: `7,200.5` for 7200.5 kHz, `7,200` for a whole 7.2 MHz.
+// radio controls: `7.200.5` for 7200.5 kHz, `7.200` for a whole 7.2 MHz —
+// periods between every part, whatever the device's number conventions.
 //
 // It is drawn as adjacent Text widgets so the MHz group can be bold and the
-// Hz digits smaller, which is exactly what makes it easy to get wrong — the
-// marks between those parts are an ordinary thousands separator and an
-// ordinary decimal point, and nothing about three separate Texts says so. Use
-// one character for both and `7,200.5` becomes `7,200,5` or `7.200.5`, which
-// a reader takes for a different frequency entirely.
+// Hz digits smaller, which is exactly what makes it easy to get wrong: each
+// mark is its own Text, and wiring one of them to the device's separators
+// instead of the frequency mark turns `7.200.5` into `7.200,5` on a Spanish
+// phone and `7,200.5` on an American one — two readings of one QSO.
 //
 // So these assemble the parts back into the string a person actually sees,
 // rather than asserting on any one of them.
@@ -70,21 +70,21 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  group('under period conventions', () {
+  group('on US conventions, the default', () {
     testWidgets('a fractional kHz reads as thousands-then-decimal', (tester) async {
       await pumpWithFreq(tester, 7200.5);
-      expect(freqAsShown(tester), '7,200.5');
+      expect(freqAsShown(tester), '7.200.5');
     });
 
     testWidgets('a whole kHz shows no decimal at all', (tester) async {
       // 7,200,000 Hz. The Hz segment is dropped when no QSO in the operation
       // needs it, so this must not render a trailing separator either.
       await pumpWithFreq(tester, 7200.0);
-      expect(freqAsShown(tester), '7,200');
+      expect(freqAsShown(tester), '7.200');
     });
 
     testWidgets('below a MHz there is no thousands group to show', (tester) async {
-      // 630m. `0,472` is not a reading anyone writes, and the kHz part is
+      // 630m. `0.472` is not a reading anyone writes, and the kHz part is
       // zero-filled to three digits precisely because it normally follows a
       // thousands mark.
       await pumpWithFreq(tester, 472.5);
@@ -92,10 +92,10 @@ void main() {
     });
 
     testWidgets('past a GHz, the MHz part is grouped too', (tester) async {
-      // 1296 MHz is 1,296,000 kHz — the part carrying whole MHz needs its own
-      // separator, or it reads `1296,000`.
+      // 1296 MHz is 1.296.000 kHz — the part carrying whole MHz needs its own
+      // mark, or it reads `1296.000`.
       await pumpWithFreq(tester, 1296000.0);
-      expect(freqAsShown(tester), '1,296,000');
+      expect(freqAsShown(tester), '1.296.000');
     });
   });
 
@@ -137,17 +137,17 @@ void main() {
     });
   });
 
-  group('under comma conventions', () {
-    testWidgets('both marks swap, and stay different from each other', (tester) async {
+  group('on a device with comma conventions', () {
+    testWidgets('the frequency reads exactly as it does anywhere else', (tester) async {
       NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'es_ES');
       await pumpWithFreq(tester, 7200.5);
-      expect(freqAsShown(tester), '7.200,5');
+      expect(freqAsShown(tester), '7.200.5');
     });
 
-    testWidgets('a whole kHz keeps its thousands mark', (tester) async {
-      NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'es_ES');
-      await pumpWithFreq(tester, 14285.0);
-      expect(freqAsShown(tester), '14.285');
+    testWidgets('and so does one on a space-grouping device', (tester) async {
+      NumberFormatting.instance.configure(decimal: ',', grouping: '\u202f', locale: 'fr_FR');
+      await pumpWithFreq(tester, 14285.5);
+      expect(freqAsShown(tester), '14.285.5');
     });
   });
 }

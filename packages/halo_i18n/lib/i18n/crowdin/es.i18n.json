@@ -2122,21 +2122,6 @@
       "peersDescription": "Conéctate con otros dispositivos cercanos"
     },
     "showMoreSettings": "Mostrar más ajustes",
-    "numberFormat": "Formato de números",
-    "numberFormatOpts": {
-      "locale": "Seguir la configuración del sistema",
-      "period": "Usar siempre punto para decimales",
-      "comma": "Usar siempre coma para decimales"
-    },
-    "numberFormatDescription": {
-      "locale": "Configuración del sistema (usando ${separator} para decimales)",
-      "period": "Usando siempre punto para decimales",
-      "comma": "Usando siempre coma para decimales"
-    },
-    "numberFormatSeparators": {
-      "comma": "coma",
-      "period": "punto"
-    },
     "gridPrecision": "Precisión del localizador",
     "gridPrecisionOpts": {
       "six": "6 dígitos (FN31pr)",

@@ -2086,21 +2086,6 @@
       "peersDescription": "Connecta amb altres dispositius propers"
     },
     "showMoreSettings": "Mostra més opcions",
-    "numberFormat": "Format dels números",
-    "numberFormatOpts": {
-      "locale": "Segueix la configuració del sistema",
-      "period": "Utilitza sempre el punt per als decimals",
-      "comma": "Utilitza sempre la coma per als decimals"
-    },
-    "numberFormatDescription": {
-      "locale": "Configuració del sistema (${separator} per als decimals)",
-      "period": "S'utilitza sempre el punt per als decimals",
-      "comma": "S'utilitza sempre la coma per als decimals"
-    },
-    "numberFormatSeparators": {
-      "comma": "coma",
-      "period": "punt"
-    },
     "gridPrecision": "Precisió de la quadrícula",
     "gridPrecisionOpts": {
       "six": "6 dígits (FN31pr)",

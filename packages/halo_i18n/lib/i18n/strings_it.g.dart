@@ -738,10 +738,6 @@ class _Translations$settings$it extends Translations$settings$en {
 	@override late final _Translations$settings$about$it about = _Translations$settings$about$it._(_root);
 	@override late final _Translations$settings$panels$it panels = _Translations$settings$panels$it._(_root);
 	@override String get showMoreSettings => 'Mostra altre impostazioni';
-	@override String get numberFormat => 'Formato dei numeri';
-	@override late final _Translations$settings$numberFormatOpts$it numberFormatOpts = _Translations$settings$numberFormatOpts$it._(_root);
-	@override late final _Translations$settings$numberFormatDescription$it numberFormatDescription = _Translations$settings$numberFormatDescription$it._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$it numberFormatSeparators = _Translations$settings$numberFormatSeparators$it._(_root);
 	@override String get gridPrecision => 'Precisione del locatore';
 	@override late final _Translations$settings$gridPrecisionOpts$it gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$it._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$it gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$it._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$it extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Controllo CAT e altre opzioni';
 	@override String get peers => 'Dispositivi Peer';
 	@override String get peersDescription => 'Connettiti ad altri dispositivi nelle vicinanze';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$it extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$it._(TranslationsIt root) : this._root = root, super.internal(root);
-
-	final TranslationsIt _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Segui le impostazioni di sistema';
-	@override String get period => 'Usa sempre il punto per i decimali';
-	@override String get comma => 'Usa sempre la virgola per i decimali';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$it extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$it._(TranslationsIt root) : this._root = root, super.internal(root);
-
-	final TranslationsIt _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Impostazioni di sistema (usa ${separator} per i decimali)';
-	@override String get period => 'Usa sempre il punto per i decimali';
-	@override String get comma => 'Usa sempre la virgola per i decimali';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$it extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$it._(TranslationsIt root) : this._root = root, super.internal(root);
-
-	final TranslationsIt _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'virgola';
-	@override String get period => 'punto';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsIt {
 			'settings.panels.peers' => 'Dispositivi Peer',
 			'settings.panels.peersDescription' => 'Connettiti ad altri dispositivi nelle vicinanze',
 			'settings.showMoreSettings' => 'Mostra altre impostazioni',
-			'settings.numberFormat' => 'Formato dei numeri',
-			'settings.numberFormatOpts.locale' => 'Segui le impostazioni di sistema',
-			'settings.numberFormatOpts.period' => 'Usa sempre il punto per i decimali',
-			'settings.numberFormatOpts.comma' => 'Usa sempre la virgola per i decimali',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Impostazioni di sistema (usa ${separator} per i decimali)',
-			'settings.numberFormatDescription.period' => 'Usa sempre il punto per i decimali',
-			'settings.numberFormatDescription.comma' => 'Usa sempre la virgola per i decimali',
-			'settings.numberFormatSeparators.comma' => 'virgola',
-			'settings.numberFormatSeparators.period' => 'punto',
 			'settings.gridPrecision' => 'Precisione del locatore',
 			'settings.gridPrecisionOpts.six' => '6 caratteri (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 caratteri (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsIt {
 			'exportSettings.shared' => 'Le impostazioni si applicano a ogni estensione che usa questo tipo di esportazione.',
 			'exportSettings.defaultTemplates' => 'Attiva Modelli personalizzati per modificare i modelli di questo tipo.',
 			'templateEditor.previewLabel' => 'Anteprima:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Ripristina',
 			'templateEditor.docs' => 'Documentazione dei modelli',
 			'templateEditor.preview' => 'Anteprima di esempio',

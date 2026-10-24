@@ -780,10 +780,6 @@ class _Translations$settings$qro extends Translations$settings$en {
 	@override late final _Translations$settings$about$qro about = _Translations$settings$about$qro._(_root);
 	@override late final _Translations$settings$panels$qro panels = _Translations$settings$panels$qro._(_root);
 	@override String get showMoreSettings => 'SHOW MORE SETTINGS';
-	@override String get numberFormat => 'NUMBER FORMATTING';
-	@override late final _Translations$settings$numberFormatOpts$qro numberFormatOpts = _Translations$settings$numberFormatOpts$qro._(_root);
-	@override late final _Translations$settings$numberFormatDescription$qro numberFormatDescription = _Translations$settings$numberFormatDescription$qro._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$qro numberFormatSeparators = _Translations$settings$numberFormatSeparators$qro._(_root);
 	@override String get gridPrecision => 'GRID PRECISION';
 	@override late final _Translations$settings$gridPrecisionOpts$qro gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$qro._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$qro gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$qro._(_root);
@@ -3005,41 +3001,6 @@ class _Translations$settings$panels$qro extends Translations$settings$panels$en 
 	@override String get stationDescription => 'CAT CONTROL AND MORE OPTIONS';
 	@override String get peers => 'PEER DEVICES';
 	@override String get peersDescription => 'CONNECT TO OTHER DEVICES NEARBY';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$qro extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$qro._(TranslationsQro root) : this._root = root, super.internal(root);
-
-	final TranslationsQro _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'FOLLOW SYSTEM SETTINGS';
-	@override String get period => 'ALWAYS USE PERIOD FOR DECIMALS';
-	@override String get comma => 'ALWAYS USE COMMA FOR DECIMALS';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$qro extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$qro._(TranslationsQro root) : this._root = root, super.internal(root);
-
-	final TranslationsQro _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'SYSTEM SETTINGS (USING ${separator} FOR DECIMALS)';
-	@override String get period => 'ALWAYS USING PERIOD FOR DECIMALS';
-	@override String get comma => 'ALWAYS USING COMMA FOR DECIMALS';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$qro extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$qro._(TranslationsQro root) : this._root = root, super.internal(root);
-
-	final TranslationsQro _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'COMMA';
-	@override String get period => 'PERIOD';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -6297,15 +6258,6 @@ extension on TranslationsQro {
 			'settings.panels.peers' => 'PEER DEVICES',
 			'settings.panels.peersDescription' => 'CONNECT TO OTHER DEVICES NEARBY',
 			'settings.showMoreSettings' => 'SHOW MORE SETTINGS',
-			'settings.numberFormat' => 'NUMBER FORMATTING',
-			'settings.numberFormatOpts.locale' => 'FOLLOW SYSTEM SETTINGS',
-			'settings.numberFormatOpts.period' => 'ALWAYS USE PERIOD FOR DECIMALS',
-			'settings.numberFormatOpts.comma' => 'ALWAYS USE COMMA FOR DECIMALS',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'SYSTEM SETTINGS (USING ${separator} FOR DECIMALS)',
-			'settings.numberFormatDescription.period' => 'ALWAYS USING PERIOD FOR DECIMALS',
-			'settings.numberFormatDescription.comma' => 'ALWAYS USING COMMA FOR DECIMALS',
-			'settings.numberFormatSeparators.comma' => 'COMMA',
-			'settings.numberFormatSeparators.period' => 'PERIOD',
 			'settings.gridPrecision' => 'GRID PRECISION',
 			'settings.gridPrecisionOpts.six' => '6 DIGITS (FN31PR)',
 			'settings.gridPrecisionOpts.eight' => '8 DIGITS (FN31PR55)',
@@ -6316,8 +6268,6 @@ extension on TranslationsQro {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
-			_ => null,
-		} ?? switch (path) {
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
@@ -6327,6 +6277,8 @@ extension on TranslationsQro {
 			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
+			_ => null,
+		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} ISN\'T TURNED ON IN THIS APP',
 			'commands.goUnknown' => ({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'',

@@ -2086,21 +2086,6 @@
       "peersDescription": "Se connecter à d'autres appareils à proximité"
     },
     "showMoreSettings": "Afficher plus de paramètres",
-    "numberFormat": "Format des nombres",
-    "numberFormatOpts": {
-      "locale": "Suivre les réglages du système",
-      "period": "Toujours utiliser le point pour les décimales",
-      "comma": "Toujours utiliser la virgule pour les décimales"
-    },
-    "numberFormatDescription": {
-      "locale": "Réglages du système (${separator} pour les décimales)",
-      "period": "Utilisation du point pour les décimales",
-      "comma": "Utilisation de la virgule pour les décimales"
-    },
-    "numberFormatSeparators": {
-      "comma": "virgule",
-      "period": "point"
-    },
     "gridPrecision": "Précision du locator",
     "gridPrecisionOpts": {
       "six": "6 caractères (FN31pr)",

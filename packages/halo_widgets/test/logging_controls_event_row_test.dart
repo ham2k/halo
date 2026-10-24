@@ -73,13 +73,13 @@ void main() {
         ),
       );
 
-      expect(find.text('14,285 • CW'), findsOneWidget);
+      expect(find.text('14.285 • CW'), findsOneWidget);
 
       // Keeps following, too — a rig retuned at its own front panel while
       // the event stays open should still show up here.
       fakeRadio.setVfo('vfoA', freq: 7100, mode: 'SSB');
       await tester.pump();
-      expect(find.text('7,100 • SSB'), findsOneWidget);
+      expect(find.text('7.100 • SSB'), findsOneWidget);
     });
 
     testWidgets('a BREAK marker (no editable field) still fills the row to a text field\'s height', (tester) async {

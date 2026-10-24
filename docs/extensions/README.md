@@ -562,6 +562,14 @@ const label = `${fmtInteger(tally.total)} QSOs`
 const summary = fmtInteger(tally.total)
 ```
 
+Frequencies are the exception to the device's conventions: they are always
+written with periods, for grouping and decimal alike (`14.285.5`), the way
+`fmtFreq` from `@ham2k/lib-format-tools` writes them, and its `parseFreq`
+(1.3.0 on, which the app carries) reads them back by the same band tie-break
+as the app's own Freq field: `14.285`, `14.200.5`, `1.296` and `1.296.000`
+mean what an operator means by them, and a comma reads as a period. Use
+`ctx.decimalSeparator`/`ctx.groupingSeparator` for every other number.
+
 Only the app's core extensions live in this repository and are baked into
 its assets. Any other extension — Ham2K's own included — is a catalog bundle:
 it lives in its own repository ([ham2k/extensions](https://github.com/ham2k/extensions)

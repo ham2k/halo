@@ -2141,14 +2141,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// The contextual extra key: whatever the focused field declares through
   /// [NumbersRowExtraKey] (the call field's "/" while it holds a partial
-  /// callsign), the operator's own decimal separator in every other field —
-  /// offered even where a field's filter drops it (Time, the reports, a
-  /// numeric exchange). Null when the extra key is turned off.
+  /// callsign, the Freq field's [frequencyMark]), the operator's own decimal
+  /// separator in every other field — offered even where a field's filter
+  /// drops it (Time, the reports, a numeric exchange). Null when the extra key
+  /// is turned off.
   ///
-  /// The fallback types whatever [parseFreq] will read back as a decimal
-  /// point: a key that inserted a fixed "." under comma conventions would
-  /// produce a frequency the field beneath it parses as grouping, silently
-  /// landing the operator on a different band.
+  /// The fallback is the device's mark, not the frequency one: an extension
+  /// reads its own fields with the device's separators, so a fixed "." under
+  /// comma conventions types grouping, and `0.5` reaches it as 5.
   String? get _numbersRowExtraKey {
     if (!widget.prefs.showExtraInNumbersRow) return null;
     final field = _focusedNumberField;

@@ -220,7 +220,7 @@ class PositionBlockView extends StatelessWidget {
     return parts.join(' - ');
   }
 
-  /// `20m CW 14,025` — whatever of the three the position has. A radio that
+  /// `20m CW 14.025` — whatever of the three the position has. A radio that
   /// has not answered yet leaves this blank rather than inventing a band.
   static String _vfoLine(Map<String, dynamic> qso) {
     final freq = qso['freq'];

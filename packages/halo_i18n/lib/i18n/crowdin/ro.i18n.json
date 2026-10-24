@@ -2086,21 +2086,6 @@
       "peersDescription": "Conectare la alte dispozitive din apropiere"
     },
     "showMoreSettings": "Arată mai multe setări",
-    "numberFormat": "Formatarea numerelor",
-    "numberFormatOpts": {
-      "locale": "Urmează setările sistemului",
-      "period": "Folosește mereu punctul pentru zecimale",
-      "comma": "Folosește mereu virgula pentru zecimale"
-    },
-    "numberFormatDescription": {
-      "locale": "Setările sistemului (se folosește ${separator} pentru zecimale)",
-      "period": "Se folosește mereu punctul pentru zecimale",
-      "comma": "Se folosește mereu virgula pentru zecimale"
-    },
-    "numberFormatSeparators": {
-      "comma": "virgula",
-      "period": "punctul"
-    },
     "gridPrecision": "Precizia grilei",
     "gridPrecisionOpts": {
       "six": "6 caractere (FN31pr)",

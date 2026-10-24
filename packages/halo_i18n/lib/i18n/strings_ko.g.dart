@@ -738,10 +738,6 @@ class _Translations$settings$ko extends Translations$settings$en {
 	@override late final _Translations$settings$about$ko about = _Translations$settings$about$ko._(_root);
 	@override late final _Translations$settings$panels$ko panels = _Translations$settings$panels$ko._(_root);
 	@override String get showMoreSettings => '추가 설정 표시';
-	@override String get numberFormat => '숫자 형식';
-	@override late final _Translations$settings$numberFormatOpts$ko numberFormatOpts = _Translations$settings$numberFormatOpts$ko._(_root);
-	@override late final _Translations$settings$numberFormatDescription$ko numberFormatDescription = _Translations$settings$numberFormatDescription$ko._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$ko numberFormatSeparators = _Translations$settings$numberFormatSeparators$ko._(_root);
 	@override String get gridPrecision => '그리드 정밀도';
 	@override late final _Translations$settings$gridPrecisionOpts$ko gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$ko._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$ko gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$ko._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$ko extends Translations$settings$panels$en {
 	@override String get stationDescription => 'CAT 제어 및 기타 옵션';
 	@override String get peers => '피어 기기';
 	@override String get peersDescription => '근처의 다른 기기와 연결';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$ko extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$ko._(TranslationsKo root) : this._root = root, super.internal(root);
-
-	final TranslationsKo _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => '시스템 설정 따르기';
-	@override String get period => '소수점에 항상 마침표 사용';
-	@override String get comma => '소수점에 항상 쉼표 사용';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$ko extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$ko._(TranslationsKo root) : this._root = root, super.internal(root);
-
-	final TranslationsKo _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => '시스템 설정 (소수점에 ${separator} 사용)';
-	@override String get period => '소수점에 항상 마침표 사용 중';
-	@override String get comma => '소수점에 항상 쉼표 사용 중';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$ko extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$ko._(TranslationsKo root) : this._root = root, super.internal(root);
-
-	final TranslationsKo _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => '쉼표';
-	@override String get period => '마침표';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsKo {
 			'settings.panels.peers' => '피어 기기',
 			'settings.panels.peersDescription' => '근처의 다른 기기와 연결',
 			'settings.showMoreSettings' => '추가 설정 표시',
-			'settings.numberFormat' => '숫자 형식',
-			'settings.numberFormatOpts.locale' => '시스템 설정 따르기',
-			'settings.numberFormatOpts.period' => '소수점에 항상 마침표 사용',
-			'settings.numberFormatOpts.comma' => '소수점에 항상 쉼표 사용',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => '시스템 설정 (소수점에 ${separator} 사용)',
-			'settings.numberFormatDescription.period' => '소수점에 항상 마침표 사용 중',
-			'settings.numberFormatDescription.comma' => '소수점에 항상 쉼표 사용 중',
-			'settings.numberFormatSeparators.comma' => '쉼표',
-			'settings.numberFormatSeparators.period' => '마침표',
 			'settings.gridPrecision' => '그리드 정밀도',
 			'settings.gridPrecisionOpts.six' => '6자리 (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8자리 (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsKo {
 			'exportSettings.shared' => '이 설정은 이 내보내기 유형을 사용하는 모든 확장 기능에 적용됩니다.',
 			'exportSettings.defaultTemplates' => '이 유형의 템플릿을 편집하려면 맞춤 템플릿을 켜세요.',
 			'templateEditor.previewLabel' => '미리보기:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => '초기화',
 			'templateEditor.docs' => '템플릿 문서',
 			'templateEditor.preview' => '샘플 미리보기',

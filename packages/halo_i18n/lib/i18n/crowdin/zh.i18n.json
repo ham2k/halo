@@ -2086,21 +2086,6 @@
       "peersDescription": "连接附近的其他设备"
     },
     "showMoreSettings": "显示更多设置",
-    "numberFormat": "数字格式",
-    "numberFormatOpts": {
-      "locale": "跟随系统设置",
-      "period": "始终使用句点作为小数点",
-      "comma": "始终使用逗号作为小数点"
-    },
-    "numberFormatDescription": {
-      "locale": "系统设置（使用${separator}作为小数点）",
-      "period": "始终使用句点作为小数点",
-      "comma": "始终使用逗号作为小数点"
-    },
-    "numberFormatSeparators": {
-      "comma": "逗号",
-      "period": "句点"
-    },
     "gridPrecision": "网格精度",
     "gridPrecisionOpts": {
       "six": "6 位 (FN31pr)",

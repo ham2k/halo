@@ -2086,21 +2086,6 @@
       "peersDescription": "Koble til andre enheter i nærheten"
     },
     "showMoreSettings": "Vis flere innstillinger",
-    "numberFormat": "Tallformat",
-    "numberFormatOpts": {
-      "locale": "Følg systeminnstillingene",
-      "period": "Bruk alltid punktum som desimaltegn",
-      "comma": "Bruk alltid komma som desimaltegn"
-    },
-    "numberFormatDescription": {
-      "locale": "Systeminnstillinger (bruker ${separator} som desimaltegn)",
-      "period": "Bruker alltid punktum som desimaltegn",
-      "comma": "Bruker alltid komma som desimaltegn"
-    },
-    "numberFormatSeparators": {
-      "comma": "komma",
-      "period": "punktum"
-    },
     "gridPrecision": "Grid-presisjon",
     "gridPrecisionOpts": {
       "six": "6 tegn (FN31pr)",

@@ -738,10 +738,6 @@ class _Translations$settings$zh extends Translations$settings$en {
 	@override late final _Translations$settings$about$zh about = _Translations$settings$about$zh._(_root);
 	@override late final _Translations$settings$panels$zh panels = _Translations$settings$panels$zh._(_root);
 	@override String get showMoreSettings => '显示更多设置';
-	@override String get numberFormat => '数字格式';
-	@override late final _Translations$settings$numberFormatOpts$zh numberFormatOpts = _Translations$settings$numberFormatOpts$zh._(_root);
-	@override late final _Translations$settings$numberFormatDescription$zh numberFormatDescription = _Translations$settings$numberFormatDescription$zh._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$zh numberFormatSeparators = _Translations$settings$numberFormatSeparators$zh._(_root);
 	@override String get gridPrecision => '网格精度';
 	@override late final _Translations$settings$gridPrecisionOpts$zh gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$zh._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$zh gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$zh._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$zh extends Translations$settings$panels$en {
 	@override String get stationDescription => 'CAT 控制及更多选项';
 	@override String get peers => '对等设备';
 	@override String get peersDescription => '连接附近的其他设备';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$zh extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$zh._(TranslationsZh root) : this._root = root, super.internal(root);
-
-	final TranslationsZh _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => '跟随系统设置';
-	@override String get period => '始终使用句点作为小数点';
-	@override String get comma => '始终使用逗号作为小数点';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$zh extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$zh._(TranslationsZh root) : this._root = root, super.internal(root);
-
-	final TranslationsZh _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => '系统设置（使用${separator}作为小数点）';
-	@override String get period => '始终使用句点作为小数点';
-	@override String get comma => '始终使用逗号作为小数点';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$zh extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$zh._(TranslationsZh root) : this._root = root, super.internal(root);
-
-	final TranslationsZh _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => '逗号';
-	@override String get period => '句点';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsZh {
 			'settings.panels.peers' => '对等设备',
 			'settings.panels.peersDescription' => '连接附近的其他设备',
 			'settings.showMoreSettings' => '显示更多设置',
-			'settings.numberFormat' => '数字格式',
-			'settings.numberFormatOpts.locale' => '跟随系统设置',
-			'settings.numberFormatOpts.period' => '始终使用句点作为小数点',
-			'settings.numberFormatOpts.comma' => '始终使用逗号作为小数点',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => '系统设置（使用${separator}作为小数点）',
-			'settings.numberFormatDescription.period' => '始终使用句点作为小数点',
-			'settings.numberFormatDescription.comma' => '始终使用逗号作为小数点',
-			'settings.numberFormatSeparators.comma' => '逗号',
-			'settings.numberFormatSeparators.period' => '句点',
 			'settings.gridPrecision' => '网格精度',
 			'settings.gridPrecisionOpts.six' => '6 位 (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 位 (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsZh {
 			'exportSettings.shared' => '设置适用于使用此导出类型的所有扩展。',
 			'exportSettings.defaultTemplates' => '开启“自定义模板”即可编辑此类型的模板。',
 			'templateEditor.previewLabel' => '预览：',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => '重置',
 			'templateEditor.docs' => '模板文档',
 			'templateEditor.preview' => '示例预览',

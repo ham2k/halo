@@ -2086,21 +2086,6 @@
       "peersDescription": "Mit anderen Geräten in der Nähe verbinden"
     },
     "showMoreSettings": "Weitere Einstellungen anzeigen",
-    "numberFormat": "Zahlenformat",
-    "numberFormatOpts": {
-      "locale": "Systemeinstellungen folgen",
-      "period": "Immer Punkt als Dezimaltrennzeichen",
-      "comma": "Immer Komma als Dezimaltrennzeichen"
-    },
-    "numberFormatDescription": {
-      "locale": "Systemeinstellungen (${separator} als Dezimaltrennzeichen)",
-      "period": "Immer Punkt als Dezimaltrennzeichen",
-      "comma": "Immer Komma als Dezimaltrennzeichen"
-    },
-    "numberFormatSeparators": {
-      "comma": "Komma",
-      "period": "Punkt"
-    },
     "gridPrecision": "Grid-Genauigkeit",
     "gridPrecisionOpts": {
       "six": "6 Stellen (FN31pr)",

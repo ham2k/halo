@@ -738,10 +738,6 @@ class _Translations$settings$tr extends Translations$settings$en {
 	@override late final _Translations$settings$about$tr about = _Translations$settings$about$tr._(_root);
 	@override late final _Translations$settings$panels$tr panels = _Translations$settings$panels$tr._(_root);
 	@override String get showMoreSettings => 'Daha fazla ayar göster';
-	@override String get numberFormat => 'Sayı Biçimi';
-	@override late final _Translations$settings$numberFormatOpts$tr numberFormatOpts = _Translations$settings$numberFormatOpts$tr._(_root);
-	@override late final _Translations$settings$numberFormatDescription$tr numberFormatDescription = _Translations$settings$numberFormatDescription$tr._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$tr numberFormatSeparators = _Translations$settings$numberFormatSeparators$tr._(_root);
 	@override String get gridPrecision => 'Grid Hassasiyeti';
 	@override late final _Translations$settings$gridPrecisionOpts$tr gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$tr._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$tr gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$tr._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$tr extends Translations$settings$panels$en {
 	@override String get stationDescription => 'CAT kontrolü ve diğer seçenekler';
 	@override String get peers => 'Eş Cihazlar';
 	@override String get peersDescription => 'Yakındaki diğer cihazlara bağlanın';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$tr extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$tr._(TranslationsTr root) : this._root = root, super.internal(root);
-
-	final TranslationsTr _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Sistem ayarlarını izle';
-	@override String get period => 'Ondalıklar için her zaman nokta kullan';
-	@override String get comma => 'Ondalıklar için her zaman virgül kullan';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$tr extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$tr._(TranslationsTr root) : this._root = root, super.internal(root);
-
-	final TranslationsTr _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Sistem ayarları (ondalıklar için ${separator} kullanılıyor)';
-	@override String get period => 'Ondalıklar için her zaman nokta kullanılıyor';
-	@override String get comma => 'Ondalıklar için her zaman virgül kullanılıyor';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$tr extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$tr._(TranslationsTr root) : this._root = root, super.internal(root);
-
-	final TranslationsTr _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'virgül';
-	@override String get period => 'nokta';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsTr {
 			'settings.panels.peers' => 'Eş Cihazlar',
 			'settings.panels.peersDescription' => 'Yakındaki diğer cihazlara bağlanın',
 			'settings.showMoreSettings' => 'Daha fazla ayar göster',
-			'settings.numberFormat' => 'Sayı Biçimi',
-			'settings.numberFormatOpts.locale' => 'Sistem ayarlarını izle',
-			'settings.numberFormatOpts.period' => 'Ondalıklar için her zaman nokta kullan',
-			'settings.numberFormatOpts.comma' => 'Ondalıklar için her zaman virgül kullan',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Sistem ayarları (ondalıklar için ${separator} kullanılıyor)',
-			'settings.numberFormatDescription.period' => 'Ondalıklar için her zaman nokta kullanılıyor',
-			'settings.numberFormatDescription.comma' => 'Ondalıklar için her zaman virgül kullanılıyor',
-			'settings.numberFormatSeparators.comma' => 'virgül',
-			'settings.numberFormatSeparators.period' => 'nokta',
 			'settings.gridPrecision' => 'Grid Hassasiyeti',
 			'settings.gridPrecisionOpts.six' => '6 hane (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 hane (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsTr {
 			'exportSettings.shared' => 'Ayarlar, bu dışa aktarma türünü kullanan her uzantıya uygulanır.',
 			'exportSettings.defaultTemplates' => 'Bu türün şablonlarını düzenlemek için Özel şablonlar\'ı açın.',
 			'templateEditor.previewLabel' => 'Önizleme:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Sıfırla',
 			'templateEditor.docs' => 'Şablon Belgeleri',
 			'templateEditor.preview' => 'Örnek önizleme',

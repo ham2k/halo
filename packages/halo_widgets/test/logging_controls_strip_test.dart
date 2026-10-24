@@ -436,7 +436,7 @@ void main() {
       // The command's frequency took effect (reflected in the still-closed
       // chip's summary text)...
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
-      expect(find.text('14,285 • SSB'), findsOneWidget);
+      expect(find.text('14.285 • SSB'), findsOneWidget);
 
       // ...but the Radio control itself was not force-opened by it.
       await openControl(tester, MdiIcons.radio);

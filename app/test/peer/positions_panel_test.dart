@@ -98,7 +98,7 @@ void main() {
   group('the VFO line', () {
     testWidgets('reads band, mode and frequency', (tester) async {
       await pump(tester, blockOf());
-      expect(find.text('20m CW 14,025'), findsOneWidget);
+      expect(find.text('20m CW 14.025'), findsOneWidget);
     });
 
     // A radio that has not answered yet must not have a band invented for it.

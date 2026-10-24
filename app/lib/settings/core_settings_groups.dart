@@ -32,18 +32,6 @@ export 'export_settings_group.dart';
 const privacyPolicyUrl = 'https://ham2k.com/legal/privacy/';
 const termsOfServiceUrl = 'https://ham2k.com/legal/terms-of-service/';
 
-// The resolved decimal separator as a word, for the Number Formatting row.
-// A locale whose separator is neither of the two the setting offers (Arabic
-// writes ٫) shows the character itself rather than a wrong word.
-String _decimalSeparatorName() {
-  final separator = NumberFormatting.instance.decimalSeparator;
-  return switch (separator) {
-    ',' => t.settings.numberFormatSeparators.comma,
-    '.' => t.settings.numberFormatSeparators.period,
-    _ => separator,
-  };
-}
-
 // The theme field's own icon switches with its current value so the row
 // reflects what's actually selected, not just that it's a theme setting.
 const _themeIcons = {'system': 'theme-light-dark', 'light': 'white-balance-sunny', 'dark': 'weather-night'};
@@ -186,22 +174,6 @@ class GeneralSettingsGroup extends SettingsGroup {
         common: true,
       ),
       _select(
-        key: 'numberFormat',
-        aliases: const ['decimals', 'decimalSeparator'],
-        label: t.settings.numberFormat,
-        icon: 'numeric',
-        // The explicit choices name themselves, matching distanceUnits above;
-        // "follow system settings" does not say what the system settled on,
-        // which is the only part an operator can't see from the row.
-        description: switch (settings.numberFormatStyle) {
-          NumberFormatStyle.locale => t.settings.numberFormatDescription.locale(separator: _decimalSeparatorName()),
-          NumberFormatStyle.period => t.settings.numberFormatDescription.period,
-          NumberFormatStyle.comma => t.settings.numberFormatDescription.comma,
-        },
-        value: settings.numberFormatStyle.name,
-        options: [for (final style in NumberFormatStyle.values) (label: t['settings.numberFormatOpts.${style.name}'] as String, value: style.name)],
-      ),
-      _select(
         key: 'gridPrecision',
         aliases: const ['grid', 'gridDigits', 'locator'],
         label: t.settings.gridPrecision,
@@ -319,9 +291,6 @@ class GeneralSettingsGroup extends SettingsGroup {
       case 'distanceUnits':
         final units = _enumByNameOrNull(DistanceUnits.values, value);
         if (units != null) await settings.setDistanceUnits(units);
-      case 'numberFormat':
-        final style = _enumByNameOrNull(NumberFormatStyle.values, value);
-        if (style != null) await settings.setNumberFormatStyle(style);
       case 'gridPrecision':
         final precision = _enumByNameOrNull(GridPrecision.values, value);
         if (precision != null) await settings.setGridPrecision(precision);

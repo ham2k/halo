@@ -738,10 +738,6 @@ class _Translations$settings$nb extends Translations$settings$en {
 	@override late final _Translations$settings$about$nb about = _Translations$settings$about$nb._(_root);
 	@override late final _Translations$settings$panels$nb panels = _Translations$settings$panels$nb._(_root);
 	@override String get showMoreSettings => 'Vis flere innstillinger';
-	@override String get numberFormat => 'Tallformat';
-	@override late final _Translations$settings$numberFormatOpts$nb numberFormatOpts = _Translations$settings$numberFormatOpts$nb._(_root);
-	@override late final _Translations$settings$numberFormatDescription$nb numberFormatDescription = _Translations$settings$numberFormatDescription$nb._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$nb numberFormatSeparators = _Translations$settings$numberFormatSeparators$nb._(_root);
 	@override String get gridPrecision => 'Grid-presisjon';
 	@override late final _Translations$settings$gridPrecisionOpts$nb gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$nb._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$nb gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$nb._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$nb extends Translations$settings$panels$en {
 	@override String get stationDescription => 'CAT-styring og flere alternativer';
 	@override String get peers => 'Andre enheter';
 	@override String get peersDescription => 'Koble til andre enheter i nærheten';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$nb extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$nb._(TranslationsNb root) : this._root = root, super.internal(root);
-
-	final TranslationsNb _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Følg systeminnstillingene';
-	@override String get period => 'Bruk alltid punktum som desimaltegn';
-	@override String get comma => 'Bruk alltid komma som desimaltegn';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$nb extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$nb._(TranslationsNb root) : this._root = root, super.internal(root);
-
-	final TranslationsNb _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Systeminnstillinger (bruker ${separator} som desimaltegn)';
-	@override String get period => 'Bruker alltid punktum som desimaltegn';
-	@override String get comma => 'Bruker alltid komma som desimaltegn';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$nb extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$nb._(TranslationsNb root) : this._root = root, super.internal(root);
-
-	final TranslationsNb _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'komma';
-	@override String get period => 'punktum';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsNb {
 			'settings.panels.peers' => 'Andre enheter',
 			'settings.panels.peersDescription' => 'Koble til andre enheter i nærheten',
 			'settings.showMoreSettings' => 'Vis flere innstillinger',
-			'settings.numberFormat' => 'Tallformat',
-			'settings.numberFormatOpts.locale' => 'Følg systeminnstillingene',
-			'settings.numberFormatOpts.period' => 'Bruk alltid punktum som desimaltegn',
-			'settings.numberFormatOpts.comma' => 'Bruk alltid komma som desimaltegn',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Systeminnstillinger (bruker ${separator} som desimaltegn)',
-			'settings.numberFormatDescription.period' => 'Bruker alltid punktum som desimaltegn',
-			'settings.numberFormatDescription.comma' => 'Bruker alltid komma som desimaltegn',
-			'settings.numberFormatSeparators.comma' => 'komma',
-			'settings.numberFormatSeparators.period' => 'punktum',
 			'settings.gridPrecision' => 'Grid-presisjon',
 			'settings.gridPrecisionOpts.six' => '6 tegn (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 tegn (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsNb {
 			'exportSettings.shared' => 'Innstillingene gjelder for alle utvidelser som bruker denne eksporttypen.',
 			'exportSettings.defaultTemplates' => 'Slå på Egendefinerte maler for å redigere malene for denne typen.',
 			'templateEditor.previewLabel' => 'Forhåndsvisning:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Tilbakestill',
 			'templateEditor.docs' => 'Dokumentasjon for maler',
 			'templateEditor.preview' => 'Eksempelvisning',

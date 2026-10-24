@@ -738,10 +738,6 @@ class _Translations$settings$cs extends Translations$settings$en {
 	@override late final _Translations$settings$about$cs about = _Translations$settings$about$cs._(_root);
 	@override late final _Translations$settings$panels$cs panels = _Translations$settings$panels$cs._(_root);
 	@override String get showMoreSettings => 'Zobrazit další nastavení';
-	@override String get numberFormat => 'Formát čísel';
-	@override late final _Translations$settings$numberFormatOpts$cs numberFormatOpts = _Translations$settings$numberFormatOpts$cs._(_root);
-	@override late final _Translations$settings$numberFormatDescription$cs numberFormatDescription = _Translations$settings$numberFormatDescription$cs._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$cs numberFormatSeparators = _Translations$settings$numberFormatSeparators$cs._(_root);
 	@override String get gridPrecision => 'Přesnost lokátoru';
 	@override late final _Translations$settings$gridPrecisionOpts$cs gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$cs._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$cs gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$cs._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$cs extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Ovládání CAT a další možnosti';
 	@override String get peers => 'Spárovaná zařízení';
 	@override String get peersDescription => 'Připojení k dalším zařízením v okolí';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$cs extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$cs._(TranslationsCs root) : this._root = root, super.internal(root);
-
-	final TranslationsCs _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Podle nastavení systému';
-	@override String get period => 'Vždy používat desetinnou tečku';
-	@override String get comma => 'Vždy používat desetinnou čárku';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$cs extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$cs._(TranslationsCs root) : this._root = root, super.internal(root);
-
-	final TranslationsCs _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Nastavení systému (desetinný oddělovač: ${separator})';
-	@override String get period => 'Vždy se používá desetinná tečka';
-	@override String get comma => 'Vždy se používá desetinná čárka';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$cs extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$cs._(TranslationsCs root) : this._root = root, super.internal(root);
-
-	final TranslationsCs _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'čárka';
-	@override String get period => 'tečka';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsCs {
 			'settings.panels.peers' => 'Spárovaná zařízení',
 			'settings.panels.peersDescription' => 'Připojení k dalším zařízením v okolí',
 			'settings.showMoreSettings' => 'Zobrazit další nastavení',
-			'settings.numberFormat' => 'Formát čísel',
-			'settings.numberFormatOpts.locale' => 'Podle nastavení systému',
-			'settings.numberFormatOpts.period' => 'Vždy používat desetinnou tečku',
-			'settings.numberFormatOpts.comma' => 'Vždy používat desetinnou čárku',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Nastavení systému (desetinný oddělovač: ${separator})',
-			'settings.numberFormatDescription.period' => 'Vždy se používá desetinná tečka',
-			'settings.numberFormatDescription.comma' => 'Vždy se používá desetinná čárka',
-			'settings.numberFormatSeparators.comma' => 'čárka',
-			'settings.numberFormatSeparators.period' => 'tečka',
 			'settings.gridPrecision' => 'Přesnost lokátoru',
 			'settings.gridPrecisionOpts.six' => '6 znaků (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 znaků (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsCs {
 			'exportSettings.shared' => 'Nastavení platí pro všechna rozšíření, která používají tento typ exportu.',
 			'exportSettings.defaultTemplates' => 'Pro úpravu šablon tohoto typu zapněte Vlastní šablony.',
 			'templateEditor.previewLabel' => 'Náhled:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Obnovit',
 			'templateEditor.docs' => 'Dokumentace šablon',
 			'templateEditor.preview' => 'Ukázkový náhled',

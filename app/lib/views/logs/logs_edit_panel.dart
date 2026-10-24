@@ -87,12 +87,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     _time = TextEditingController(text: start == null ? '' : _timeFormat.format(start));
     // kHz, seeded by the same formatter the logging panel's own frequency
     // field uses — and, critically, the inverse of the `parseFreq` that reads
-    // this box back on save. A hand-built MHz string is not: it writes a
-    // period whatever the operator's Number Formatting setting says, so on a
-    // locale whose decimal is a comma `14.285` reads back as grouped kHz and
-    // the QSO is saved three orders of magnitude off, having never been
-    // touched. `fmtFreqInput` also emits no thousands separator at all, which
-    // is what keeps 1296 MHz from parsing as 1296 kHz.
+    // this box back on save. A hand-built MHz string is not: `1296.000` for
+    // 23cm reads back as 1296 kHz, and the QSO is saved three orders of
+    // magnitude off, having never been touched.
     _freqOrBand = TextEditingController(text: qso.freq != null ? fmtFreqInput(qso.freq!) : (qso.band ?? ''));
     // The mode as the row above shows it, or the dialog would read `LSB`
     // under a row reading `SSB`. Resolved again on save, against the seed

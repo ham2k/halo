@@ -2086,21 +2086,6 @@
       "peersDescription": "Conecte-se a outros dispositivos próximos"
     },
     "showMoreSettings": "Mostrar mais configurações",
-    "numberFormat": "Formato de números",
-    "numberFormatOpts": {
-      "locale": "Seguir as configurações do sistema",
-      "period": "Sempre usar ponto para decimais",
-      "comma": "Sempre usar vírgula para decimais"
-    },
-    "numberFormatDescription": {
-      "locale": "Configurações do sistema (usando ${separator} para decimais)",
-      "period": "Sempre usando ponto para decimais",
-      "comma": "Sempre usando vírgula para decimais"
-    },
-    "numberFormatSeparators": {
-      "comma": "vírgula",
-      "period": "ponto"
-    },
     "gridPrecision": "Precisão do grid",
     "gridPrecisionOpts": {
       "six": "6 dígitos (FN31pr)",

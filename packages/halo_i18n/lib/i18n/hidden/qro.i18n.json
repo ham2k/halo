@@ -2402,21 +2402,6 @@
       "peersDescription": "CONNECT TO OTHER DEVICES NEARBY"
     },
     "showMoreSettings": "SHOW MORE SETTINGS",
-    "numberFormat": "NUMBER FORMATTING",
-    "numberFormatOpts": {
-      "locale": "FOLLOW SYSTEM SETTINGS",
-      "period": "ALWAYS USE PERIOD FOR DECIMALS",
-      "comma": "ALWAYS USE COMMA FOR DECIMALS"
-    },
-    "numberFormatDescription": {
-      "locale": "SYSTEM SETTINGS (USING ${separator} FOR DECIMALS)",
-      "period": "ALWAYS USING PERIOD FOR DECIMALS",
-      "comma": "ALWAYS USING COMMA FOR DECIMALS"
-    },
-    "numberFormatSeparators": {
-      "comma": "COMMA",
-      "period": "PERIOD"
-    },
     "gridPrecision": "GRID PRECISION",
     "gridPrecisionOpts": {
       "six": "6 DIGITS (FN31PR)",

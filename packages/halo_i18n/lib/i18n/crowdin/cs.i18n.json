@@ -2086,21 +2086,6 @@
       "peersDescription": "Připojení k dalším zařízením v okolí"
     },
     "showMoreSettings": "Zobrazit další nastavení",
-    "numberFormat": "Formát čísel",
-    "numberFormatOpts": {
-      "locale": "Podle nastavení systému",
-      "period": "Vždy používat desetinnou tečku",
-      "comma": "Vždy používat desetinnou čárku"
-    },
-    "numberFormatDescription": {
-      "locale": "Nastavení systému (desetinný oddělovač: ${separator})",
-      "period": "Vždy se používá desetinná tečka",
-      "comma": "Vždy se používá desetinná čárka"
-    },
-    "numberFormatSeparators": {
-      "comma": "čárka",
-      "period": "tečka"
-    },
     "gridPrecision": "Přesnost lokátoru",
     "gridPrecisionOpts": {
       "six": "6 znaků (FN31pr)",

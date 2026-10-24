@@ -2086,21 +2086,6 @@
       "peersDescription": "Yakındaki diğer cihazlara bağlanın"
     },
     "showMoreSettings": "Daha fazla ayar göster",
-    "numberFormat": "Sayı Biçimi",
-    "numberFormatOpts": {
-      "locale": "Sistem ayarlarını izle",
-      "period": "Ondalıklar için her zaman nokta kullan",
-      "comma": "Ondalıklar için her zaman virgül kullan"
-    },
-    "numberFormatDescription": {
-      "locale": "Sistem ayarları (ondalıklar için ${separator} kullanılıyor)",
-      "period": "Ondalıklar için her zaman nokta kullanılıyor",
-      "comma": "Ondalıklar için her zaman virgül kullanılıyor"
-    },
-    "numberFormatSeparators": {
-      "comma": "virgül",
-      "period": "nokta"
-    },
     "gridPrecision": "Grid Hassasiyeti",
     "gridPrecisionOpts": {
       "six": "6 hane (FN31pr)",

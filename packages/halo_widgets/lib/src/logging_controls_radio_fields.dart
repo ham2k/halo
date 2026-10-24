@@ -215,29 +215,35 @@ class RadioControlFields extends StatelessWidget {
         const SizedBox(width: Space.sm),
         SizedBox(
           width: 90,
-          child: TextField(
-            controller: model.freqController,
-            focusNode: model.freqFocus,
-            selectAllOnFocus: false,
-            style: textStyle,
-            decoration: poloFieldDecoration(context, t.loggingControls.frequency, labelColor: Theme.of(context).colorScheme.onTertiaryContainer),
-            keyboardType: freqKeyboardType,
-            // No autocorrect/suggestions/smart punctuation — see Sent.
-            autocorrect: false,
-            enableSuggestions: false,
-            smartDashesType: SmartDashesType.disabled,
-            smartQuotesType: SmartQuotesType.disabled,
-            inputFormatters: [
-              ...freqInputFormatters,
-              // `m`/`c` are here for the band forms the field also takes
-              // ("20m", "70cm" — see [RadioControlModel.commitBandTypedIntoFreqField]),
-              // not for frequencies. A letter left in a frequency makes
-              // `parseFreq` return null, and the field says nothing about
-              // it: the value simply doesn't reach the QSO or the VFO, the
-              // same as any other text this field can't read.
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.,mMcC]')),
-            ],
-            onSubmitted: (_) => onFreqSubmitted(),
+          // The notation's mark on every device. The device's own works too —
+          // `parseFreq` reads a comma as a period — but would show a mark the
+          // field's own value never carries.
+          child: NumbersRowExtraKey(
+            extraKey: frequencyMark,
+            child: TextField(
+              controller: model.freqController,
+              focusNode: model.freqFocus,
+              selectAllOnFocus: false,
+              style: textStyle,
+              decoration: poloFieldDecoration(context, t.loggingControls.frequency, labelColor: Theme.of(context).colorScheme.onTertiaryContainer),
+              keyboardType: freqKeyboardType,
+              // No autocorrect/suggestions/smart punctuation — see Sent.
+              autocorrect: false,
+              enableSuggestions: false,
+              smartDashesType: SmartDashesType.disabled,
+              smartQuotesType: SmartQuotesType.disabled,
+              inputFormatters: [
+                ...freqInputFormatters,
+                // `m`/`c` are here for the band forms the field also takes
+                // ("20m", "70cm" — see [RadioControlModel.commitBandTypedIntoFreqField]),
+                // not for frequencies. A letter left in a frequency makes
+                // `parseFreq` return null, and the field says nothing about
+                // it: the value simply doesn't reach the QSO or the VFO, the
+                // same as any other text this field can't read.
+                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,mMcC]')),
+              ],
+              onSubmitted: (_) => onFreqSubmitted(),
+            ),
           ),
         ),
         const SizedBox(width: Space.sm),

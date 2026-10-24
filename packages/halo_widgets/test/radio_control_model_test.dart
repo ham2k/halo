@@ -205,18 +205,18 @@ void main() {
 
     tune('14074.9');
     tune('14075');
-    expect(head(), '14,075.0', reason: 'a 100 Hz step must not shed its decimal at the whole kHz, or the chip changes width');
+    expect(head(), '14.075.0', reason: 'a 100 Hz step must not shed its decimal at the whole kHz, or the chip changes width');
     tune('14075.01');
     tune('14075.1');
-    expect(head(), '14,075.10', reason: 'a finer step widens the floor');
+    expect(head(), '14.075.10', reason: 'a finer step widens the floor');
 
     await tester.pump(FreqDecimalsHold.settleDelay - const Duration(seconds: 1));
     tune('14075.2');
     await tester.pump(FreqDecimalsHold.settleDelay - const Duration(seconds: 1));
-    expect(head(), '14,075.20', reason: 'every step restarts the wait, so the floor holds while the dial turns');
+    expect(head(), '14.075.20', reason: 'every step restarts the wait, so the floor holds while the dial turns');
 
     await tester.pump(const Duration(seconds: 1));
-    expect(head(), '14,075.2', reason: 'once settled, trailing zeros go');
+    expect(head(), '14.075.2', reason: 'once settled, trailing zeros go');
     h.model.dispose();
   });
 

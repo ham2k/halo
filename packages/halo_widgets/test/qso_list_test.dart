@@ -932,11 +932,12 @@ void main() {
 
       expect(find.text('14'), findsOneWidget);
       expect(find.text('074'), findsOneWidget);
-      // The row reads as kHz — `14,074` — so what divides the two parts is
-      // a THOUSANDS separator, not a decimal point. No fractional-kHz
-      // precision anywhere in the list, so no decimal point appears at all.
-      expect(find.text(','), findsOneWidget);
-      expect(find.text('.'), findsNothing);
+      // The row reads as kHz — `14.074` — so what divides the two parts is
+      // the thousands mark. No fractional-kHz precision anywhere in the list,
+      // so there is no second mark for a decimal, and never the device's
+      // comma.
+      expect(find.text('.'), findsOneWidget);
+      expect(find.text(','), findsNothing);
     });
 
     testWidgets('shows the band instead when the QSO has no frequency', (tester) async {

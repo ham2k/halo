@@ -738,10 +738,6 @@ class _Translations$settings$ja extends Translations$settings$en {
 	@override late final _Translations$settings$about$ja about = _Translations$settings$about$ja._(_root);
 	@override late final _Translations$settings$panels$ja panels = _Translations$settings$panels$ja._(_root);
 	@override String get showMoreSettings => 'その他の設定を表示';
-	@override String get numberFormat => '数値の書式';
-	@override late final _Translations$settings$numberFormatOpts$ja numberFormatOpts = _Translations$settings$numberFormatOpts$ja._(_root);
-	@override late final _Translations$settings$numberFormatDescription$ja numberFormatDescription = _Translations$settings$numberFormatDescription$ja._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$ja numberFormatSeparators = _Translations$settings$numberFormatSeparators$ja._(_root);
 	@override String get gridPrecision => 'グリッドの精度';
 	@override late final _Translations$settings$gridPrecisionOpts$ja gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$ja._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$ja gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$ja._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$ja extends Translations$settings$panels$en {
 	@override String get stationDescription => 'CAT制御とその他のオプション';
 	@override String get peers => 'ピアデバイス';
 	@override String get peersDescription => '近くの他のデバイスに接続';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$ja extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$ja._(TranslationsJa root) : this._root = root, super.internal(root);
-
-	final TranslationsJa _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'システム設定に従う';
-	@override String get period => '小数点に常にピリオドを使用';
-	@override String get comma => '小数点に常にカンマを使用';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$ja extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$ja._(TranslationsJa root) : this._root = root, super.internal(root);
-
-	final TranslationsJa _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'システム設定（小数点に${separator}を使用）';
-	@override String get period => '小数点に常にピリオドを使用しています';
-	@override String get comma => '小数点に常にカンマを使用しています';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$ja extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$ja._(TranslationsJa root) : this._root = root, super.internal(root);
-
-	final TranslationsJa _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'カンマ';
-	@override String get period => 'ピリオド';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsJa {
 			'settings.panels.peers' => 'ピアデバイス',
 			'settings.panels.peersDescription' => '近くの他のデバイスに接続',
 			'settings.showMoreSettings' => 'その他の設定を表示',
-			'settings.numberFormat' => '数値の書式',
-			'settings.numberFormatOpts.locale' => 'システム設定に従う',
-			'settings.numberFormatOpts.period' => '小数点に常にピリオドを使用',
-			'settings.numberFormatOpts.comma' => '小数点に常にカンマを使用',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'システム設定（小数点に${separator}を使用）',
-			'settings.numberFormatDescription.period' => '小数点に常にピリオドを使用しています',
-			'settings.numberFormatDescription.comma' => '小数点に常にカンマを使用しています',
-			'settings.numberFormatSeparators.comma' => 'カンマ',
-			'settings.numberFormatSeparators.period' => 'ピリオド',
 			'settings.gridPrecision' => 'グリッドの精度',
 			'settings.gridPrecisionOpts.six' => '6桁（FN31pr）',
 			'settings.gridPrecisionOpts.eight' => '8桁（FN31pr55）',
@@ -5679,8 +5631,6 @@ extension on TranslationsJa {
 			'exportSettings.shared' => 'この設定は、このエクスポート種別を使用するすべての拡張機能に適用されます。',
 			'exportSettings.defaultTemplates' => 'この種別のテンプレートを編集するには、カスタムテンプレートをオンにしてください。',
 			'templateEditor.previewLabel' => 'プレビュー：',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'リセット',
 			'templateEditor.docs' => 'テンプレートのドキュメント',
 			'templateEditor.preview' => 'サンプルプレビュー',

@@ -72,7 +72,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   static const _showDeletedQSOsKey = 'showDeletedQSOs';
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
-  static const _numberFormatKey = 'numberFormat';
   static const _gridPrecisionKey = 'gridPrecision';
   static const _spottingFiltersKey = 'spottingFilters';
   static const _stationEquipmentKey = 'stationEquipment';
@@ -152,7 +151,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// them. Ahead of `super`, so a listener rebuilding on this very
   /// notification already reads the new answer.
   ///
-  /// halo_core can resolve this itself — unlike Number Formatting it needs
+  /// halo_core can resolve this itself — unlike [NumberFormatting] it needs
   /// neither the device locale nor ICU — but it must not READ settings, so
   /// the value is pushed rather than pulled.
   @override
@@ -1315,21 +1314,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   }
 
   Future<void> setDistanceUnits(DistanceUnits units) => setSettingValue(generalGroup, _distanceUnitsKey, units.name);
-
-  /// Which characters numbers are written and read with — see
-  /// [NumberFormatting], which is where the resolved answer lives. Defaults
-  /// to the device's own conventions rather than to either fixed choice: an
-  /// operator whose phone already writes `14.285,5` has told us once
-  /// already, and the two explicit options exist for the ones it gets wrong.
-  NumberFormatStyle get numberFormatStyle {
-    final value = settingValue(generalGroup, _numberFormatKey);
-    for (final style in NumberFormatStyle.values) {
-      if (style.name == value) return style;
-    }
-    return NumberFormatStyle.locale;
-  }
-
-  Future<void> setNumberFormatStyle(NumberFormatStyle style) => setSettingValue(generalGroup, _numberFormatKey, style.name);
 
   /// How many characters a locator is shown with, app-wide — see
   /// [GridPrecision], which is where the resolved answer lives.

@@ -1157,37 +1157,57 @@ All numbers displayed in the user interface (including QSO counts, QSO row index
 
 ### Which characters, and who decides
 
-Settings → General → **Number Formatting** picks the decimal and thousands
-separators: the device's own conventions (the default), always a period, or
-always a comma. The two are ONE choice — `14,285.5` or `14.285,5`, never a
-mixture — so they are resolved together and read together.
+Ordinary numbers — scores, counts, distances, an extension form's `number`
+fields — use the device's own decimal and thousands separators. There is no
+setting: the device already says how its operator writes `14,285.5` or
+`14.285,5`. The two are resolved together and read together.
 
 The resolved pair lives in `NumberFormatting` (halo_core), a process-wide
 singleton on the `AppClock` pattern and for the same reason: a number
 FORMATTED with one separator and PARSED with another does not round-trip, and
-the field that shows a frequency is the field the operator edits. `HaLoServices`
-resolves the preference and pushes the answer in — halo_core is pure Dart, with
-neither the device locale nor ICU.
+the field that shows a number is the field the operator edits. `HaLoServices`
+resolves it once at startup and pushes the answer in — halo_core is pure Dart,
+with neither the device locale nor ICU. `formatNumber` and FormRenderer's
+`number` fields (display, parse, and the input formatter — a fixed `[0-9.-]`
+silently swallows the decimal key on a comma-conventions keyboard) read from
+there, and there is no second source.
 
-Every user-facing surface reads from there, and there is no second source:
-`fmtFreq`/`fmtFreqInput`/`parseFreq`, `formatNumber`, FormRenderer's `number`
-fields (display, parse, and the input formatter — a fixed `[0-9.-]` silently
-swallows the decimal key on a comma-conventions keyboard), the QSO row's
-frequency, and the logging panel's numbers-row extra key, which types whatever
-`parseFreq` will read back as a decimal point.
+**Frequencies are not ordinary numbers.** They are written with a period for
+grouping and decimal alike, whatever the device says — `14.285`, `14.285.5`,
+`14.285.505` — because context says which mark is which, and one notation
+means every surface shows the same string for the same frequency, as PoLo
+does. `frequencyMark` (halo_core) is that period; `fmtFreq`, `groupDigits`
+and the QSO row, spots panel, radio controls and Logs table all use it, and
+the Freq field's numbers-row extra key types it (every other field's extra
+key is the device's decimal separator). `fmtFreqInput` writes an
+editable field's value ungrouped (`14285.5`), so no one edits in the middle of
+a group.
+
+`parseFreq` reads a comma as a period (it is the only mark a comma-decimal
+phone keypad offers) and resolves the remaining ambiguity with the band plan.
+One mark below 1000 reads as MHz (`14.285`), or as kHz (`472.5`, 630m) or GHz
+(`1.296`, 23cm) where that is the reading that names a band — except that a
+bare band name (`1.25`, the 1.25m band) is never read as GHz. With two or more,
+the last mark is the decimal (`14.200.5`) unless only the all-grouping reading
+names a band (`1.296.000`, 23cm). The first group is at most three digits
+and the middle ones exactly three, or the input is refused.
+
+Extensions read the same notation through `@ham2k/lib-format-tools`
+`parseFreq` (1.3.0 on), so a frequency typed as a call-field command lands
+where the Freq field would put it. Its band table is a short list of its own,
+which also rescues 13cm through 1.25cm, where the app's `bands` stop at 23cm.
 
 Frequencies read as **kHz** everywhere they are shown — the QSO list, the
-spots panel and the radio controls alike — so `7200.5` kHz is `7,200.5`, and a
-whole 7.2 MHz is `7,200`. The QSO row splits that into MHz/kHz/Hz parts for
-styling and for column alignment across an operation, but the marks between
-them are an ordinary thousands separator and an ordinary decimal point, not a
-notation of their own.
+spots panel and the radio controls alike — so `7200.5` kHz is `7.200.5`, and a
+whole 7.2 MHz is `7.200`. The QSO row splits that into MHz/kHz/Hz parts for
+styling and for column alignment across an operation.
 
 **Machine-facing output is never localized.** ADIF, spots, sync payloads and
 every other wire format carry a plain period-decimal number whatever the
 operator sees. Extensions receive the resolved pair as
 `ctx.decimalSeparator`/`ctx.groupingSeparator` for parsing typed input and
-formatting text shown back — not for anything they transmit.
+formatting text shown back — not for frequencies, and not for anything they
+transmit.
 
 ## Future directions
 

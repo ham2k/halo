@@ -780,10 +780,6 @@ class _Translations$settings$qrp extends Translations$settings$en {
 	@override late final _Translations$settings$about$qrp about = _Translations$settings$about$qrp._(_root);
 	@override late final _Translations$settings$panels$qrp panels = _Translations$settings$panels$qrp._(_root);
 	@override String get showMoreSettings => 'show more settings';
-	@override String get numberFormat => 'number formatting';
-	@override late final _Translations$settings$numberFormatOpts$qrp numberFormatOpts = _Translations$settings$numberFormatOpts$qrp._(_root);
-	@override late final _Translations$settings$numberFormatDescription$qrp numberFormatDescription = _Translations$settings$numberFormatDescription$qrp._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$qrp numberFormatSeparators = _Translations$settings$numberFormatSeparators$qrp._(_root);
 	@override String get gridPrecision => 'grid precision';
 	@override late final _Translations$settings$gridPrecisionOpts$qrp gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$qrp._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$qrp gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$qrp._(_root);
@@ -3005,41 +3001,6 @@ class _Translations$settings$panels$qrp extends Translations$settings$panels$en 
 	@override String get stationDescription => 'cat control and more options';
 	@override String get peers => 'peer devices';
 	@override String get peersDescription => 'connect to other devices nearby';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$qrp extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
-
-	final TranslationsQrp _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'follow system settings';
-	@override String get period => 'always use period for decimals';
-	@override String get comma => 'always use comma for decimals';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$qrp extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
-
-	final TranslationsQrp _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'system settings (using ${separator} for decimals)';
-	@override String get period => 'always using period for decimals';
-	@override String get comma => 'always using comma for decimals';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$qrp extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
-
-	final TranslationsQrp _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'comma';
-	@override String get period => 'period';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -6297,15 +6258,6 @@ extension on TranslationsQrp {
 			'settings.panels.peers' => 'peer devices',
 			'settings.panels.peersDescription' => 'connect to other devices nearby',
 			'settings.showMoreSettings' => 'show more settings',
-			'settings.numberFormat' => 'number formatting',
-			'settings.numberFormatOpts.locale' => 'follow system settings',
-			'settings.numberFormatOpts.period' => 'always use period for decimals',
-			'settings.numberFormatOpts.comma' => 'always use comma for decimals',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'system settings (using ${separator} for decimals)',
-			'settings.numberFormatDescription.period' => 'always using period for decimals',
-			'settings.numberFormatDescription.comma' => 'always using comma for decimals',
-			'settings.numberFormatSeparators.comma' => 'comma',
-			'settings.numberFormatSeparators.period' => 'period',
 			'settings.gridPrecision' => 'grid precision',
 			'settings.gridPrecisionOpts.six' => '6 digits (fn31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 digits (fn31pr55)',
@@ -6316,8 +6268,6 @@ extension on TranslationsQrp {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'reload failed: ${error}',
 			'commands.reloadingAll' => 'reloading all data files…',
-			_ => null,
-		} ?? switch (path) {
 			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
@@ -6327,6 +6277,8 @@ extension on TranslationsQrp {
 			'commands.idleMetricsDisabled' => 'idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
+			_ => null,
+		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',

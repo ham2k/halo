@@ -386,30 +386,30 @@ void main() {
 
   group('fmtFreq', () {
     test('groups thousands and trims whole numbers', () {
-      expect(fmtFreq(14285), '14,285');
-      expect(fmtFreq(14285.5), '14,285.5');
+      expect(fmtFreq(14285), '14.285');
+      expect(fmtFreq(14285.5), '14.285.5');
       expect(fmtFreq(472), '472');
-      expect(fmtFreq(1296200), '1,296,200');
+      expect(fmtFreq(1296200), '1.296.200');
     });
 
     test('keeps every digit down to the Hz, and no trailing zero', () {
       // A label names the frequency a QSO logs at: rounding to 100 Hz shows
-      // 14,074.25 as "14,074.3", a frequency nobody tuned.
-      expect(fmtFreq(14074.25), '14,074.25');
-      expect(fmtFreq(14285.432), '14,285.432');
-      expect(fmtFreq(14285.0001), '14,285');
+      // 14.074.25 as "14.074.3", a frequency nobody tuned.
+      expect(fmtFreq(14074.25), '14.074.25');
+      expect(fmtFreq(14285.432), '14.285.432');
+      expect(fmtFreq(14285.0001), '14.285');
     });
 
     test('keeps at least minDecimals, zeros included, and never more than the Hz', () {
       // A label that follows a moving reading holds its width this way.
-      expect(fmtFreq(14075, minDecimals: 1), '14,075.0');
-      expect(fmtFreq(14075.1, minDecimals: 2), '14,075.10');
-      expect(fmtFreq(14075.123, minDecimals: 1), '14,075.123');
+      expect(fmtFreq(14075, minDecimals: 1), '14.075.0');
+      expect(fmtFreq(14075.1, minDecimals: 2), '14.075.10');
+      expect(fmtFreq(14075.123, minDecimals: 1), '14.075.123');
     });
 
     test('carries into the whole part instead of formatting a fourth digit', () {
-      expect(fmtFreq(14285.9996), '14,286');
-      expect(fmtFreq(999.9999), '1,000');
+      expect(fmtFreq(14285.9996), '14.286');
+      expect(fmtFreq(999.9999), '1.000');
     });
   });
 
@@ -417,17 +417,17 @@ void main() {
     test('always shows three decimals, grouped', () {
       // Trailing zeros are the point: a live reading that changes width as
       // its last digits settle is unreadable.
-      expect(fmtFreqToTheHz(14285.4), '14,285.400');
-      expect(fmtFreqToTheHz(14285), '14,285.000');
-      expect(fmtFreqToTheHz(14285.432), '14,285.432');
+      expect(fmtFreqToTheHz(14285.4), '14.285.400');
+      expect(fmtFreqToTheHz(14285), '14.285.000');
+      expect(fmtFreqToTheHz(14285.432), '14.285.432');
       expect(fmtFreqToTheHz(472.5), '472.500');
     });
 
     test('carries into the whole part instead of formatting a fourth digit', () {
       // Splitting the double directly leaves a fraction that rounds to 1000,
-      // and 14285.9996 formats as "14,285.1000".
-      expect(fmtFreqToTheHz(14285.9996), '14,286.000');
-      expect(fmtFreqToTheHz(999.9999), '1,000.000');
+      // and 14285.9996 formats as "14.285.1000".
+      expect(fmtFreqToTheHz(14285.9996), '14.286.000');
+      expect(fmtFreqToTheHz(999.9999), '1.000.000');
     });
   });
 

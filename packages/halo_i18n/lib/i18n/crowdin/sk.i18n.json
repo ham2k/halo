@@ -2086,21 +2086,6 @@
       "peersDescription": "Pripojiť sa k iným zariadeniam v blízkosti"
     },
     "showMoreSettings": "Zobraziť ďalšie nastavenia",
-    "numberFormat": "Formát čísel",
-    "numberFormatOpts": {
-      "locale": "Podľa nastavení systému",
-      "period": "Vždy používať bodku pre desatinné miesta",
-      "comma": "Vždy používať čiarku pre desatinné miesta"
-    },
-    "numberFormatDescription": {
-      "locale": "Nastavenia systému (pre desatinné miesta sa používa ${separator})",
-      "period": "Pre desatinné miesta sa vždy používa bodka",
-      "comma": "Pre desatinné miesta sa vždy používa čiarka"
-    },
-    "numberFormatSeparators": {
-      "comma": "čiarka",
-      "period": "bodka"
-    },
     "gridPrecision": "Presnosť lokátora",
     "gridPrecisionOpts": {
       "six": "6 miest (FN31pr)",

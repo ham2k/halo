@@ -29,6 +29,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'density.dart';
+import 'keyboard_accessory.dart' show NumbersRowExtraKey;
 import 'logging_controls_draft.dart';
 import 'logging_controls_metrics.dart';
 import 'logging_controls_types.dart';

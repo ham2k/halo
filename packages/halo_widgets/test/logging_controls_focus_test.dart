@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'support/logging_controls_harness.dart';
@@ -263,6 +264,33 @@ void main() {
         expect(keyInRow('.'), findsOneWidget);
         expect(keyInRow('/'), findsNothing);
       } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('under comma conventions the extra key is "," but "." in the Freq field', (tester) async {
+      // Two marks that must not swap. An extension reads its own numeric
+      // fields with the device's separators, so a "." there is grouping and
+      // `0.5` becomes 5; the Freq field writes "." on every device, so a ","
+      // there shows a mark its own value never carries.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'de_DE');
+      try {
+        raiseKeyboard(tester);
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
+
+        await tester.enterText(find.widgetWithText(TextField, 'Sent'), '59');
+        await pumpRow(tester);
+        expect(keyInRow(','), findsOneWidget);
+        expect(keyInRow('.'), findsNothing);
+
+        await openControl(tester, MdiIcons.radio);
+        await tester.tap(find.widgetWithText(TextField, 'Frequency'));
+        await pumpRow(tester);
+        expect(keyInRow('.'), findsOneWidget);
+        expect(keyInRow(','), findsNothing);
+      } finally {
+        NumberFormatting.instance.reset();
         debugDefaultTargetPlatformOverride = null;
       }
     });

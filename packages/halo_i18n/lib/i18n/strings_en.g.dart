@@ -1713,13 +1713,6 @@ class Translations$settings$en {
 	/// en: 'Show more settings'
 	String get showMoreSettings => 'Show more settings';
 
-	/// en: 'Number Formatting'
-	String get numberFormat => 'Number Formatting';
-
-	late final Translations$settings$numberFormatOpts$en numberFormatOpts = Translations$settings$numberFormatOpts$en.internal(_root);
-	late final Translations$settings$numberFormatDescription$en numberFormatDescription = Translations$settings$numberFormatDescription$en.internal(_root);
-	late final Translations$settings$numberFormatSeparators$en numberFormatSeparators = Translations$settings$numberFormatSeparators$en.internal(_root);
-
 	/// en: 'Grid Precision'
 	String get gridPrecision => 'Grid Precision';
 
@@ -6668,57 +6661,6 @@ class Translations$settings$panels$en {
 	String get peersDescription => 'Connect to other devices nearby';
 }
 
-// Path: settings.numberFormatOpts
-class Translations$settings$numberFormatOpts$en {
-	Translations$settings$numberFormatOpts$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Follow system settings'
-	String get locale => 'Follow system settings';
-
-	/// en: 'Always use period for decimals'
-	String get period => 'Always use period for decimals';
-
-	/// en: 'Always use comma for decimals'
-	String get comma => 'Always use comma for decimals';
-}
-
-// Path: settings.numberFormatDescription
-class Translations$settings$numberFormatDescription$en {
-	Translations$settings$numberFormatDescription$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'System settings (using ${separator} for decimals)'
-	String locale({required Object separator}) => 'System settings (using ${separator} for decimals)';
-
-	/// en: 'Always using period for decimals'
-	String get period => 'Always using period for decimals';
-
-	/// en: 'Always using comma for decimals'
-	String get comma => 'Always using comma for decimals';
-}
-
-// Path: settings.numberFormatSeparators
-class Translations$settings$numberFormatSeparators$en {
-	Translations$settings$numberFormatSeparators$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'comma'
-	String get comma => 'comma';
-
-	/// en: 'period'
-	String get period => 'period';
-}
-
 // Path: settings.gridPrecisionOpts
 class Translations$settings$gridPrecisionOpts$en {
 	Translations$settings$gridPrecisionOpts$en.internal(this._root);
@@ -11233,15 +11175,6 @@ extension on Translations {
 			'settings.panels.peers' => 'Peer Devices',
 			'settings.panels.peersDescription' => 'Connect to other devices nearby',
 			'settings.showMoreSettings' => 'Show more settings',
-			'settings.numberFormat' => 'Number Formatting',
-			'settings.numberFormatOpts.locale' => 'Follow system settings',
-			'settings.numberFormatOpts.period' => 'Always use period for decimals',
-			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'System settings (using ${separator} for decimals)',
-			'settings.numberFormatDescription.period' => 'Always using period for decimals',
-			'settings.numberFormatDescription.comma' => 'Always using comma for decimals',
-			'settings.numberFormatSeparators.comma' => 'comma',
-			'settings.numberFormatSeparators.period' => 'period',
 			'settings.gridPrecision' => 'Grid Precision',
 			'settings.gridPrecisionOpts.six' => '6 digits (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 digits (FN31pr55)',
@@ -11252,8 +11185,6 @@ extension on Translations {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			'commands.reloadingAll' => 'Reloading all data files…',
-			_ => null,
-		} ?? switch (path) {
 			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
@@ -11263,6 +11194,8 @@ extension on Translations {
 			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
+			_ => null,
+		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',

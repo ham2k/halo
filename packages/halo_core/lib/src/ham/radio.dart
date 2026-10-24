@@ -9,7 +9,6 @@
 
 import 'dart:async';
 
-import '../number_formatting.dart';
 import 'band_plan_segments.dart';
 
 class BandInfo {
@@ -397,10 +396,10 @@ bool _isBetterModeMatch(_BandPlanSegment candidate, _BandPlanSegment current, {r
 /// MHz/kHz/Hz split for QSO-row display: MHz bold, kHz regular, Hz (if any)
 /// regular at a smaller size.
 ///
-/// The row reads as kHz, like the spots panel and the radio controls — so the
-/// caller joins [mhz] and [khz] with a THOUSANDS separator and [hz] with a
-/// decimal point (`7,200.5`). The split is for styling and for column
-/// alignment across an operation, not a claim that these are three numbers.
+/// The row reads as kHz, like the spots panel and the radio controls — the
+/// caller joins all three with [frequencyMark] (`7.200.5`). The split is for
+/// styling and for column alignment across an operation, not a claim that
+/// these are three numbers.
 /// [hz] is null when the operation has no QSO needing sub-kHz precision —
 /// see [hzDigitsNeeded].
 class FreqParts {
@@ -900,52 +899,80 @@ String? superModeForMode(String? mode) {
   return 'Digital';
 }
 
-/// Parses user frequency input into kHz, in the operator's own number
-/// conventions ([NumberFormatting]).
+final _freqSpaces = RegExp(r'[\s\u00a0\u202f]');
+final _freqChars = RegExp(r'^[0-9.]+$');
+
+/// Parses user frequency input into kHz.
 ///
-/// Accepts kHz ("14285", "14285.5") and MHz with a decimal separator when the
-/// value is too small to be an HF kHz reading ("14.285" → 14285, and "14,285"
-/// → 14285 where the comma is the decimal).
+/// Frequencies are written with periods whatever the device's number
+/// conventions, for grouping and decimals alike — `14.285`, `14.285.5`,
+/// `14.285.505` — and context says which mark is which. A comma reads as a
+/// period: it is the only mark a comma-decimal phone keypad offers, and
+/// `14,285.5` typed out of US habit names the same frequency.
 ///
-/// The MHz heuristic keys off the DECIMAL separator specifically, not off any
-/// punctuation: under comma conventions "14.285" is grouped kHz and "14,285"
-/// is MHz, and reading either mark as "there is a fraction here" would put the
-/// operator three orders of magnitude off the band they typed.
+/// - No mark: kHz.
+/// - One mark: MHz when the value is under 1000 ("14.285" → 14285), kHz
+///   otherwise ("14285.5").
+/// - Two or more: the first group is one to three digits and every group
+///   between it and the last exactly three, or the input is refused rather
+///   than guessed at ("14285.200.5" is a stray mark, not 14 GHz). The last
+///   mark is the
+///   decimal ("14.200.5" → 14200.5), which is the MHz.kHz.Hz reading of
+///   anything below 1 GHz.
+///
+/// Where a second reading is possible, the band plan breaks the tie — see
+/// the comments below. The tie-break never has to choose between two bands
+/// only because [bands] stops at 23cm: with the microwave bands in it, 2m
+/// read as GHz is 2mm and 30m is 3cm.
+///
+/// Extensions read the same notation through `@ham2k/lib-format-tools`
+/// `parseFreq` (1.3.0 on), whose own short table also rescues 13cm–1.25cm.
 double? parseFreq(String input) {
-  final formats = NumberFormatting.instance;
-  var cleaned = input.trim();
-  if (cleaned.isEmpty) return null;
-  if (formats.groupingSeparator.isNotEmpty) {
-    cleaned = cleaned.replaceAll(formats.groupingSeparator, '');
-  }
-  // Any whitespace, not just the configured mark: several locales group with
-  // a narrow no-break space, which no keyboard produces — what the operator
-  // actually types, or pastes, is an ordinary one. [parseLocalizedNumber]
-  // strips the same set for the same reason.
-  cleaned = cleaned.replaceAll(RegExp(r'[\s\u00a0\u202f]'), '');
-  final hasDecimal = cleaned.contains(formats.decimalSeparator);
-  if (formats.decimalSeparator != '.') {
-    cleaned = cleaned.replaceAll(formats.decimalSeparator, '.');
-  }
+  final cleaned = input.trim().replaceAll(_freqSpaces, '').replaceAll(',', '.');
+  if (!_freqChars.hasMatch(cleaned)) return null;
+  final groups = cleaned.split('.');
+  if (groups.length > 2) return _parseGroupedFreq(groups);
   final value = double.tryParse(cleaned);
   if (value == null || value <= 0) return null;
-  if (hasDecimal && value < 1000) {
-    // "14.285" is 14.285 MHz — but "472.5" is 630m, in kHz, and the same rule
-    // reads it as 472.5 MHz and lands the operator 1000x away. Both forms are
-    // genuinely ambiguous, so the band plan breaks the tie: scale only when
-    // scaling produces a frequency an amateur could be on, and the unscaled
-    // reading does not.
+  if (groups.length == 2 && value < 1000) {
+    // "14.285" is 14.285 MHz — but "472.5" is 630m, in kHz, and "1.296" is
+    // 23cm, in GHz. Each reading is tried in that order and the first that
+    // names a band wins. MHz goes first because it is what someone typing a
+    // decimal into a frequency box means.
     //
-    // Deliberately narrow. When NEITHER reading names a band ("5.0" — WWV, or
-    // a typo) the MHz reading still wins, because that is what someone typing
-    // a decimal into a frequency box means; this only rescues the case where
-    // the kHz reading is unambiguously right. That case is LF/MF — 2200m and
-    // 630m — which is why `fmtFreqInput` can round-trip them at all.
+    // When NO reading names a band ("5.0" — WWV, or a typo) the MHz reading
+    // still wins. The other two only rescue the cases where they are
+    // unambiguously right — 2200m and 630m, which is why `fmtFreqInput` can
+    // round-trip them at all, and 23cm.
     final asMHz = value * 1000;
-    if (bandForFrequency(asMHz) == null && bandForFrequency(value) != null) return value;
+    if (bandForFrequency(asMHz) != null) return asMHz;
+    if (bandForFrequency(value) != null) return value;
+    // A bare band name outranks the GHz reading: "1.25" is 1.25 GHz, inside
+    // 23cm, but it is also how an iOS numeric keypad, which has no "m",
+    // names the 1.25m band through [parseBandInput].
+    final asGHz = value * 1000000;
+    if (bandForFrequency(asGHz) != null && parseBandInput(cleaned) == null) return asGHz;
     return asMHz;
   }
   return value;
+}
+
+/// [parseFreq] for input with two or more marks, split at them.
+double? _parseGroupedFreq(List<String> groups) {
+  final first = groups.first;
+  final last = groups.last;
+  if (first.isEmpty || first.length > 3 || last.isEmpty) return null;
+  if (groups.sublist(1, groups.length - 1).any((group) => group.length != 3)) return null;
+  final withDecimal = double.parse('${groups.sublist(0, groups.length - 1).join()}.$last');
+  if (withDecimal <= 0) return null;
+  // Every mark as grouping instead: what kHz display writes a GHz frequency
+  // as — 23cm is "1.296.000" — and what the decimal reading turns into
+  // 1296 kHz, which is no band.
+  if (last.length == 3) {
+    final allGrouped = double.parse(groups.join());
+    if (bandForFrequency(withDecimal) == null && bandForFrequency(allGrouped) != null) return allGrouped;
+  }
+  return withDecimal;
 }
 
 /// Reads user input naming a band — "20m", "20 M", "70cm", or the bare
@@ -963,7 +990,16 @@ double? parseFreq(String input) {
 /// numbers-and-punctuation keyboard carries no letters, so a suffixed form
 /// alone would make this a desktop-only feature.
 String? parseBandInput(String input) {
-  var cleaned = input.trim().toLowerCase().replaceAll(',', '').replaceAll(' ', '');
+  final spaced = input.trim().toLowerCase().replaceAll(' ', '');
+  // A comma is either a period, as in [parseFreq] — "1,25" from a
+  // comma-decimal keypad is the 1.25m band — or grouping, "2,190m".
+  return _bandNamed(spaced.replaceAll(',', '.')) ?? _bandNamed(spaced.replaceAll(',', ''));
+}
+
+/// [parseBandInput] for input already free of spaces, each comma resolved to
+/// a period or dropped.
+String? _bandNamed(String input) {
+  var cleaned = input;
   if (cleaned.isEmpty) return null;
   // A unit the operator typed pins which of the candidates to try; with none,
   // "70" means 70cm because there is no 70m band to prefer. Millimetres are
@@ -992,12 +1028,15 @@ String? parseBandInput(String input) {
 }
 
 /// Formats kHz for display at up to Hz precision, thousands-grouped, with
-/// trailing zeros trimmed: "14,285.5", "14,074.25", "14,285". [minDecimals]
-/// (0–3) keeps that many decimals even when they are zeros — "14,074.20" —
+/// trailing zeros trimmed: "14.285.5", "14.074.25", "14.285". [minDecimals]
+/// (0–3) keeps that many decimals even when they are zeros — "14.074.20" —
 /// for a label that must hold its width while a reading moves.
 ///
+/// Periods for grouping and decimal alike, whatever the operator's number
+/// conventions — see [frequencyMark].
+///
 /// Carried in whole Hz rather than by splitting the double: 14285.9996 taken
-/// apart directly yields a fraction of 1000 and formats as "14,285.1000".
+/// apart directly yields a fraction of 1000 and formats as "14.285.1000".
 String fmtFreq(double khz, {int minDecimals = 0}) {
   final totalHz = (khz * 1000).round();
   final grouped = groupDigits((totalHz ~/ 1000).toString());
@@ -1006,13 +1045,13 @@ String fmtFreq(double khz, {int minDecimals = 0}) {
   while (digits > minDecimals && fraction[digits - 1] == '0') {
     digits--;
   }
-  return digits == 0 ? grouped : '$grouped${NumberFormatting.instance.decimalSeparator}${fraction.substring(0, digits)}';
+  return digits == 0 ? grouped : '$grouped$frequencyMark${fraction.substring(0, digits)}';
 }
 
 /// The decimals a frequency label that follows a moving reading holds: the
 /// most any value has needed since the reading last sat still for
 /// [settleDelay], passed to [fmtFreq] as `minDecimals`. A dial spun in 100 Hz
-/// steps reads "14,074.9", "14,075.0", "14,075.1" at one width instead of
+/// steps reads "14.074.9", "14.075.0", "14.075.1" at one width instead of
 /// the label jumping at every whole kHz; once settled, trailing zeros go.
 class FreqDecimalsHold {
   FreqDecimalsHold({required this.onSettle});
@@ -1046,29 +1085,28 @@ class FreqDecimalsHold {
   void dispose() => _settle?.cancel();
 }
 
-/// Inserts the operator's thousands separator into a run of ASCII digits.
+/// The one mark a frequency is written with, between MHz and kHz and before
+/// the Hz alike: "14.285.5".
 ///
-/// By hand rather than through `intl`, because intl also rewrites the digits
-/// into the locale's own script (fa, ar) — fine for a whole number, wrong for
-/// a frequency assembled from several parts where only one of them would be
-/// converted. Every caller here is building such a reading.
-///
-/// Plain every-three grouping: the locales that break differently (hi-IN's
-/// `12,34,567`) do so for counts, not for a frequency's MHz part, which is
-/// four digits at most on any band this app knows.
+/// Not the operator's number conventions, which govern every OTHER number:
+/// a frequency is read from context, and one fixed mark keeps every surface
+/// showing the same string for the same frequency. [parseFreq] reads it back.
+const frequencyMark = '.';
+
+/// Groups a run of ASCII digits that is part of a frequency with
+/// [frequencyMark], every three digits.
 String groupDigits(String digits) {
-  final separator = NumberFormatting.instance.groupingSeparator;
-  if (separator.isEmpty || digits.length <= 3) return digits;
+  if (digits.length <= 3) return digits;
   final grouped = StringBuffer();
   for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(separator);
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(frequencyMark);
     grouped.write(digits[i]);
   }
   return grouped.toString();
 }
 
 /// Formats kHz for display at Hz precision, thousands-grouped and always
-/// three decimals: "14,285.400".
+/// three decimals: "14.285.400".
 ///
 /// For the surfaces that show where a radio actually IS, rather than where a
 /// QSO was logged. Trailing zeros are kept, so the reading doesn't change
@@ -1085,11 +1123,7 @@ String fmtFreqInput(double khz) {
   if (s.contains('.')) {
     s = s.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
   }
-  // Trimmed while the separator is still a period, so the regexes above stay
-  // literal — then written in the operator's conventions, because this feeds
-  // an editable field that [parseFreq] reads straight back.
-  final decimal = NumberFormatting.instance.decimalSeparator;
-  return decimal == '.' ? s : s.replaceAll('.', decimal);
+  return s;
 }
 
 // `CALLSIGN_REGEXP` from `@ham2k/lib-callsigns`' `parseCallsign` — the same

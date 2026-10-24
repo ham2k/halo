@@ -81,25 +81,6 @@ void main() {
     }
   });
 
-  test('Number Formatting, named rather than left to the sweep above', () async {
-    // The generic test covers this by iteration, and an edit that narrows the
-    // iteration would take the coverage with it silently.
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final group = await generalGroup(settings);
-
-    expect(settings.numberFormatStyle, NumberFormatStyle.locale, reason: 'the default follows the device');
-
-    await group.commit('numberFormat', 'comma');
-    expect(settings.numberFormatStyle, NumberFormatStyle.comma);
-
-    await group.commit('numberFormat', 'period');
-    expect(settings.numberFormatStyle, NumberFormatStyle.period);
-
-    await group.commit('numberFormat', 'locale');
-    expect(settings.numberFormatStyle, NumberFormatStyle.locale);
-  });
-
   test('Grid Precision reaches the process-wide singleton every package reads', () async {
     // Committing the setting is only half the wiring. Every locator on screen
     // is rendered from `GridPrecision.current` in halo_core, which cannot read
@@ -146,9 +127,9 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final group = await generalGroup(settings);
 
-    await group.commit('numberFormat', 'comma');
-    await group.commit('numberFormat', 'decimal-point-please');
-    expect(settings.numberFormatStyle, NumberFormatStyle.comma);
+    await group.commit('distanceUnits', 'miles');
+    await group.commit('distanceUnits', 'furlongs-please');
+    expect(settings.distanceUnits, DistanceUnits.miles);
   });
 
   group('Language', () {

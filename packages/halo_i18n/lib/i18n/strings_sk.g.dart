@@ -738,10 +738,6 @@ class _Translations$settings$sk extends Translations$settings$en {
 	@override late final _Translations$settings$about$sk about = _Translations$settings$about$sk._(_root);
 	@override late final _Translations$settings$panels$sk panels = _Translations$settings$panels$sk._(_root);
 	@override String get showMoreSettings => 'Zobraziť ďalšie nastavenia';
-	@override String get numberFormat => 'Formát čísel';
-	@override late final _Translations$settings$numberFormatOpts$sk numberFormatOpts = _Translations$settings$numberFormatOpts$sk._(_root);
-	@override late final _Translations$settings$numberFormatDescription$sk numberFormatDescription = _Translations$settings$numberFormatDescription$sk._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$sk numberFormatSeparators = _Translations$settings$numberFormatSeparators$sk._(_root);
 	@override String get gridPrecision => 'Presnosť lokátora';
 	@override late final _Translations$settings$gridPrecisionOpts$sk gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$sk._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$sk gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$sk._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$sk extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Ovládanie CAT a ďalšie možnosti';
 	@override String get peers => 'Partnerské zariadenia';
 	@override String get peersDescription => 'Pripojiť sa k iným zariadeniam v blízkosti';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$sk extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$sk._(TranslationsSk root) : this._root = root, super.internal(root);
-
-	final TranslationsSk _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Podľa nastavení systému';
-	@override String get period => 'Vždy používať bodku pre desatinné miesta';
-	@override String get comma => 'Vždy používať čiarku pre desatinné miesta';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$sk extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$sk._(TranslationsSk root) : this._root = root, super.internal(root);
-
-	final TranslationsSk _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Nastavenia systému (pre desatinné miesta sa používa ${separator})';
-	@override String get period => 'Pre desatinné miesta sa vždy používa bodka';
-	@override String get comma => 'Pre desatinné miesta sa vždy používa čiarka';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$sk extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$sk._(TranslationsSk root) : this._root = root, super.internal(root);
-
-	final TranslationsSk _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'čiarka';
-	@override String get period => 'bodka';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsSk {
 			'settings.panels.peers' => 'Partnerské zariadenia',
 			'settings.panels.peersDescription' => 'Pripojiť sa k iným zariadeniam v blízkosti',
 			'settings.showMoreSettings' => 'Zobraziť ďalšie nastavenia',
-			'settings.numberFormat' => 'Formát čísel',
-			'settings.numberFormatOpts.locale' => 'Podľa nastavení systému',
-			'settings.numberFormatOpts.period' => 'Vždy používať bodku pre desatinné miesta',
-			'settings.numberFormatOpts.comma' => 'Vždy používať čiarku pre desatinné miesta',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Nastavenia systému (pre desatinné miesta sa používa ${separator})',
-			'settings.numberFormatDescription.period' => 'Pre desatinné miesta sa vždy používa bodka',
-			'settings.numberFormatDescription.comma' => 'Pre desatinné miesta sa vždy používa čiarka',
-			'settings.numberFormatSeparators.comma' => 'čiarka',
-			'settings.numberFormatSeparators.period' => 'bodka',
 			'settings.gridPrecision' => 'Presnosť lokátora',
 			'settings.gridPrecisionOpts.six' => '6 miest (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 miest (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsSk {
 			'exportSettings.shared' => 'Nastavenia platia pre každé rozšírenie, ktoré používa tento typ exportu.',
 			'exportSettings.defaultTemplates' => 'Ak chcete upraviť šablóny tohto typu, zapnite Vlastné šablóny.',
 			'templateEditor.previewLabel' => 'Náhľad:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Obnoviť',
 			'templateEditor.docs' => 'Dokumentácia šablón',
 			'templateEditor.preview' => 'Ukážkový náhľad',

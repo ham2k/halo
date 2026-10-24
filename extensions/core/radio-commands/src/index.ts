@@ -9,11 +9,11 @@
 // control is new to this app.
 //
 // Frequency parsing delegates to @ham2k/lib-format-tools' parseFreq (the
-// same published parser app-polo uses), which accepts MHz-style input
-// like "14.285" as well as kHz.
+// same published parser app-polo uses), which reads the app's notation —
+// "14.285", "14.200.5", "1.296.000" — by the same band tie-break as the
+// app's own Freq field.
 
 import { parseFreq, fmtFreq } from "@ham2k/lib-format-tools"
-import { canonicalNumber, localizeFormattedNumber } from "./localizedNumbers.ts"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { defineExtension } from "@ham2k/extension-sdk"
@@ -121,7 +121,7 @@ const FrequencyCommand = {
     } else if ((trimmed.startsWith(".") || trimmed.startsWith(",")) && qsoFreq) {
       freq = parseFreq(`${Math.floor(qsoFreq / 1000)}${trimmed}`)
     } else if (FREQUENCY_MATCH.test(trimmed)) {
-      freq = parseFreq(canonicalNumber(trimmed, ctx))
+      freq = parseFreq(trimmed)
     }
 
     if (!freq) return null
@@ -131,7 +131,7 @@ const FrequencyCommand = {
     const band = freq ? bandForFrequency(freq) : undefined
     if (!band || band === "other") return null
 
-    const formattedFreq = localizeFormattedNumber(fmtFreq(freq), ctx)
+    const formattedFreq = fmtFreq(freq)
     const t = tFor(ctx)
     return {
       describe: t("freqDescribe", { freq: formattedFreq }),

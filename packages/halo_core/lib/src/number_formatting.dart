@@ -1,34 +1,20 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-// Which characters this app writes and reads numbers with — the operator's
-// Number Formatting setting, resolved once and readable from every package.
+// Which characters this app writes and reads ordinary numbers with — the
+// device's own conventions, resolved once and readable from every package.
+// Frequencies are the exception: they are always written with periods
+// (`frequencyMark`), and nothing here touches them.
 //
 // A singleton for the same reason AppClock is one: every surface must agree.
-// A frequency FORMATTED with one decimal separator and PARSED with another
-// does not round-trip, and the field that shows it is the same field the
-// operator edits — so a disagreement between two call sites is not a cosmetic
-// bug, it is a value that changes when you look at it.
+// A number FORMATTED with one decimal separator and PARSED with another does
+// not round-trip, and the field that shows it is the same field the operator
+// edits — so a disagreement between two call sites is not a cosmetic bug, it
+// is a value that changes when you look at it.
 //
 // This package is pure Dart: no Flutter, no `intl`, so it cannot read the
 // device locale or consult ICU. That resolution belongs to the app, which
-// pushes the answer here at startup and on every settings change. What is
-// stored is the RESOLVED pair, never the preference —
-// nothing downstream should have to know that "locale" was even an option.
-
-/// The operator's choice, as the setting stores it. Lives here rather than in
-/// the app so `settingValue` round-trips through the same names every reader
-/// uses; [NumberFormatting] itself never sees it.
-enum NumberFormatStyle {
-  /// Whatever the device's own region settings say.
-  locale,
-
-  /// `14,285.5` — period decimal, comma grouping.
-  period,
-
-  /// `14.285,5` — comma decimal, period grouping.
-  comma,
-}
+// pushes the answer here at startup.
 
 /// The separators in force, app-wide.
 class NumberFormatting {
@@ -67,15 +53,14 @@ class NumberFormatting {
   /// launch — so the one build where a bad pair could arrive is the one with
   /// no check at all. What gets through is not merely untidy:
   ///
-  /// - an empty decimal makes `cleaned.contains('')` true for every string,
-  ///   so [parseFreq] reads every entry as MHz and multiplies it by 1000,
-  ///   while `replaceAll('', …)` shreds the digits it was given;
-  /// - identical separators make `14.285.5`, which parses as nothing and
-  ///   which [parseFreq] strips before it can tell a decimal from grouping.
+  /// - an empty decimal makes [parseLocalizedNumber]'s `replaceAll('', …)`
+  ///   shred the digits it was given;
+  /// - identical separators strip the decimal along with the grouping, so
+  ///   `1.5` reads as 15.
   ///
   /// Keeping the previous conventions is the safe failure: US defaults are
-  /// wrong for some operators, but a frequency field that has stopped
-  /// accepting input is wrong for all of them.
+  /// wrong for some operators, but a number field that has stopped reading
+  /// input correctly is wrong for all of them.
   bool configure({required String decimal, required String grouping, required String locale}) {
     if (decimal.isEmpty || decimal == grouping) return false;
     _decimal = decimal;

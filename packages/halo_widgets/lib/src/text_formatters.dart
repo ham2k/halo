@@ -97,15 +97,14 @@ class CapitalizeFirstLetterTextFormatter extends TextInputFormatter {
 }
 
 /// Rewrites whichever decimal mark the keyboard produced into the one the
-/// operator's Number Formatting setting is using.
+/// device's number conventions use.
 ///
 /// Which key a numeric keyboard puts under the operator's thumb is not
 /// something this app decides: a Spanish or German phone offers a comma
 /// whatever the app is set to, and a desktop numpad emits a period regardless
 /// of region. So a `number` field admits both marks and normalizes here,
 /// rather than filtering to the configured one and silently swallowing the
-/// other — the swallow is invisible (`1,5` simply becomes `15`) and lands on
-/// exactly the operator the explicit period/comma options exist to help.
+/// other — the swallow is invisible (`1,5` simply becomes `15`).
 ///
 /// Normalizing on the way IN rather than at parse time is what keeps the
 /// value unambiguous: a field that can only contain the configured decimal

@@ -2086,21 +2086,6 @@
       "peersDescription": "근처의 다른 기기와 연결"
     },
     "showMoreSettings": "추가 설정 표시",
-    "numberFormat": "숫자 형식",
-    "numberFormatOpts": {
-      "locale": "시스템 설정 따르기",
-      "period": "소수점에 항상 마침표 사용",
-      "comma": "소수점에 항상 쉼표 사용"
-    },
-    "numberFormatDescription": {
-      "locale": "시스템 설정 (소수점에 ${separator} 사용)",
-      "period": "소수점에 항상 마침표 사용 중",
-      "comma": "소수점에 항상 쉼표 사용 중"
-    },
-    "numberFormatSeparators": {
-      "comma": "쉼표",
-      "period": "마침표"
-    },
     "gridPrecision": "그리드 정밀도",
     "gridPrecisionOpts": {
       "six": "6자리 (FN31pr)",

@@ -39,9 +39,14 @@ const UNIT_SUFFIX = /(mm|cm|m)$/
 /// The band `input` names, in the app's own spelling, or null for anything
 /// else.
 export function parseBandCommand(input: string): string | null {
-  const cleaned = input.trim().toLowerCase().replace(/[,\s]/g, "")
-  if (!cleaned) return null
+  const spaced = input.trim().toLowerCase().replace(/\s/g, "")
+  if (!spaced) return null
+  // A comma is either a period, as in parseBandInput — "1,25" from a
+  // comma-decimal keypad is the 1.25m band — or grouping, "2,190m".
+  return bandNamed(spaced.replace(/,/g, ".")) ?? bandNamed(spaced.replace(/,/g, ""))
+}
 
+function bandNamed(cleaned: string): string | null {
   const suffix = UNIT_SUFFIX.exec(cleaned)?.[1]
   const units = suffix ? [suffix] : ["m", "cm"]
   const stem = suffix ? cleaned.slice(0, -suffix.length) : cleaned

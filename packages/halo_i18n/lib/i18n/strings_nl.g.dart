@@ -738,10 +738,6 @@ class _Translations$settings$nl extends Translations$settings$en {
 	@override late final _Translations$settings$about$nl about = _Translations$settings$about$nl._(_root);
 	@override late final _Translations$settings$panels$nl panels = _Translations$settings$panels$nl._(_root);
 	@override String get showMoreSettings => 'Meer instellingen tonen';
-	@override String get numberFormat => 'Getalnotatie';
-	@override late final _Translations$settings$numberFormatOpts$nl numberFormatOpts = _Translations$settings$numberFormatOpts$nl._(_root);
-	@override late final _Translations$settings$numberFormatDescription$nl numberFormatDescription = _Translations$settings$numberFormatDescription$nl._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$nl numberFormatSeparators = _Translations$settings$numberFormatSeparators$nl._(_root);
 	@override String get gridPrecision => 'Gridprecisie';
 	@override late final _Translations$settings$gridPrecisionOpts$nl gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$nl._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$nl gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$nl._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$nl extends Translations$settings$panels$en {
 	@override String get stationDescription => 'CAT-besturing en meer opties';
 	@override String get peers => 'Peer-apparaten';
 	@override String get peersDescription => 'Verbinden met andere apparaten in de buurt';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$nl extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$nl._(TranslationsNl root) : this._root = root, super.internal(root);
-
-	final TranslationsNl _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Systeeminstellingen volgen';
-	@override String get period => 'Altijd punt voor decimalen';
-	@override String get comma => 'Altijd komma voor decimalen';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$nl extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$nl._(TranslationsNl root) : this._root = root, super.internal(root);
-
-	final TranslationsNl _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Systeeminstellingen (${separator} voor decimalen)';
-	@override String get period => 'Altijd punt voor decimalen';
-	@override String get comma => 'Altijd komma voor decimalen';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$nl extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$nl._(TranslationsNl root) : this._root = root, super.internal(root);
-
-	final TranslationsNl _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'komma';
-	@override String get period => 'punt';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsNl {
 			'settings.panels.peers' => 'Peer-apparaten',
 			'settings.panels.peersDescription' => 'Verbinden met andere apparaten in de buurt',
 			'settings.showMoreSettings' => 'Meer instellingen tonen',
-			'settings.numberFormat' => 'Getalnotatie',
-			'settings.numberFormatOpts.locale' => 'Systeeminstellingen volgen',
-			'settings.numberFormatOpts.period' => 'Altijd punt voor decimalen',
-			'settings.numberFormatOpts.comma' => 'Altijd komma voor decimalen',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Systeeminstellingen (${separator} voor decimalen)',
-			'settings.numberFormatDescription.period' => 'Altijd punt voor decimalen',
-			'settings.numberFormatDescription.comma' => 'Altijd komma voor decimalen',
-			'settings.numberFormatSeparators.comma' => 'komma',
-			'settings.numberFormatSeparators.period' => 'punt',
 			'settings.gridPrecision' => 'Gridprecisie',
 			'settings.gridPrecisionOpts.six' => '6 tekens (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 tekens (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsNl {
 			'exportSettings.shared' => 'Instellingen gelden voor elke extensie die dit exporttype gebruikt.',
 			'exportSettings.defaultTemplates' => 'Zet Aangepaste sjablonen aan om de sjablonen van dit type te bewerken.',
 			'templateEditor.previewLabel' => 'Voorbeeld:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Resetten',
 			'templateEditor.docs' => 'Sjabloondocumentatie',
 			'templateEditor.preview' => 'Voorbeeldweergave',

@@ -738,10 +738,6 @@ class _Translations$settings$ro extends Translations$settings$en {
 	@override late final _Translations$settings$about$ro about = _Translations$settings$about$ro._(_root);
 	@override late final _Translations$settings$panels$ro panels = _Translations$settings$panels$ro._(_root);
 	@override String get showMoreSettings => 'Arată mai multe setări';
-	@override String get numberFormat => 'Formatarea numerelor';
-	@override late final _Translations$settings$numberFormatOpts$ro numberFormatOpts = _Translations$settings$numberFormatOpts$ro._(_root);
-	@override late final _Translations$settings$numberFormatDescription$ro numberFormatDescription = _Translations$settings$numberFormatDescription$ro._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$ro numberFormatSeparators = _Translations$settings$numberFormatSeparators$ro._(_root);
 	@override String get gridPrecision => 'Precizia grilei';
 	@override late final _Translations$settings$gridPrecisionOpts$ro gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$ro._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$ro gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$ro._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$ro extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Control CAT și alte opțiuni';
 	@override String get peers => 'Dispozitive pereche';
 	@override String get peersDescription => 'Conectare la alte dispozitive din apropiere';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$ro extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$ro._(TranslationsRo root) : this._root = root, super.internal(root);
-
-	final TranslationsRo _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Urmează setările sistemului';
-	@override String get period => 'Folosește mereu punctul pentru zecimale';
-	@override String get comma => 'Folosește mereu virgula pentru zecimale';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$ro extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$ro._(TranslationsRo root) : this._root = root, super.internal(root);
-
-	final TranslationsRo _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Setările sistemului (se folosește ${separator} pentru zecimale)';
-	@override String get period => 'Se folosește mereu punctul pentru zecimale';
-	@override String get comma => 'Se folosește mereu virgula pentru zecimale';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$ro extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$ro._(TranslationsRo root) : this._root = root, super.internal(root);
-
-	final TranslationsRo _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'virgula';
-	@override String get period => 'punctul';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsRo {
 			'settings.panels.peers' => 'Dispozitive pereche',
 			'settings.panels.peersDescription' => 'Conectare la alte dispozitive din apropiere',
 			'settings.showMoreSettings' => 'Arată mai multe setări',
-			'settings.numberFormat' => 'Formatarea numerelor',
-			'settings.numberFormatOpts.locale' => 'Urmează setările sistemului',
-			'settings.numberFormatOpts.period' => 'Folosește mereu punctul pentru zecimale',
-			'settings.numberFormatOpts.comma' => 'Folosește mereu virgula pentru zecimale',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Setările sistemului (se folosește ${separator} pentru zecimale)',
-			'settings.numberFormatDescription.period' => 'Se folosește mereu punctul pentru zecimale',
-			'settings.numberFormatDescription.comma' => 'Se folosește mereu virgula pentru zecimale',
-			'settings.numberFormatSeparators.comma' => 'virgula',
-			'settings.numberFormatSeparators.period' => 'punctul',
 			'settings.gridPrecision' => 'Precizia grilei',
 			'settings.gridPrecisionOpts.six' => '6 caractere (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 caractere (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsRo {
 			'exportSettings.shared' => 'Setările se aplică fiecărei extensii care folosește acest tip de export.',
 			'exportSettings.defaultTemplates' => 'Activați Șabloane personalizate pentru a edita șabloanele acestui tip.',
 			'templateEditor.previewLabel' => 'Previzualizare:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Resetează',
 			'templateEditor.docs' => 'Documentație șabloane',
 			'templateEditor.preview' => 'Previzualizare exemplu',

@@ -2086,21 +2086,6 @@
       "peersDescription": "Verbinden met andere apparaten in de buurt"
     },
     "showMoreSettings": "Meer instellingen tonen",
-    "numberFormat": "Getalnotatie",
-    "numberFormatOpts": {
-      "locale": "Systeeminstellingen volgen",
-      "period": "Altijd punt voor decimalen",
-      "comma": "Altijd komma voor decimalen"
-    },
-    "numberFormatDescription": {
-      "locale": "Systeeminstellingen (${separator} voor decimalen)",
-      "period": "Altijd punt voor decimalen",
-      "comma": "Altijd komma voor decimalen"
-    },
-    "numberFormatSeparators": {
-      "comma": "komma",
-      "period": "punt"
-    },
     "gridPrecision": "Gridprecisie",
     "gridPrecisionOpts": {
       "six": "6 tekens (FN31pr)",

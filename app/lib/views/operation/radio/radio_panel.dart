@@ -12,7 +12,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:halo_core/halo_core.dart' show NumberFormatting, fmtFreqToTheHz, freqDisplayParts, groupDigits;
+import 'package:halo_core/halo_core.dart' show fmtFreqToTheHz, freqDisplayParts, frequencyMark, groupDigits;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -750,21 +750,17 @@ class RadioReadout extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          // A kHz reading, split the way the QSO row splits it: a thousands
-          // mark between MHz and kHz, a decimal point before the Hz digits,
-          // both in the operator's own conventions. Below 1 MHz (630m,
-          // 2200m) there is no thousands group, and `0,472` is not a reading
-          // anyone writes.
+          // A kHz reading, split the way the QSO row splits it, with
+          // [frequencyMark] between every part. Below 1 MHz (630m, 2200m)
+          // there is no thousands group, and `0.472` is not a reading anyone
+          // writes.
           if (int.parse(parts.mhz) > 0) ...[
             Text(groupDigits(parts.mhz), style: base.copyWith(fontWeight: FontWeight.w700)),
-            Text(NumberFormatting.instance.groupingSeparator, style: base),
+            Text(frequencyMark, style: base),
             Text(parts.khz, style: base),
           ] else
             Text(int.parse(parts.khz).toString(), style: base.copyWith(fontWeight: FontWeight.w700)),
-          if (parts.hz != null) ...[
-            Text(NumberFormatting.instance.decimalSeparator, style: base),
-            Text(parts.hz!, style: base.copyWith(fontSize: (base.fontSize ?? 36) * 0.6)),
-          ],
+          if (parts.hz != null) ...[Text(frequencyMark, style: base), Text(parts.hz!, style: base.copyWith(fontSize: (base.fontSize ?? 36) * 0.6))],
         ],
       ),
     );

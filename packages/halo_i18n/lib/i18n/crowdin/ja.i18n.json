@@ -2086,21 +2086,6 @@
       "peersDescription": "近くの他のデバイスに接続"
     },
     "showMoreSettings": "その他の設定を表示",
-    "numberFormat": "数値の書式",
-    "numberFormatOpts": {
-      "locale": "システム設定に従う",
-      "period": "小数点に常にピリオドを使用",
-      "comma": "小数点に常にカンマを使用"
-    },
-    "numberFormatDescription": {
-      "locale": "システム設定（小数点に${separator}を使用）",
-      "period": "小数点に常にピリオドを使用しています",
-      "comma": "小数点に常にカンマを使用しています"
-    },
-    "numberFormatSeparators": {
-      "comma": "カンマ",
-      "period": "ピリオド"
-    },
     "gridPrecision": "グリッドの精度",
     "gridPrecisionOpts": {
       "six": "6桁（FN31pr）",

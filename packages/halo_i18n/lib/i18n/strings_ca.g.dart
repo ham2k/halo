@@ -738,10 +738,6 @@ class _Translations$settings$ca extends Translations$settings$en {
 	@override late final _Translations$settings$about$ca about = _Translations$settings$about$ca._(_root);
 	@override late final _Translations$settings$panels$ca panels = _Translations$settings$panels$ca._(_root);
 	@override String get showMoreSettings => 'Mostra més opcions';
-	@override String get numberFormat => 'Format dels números';
-	@override late final _Translations$settings$numberFormatOpts$ca numberFormatOpts = _Translations$settings$numberFormatOpts$ca._(_root);
-	@override late final _Translations$settings$numberFormatDescription$ca numberFormatDescription = _Translations$settings$numberFormatDescription$ca._(_root);
-	@override late final _Translations$settings$numberFormatSeparators$ca numberFormatSeparators = _Translations$settings$numberFormatSeparators$ca._(_root);
 	@override String get gridPrecision => 'Precisió de la quadrícula';
 	@override late final _Translations$settings$gridPrecisionOpts$ca gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$ca._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$ca gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$ca._(_root);
@@ -2669,41 +2665,6 @@ class _Translations$settings$panels$ca extends Translations$settings$panels$en {
 	@override String get stationDescription => 'Control CAT i més opcions';
 	@override String get peers => 'Dispositius connectats';
 	@override String get peersDescription => 'Connecta amb altres dispositius propers';
-}
-
-// Path: settings.numberFormatOpts
-class _Translations$settings$numberFormatOpts$ca extends Translations$settings$numberFormatOpts$en {
-	_Translations$settings$numberFormatOpts$ca._(TranslationsCa root) : this._root = root, super.internal(root);
-
-	final TranslationsCa _root; // ignore: unused_field
-
-	// Translations
-	@override String get locale => 'Segueix la configuració del sistema';
-	@override String get period => 'Utilitza sempre el punt per als decimals';
-	@override String get comma => 'Utilitza sempre la coma per als decimals';
-}
-
-// Path: settings.numberFormatDescription
-class _Translations$settings$numberFormatDescription$ca extends Translations$settings$numberFormatDescription$en {
-	_Translations$settings$numberFormatDescription$ca._(TranslationsCa root) : this._root = root, super.internal(root);
-
-	final TranslationsCa _root; // ignore: unused_field
-
-	// Translations
-	@override String locale({required Object separator}) => 'Configuració del sistema (${separator} per als decimals)';
-	@override String get period => 'S\'utilitza sempre el punt per als decimals';
-	@override String get comma => 'S\'utilitza sempre la coma per als decimals';
-}
-
-// Path: settings.numberFormatSeparators
-class _Translations$settings$numberFormatSeparators$ca extends Translations$settings$numberFormatSeparators$en {
-	_Translations$settings$numberFormatSeparators$ca._(TranslationsCa root) : this._root = root, super.internal(root);
-
-	final TranslationsCa _root; // ignore: unused_field
-
-	// Translations
-	@override String get comma => 'coma';
-	@override String get period => 'punt';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5382,15 +5343,6 @@ extension on TranslationsCa {
 			'settings.panels.peers' => 'Dispositius connectats',
 			'settings.panels.peersDescription' => 'Connecta amb altres dispositius propers',
 			'settings.showMoreSettings' => 'Mostra més opcions',
-			'settings.numberFormat' => 'Format dels números',
-			'settings.numberFormatOpts.locale' => 'Segueix la configuració del sistema',
-			'settings.numberFormatOpts.period' => 'Utilitza sempre el punt per als decimals',
-			'settings.numberFormatOpts.comma' => 'Utilitza sempre la coma per als decimals',
-			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Configuració del sistema (${separator} per als decimals)',
-			'settings.numberFormatDescription.period' => 'S\'utilitza sempre el punt per als decimals',
-			'settings.numberFormatDescription.comma' => 'S\'utilitza sempre la coma per als decimals',
-			'settings.numberFormatSeparators.comma' => 'coma',
-			'settings.numberFormatSeparators.period' => 'punt',
 			'settings.gridPrecision' => 'Precisió de la quadrícula',
 			'settings.gridPrecisionOpts.six' => '6 dígits (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 dígits (FN31pr55)',
@@ -5679,8 +5631,6 @@ extension on TranslationsCa {
 			'exportSettings.shared' => 'La configuració s\'aplica a totes les extensions que utilitzen aquest tipus d\'exportació.',
 			'exportSettings.defaultTemplates' => 'Activa Plantilles personalitzades per editar les plantilles d\'aquest tipus.',
 			'templateEditor.previewLabel' => 'Previsualització:',
-			_ => null,
-		} ?? switch (path) {
 			'templateEditor.reset' => 'Restableix',
 			'templateEditor.docs' => 'Documentació de plantilles',
 			'templateEditor.preview' => 'Previsualització d\'exemple',

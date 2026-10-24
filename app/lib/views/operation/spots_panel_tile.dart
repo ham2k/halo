@@ -202,19 +202,18 @@ class _SpotTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
         children: [
-          // A kHz reading, the same as the QSO list's — thousands mark
-          // between MHz and kHz, decimal point before the Hz digits, both in
-          // the operator's own conventions. Below 1 MHz (630m, 2200m) there
-          // is no thousands group at all, and `0,472` is not a reading anyone
+          // A kHz reading, the same as the QSO list's, with [frequencyMark]
+          // between every part. Below 1 MHz (630m, 2200m) there is no
+          // thousands group at all, and `0.472` is not a reading anyone
           // writes.
           if (int.parse(parts.mhz) > 0) ...[
             Text(groupDigits(parts.mhz), style: freqStyle.copyWith(fontWeight: FontWeight.w700)),
-            Text(NumberFormatting.instance.groupingSeparator, style: freqStyle),
+            Text(frequencyMark, style: freqStyle),
             Text(parts.khz, style: freqStyle),
           ] else
             Text(int.parse(parts.khz).toString(), style: freqStyle.copyWith(fontWeight: FontWeight.w700)),
           if (parts.hz != null) ...[
-            Text(NumberFormatting.instance.decimalSeparator, style: freqStyle),
+            Text(frequencyMark, style: freqStyle),
             Text(parts.hz!, style: freqStyle.copyWith(fontSize: (freqStyle.fontSize ?? 14) * 0.8)),
           ],
         ],

@@ -973,12 +973,12 @@ class _QsoListState extends State<QsoList> {
           children: [
             // Below 1 MHz there is no thousands group at all: 630m sits at
             // 472 kHz, and drawing the parts unconditionally would show
-            // `0,472` — a reading that is not a number anyone writes.
+            // `0.472` — a reading that is not a number anyone writes.
             if (int.parse(parts.mhz) > 0) ...[
               Text(
                 // Grouped itself, for the rare frequency past 1 GHz: this
-                // part is whole MHz, so 1296 MHz is `1,296,000` kHz and would
-                // read as `1296,000` without it.
+                // part is whole MHz, so 1296 MHz is `1.296.000` kHz and would
+                // read as `1296.000` without it.
                 //
                 // Grouped by hand rather than through `formatNumber`, the way
                 // `fmtFreq` does: intl also translates the DIGITS into the
@@ -989,12 +989,9 @@ class _QsoListState extends State<QsoList> {
                 style: freqStyle.copyWith(fontWeight: FontWeight.w700),
               ),
               // The row is a kHz reading, like the spots panel and the radio
-              // controls — so this is a THOUSANDS mark and the one below is a
-              // decimal point. They are different characters under comma
-              // conventions (`7.200,5`), and using either for both would put
-              // the reading off by three orders of magnitude to anyone
-              // reading it as written.
-              Text(NumberFormatting.instance.groupingSeparator, style: freqStyle),
+              // controls — so this is a thousands mark and the one below is a
+              // decimal point, both [frequencyMark].
+              Text(frequencyMark, style: freqStyle),
               Text(parts.khz, style: freqStyle),
             ] else
               Text(
@@ -1004,7 +1001,7 @@ class _QsoListState extends State<QsoList> {
                 style: freqStyle.copyWith(fontWeight: FontWeight.w700),
               ),
             if (parts.hz != null) ...[
-              Text(NumberFormatting.instance.decimalSeparator, style: freqStyle),
+              Text(frequencyMark, style: freqStyle),
               Text(parts.hz!, style: freqStyle.copyWith(fontSize: (freqStyle.fontSize ?? 14) * 0.8)),
             ],
           ],
