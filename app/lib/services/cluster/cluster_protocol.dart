@@ -114,6 +114,13 @@ final _refusal = RegExp(r'^\s*(sorry|error|invalid|not allowed|you (are|need)|fr
 
 bool isRefusal(String line) => _refusal.hasMatch(line);
 
+/// What a node passes on from the network, interleaved with any reply: a
+/// spot, a WWV or WCY report, an announcement. Never an answer to the
+/// session's own command.
+final _broadcast = RegExp(r'^\s*(DX|WWV|WCY|To \S+) de ', caseSensitive: false);
+
+bool isBroadcast(String line) => _broadcast.hasMatch(line);
+
 final _callPattern = RegExp(r'^[A-Z0-9]+(/[A-Z0-9]+){0,2}$');
 
 /// The longest comment a spot carries. Nodes show the first 30 characters in

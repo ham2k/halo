@@ -1445,6 +1445,18 @@
     "cluster": {
       "title": "DX CLUSTER",
       "description": "THE SERVER EXTENSIONS POST SPOTS TO AND READ SPOTS FROM, LOGGED IN AS THE OPERATOR.",
+      "connect": "CONNECT TO CLUSTER",
+      "connectOn": "EXTENSIONS CONNECT TO THE CLUSTER WHEN THEY NEED IT",
+      "connectOff": "NOTHING CONNECTS TO THE CLUSTER",
+      "console": "SHOW CONSOLE",
+      "consoleDescription": "WHAT THE CLUSTER SENDS, AND A PLACE TO TYPE COMMANDS",
+      "consoleTitle": "CLUSTER CONSOLE",
+      "consoleConnect": "CONNECT",
+      "consoleDisconnect": "DISCONNECT",
+      "consoleCommand": "COMMAND",
+      "consoleEmpty": "NOTHING YET. CONNECT, OR WAIT FOR AN EXTENSION TO USE THE CLUSTER.",
+      "consoleRetry": "SENDING AGAIN: $command",
+      "consoleGaveUp": "NOT SENT: $command ($reason)",
       "server": "CLUSTER SERVER",
       "selectServer": "SELECT SERVER",
       "serverOther": "OTHER",
@@ -1462,13 +1474,15 @@
       "statusConnected": "CONNECTED TO $node AS $call.",
       "statusFailed": "COULD NOT CONNECT TO $node: $reason",
       "statusUnsupported": "NOT AVAILABLE IN THE WEB VERSION.",
+      "statusOff": "OFF. TURN ON CONNECT TO CLUSTER TO USE IT.",
       "errors": {
         "noCall": "NO OPERATOR CALLSIGN TO LOG IN WITH",
         "connectFailed": "THE NODE COULD NOT BE REACHED",
         "needsPassword": "THE NODE ASKS FOR A PASSWORD, AND NONE IS STORED",
         "loginFailed": "THE NODE DID NOT ACCEPT THE LOGIN",
         "disconnected": "THE NODE CLOSED THE CONNECTION",
-        "timeout": "THE NODE DID NOT ANSWER"
+        "timeout": "THE NODE DID NOT ANSWER",
+        "off": "CONNECT TO CLUSTER IS OFF"
       }
     },
     "spotting": {

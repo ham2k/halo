@@ -6,7 +6,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { parseSelfSpotCommand, parseLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
+import { isClusterCommand, parseSelfSpotCommand, parseLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
 
 test("parseSelfSpotCommand: bare SPOT has an empty comment", () => {
   assert.deepEqual(parseSelfSpotCommand("SPOT"), { comment: "" })
@@ -90,4 +90,11 @@ test("parseRespotCommand: any other parameter is invalid, anything else is not R
   assert.deepEqual(parseRespotCommand("RESPOT 5.5"), { invalid: true })
   assert.equal(parseRespotCommand("RESPOTS"), null)
   assert.equal(parseRespotCommand("SPOT"), null)
+})
+
+test("isClusterCommand: the whole word only, so a call starting with it still logs", () => {
+  assert.equal(isClusterCommand("CLUSTER"), true)
+  assert.equal(isClusterCommand(" cluster "), true)
+  assert.equal(isClusterCommand("CLUSTERS"), false)
+  assert.equal(isClusterCommand("CLUSTER SH/DX"), false)
 })

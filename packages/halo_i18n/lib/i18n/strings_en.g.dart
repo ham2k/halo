@@ -4591,6 +4591,42 @@ class Translations$settings$cluster$en {
 	/// en: 'The server extensions post spots to and read spots from, logged in as the operator.'
 	String get description => 'The server extensions post spots to and read spots from, logged in as the operator.';
 
+	/// en: 'Connect to cluster'
+	String get connect => 'Connect to cluster';
+
+	/// en: 'Extensions connect to the cluster when they need it'
+	String get connectOn => 'Extensions connect to the cluster when they need it';
+
+	/// en: 'Nothing connects to the cluster'
+	String get connectOff => 'Nothing connects to the cluster';
+
+	/// en: 'Show Console'
+	String get console => 'Show Console';
+
+	/// en: 'What the cluster sends, and a place to type commands'
+	String get consoleDescription => 'What the cluster sends, and a place to type commands';
+
+	/// en: 'Cluster Console'
+	String get consoleTitle => 'Cluster Console';
+
+	/// en: 'Connect'
+	String get consoleConnect => 'Connect';
+
+	/// en: 'Disconnect'
+	String get consoleDisconnect => 'Disconnect';
+
+	/// en: 'Command'
+	String get consoleCommand => 'Command';
+
+	/// en: 'Nothing yet. Connect, or wait for an extension to use the cluster.'
+	String get consoleEmpty => 'Nothing yet. Connect, or wait for an extension to use the cluster.';
+
+	/// en: 'Sending again: $command'
+	String consoleRetry({required Object command}) => 'Sending again: ${command}';
+
+	/// en: 'Not sent: $command ($reason)'
+	String consoleGaveUp({required Object command, required Object reason}) => 'Not sent: ${command} (${reason})';
+
 	/// en: 'Cluster Server'
 	String get server => 'Cluster Server';
 
@@ -4641,6 +4677,9 @@ class Translations$settings$cluster$en {
 
 	/// en: 'Not available in the web version.'
 	String get statusUnsupported => 'Not available in the web version.';
+
+	/// en: 'Off. Turn on Connect to cluster to use it.'
+	String get statusOff => 'Off. Turn on Connect to cluster to use it.';
 
 	late final Translations$settings$cluster$errors$en errors = Translations$settings$cluster$errors$en.internal(_root);
 }
@@ -8164,6 +8203,9 @@ class Translations$settings$cluster$errors$en {
 
 	/// en: 'the node did not answer'
 	String get timeout => 'the node did not answer';
+
+	/// en: 'Connect to cluster is off'
+	String get off => 'Connect to cluster is off';
 }
 
 // Path: settings.radio.units
@@ -10329,6 +10371,18 @@ extension on Translations {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. Trying again…',
 			'settings.cluster.title' => 'DX Cluster',
 			'settings.cluster.description' => 'The server extensions post spots to and read spots from, logged in as the operator.',
+			'settings.cluster.connect' => 'Connect to cluster',
+			'settings.cluster.connectOn' => 'Extensions connect to the cluster when they need it',
+			'settings.cluster.connectOff' => 'Nothing connects to the cluster',
+			'settings.cluster.console' => 'Show Console',
+			'settings.cluster.consoleDescription' => 'What the cluster sends, and a place to type commands',
+			'settings.cluster.consoleTitle' => 'Cluster Console',
+			'settings.cluster.consoleConnect' => 'Connect',
+			'settings.cluster.consoleDisconnect' => 'Disconnect',
+			'settings.cluster.consoleCommand' => 'Command',
+			'settings.cluster.consoleEmpty' => 'Nothing yet. Connect, or wait for an extension to use the cluster.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'Sending again: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'Not sent: ${command} (${reason})',
 			'settings.cluster.server' => 'Cluster Server',
 			'settings.cluster.selectServer' => 'Select Server',
 			'settings.cluster.serverOther' => 'Other',
@@ -10346,12 +10400,14 @@ extension on Translations {
 			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'Connected to ${node} as ${call}.',
 			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'Could not connect to ${node}: ${reason}',
 			'settings.cluster.statusUnsupported' => 'Not available in the web version.',
+			'settings.cluster.statusOff' => 'Off. Turn on Connect to cluster to use it.',
 			'settings.cluster.errors.noCall' => 'no operator callsign to log in with',
 			'settings.cluster.errors.connectFailed' => 'the node could not be reached',
 			'settings.cluster.errors.needsPassword' => 'the node asks for a password, and none is stored',
 			'settings.cluster.errors.loginFailed' => 'the node did not accept the login',
 			'settings.cluster.errors.disconnected' => 'the node closed the connection',
 			'settings.cluster.errors.timeout' => 'the node did not answer',
+			'settings.cluster.errors.off' => 'Connect to cluster is off',
 			'settings.spotting.title' => 'Spotting',
 			'settings.spotting.respotInterval' => 'Auto re-spot every',
 			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
@@ -10666,6 +10722,8 @@ extension on Translations {
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
 			'settings.station.title' => 'Station Configuration & CAT Control',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.none' => 'No equipment configured',
 			'settings.station.add' => 'Add',
 			'settings.station.addTitle' => 'Add equipment',
@@ -10680,8 +10738,6 @@ extension on Translations {
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
 			'settings.station.port' => 'Port',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hostRequired' => 'An address is required',
 			'settings.station.portInvalid' => 'Port must be between 1 and 65535',
 			'settings.station.connect' => 'Connect',
@@ -11180,6 +11236,8 @@ extension on Translations {
 			'settings.gridPrecisionOpts.eight' => '8 digits (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
+			_ => null,
+		} ?? switch (path) {
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
@@ -11194,8 +11252,6 @@ extension on Translations {
 			'commands.idleMetricsDisabled' => 'Idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'Sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'That command needs an open operation',
-			_ => null,
-		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'Don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'Don\'t know how to go to \'${to}\'',

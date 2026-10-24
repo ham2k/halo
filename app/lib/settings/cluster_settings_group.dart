@@ -10,6 +10,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../services/cluster/cluster_service.dart';
 import '../services/cluster/cluster_settings.dart';
 import '../services/settings_service.dart';
+import 'cluster_console.dart';
 import 'cluster_server_dialog.dart';
 import 'settings_registry.dart';
 
@@ -32,6 +33,7 @@ class ClusterSettingsGroup extends SettingsGroup {
 
   static const _connectionAction = 'clusterConnection';
   static const _serverAction = 'clusterServer';
+  static const _consoleAction = 'clusterConsole';
 
   @override
   String get key => ClusterSettings.group;
@@ -55,6 +57,8 @@ class ClusterSettingsGroup extends SettingsGroup {
       // and the password are right, without posting anything.
       case _connectionAction:
         unawaited(cluster().send('sh/version'));
+      case _consoleAction:
+        await showClusterConsole(context, cluster());
       case _serverAction:
         await showHaloDialog<void>(
           context: context,
@@ -68,7 +72,17 @@ class ClusterSettingsGroup extends SettingsGroup {
     if (!offered()) return const [];
     final s = t.settings.cluster;
     final node = ClusterSettings.node(settings);
+    final connects = ClusterSettings.connects(settings);
     return [
+      {
+        'type': 'field',
+        'fieldType': 'checkbox',
+        'key': ClusterSettings.connectKey,
+        'label': s.connect,
+        'icon': 'power-plug-outline',
+        'description': connects ? s.connectOn : s.connectOff,
+        'value': connects,
+      },
       {
         'type': 'action',
         'style': 'row',
@@ -110,6 +124,15 @@ class ClusterSettingsGroup extends SettingsGroup {
         'description': clusterStatusText(cluster().status),
         'icon': 'lan-connect',
       },
+      {
+        'type': 'action',
+        'style': 'row',
+        'key': _consoleAction,
+        'label': s.console,
+        'description': s.consoleDescription,
+        'icon': 'console',
+        'aliases': const ['console', 'terminal', 'telnet', 'commands'],
+      },
     ];
   }
 
@@ -118,6 +141,8 @@ class ClusterSettingsGroup extends SettingsGroup {
     switch (fieldKey) {
       case 'password':
         await passwords.write(ClusterSettings.node(settings), value is String ? value : null);
+      case ClusterSettings.connectKey:
+        await settings.setSettingValue(ClusterSettings.group, fieldKey, value == true);
       case ClusterSettings.scrollbackKey:
         await settings.setSettingValue(ClusterSettings.group, fieldKey, int.tryParse('$value') ?? ClusterSettings.defaultScrollback);
       default:
@@ -135,11 +160,13 @@ String clusterStatusText(ClusterStatus status) {
     ClusterState.connecting => s.statusConnecting(node: node),
     ClusterState.connected => s.statusConnected(node: node, call: status.call ?? ''),
     ClusterState.failed when status.error == 'unsupported' => s.statusUnsupported,
-    ClusterState.failed => s.statusFailed(node: node, reason: _reason(status)),
+    ClusterState.failed when status.error == 'off' => s.statusOff,
+    ClusterState.failed => s.statusFailed(node: node, reason: clusterFailureReason(status)),
   };
 }
 
-String _reason(ClusterStatus status) {
+/// Why [status] failed, in a few words.
+String clusterFailureReason(ClusterStatus status) {
   final e = t.settings.cluster.errors;
   return switch (status.error) {
     'noCall' => e.noCall,
@@ -148,6 +175,7 @@ String _reason(ClusterStatus status) {
     'loginFailed' => status.message ?? e.loginFailed,
     'disconnected' => e.disconnected,
     'timeout' => e.timeout,
+    'off' => e.off,
     _ => status.message ?? status.error ?? '',
   };
 }

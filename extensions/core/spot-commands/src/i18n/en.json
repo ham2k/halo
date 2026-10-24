@@ -18,5 +18,7 @@
   "respotOff": "Stop auto re-spot?",
   "respotStopped": "Auto re-spot stopped",
   "respotUsage": "Use RESPOT, RESPOT <minutes> or RESPOT OFF",
-  "catalogRespot": "Re-spot yourself every 5 to 60 minutes"
+  "catalogRespot": "Re-spot yourself every 5 to 60 minutes",
+  "openCluster": "Open the cluster console",
+  "catalogCluster": "See what the DX cluster sends, and type commands to it"
 }

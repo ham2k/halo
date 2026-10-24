@@ -71,13 +71,69 @@ class ClusterStatus {
   };
 }
 
+enum ClusterTranscriptKind { received, sent, status, retry, gaveUp }
+
+/// One entry in the console's account of a session: a line either way, a
+/// change of state, a command going out again, or one abandoned.
+@immutable
+class ClusterTranscriptEntry {
+  const ClusterTranscriptEntry(this.at, this.kind, {this.text = '', this.status});
+
+  /// On the app clock.
+  final int at;
+  final ClusterTranscriptKind kind;
+
+  /// The line, or for [ClusterTranscriptKind.retry] and
+  /// [ClusterTranscriptKind.gaveUp] the command.
+  final String text;
+
+  /// For [ClusterTranscriptKind.status], and why a
+  /// [ClusterTranscriptKind.gaveUp] command was abandoned.
+  final ClusterStatus? status;
+}
+
+/// Everything the console shows, kept to the scrollback size. Its own
+/// notifier: a line arrives far more often than the status changes, and the
+/// service's listeners (the Settings section) have no use for each one.
+class ClusterTranscript extends ChangeNotifier {
+  ClusterTranscript(this._size);
+
+  final int Function() _size;
+  final _entries = ListQueue<ClusterTranscriptEntry>();
+
+  List<ClusterTranscriptEntry> get entries => List.unmodifiable(_entries);
+
+  void add(ClusterTranscriptEntry entry) {
+    _entries.add(entry);
+    _trim();
+    notifyListeners();
+  }
+
+  /// After the scrollback setting changes.
+  void trim() {
+    if (_trim()) notifyListeners();
+  }
+
+  bool _trim() {
+    final size = _size();
+    final trimmed = _entries.length > size;
+    while (_entries.length > size) {
+      _entries.removeFirst();
+    }
+    return trimmed;
+  }
+}
+
 /// What a command came back with.
 ///
-/// [error] codes: `unsupported` (no sockets on this platform), `noCall` (no
+/// [error] codes: `unsupported` (no sockets on this platform), `off` (the
+/// operator turned the cluster connection off), `noCall` (no
 /// operator to log in as), `connectFailed`, `needsPassword`, `loginFailed`,
 /// `disconnected`, `timeout`, `refused` (the node said no; [message] quotes
 /// it), `tooSoon` (spots are spaced [ClusterService.spotInterval] apart),
-/// `invalidCall`, `invalidFrequency`.
+/// `invalidCall`, `invalidFrequency`. A command answers `connectFailed`,
+/// `disconnected` or `timeout` only once no further attempt fits in
+/// [ClusterService.deadline].
 @immutable
 class ClusterReply {
   const ClusterReply.ok(this.lines) : ok = true, error = null, message = null;
@@ -106,13 +162,16 @@ class ClusterService extends ChangeNotifier {
     this.connect = connectClusterLink,
     this.supported = clusterLinksSupported,
     this.idleTimeout = const Duration(minutes: 5),
+    this.connectTimeout = const Duration(seconds: 5),
     this.loginTimeout = const Duration(seconds: 5),
     this.replyTimeout = const Duration(seconds: 5),
     this.batchDelay = const Duration(seconds: 1),
     this.spotInterval = const Duration(seconds: 5),
+    this.deadline = const Duration(seconds: 14),
     this.reconnectDelays = const [Duration(seconds: 5), Duration(seconds: 15), Duration(minutes: 1), Duration(minutes: 5)],
   }) {
     _node = ClusterSettings.node(settings);
+    _enabled = ClusterSettings.connects(settings);
     settings.addListener(_onSettingsChanged);
   }
 
@@ -130,10 +189,8 @@ class ClusterService extends ChangeNotifier {
   final bool supported;
   final Duration idleTimeout;
 
-  /// With the connect's own five seconds (cluster_link_io.dart), these keep
-  /// a spot from a cold start inside the 15 seconds a spots hook has to
-  /// answer (`ExtensionService.sendSpot`): past that the hook reports a
-  /// timeout while the spot may still go out, and a retry posts it twice.
+  /// Each step's own limit, within what [deadline] leaves.
+  final Duration connectTimeout;
   final Duration loginTimeout;
   final Duration replyTimeout;
   final Duration batchDelay;
@@ -143,6 +200,33 @@ class ClusterService extends ChangeNotifier {
   /// extension in a loop would cost the operator their spotting on that
   /// node, not just one refusal.
   final Duration spotInterval;
+
+  /// How long a command has, from when it is asked for to its answer: the
+  /// wait behind other commands, every attempt and each attempt's connect,
+  /// login and reply all fit inside it. Under the 15 seconds a spots hook
+  /// has to answer (`ExtensionService.sendSpot`), since past that the hook
+  /// reports a timeout while the spot may still go out.
+  ///
+  /// Within it, a command that was not confirmed — the connection dropped
+  /// under it, the node never answered, the reconnect failed — is sent again
+  /// on a fresh session. A command the node took before the drop then goes
+  /// out twice, which is the lesser harm for a spot: a node drops a duplicate
+  /// before passing it on, and an operator whose spot silently never went out
+  /// has no way to tell. Any other command can repeat too
+  /// (docs/design/cluster.md § Lifecycle).
+  final Duration deadline;
+
+  /// The failures [deadline] retries.
+  static const _unconfirmed = {'disconnected', 'timeout', 'connectFailed'};
+
+  /// Between two attempts at one command, so a node that refuses connections
+  /// outright is not dialled in a tight loop.
+  static const _retryPause = Duration(seconds: 1);
+
+  /// The least time left in [deadline] that an attempt starts with. Less, and
+  /// the reply would get a wait no node answers in: the command would go out
+  /// and be reported as failed.
+  static const _leastAttempt = Duration(seconds: 2);
 
   /// How long a dropped session waits before reconnecting, per consecutive
   /// failure; the last repeats. Only while something is subscribed — a
@@ -154,6 +238,8 @@ class ClusterService extends ChangeNotifier {
   ClusterLinesDelivery? deliver;
 
   late ClusterNode _node;
+  late bool _enabled;
+  late final transcript = ClusterTranscript(() => ClusterSettings.scrollback(settings));
   _Session? _session;
   Future<_Session>? _connecting;
   ClusterState _state = ClusterState.idle;
@@ -178,9 +264,21 @@ class ClusterService extends ChangeNotifier {
   int _failures = 0;
   bool _disposed = false;
 
-  ClusterStatus get status => supported
-      ? ClusterStatus(state: _state, node: _node, call: _session?.call, error: _error, message: _message, lastSeq: _lastSeq)
-      : ClusterStatus(state: ClusterState.failed, node: _node, error: 'unsupported', lastSeq: _lastSeq);
+  /// The console asked for the session to stay up while it is open.
+  bool _held = false;
+
+  /// The console's Disconnect, until something next asks for the session:
+  /// no reconnect, no retry, and a connect already under way is dropped.
+  bool _parked = false;
+
+  /// Whether a dropped session should come back on its own.
+  bool get _wanted => _subscribers.isNotEmpty || _held;
+
+  ClusterStatus get status => !supported
+      ? ClusterStatus(state: ClusterState.failed, node: _node, error: 'unsupported', lastSeq: _lastSeq)
+      : !_enabled
+      ? ClusterStatus(state: ClusterState.failed, node: _node, error: 'off', lastSeq: _lastSeq)
+      : ClusterStatus(state: _state, node: _node, call: _session?.call, error: _error, message: _message, lastSeq: _lastSeq);
 
   Iterable<String> get subscribers => _subscribers.keys;
 
@@ -197,8 +295,29 @@ class ClusterService extends ChangeNotifier {
 
   /// Starts sending [subscriber] every line from now on, connecting if need
   /// be; it stays subscribed until [unsubscribe], across reconnects.
-  Future<ClusterStatus> subscribe(String subscriber) async {
+  Future<ClusterStatus> subscribe(String subscriber) {
     _subscribers.putIfAbsent(subscriber, () => _lastSeq);
+    return _keepUp();
+  }
+
+  void unsubscribe(String subscriber) {
+    if (_subscribers.remove(subscriber) == null) return;
+    if (!_wanted) {
+      _reconnectTimer?.cancel();
+      _armIdle();
+    }
+  }
+
+  /// The console's Connect: logs in, and keeps the session up — reconnecting
+  /// it if it drops — until [disconnect] or [release].
+  Future<ClusterStatus> stayConnected() {
+    _held = true;
+    return _keepUp();
+  }
+
+  /// Connects for a session [_wanted] now keeps up, or schedules the retry.
+  Future<ClusterStatus> _keepUp() async {
+    _parked = false;
     _idleTimer?.cancel();
     try {
       await _ensureSession();
@@ -208,12 +327,23 @@ class ClusterService extends ChangeNotifier {
     return status;
   }
 
-  void unsubscribe(String subscriber) {
-    if (_subscribers.remove(subscriber) == null) return;
-    if (_subscribers.isEmpty) {
-      _reconnectTimer?.cancel();
-      _armIdle();
-    }
+  /// The console's Disconnect: closes the session now. It stays closed, even
+  /// with subscribers, until something next asks for it — a command, a
+  /// spot, a subscription or Connect: only a drop the node or the network
+  /// causes reconnects on its own.
+  void disconnect() {
+    _held = false;
+    _parked = true;
+    _reconnectTimer?.cancel();
+    _closeSession(ClusterState.idle);
+  }
+
+  /// The console closed: the session goes back to the usual rules.
+  void release() {
+    if (!_held) return;
+    _held = false;
+    if (!_wanted) _reconnectTimer?.cancel();
+    _armIdle();
   }
 
   /// Drops every subscriber not in [keep] — the extensions a restarted
@@ -225,23 +355,29 @@ class ClusterService extends ChangeNotifier {
   }
 
   /// Sends one command line and collects the reply.
-  Future<ClusterReply> send(String command) => _serialized(() => _send(command));
+  Future<ClusterReply> send(String command) {
+    final until = realNowMillis() + deadline.inMilliseconds;
+    return _serialized(() => _send(command, until));
+  }
 
   /// Posts a spot of [call] on [freqKHz], logged in as [loginCall].
-  Future<ClusterReply> postSpot({required double freqKHz, required String call, String? comment}) => _serialized(() async {
-    final built = spotCommand(freqKHz: freqKHz, call: call, comment: comment);
-    if (built.command == null) return ClusterReply.failed(built.error);
-    final lastSpotAt = _lastSpotAt;
-    if (lastSpotAt != null && realNowMillis() - lastSpotAt < spotInterval.inMilliseconds) return const ClusterReply.failed('tooSoon');
-    final reply = await _send(built.command!);
-    if (!reply.ok) return reply;
-    _lastSpotAt = realNowMillis();
-    final refusal = reply.lines.where(isRefusal).firstOrNull;
-    // A refusal outranks an echo: DXSpider echoes a spot it keeps local, and
-    // a node that refuses one says so in the same reply.
-    if (refusal != null) return ClusterReply.failed('refused', message: refusal.trim(), lines: reply.lines);
-    return reply;
-  });
+  Future<ClusterReply> postSpot({required double freqKHz, required String call, String? comment}) {
+    final until = realNowMillis() + deadline.inMilliseconds;
+    return _serialized(() async {
+      final built = spotCommand(freqKHz: freqKHz, call: call, comment: comment);
+      if (built.command == null) return ClusterReply.failed(built.error);
+      final lastSpotAt = _lastSpotAt;
+      if (lastSpotAt != null && realNowMillis() - lastSpotAt < spotInterval.inMilliseconds) return const ClusterReply.failed('tooSoon');
+      final reply = await _send(built.command!, until);
+      if (!reply.ok) return reply;
+      _lastSpotAt = realNowMillis();
+      final refusal = reply.lines.where(isRefusal).firstOrNull;
+      // A refusal outranks an echo: DXSpider echoes a spot it keeps local, and
+      // a node that refuses one says so in the same reply.
+      if (refusal != null) return ClusterReply.failed('refused', message: refusal.trim(), lines: reply.lines);
+      return reply;
+    });
+  }
 
   Future<ClusterReply> _serialized(Future<ClusterReply> Function() run) {
     final result = _commands.then((_) => run());
@@ -249,30 +385,102 @@ class ClusterService extends ChangeNotifier {
     return result;
   }
 
-  Future<ClusterReply> _send(String command) async {
+  Future<ClusterReply> _send(String command, int until) async {
     _idleTimer?.cancel();
+    _parked = false;
     try {
-      final session = await _ensureSession();
-      return await session.command(command, replyTimeout);
-    } on _ClusterFailure catch (failure) {
-      return ClusterReply.failed(failure.code, message: failure.message);
+      var reply = _left(deadline, until) >= _leastAttempt ? await _attempt(command, until) : const ClusterReply.failed('timeout');
+      while (!reply.ok && _retries(reply) && _left(deadline, until) >= _retryPause + _leastAttempt) {
+        await Future<void>.delayed(_retryPause);
+        if (_disposed || _parked || !_enabled) break;
+        transcript.add(ClusterTranscriptEntry(nowMillis(), ClusterTranscriptKind.retry, text: command));
+        reply = await _attempt(command, until);
+      }
+      // A command the off switch cut short answers as every later one does.
+      if (!reply.ok && !_enabled && supported) reply = ClusterReply.failed('off', lines: reply.lines);
+      if (!reply.ok) _gaveUp(command, reply);
+      return reply;
     } finally {
       _armIdle();
     }
   }
 
+  /// Whether [reply] leaves its command unconfirmed. A node that answered
+  /// before it hung up took the command: `bye` is answered that way, and
+  /// sending it again would only log in to be thrown out again. A spot from
+  /// the network arriving meanwhile is no answer.
+  bool _retries(ClusterReply reply) =>
+      !_disposed &&
+      !_parked &&
+      _enabled &&
+      _unconfirmed.contains(reply.error) &&
+      !(reply.error == 'disconnected' && reply.lines.any((line) => !isBroadcast(line)));
+
+  /// [limit], or what is left before [until] when that is less.
+  static Duration _left(Duration limit, int until) {
+    final left = until - realNowMillis();
+    return left <= 0 ? Duration.zero : (left < limit.inMilliseconds ? Duration(milliseconds: left) : limit);
+  }
+
+  /// A command abandoned for good shows up in the console, and in the status
+  /// when nothing holds the session — otherwise a test that timed out would
+  /// read as "Not connected", and a command typed there would vanish.
+  void _gaveUp(String command, ClusterReply reply) {
+    if (_disposed) return;
+    final error = reply.error;
+    if (_unconfirmed.contains(error) && _state == ClusterState.idle && _enabled && !_parked) _fail(error!, reply.message);
+    transcript.add(
+      ClusterTranscriptEntry(
+        nowMillis(),
+        ClusterTranscriptKind.gaveUp,
+        text: command,
+        status: ClusterStatus(state: ClusterState.failed, node: _node, error: error, message: reply.message, lastSeq: _lastSeq),
+      ),
+    );
+  }
+
+  Future<ClusterReply> _attempt(String command, int until) async {
+    try {
+      final session = await _ensureSession(until: until);
+      final wait = _left(replyTimeout, until);
+      final reply = await session.command(command, wait);
+      // Only a node silent for the whole reply timeout is taken for gone: a
+      // wait the deadline cut short says nothing about the session.
+      if (reply.error == 'timeout' && wait == replyTimeout) _abandon(session);
+      return reply;
+    } on _ClusterFailure catch (failure) {
+      return ClusterReply.failed(failure.code, message: failure.message);
+    }
+  }
+
+  /// Closes [session] as dropped once it leaves a command unanswered. A
+  /// connection the network lost without a reset still reads as open, and
+  /// keeps taking writes, until the OS gives up on it minutes later — every
+  /// command until then would wait out its timeout on a dead line.
+  void _abandon(_Session session) {
+    if (!identical(session, _session)) return;
+    _closeSession(ClusterState.idle, notify: false);
+    _error = 'timeout';
+    _message = null;
+    _setState(_wanted ? ClusterState.failed : ClusterState.idle);
+    _scheduleReconnect();
+  }
+
   void _armIdle() {
     _idleTimer?.cancel();
-    if (_subscribers.isNotEmpty || _disposed) return;
+    if (_wanted || _disposed) return;
     _idleTimer = Timer(idleTimeout, () {
-      if (_subscribers.isEmpty) _closeSession(ClusterState.idle);
+      if (!_wanted) _closeSession(ClusterState.idle);
     });
   }
 
   /// The logged-in session for the current node and operator, opening one —
   /// or replacing one logged in as someone else, or to another node.
-  Future<_Session> _ensureSession() async {
+  ///
+  /// [until] bounds the wait, for a command that has to answer by then.
+  Future<_Session> _ensureSession({int? until}) async {
     if (!supported) throw const _ClusterFailure('unsupported');
+    if (!_enabled) throw const _ClusterFailure('off');
     final call = _normalizedCall(loginCall());
     if (call == null) {
       _fail('noCall', null);
@@ -283,10 +491,15 @@ class ClusterService extends ChangeNotifier {
     if (current != null && current.call == call && current.node == node && current.open) return current;
     final pending = _connecting;
     if (pending != null) {
-      final session = await pending;
+      final _Session session;
+      try {
+        session = until == null ? await pending : await pending.timeout(_left(deadline, until));
+      } on TimeoutException {
+        throw const _ClusterFailure('timeout');
+      }
       if (session.call == call && session.node == node) return session;
     }
-    final attempt = _open(node, call);
+    final attempt = _open(node, call, until);
     _connecting = attempt;
     try {
       return await attempt;
@@ -295,22 +508,36 @@ class ClusterService extends ChangeNotifier {
     }
   }
 
-  Future<_Session> _open(ClusterNode node, String call) async {
+  Future<_Session> _open(ClusterNode node, String call, int? until) async {
     _closeSession(ClusterState.connecting, notify: false);
     _node = node;
     _setState(ClusterState.connecting);
     final ClusterLink link;
     try {
-      link = await connect(node.host, node.port);
+      link = await connect(node.host, node.port, until == null ? connectTimeout : _left(connectTimeout, until));
     } catch (e) {
+      if (_parked || !_enabled) throw _ClusterFailure(_enabled ? 'disconnected' : 'off');
       _fail('connectFailed', '$e');
       throw _ClusterFailure('connectFailed', '$e');
     }
-    final session = _Session(node, call, link, onLine: _append, onClosed: _onSessionClosed, password: () => password(node));
+    // Off, or Disconnect, while the connect was under way: there was no
+    // session yet for either to close.
+    if (_parked || !_enabled) {
+      unawaited(link.close());
+      throw _ClusterFailure(_enabled ? 'disconnected' : 'off');
+    }
+    final session = _Session(node, call, link, onLine: _append, onSent: _sent, onClosed: _onSessionClosed, password: () => password(node));
     _session = session;
+    final loginWait = until == null ? loginTimeout : _left(loginTimeout, until);
     try {
-      await session.login(loginTimeout);
+      await session.login(loginWait);
     } on _ClusterFailure catch (failure) {
+      // The node hung up on the call — one it will not take. Not a drop to
+      // retry: logging in again and again is how a node comes to ban one.
+      if (session.closeReason != null && _session == null && _node == node && _enabled && !_parked) {
+        _fail('loginFailed', session.closeReason);
+        throw _ClusterFailure('loginFailed', session.closeReason);
+      }
       // Superseded — the server changed, or the session was closed — the
       // status is the replacement's to report, not this login's.
       if (!_isCurrent(session, node)) {
@@ -318,8 +545,10 @@ class ClusterService extends ChangeNotifier {
         rethrow;
       }
       _closeSession(ClusterState.failed, notify: false);
-      _fail(failure.code, failure.message);
-      rethrow;
+      // Out of time is not the node refusing the login.
+      final code = failure.code == 'loginFailed' && loginWait < loginTimeout ? 'timeout' : failure.code;
+      _fail(code, code == failure.code ? failure.message : null);
+      throw _ClusterFailure(code, code == failure.code ? failure.message : null);
     }
     if (!_isCurrent(session, node)) {
       _drop(session);
@@ -348,28 +577,43 @@ class ClusterService extends ChangeNotifier {
     if (_state == ClusterState.connected) {
       _error = 'disconnected';
       _message = session.closeReason;
-      _setState(_subscribers.isEmpty ? ClusterState.idle : ClusterState.failed);
+      _setState(_wanted ? ClusterState.failed : ClusterState.idle);
     }
     _scheduleReconnect();
   }
 
   void _scheduleReconnect() {
-    if (_disposed || _subscribers.isEmpty || _reconnectTimer?.isActive == true) return;
+    if (_disposed || !supported || !_enabled || _parked || !_wanted || _reconnectTimer?.isActive == true) return;
     final delay = reconnectDelays[_failures.clamp(0, reconnectDelays.length - 1)];
     _failures++;
-    _reconnectTimer = Timer(delay, () async {
-      if (_subscribers.isEmpty) return;
-      try {
-        await _ensureSession();
-      } on _ClusterFailure {
-        _scheduleReconnect();
-      }
-    });
+    _reconnectTimer = Timer(delay, _reconnect);
+  }
+
+  Future<void> _reconnect() async {
+    if (!_wanted || _parked) return;
+    try {
+      await _ensureSession();
+    } on _ClusterFailure {
+      _scheduleReconnect();
+    }
   }
 
   void _onSettingsChanged() {
     final node = ClusterSettings.node(settings);
     _trimLines();
+    transcript.trim();
+    final enabled = ClusterSettings.connects(settings);
+    if (enabled != _enabled) {
+      final before = status;
+      _enabled = enabled;
+      _node = node;
+      _failures = 0;
+      _reconnectTimer?.cancel();
+      _closeSession(ClusterState.idle, notify: false);
+      _setState(ClusterState.idle, before: before);
+      if (enabled) unawaited(_reconnect());
+      return;
+    }
     if (node == _node) return;
     _node = node;
     final session = _session;
@@ -379,17 +623,21 @@ class ClusterService extends ChangeNotifier {
     }
     // A subscriber is reading the old node; it reads the new one from here.
     _closeSession(ClusterState.idle);
-    if (_subscribers.isNotEmpty) {
+    if (_wanted) {
       _failures = 0;
       _scheduleReconnect();
     }
   }
 
   void _append(String text) {
-    _lines.add(ClusterLine(++_lastSeq, nowMillis(), text));
+    final at = nowMillis();
+    _lines.add(ClusterLine(++_lastSeq, at, text));
+    transcript.add(ClusterTranscriptEntry(at, ClusterTranscriptKind.received, text: text));
     _trimLines();
     if (_subscribers.isNotEmpty && deliver != null) _flushTimer ??= Timer(batchDelay, _flush);
   }
+
+  void _sent(String text) => transcript.add(ClusterTranscriptEntry(nowMillis(), ClusterTranscriptKind.sent, text: text));
 
   void _trimLines() {
     final size = ClusterSettings.scrollback(settings);
@@ -441,9 +689,16 @@ class ClusterService extends ChangeNotifier {
     _setState(ClusterState.failed);
   }
 
-  void _setState(ClusterState state) {
+  /// [before] for a change [status] already shows, such as the off switch.
+  void _setState(ClusterState state, {ClusterStatus? before}) {
+    before ??= status;
     _state = state;
-    if (!_disposed) notifyListeners();
+    if (_disposed) return;
+    final after = status;
+    if (after.state != before.state || after.error != before.error || after.call != before.call) {
+      transcript.add(ClusterTranscriptEntry(nowMillis(), ClusterTranscriptKind.status, status: after));
+    }
+    notifyListeners();
   }
 
   @override
@@ -455,6 +710,7 @@ class ClusterService extends ChangeNotifier {
     _flushTimer?.cancel();
     _session?.close();
     _session = null;
+    transcript.dispose();
     super.dispose();
   }
 }
@@ -475,7 +731,7 @@ class _ClusterFailure implements Exception {
 
 /// One telnet session: the login, then commands.
 class _Session {
-  _Session(this.node, this.call, this._link, {required this.onLine, required this.onClosed, required this.password}) {
+  _Session(this.node, this.call, this._link, {required this.onLine, required this.onSent, required this.onClosed, required this.password}) {
     _subscription = _link.data.listen(_onData, onDone: _onDone, onError: (Object error) => _onDone(error), cancelOnError: true);
   }
 
@@ -483,6 +739,9 @@ class _Session {
   final String call;
   final ClusterLink _link;
   final void Function(String text) onLine;
+
+  /// Each line sent, but the password.
+  final void Function(String text) onSent;
   final void Function(_Session session) onClosed;
   final Future<String?> Function() password;
 
@@ -522,6 +781,7 @@ class _Session {
     final reply = _reply = <String>[];
     final prompted = _prompted = Completer<bool>();
     _link.write(encodeClusterLine(line));
+    onSent(line);
     try {
       if (!await prompted.future.timeout(timeout)) return ClusterReply.failed('disconnected', lines: reply);
     } on TimeoutException {
@@ -579,6 +839,7 @@ class _Session {
     }
     _callSent = true;
     _link.write(encodeClusterLine(call));
+    onSent(call);
   }
 
   Future<void> _answerPassword() async {

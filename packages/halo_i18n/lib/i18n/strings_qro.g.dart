@@ -2171,6 +2171,18 @@ class _Translations$settings$cluster$qro extends Translations$settings$cluster$e
 	// Translations
 	@override String get title => 'DX CLUSTER';
 	@override String get description => 'THE SERVER EXTENSIONS POST SPOTS TO AND READ SPOTS FROM, LOGGED IN AS THE OPERATOR.';
+	@override String get connect => 'CONNECT TO CLUSTER';
+	@override String get connectOn => 'EXTENSIONS CONNECT TO THE CLUSTER WHEN THEY NEED IT';
+	@override String get connectOff => 'NOTHING CONNECTS TO THE CLUSTER';
+	@override String get console => 'SHOW CONSOLE';
+	@override String get consoleDescription => 'WHAT THE CLUSTER SENDS, AND A PLACE TO TYPE COMMANDS';
+	@override String get consoleTitle => 'CLUSTER CONSOLE';
+	@override String get consoleConnect => 'CONNECT';
+	@override String get consoleDisconnect => 'DISCONNECT';
+	@override String get consoleCommand => 'COMMAND';
+	@override String get consoleEmpty => 'NOTHING YET. CONNECT, OR WAIT FOR AN EXTENSION TO USE THE CLUSTER.';
+	@override String consoleRetry({required Object command}) => 'SENDING AGAIN: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'NOT SENT: ${command} (${reason})';
 	@override String get server => 'CLUSTER SERVER';
 	@override String get selectServer => 'SELECT SERVER';
 	@override String get serverOther => 'OTHER';
@@ -2188,6 +2200,7 @@ class _Translations$settings$cluster$qro extends Translations$settings$cluster$e
 	@override String statusConnected({required Object node, required Object call}) => 'CONNECTED TO ${node} AS ${call}.';
 	@override String statusFailed({required Object node, required Object reason}) => 'COULD NOT CONNECT TO ${node}: ${reason}';
 	@override String get statusUnsupported => 'NOT AVAILABLE IN THE WEB VERSION.';
+	@override String get statusOff => 'OFF. TURN ON CONNECT TO CLUSTER TO USE IT.';
 	@override late final _Translations$settings$cluster$errors$qro errors = _Translations$settings$cluster$errors$qro._(_root);
 }
 
@@ -3747,6 +3760,7 @@ class _Translations$settings$cluster$errors$qro extends Translations$settings$cl
 	@override String get loginFailed => 'THE NODE DID NOT ACCEPT THE LOGIN';
 	@override String get disconnected => 'THE NODE CLOSED THE CONNECTION';
 	@override String get timeout => 'THE NODE DID NOT ANSWER';
+	@override String get off => 'CONNECT TO CLUSTER IS OFF';
 }
 
 // Path: settings.radio.units
@@ -5412,6 +5426,18 @@ extension on TranslationsQro {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} STOPPED LISTENING ON PORT ${port}. TRYING AGAIN…',
 			'settings.cluster.title' => 'DX CLUSTER',
 			'settings.cluster.description' => 'THE SERVER EXTENSIONS POST SPOTS TO AND READ SPOTS FROM, LOGGED IN AS THE OPERATOR.',
+			'settings.cluster.connect' => 'CONNECT TO CLUSTER',
+			'settings.cluster.connectOn' => 'EXTENSIONS CONNECT TO THE CLUSTER WHEN THEY NEED IT',
+			'settings.cluster.connectOff' => 'NOTHING CONNECTS TO THE CLUSTER',
+			'settings.cluster.console' => 'SHOW CONSOLE',
+			'settings.cluster.consoleDescription' => 'WHAT THE CLUSTER SENDS, AND A PLACE TO TYPE COMMANDS',
+			'settings.cluster.consoleTitle' => 'CLUSTER CONSOLE',
+			'settings.cluster.consoleConnect' => 'CONNECT',
+			'settings.cluster.consoleDisconnect' => 'DISCONNECT',
+			'settings.cluster.consoleCommand' => 'COMMAND',
+			'settings.cluster.consoleEmpty' => 'NOTHING YET. CONNECT, OR WAIT FOR AN EXTENSION TO USE THE CLUSTER.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'SENDING AGAIN: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'NOT SENT: ${command} (${reason})',
 			'settings.cluster.server' => 'CLUSTER SERVER',
 			'settings.cluster.selectServer' => 'SELECT SERVER',
 			'settings.cluster.serverOther' => 'OTHER',
@@ -5429,12 +5455,14 @@ extension on TranslationsQro {
 			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'CONNECTED TO ${node} AS ${call}.',
 			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'COULD NOT CONNECT TO ${node}: ${reason}',
 			'settings.cluster.statusUnsupported' => 'NOT AVAILABLE IN THE WEB VERSION.',
+			'settings.cluster.statusOff' => 'OFF. TURN ON CONNECT TO CLUSTER TO USE IT.',
 			'settings.cluster.errors.noCall' => 'NO OPERATOR CALLSIGN TO LOG IN WITH',
 			'settings.cluster.errors.connectFailed' => 'THE NODE COULD NOT BE REACHED',
 			'settings.cluster.errors.needsPassword' => 'THE NODE ASKS FOR A PASSWORD, AND NONE IS STORED',
 			'settings.cluster.errors.loginFailed' => 'THE NODE DID NOT ACCEPT THE LOGIN',
 			'settings.cluster.errors.disconnected' => 'THE NODE CLOSED THE CONNECTION',
 			'settings.cluster.errors.timeout' => 'THE NODE DID NOT ANSWER',
+			'settings.cluster.errors.off' => 'CONNECT TO CLUSTER IS OFF',
 			'settings.spotting.title' => 'SPOTTING',
 			'settings.spotting.respotInterval' => 'AUTO RE-SPOT EVERY',
 			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} MIN',
@@ -5749,6 +5777,8 @@ extension on TranslationsQro {
 			'settings.accounts.noKeyringInline' => 'LOGINS CAN’T BE SAVED: THIS COMPUTER’S KEYRING CAN’T BE REACHED. INSTALL AND START GNOME-KEYRING, KWALLET OR KEEPASSXC, OR UNLOCK THE ONE YOU HAVE.',
 			'settings.accounts.noSecureStorageInline' => 'LOGINS CAN’T BE SAVED: THIS COMPUTER’S SECURE STORAGE CAN’T BE REACHED.',
 			'settings.station.title' => 'STATION CONFIGURATION & CAT CONTROL',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.none' => 'NO EQUIPMENT CONFIGURED',
 			'settings.station.add' => 'ADD',
 			'settings.station.addTitle' => 'ADD EQUIPMENT',
@@ -5763,8 +5793,6 @@ extension on TranslationsQro {
 			'settings.station.host' => 'ADDRESS',
 			'settings.station.hostDescription' => 'THE RADIO\'S HOSTNAME OR IP ADDRESS ON YOUR NETWORK.',
 			'settings.station.port' => 'PORT',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hostRequired' => 'AN ADDRESS IS REQUIRED',
 			'settings.station.portInvalid' => 'PORT MUST BE BETWEEN 1 AND 65535',
 			'settings.station.connect' => 'CONNECT',
@@ -6263,6 +6291,8 @@ extension on TranslationsQro {
 			'settings.gridPrecisionOpts.eight' => '8 DIGITS (FN31PR55)',
 			'settings.gridPrecisionDescription.six' => '6 DIGITS',
 			'settings.gridPrecisionDescription.eight' => '8 DIGITS',
+			_ => null,
+		} ?? switch (path) {
 			'commands.enableSyncFirst' => 'ENABLE SYNC IN SETTINGS FIRST.',
 			'commands.fullResyncStarted' => 'FULL RESYNC STARTED — LOCAL DATA WAS BACKED UP FIRST.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
@@ -6277,8 +6307,6 @@ extension on TranslationsQro {
 			'commands.idleMetricsDisabled' => 'IDLE METRICS DISABLED',
 			'commands.sentryTestLocalOnly' => 'SENTRY IS DISABLED IN THIS BUILD — TEST ERROR LOGGED LOCALLY ONLY',
 			'commands.noOperationOpen' => 'THAT COMMAND NEEDS AN OPEN OPERATION',
-			_ => null,
-		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'DON\'T KNOW HOW TO MARK A \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} ISN\'T TURNED ON IN THIS APP',
 			'commands.goUnknown' => ({required Object to}) => 'DON\'T KNOW HOW TO GO TO \'${to}\'',

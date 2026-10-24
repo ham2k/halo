@@ -51,6 +51,10 @@ abstract final class ClusterSettings {
   static const customPortKey = 'customPort';
   static const scrollbackKey = 'scrollback';
 
+  /// False keeps the app off every node: nothing connects, and a session
+  /// already open closes.
+  static const connectKey = 'connect';
+
   static const custom = 'custom';
 
   static const scrollbackOptions = [500, 1000, 2000, 5000];
@@ -69,6 +73,8 @@ abstract final class ClusterSettings {
     }
     return knownClusterNodes.where((n) => n.name == name).firstOrNull ?? knownClusterNodes.first;
   }
+
+  static bool connects(SettingsService settings) => settings.settingValue(group, connectKey) != false;
 
   static int scrollback(SettingsService settings) {
     final raw = settings.settingValue(group, scrollbackKey);

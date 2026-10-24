@@ -457,7 +457,8 @@ export interface ClusterReply {
   /// What the node sent between the command and its next prompt, which
   /// includes whatever spots it interleaved meanwhile.
   lines: string[]
-  /// `unsupported` (the web build has no sockets), `noCall`, `connectFailed`,
+  /// `unsupported` (the web build has no sockets), `off` (the operator
+  /// turned the cluster connection off in Settings), `noCall`, `connectFailed`,
   /// `needsPassword`, `loginFailed`, `disconnected`, `timeout`, `refused`
   /// (the node said no; `message` quotes it), `tooSoon` (spots are spaced a
   /// few seconds apart), `invalidCall`, `invalidFrequency`.
@@ -1814,7 +1815,8 @@ export interface CommandAction {
   /// and leave whatever operation is open to reach them; anything else names
   /// a Settings panel (`settings`, `profiles`, `station`, `sync`, `peers`,
   /// `accounts`, `extensions`, `developer`, `help`, `about`), opened over
-  /// what is on screen. A destination this app has turned off (an
+  /// what is on screen, as `cluster` opens the Cluster Console (CLUSTER,
+  /// `spot-commands`). A destination this app has turned off (an
   /// experiment, developer mode) is refused as an error rather than opening
   /// something else.
   navigate?: { to: string }

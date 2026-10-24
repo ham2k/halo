@@ -2171,6 +2171,18 @@ class _Translations$settings$cluster$qrp extends Translations$settings$cluster$e
 	// Translations
 	@override String get title => 'dx cluster';
 	@override String get description => 'the server extensions post spots to and read spots from, logged in as the operator.';
+	@override String get connect => 'connect to cluster';
+	@override String get connectOn => 'extensions connect to the cluster when they need it';
+	@override String get connectOff => 'nothing connects to the cluster';
+	@override String get console => 'show console';
+	@override String get consoleDescription => 'what the cluster sends, and a place to type commands';
+	@override String get consoleTitle => 'cluster console';
+	@override String get consoleConnect => 'connect';
+	@override String get consoleDisconnect => 'disconnect';
+	@override String get consoleCommand => 'command';
+	@override String get consoleEmpty => 'nothing yet. connect, or wait for an extension to use the cluster.';
+	@override String consoleRetry({required Object command}) => 'sending again: ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => 'not sent: ${command} (${reason})';
 	@override String get server => 'cluster server';
 	@override String get selectServer => 'select server';
 	@override String get serverOther => 'other';
@@ -2188,6 +2200,7 @@ class _Translations$settings$cluster$qrp extends Translations$settings$cluster$e
 	@override String statusConnected({required Object node, required Object call}) => 'connected to ${node} as ${call}.';
 	@override String statusFailed({required Object node, required Object reason}) => 'could not connect to ${node}: ${reason}';
 	@override String get statusUnsupported => 'not available in the web version.';
+	@override String get statusOff => 'off. turn on connect to cluster to use it.';
 	@override late final _Translations$settings$cluster$errors$qrp errors = _Translations$settings$cluster$errors$qrp._(_root);
 }
 
@@ -3747,6 +3760,7 @@ class _Translations$settings$cluster$errors$qrp extends Translations$settings$cl
 	@override String get loginFailed => 'the node did not accept the login';
 	@override String get disconnected => 'the node closed the connection';
 	@override String get timeout => 'the node did not answer';
+	@override String get off => 'connect to cluster is off';
 }
 
 // Path: settings.radio.units
@@ -5412,6 +5426,18 @@ extension on TranslationsQrp {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} stopped listening on port ${port}. trying again…',
 			'settings.cluster.title' => 'dx cluster',
 			'settings.cluster.description' => 'the server extensions post spots to and read spots from, logged in as the operator.',
+			'settings.cluster.connect' => 'connect to cluster',
+			'settings.cluster.connectOn' => 'extensions connect to the cluster when they need it',
+			'settings.cluster.connectOff' => 'nothing connects to the cluster',
+			'settings.cluster.console' => 'show console',
+			'settings.cluster.consoleDescription' => 'what the cluster sends, and a place to type commands',
+			'settings.cluster.consoleTitle' => 'cluster console',
+			'settings.cluster.consoleConnect' => 'connect',
+			'settings.cluster.consoleDisconnect' => 'disconnect',
+			'settings.cluster.consoleCommand' => 'command',
+			'settings.cluster.consoleEmpty' => 'nothing yet. connect, or wait for an extension to use the cluster.',
+			'settings.cluster.consoleRetry' => ({required Object command}) => 'sending again: ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => 'not sent: ${command} (${reason})',
 			'settings.cluster.server' => 'cluster server',
 			'settings.cluster.selectServer' => 'select server',
 			'settings.cluster.serverOther' => 'other',
@@ -5429,12 +5455,14 @@ extension on TranslationsQrp {
 			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => 'connected to ${node} as ${call}.',
 			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => 'could not connect to ${node}: ${reason}',
 			'settings.cluster.statusUnsupported' => 'not available in the web version.',
+			'settings.cluster.statusOff' => 'off. turn on connect to cluster to use it.',
 			'settings.cluster.errors.noCall' => 'no operator callsign to log in with',
 			'settings.cluster.errors.connectFailed' => 'the node could not be reached',
 			'settings.cluster.errors.needsPassword' => 'the node asks for a password, and none is stored',
 			'settings.cluster.errors.loginFailed' => 'the node did not accept the login',
 			'settings.cluster.errors.disconnected' => 'the node closed the connection',
 			'settings.cluster.errors.timeout' => 'the node did not answer',
+			'settings.cluster.errors.off' => 'connect to cluster is off',
 			'settings.spotting.title' => 'spotting',
 			'settings.spotting.respotInterval' => 'auto re-spot every',
 			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} min',
@@ -5749,6 +5777,8 @@ extension on TranslationsQrp {
 			'settings.accounts.noKeyringInline' => 'logins can’t be saved: this computer’s keyring can’t be reached. install and start gnome-keyring, kwallet or keepassxc, or unlock the one you have.',
 			'settings.accounts.noSecureStorageInline' => 'logins can’t be saved: this computer’s secure storage can’t be reached.',
 			'settings.station.title' => 'station configuration & cat control',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.none' => 'no equipment configured',
 			'settings.station.add' => 'add',
 			'settings.station.addTitle' => 'add equipment',
@@ -5763,8 +5793,6 @@ extension on TranslationsQrp {
 			'settings.station.host' => 'address',
 			'settings.station.hostDescription' => 'the radio\'s hostname or ip address on your network.',
 			'settings.station.port' => 'port',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hostRequired' => 'an address is required',
 			'settings.station.portInvalid' => 'port must be between 1 and 65535',
 			'settings.station.connect' => 'connect',
@@ -6263,6 +6291,8 @@ extension on TranslationsQrp {
 			'settings.gridPrecisionOpts.eight' => '8 digits (fn31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
+			_ => null,
+		} ?? switch (path) {
 			'commands.enableSyncFirst' => 'enable sync in settings first.',
 			'commands.fullResyncStarted' => 'full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
@@ -6277,8 +6307,6 @@ extension on TranslationsQrp {
 			'commands.idleMetricsDisabled' => 'idle metrics disabled',
 			'commands.sentryTestLocalOnly' => 'sentry is disabled in this build — test error logged locally only',
 			'commands.noOperationOpen' => 'that command needs an open operation',
-			_ => null,
-		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => 'don\'t know how to mark a \'${kind}\'',
 			'commands.goUnavailable' => ({required Object place}) => '${place} isn\'t turned on in this app',
 			'commands.goUnknown' => ({required Object to}) => 'don\'t know how to go to \'${to}\'',

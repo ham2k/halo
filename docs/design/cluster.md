@@ -43,6 +43,19 @@ or `clusterSubscribe`.
   minutes.
 - **Subscribed.** A subscribed session stays up. If it drops, it reconnects
   after 5 s, then 15 s, then 1 min, then every 5 min.
+- **Unconfirmed commands.** A command or spot whose connection drops under
+  it, that gets no reply, or that cannot reconnect is sent again on a fresh
+  session, as long as its deadline (see Timing) leaves room. A node that
+  stops answering is treated as dropped: a connection the network lost
+  without a reset reads as open until the OS gives up on it, minutes later.
+  A node that answered before it hung up took the command (`bye` is answered
+  that way), so that one is not sent again; a spot or announcement from the
+  network arriving meanwhile is no answer.
+  A spot the node took just before the drop goes out twice; the node drops
+  the duplicate, and a spot that silently never went out is the worse harm.
+  Any other command can go out twice the same way, and nothing drops that
+  duplicate: an `ANNOUNCE` can repeat. That is accepted, for one rule
+  covering every command.
 - **Runtime restart.** A restart of the extension runtime drops every
   subscription, because the old runtime's hooks are gone.
 
@@ -72,12 +85,18 @@ fails the login: it may still be asking something, and the next command would
 be the answer. An operator who turned prompts off on a node turns them back on
 there (`SET/PROMPT`).
 
-**Timing.** The connect, the login and a command's reply get five seconds
-each, so a spot from a cold start answers inside the 15 seconds a spots hook
-has. Past that the hook reports a timeout while the spot may still go out, and
-a retry would post it twice. A session closed while a login or a command
-waits on it — the server changed, the app closed it — ends them at once, and
-a superseded login never reports the service as connected.
+**Timing.** A command has 14 seconds from when it is asked for, under the 15
+a spots hook has: past that the hook reports a timeout while the spot may
+still go out. The wait behind other commands and every attempt fit inside
+it. The connect, the login and the reply get five seconds each, or what is
+left when that is less, and no attempt starts with under two seconds left:
+the command would go out with no time to be answered. A wait the deadline
+cut short is a `timeout`, never a refused login, and leaves the session
+open. A session closed while a login or a command waits on it — the server
+changed, the app closed it — ends them at once, and a superseded login
+never reports the service as connected. A node that hangs up during the
+login refuses the call, and is not logged in to again for that command:
+repeated logins are how a node comes to ban a call.
 
 **Password.** A node that asks for a password gets the one stored for it (per
 `host:port`, in secure storage). With none stored, the login fails as
@@ -149,6 +168,29 @@ Registration is per node and is the operator's to arrange with its sysop.
 
 The Settings section appears only when a loaded extension declares a cluster
 grant: a node nothing posts to is a setting with nothing behind it.
+
+**Connect to cluster** (on by default) is the operator's way to keep the app
+off every node. Turned off, an open session closes at once, a connect under
+way never logs in, reconnecting stops, and every send, spot and subscription answers `off`. Turned back on,
+the session comes back if anything is subscribed.
+
+## Console
+
+The Cluster Console — Settings' Show Console row, or the `CLUSTER` command
+(`spot-commands`), where the Settings section shows — shows the session as it happens: every line the node
+sends, every line sent (the login call, commands typed there, extensions'
+commands and spots; never the password), each change of state, and each
+command sent again or given up on, with why. It keeps as many entries as the
+scrollback keeps lines. A command typed there goes out like an extension's,
+retries included.
+
+Opening it connects nothing. **Connect** logs in and keeps the session up —
+reconnecting it if it drops — while the console is open; closing the console
+returns the session to the usual rules. **Disconnect** closes the session
+now — or drops a connect under way — and it stays closed, even with
+subscribers, until something next asks for it: only a drop the node or the
+network causes reconnects on its own. A command waiting to go out again
+gives up instead.
 
 ## Platforms
 

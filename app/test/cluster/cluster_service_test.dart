@@ -3,8 +3,10 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show SocketException;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cluster/cluster_link.dart';
 import 'package:ham2k_logger/services/cluster/cluster_protocol.dart';
 import 'package:ham2k_logger/services/cluster/cluster_service.dart';
@@ -27,6 +29,8 @@ class _FakeNode implements ClusterLink {
     this.banner = const ['Welcome to the FAKE AR-Cluster node\nAt the login prompt please enter your amateur radio callsign.\n'],
     this.welcome = const [],
     this.prompts = true,
+    this.answers = true,
+    this.hangsUpOnCall = false,
   }) {
     // The prompt in a read of its own, as over a real network: a client
     // answering the banner instead of the prompt has sent its call before it.
@@ -49,6 +53,12 @@ class _FakeNode implements ClusterLink {
 
   /// False for a node that never shows a command prompt.
   final bool prompts;
+
+  /// False for a node that logs in and then never answers a command.
+  final bool answers;
+
+  /// A node that will not take this call, and says so by hanging up.
+  final bool hangsUpOnCall;
 
   /// Each read [readGap] after the last, as over a real network — a gap
   /// shorter than the session's prompt quiet, longer than one event-loop turn.
@@ -79,6 +89,10 @@ class _FakeNode implements ClusterLink {
   bool _awaitingPassword = false;
   bool closed = false;
 
+  /// A node the network lost without a reset: it still takes writes, and
+  /// never answers one.
+  bool unreachable = false;
+
   @override
   Stream<List<int>> get data => _out.stream;
 
@@ -102,12 +116,14 @@ class _FakeNode implements ClusterLink {
     final text = latin1.decode(bytes);
     expect(text, endsWith('\r\n'), reason: 'every line a node reads ends in CRLF');
     final line = text.substring(0, text.length - 2);
+    if (unreachable) return;
     if (!_loginShown) {
       received.add('(before the prompt) $line');
       return;
     }
     received.add(line);
     if (call == null) {
+      if (hangsUpOnCall) return hangUp();
       call = line;
       if (password != null) {
         _awaitingPassword = true;
@@ -128,7 +144,7 @@ class _FakeNode implements ClusterLink {
       }
       return;
     }
-    if (line == 'bye') return;
+    if (line == 'bye' || !answers) return;
     final answer = reply?.call(line) ?? _echo(line);
     _send('${answer.map((l) => '$l\n').join()}$_prompt');
   }
@@ -158,8 +174,16 @@ void main() {
   List<String>? banner;
   List<String> welcome = const [];
   bool prompts = true;
+  bool answers = true;
+  bool hangsUpOnCall = false;
 
-  Future<void> start({Map<String, dynamic> cluster = const {}, bool supported = true}) async {
+  /// How long a dial takes; one longer than its timeout fails, as a socket's does.
+  Duration dialTime = Duration.zero;
+
+  /// When set, every dial waits for it.
+  Completer<void>? dialGate;
+
+  Future<void> start({Map<String, dynamic> cluster = const {}, bool supported = true, Duration deadline = const Duration(seconds: 14)}) async {
     SharedPreferences.setMockInitialValues({'settings.cluster': jsonEncode(cluster)});
     settings = SettingsService(await SharedPreferences.getInstance());
     service = ClusterService(
@@ -167,7 +191,14 @@ void main() {
       loginCall: () => operator,
       password: (node) async => passwords[node.address],
       supported: supported,
-      connect: (host, port) async {
+      deadline: deadline,
+      connect: (host, port, timeout) async {
+        await dialGate?.future;
+        if (dialTime > timeout) {
+          await Future<void>.delayed(timeout);
+          throw const SocketException('Connection timed out');
+        }
+        if (dialTime > Duration.zero) await Future<void>.delayed(dialTime);
         final node = _FakeNode(
           host,
           port,
@@ -177,6 +208,8 @@ void main() {
           banner: banner ?? const ['Welcome to the FAKE AR-Cluster node\nAt the login prompt please enter your amateur radio callsign.\n'],
           welcome: welcome,
           prompts: prompts,
+          answers: answers,
+          hangsUpOnCall: hangsUpOnCall,
         );
         nodes.add(node);
         return node;
@@ -195,6 +228,10 @@ void main() {
     banner = null;
     welcome = const [];
     prompts = true;
+    answers = true;
+    hangsUpOnCall = false;
+    dialTime = Duration.zero;
+    dialGate = null;
   });
 
   group('spotCommand', () {
@@ -295,7 +332,10 @@ void main() {
       final pending = service.send('sh/version');
       await Future<void>.delayed(const Duration(milliseconds: 10));
       await settings.setSettingValue(ClusterSettings.group, ClusterSettings.nodeKey, 'K1TTT');
-      final result = await pending.timeout(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(nodes.first.closed, isTrue);
+      expect(service.status.state, isNot(ClusterState.connected));
+      final result = await pending;
       expect(result.ok, isFalse);
       expect(service.status.state, isNot(ClusterState.connected));
       expect(service.status.node.name, 'K1TTT', reason: 'the old login does not speak for the new server');
@@ -443,6 +483,277 @@ void main() {
       final after = service.lines(after: before);
       expect(after, isNotEmpty);
       expect(after.first.seq, before + 1, reason: 'a reader asking for what came after the last line it saw must not miss one');
+    });
+  });
+
+  test('a command the connection drops under goes out again on a new session', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.send('sh/version');
+      reply = (command) {
+        if (nodes.length == 1) nodes.single.hangUp();
+        return const [];
+      };
+      final result = await service.postSpot(freqKHz: 14025, call: 'JA1ABC', comment: 'cq');
+      expect(result.ok, isTrue, reason: 'a spot lost to a drop never reaches the cluster, and the operator cannot tell');
+      expect(nodes, hasLength(2));
+      expect(nodes.last.received, contains(spotCommand(freqKHz: 14025, call: 'JA1ABC', comment: 'cq').command));
+    });
+  });
+
+  test('a node that stops answering is dropped, and the command goes out on a new session', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.send('sh/version');
+      nodes.single.unreachable = true;
+      final result = await service.send('sh/dx');
+      expect(result.ok, isTrue);
+      expect(nodes, hasLength(2), reason: 'a lost connection reads as open for minutes; kept, every command waits out its timeout on it');
+      expect(nodes.first.closed, isTrue);
+    });
+  });
+
+  test('a command stops being retried once its deadline runs out', () {
+    runOnFakeClock((async) async {
+      await start();
+      var dials = 0;
+      service = ClusterService(
+        settings: settings,
+        loginCall: () => operator,
+        password: (node) async => null,
+        connect: (host, port, timeout) async {
+          dials++;
+          throw const SocketException('Connection refused');
+        },
+      );
+      addTearDown(service.dispose);
+      final started = realNowMillis();
+      final result = await service.send('sh/dx');
+      expect(result.error, 'connectFailed');
+      expect(dials, greaterThan(1));
+      expect(
+        realNowMillis() - started,
+        lessThanOrEqualTo(service.deadline.inMilliseconds),
+        reason: 'commands go out one at a time: one retried for good holds every command behind it',
+      );
+    });
+  });
+
+  test('every attempt at a command fits in its deadline, however slow each step is', () {
+    runOnFakeClock((async) async {
+      // Each attempt here takes 3 s to dial and 5 s waiting on the reply; a
+      // retry started late in the window would run past the 15 s a spots
+      // hook waits, and the spot it reported as timed out would go out after.
+      dialTime = const Duration(seconds: 3);
+      answers = false;
+      await start();
+      final started = realNowMillis();
+      final result = await service.postSpot(freqKHz: 14025, call: 'JA1ABC');
+      expect(result.error, 'timeout');
+      expect(nodes.length, greaterThan(1), reason: 'the first attempt leaves time for another');
+      expect(realNowMillis() - started, lessThanOrEqualTo(service.deadline.inMilliseconds));
+    });
+  });
+
+  test('a command abandoned with nothing holding the session says why, in the status and the console', () {
+    runOnFakeClock((async) async {
+      answers = false;
+      await start();
+      await service.send('sh/version');
+      expect(service.status.state, ClusterState.failed, reason: 'Settings\' "Tap to test" would otherwise read "Not connected" after a failed test');
+      expect(service.status.error, 'timeout');
+      final last = service.transcript.entries.last;
+      expect(last.kind, ClusterTranscriptKind.gaveUp, reason: 'a command typed in the console must not vanish without a word');
+      expect(last.text, 'sh/version');
+      expect(last.status!.error, 'timeout');
+    });
+  });
+
+  test('a node that answers and then hangs up took the command: it is not sent again', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.send('sh/version');
+      reply = (command) {
+        if (command != 'quit') return const [];
+        nodes.last
+          ..broadcast('73 de FAKE')
+          ..hangUp();
+        return const [];
+      };
+      final result = await service.send('quit');
+      expect(result.error, 'disconnected');
+      expect(nodes, hasLength(1), reason: 'resent, a quit would log in only to be thrown out again, over and over');
+    });
+  });
+
+  test('a node that hangs up on the call fails the login once, rather than leaving it connecting', () {
+    runOnFakeClock((async) async {
+      hangsUpOnCall = true;
+      await start();
+      final result = await service.send('sh/dx');
+      expect(result.error, 'loginFailed');
+      expect(service.status.state, ClusterState.failed, reason: 'nothing replaces the session, so nothing else would ever report it');
+      expect(service.status.error, 'loginFailed');
+      expect(nodes, hasLength(1), reason: 'a node refusing the call, logged in to again and again, is how it comes to ban the operator');
+    });
+  });
+
+  test('a spot from the network arriving before a drop is no answer: the command goes out again', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.send('sh/version');
+      reply = (command) {
+        if (nodes.length == 1) {
+          nodes.single
+            ..broadcast('DX de W3LPL:  14025.0  JA1ABC  cq  0400Z')
+            ..hangUp();
+        }
+        return const [];
+      };
+      final result = await service.postSpot(freqKHz: 7010, call: 'ZL2XX');
+      expect(result.ok, isTrue, reason: 'on a busy node a spot always arrives meanwhile; taken for an answer, a lost spot is never resent');
+      expect(nodes, hasLength(2));
+    });
+  });
+
+  test('a deadline that runs short is a timeout, not a refused login or a dead session', () {
+    runOnFakeClock((async) async {
+      prompts = false;
+      await start(deadline: const Duration(seconds: 4));
+      final login = await service.send('sh/version');
+      expect(login.error, 'timeout', reason: 'out of time is not the node refusing the login; "loginFailed" sends the operator after their call or password');
+      expect(service.status.error, 'timeout');
+
+      prompts = true;
+      await service.send('sh/version');
+      expect(service.status.state, ClusterState.connected);
+      nodes.last.unreachable = true;
+      final slow = service.send('sh/dx');
+      final queued = service.send('sh/wwv');
+      expect((await slow).error, 'timeout');
+      expect(nodes.last.closed, isFalse, reason: 'a wait the deadline cut short says nothing about the session');
+      expect((await queued).error, 'timeout');
+      expect(nodes.last.received, isNot(contains('sh/wwv')), reason: 'sent with no time left to answer, a command goes out and is reported failed anyway');
+    });
+  });
+
+  test('turning the connection off closes the session, refuses every command, and stops reconnecting', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.subscribe('reader');
+      expect(service.status.state, ClusterState.connected);
+
+      await settings.setSettingValue(ClusterSettings.group, ClusterSettings.connectKey, false);
+      expect(nodes.single.closed, isTrue, reason: 'off means off now, not after the idle timeout');
+      expect(service.transcript.entries.last.status?.error, 'off', reason: 'the console says where the session went');
+      expect(service.status.error, 'off');
+      expect((await service.send('sh/dx')).error, 'off');
+      expect((await service.postSpot(freqKHz: 14025, call: 'JA1ABC')).error, 'off');
+      await Future<void>.delayed(service.reconnectDelays.last * 2);
+      expect(nodes, hasLength(1), reason: 'a subscriber waiting must not bring back a connection the operator turned off');
+
+      await settings.setSettingValue(ClusterSettings.group, ClusterSettings.connectKey, true);
+      await Future<void>.delayed(const Duration(seconds: 1));
+      expect(nodes, hasLength(2), reason: 'back on, the subscriber that was waiting is served again');
+      expect(service.status.state, ClusterState.connected);
+    }, limit: const Duration(hours: 1));
+  });
+
+  test('turning the connection off while it connects keeps it from logging in', () {
+    runOnFakeClock((async) async {
+      dialGate = Completer<void>();
+      await start();
+      final subscribed = service.subscribe('reader');
+      await Future<void>.delayed(Duration.zero);
+      await settings.setSettingValue(ClusterSettings.group, ClusterSettings.connectKey, false);
+      dialGate!.complete();
+      await subscribed;
+      expect(nodes.single.closed, isTrue);
+      expect(nodes.single.received, isEmpty, reason: 'the operator turned it off: no login under their call, which another client of theirs would lose to');
+      await Future<void>.delayed(service.reconnectDelays.last * 2);
+      expect(nodes, hasLength(1));
+    }, limit: const Duration(hours: 1));
+  });
+
+  test('Disconnect while connecting keeps the session closed', () {
+    runOnFakeClock((async) async {
+      dialGate = Completer<void>();
+      await start();
+      final subscribed = service.subscribe('reader');
+      await Future<void>.delayed(Duration.zero);
+      service.disconnect();
+      dialGate!.complete();
+      await subscribed;
+      expect(nodes.single.closed, isTrue);
+      expect(service.status.state, ClusterState.idle);
+      await Future<void>.delayed(service.reconnectDelays.last * 2);
+      expect(nodes, hasLength(1), reason: 'a connect already under way, or the subscriber behind it, would undo the Disconnect');
+    }, limit: const Duration(hours: 1));
+  });
+
+  test('the transcript shows what went out but never the password', () {
+    runOnFakeClock((async) async {
+      nodePassword = 'hunter2';
+      passwords = {'dx.k3lr.com:23': 'hunter2'};
+      await start();
+      await service.send('sh/version');
+      final entries = service.transcript.entries;
+      final sent = [
+        for (final e in entries)
+          if (e.kind == ClusterTranscriptKind.sent) e.text,
+      ];
+      expect(sent, ['KI2D', 'sh/version']);
+      expect(entries.any((e) => e.text.contains('hunter2')), isFalse, reason: 'the console is on screen, and in screenshots');
+      expect(entries.any((e) => e.kind == ClusterTranscriptKind.status && e.status!.state == ClusterState.connected), isTrue);
+      expect(entries.any((e) => e.kind == ClusterTranscriptKind.received && e.text.startsWith('Hello KI2D')), isTrue);
+    });
+  });
+
+  test('Connect holds the session while the console is open; Disconnect closes it and keeps it closed', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.stayConnected();
+      await Future<void>.delayed(service.idleTimeout * 2);
+      expect(nodes.single.closed, isFalse, reason: 'an operator reading the console is using the session');
+
+      nodes.single.hangUp();
+      await Future<void>.delayed(service.reconnectDelays.first + const Duration(seconds: 1));
+      expect(nodes, hasLength(2), reason: 'a held session reconnects like a subscribed one');
+
+      await service.subscribe('reader');
+      service.disconnect();
+      expect(nodes.last.closed, isTrue);
+      await Future<void>.delayed(service.reconnectDelays.last * 2);
+      expect(nodes, hasLength(2), reason: 'Disconnect would mean nothing if a subscriber dialled straight back');
+
+      await service.send('sh/dx');
+      expect(nodes, hasLength(3), reason: 'the next use asks for the session again');
+    }, limit: const Duration(hours: 1));
+  });
+
+  test('a smaller scrollback shows in an open console at once', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.subscribe('reader');
+      for (var i = 0; i < 600; i++) {
+        nodes.single.broadcast('line $i');
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      var notified = false;
+      service.transcript.addListener(() => notified = true);
+      await settings.setSettingValue(ClusterSettings.group, ClusterSettings.scrollbackKey, 500);
+      expect(service.transcript.entries, hasLength(500));
+      expect(notified, isTrue, reason: 'on a quiet node, the console would show the old entries until the next line');
+    });
+  });
+
+  test('closing the console lets a held session idle out', () {
+    runOnFakeClock((async) async {
+      await start();
+      await service.stayConnected();
+      service.release();
+      await Future<void>.delayed(service.idleTimeout + const Duration(seconds: 1));
+      expect(nodes.single.closed, isTrue);
     });
   });
 }

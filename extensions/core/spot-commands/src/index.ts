@@ -11,6 +11,7 @@
 //   SPOTLAST / SPOTEM / SPOTTHEM / SPTHEM [comment] — spot the most recently logged
 //                                       QSO, no reference in app-polo (new
 //                                       behavior for app-halo)
+//   CLUSTER                          — opens the cluster console
 //   RESPOT [minutes|OFF]             — auto-respotting, HaLo's own: the
 //                                       Spotting control's "Re-spot every
 //                                       N min", at the operator's interval
@@ -23,7 +24,7 @@
 
 import { defineExtension } from "@ham2k/extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
-import { parseSelfSpotCommand, parseLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
+import { isClusterCommand, parseSelfSpotCommand, parseLastSpotCommand, parseRespotCommand } from "./spotCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -146,11 +147,26 @@ const RespotCommand = {
   },
 }
 
+// Opens the app's cluster console, operation or not: what the node sends and
+// a place to type to it are the same with nothing open.
+const ClusterCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!isClusterCommand(input)) return null
+    return { describe: tFor(ctx)("openCluster"), commands: [{ navigate: { to: "cluster" } }] }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [{ command: "CLUSTER", keywords: ["CONSOLE", "TELNET", "DX CLUSTER"], describe: t("catalogCluster"), category: t("catalogCategory") }]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook("command", { key: "spot-commands-self", hook: SelfSpotCommand, priority: 100 })
     registerHook("command", { key: "spot-commands-last", hook: LastSpotCommand, priority: 100 })
     registerHook("command", { key: "spot-commands-respot", hook: RespotCommand, priority: 100 })
+    registerHook("command", { key: "spot-commands-cluster", hook: ClusterCommand, priority: 100 })
   },
 })

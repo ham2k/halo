@@ -2171,6 +2171,18 @@ class _Translations$settings$cluster$cw extends Translations$settings$cluster$en
 	// Translations
 	@override String get title => '—·· —··— / —·—· ·—·· ··— ··· — · ·—·';
 	@override String get description => '— ···· · / ··· · ·—· ···— · ·—· / · —··— — · —· ··· ·· ——— —· ··· / ·——· ——— ··· — / ··· ·——· ——— — ··· / — ——— / ·— —· —·· / ·—· · ·— —·· / ··· ·——· ——— — ··· / ··—· ·—· ——— —— ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / — ···· · / ——— ·——· · ·—· ·— — ——— ·—· ·—·—·—';
+	@override String get connect => '—·—· ——— —· —· · —·—· — / — ——— / —·—· ·—·· ··— ··· — · ·—·';
+	@override String get connectOn => '· —··— — · —· ··· ·· ——— —· ··· / —·—· ——— —· —· · —·—· — / — ——— / — ···· · / —·—· ·—·· ··— ··· — · ·—· / ·—— ···· · —· / — ···· · —·—— / —· · · —·· / ·· —';
+	@override String get connectOff => '—· ——— — ···· ·· —· ——· / —·—· ——— —· —· · —·—· — ··· / — ——— / — ···· · / —·—· ·—·· ··— ··· — · ·—·';
+	@override String get console => '··· ···· ——— ·—— / —·—· ——— —· ··· ——— ·—·· ·';
+	@override String get consoleDescription => '·—— ···· ·— — / — ···· · / —·—· ·—·· ··— ··· — · ·—· / ··· · —· —·· ··· ——··—— / ·— —· —·· / ·— / ·——· ·—·· ·— —·—· · / — ——— / — —·—— ·——· · / —·—· ——— —— —— ·— —· —·· ···';
+	@override String get consoleTitle => '—·—· ·—·· ··— ··· — · ·—· / —·—· ——— —· ··· ——— ·—·· ·';
+	@override String get consoleConnect => '—·—· ——— —· —· · —·—· —';
+	@override String get consoleDisconnect => '—·· ·· ··· —·—· ——— —· —· · —·—· —';
+	@override String get consoleCommand => '—·—· ——— —— —— ·— —· —··';
+	@override String get consoleEmpty => '—· ——— — ···· ·· —· ——· / —·—— · — ·—·—·— / —·—· ——— —· —· · —·—· — ——··—— / ——— ·—· / ·—— ·— ·· — / ··—· ——— ·—· / ·— —· / · —··— — · —· ··· ·· ——— —· / — ——— / ··— ··· · / — ···· · / —·—· ·—·· ··— ··· — · ·—· ·—·—·—';
+	@override String consoleRetry({required Object command}) => '··· · —· —·· ·· —· ——· / ·— ——· ·— ·· —· ———··· / ${command}';
+	@override String consoleGaveUp({required Object command, required Object reason}) => '—· ——— — / ··· · —· — ———··· / ${command} / —·——· ${reason} —·——·—';
 	@override String get server => '—·—· ·—·· ··— ··· — · ·—· / ··· · ·—· ···— · ·—·';
 	@override String get selectServer => '··· · ·—·· · —·—· — / ··· · ·—· ···— · ·—·';
 	@override String get serverOther => '——— — ···· · ·—·';
@@ -2188,6 +2200,7 @@ class _Translations$settings$cluster$cw extends Translations$settings$cluster$en
 	@override String statusConnected({required Object node, required Object call}) => '—·—· ——— —· —· · —·—· — · —·· / — ——— / ${node} / ·— ··· / ${call} ·—·—·—';
 	@override String statusFailed({required Object node, required Object reason}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / — ——— / ${node} ———··· / ${reason}';
 	@override String get statusUnsupported => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· ·—·—·—';
+	@override String get statusOff => '——— ··—· ··—· ·—·—·— / — ··— ·—· —· / ——— —· / —·—· ——— —· —· · —·—· — / — ——— / —·—· ·—·· ··— ··· — · ·—· / — ——— / ··— ··· · / ·· — ·—·—·—';
 	@override late final _Translations$settings$cluster$errors$cw errors = _Translations$settings$cluster$errors$cw._(_root);
 }
 
@@ -3747,6 +3760,7 @@ class _Translations$settings$cluster$errors$cw extends Translations$settings$clu
 	@override String get loginFailed => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / ·—·· ——— ——· ·· —·';
 	@override String get disconnected => '— ···· · / —· ——— —·· · / —·—· ·—·· ——— ··· · —·· / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·';
 	@override String get timeout => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —· ··· ·—— · ·—·';
+	@override String get off => '—·—· ——— —· —· · —·—· — / — ——— / —·—· ·—·· ··— ··· — · ·—· / ·· ··· / ——— ··—· ··—·';
 }
 
 // Path: settings.radio.units
@@ -5412,6 +5426,18 @@ extension on TranslationsCw {
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} / ··· — ——— ·——· ·——· · —·· / ·—·· ·· ··· — · —· ·· —· ——· / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / — ·—· —·—— ·· —· ——· / ·— ——· ·— ·· —· …',
 			'settings.cluster.title' => '—·· —··— / —·—· ·—·· ··— ··· — · ·—·',
 			'settings.cluster.description' => '— ···· · / ··· · ·—· ···— · ·—· / · —··— — · —· ··· ·· ——— —· ··· / ·——· ——— ··· — / ··· ·——· ——— — ··· / — ——— / ·— —· —·· / ·—· · ·— —·· / ··· ·——· ——— — ··· / ··—· ·—· ——— —— ——··—— / ·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / — ···· · / ——— ·——· · ·—· ·— — ——— ·—· ·—·—·—',
+			'settings.cluster.connect' => '—·—· ——— —· —· · —·—· — / — ——— / —·—· ·—·· ··— ··· — · ·—·',
+			'settings.cluster.connectOn' => '· —··— — · —· ··· ·· ——— —· ··· / —·—· ——— —· —· · —·—· — / — ——— / — ···· · / —·—· ·—·· ··— ··· — · ·—· / ·—— ···· · —· / — ···· · —·—— / —· · · —·· / ·· —',
+			'settings.cluster.connectOff' => '—· ——— — ···· ·· —· ——· / —·—· ——— —· —· · —·—· — ··· / — ——— / — ···· · / —·—· ·—·· ··— ··· — · ·—·',
+			'settings.cluster.console' => '··· ···· ——— ·—— / —·—· ——— —· ··· ——— ·—·· ·',
+			'settings.cluster.consoleDescription' => '·—— ···· ·— — / — ···· · / —·—· ·—·· ··— ··· — · ·—· / ··· · —· —·· ··· ——··—— / ·— —· —·· / ·— / ·——· ·—·· ·— —·—· · / — ——— / — —·—— ·——· · / —·—· ——— —— —— ·— —· —·· ···',
+			'settings.cluster.consoleTitle' => '—·—· ·—·· ··— ··· — · ·—· / —·—· ——— —· ··· ——— ·—·· ·',
+			'settings.cluster.consoleConnect' => '—·—· ——— —· —· · —·—· —',
+			'settings.cluster.consoleDisconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
+			'settings.cluster.consoleCommand' => '—·—· ——— —— —— ·— —· —··',
+			'settings.cluster.consoleEmpty' => '—· ——— — ···· ·· —· ——· / —·—— · — ·—·—·— / —·—· ——— —· —· · —·—· — ——··—— / ——— ·—· / ·—— ·— ·· — / ··—· ——— ·—· / ·— —· / · —··— — · —· ··· ·· ——— —· / — ——— / ··— ··· · / — ···· · / —·—· ·—·· ··— ··· — · ·—· ·—·—·—',
+			'settings.cluster.consoleRetry' => ({required Object command}) => '··· · —· —·· ·· —· ——· / ·— ——· ·— ·· —· ———··· / ${command}',
+			'settings.cluster.consoleGaveUp' => ({required Object command, required Object reason}) => '—· ——— — / ··· · —· — ———··· / ${command} / —·——· ${reason} —·——·—',
 			'settings.cluster.server' => '—·—· ·—·· ··— ··· — · ·—· / ··· · ·—· ···— · ·—·',
 			'settings.cluster.selectServer' => '··· · ·—·· · —·—· — / ··· · ·—· ···— · ·—·',
 			'settings.cluster.serverOther' => '——— — ···· · ·—·',
@@ -5429,12 +5455,14 @@ extension on TranslationsCw {
 			'settings.cluster.statusConnected' => ({required Object node, required Object call}) => '—·—· ——— —· —· · —·—· — · —·· / — ——— / ${node} / ·— ··· / ${call} ·—·—·—',
 			'settings.cluster.statusFailed' => ({required Object node, required Object reason}) => '—·—· ——— ··— ·—·· —·· / —· ——— — / —·—· ——— —· —· · —·—· — / — ——— / ${node} ———··· / ${reason}',
 			'settings.cluster.statusUnsupported' => '—· ——— — / ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·· —· / — ···· · / ·—— · —··· / ···— · ·—· ··· ·· ——— —· ·—·—·—',
+			'settings.cluster.statusOff' => '——— ··—· ··—· ·—·—·— / — ··— ·—· —· / ——— —· / —·—· ——— —· —· · —·—· — / — ——— / —·—· ·—·· ··— ··· — · ·—· / — ——— / ··— ··· · / ·· — ·—·—·—',
 			'settings.cluster.errors.noCall' => '—· ——— / ——— ·——· · ·—· ·— — ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / — ——— / ·—·· ——— ——· / ·· —· / ·—— ·· — ····',
 			'settings.cluster.errors.connectFailed' => '— ···· · / —· ——— —·· · / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —··',
 			'settings.cluster.errors.needsPassword' => '— ···· · / —· ——— —·· · / ·— ··· —·— ··· / ··—· ——— ·—· / ·— / ·——· ·— ··· ··· ·—— ——— ·—· —·· ——··—— / ·— —· —·· / —· ——— —· · / ·· ··· / ··· — ——— ·—· · —··',
 			'settings.cluster.errors.loginFailed' => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· · / ·—·· ——— ——· ·· —·',
 			'settings.cluster.errors.disconnected' => '— ···· · / —· ——— —·· · / —·—· ·—·· ——— ··· · —·· / — ···· · / —·—· ——— —· —· · —·—· — ·· ——— —·',
 			'settings.cluster.errors.timeout' => '— ···· · / —· ——— —·· · / —·· ·· —·· / —· ——— — / ·— —· ··· ·—— · ·—·',
+			'settings.cluster.errors.off' => '—·—· ——— —· —· · —·—· — / — ——— / —·—· ·—·· ··— ··· — · ·—· / ·· ··· / ——— ··—· ··—·',
 			'settings.spotting.title' => '··· ·——· ——— — — ·· —· ——·',
 			'settings.spotting.respotInterval' => '·— ··— — ——— / ·—· · —····— ··· ·——· ——— — / · ···— · ·—· —·——',
 			'settings.spotting.minutes' => ({required Object minutes}) => '${minutes} / —— ·· —·',
@@ -5749,6 +5777,8 @@ extension on TranslationsCw {
 			'settings.accounts.noKeyringInline' => '·—·· ——— ——· ·· —· ··· / —·—· ·— —· ’ — / —··· · / ··· ·— ···— · —·· ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ’ ··· / —·— · —·—— ·—· ·· —· ——· / —·—· ·— —· ’ — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·— / ·· —· ··· — ·— ·—·· ·—·· / ·— —· —·· / ··· — ·— ·—· — / ——· —· ——— —— · —····— —·— · —·—— ·—· ·· —· ——· ——··—— / —·— ·—— ·— ·—·· ·—·· · — / ——— ·—· / —·— · · ·——· ·— ··· ··· —··— —·—· ——··—— / ——— ·—· / ··— —· ·—·· ——— —·—· —·— / — ···· · / ——— —· · / —·—— ——— ··— / ···· ·— ···— · ·—·—·—',
 			'settings.accounts.noSecureStorageInline' => '·—·· ——— ——· ·· —· ··· / —·—· ·— —· ’ — / —··· · / ··· ·— ···— · —·· ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ’ ··· / ··· · —·—· ··— ·—· · / ··· — ——— ·—· ·— ——· · / —·—· ·— —· ’ — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·—',
 			'settings.station.title' => '··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / ·—··· / —·—· ·— — / —·—· ——— —· — ·—· ——— ·—··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.none' => '—· ——— / · ——·— ··— ·· ·——· —— · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
 			'settings.station.add' => '·— —·· —··',
 			'settings.station.addTitle' => '·— —·· —·· / · ——·— ··— ·· ·——· —— · —· —',
@@ -5763,8 +5793,6 @@ extension on TranslationsCw {
 			'settings.station.host' => '·— —·· —·· ·—· · ··· ···',
 			'settings.station.hostDescription' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ···· ——— ··· — —· ·— —— · / ——— ·—· / ·· ·——· / ·— —·· —·· ·—· · ··· ··· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— ·—·—·—',
 			'settings.station.port' => '·——· ——— ·—· —',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.hostRequired' => '·— —· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.portInvalid' => '·——· ——— ·—· — / —— ··— ··· — / —··· · / —··· · — ·—— · · —· / ·———— / ·— —· —·· / —···· ····· ····· ···—— ·····',
 			'settings.station.connect' => '—·—· ——— —· —· · —·—· —',
@@ -6263,6 +6291,8 @@ extension on TranslationsCw {
 			'settings.gridPrecisionOpts.eight' => '———·· / —·· ·· ——· ·· — ··· / —·——· ··—· —· ···—— ·———— ·——· ·—· ····· ····· —·——·—',
 			'settings.gridPrecisionDescription.six' => '—···· / —·· ·· ——· ·· — ···',
 			'settings.gridPrecisionDescription.eight' => '———·· / —·· ·· ——· ·· — ···',
+			_ => null,
+		} ?? switch (path) {
 			'commands.enableSyncFirst' => '· —· ·— —··· ·—·· · / ··· —·—— —· —·—· / ·· —· / ··· · — — ·· —· ——· ··· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.fullResyncStarted' => '··—· ··— ·—·· ·—·· / ·—· · ··· —·—— —· —·—· / ··· — ·— ·—· — · —·· / — / ·—·· ——— —·—· ·— ·—·· / —·· ·— — ·— / ·—— ·— ··· / —··· ·— —·—· —·— · —·· / ··— ·——· / ··—· ·· ·—· ··· — ·—·—·—',
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
@@ -6277,8 +6307,6 @@ extension on TranslationsCw {
 			'commands.idleMetricsDisabled' => '·· —·· ·—·· · / —— · — ·—· ·· —·—· ··· / —·· ·· ··· ·— —··· ·—·· · —··',
 			'commands.sentryTestLocalOnly' => '··· · —· — ·—· —·—— / ·· ··· / —·· ·· ··· ·— —··· ·—·· · —·· / ·· —· / — ···· ·· ··· / —··· ··— ·· ·—·· —·· / — / — · ··· — / · ·—· ·—· ——— ·—· / ·—·· ——— ——· ——· · —·· / ·—·· ——— —·—· ·— ·—·· ·—·· —·—— / ——— —· ·—·· —·——',
 			'commands.noOperationOpen' => '— ···· ·— — / —·—· ——— —— —— ·— —· —·· / —· · · —·· ··· / ·— —· / ——— ·——· · —· / ——— ·——· · ·—· ·— — ·· ——— —·',
-			_ => null,
-		} ?? switch (path) {
 			'commands.unknownSegmentKind' => ({required Object kind}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / —— ·— ·—· —·— / ·— / ·————· ${kind} ·————·',
 			'commands.goUnavailable' => ({required Object place}) => '${place} / ·· ··· —· ·————· — / — ··— ·—· —· · —·· / ——— —· / ·· —· / — ···· ·· ··· / ·— ·——· ·——·',
 			'commands.goUnknown' => ({required Object to}) => '—·· ——— —· ·————· — / —·— —· ——— ·—— / ···· ——— ·—— / — ——— / ——· ——— / — ——— / ·————· ${to} ·————·',

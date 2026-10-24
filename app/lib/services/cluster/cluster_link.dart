@@ -18,4 +18,5 @@ abstract class ClusterLink {
   Future<void> close();
 }
 
-typedef ClusterConnector = Future<ClusterLink> Function(String host, int port);
+/// Opens a connection, or fails once [timeout] passes.
+typedef ClusterConnector = Future<ClusterLink> Function(String host, int port, Duration timeout);

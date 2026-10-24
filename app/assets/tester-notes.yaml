@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "New control and serial port fields on Icom network connections"
     - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
+    - "New Cluster Console: type CLUSTER, or Show Console in DX Cluster settings"
 
 "183":
   changes:

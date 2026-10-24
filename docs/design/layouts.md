@@ -1377,6 +1377,10 @@ Two distinct surfaces; pick deliberately:
   scroll view is handed unbounded height, and lays the pane out blank under
   a header that still looks right.
 
+  A pane whose body has a natural width of its own — the Cluster Console's
+  line length — passes `maxWidth` to widen the dialog presentation past
+  `maxDialogWidth`. The window still bounds it; full screen ignores it.
+
   It is a single route that re-presents itself when the window crosses the
   S/L boundary while open — no pop-and-reshow. Both presentations resolve
   through `Navigator.pop(context, result)`; call sites `await` it exactly

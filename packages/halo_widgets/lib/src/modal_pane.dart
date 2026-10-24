@@ -83,6 +83,11 @@ Future<T?> showHaloDialog<T>({required BuildContext context, required WidgetBuil
 /// full-screen presentation already fills the screen, so this changes
 /// nothing there. Leave it off for a body that is simply short: a half-empty
 /// full-height card is worse than a small one.
+///
+/// [maxWidth] lifts the DIALOG presentation's width cap past
+/// [maxDialogWidth], for a body with a natural width of its own — a console's
+/// line length. The window still bounds it, and the full-screen presentation
+/// ignores it.
 Future<T?> showModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -95,6 +100,7 @@ Future<T?> showModalPane<T>(
   String closeLabel = 'Close',
   bool closeButton = true,
   bool fillHeight = false,
+  double? maxWidth,
 }) => Navigator.of(context).push(
   ModalPaneRoute<T>(
     builder: builder,
@@ -107,6 +113,7 @@ Future<T?> showModalPane<T>(
     closeLabel: closeLabel,
     closeButton: closeButton,
     fillHeight: fillHeight,
+    maxWidth: maxWidth,
   ),
 );
 
@@ -156,6 +163,10 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   /// presentation fills the screen either way.
   final bool fillHeight;
 
+  /// The DIALOG presentation's width cap in place of [maxDialogWidth] — see
+  /// [showModalPane].
+  final double? maxWidth;
+
   /// Carries the body's Element (and State) across the presentation flip:
   /// the two presentations have different widget trees, so without this
   /// GlobalKey a resize across the S/L boundary would re-inflate the body
@@ -173,6 +184,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
     this.closeLabel = 'Close',
     this.closeButton = true,
     this.fillHeight = false,
+    this.maxWidth,
   }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
@@ -292,7 +304,8 @@ class _ModalPaneScaffold extends StatelessWidget {
     // The same box every dialog gets, so panes and plain dialogs read as one
     // family (haloDialogConstraints also guards the height against going
     // negative on a window shorter than the edge clearance).
-    final dialogConstraints = haloDialogConstraints(context);
+    final shared = haloDialogConstraints(context);
+    final dialogConstraints = route.maxWidth == null ? shared : shared.copyWith(maxWidth: route.maxWidth);
     // The transparent full-screen Scaffold exists so the route-scoped
     // ScaffoldMessenger has somewhere to show SnackBars ABOVE the barrier
     // (and it absorbs the keyboard inset like any Scaffold). It covers the

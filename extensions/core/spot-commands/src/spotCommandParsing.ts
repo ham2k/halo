@@ -10,6 +10,7 @@ const SELF_SPOT_MATCH = /^(SPOT|SPOTME|SPME|SELFSPOT|QRV|QRT|QSY|QRX)(|[ /][\s\w
 const LAST_SPOT_MATCH = /^(SPOTLAST|SPOTEM|SPOTTHEM|SPTHEM)(|[ /][\s\w\d!,.\-_]*)$/i
 const Q_CODES = new Set(["QRV", "QRT", "QSY", "QRX"])
 const RESPOT_MATCH = /^RESPOT(?:\s+(.*))?$/i
+const CLUSTER_MATCH = /^CLUSTER$/i
 
 /// Returns the comment to spot with (possibly empty string), or `null` if
 /// `input` doesn't match a self-spot command at all. A Q-code trigger
@@ -56,4 +57,9 @@ export function parseRespotCommand(input: string): { minutes?: number } | { off:
   if (!/^\d+$/.test(param)) return { invalid: true }
   const minutes = Number(param)
   return minutes === 0 ? { off: true } : { minutes: Math.min(RESPOT_MAX_MINUTES, Math.max(RESPOT_MIN_MINUTES, minutes)) }
+}
+
+/// CLUSTER, the whole word and nothing after it.
+export function isClusterCommand(input: string): boolean {
+  return CLUSTER_MATCH.test(input.trim())
 }

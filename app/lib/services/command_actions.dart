@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart' show asQsonString;
 
 import '../config/navigation.dart';
+import '../settings/cluster_console.dart';
 import '../views/app_shell/home_rail_state.dart';
 import '../views/operation_dialogs.dart';
 
@@ -217,6 +218,17 @@ Future<CommandActionOutcome?> _runNavigate(HaLoServices services, String to) asy
     });
     if (blocked) return (text: t.commands.goBlocked, failed: true);
     await homeRail.leaveTo(home);
+    return null;
+  }
+  if (to == 'cluster') {
+    // CLUSTER (`spot-commands`): the console opens over what is on screen.
+    // Only where an extension uses the cluster, as the Settings section: a
+    // session there would have no Settings to pick its node or turn it off.
+    final calls = services.extensions.clusterCalls;
+    final cluster = calls.offered ? calls.cluster?.call() : null;
+    final context = navigatorKey.currentContext;
+    if (cluster == null || context == null) return unavailable(t.settings.cluster.consoleTitle);
+    unawaited(showClusterConsole(context, cluster));
     return null;
   }
   if (!_goPanels.contains(to)) return (text: t.commands.goUnknown(to: to), failed: true);

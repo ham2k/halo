@@ -1445,6 +1445,18 @@
     "cluster": {
       "title": "dx cluster",
       "description": "the server extensions post spots to and read spots from, logged in as the operator.",
+      "connect": "connect to cluster",
+      "connectOn": "extensions connect to the cluster when they need it",
+      "connectOff": "nothing connects to the cluster",
+      "console": "show console",
+      "consoleDescription": "what the cluster sends, and a place to type commands",
+      "consoleTitle": "cluster console",
+      "consoleConnect": "connect",
+      "consoleDisconnect": "disconnect",
+      "consoleCommand": "command",
+      "consoleEmpty": "nothing yet. connect, or wait for an extension to use the cluster.",
+      "consoleRetry": "sending again: $command",
+      "consoleGaveUp": "not sent: $command ($reason)",
       "server": "cluster server",
       "selectServer": "select server",
       "serverOther": "other",
@@ -1462,13 +1474,15 @@
       "statusConnected": "connected to $node as $call.",
       "statusFailed": "could not connect to $node: $reason",
       "statusUnsupported": "not available in the web version.",
+      "statusOff": "off. turn on connect to cluster to use it.",
       "errors": {
         "noCall": "no operator callsign to log in with",
         "connectFailed": "the node could not be reached",
         "needsPassword": "the node asks for a password, and none is stored",
         "loginFailed": "the node did not accept the login",
         "disconnected": "the node closed the connection",
-        "timeout": "the node did not answer"
+        "timeout": "the node did not answer",
+        "off": "connect to cluster is off"
       }
     },
     "spotting": {
