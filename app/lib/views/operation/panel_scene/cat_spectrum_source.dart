@@ -108,6 +108,11 @@ class CatSpectrumSource implements SceneSpectrumSource {
     return cat.setSpectrum(uuid, SpectrumRequest(centerHz: centerHz));
   }
 
+  /// Any panel that draws the scope, commanding the radio or not: the span
+  /// it sizes is only ever one that changes nothing on the radio.
+  @override
+  void showWidth(String uuid, Object owner, int? widthHz) => cat.wantSpectrumWidth(uuid, owner, widthHz);
+
   @override
   String get noRadio => t.settings.station.spectrumNoRadio;
 

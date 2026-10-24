@@ -53,15 +53,21 @@ class _Scope implements TransceiverSession, SpectrumSession {
   _Scope(this.sink);
   @override
   String? get spectrumUnavailable => null;
+  SpectrumCapabilities capabilities = const SpectrumCapabilities(spansHz: [1], refMinDb: 0, refMaxDb: 1, refStepDb: 1);
   @override
-  SpectrumCapabilities get spectrumCapabilities => const SpectrumCapabilities(spansHz: [1], refMinDb: 0, refMaxDb: 1, refStepDb: 1);
+  SpectrumCapabilities get spectrumCapabilities => capabilities;
+  final spans = <int?>[];
   @override
   void startSpectrum() => log.add('start');
   @override
   void stopSpectrum() => log.add('stop');
   bool running = false;
   @override
-  bool setSpectrum(SpectrumRequest request) => running;
+  bool setSpectrum(SpectrumRequest request) {
+    if (running) spans.add(request.spanHz);
+    return running;
+  }
+
   @override
   void handleData(Uint8List chunk) {}
   @override
@@ -209,5 +215,57 @@ void main() {
     expect((cat.stateFor(uuid).spectrum?.spanHz, cat.stateFor(uuid).spectrumProblem), (50000, 'busy'));
     session.sink.reportSpectrumProblem(null);
     expect(cat.stateFor(uuid).spectrumProblem, isNull);
+  });
+
+  // A FlexRadio's DAX IQ: the band map wants all the stream gives, the radio panel 50 kHz of it.
+  test('a span the app chooses covers the widest display drawing it, and narrows when that one goes', () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final panel = Object(), map = Object();
+    cat.wantSpectrumWidth(uuid, panel, 50000);
+    await pumpEventQueue();
+    expect(scope.spans.last, 40000, reason: 'the narrowest span covering 50 kHz, a span being half the width');
+    cat.wantSpectrumWidth(uuid, map, 450000);
+    await pumpEventQueue();
+    expect(scope.spans.last, 80000, reason: 'wider than any, the widest');
+    cat.wantSpectrumWidth(uuid, map, null);
+    await pumpEventQueue();
+    expect(scope.spans.last, 40000);
+  });
+
+  test("a span that is the radio's own is left to it, whatever the displays show", () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    cat.wantSpectrumWidth(uuid, Object(), 450000);
+    await pumpEventQueue();
+    expect(scope.spans, isEmpty);
+  });
+
+  // A start re-reports the last session's settings, and the radio's report lags an ask: neither
+  // says whether this session's scope was asked for the span its displays need.
+  test('the span is asked again each time the scope starts, and once per change while it runs', () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+      ..running = true;
+    cat.wantSpectrumWidth(uuid, Object(), 50000);
+    var drawing = cat.spectrumFrames(uuid).listen((_) {});
+    await pumpEventQueue();
+    expect(scope.spans, [40000]);
+    final other = cat.spectrumFrames(uuid).listen((_) {});
+    await pumpEventQueue();
+    expect(scope.spans, [40000], reason: 'another display naming no width changes nothing');
+    await other.cancel();
+    await drawing.cancel();
+    await pumpEventQueue();
+    drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    await pumpEventQueue();
+    expect(scope.spans, [40000, 40000]);
   });
 }

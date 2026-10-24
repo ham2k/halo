@@ -182,10 +182,18 @@ export interface PanelSceneSpectrum {
   display?: "both" | "pan" | "waterfall"
   /**
    * Which way the waterfall moves; the panadapter sits on the side it comes from. Frequency rises
-   * left to right for `down` (the default) and `up`, bottom to top for `right` and `left`. Text
-   * stays upright; offsets and `corner`s are measured as if flowing down.
+   * as `rising` says: by default left to right for `down` (the default) and `up`, bottom to top for
+   * `right` and top to bottom for `left` — `down` turned a quarter either way. Text stays upright;
+   * offsets and `corner`s are measured as if flowing down.
    */
   flow?: "down" | "up" | "right" | "left"
+  /**
+   * Which way frequency rises, across the `flow`: `right` or `left` for `down` and `up`, `down` or
+   * `up` for `right` and `left`. Omitted, `right` for `down` and `up`, `up` for `right`, `down` for
+   * `left`. Offsets, `align` and `corner`s are still measured as if frequency rose to the right.
+   * Extension API 12; before it, `left` rose bottom to top as `right` does.
+   */
+  rising?: "right" | "left" | "down" | "up"
   /** The panadapter's share of the height with `both`, 0.1–0.9. Default 0.4. */
   split?: number
   /** dB added to the radio's own floor. */
@@ -229,7 +237,9 @@ export interface PanelSceneSpectrum {
   /**
    * Hz shown across the control, from the middle of each sweep. A sweep wider than this is cropped
    * to it, so a radio whose scope comes in a few widths can be shown at any narrower one — set the
-   * scope (`setRadioSpectrum`) to the narrowest that covers it. Extension API 7.
+   * scope (`setRadioSpectrum`) to the narrowest that covers it. Where the radio's `spectrum` says
+   * `autoSpan`, the app sets the scope itself, wide enough for the widest `span` on screen.
+   * Extension API 7; `autoSpan` 12.
    */
   span?: PanelSceneSpectrumNumber
   /** A click tunes to the nearest multiple of this many Hz. Omitted, wherever it lands. */
@@ -402,6 +412,12 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
    * Survives renders while the pointer stays. Extension API 12.
    */
   hoverSet?: { value: string; to: number }
+  /**
+   * A `button` only: a click sends, as the event's `value`, where along the button's longer side it
+   * landed — 0 at its top or left end, 1 at its bottom or right — so a scale can be clicked at a
+   * place. Keys and screen readers activate it with no value, as does an app before this. Extension API 12.
+   */
+  tapAt?: boolean
   /**
    * 0 to 1, fixed or bound like a layer's. At 0 the control is gone: it takes no clicks,
    * keyboard focus or screen-reader node. Anything between is only drawn fainter.

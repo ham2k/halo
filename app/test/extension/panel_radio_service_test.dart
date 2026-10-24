@@ -711,6 +711,7 @@ void main() {
       final spectrum = bridge().read()['spectrum'] as Map;
       expect((spectrum['spanHz'], spectrum['refLevelDb'], spectrum['speed']), (25000, -4.5, 'slow'));
       expect(spectrum['spansHz'], [25000, 50000]);
+      expect(spectrum['autoSpan'], isFalse, reason: "the radio's own span, for a panel to set");
     });
 
     test('a change reaches the radio as asked; a malformed one does not', () {

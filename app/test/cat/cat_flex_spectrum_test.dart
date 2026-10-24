@@ -220,11 +220,49 @@ void main() {
     expect(sink.frames.last.lowHz, 14300000 - 21000);
   });
 
+  // A slice retuned inside its pan does not move it: a panel that took the scope for centred on the
+  // dial would draw the sweeps that far from its own frequencies.
+  test("the settings carry the pan's own edges, wherever the dial is", () {
+    ready(channel: '1');
+    replies.single(0, '20000000');
+    spectrum.streamStatus('0x20000000', {'daxiq_rate': '48000', 'payload_endian': 'little'});
+    void sweep() {
+      for (var p = 0; p < 10; p++) {
+        spectrum.packet(_packet(0x20000000, _tone(p * 512, 512, 6000)));
+      }
+    }
+
+    sweep();
+    expect((sink.settings.last.lowHz, sink.settings.last.highHz), (14200000 - 21000, 14200000 + 21000));
+    spectrum.set(const SpectrumRequest(centerHz: 14250000));
+    sweep();
+    expect((sink.settings.last.lowHz, sink.settings.last.highHz), (14250000 - 21000, 14250000 + 21000));
+    expect(sink.settings.last.mode, SpectrumMode.center);
+  });
+
   test('a span asks for the stream rate that shows it', () {
     ready(channel: '1');
     replies.single(0, '20000000');
     spectrum.set(const SpectrumRequest(spanHz: 42000));
     expect(sent.last, 'stream set 0x20000000 daxiq_rate=96000');
+  });
+
+  // The rate is the app's for its displays: a slice moved to another pan keeps the width they asked
+  // for, and the next session starts from the radio's, not from what the last one asked.
+  test('the rate asked goes to each stream made for the scope, and is forgotten when it stops', () {
+    ready(channel: '1');
+    spectrum.set(const SpectrumRequest(spanHz: 84000));
+    replies.last(0, '20000000');
+    expect(sent.last, 'stream set 0x20000000 daxiq_rate=192000');
+    spectrum.slicePan('0x40000001');
+    spectrum.panStatus('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
+    replies.last(0, '20000001');
+    expect(sent.last, 'stream set 0x20000001 daxiq_rate=192000');
+    spectrum.stop();
+    sent.clear();
+    ready(channel: '1');
+    replies.last(0, '20000002');
+    expect(sent.where((c) => c.contains('daxiq_rate')), isEmpty);
   });
 
   test('a display opened before the handshake subscribes to pans once the session does', () {

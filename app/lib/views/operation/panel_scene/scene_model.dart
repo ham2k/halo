@@ -274,6 +274,15 @@ class SceneBinding {
   }
 }
 
+/// Whether a spectrum's frequency rises left or up. Omitted, it rises the
+/// way `down` turned a quarter puts it: right for `down` and `up`, up for
+/// `right`, down for `left`.
+bool _reversed(Map<dynamic, dynamic> json) {
+  final across = const ['right', 'left'].contains(json['flow']) ? const ['down', 'up'] : const ['right', 'left'];
+  final rising = _oneOf(json, 'rising', across) ?? (json['flow'] == 'right' ? 'up' : across.first);
+  return rising == 'left' || rising == 'up';
+}
+
 String? _oneOf(Map<dynamic, dynamic> json, String key, List<String> allowed) {
   final value = json[key];
   if (value == null) return null;
@@ -428,6 +437,10 @@ class SceneControl {
   /// A slider or knob takes the scrolls that land on drawn buttons over it.
   final bool scrollThrough;
 
+  /// A button's click sends where along its longer side it landed: 0 at its
+  /// top or left end, 1 at its bottom or right — a scale clicked at a place.
+  final bool tapAt;
+
   /// In a scrolling scene, placed over the panel rather than scrolled; see [SceneLayer.fixed].
   final bool fixed;
   final List<String>? valueLabels;
@@ -501,6 +514,7 @@ class SceneControl {
       hover = json['hover'] == true,
       invertDrag = json['invertDrag'] == true,
       scrollThrough = json['scrollThrough'] == true,
+      tapAt = json['tapAt'] == true,
       fixed = json['fixed'] == true,
       continuous = json['continuous'] == true,
       discrete = json['discrete'] == true,
@@ -538,6 +552,7 @@ class SceneControl {
         !only(continuous, {'slider', 'knob', 'nativeSlider', 'nativeTextField'}) ||
         !only(json['invertDrag'], {'knob'}) ||
         !only(json['scrollThrough'], {'slider', 'knob'}) ||
+        !only(json['tapAt'], {'button'}) ||
         (json['valueY'] != null && kind != 'knob') ||
         // An event carries no other mark of which axis moved: the second needs its own.
         (!isYAxis && json['valueY'] != null && json['event'] != null && (json['eventY'] == null || json['eventY'] == json['event'])) ||
@@ -849,7 +864,7 @@ class SceneSpectrumSpec {
     'radio', 'display', 'split', 'palette', 'floor', 'range', 'hoverHz', 'hoverDb', //
     'average', 'fps', 'waterfallSpeed', 'waterfallFloor', 'waterfallRange', 'waterfallColors', //
     'traceColor', 'traceWidth', 'fillColor', 'fillColorBottom', 'backgroundColor', //
-    'gridColor', 'gridDashed', 'waterfallGridColor', 'center', 'overlays', 'scale', 'tuneStep', 'annotations', 'flow', 'follow', 'span', //
+    'gridColor', 'gridDashed', 'waterfallGridColor', 'center', 'overlays', 'scale', 'tuneStep', 'annotations', 'flow', 'rising', 'follow', 'span', //
   ];
   static const palettes = ['classic', 'gray', 'heat'];
 
@@ -858,9 +873,12 @@ class SceneSpectrumSpec {
   final bool pan, waterfall;
 
   /// Which way the waterfall moves; the panadapter sits on the side it
-  /// comes from. Frequency rises left to right for `down` and `up`, bottom to
-  /// top for `right` and `left`.
+  /// comes from. Frequency rises the way [reversed] says.
   final SceneSpectrumFlow flow;
+
+  /// Frequency rises left, or up — `rising`, or for `right` its default —
+  /// rather than right, or down.
+  final bool reversed;
 
   /// The panadapter's share of the height when both are shown.
   final double split;
@@ -933,6 +951,7 @@ class SceneSpectrumSpec {
   SceneSpectrumSpec(Map<dynamic, dynamic> json)
     : radio = json['radio'] == null ? null : string(json, 'radio'),
       flow = SceneSpectrumFlow.values.byName(_oneOf(json, 'flow', const ['down', 'up', 'right', 'left']) ?? 'down'),
+      reversed = _reversed(json),
       pan = (_oneOf(json, 'display', const ['both', 'pan', 'waterfall']) ?? 'both') != 'waterfall',
       waterfall = (_oneOf(json, 'display', const ['both', 'pan', 'waterfall']) ?? 'both') != 'pan',
       split = number(json, 'split', fallback: .4, min: .1, max: .9),

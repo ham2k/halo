@@ -82,8 +82,10 @@ class FlexDaxSpectrum {
   /// (captured on a FLEX-6600), and that status is the only word on its rate.
   final _unclaimed = <String, Map<String, String>>{};
 
-  /// A span asked for before the stream existed, sent once it does.
-  int? _pendingRate;
+  /// The rate last asked for while the scope runs: sent to each stream made
+  /// for it — the one created after the ask, and a new one when the slice
+  /// moves to another pan — and forgotten when the scope stops.
+  int? _askedRate;
 
   /// The radio refused the stream. Not asked again until the display, or
   /// the pan, changes: pan statuses arrive several times a second, and each
@@ -123,6 +125,8 @@ class FlexDaxSpectrum {
     refStepDb: 1,
     speeds: {SpectrumSpeed.slow, SpectrumSpeed.mid, SpectrumSpeed.fast},
     canRecenter: true,
+    // The DAX IQ rate is ours alone: SmartSDR's panadapter keeps its own width.
+    autoSpan: true,
   );
 
   void start() {
@@ -147,6 +151,7 @@ class FlexDaxSpectrum {
   void stop() {
     if (!_wanted) return;
     _wanted = false;
+    _askedRate = null;
     _release();
     send('unsub pan all');
     sink?.reportSpectrumProblem(null);
@@ -181,12 +186,8 @@ class FlexDaxSpectrum {
       (_pans[pan] ??= {})['center'] = mhz;
     }
     if (request.spanHz case final span?) {
-      final rate = flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))];
-      if (_stream case final stream?) {
-        send('stream set 0x$stream daxiq_rate=$rate');
-      } else {
-        _pendingRate = rate;
-      }
+      final rate = _askedRate = flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))];
+      if (_stream case final stream?) send('stream set 0x$stream daxiq_rate=$rate');
     }
     return true;
   }
@@ -330,8 +331,7 @@ class FlexDaxSpectrum {
         });
         if (_unclaimed.remove(stream) case final fields?) _applyStream(fields);
         _unclaimed.clear();
-        if (_pendingRate case final rate? when rate != _rate) send('stream set 0x$stream daxiq_rate=$rate');
-        _pendingRate = null;
+        if (_askedRate case final rate? when rate != _rate) send('stream set 0x$stream daxiq_rate=$rate');
       },
     );
     _report(_settings.copyWith(spanHz: _visibleHalfWidth(_rate)));
@@ -408,6 +408,9 @@ class FlexDaxSpectrum {
     final range = _noise.update(pooled, refLevelDb: _settings.refLevelDb ?? 0);
     if (range == null) return;
     final center = (centerMhz * 1e6).round();
+    // The pan stays put when the slice retunes inside it: a panel lining
+    // its own picture up with the sweeps needs its edges, not the dial's.
+    _report(_settings.copyWith(lowHz: center - _visibleHalfWidth(_rate), highHz: center + _visibleHalfWidth(_rate)));
     sink?.reportSpectrum(
       SpectrumFrame(
         lowHz: center - _visibleHalfWidth(_rate),

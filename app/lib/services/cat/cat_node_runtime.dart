@@ -69,6 +69,15 @@ class _NodeRuntime {
   /// Whether this connection's scope was started — what a demand changes.
   bool spectrumStarted = false;
 
+  /// The width in Hz each display drawing this scope shows, by display: see
+  /// [CatService.wantSpectrumWidth].
+  final spectrumWidths = <Object, int>{};
+
+  /// The span last asked of this scope since it started, for those widths:
+  /// what the radio reports lags the ask, and a start re-reports the last
+  /// session's, so neither says whether this one was asked.
+  int? spectrumSpanAsked;
+
   /// The operator pressed Connect on this SDR: it stays connected with no
   /// display drawing it, until they press Disconnect.
   bool sdrPinned = false;

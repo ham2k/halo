@@ -424,6 +424,7 @@ extension _Connection on CatService {
       ErrorReportingService.report(e, st, context: 'cat:start-updates:${type.driver.key}');
     }
     runtime.spectrumStarted = false;
+    runtime.spectrumSpanAsked = null;
     if (runtime.spectrum?.hasListener ?? false) _spectrumDemand(runtime, true);
     _settleSdr(runtime);
     return _ConnectOutcome.connected;

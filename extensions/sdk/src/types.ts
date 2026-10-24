@@ -3332,13 +3332,24 @@ export interface PanelRadioSpectrum {
   mode: "center" | "fixed" | null
   /** Half the width shown while centered — what the radio's menu shows as ±. */
   spanHz: number | null
-  /** The edges while fixed. */
+  /**
+   * The edges shown: while fixed, and while centred where the radio places its scope apart from the
+   * dial (a FlexRadio's panadapter, which a retune inside it does not move). Null where the scope
+   * sits on the dial, `spanHz` either side of it.
+   */
   lowHz: number | null
   highHz: number | null
   refLevelDb: number | null
   speed: PanelRadioSpectrumSpeed | null
   /** What `setRadioSpectrum` accepts. A span between two is snapped to the nearer. */
   spansHz: number[]
+  /**
+   * The app sets the span itself — a sweep it computes, whose width changes nothing on the radio
+   * (a FlexRadio's) — to the narrowest covering the widest `span` of the spectrum controls shown,
+   * each cropping its own width. A panel then names its width with `span` and leaves
+   * `setRadioSpectrum`'s `spanHz` alone, or the panels take turns. Absent before extension API 12.
+   */
+  autoSpan?: boolean
   refMinDb: number
   refMaxDb: number
   refStepDb: number

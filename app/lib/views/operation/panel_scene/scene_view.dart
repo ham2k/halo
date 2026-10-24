@@ -217,7 +217,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
       'annotation': ?annotation,
       if (value != null)
         'value': value
-      else if (control.value != null)
+      // A `tapAt` button's value is where it was clicked: activated by a key, it has none.
+      else if (control.value != null && !control.tapAt)
         if (_strings.containsKey(control.value)) 'text': _strings[control.value] else 'value': _values[control.value],
     };
     // Buttons are disabled while outstanding; repeated control commits keep
@@ -446,6 +447,8 @@ class _PanelSceneViewState extends State<PanelSceneView> with WidgetsBindingObse
                 _change(control, v);
               },
               onCommit: () => _commit(control),
+              // Where the click landed, which no scene value holds: sent as the value.
+              onTapAt: control.tapAt ? (along) => _sendControl(control, 'activate', value: along) : null,
               onChangeY: control.yAxis == null
                   ? null
                   : (v) {
@@ -880,6 +883,10 @@ class _ControlView extends StatefulWidget {
   final ValueChanged<double> onChange;
   final ValueChanged<String> onSelect;
 
+  /// A `tapAt` button's click, with where along it the click landed — see
+  /// [SceneControl.tapAt]. Keys and screen readers still commit with none.
+  final ValueChanged<double>? onTapAt;
+
   /// A knob's second axis — see [SceneControl.yAxis]. Null without one.
   final double? valueY;
   final ValueChanged<double>? onChangeY;
@@ -894,6 +901,7 @@ class _ControlView extends StatefulWidget {
     required this.onChange,
     required this.onCommit,
     required this.onSelect,
+    this.onTapAt,
     this.valueY,
     this.onChangeY,
     this.onCommitY,
@@ -1096,6 +1104,12 @@ class _ControlViewState extends State<_ControlView> {
                           return;
                         }
                         if (!button) _focusFromPointer(Focus.of(context));
+                        if (widget.onTapAt case final tapAt? when button) {
+                          final size = context.size ?? Size.zero;
+                          final along = size.height > size.width ? _tapPosition.dy / size.height : _tapPosition.dx / size.width;
+                          tapAt(along.isFinite ? along.clamp(0.0, 1.0) : 0.0);
+                          return;
+                        }
                         if (c.kind == 'slider') {
                           widget.onChange(c.atX(_tapPosition.dx));
                         }

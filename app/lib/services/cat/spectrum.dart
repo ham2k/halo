@@ -109,6 +109,12 @@ class SpectrumCapabilities {
   /// whose window the radio places independently of the VFO.
   final bool canRecenter;
 
+  /// Whether the span is the app's to choose for its displays: the sweep is
+  /// computed here, and a wider one changes nothing the operator sees on the
+  /// radio itself. The app then runs it as wide as the widest display shown
+  /// asks for, and each display crops it to its own width.
+  final bool autoSpan;
+
   const SpectrumCapabilities({
     required this.spansHz,
     required this.refMinDb,
@@ -117,6 +123,7 @@ class SpectrumCapabilities {
     this.modes = const {SpectrumMode.center},
     this.speeds = const {},
     this.canRecenter = false,
+    this.autoSpan = false,
   });
 
   int snapSpan(int hz) => spansHz.reduce((a, b) => (a - hz).abs() <= (b - hz).abs() ? a : b);
@@ -132,11 +139,20 @@ class SpectrumCapabilities {
       other.refStepDb == refStepDb &&
       setEquals(other.modes, modes) &&
       setEquals(other.speeds, speeds) &&
-      other.canRecenter == canRecenter;
+      other.canRecenter == canRecenter &&
+      other.autoSpan == autoSpan;
 
   @override
-  int get hashCode =>
-      Object.hash(Object.hashAll(spansHz), refMinDb, refMaxDb, refStepDb, Object.hashAllUnordered(modes), Object.hashAllUnordered(speeds), canRecenter);
+  int get hashCode => Object.hash(
+    Object.hashAll(spansHz),
+    refMinDb,
+    refMaxDb,
+    refStepDb,
+    Object.hashAllUnordered(modes),
+    Object.hashAllUnordered(speeds),
+    canRecenter,
+    autoSpan,
+  );
 }
 
 /// A change to the scope. Null fields are left as they are.

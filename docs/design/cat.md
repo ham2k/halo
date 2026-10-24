@@ -2672,6 +2672,17 @@ radio's own knob moves it while nothing listens. `setSpectrum` on a stopped
 scope answers false, and the host API says `stopped`, rather than queueing a
 change for whenever a display next opens.
 
+**One scope, displays of different widths.** Each scene spectrum control
+drawing a scope tells `CatService.wantSpectrumWidth` the width its `span` crops
+to. Where the sweep is computed here and a wider one changes nothing on the
+radio (`SpectrumCapabilities.autoSpan`, a FlexRadio's DAX IQ), the scope runs
+at the narrowest span covering the widest display, or its widest, and each
+display crops its own width from it: a band map can take in all 168 kHz while
+the radio panel shows 50. A display leaving narrows it again; one that names no
+width asks for none. Elsewhere the span is the radio's own — widening an Icom's
+would change the radio's own screen, and cropping its few hundred points gets
+coarse — and a panel sets it with `setRadioSpectrum`, as before.
+
 Levels are dB on the radio's own scale — not calibrated dBm — with a drawing
 floor and ceiling reported by the radio or estimated locally. A display maps
 that range to its height and an operator's contrast moves from there.

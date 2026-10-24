@@ -18,6 +18,22 @@ extension CatServiceSpectrum on CatService {
     )).stream;
   }
 
+  /// [owner], a display drawing [uuid]'s sweeps, shows [widthHz] of them —
+  /// null once it no longer draws them. Where the span is the app's to
+  /// choose ([SpectrumCapabilities.autoSpan]), the scope runs at the narrowest
+  /// span that covers the widest display, or the widest it has; a display
+  /// that names no width asks for none. Elsewhere the span stays the radio's.
+  void wantSpectrumWidth(String uuid, Object owner, int? widthHz) {
+    final runtime = _runtimeFor(uuid);
+    if (runtime.spectrumWidths[owner] == widthHz) return;
+    if (widthHz == null) {
+      runtime.spectrumWidths.remove(owner);
+    } else {
+      runtime.spectrumWidths[owner] = widthHz;
+    }
+    _scheduleSpectrumDemand(runtime);
+  }
+
   /// [uuid]'s scope, when it is connected and has one.
   SpectrumSession? spectrumSessionFor(String uuid) => switch (connectedSession(uuid)) {
     final SpectrumSession session => session,
@@ -195,19 +211,41 @@ extension CatServiceSpectrum on CatService {
 
   void _spectrumDemand(_NodeRuntime runtime, bool wanted) {
     final session = runtime.session;
-    if (session is! SpectrumSession || runtime.state.status != EquipmentStatus.connected || wanted == runtime.spectrumStarted) return;
+    if (session is! SpectrumSession || runtime.state.status != EquipmentStatus.connected) return;
+    if (wanted == runtime.spectrumStarted) {
+      if (wanted) _spectrumSpan(runtime, session);
+      return;
+    }
     runtime.spectrumStarted = wanted;
+    runtime.spectrumSpanAsked = null;
     try {
       wanted ? session.startSpectrum() : session.stopSpectrum();
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:spectrum-demand');
     }
+    if (wanted) _spectrumSpan(runtime, session);
     // A stopped scope's settings are what it was, not what it is: the radio's
     // own knob can move them while nothing listens.
     if (!wanted && (runtime.state.spectrum != null || runtime.state.spectrumProblem != null)) {
       for (final MapEntry(key: uuid, value: r) in _runtimes.entries) {
         if (identical(r, runtime)) _setState(uuid, r.state.copyWith(clearSpectrum: true, clearSpectrumProblem: true));
       }
+    }
+  }
+
+  /// A running scope whose span is the app's, at the narrowest span covering
+  /// the widest display drawing it — asked once per change of that span, so
+  /// a radio that snaps it is not asked again on every display's coming and going.
+  void _spectrumSpan(_NodeRuntime runtime, SpectrumSession session) {
+    final capabilities = session.spectrumCapabilities;
+    if (!capabilities.autoSpan || capabilities.spansHz.isEmpty || runtime.spectrumWidths.isEmpty) return;
+    final widest = runtime.spectrumWidths.values.reduce((a, b) => a > b ? a : b);
+    final span = capabilities.spansHz.firstWhere((s) => s * 2 >= widest, orElse: () => capabilities.spansHz.last);
+    if (runtime.spectrumSpanAsked == span) return;
+    try {
+      if (session.setSpectrum(SpectrumRequest(spanHz: span))) runtime.spectrumSpanAsked = span;
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:spectrum-span');
     }
   }
 }

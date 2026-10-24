@@ -40,6 +40,9 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   @override
   Listenable get readingChanges => this;
   final recentered = <int>[];
+  final widths = <Object, int>{};
+  @override
+  void showWidth(String uuid, Object owner, int? widthHz) => widthHz == null ? widths.remove(owner) : widths[owner] = widthHz;
   @override
   bool recenter(String uuid, int centerHz) {
     recentered.add(centerHz);
@@ -614,8 +617,8 @@ void main() {
       expect(placed, containsAll([(spectrum.height - panHeight, panHeight), (0.0, spectrum.height - panHeight)]));
     });
 
-    testWidgets('turned, frequency rises up the control, and a click tunes where it lands', (tester) async {
-      for (final flow in ['right', 'left']) {
+    testWidgets('turned, frequency runs as down turned a quarter, and a click tunes where it lands', (tester) async {
+      for (final (flow, quarterDown) in [('right', 14075000.0), ('left', 14025000.0)]) {
         final source = _Source();
         final events = <Map<String, dynamic>>[];
         await _show(
@@ -630,13 +633,65 @@ void main() {
         source.controller.add(_frame());
         await tester.pump();
         final box = tester.getRect(find.byType(SceneSpectrumView));
-        // A quarter of the way up: a quarter of 14.000–14.100 MHz, whichever
-        // side the panadapter is on — tuning off the axis the eye reads.
-        await tester.tapAt(Offset(box.center.dx, box.bottom - box.height / 4));
+        // A quarter of the way down 14.000–14.100 MHz: rising up the control for `right`, down it for `left`.
+        await tester.tapAt(Offset(box.center.dx, box.top + box.height / 4));
         await tester.pump();
-        expect(events.single['value'] as double, closeTo(14025000, 500), reason: flow);
+        expect(events.single['value'] as double, closeTo(quarterDown, 500), reason: flow);
       }
     });
+
+    test('rising takes only the two ways across the flow', () {
+      SceneSpectrumSpec spec(Map<String, dynamic> s) => PanelScene(_doc(spectrum: s)).controlsById['pan']!.spectrum!;
+      expect(spec({}).reversed, isFalse);
+      expect(spec({'rising': 'right'}).reversed, isFalse);
+      expect(spec({'rising': 'left'}).reversed, isTrue);
+      expect(spec({'flow': 'left', 'rising': 'up'}).reversed, isTrue);
+      expect(spec({'flow': 'right', 'rising': 'down'}).reversed, isFalse);
+      expect(spec({'flow': 'right'}).reversed, isTrue, reason: 'up, as down turned a quarter');
+      expect(spec({'flow': 'left'}).reversed, isFalse, reason: 'down, as down turned a quarter');
+      expect(() => spec({'rising': 'up'}), throwsFormatException);
+      expect(() => spec({'flow': 'right', 'rising': 'left'}), throwsFormatException);
+    });
+
+    testWidgets('rising against its default, a click tunes from the other end', (tester) async {
+      for (final (flow, rising, at) in [
+        ('down', 'left', (Size s) => Offset(s.width / 4, s.height / 2)),
+        ('up', 'left', (Size s) => Offset(s.width / 4, s.height / 2)),
+        ('right', 'down', (Size s) => Offset(s.width / 2, s.height * 3 / 4)),
+        ('left', 'up', (Size s) => Offset(s.width / 2, s.height / 4)),
+      ]) {
+        final source = _Source();
+        final events = <Map<String, dynamic>>[];
+        await _show(
+          tester,
+          source: source,
+          spectrum: {'flow': flow, 'rising': rising},
+          onEvent: (e) async {
+            events.add(e);
+            return {};
+          },
+        );
+        source.controller.add(_frame());
+        await tester.pump();
+        final box = tester.getRect(find.byType(SceneSpectrumView));
+        // A quarter of the way in from where frequency now starts: three quarters up the sweep.
+        await tester.tapAt(box.topLeft + at(box.size));
+        await tester.pump();
+        expect(events.single['value'] as double, closeTo(14075000, 500), reason: '$flow $rising');
+      }
+    });
+  });
+
+  testWidgets('a control tells the source the width it crops to while it draws, and nothing once it goes', (tester) async {
+    final source = _Source();
+    await _show(tester, source: source, spectrum: const {'span': 50000});
+    expect(source.widths.values, [50000]);
+    await _show(tester, source: source, spectrum: const {'span': 20000});
+    expect(source.widths.values, [20000]);
+    await _show(tester, source: source, visible: false, spectrum: const {'span': 20000});
+    expect(source.widths, isEmpty, reason: 'hidden, it draws nothing');
+    await _show(tester, source: source);
+    expect(source.widths, isEmpty, reason: 'with no span it asks for none');
   });
 
   testWidgets('a disabled spectrum shows, and sends nothing', (tester) async {

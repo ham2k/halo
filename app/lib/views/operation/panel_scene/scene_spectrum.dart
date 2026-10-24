@@ -58,6 +58,11 @@ abstract class SceneSpectrumSource {
   /// `follow`s the VFO. False where the radio's window is not the app's to
   /// move, or the panel may not command the radio.
   bool recenter(String uuid, int centerHz);
+
+  /// [owner] shows [widthHz] of [uuid]'s sweeps — its `span` — or null once
+  /// it shows none: where the span is the app's to choose, the scope is run
+  /// wide enough for the widest.
+  void showWidth(String uuid, Object owner, int? widthHz);
 }
 
 /// How long a display goes without a sweep before it says it is waiting,
@@ -108,6 +113,10 @@ class SceneSpectrumView extends StatefulWidget {
 class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   StreamSubscription<SpectrumFrame>? _subscription;
   String? _uuid;
+
+  /// The width last told to a source, and which source and node it was told
+  /// for: see [SceneSpectrumSource.showWidth].
+  (SceneSpectrumSource, String, int)? _shown;
 
   /// The last sweep, its levels averaged — what the trace draws.
   SpectrumFrame? _frame;
@@ -211,6 +220,21 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
 
   /// Subscribes to the radio this control names, while it is seen.
   void _follow() {
+    _subscribe();
+    _showWidth();
+  }
+
+  /// Tells the source the width this control crops its sweeps to, while it draws them.
+  void _showWidth() {
+    final (source, uuid, width) = (widget.source, _uuid, _number(_spec.span)?.round());
+    final now = source == null || uuid == null || width == null || width <= 0 ? null : (source, uuid, width);
+    if (now == _shown) return;
+    if (_shown case (final source, final uuid, _)) source.showWidth(uuid, this, null);
+    _shown = now;
+    if (now case (final source, final uuid, final width)) source.showWidth(uuid, this, width);
+  }
+
+  void _subscribe() {
     final uuid = widget.awake ? widget.source?.resolve(_spec.radio) : null;
     if (uuid == _uuid && (_subscription != null) == (uuid != null)) return;
     _subscription?.cancel();
@@ -334,6 +358,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   void dispose() {
     widget.source?.changes.removeListener(_onSourceChanged);
     _subscription?.cancel();
+    if (_shown case (final source, final uuid, _)) source.showWidth(uuid, this, null);
     _staleTimer?.cancel();
     _texts.dispose();
     _clearRows();
@@ -344,9 +369,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
 
   /// How far along the sweep [at] is, 0 to 1, whichever way it flows.
   double? _fractionAt(Offset at, Size size) {
-    final width = _canonical(_spec.flow, size).width;
+    final way = (flow: _spec.flow, reversed: _spec.reversed);
+    final width = _canonical(way, size).width;
     if (width <= 0) return null;
-    return (_toCanonical(_spec.flow, size, at).dx / width).clamp(0.0, 1.0);
+    return (_toCanonical(way, size, at).dx / width).clamp(0.0, 1.0);
   }
 
   double? _hzAt(Offset at, Size size) {
@@ -419,10 +445,10 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
                   ColoredBox(color: spec.backgroundColor ?? scheme.surfaceContainerLowest),
                   ...() {
                     final scale = spec.scale;
-                    final flow = spec.flow;
+                    final _Way way = (flow: spec.flow, reversed: spec.reversed);
                     // Laid out as if flowing down, then mapped onto the box.
-                    final frame = _canonical(flow, size);
-                    final toScreen = _flowMatrix(flow, size);
+                    final frame = _canonical(way, size);
+                    final toScreen = _flowMatrix(way, size);
                     final gap = scale == null ? 0.0 : (_number(scale.gap) ?? _defaultGap).clamp(0.0, frame.height);
                     final rest = frame.height - gap;
                     final panHeight = !spec.pan ? 0.0 : (spec.waterfall ? rest * spec.split : rest);
@@ -432,7 +458,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
                     Rect place(double top, double height) => _toScreen(toScreen, Rect.fromLTWH(0, top, frame.width, height));
                     // The gap's own top and bottom, wherever the flow turns them.
                     final (nearSide, farSide) = (_side(scale?.borderTop), _side(scale?.borderBottom));
-                    final border = switch (flow) {
+                    final border = switch (way.flow) {
                       SceneSpectrumFlow.down => Border(top: nearSide, bottom: farSide),
                       SceneSpectrumFlow.up => Border(bottom: nearSide, top: farSide),
                       SceneSpectrumFlow.right => Border(left: nearSide, right: farSide),
@@ -447,7 +473,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
                             child: CustomPaint(
                               painter: _PanPainter(
                                 repaint: _panRepaint,
-                                flow: flow,
+                                way: way,
                                 frame: () => _stale ? null : _frame,
                                 scale: _panScale,
                                 marks: marks,
@@ -468,7 +494,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
                           rect: place(panHeight + gap, frame.height - panHeight - gap),
                           child: ClipRect(
                             child: CustomPaint(
-                              painter: _WaterfallPainter(repaint: _waterfallRepaint, flow: flow, rows: _rows, frame: () => _frame, marks: marks, style: style),
+                              painter: _WaterfallPainter(repaint: _waterfallRepaint, way: way, rows: _rows, frame: () => _frame, marks: marks, style: style),
                             ),
                           ),
                         ),
@@ -479,7 +505,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
                               painter: _AnnotationPainter(
                                 texts: _texts,
                                 repaint: _panRepaint,
-                                flow: flow,
+                                way: way,
                                 frame: () => _frame,
                                 marks: marks,
                                 panBottom: spec.pan ? panHeight : null,
@@ -498,7 +524,7 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
                               painter: _ScalePainter(
                                 texts: _texts,
                                 repaint: _panRepaint,
-                                flow: flow,
+                                way: way,
                                 frame: () => _frame,
                                 base: base,
                                 gap: gap,
@@ -529,11 +555,15 @@ class _SceneSpectrumViewState extends State<SceneSpectrumView> {
   }
 }
 
-/// The spectrum's own frame — frequency along x, the panadapter, gap and
-/// waterfall stacked down y — mapped onto a [screen] box for [flow]. A
-/// mirror for `up`, a quarter turn for `right` and `left`, with frequency
-/// rising up the screen in both.
-Matrix4 _flowMatrix(SceneSpectrumFlow flow, Size screen) {
+/// Which way a spectrum lies: the waterfall's [flow], and whether
+/// frequency runs against the way that flow gives it.
+typedef _Way = ({SceneSpectrumFlow flow, bool reversed});
+
+/// The spectrum's own frame — frequency rising along x, the panadapter, gap
+/// and waterfall stacked down y — mapped onto a [screen] box for [way]. A
+/// mirror for `up`; for `right` and `left`, frequency runs down the screen.
+/// Reversed, frequency is mirrored first.
+Matrix4 _flowMatrix(_Way way, Size screen) {
   Matrix4 rows(List<double> x, List<double> y) => Matrix4.zero()
     ..setEntry(0, 0, x[0])
     ..setEntry(0, 1, x[1])
@@ -544,33 +574,37 @@ Matrix4 _flowMatrix(SceneSpectrumFlow flow, Size screen) {
     ..setEntry(2, 2, 1)
     ..setEntry(3, 3, 1);
   final (w, h) = (screen.width, screen.height);
-  return switch (flow) {
+  final turn = switch (way.flow) {
     SceneSpectrumFlow.down => Matrix4.identity(),
     SceneSpectrumFlow.up => rows([1, 0, 0], [0, -1, h]),
-    SceneSpectrumFlow.right => rows([0, 1, 0], [-1, 0, h]),
-    SceneSpectrumFlow.left => rows([0, -1, w], [-1, 0, h]),
+    SceneSpectrumFlow.right => rows([0, 1, 0], [1, 0, 0]),
+    SceneSpectrumFlow.left => rows([0, -1, w], [1, 0, 0]),
   };
+  return way.reversed ? (turn..multiply(rows([-1, 0, _canonical(way, screen).width], [0, 1, 0]))) : turn;
 }
 
-bool _turned(SceneSpectrumFlow flow) => flow == SceneSpectrumFlow.right || flow == SceneSpectrumFlow.left;
+bool _turned(_Way way) => way.flow == SceneSpectrumFlow.right || way.flow == SceneSpectrumFlow.left;
 
 /// The spectrum's own frame for a [screen] box.
-Size _canonical(SceneSpectrumFlow flow, Size screen) => _turned(flow) ? screen.flipped : screen;
+Size _canonical(_Way way, Size screen) => _turned(way) ? screen.flipped : screen;
 
-Offset _toCanonical(SceneSpectrumFlow flow, Size screen, Offset at) => switch (flow) {
-  SceneSpectrumFlow.down => at,
-  SceneSpectrumFlow.up => Offset(at.dx, screen.height - at.dy),
-  SceneSpectrumFlow.right => Offset(screen.height - at.dy, at.dx),
-  SceneSpectrumFlow.left => Offset(screen.height - at.dy, screen.width - at.dx),
-};
+Offset _toCanonical(_Way way, Size screen, Offset at) {
+  final turned = switch (way.flow) {
+    SceneSpectrumFlow.down => at,
+    SceneSpectrumFlow.up => Offset(at.dx, screen.height - at.dy),
+    SceneSpectrumFlow.right => Offset(at.dy, at.dx),
+    SceneSpectrumFlow.left => Offset(at.dy, screen.width - at.dx),
+  };
+  return way.reversed ? Offset(_canonical(way, screen).width - turned.dx, turned.dy) : turned;
+}
 
 Rect _toScreen(Matrix4 m, Rect canonical) => MatrixUtils.transformRect(m, canonical);
 
 /// Draws a part in its own frame: [paint] gets the canonical size.
-void _inFlow(Canvas canvas, Size screen, SceneSpectrumFlow flow, void Function(Size size) paint) {
+void _inFlow(Canvas canvas, Size screen, _Way way, void Function(Size size) paint) {
   canvas.save();
-  canvas.transform(_flowMatrix(flow, screen).storage);
-  paint(_canonical(flow, screen));
+  canvas.transform(_flowMatrix(way, screen).storage);
+  paint(_canonical(way, screen));
   canvas.restore();
 }
 
@@ -658,17 +692,17 @@ void _paintMarks(Canvas canvas, Size size, SpectrumFrame? frame, _Marks marks, _
 }
 
 class _PanPainter extends CustomPainter {
-  final SceneSpectrumFlow flow;
+  final _Way way;
   final SpectrumFrame? Function() frame;
   final (double, double) Function(SpectrumFrame) scale;
   final _Marks marks;
   final _Style style;
 
-  _PanPainter({required Listenable repaint, required this.flow, required this.frame, required this.scale, required this.marks, required this.style})
+  _PanPainter({required Listenable repaint, required this.way, required this.frame, required this.scale, required this.marks, required this.style})
     : super(repaint: repaint);
 
   @override
-  void paint(Canvas canvas, Size screen) => _inFlow(canvas, screen, flow, (size) => _paint(canvas, size));
+  void paint(Canvas canvas, Size screen) => _inFlow(canvas, screen, way, (size) => _paint(canvas, size));
 
   void _paint(Canvas canvas, Size size) {
     final current = frame();
@@ -753,7 +787,7 @@ SpectrumFrame cropSpectrumFrame(SpectrumFrame frame, double? widthHz) {
 typedef _Row = ({ui.Image image, int lowHz, int highHz});
 
 class _WaterfallPainter extends CustomPainter {
-  final SceneSpectrumFlow flow;
+  final _Way way;
   final List<_Row> rows;
 
   /// For the frequency lines and the marks, which follow the latest sweep.
@@ -761,11 +795,11 @@ class _WaterfallPainter extends CustomPainter {
   final _Marks marks;
   final _Style style;
 
-  _WaterfallPainter({required Listenable repaint, required this.flow, required this.rows, required this.frame, required this.marks, required this.style})
+  _WaterfallPainter({required Listenable repaint, required this.way, required this.rows, required this.frame, required this.marks, required this.style})
     : super(repaint: repaint);
 
   @override
-  void paint(Canvas canvas, Size screen) => _inFlow(canvas, screen, flow, (size) => _paint(canvas, size));
+  void paint(Canvas canvas, Size screen) => _inFlow(canvas, screen, way, (size) => _paint(canvas, size));
 
   void _paint(Canvas canvas, Size size) {
     if (size.height <= 0) return;
@@ -799,7 +833,7 @@ class _WaterfallPainter extends CustomPainter {
 /// The frequency labels and ticks, over the whole control so an offset can
 /// put them anywhere: in the gap, or over the panadapter or the waterfall.
 class _ScalePainter extends CustomPainter {
-  final SceneSpectrumFlow flow;
+  final _Way way;
   final SpectrumFrame? Function() frame;
   final _TextCache texts;
 
@@ -814,7 +848,7 @@ class _ScalePainter extends CustomPainter {
 
   _ScalePainter({
     required Listenable repaint,
-    required this.flow,
+    required this.way,
     required this.texts,
     required this.frame,
     required this.base,
@@ -842,7 +876,7 @@ class _ScalePainter extends CustomPainter {
     final span = (current.highHz - current.lowHz).toDouble();
     final labelStep = number(labels?.interval) ?? _gridStep(span);
     if (ticks case final ticks?) {
-      _inFlow(canvas, screen, flow, (size) {
+      _inFlow(canvas, screen, way, (size) {
         final paint = Paint()
           ..color = ticks.color ?? text.color ?? const Color(0xFF888888)
           ..strokeWidth = number(ticks.width) ?? 1;
@@ -855,9 +889,9 @@ class _ScalePainter extends CustomPainter {
     }
     // Text is laid out in the spectrum's frame but drawn upright: its box is
     // mapped onto the screen, and the text set in that box.
-    final size = _canonical(flow, screen);
-    final toScreen = _flowMatrix(flow, screen);
-    final turned = _turned(flow);
+    final size = _canonical(way, screen);
+    final toScreen = _flowMatrix(way, screen);
+    final turned = _turned(way);
     final shown = labels;
     if (shown == null) return;
     final style = text.copyWith(
@@ -944,7 +978,7 @@ Path _bubble(Rect rect, double radius, {required double x, required String align
 FontWeight? _weight(double? w) => w == null ? null : FontWeight.values[((w / 100).round() - 1).clamp(0, 8)];
 
 class _AnnotationPainter extends CustomPainter {
-  final SceneSpectrumFlow flow;
+  final _Way way;
   final SpectrumFrame? Function() frame;
   final _TextCache texts;
   final _Marks marks;
@@ -959,7 +993,7 @@ class _AnnotationPainter extends CustomPainter {
 
   _AnnotationPainter({
     required Listenable repaint,
-    required this.flow,
+    required this.way,
     required this.texts,
     required this.frame,
     required this.marks,
@@ -975,9 +1009,9 @@ class _AnnotationPainter extends CustomPainter {
     hits.clear();
     // Laid out in the spectrum's frame, as the scale's labels are; the box
     // and its point are mapped onto the screen, the text set upright in it.
-    final size = _canonical(flow, screen);
-    final toScreen = _flowMatrix(flow, screen);
-    final turned = _turned(flow);
+    final size = _canonical(way, screen);
+    final toScreen = _flowMatrix(way, screen);
+    final turned = _turned(way);
     final current = frame();
     if (current == null || current.highHz <= current.lowHz) return;
     final span = (current.highHz - current.lowHz).toDouble();

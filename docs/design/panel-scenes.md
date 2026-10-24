@@ -90,6 +90,9 @@ assets, which ship wholesale, and only the host's bridge tests load it. To try i
   Any drawn control may instead take `hoverSet`, which writes a fixed number into a
   scene value while the pointer is over it and puts the scene's own back when it
   leaves — a highlight, never an event — so a button can still be clicked.
+  A button with `tapAt` says where it was clicked: the event's `value` is the click's
+  place along its longer side, 0 at its top or left and 1 at its bottom or right, so a
+  scale tunes to the frequency under the pointer. Keys and screen readers send none.
 - Eased transitions and deterministic pulse/flicker run entirely in Flutter.
   Artwork stays a child of animated transforms; XML is not regenerated per frame.
   LED glow uses an SVG radial gradient rather than animated blur filters.
@@ -258,10 +261,13 @@ is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
   control so an `offset` can put them anywhere, measured from the panadapter's
   base. A label that would touch the last one is skipped, so a narrow pane
   shows every other label rather than a run of digits.
-- **One layout, four flows.** `flow` turns the whole control: the panadapter,
+- **One layout, eight ways.** `flow` turns the whole control: the panadapter,
   gap and waterfall are laid out as if the waterfall moved down, and one
-  matrix mirrors that for `up` or turns it a quarter for `right` and `left`,
-  where frequency rises up the screen. Lines, fills and rows are drawn through
+  matrix mirrors that for `up`, or lays frequency down the screen for `right`
+  and `left`. `rising` turns frequency the other way across the flow, a
+  mirror applied before the turn, so the eight ways a spectrum can lie share
+  one layout. Its default makes each sideways flow `down` turned a quarter,
+  never mirrored: up the screen for `right`, down it for `left`. Lines, fills and rows are drawn through
   the matrix; text is not — a label's or an annotation's box is mapped, and
   the text set upright in it — so offsets and pointer corners keep their
   meaning in every flow. Clicks and the pointer go back through the same

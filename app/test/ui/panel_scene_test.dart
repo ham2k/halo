@@ -1158,6 +1158,63 @@ void main() {
     expect(() => PanelScene(sized(controls: 257)), throwsFormatException);
   });
 
+  group('tapAt', () {
+    // A scale drawn as a tall button and as a wide one: a click says where along each it landed.
+    Map<String, dynamic> scales() {
+      final doc = document();
+      (doc['controls'] as List).addAll(<Map<String, Object>>[
+        {'id': 'tall', 'label': 'Tall', 'kind': 'button', 'x': 200, 'y': 0, 'width': 40, 'height': 100, 'event': 'tall', 'tapAt': true},
+        {'id': 'wide', 'label': 'Wide', 'kind': 'button', 'x': 300, 'y': 0, 'width': 100, 'height': 40, 'event': 'wide', 'tapAt': true},
+      ]);
+      return doc;
+    }
+
+    testWidgets('a click sends where along the longer side it landed', (tester) async {
+      final events = <Map<String, dynamic>>[];
+      await show(
+        tester,
+        scales(),
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      final tall = tester.getRect(find.bySemanticsLabel('Tall')), wide = tester.getRect(find.bySemanticsLabel('Wide'));
+      await tester.tapAt(Offset(tall.center.dx, tall.top + tall.height / 4));
+      await tester.tapAt(Offset(wide.left + wide.width * 0.75, wide.center.dy));
+      await tester.pump();
+      expect([for (final e in events) (e['action'], e['phase'])], [('tall', 'activate'), ('wide', 'activate')]);
+      expect(events[0]['value'], closeTo(0.25, 0.01));
+      expect(events[1]['value'], closeTo(0.75, 0.01));
+    });
+
+    // A scale that lights itself with a bound value must not have that value read as a place.
+    testWidgets('activated by a screen reader, it sends no place, even with a value bound', (tester) async {
+      final semantics = tester.ensureSemantics();
+      final doc = scales();
+      ((doc['controls'] as List).last as Map<String, dynamic>)['value'] = 'v';
+      final events = <Map<String, dynamic>>[];
+      await show(
+        tester,
+        doc,
+        onEvent: (e) async {
+          events.add(e);
+          return {};
+        },
+      );
+      tester.semantics.tap(find.semantics.byLabel('Wide'));
+      await tester.pump();
+      expect([for (final e in events) (e['action'], e.containsKey('value'))], [('wide', false)]);
+      semantics.dispose();
+    });
+
+    test('belongs to a button', () {
+      final doc = document(local: true);
+      (doc['controls'] as List).add({'id': 's', 'label': 'S', 'kind': 'slider', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'value': 'v', 'tapAt': true});
+      expect(() => PanelScene(doc), throwsFormatException);
+    });
+  });
+
   group('hoverSet', () {
     // Two spots side by side, each lighting up its own number in one shared value. The slider
     // sends events, so nothing else keeps `v` across a render.
