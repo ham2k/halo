@@ -91,11 +91,11 @@ void main() {
       expect(freqAsShown(tester), '472.5');
     });
 
-    testWidgets('past a GHz, the MHz part is grouped too', (tester) async {
-      // 1296 MHz is 1.296.000 kHz — the part carrying whole MHz needs its own
-      // mark, or it reads `1296.000`.
+    testWidgets('past a GHz, the MHz part takes no mark of its own', (tester) async {
+      // `1296.000`, as fmtFreq writes it — a row grouping it as `1.296.000`
+      // would show one frequency two ways across the app.
       await pumpWithFreq(tester, 1296000.0);
-      expect(freqAsShown(tester), '1.296.000');
+      expect(freqAsShown(tester), '1296.000');
     });
   });
 

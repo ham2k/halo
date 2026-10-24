@@ -389,7 +389,7 @@ void main() {
       expect(fmtFreq(14285), '14.285');
       expect(fmtFreq(14285.5), '14.285.5');
       expect(fmtFreq(472), '472');
-      expect(fmtFreq(1296200), '1.296.200');
+      expect(fmtFreq(1296200), '1296.200');
     });
 
     test('keeps every digit down to the Hz, and no trailing zero', () {

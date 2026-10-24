@@ -902,31 +902,45 @@ String? superModeForMode(String? mode) {
 final _freqSpaces = RegExp(r'[\s\u00a0\u202f]');
 final _freqChars = RegExp(r'^[0-9.]+$');
 
+/// The microwave bands [parseFreq] reads a number a thousandfold up into, in
+/// kHz — the same short table as `@ham2k/lib-format-tools` `parseFreq`, so
+/// the Freq field and a call-field command agree. Not [bands], which stops at
+/// 23cm: only these decide between readings, so a band whose digits mean
+/// something else as MHz leaves them out — 30m read as MHz sits inside 3cm
+/// read as GHz, and 3.5 is 80m.
+const _microwaveRescues = [
+  (1240000, 1300000), // 23cm
+  (2300000, 2450000), // 13cm
+  (3300000, 3450000), // 9cm
+  (5650000, 5925000), // 6cm
+  (10000000, 10099999), (10150001, 10500000), // 3cm, around 30m
+  (24000000, 24250000), // 1.25cm
+];
+
+bool _isMicrowave(double khz) => _microwaveRescues.any((range) => khz >= range.$1 && khz <= range.$2);
+
 /// Parses user frequency input into kHz.
 ///
 /// Frequencies are written with periods whatever the device's number
 /// conventions, for grouping and decimals alike — `14.285`, `14.285.5`,
-/// `14.285.505` — and context says which mark is which. A comma reads as a
+/// `1296.000` — and context says which mark is which. A comma reads as a
 /// period: it is the only mark a comma-decimal phone keypad offers, and
 /// `14,285.5` typed out of US habit names the same frequency.
 ///
 /// - No mark: kHz.
-/// - One mark: MHz when the value is under 1000 ("14.285" → 14285), kHz
-///   otherwise ("14285.5").
-/// - Two or more: the first group is one to three digits and every group
-///   between it and the last exactly three, or the input is refused rather
-///   than guessed at ("14285.200.5" is a stray mark, not 14 GHz). The last
-///   mark is the
-///   decimal ("14.200.5" → 14200.5), which is the MHz.kHz.Hz reading of
-///   anything below 1 GHz.
-///
-/// Where a second reading is possible, the band plan breaks the tie — see
-/// the comments below. The tie-break never has to choose between two bands
-/// only because [bands] stops at 23cm: with the microwave bands in it, 2m
-/// read as GHz is 2mm and 30m is 3cm.
+/// - One mark under 1000: MHz ("14.285" → 14285), or kHz for 2190m and 630m
+///   ("472.5"), or GHz for a microwave band ("1.296").
+/// - One mark from 1000: kHz ("14285.5"), or MHz for a microwave band —
+///   "1296.000", which is how [fmtFreq] writes 23cm.
+/// - Two or more: the last mark is the decimal ("14.200.5" → 14200.5), unless
+///   only reading every mark as grouping names a band ("1.296.000"). Every
+///   group between the first and the last is exactly three digits, and a
+///   first group past three is whole MHz only where that lands in a microwave
+///   band ("10368.100.5"); anything else is refused rather than guessed at
+///   ("14285.200.5" is a stray mark, not 14 GHz).
 ///
 /// Extensions read the same notation through `@ham2k/lib-format-tools`
-/// `parseFreq` (1.3.0 on), whose own short table also rescues 13cm–1.25cm.
+/// `parseFreq` (1.3.1 on).
 double? parseFreq(String input) {
   final cleaned = input.trim().replaceAll(_freqSpaces, '').replaceAll(',', '.');
   if (!_freqChars.hasMatch(cleaned)) return null;
@@ -943,7 +957,7 @@ double? parseFreq(String input) {
     // When NO reading names a band ("5.0" — WWV, or a typo) the MHz reading
     // still wins. The other two only rescue the cases where they are
     // unambiguously right — 2200m and 630m, which is why `fmtFreqInput` can
-    // round-trip them at all, and 23cm.
+    // round-trip them at all, and the microwave bands.
     final asMHz = value * 1000;
     if (bandForFrequency(asMHz) != null) return asMHz;
     if (bandForFrequency(value) != null) return value;
@@ -951,9 +965,10 @@ double? parseFreq(String input) {
     // 23cm, but it is also how an iOS numeric keypad, which has no "m",
     // names the 1.25m band through [parseBandInput].
     final asGHz = value * 1000000;
-    if (bandForFrequency(asGHz) != null && parseBandInput(cleaned) == null) return asGHz;
+    if (_isMicrowave(asGHz) && parseBandInput(cleaned) == null) return asGHz;
     return asMHz;
   }
+  if (groups.length == 2 && bandForFrequency(value) == null && _isMicrowave(value * 1000)) return value * 1000;
   return value;
 }
 
@@ -961,16 +976,16 @@ double? parseFreq(String input) {
 double? _parseGroupedFreq(List<String> groups) {
   final first = groups.first;
   final last = groups.last;
-  if (first.isEmpty || first.length > 3 || last.isEmpty) return null;
+  if (first.isEmpty || last.isEmpty) return null;
   if (groups.sublist(1, groups.length - 1).any((group) => group.length != 3)) return null;
   final withDecimal = double.parse('${groups.sublist(0, groups.length - 1).join()}.$last');
   if (withDecimal <= 0) return null;
-  // Every mark as grouping instead: what kHz display writes a GHz frequency
-  // as — 23cm is "1.296.000" — and what the decimal reading turns into
-  // 1296 kHz, which is no band.
+  if (first.length > 3) return _isMicrowave(withDecimal) ? withDecimal : null;
+  // Every mark as grouping instead, which the decimal reading turns into
+  // 1296 kHz — no band.
   if (last.length == 3) {
     final allGrouped = double.parse(groups.join());
-    if (bandForFrequency(withDecimal) == null && bandForFrequency(allGrouped) != null) return allGrouped;
+    if (bandForFrequency(withDecimal) == null && _isMicrowave(allGrouped)) return allGrouped;
   }
   return withDecimal;
 }
@@ -1027,8 +1042,9 @@ String? _bandNamed(String input) {
   return null;
 }
 
-/// Formats kHz for display at up to Hz precision, thousands-grouped, with
-/// trailing zeros trimmed: "14.285.5", "14.074.25", "14.285". [minDecimals]
+/// Formats kHz for display at up to Hz precision, with trailing zeros
+/// trimmed: "14.285.5", "14.074.25", "14.285", and whole MHz past a GHz with
+/// no mark of its own, "1296.000". [minDecimals]
 /// (0–3) keeps that many decimals even when they are zeros — "14.074.20" —
 /// for a label that must hold its width while a reading moves.
 ///
@@ -1039,13 +1055,15 @@ String? _bandNamed(String input) {
 /// apart directly yields a fraction of 1000 and formats as "14.285.1000".
 String fmtFreq(double khz, {int minDecimals = 0}) {
   final totalHz = (khz * 1000).round();
-  final grouped = groupDigits((totalHz ~/ 1000).toString());
+  final mhz = totalHz ~/ 1000000;
+  final khzPart = (totalHz ~/ 1000 % 1000).toString();
+  final whole = mhz == 0 ? khzPart : '$mhz$frequencyMark${khzPart.padLeft(3, '0')}';
   final fraction = (totalHz % 1000).toString().padLeft(3, '0');
   var digits = 3;
   while (digits > minDecimals && fraction[digits - 1] == '0') {
     digits--;
   }
-  return digits == 0 ? grouped : '$grouped$frequencyMark${fraction.substring(0, digits)}';
+  return digits == 0 ? whole : '$whole$frequencyMark${fraction.substring(0, digits)}';
 }
 
 /// The decimals a frequency label that follows a moving reading holds: the
@@ -1093,20 +1111,8 @@ class FreqDecimalsHold {
 /// showing the same string for the same frequency. [parseFreq] reads it back.
 const frequencyMark = '.';
 
-/// Groups a run of ASCII digits that is part of a frequency with
-/// [frequencyMark], every three digits.
-String groupDigits(String digits) {
-  if (digits.length <= 3) return digits;
-  final grouped = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(frequencyMark);
-    grouped.write(digits[i]);
-  }
-  return grouped.toString();
-}
-
-/// Formats kHz for display at Hz precision, thousands-grouped and always
-/// three decimals: "14.285.400".
+/// Formats kHz for display at Hz precision, always three decimals:
+/// "14.285.400".
 ///
 /// For the surfaces that show where a radio actually IS, rather than where a
 /// QSO was logged. Trailing zeros are kept, so the reading doesn't change

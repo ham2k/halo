@@ -27,7 +27,8 @@ void main() {
       expect(fmtFreq(14285.5), '14.285.5');
       expect(fmtFreq(14074.25), '14.074.25');
       expect(fmtFreqToTheHz(14285.4), '14.285.400');
-      expect(fmtFreq(1296000), '1.296.000');
+      expect(fmtFreq(1296000), '1296.000', reason: 'whole MHz past a GHz takes no mark of its own');
+      expect(fmtFreq(10368100.5), '10368.100.5');
     });
 
     test('not the device conventions, on any device', () {
@@ -39,7 +40,7 @@ void main() {
         configure();
         expect(fmtFreq(14285.5), '14.285.5');
         expect(fmtFreqInput(14074.25), '14074.25');
-        expect(groupDigits('1296'), '1.296');
+        expect(fmtFreq(1296000), '1296.000');
       }
     });
   });
@@ -72,9 +73,26 @@ void main() {
       expect(parseFreq('136.5'), 136.5);
     });
 
-    test('GHz rescues 23cm', () {
+    test('GHz rescues the microwave bands', () {
       expect(parseFreq('1.296'), closeTo(1296000.0, 1e-6));
       expect(parseFreq('1.3'), closeTo(1300000.0, 1e-6));
+      expect(parseFreq('2.304'), closeTo(2304000.0, 1e-6));
+      expect(parseFreq('10.368'), closeTo(10368000.0, 1e-6));
+    });
+
+    test('but never over an HF band', () {
+      // 30m read as MHz sits inside 3cm read as GHz, and 3.5 is 80m.
+      expect(parseFreq('10.125'), 10125.0);
+      expect(parseFreq('3.5'), 3500.0);
+    });
+
+    test('from 1000, MHz rescues the microwave bands as the display writes them', () {
+      // 23cm displays as `1296.000`; read as kHz it is 1296 kHz, no band.
+      expect(parseFreq('1296.000'), 1296000.0);
+      expect(parseFreq('1296,2'), closeTo(1296200.0, 1e-6));
+      expect(parseFreq('10368.1'), closeTo(10368100.0, 1e-6));
+      expect(parseFreq('14285.5'), 14285.5, reason: 'kHz still wins where it names a band');
+      expect(parseFreq('10125.000'), 10125.0, reason: '30m, not 3cm');
     });
 
     test('but not over a bare band name', () {
@@ -116,7 +134,13 @@ void main() {
       // How kHz display writes 23cm. Read with a decimal it is 1296 kHz, which
       // is no band, so the grouped reading must win.
       expect(parseFreq('1.296.000'), 1296000.0);
-      expect(parseFreq(fmtFreq(1296200)), 1296200.0);
+      expect(parseFreq('10.368.100'), 10368100.0);
+    });
+
+    test('a first group past three digits is whole MHz, only in a microwave band', () {
+      // How the display writes a microwave frequency with Hz.
+      expect(parseFreq('10368.100.5'), closeTo(10368100.5, 1e-6));
+      expect(parseFreq('1296.200.25'), closeTo(1296200.25, 1e-6));
     });
 
     test('a group that is not three digits is refused, not guessed at', () {
@@ -132,7 +156,7 @@ void main() {
     });
 
     test('what the display writes reads back as the same frequency', () {
-      for (final khz in [7200.5, 14074.25, 14285.0, 146520.0, 1296000.0]) {
+      for (final khz in [7200.5, 14074.25, 14285.0, 146520.0, 1296000.0, 1296200.0, 2304100.5, 10368100.25, 24192000.0]) {
         expect(parseFreq(fmtFreq(khz)), khz, reason: '${fmtFreq(khz)} did not read back');
       }
     });

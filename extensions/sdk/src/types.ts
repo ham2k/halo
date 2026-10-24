@@ -28,7 +28,7 @@ export interface HookContext {
   ///
   /// Not for frequencies: those are written with periods for grouping and
   /// decimal alike (`14.285.5`) whatever the device says, as `fmtFreq` in
-  /// `@ham2k/lib-format-tools` writes them and its `parseFreq` (1.3.0 on)
+  /// `@ham2k/lib-format-tools` writes them and its `parseFreq` (1.3.1 on)
   /// reads them.
   ///
   /// Never use these on anything machine-facing: ADIF, a spot posted to an

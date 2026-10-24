@@ -12,7 +12,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:halo_core/halo_core.dart' show fmtFreqToTheHz, freqDisplayParts, frequencyMark, groupDigits;
+import 'package:halo_core/halo_core.dart' show fmtFreqToTheHz, freqDisplayParts, frequencyMark;
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
@@ -755,7 +755,7 @@ class RadioReadout extends StatelessWidget {
           // there is no thousands group, and `0.472` is not a reading anyone
           // writes.
           if (int.parse(parts.mhz) > 0) ...[
-            Text(groupDigits(parts.mhz), style: base.copyWith(fontWeight: FontWeight.w700)),
+            Text(parts.mhz, style: base.copyWith(fontWeight: FontWeight.w700)),
             Text(frequencyMark, style: base),
             Text(parts.khz, style: base),
           ] else

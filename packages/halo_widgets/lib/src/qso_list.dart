@@ -976,16 +976,13 @@ class _QsoListState extends State<QsoList> {
             // `0.472` — a reading that is not a number anyone writes.
             if (int.parse(parts.mhz) > 0) ...[
               Text(
-                // Grouped itself, for the rare frequency past 1 GHz: this
-                // part is whole MHz, so 1296 MHz is `1.296.000` kHz and would
-                // read as `1296.000` without it.
-                //
-                // Grouped by hand rather than through `formatNumber`, the way
-                // `fmtFreq` does: intl also translates the DIGITS into the
-                // locale's own script, and the kHz and Hz parts beside this
-                // one are plain ASCII — so on fa the reading would come out
-                // half in Eastern Arabic numerals and half not.
-                groupDigits(parts.mhz),
+                // Whole MHz, ungrouped past a GHz the way [fmtFreq] writes it
+                // (`1296.000`), and never through `formatNumber`: intl also
+                // translates the DIGITS into the locale's own script, and the
+                // kHz and Hz parts beside this one are plain ASCII — so on fa
+                // the reading would come out half in Eastern Arabic numerals
+                // and half not.
+                parts.mhz,
                 style: freqStyle.copyWith(fontWeight: FontWeight.w700),
               ),
               // The row is a kHz reading, like the spots panel and the radio

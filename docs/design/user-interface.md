@@ -1187,8 +1187,9 @@ there, and there is no second source.
 grouping and decimal alike, whatever the device says — `14.285`, `14.285.5`,
 `14.285.505` — because context says which mark is which, and one notation
 means every surface shows the same string for the same frequency, as PoLo
-does. `frequencyMark` (halo_core) is that period; `fmtFreq`, `groupDigits`
-and the QSO row, spots panel, radio controls and Logs table all use it, and
+does. Past a GHz the whole MHz take no mark of their own: 23cm is `1296.000`,
+as `@ham2k/lib-format-tools` `fmtFreq` writes it. `frequencyMark` (halo_core)
+is that period; `fmtFreq` and the QSO row, spots panel, radio controls and Logs table all use it, and
 the Freq field's numbers-row extra key types it (every other field's extra
 key is the device's decimal separator). `fmtFreqInput` writes an
 editable field's value ungrouped (`14285.5`), so no one edits in the middle of
@@ -1198,15 +1199,18 @@ a group.
 phone keypad offers) and resolves the remaining ambiguity with the band plan.
 One mark below 1000 reads as MHz (`14.285`), or as kHz (`472.5`, 630m) or GHz
 (`1.296`, 23cm) where that is the reading that names a band — except that a
-bare band name (`1.25`, the 1.25m band) is never read as GHz. With two or more,
-the last mark is the decimal (`14.200.5`) unless only the all-grouping reading
-names a band (`1.296.000`, 23cm). The first group is at most three digits
-and the middle ones exactly three, or the input is refused.
+bare band name (`1.25`, the 1.25m band) is never read as GHz. One mark from
+1000 reads as kHz (`14285.5`), or as MHz where only that names a microwave
+band (`1296.000`). With two or more, the last mark is the decimal (`14.200.5`)
+unless only the all-grouping reading names a band (`1.296.000`). The middle
+groups are exactly three digits, and a first group past three is whole MHz
+only inside a microwave band (`10368.100.5`), or the input is refused.
 
-Extensions read the same notation through `@ham2k/lib-format-tools`
-`parseFreq` (1.3.0 on), so a frequency typed as a call-field command lands
-where the Freq field would put it. Its band table is a short list of its own,
-which also rescues 13cm through 1.25cm, where the app's `bands` stop at 23cm.
+The microwave readings come from a short table of their own — 23cm through
+1.25cm, leaving out the digits 30m and 80m own as MHz — not from `bands`,
+which stops at 23cm. Extensions read the same notation, by the same table,
+through `@ham2k/lib-format-tools` `parseFreq` (1.3.1 on), so a frequency
+typed as a call-field command lands where the Freq field would put it.
 
 Frequencies read as **kHz** everywhere they are shown — the QSO list, the
 spots panel and the radio controls alike — so `7200.5` kHz is `7.200.5`, and a

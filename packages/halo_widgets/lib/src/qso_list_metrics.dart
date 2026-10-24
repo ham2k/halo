@@ -256,7 +256,7 @@ _QsoListMetrics _computeMetrics({
     // Exactly what the row draws, grouping and the sub-MHz case included —
     // this measures the column, so anything narrower here under-reserves it.
     final mhzValue = int.parse(parts.mhz);
-    final whole = mhzValue > 0 ? '${groupDigits(parts.mhz)}$frequencyMark${parts.khz}' : int.parse(parts.khz).toString();
+    final whole = mhzValue > 0 ? '${parts.mhz}$frequencyMark${parts.khz}' : int.parse(parts.khz).toString();
     final s = parts.hz != null ? '$whole$frequencyMark${parts.hz}' : whole;
     if (s.length > longestFreqOrBand.length) longestFreqOrBand = s;
   }

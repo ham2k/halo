@@ -1099,7 +1099,7 @@ double _autoFitColumnWidth(String column, BuildContext context, List<Qso> qsos, 
               // column, so a separator of a different width under-reserves
               // it.
               final parts = freqDisplayParts(khz, hzDigits: 0);
-              return '${groupDigits(parts.mhz).padLeft(freqMhzDigits)}'
+              return '${parts.mhz.padLeft(freqMhzDigits)}'
                   '$frequencyMark${parts.khz}';
             })()
           else
@@ -1154,7 +1154,7 @@ Widget _freqField(double khz, TextStyle? style, {required int mhzDigits}) {
       // kHz, like the QSO list and the spots panel: what divides these is a
       // thousands mark, not a decimal point. Padded AFTER grouping, so the
       // column still lines up once a mark has been inserted.
-      Text(groupDigits(parts.mhz).padLeft(mhzDigits), style: style?.copyWith(fontWeight: FontWeight.w700)),
+      Text(parts.mhz.padLeft(mhzDigits), style: style?.copyWith(fontWeight: FontWeight.w700)),
       Text(frequencyMark, style: style),
       Text(parts.khz, style: style),
     ],

@@ -207,7 +207,7 @@ class _SpotTile extends StatelessWidget {
           // thousands group at all, and `0.472` is not a reading anyone
           // writes.
           if (int.parse(parts.mhz) > 0) ...[
-            Text(groupDigits(parts.mhz), style: freqStyle.copyWith(fontWeight: FontWeight.w700)),
+            Text(parts.mhz, style: freqStyle.copyWith(fontWeight: FontWeight.w700)),
             Text(frequencyMark, style: freqStyle),
             Text(parts.khz, style: freqStyle),
           ] else
