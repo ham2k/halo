@@ -10,13 +10,11 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart' show uuidGenerator;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 
 import '../config/device_identity.dart';
 import '../config/user_agent.dart';
-
-const _uuidGenerator = Uuid();
 
 mixin NetworkSettings on ChangeNotifier {
   SharedPreferences get prefs;
@@ -130,7 +128,7 @@ mixin NetworkSettings on ChangeNotifier {
     if (cached != null) return cached;
     final existing = prefs.getString(_peerDeviceIdKey);
     if (existing != null && existing.isNotEmpty) return _cachedPeerDeviceId = existing;
-    final generated = _uuidGenerator.v4();
+    final generated = uuidGenerator.v4();
     _cachedPeerDeviceId = generated;
     unawaited(prefs.setString(_peerDeviceIdKey, generated));
     return generated;

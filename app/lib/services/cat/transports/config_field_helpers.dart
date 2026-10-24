@@ -40,8 +40,8 @@ String? validateHostField(String key, dynamic value, Map<String, dynamic> config
 ///
 /// A stored config is free-form JSON that nothing validates on the way in, so
 /// a wrong-typed value is reachable — and this is read from `validate()`,
-/// which [CatService._connect] calls OUTSIDE the try that guards the connect
-/// itself. A cast here throws past every handler and takes the launch with
+/// which `_connect` (cat_connection.dart) calls OUTSIDE the try that guards
+/// the connect itself. A cast here throws past every handler and takes the launch with
 /// it; reading a non-String as absent lets the node fail as "not configured",
 /// which is what an operator can act on.
 ///

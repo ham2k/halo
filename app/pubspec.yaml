@@ -56,7 +56,6 @@ dependencies:
   file: ^7.0.1
   path_provider_windows: ^2.3.0
   path_provider_linux: ^2.2.2
-  uuid: ^4.5.0
   # Locale-aware month/weekday names for QSO-list day headers; version left
   # to flutter_localizations' own constraint (it already pins intl).
   intl: any

@@ -19,7 +19,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_extension_host/halo_extension_host.dart' show HookCalls;
-import 'package:uuid/uuid.dart';
 
 import 'android_file_save.dart';
 import 'export_preferences.dart';
@@ -27,8 +26,6 @@ import 'extensions/extension_service.dart';
 import 'hook_payloads.dart';
 import 'settings_service.dart';
 import 'web_download.dart';
-
-const _uuidGenerator = Uuid();
 
 /// How long a free account's undownloaded stash counts as still wanted. A
 /// free account keeps only its latest group, so stashing again replaces it —
@@ -757,7 +754,7 @@ class ExportService {
   /// always accounts for each file that did not arrive.
   Future<({int uploaded, List<String> errors})> stashFiles(List<Map<String, dynamic>> files, {String? groupTitle}) async {
     final filenames = _uniqueFilenames(files);
-    final groupUuid = _uuidGenerator.v4();
+    final groupUuid = uuidGenerator.v4();
     var uploaded = 0;
     final errors = <String>[];
     for (var i = 0; i < files.length; i++) {

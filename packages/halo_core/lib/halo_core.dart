@@ -52,4 +52,5 @@ export 'src/sync/sync_types.dart';
 export 'src/hook_names.dart';
 export 'src/sync/sync_progress.dart' show SyncProgress;
 export 'src/text_search.dart';
+export 'src/uuid.dart';
 export 'src/wsjtx/wsjtx_qso_logged.dart';

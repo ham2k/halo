@@ -17,7 +17,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:uuid/uuid.dart';
 
 import '../config/dev_flags.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -32,8 +31,6 @@ import 'onboarding_flows.dart';
 // take one.
 export 'onboarding_flows.dart';
 export 'cw_message_set.dart';
-
-const _uuidGenerator = Uuid();
 
 /// The theme mode the light/dark toggle (⌘⇧D) switches to: always the opposite
 /// of what's currently on screen, resolving [ThemeMode.system] against the
@@ -450,7 +447,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
         return _cachedDeviceKey = fromSecure;
       }
 
-      final key = _uuidGenerator.v4();
+      final key = uuidGenerator.v4();
       await _secureStorage.write(key: _syncDeviceKeyKey, value: key);
       _secureStorageUnavailable = false;
       return _cachedDeviceKey = key;

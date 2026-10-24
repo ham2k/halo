@@ -90,12 +90,12 @@ String _fingerprint(EquipmentNode node, EquipmentRegistry registry) {
 /// What one connection has heard the RADIO itself say, and the moment that
 /// becomes proof the pairing works.
 ///
-/// Never the app's own words. `CatService._applyReading` completes a partial
-/// frame from `lastSent` — what the radio was last TOLD — so a rig that
-/// echoes only its frequency still yields a merged reading carrying both
-/// fields. Fed that, this would report "reads frequency and mode" about the
-/// app talking to itself. It is fed the driver's RAW frame for that reason,
-/// and the distinction is the whole value of the report.
+/// Never the app's own words. `_applyReading` (cat_readings.dart) completes
+/// a partial frame from `lastSent` — what the radio was last TOLD — so a rig
+/// that echoes only its frequency still yields a merged reading carrying
+/// both fields. Fed that, this would report "reads frequency and mode" about
+/// the app talking to itself. It is fed the driver's RAW frame for that
+/// reason, and the distinction is the whole value of the report.
 ///
 /// One per connection, reset when a new one is installed: what the last
 /// connection heard says nothing about this one.

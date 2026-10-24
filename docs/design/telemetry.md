@@ -139,7 +139,7 @@ routinely carries the host or port that failed.
 
 All three are reported **once per radio per app session**. The reconnect
 loop pokes an unreachable radio every 30 s rising to every 8 minutes for the
-whole session (`cat_service.dart`), so per-attempt reporting would bury
+whole session (`cat_connection.dart`), so per-attempt reporting would bury
 every other event and skew the data toward whoever left a rig switched off.
 A failure is not re-armed by a later success, for the same reason: the
 question is whether a pairing ever fails for people, not how often.

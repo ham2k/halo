@@ -11,8 +11,7 @@ import 'package:drift/drift.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
-
-import 'repo_support.dart';
+import '../uuid.dart';
 
 /// The QSON [row] carried, decoded from its stored blob. See `InboundCaptures`.
 extension InboundCaptureRowQson on InboundCaptureRow {

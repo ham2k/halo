@@ -19,6 +19,7 @@ import '../models/models.dart';
 import '../models/qso_merge.dart';
 import '../models/segments.dart';
 import '../models/qson_values.dart';
+import '../uuid.dart';
 import 'write_policy.dart';
 
 import 'operations_repository.dart';
@@ -26,6 +27,7 @@ import 'claim_record_queries.dart';
 import 'live_log_queries.dart';
 import 'qso_history_queries.dart';
 import 'qso_log_stream.dart';
+import 'qso_sync_queries.dart';
 import 'repo_support.dart';
 
 /// What [QsosRepository.changesSince] found: the log's rows that joined or
@@ -46,7 +48,7 @@ class QsoLogChanges {
   const QsoLogChanges({required this.cursor, required this.count, this.reset = false, this.qsos = const [], this.removed = const []});
 }
 
-class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries {
+class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries, QsoSyncQueries {
   @override
   final HaLoDatabase db;
 
@@ -1071,7 +1073,7 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries 
     final min = db.qsos.startAtMillis.min();
     final query = db.selectOnly(db.qsos)
       ..addColumns([min])
-      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & db.qsos.band.equals('event').not());
+      ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & isContact);
     return (await query.getSingleOrNull())?.read(min);
   }
 
@@ -1079,30 +1081,6 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries 
     return db.select(db.qsos)
       ..where((q) => includeDeleted ? q.operation.equals(operationUuid) : q.operation.equals(operationUuid) & q.deleted.equals(false))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
-  }
-
-  /// Up to `limit` dirty QSOs, most recent first — mirrors `sync.js`'s
-  /// `queryQSOs("WHERE synced IS false ... ORDER BY startAtMillis DESC")`.
-  /// [excluding] holds records back WITHOUT marking them clean — the sync
-  /// engine's refusal quarantine (see `SyncEngine.refusalQuarantine`). Skipped
-  /// in the query rather than filtered after it: this is a `LIMIT`, so a
-  /// refused record that sorts early would otherwise fill the batch every
-  /// round and nothing behind it would ever be offered again.
-  Future<List<Qso>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
-    final query = (db.select(db.qsos)
-      ..where((q) => excluding.isEmpty ? q.synced.equals(false) : q.synced.equals(false) & q.uuid.isNotIn(excluding.toList()))
-      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)])
-      ..limit(limit));
-    return (await query.get()).map(qsoFromRow).toList();
-  }
-
-  Future<bool> hasUnsynced() async {
-    final row =
-        await (db.select(db.qsos)
-              ..where((q) => q.synced.equals(false))
-              ..limit(1))
-            .getSingleOrNull();
-    return row != null;
   }
 
   /// See `OperationsRepository.markSynced` — only rows whose revision stamp
@@ -1125,89 +1103,6 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries 
       // and no stream re-reads anything for it.
       if (marked > 0) _touch(const [], const []);
     });
-  }
-
-  /// A row of the qsos table that is a contact rather than a start/break/end
-  /// marker. The ONE definition — every count the operator reads as "QSOs"
-  /// uses it, and LoFi's `QSO.contacts` scope mirrors it so the Sync panel can
-  /// put the two numbers side by side.
-  ///
-  /// `band` is nullable, and `NOT (band = 'event')` is NULL — not true — for a
-  /// QSO logged without one, so the null case has to be spelled out or those
-  /// QSOs silently leave the count.
-  @override
-  Expression<bool> get isContact => db.qsos.band.equals('event').not() | db.qsos.band.isNull();
-
-  /// See `OperationsRepository.syncCounts`. `total` applies the same rule
-  /// `historyForCall` does — a QSO is gone when its own flag says so or when
-  /// its operation's does — so deleting an operation drops its contacts from
-  /// the count without touching a single QSO row.
-  ///
-  /// Event markers (start/break/end, `Qso.isEvent`) are not contacts and are
-  /// excluded, the same way [syncCountsForOperation] excludes them: anything
-  /// labelled "QSOs" to the operator must mean the number they logged. LoFi's
-  /// `QSO.contacts` scope applies the same filter so the two sides stay comparable
-  /// in the Sync panel's Synced Data row.
-  Future<({int total, int pending})> syncCounts() async {
-    final count = db.qsos.uuid.count();
-
-    final totalQuery = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..addColumns([count])
-      ..where(db.qsos.deleted.equals(false) & isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
-    final totalCount = (await totalQuery.getSingle()).read(count) ?? 0;
-
-    final pendingQuery = db.selectOnly(db.qsos)
-      ..addColumns([count])
-      ..where(db.qsos.synced.equals(false));
-    final pendingCount = (await pendingQuery.getSingle()).read(count) ?? 0;
-
-    return (total: totalCount, pending: pendingCount);
-  }
-
-  /// How many CONTACTS the server has not received — [syncCounts]'s `total`
-  /// rule with `synced == false` added. Distinct from `pending`, which
-  /// counts every dirty ROW (tombstones and event markers included) because
-  /// it answers the sync loop's "anything to push?"; this one gates
-  /// destructive wipe flows, where the number shown to the operator must
-  /// mean "logged QSOs that exist nowhere else". A dirty tombstone is
-  /// un-pushed state too, but its loss direction is a resurrection, not a
-  /// vanished contact — counting it would make the warning wrong in both
-  /// magnitude and direction.
-  Future<int> unsyncedContactCount() async {
-    final count = db.qsos.uuid.count();
-    final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
-      ..addColumns([count])
-      ..where(db.qsos.synced.equals(false) & db.qsos.deleted.equals(false) & isContact & (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
-    return (await query.getSingle()).read(count) ?? 0;
-  }
-
-  /// Same as [syncCounts], but scoped to one operation's (non-deleted) rows,
-  /// and split into real QSOs vs. event markers (start/break/end, see
-  /// `Qso.isEvent`) — for the Exports Panel's per-operation sync summary,
-  /// which exports only real QSOs (`ExportService._qsoListFor`) and would
-  /// otherwise show a pending count inflated by markers that never export.
-  Future<({int total, int pending, int eventTotal, int eventPending})> syncCountsForOperation(String operationUuid) async {
-    final count = db.qsos.uuid.count();
-    Future<int> countWhere(Expression<bool> where) async {
-      final result =
-          await (db.selectOnly(db.qsos)
-                ..addColumns([count])
-                ..where(where))
-              .getSingle();
-      return result.read(count) ?? 0;
-    }
-
-    final base = db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false);
-    // Not `isContact.not()`: a QSO with no band belongs to neither side under
-    // a naive negation, and would vanish from the panel entirely.
-    final isEvent = db.qsos.band.equals('event');
-
-    final total = await countWhere(base & isContact);
-    final pending = await countWhere(base & isContact & db.qsos.synced.equals(false));
-    final eventTotal = await countWhere(base & isEvent);
-    final eventPending = await countWhere(base & isEvent & db.qsos.synced.equals(false));
-
-    return (total: total, pending: pending, eventTotal: eventTotal, eventPending: eventPending);
   }
 
   /// Upserts QSOs received from the sync server and refreshes the counters
@@ -1470,10 +1365,9 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries 
       final maxStart = db.qsos.startAtMillis.max();
       // Event pseudo-QSOs (start/break/end markers) share the qsos table but
       // aren't real contacts — exclude them from the count and time range.
-      final notEvent = db.qsos.band.isNull() | db.qsos.band.equals('event').not();
       final query = db.selectOnly(db.qsos)
         ..addColumns([count, minStart, maxStart])
-        ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & notEvent);
+        ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false) & isContact);
       final row = await query.getSingle();
 
       await (db.update(db.operations)..where((op) => op.uuid.equals(operationUuid))).write(

@@ -16,14 +16,10 @@ import 'dart:convert';
 import 'dart:isolate';
 
 import 'package:meta/meta.dart';
-import 'package:uuid/uuid.dart';
 
 import '../db/database.dart';
 import '../models/models.dart';
 import '../models/qson_values.dart';
-
-@internal
-const uuidGenerator = Uuid();
 
 /// Encodes a QSO's QSON for storage, normalizing wrong-typed fields on the
 /// way — see [normalizeQsoQson]. Storage is the one chokepoint every write

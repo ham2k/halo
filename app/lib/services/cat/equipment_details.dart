@@ -9,7 +9,7 @@
 // THE ONLY CODE THAT SHIPS A CONFIG VALUE OFF THE MACHINE, and it has two
 // callers with two different privacy models. The equipment report
 // (equipment_report.dart) sends it to a CaBo card because the operator wrote a
-// report and pressed Send. The first-success report (cat_service.dart, via
+// report and pressed Send. The first-success report (cat_readings.dart, via
 // HaLoServices) sends it to the crash backend on the app's own initiative, and
 // so is gated on `consentAppData` — see docs/design/telemetry.md § Radios,
 // which owns the distinction. Anything added here reaches both.

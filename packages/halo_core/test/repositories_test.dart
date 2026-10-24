@@ -65,6 +65,29 @@ void main() {
     expect(list.first.receivedRST, '57');
   });
 
+  // `NOT (band = 'event')` is NULL, not true, for a contact logged without a
+  // band. A filter written that way drops the contact from the first-contact
+  // time — so the start marker `addStart` places just before it lands AFTER
+  // the operation's first contact — and from the cached count and bounds.
+  test('a contact logged without a band opens the log and counts', () async {
+    final op = await operations.create(stationCall: 'KI2D');
+    await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+      'startAtMillis': 1000,
+    });
+    await qsos.add(op.uuid, {
+      'their': {'call': 'EA4XYZ'},
+      'band': '40m',
+      'startAtMillis': 2000,
+    });
+    await qsos.addEvent(op.uuid, kind: 'start', atMillis: 500);
+
+    expect(await qsos.firstContactMillis(op.uuid), 1000);
+    final updated = await operations.get(op.uuid);
+    expect(updated!.qsoCount, 2, reason: 'the band-less contact counts, the marker does not');
+    expect(updated.startAtMillisMin, 1000, reason: 'the marker is not where the log starts');
+  });
+
   test('an event marker carries placeholder our/their calls', () async {
     // HALO-609. polo ingests every synced row through `qsoKey`, which
     // destructures `our.call` and `their.call`; a marker without them

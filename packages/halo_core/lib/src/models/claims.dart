@@ -7,9 +7,8 @@
 
 import 'dart:convert';
 
-import 'package:uuid/uuid.dart';
-
 import '../ham/grid.dart';
+import '../uuid.dart';
 import 'models.dart';
 
 /// Ordered: a later value outranks an earlier one in a slot.
@@ -306,7 +305,7 @@ String claimUuid({
   required String? band,
   required String? mode,
   String source = kClaimSourceLog,
-}) => const Uuid().v5(_claimNamespace, jsonEncode([program, holder, edition, ref, band, mode, source]));
+}) => uuidGenerator.v5(_claimNamespace, jsonEncode([program, holder, edition, ref, band, mode, source]));
 
 /// A claim as the `claims` table keeps it: one source's best for one slot.
 class StoredClaim {

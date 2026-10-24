@@ -21,7 +21,11 @@ mixin QsoHistoryQueries {
   /// marker. The ONE definition — every count the operator reads as "QSOs"
   /// uses it, and LoFi's `QSO.contacts` scope mirrors it so the Sync panel can
   /// put the two numbers side by side.
-  Expression<bool> get isContact;
+  ///
+  /// `band` is nullable, and `NOT (band = 'event')` is NULL — not true — for a
+  /// QSO logged without one, so the null case has to be spelled out or those
+  /// QSOs silently leave the count.
+  Expression<bool> get isContact => db.qsos.band.equals('event').not() | db.qsos.band.isNull();
 
   /// Every non-deleted, non-event QSO with [call] across every operation, most
   /// recent first — for the call-info detail's QSO history. Matches the

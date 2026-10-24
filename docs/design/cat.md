@@ -54,7 +54,13 @@ Dart — not executable JS.
 ```
 Settings → Station Configuration      app/lib/views/station_panel.dart
    │ reads/writes
-CatService (ChangeNotifier)          app/lib/services/cat/cat_service.dart
+CatService (ChangeNotifier)          app/lib/services/cat/cat_service.dart, and its parts:
+   │                                    cat_connection.dart       — connect, retry ladders, teardown
+   │                                    cat_readings.dart         — what an arriving reading does
+   │                                    cat_equipment_store.dart  — stored equipment, secrets in the keychain
+   │                                    cat_peer_offers.dart      — radios offered to and followed from peers
+   │                                    cat_keying_surface.dart   — CW, voice and PTT forwarders
+   │                                    cat_tracking.dart, cat_discovery.dart, cat_vfo_snap.dart, …
    ├── EquipmentRegistry              equipment_registry.dart   — the variants derived from the models
    │     └── models                   equipment_models_<family>.dart, equipment_bridges.dart
    ├── transports                     transports/tcp_transport.dart (conditional export)
