@@ -18,7 +18,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 /// reference ([ChasingProgram.refLabel]), from [programs]; a program no
 /// longer registered reads by its key.
 String scoreNoticeLabel(BuildContext context, String key, {Map<String, ChasingProgram> programs = const {}}) {
-  if (ChaseNotice.tryParse(key) case final chase?) return _chaseNoticeLabel(context, chase, programs[chase.program]?.refLabel ?? chase.program);
+  if (ChaseNotice.tryParse(key) case final chase?) return _chaseNoticeLabel(context, chase, programs[chase.program]);
   final t = context.t.loggingControls.info;
   return switch (key) {
     'duplicate' => t.noticeDupe,
@@ -77,8 +77,15 @@ String scoreNoticeLabel(BuildContext context, String key, {Map<String, ChasingPr
   };
 }
 
-String _chaseNoticeLabel(BuildContext context, ChaseNotice notice, String program) {
+/// A program's own words for [notice] ([ChasingProgram.noticeFor]) win;
+/// without them, or without the band or mode they name, it reads the app's
+/// way, naming the program by what it calls one reference.
+String _chaseNoticeLabel(BuildContext context, ChaseNotice notice, ChasingProgram? chasing) {
   final t = context.t.chase.notice;
+  if (chasing != null) {
+    if (_programNoticeLabel(notice, chasing) case final label?) return notice.guess ? t.programGuess(notice: label) : label;
+  }
+  final program = chasing?.refLabel ?? notice.program;
   return switch (notice.verdict) {
     ChaseVerdict.newRef => notice.guess ? t.newRefGuess(program: program) : t.newRef(program: program),
     ChaseVerdict.newBand => notice.guess ? t.newBandGuess(program: program) : t.newBand(program: program),
@@ -86,4 +93,18 @@ String _chaseNoticeLabel(BuildContext context, ChaseNotice notice, String progra
     ChaseVerdict.unconfirmed => t.unconfirmed(program: program),
     ChaseVerdict.worked => program,
   };
+}
+
+String? _programNoticeLabel(ChaseNotice notice, ChasingProgram program) {
+  final language = LocaleSettings.currentLocale.languageCode;
+  final template = program.noticeFor(notice.verdict.name, language);
+  if (template == null) return null;
+  final values = {'band': notice.band, 'mode': notice.mode == null ? null : program.modeLabelFor(notice.mode!, language)};
+  var missing = false;
+  final label = template.replaceAllMapped(RegExp(r'\{\{\s*(\w+)\s*\}\}'), (match) {
+    final value = values[match[1]];
+    if (value == null) missing = true;
+    return value ?? '';
+  });
+  return missing ? null : label;
 }

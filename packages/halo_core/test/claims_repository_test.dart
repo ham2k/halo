@@ -335,6 +335,31 @@ void main() {
     expect({for (final c in checklist) c.ref: c.level}, {'230': ClaimLevel.verified, '291': ClaimLevel.worked});
   });
 
+  // A program words its own notices; a malformed entry reads the app's way
+  // rather than failing the program.
+  test('a program reads its notice words and their translations as data, and leaves out what it cannot read', () {
+    final program = ChasingProgram.tryParse('ham2k-dxcc', {
+      'label': 'DXCC',
+      'version': 1,
+      'editions': 'lifetime',
+      'notices': {'newRef': 'DXCC ATNO', 'newMode': 'DXCC in {{mode}}', 'newBand': '', 'unconfirmed': 7},
+      'modeLabels': {'PHONE': 'Phone'},
+      'translations': {
+        'es': {
+          'notices': {'newMode': 'DXCC en {{mode}}'},
+          'modeLabels': {'PHONE': 'Fonía'},
+        },
+        'fr': 'bogus',
+      },
+    })!;
+    expect(program.noticeLabels.notices, {'newRef': 'DXCC ATNO', 'newMode': 'DXCC in {{mode}}'});
+    expect(program.noticeFor('newMode', 'es'), 'DXCC en {{mode}}');
+    expect(program.noticeFor('newRef', 'es'), 'DXCC ATNO', reason: 'a translation replaces entry by entry');
+    expect(program.noticeFor('newBand', 'en'), isNull);
+    expect((program.modeLabelFor('PHONE', 'es'), program.modeLabelFor('PHONE', 'fr'), program.modeLabelFor('CW', 'en')), ('Fonía', 'Phone', 'CW'));
+    expect(program.translations.keys, ['es']);
+  });
+
   // The app offers an importer for a file by its extension alone, before
   // anything runs: an entry it cannot read must not offer to take files.
   test('a program lists its importers as data, and a malformed one is left out', () {

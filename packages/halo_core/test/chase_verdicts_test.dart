@@ -41,6 +41,17 @@ void main() {
       expect(ChaseVerdict.newBand.rank, ChaseVerdict.newMode.rank);
     });
 
+    // A program words its notice by what is new ("DXCC in 80m"), so the
+    // judgement says which band and which mode.
+    test('a new band and a new mode say which band and mode they are', () {
+      final claims = _entity('339', band: '80m', mode: 'PHONE');
+      final both = judgeChaseClaims('dxcc', claims, _held({claims[0]: ClaimLevel.confirmed}))!;
+      expect((both.band, both.mode), ('80m', 'PHONE'));
+      final bandOnly = judgeChaseClaims('dxcc', claims, _held({claims[0]: ClaimLevel.confirmed, claims[2]: ClaimLevel.worked}))!;
+      expect((bandOnly.band, bandOnly.mode), ('80m', null));
+      expect(judgeChaseClaims('dxcc', claims, const {})!.band, isNull, reason: 'a new reference is about neither');
+    });
+
     test('only the band missing is a new band', () {
       final claims = _entity('339');
       final held = _held({claims[0]: ClaimLevel.confirmed, claims[2]: ClaimLevel.confirmed});
@@ -88,6 +99,15 @@ void main() {
       final read = ChaseNotice.tryParse(notice.key)!;
       expect((read.program, read.verdict, read.guess, read.alerting), ('pota', ChaseVerdict.newBand, true, true));
       expect(ChaseNotice.tryParse(const ChaseNotice(program: 'dxcc', verdict: ChaseVerdict.newRef).key)!.alerting, isFalse);
+    });
+
+    test('a band or mode reads back too, whatever it holds, and an older key reads without them', () {
+      const notice = ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newMode, alerting: true, mode: 'A:B=C');
+      final read = ChaseNotice.tryParse(notice.key)!;
+      expect((read.program, read.verdict, read.alerting, read.band, read.mode), ('ham2k-dxcc', ChaseVerdict.newMode, true, null, 'A:B=C'));
+      expect(ChaseNotice.tryParse(const ChaseNotice(program: 'dxcc', verdict: ChaseVerdict.newBand, band: '80m').key)!.band, '80m');
+      final older = ChaseNotice.tryParse('chase:dxcc:newBand:guess:alert')!;
+      expect((older.guess, older.alerting, older.band), (true, true, null));
     });
 
     test("a scorer's own key is not a chasing notice", () {

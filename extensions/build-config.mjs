@@ -120,7 +120,6 @@ export const bundles = [
   { key: "kernel", entry: "sdk/src/kernel.ts", kind: "kernel" },
   { key: "adif", entry: "core/adif/src/index.ts", kind: "extension" },
   { key: "scoring", entry: "core/scoring/src/index.ts", kind: "extension" },
-  { key: "dxcc", entry: "core/dxcc/src/index.ts", kind: "extension" },
   { key: "lookups", entry: "core/lookups/src/index.ts", kind: "extension" },
   { key: "radio-commands", entry: "core/radio-commands/src/index.ts", kind: "extension" },
   { key: "dev-commands", entry: "core/dev-commands/src/index.ts", kind: "extension" },
@@ -135,6 +134,7 @@ export const bundles = [
   // Built for the host's bridge tests, into [fixturesDir]; never shipped.
   { key: "k2hrc-panel-scenes", entry: "samples/k2hrc-panel-scenes/src/index.ts", kind: "fixture" },
   { key: "k2hrc-cqww", entry: "samples/k2hrc-cqww/src/index.ts", kind: "fixture" },
+  { key: "k2hrc-dxcc", entry: "samples/k2hrc-dxcc/src/index.ts", kind: "fixture" },
   { key: "ham2k-lofi", entry: "sync/ham2k-lofi/src/index.ts", kind: "extension" },
 ]
 

@@ -1607,7 +1607,14 @@ registerHook("chasing", { key: "dxcc", hook: {
   without invoking anything. Raise `version` whenever the same contacts would
   claim something different: the app keeps no claim from an older version.
   `refLabel` is what one reference is called where a notice names it
-  ("New POTA Park"), the program's `label` when left out.
+  ("New POTA Park"), the program's `label` when left out. A program may
+  instead word a verdict's notice itself: `notices` by verdict (`newRef`,
+  `newBand`, `newMode`, `unconfirmed`), where `{{band}}` names the band a
+  new band is on and `{{mode}}` the mode a new mode is in, through
+  `modeLabels`, with both per language under `translations` (`{ es: {
+  notices, modeLabels } }`). A verdict it leaves out, or one whose notice
+  lacks the band or mode its words name, reads the app's way; a guess reads
+  "Probably …" around the program's words.
   `supersedes` names the scoring notices the program's verdicts stand in for
   (DXCC: `newDXCC`): wherever the program judges a call or a spot, the
   scorer's notice is dropped in favor of the verdict.
@@ -1662,9 +1669,12 @@ extension API 9: a bundle that registers a program declares `"api": 9`, which
 the packer enforces, so an older app — which would install it and never ask
 it anything — is never offered it.
 
-Implemented by: `dxcc` (core) — Mixed, per-band and per-mode slots for the
-station call worked from each entity; LoTW and paper QSLs confirm, LoTW credit
-verifies. `ham2k-pota` — one slot per park hunted, worked only; its
+Implemented by: `ham2k-dxcc` (catalog, pre-loaded; core `dxcc` until
+HALO-844) — Mixed, per-mode and per-band slots for the station call worked
+from each entity, worded "DXCC ATNO", "DXCC in CW", "DXCC in 80m"; LoTW and
+paper QSLs confirm, `credits.dxcc` verifies; the DXCC Challenge is a tally of
+its band slots. A stored goal for `dxcc` carries to it
+(`kRenamedChasePrograms`). `k2hrc-dxcc` is the SDK's worked example. `ham2k-pota` — one slot per park hunted, worked only; its
 hunted-parks export verifies. `ham2k-was` — Mixed, per-band and per-mode
 slots (plus FT8 and RTTY) for the station call worked from one 4-character
 grid; LoTW and paper QSLs confirm, `WAS` credit verifies.

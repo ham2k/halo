@@ -350,7 +350,8 @@
       "newBandGuess": "Probably new ${program} band",
       "newMode": "New ${program} mode",
       "newModeGuess": "Probably new ${program} mode",
-      "unconfirmed": "${program} unconfirmed"
+      "unconfirmed": "${program} unconfirmed",
+      "programGuess": "Probably ${notice}"
     },
     "alerts": {
       "title": "Alerts",

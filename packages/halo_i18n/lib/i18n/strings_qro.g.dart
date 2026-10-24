@@ -1538,6 +1538,7 @@ class _Translations$chase$notice$qro extends Translations$chase$notice$en {
 	@override String newMode({required Object program}) => 'NEW ${program} MODE';
 	@override String newModeGuess({required Object program}) => 'PROBABLY NEW ${program} MODE';
 	@override String unconfirmed({required Object program}) => '${program} UNCONFIRMED';
+	@override String programGuess({required Object notice}) => 'PROBABLY ${notice}';
 }
 
 // Path: chase.alerts
@@ -4556,6 +4557,7 @@ extension on TranslationsQro {
 			'chase.notice.newMode' => ({required Object program}) => 'NEW ${program} MODE',
 			'chase.notice.newModeGuess' => ({required Object program}) => 'PROBABLY NEW ${program} MODE',
 			'chase.notice.unconfirmed' => ({required Object program}) => '${program} UNCONFIRMED',
+			'chase.notice.programGuess' => ({required Object notice}) => 'PROBABLY ${notice}',
 			'chase.alerts.title' => 'ALERTS',
 			'chase.alerts.newRef' => 'NEW REFERENCE',
 			'chase.alerts.newBand' => 'NEW BAND',
@@ -4772,9 +4774,9 @@ extension on TranslationsQro {
 			'operation.layout.panels.weatherConditions.sunny' => 'SUNNY',
 			'operation.layout.panels.weatherConditions.clear' => 'CLEAR',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'MAINLY SUNNY',
-			'operation.layout.panels.weatherConditions.mainlyClear' => 'MAINLY CLEAR',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.weatherConditions.mainlyClear' => 'MAINLY CLEAR',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'PARTLY CLOUDY',
 			'operation.layout.panels.weatherConditions.cloudy' => 'CLOUDY',
 			'operation.layout.panels.weatherConditions.foggy' => 'FOGGY',
@@ -5286,9 +5288,9 @@ extension on TranslationsQro {
 			'formChrome.removeItem' => 'DELETE',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'DELETE ${name}?',
 			'formChrome.storageUnavailable' => 'LOGINS UNAVAILABLE',
-			'qsoEditForm.title' => 'EDIT QSO',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.title' => 'EDIT QSO',
 			'qsoEditForm.operatorCall' => 'OPERATOR',
 			'qsoEditForm.position' => 'POSITION',
 			'qsoEditForm.theirName' => 'NAME',
@@ -5800,9 +5802,9 @@ extension on TranslationsQro {
 			'settings.station.host' => 'ADDRESS',
 			'settings.station.hostDescription' => 'THE RADIO\'S HOSTNAME OR IP ADDRESS ON YOUR NETWORK.',
 			'settings.station.port' => 'PORT',
-			'settings.station.hostRequired' => 'AN ADDRESS IS REQUIRED',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.hostRequired' => 'AN ADDRESS IS REQUIRED',
 			'settings.station.portInvalid' => 'PORT MUST BE BETWEEN 1 AND 65535',
 			'settings.station.connect' => 'CONNECT',
 			'settings.station.disconnect' => 'DISCONNECT',
@@ -6314,9 +6316,9 @@ extension on TranslationsQro {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'NO DATA FILES MATCHED "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'RELOAD FAILED: ${error}',
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
-			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			_ => null,
 		} ?? switch (path) {
+			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',

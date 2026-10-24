@@ -32,27 +32,27 @@ void main() {
   group('resolveChaseGoals', () {
     test('keeps the stored order and on/off, and leaves out programs no longer registered', () {
       final goals = resolveChaseGoals(
-        {'pota': _program('pota'), 'dxcc': _program('dxcc')},
+        {'pota': _program('pota'), 'wwff': _program('wwff')},
         [
-          {'key': 'dxcc', 'on': true},
+          {'key': 'wwff', 'on': true},
           {'key': 'gone', 'on': true},
           {'key': 'pota', 'on': false},
         ],
       );
-      expect([for (final g in goals) (g.key, g.on)], [('dxcc', true), ('pota', false)]);
-      expect(goals.first.label, 'DXCC', reason: 'the label is the program\'s own');
+      expect([for (final g in goals) (g.key, g.on)], [('wwff', true), ('pota', false)]);
+      expect(goals.first.label, 'WWFF', reason: 'the label is the program\'s own');
     });
 
     // An extension enabled with a program in it is one the operator means to
     // chase; making them add it again in the sheet is a step nobody asked for.
     test('a program registered for the first time joins at the end, chased', () {
       final goals = resolveChaseGoals(
-        {'pota': _program('pota'), 'dxcc': _program('dxcc')},
+        {'pota': _program('pota'), 'wwff': _program('wwff')},
         [
           {'key': 'pota', 'on': false},
         ],
       );
-      expect([for (final g in goals) (g.key, g.on)], [('pota', false), ('dxcc', true)]);
+      expect([for (final g in goals) (g.key, g.on)], [('pota', false), ('wwff', true)]);
     });
 
     // Removing an extension takes its program out of the list; adding it back
@@ -61,12 +61,40 @@ void main() {
     test('a program turned off stays off across its extension being removed and added again', () {
       var stored = <Object?>[
         {'key': 'pota', 'on': true},
+        {'key': 'wwff', 'on': false},
+      ];
+      final withoutWwff = resolveChaseGoals({'pota': _program('pota')}, stored);
+      stored = storedChaseGoals([for (final g in withoutWwff) g.withOn(true)], stored);
+      final back = resolveChaseGoals({'pota': _program('pota'), 'wwff': _program('wwff')}, stored);
+      expect(back.singleWhere((g) => g.key == 'wwff').on, isFalse);
+    });
+  });
+
+  // The core `dxcc` program became the catalog's `ham2k-dxcc`: the operator
+  // put DXCC where they wanted it and turned it on or off, and the move must
+  // not undo either.
+  group('a program that moved to a new key', () {
+    test('keeps its stored place and switch under the new key', () {
+      final stored = <Object?>[
+        {'key': 'pota', 'on': true},
         {'key': 'dxcc', 'on': false},
       ];
-      final withoutDxcc = resolveChaseGoals({'pota': _program('pota')}, stored);
-      stored = storedChaseGoals([for (final g in withoutDxcc) g.withOn(true)], stored);
-      final back = resolveChaseGoals({'pota': _program('pota'), 'dxcc': _program('dxcc')}, stored);
-      expect(back.singleWhere((g) => g.key == 'dxcc').on, isFalse);
+      final goals = resolveChaseGoals({'ham2k-dxcc': _program('ham2k-dxcc'), 'pota': _program('pota')}, stored);
+      expect([for (final g in goals) (g.key, g.on)], [('pota', true), ('ham2k-dxcc', false)]);
+      expect(storedChaseGoals(goals, stored), [
+        {'key': 'pota', 'on': true},
+        {'key': 'ham2k-dxcc', 'on': false},
+      ], reason: 'stored again under the new key, once');
+    });
+
+    test('is kept under the new key while its extension is away', () {
+      final stored = storedChaseGoals(resolveChaseGoals({'pota': _program('pota')}, const []), [
+        {'key': 'dxcc', 'on': false},
+      ]);
+      expect(stored, [
+        {'key': 'pota', 'on': true},
+        {'key': 'ham2k-dxcc', 'on': false},
+      ]);
     });
   });
 

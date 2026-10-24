@@ -248,6 +248,8 @@ void main() {
           for (final MapEntry(key: builtIn, value: on) in kRetiredBuiltIns.entries)
             if (builtIn != 'pota' && (on || builtIn == 'sota')) twinOf(builtIn),
           'ham2k-lookup',
+          // In place of the core `dxcc`, which no operator could switch off.
+          'ham2k-dxcc',
         },
       );
       expect(settings.extensionsMigrated, isTrue);

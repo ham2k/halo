@@ -1,0 +1,23 @@
+{
+  "key": "k2hrc-dxcc",
+  "name": "DXCC (sample)",
+  "shortName": "DXCC*",
+  "version": "1.0.0",
+  "description": "The DXCC entities a station has worked and confirmed, as a worked example of a chasing program",
+  "category": "award",
+  "icon": "earth",
+  "accentColor": "#2E7D32",
+  "api": 9,
+  "keywords": ["award", "dxcc", "chasing", "sample"],
+  "hooks": ["chasing"],
+  "sharedDependencies": {
+    "@ham2k/lib-callsigns": "^1.0.0",
+    "@ham2k/lib-country-files": "^1.0.0",
+    "@ham2k/lib-dxcc-data": "^1.0.0",
+    "@ham2k/lib-format-tools": "^1.0.0",
+    "@ham2k/lib-geo-tools": "^1.0.0",
+    "@ham2k/lib-operation-data": "^1.0.0",
+    "i18next": "^23.0.0",
+    "liquidjs": "^10.0.0"
+  }
+}

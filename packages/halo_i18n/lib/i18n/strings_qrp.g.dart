@@ -1538,6 +1538,7 @@ class _Translations$chase$notice$qrp extends Translations$chase$notice$en {
 	@override String newMode({required Object program}) => 'new ${program} mode';
 	@override String newModeGuess({required Object program}) => 'probably new ${program} mode';
 	@override String unconfirmed({required Object program}) => '${program} unconfirmed';
+	@override String programGuess({required Object notice}) => 'probably ${notice}';
 }
 
 // Path: chase.alerts
@@ -4556,6 +4557,7 @@ extension on TranslationsQrp {
 			'chase.notice.newMode' => ({required Object program}) => 'new ${program} mode',
 			'chase.notice.newModeGuess' => ({required Object program}) => 'probably new ${program} mode',
 			'chase.notice.unconfirmed' => ({required Object program}) => '${program} unconfirmed',
+			'chase.notice.programGuess' => ({required Object notice}) => 'probably ${notice}',
 			'chase.alerts.title' => 'alerts',
 			'chase.alerts.newRef' => 'new reference',
 			'chase.alerts.newBand' => 'new band',
@@ -4772,9 +4774,9 @@ extension on TranslationsQrp {
 			'operation.layout.panels.weatherConditions.sunny' => 'sunny',
 			'operation.layout.panels.weatherConditions.clear' => 'clear',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'mainly sunny',
-			'operation.layout.panels.weatherConditions.mainlyClear' => 'mainly clear',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.weatherConditions.mainlyClear' => 'mainly clear',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'partly cloudy',
 			'operation.layout.panels.weatherConditions.cloudy' => 'cloudy',
 			'operation.layout.panels.weatherConditions.foggy' => 'foggy',
@@ -5286,9 +5288,9 @@ extension on TranslationsQrp {
 			'formChrome.removeItem' => 'delete',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'delete ${name}?',
 			'formChrome.storageUnavailable' => 'logins unavailable',
-			'qsoEditForm.title' => 'edit qso',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.title' => 'edit qso',
 			'qsoEditForm.operatorCall' => 'operator',
 			'qsoEditForm.position' => 'position',
 			'qsoEditForm.theirName' => 'name',
@@ -5800,9 +5802,9 @@ extension on TranslationsQrp {
 			'settings.station.host' => 'address',
 			'settings.station.hostDescription' => 'the radio\'s hostname or ip address on your network.',
 			'settings.station.port' => 'port',
-			'settings.station.hostRequired' => 'an address is required',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.hostRequired' => 'an address is required',
 			'settings.station.portInvalid' => 'port must be between 1 and 65535',
 			'settings.station.connect' => 'connect',
 			'settings.station.disconnect' => 'disconnect',
@@ -6314,9 +6316,9 @@ extension on TranslationsQrp {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'no data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'reload failed: ${error}',
 			'commands.reloadingAll' => 'reloading all data files…',
-			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			_ => null,
 		} ?? switch (path) {
+			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',

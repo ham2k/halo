@@ -1,11 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The DXCC chasing program through the REAL runtime and the built `dxcc`
-// bundle (docs/design/claims.md). The node tests in extensions/core/dxcc pin
-// the rules; this pins that they survive the trip: `program` is a data member
-// read by a fan-out, never invoked, and a claim's `null` band and mode — "any"
-// — must arrive as null rather than vanish.
+// A chasing program through the REAL runtime, on the `k2hrc-dxcc` sample's
+// built bundle (docs/design/claims.md). This pins what has to survive the
+// trip: `program` is a data member read by a fan-out, never invoked — notice
+// words and all — and a claim's `null` band and mode — "any" — must arrive as
+// null rather than vanish.
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -15,25 +15,26 @@ void main() {
   requireBundles();
 
   test('the program is read as data across extensions', () async {
-    final host = await sharedHost(['dxcc']);
+    final host = await sharedHost(['k2hrc-dxcc']);
     final entries = await host.invokeHookAll('chasing', method: 'program', timeout: const Duration(seconds: 20));
-    final dxcc = entries.singleWhere((entry) => entry['key'] == 'dxcc');
+    final dxcc = entries.singleWhere((entry) => entry['key'] == 'k2hrc-dxcc');
     expect(dxcc['ok'], isTrue);
     expect(dxcc['value'], {
-      'label': 'DXCC',
+      'label': 'DXCC*',
       'icon': 'earth',
       'version': 1,
       'editions': 'lifetime',
-      'supersedes': ['newDXCC'],
+      'notices': {'newRef': 'New DXCC* entity', 'newBand': 'DXCC* on {{band}}', 'newMode': 'DXCC* in {{mode}}'},
+      'modeLabels': {'PHONE': 'Phone', 'DIGITAL': 'Digital'},
     });
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a contact comes back as its Mixed, band and mode claims', () async {
-    final host = await sharedHost(['dxcc']);
+    final host = await sharedHost(['k2hrc-dxcc']);
     final result =
         await host.invokeHook(
               'chasing',
-              key: 'dxcc',
+              key: 'k2hrc-dxcc',
               method: 'claimsForQsos',
               args: {
                 'qsos': [

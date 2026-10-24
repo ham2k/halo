@@ -1,7 +1,8 @@
 # Claims: what a contact counts toward
 
-*Status: partial. The hook (§2) is built. Its programs are DXCC (core),
-and POTA's hunter checklist and WAS (catalog extensions).
+*Status: partial. The hook (§2) is built. Its programs are DXCC, POTA's
+hunter checklist and WAS, all catalog extensions; DXCC (`ham2k-dxcc`) is
+pre-loaded, and replaced the core `dxcc`.
 The `claims` table and the service keeping it current (§5–§7) are built, and
 run only under `EXP CHASE`. They sync through LoFi once the server
 advertises them. Verdicts, goals and alerts (§8) are built
@@ -338,7 +339,8 @@ logging panel whatever the goals say: a goal decides what is judged, not
 which references can be logged.
 
 **Notices.** A verdict travels as a notice key beside the scorers' own
-(`chase:<program>:<verdict>`, with `:guess` and `:alert` flags), so the spot
+(`chase:<program>:<verdict>`, with `:guess` and `:alert` flags, and
+`:band=` or `:mode=` naming what a new band or new mode is), so the spot
 rows and the pills by the call field carry both through one mechanism. In
 the Chasing view the verdicts replace scoring's notices, and scoring keeps
 only its `duplicate`: a station worked this period. A duplicate gets no
@@ -350,7 +352,8 @@ judges a call those are dropped: the scorer keeps them for everyone chasing
 does not reach yet, and a feature leaves core scoring only once chasing
 ships without the experiment. A notice names the reference by what the
 program calls one (`refLabel`: "New POTA Park"), or by the program's label
-("New DXCC").
+("New DXCC") — unless the program words it itself (`notices`: "DXCC ATNO",
+"DXCC in 80m", "DXCC in CW"; [hooks.md](../extensions/hooks.md)).
 
 **Alerts.** The operator picks which verdicts alert; new ref, new band and
 new mode until they do. An alerting spot's callsign takes the green accent

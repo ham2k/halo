@@ -44,9 +44,9 @@
     },
     {
       "key": "ham2k-cqww",
-      "version": "0.2.7",
-      "file": "ham2k-cqww-0.2.7.h2kext",
-      "sha256": "954e5a2b8a6d6802f31be97373b1549592c8e12e5353fdd8b2e218284263a072"
+      "version": "0.2.8",
+      "file": "ham2k-cqww-0.2.8.h2kext",
+      "sha256": "4af894f19df25f4ae4009bd37928e4a826e5e858132cf64c973c70e2bdaf8e77"
     },
     {
       "key": "ham2k-custom",
@@ -65,6 +65,12 @@
       "version": "0.2.4",
       "file": "ham2k-cwt-0.2.4.h2kext",
       "sha256": "0fc0c3a0c5a4df77fa93c2cf3b41aeb81366a5c5e616de1953dd13ee93a7df7a"
+    },
+    {
+      "key": "ham2k-dxcc",
+      "version": "0.1.0",
+      "file": "ham2k-dxcc-0.1.0.h2kext",
+      "sha256": "996f4351df9e6db4b5adbc6966271ff78360f6c82e1a0fd4c75c1d2eb331adb2"
     },
     {
       "key": "ham2k-eca",

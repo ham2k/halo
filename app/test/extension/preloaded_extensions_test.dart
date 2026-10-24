@@ -82,6 +82,8 @@ void main() {
           for (final builtIn in kRetiredBuiltIns.keys)
             if (!kBuiltInsWithoutTwin.contains(builtIn)) twinOf(builtIn),
           'ham2k-lookup',
+          // In place of the core `dxcc` chasing program.
+          'ham2k-dxcc',
         },
       );
     });

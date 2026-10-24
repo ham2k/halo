@@ -164,6 +164,14 @@ void main() {
       expect(read(service.noticesFor([newRef], chasing: true)).single.alerting, isTrue, reason: 'new references alert unless the operator says otherwise');
     });
 
+    // "DXCC in 80m" and "DXCC in CW" each name their own: the band rides on
+    // the new-band notice, the mode on the new-mode one.
+    test('a new band carries its band, and a new mode its mode', () {
+      const both = ChaseJudgement(program: 'calls', verdicts: [ChaseVerdict.newBand, ChaseVerdict.newMode], band: '80m', mode: 'CW');
+      final notices = read(service.noticesFor([both], chasing: true));
+      expect([for (final n in notices) (n.verdict, n.band, n.mode)], [(ChaseVerdict.newBand, '80m', null), (ChaseVerdict.newMode, null, 'CW')]);
+    });
+
     test('the alerts the operator picks decide what alerts', () async {
       await service.setAlerting({ChaseVerdict.unconfirmed});
       final notices = read(service.noticesFor([newRef, unconfirmed], chasing: true));

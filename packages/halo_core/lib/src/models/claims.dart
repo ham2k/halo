@@ -49,6 +49,8 @@ class ChasingProgram {
     this.color,
     this.supersedes = const {},
     this.imports = const [],
+    this.noticeLabels = const ChasingNoticeLabels(),
+    this.translations = const {},
     String? refLabel,
   }) : refLabel = refLabel ?? label;
 
@@ -69,6 +71,19 @@ class ChasingProgram {
   /// The files the program can read claims from (claims.md §9).
   final List<ChasingImporter> imports;
 
+  /// The program's own words for its notices ("DXCC ATNO"), and the same per
+  /// language code ([translations]), each replacing the base entry by entry.
+  final ChasingNoticeLabels noticeLabels;
+  final Map<String, ChasingNoticeLabels> translations;
+
+  /// The program's words for a [verdict] (a `ChaseVerdict`'s name) in
+  /// [language], null for one it leaves to the app.
+  String? noticeFor(String verdict, String language) => translations[language]?.notices[verdict] ?? noticeLabels.notices[verdict];
+
+  /// What the program calls [mode] in [language]: its own name for it when
+  /// it gives none.
+  String modeLabelFor(String mode, String language) => translations[language]?.modeLabels[mode] ?? noticeLabels.modeLabels[mode] ?? mode;
+
   /// Null for anything that is not a usable description: an extension
   /// answering a malformed `program` has registered no program.
   static ChasingProgram? tryParse(String key, Object? json) {
@@ -82,6 +97,7 @@ class ChasingProgram {
     final supersedes = json['supersedes'];
     final imports = json['imports'];
     final refLabel = json['refLabel'];
+    final translations = json['translations'];
     return ChasingProgram(
       key: key,
       label: label,
@@ -92,8 +108,34 @@ class ChasingProgram {
       supersedes: {if (supersedes is List) ...supersedes.whereType<String>()},
       imports: [if (imports is List) ...imports.map(ChasingImporter.tryParse).nonNulls],
       refLabel: refLabel is String && refLabel.isNotEmpty ? refLabel : null,
+      noticeLabels: ChasingNoticeLabels.parse(json),
+      translations: {
+        if (translations is Map)
+          for (final MapEntry(:key, :value) in translations.entries)
+            if (key is String && value is Map) key: ChasingNoticeLabels.parse(value),
+      },
     );
   }
+}
+
+/// A program's words for its notices: templates by verdict name, where
+/// `{{band}}` and `{{mode}}` name what a new band or mode is, and what each
+/// of its modes is called there. Entries that are not non-empty strings are
+/// left out, so a malformed one reads the app's way.
+class ChasingNoticeLabels {
+  const ChasingNoticeLabels({this.notices = const {}, this.modeLabels = const {}});
+
+  final Map<String, String> notices;
+  final Map<String, String> modeLabels;
+
+  static ChasingNoticeLabels parse(Map<dynamic, dynamic> json) =>
+      ChasingNoticeLabels(notices: _strings(json['notices']), modeLabels: _strings(json['modeLabels']));
+
+  static Map<String, String> _strings(Object? json) => {
+    if (json is Map)
+      for (final MapEntry(:key, :value) in json.entries)
+        if (key is String && value is String && value.isNotEmpty) key: value,
+  };
 }
 
 /// One kind of file a program reads claims from: a sponsor's export.

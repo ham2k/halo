@@ -29,7 +29,7 @@ enum ChaseVerdict {
 
 /// One program's verdict on one candidate contact.
 class ChaseJudgement {
-  const ChaseJudgement({required this.program, required this.verdicts, this.guess = false, this.refs = const {}});
+  const ChaseJudgement({required this.program, required this.verdicts, this.guess = false, this.refs = const {}, this.band, this.mode});
 
   final String program;
 
@@ -47,6 +47,11 @@ class ChaseJudgement {
   /// the ones it shows.
   final Set<String> refs;
 
+  /// The band a new-band verdict is about, and the mode a new-mode one is:
+  /// what a program's own notice names ("DXCC in 80m").
+  final String? band;
+  final String? mode;
+
   int get rank => verdicts.first.rank;
 
   @override
@@ -56,10 +61,12 @@ class ChaseJudgement {
       other.guess == guess &&
       other.verdicts.join(',') == verdicts.join(',') &&
       other.refs.length == refs.length &&
-      other.refs.containsAll(refs);
+      other.refs.containsAll(refs) &&
+      other.band == band &&
+      other.mode == mode;
 
   @override
-  int get hashCode => Object.hash(program, guess, verdicts.join(','), Object.hashAllUnordered(refs));
+  int get hashCode => Object.hash(program, guess, verdicts.join(','), Object.hashAllUnordered(refs), band, mode);
 
   @override
   String toString() => 'ChaseJudgement($program ${verdicts.map((v) => v.name).join('+')}${guess ? ' guess' : ''})';
@@ -89,15 +96,26 @@ ChaseJudgement? judgeChaseClaims(String program, List<QsoClaim> claims, Map<Stri
     for (final claim in claims)
       if (!held.containsKey(chaseSlotKey(claim))) claim,
   ];
-  ChaseJudgement judged(List<ChaseVerdict> verdicts, Iterable<QsoClaim> deciding) =>
-      ChaseJudgement(program: program, verdicts: verdicts, guess: deciding.any((claim) => claim.guess), refs: {for (final claim in deciding) claim.ref});
+  ChaseJudgement judged(List<ChaseVerdict> verdicts, Iterable<QsoClaim> deciding, {String? band, String? mode}) => ChaseJudgement(
+    program: program,
+    verdicts: verdicts,
+    guess: deciding.any((claim) => claim.guess),
+    refs: {for (final claim in deciding) claim.ref},
+    band: band,
+    mode: mode,
+  );
 
   final newRefs = missing.where((claim) => claim.band == null && claim.mode == null);
   if (newRefs.isNotEmpty) return judged(const [ChaseVerdict.newRef], newRefs);
   final newBands = missing.where((claim) => claim.band != null);
   final newModes = missing.where((claim) => claim.band == null && claim.mode != null);
   if (missing.isNotEmpty) {
-    return judged([if (newBands.isNotEmpty) ChaseVerdict.newBand, if (newModes.isNotEmpty) ChaseVerdict.newMode], missing);
+    return judged(
+      [if (newBands.isNotEmpty) ChaseVerdict.newBand, if (newModes.isNotEmpty) ChaseVerdict.newMode],
+      missing,
+      band: newBands.firstOrNull?.band,
+      mode: newModes.firstOrNull?.mode,
+    );
   }
   final unconfirmed = claims.where((claim) => held[chaseSlotKey(claim)] == ClaimLevel.worked);
   if (unconfirmed.isNotEmpty) return judged(const [ChaseVerdict.unconfirmed], unconfirmed);
@@ -106,9 +124,11 @@ ChaseJudgement? judgeChaseClaims(String program, List<QsoClaim> claims, Map<Stri
 
 /// A chasing verdict as a scoring notice key, so the call-info pills and the
 /// spot rows carry it beside the scorers' own (`newBand`, `duplicate`…).
-/// [alerting] marks a verdict the operator asked to be alerted to.
+/// [alerting] marks a verdict the operator asked to be alerted to. A new
+/// band carries its [band] and a new mode its [mode], for a program that
+/// names them in its own words; a reader that knows neither flag skips it.
 class ChaseNotice {
-  const ChaseNotice({required this.program, required this.verdict, this.guess = false, this.alerting = false});
+  const ChaseNotice({required this.program, required this.verdict, this.guess = false, this.alerting = false, this.band, this.mode});
 
   static const _prefix = 'chase:';
 
@@ -116,8 +136,12 @@ class ChaseNotice {
   final ChaseVerdict verdict;
   final bool guess;
   final bool alerting;
+  final String? band;
+  final String? mode;
 
-  String get key => '$_prefix$program:${verdict.name}${guess ? ':guess' : ''}${alerting ? ':alert' : ''}';
+  String get key =>
+      '$_prefix$program:${verdict.name}${guess ? ':guess' : ''}${alerting ? ':alert' : ''}'
+      '${band != null ? ':band=${Uri.encodeComponent(band!)}' : ''}${mode != null ? ':mode=${Uri.encodeComponent(mode!)}' : ''}';
 
   /// Null for a key that is not a chasing notice: every other scorer's.
   static ChaseNotice? tryParse(String key) {
@@ -127,6 +151,18 @@ class ChaseNotice {
     final verdict = ChaseVerdict.tryParse(parts[1]);
     if (parts[0].isEmpty || verdict == null) return null;
     final flags = parts.skip(2).toSet();
-    return ChaseNotice(program: parts[0], verdict: verdict, guess: flags.contains('guess'), alerting: flags.contains('alert'));
+    String? valueOf(String name) {
+      final flag = flags.where((flag) => flag.startsWith('$name=')).firstOrNull;
+      return flag == null ? null : Uri.decodeComponent(flag.substring(name.length + 1));
+    }
+
+    return ChaseNotice(
+      program: parts[0],
+      verdict: verdict,
+      guess: flags.contains('guess'),
+      alerting: flags.contains('alert'),
+      band: valueOf('band'),
+      mode: valueOf('mode'),
+    );
   }
 }

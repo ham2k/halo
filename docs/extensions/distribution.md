@@ -417,12 +417,14 @@ can move it forward from there.
 
 Which ones ship is staged. Today it is the catalog twin of every extension the
 app used to build in (see [Retired built-ins](#retired-built-ins)), so that an
-install moving off them has every one to hand with no network. Once installs
-still on a build with the built-ins are few enough, it shrinks to the eight a
-new install needs — `ham2k-pota`, `ham2k-sota`, `ham2k-wwff` and the five
-lookups — and the rest are fetched from the catalog when switched on
+install moving off them has every one to hand with no network, and
+`ham2k-dxcc`, which replaced the core `dxcc` chasing program and is on for
+everyone as that was. Once installs still on a build with the built-ins are few
+enough, it shrinks to the nine a new install needs — `ham2k-pota`,
+`ham2k-sota`, `ham2k-wwff`, `ham2k-dxcc` and the five lookups — and the rest
+are fetched from the catalog when switched on
 ([HALO-743](https://cabo.ham2k.com/halo/c/743)). The app's own tests rely on
-only those eight, the core, and the never-shipped samples, so the shrink
+only those nine, the core, and the never-shipped samples, so the shrink
 touches none of them.
 
 **They have to be kept current.** A pre-load is frozen into the binary, so

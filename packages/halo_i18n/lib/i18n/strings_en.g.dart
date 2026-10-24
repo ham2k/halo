@@ -3270,6 +3270,9 @@ class Translations$chase$notice$en {
 
 	/// en: '${program} unconfirmed'
 	String unconfirmed({required Object program}) => '${program} unconfirmed';
+
+	/// en: 'Probably ${notice}'
+	String programGuess({required Object notice}) => 'Probably ${notice}';
 }
 
 // Path: chase.alerts
@@ -9490,6 +9493,7 @@ extension on Translations {
 			'chase.notice.newMode' => ({required Object program}) => 'New ${program} mode',
 			'chase.notice.newModeGuess' => ({required Object program}) => 'Probably new ${program} mode',
 			'chase.notice.unconfirmed' => ({required Object program}) => '${program} unconfirmed',
+			'chase.notice.programGuess' => ({required Object notice}) => 'Probably ${notice}',
 			'chase.alerts.title' => 'Alerts',
 			'chase.alerts.newRef' => 'New reference',
 			'chase.alerts.newBand' => 'New band',
@@ -9706,9 +9710,9 @@ extension on Translations {
 			'operation.layout.panels.weatherConditions.sunny' => 'Sunny',
 			'operation.layout.panels.weatherConditions.clear' => 'Clear',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'Mainly Sunny',
-			'operation.layout.panels.weatherConditions.mainlyClear' => 'Mainly Clear',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.weatherConditions.mainlyClear' => 'Mainly Clear',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Partly Cloudy',
 			'operation.layout.panels.weatherConditions.cloudy' => 'Cloudy',
 			'operation.layout.panels.weatherConditions.foggy' => 'Foggy',
@@ -10220,9 +10224,9 @@ extension on Translations {
 			'formChrome.removeItem' => 'Delete',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'Delete ${name}?',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
-			'qsoEditForm.title' => 'Edit QSO',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.operatorCall' => 'Operator',
 			'qsoEditForm.position' => 'Position',
 			'qsoEditForm.theirName' => 'Name',
@@ -10734,9 +10738,9 @@ extension on Translations {
 			'settings.station.host' => 'Address',
 			'settings.station.hostDescription' => 'The radio\'s hostname or IP address on your network.',
 			'settings.station.port' => 'Port',
-			'settings.station.hostRequired' => 'An address is required',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.hostRequired' => 'An address is required',
 			'settings.station.portInvalid' => 'Port must be between 1 and 65535',
 			'settings.station.connect' => 'Connect',
 			'settings.station.disconnect' => 'Disconnect',
@@ -11248,9 +11252,9 @@ extension on Translations {
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
 			'commands.reloadFailed' => ({required Object error}) => 'Reload failed: ${error}',
 			'commands.reloadingAll' => 'Reloading all data files…',
-			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			_ => null,
 		} ?? switch (path) {
+			'commands.reloadingTarget' => ({required Object target}) => 'Reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'Unknown experiment "${token}"',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',

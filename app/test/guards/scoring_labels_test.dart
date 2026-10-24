@@ -131,4 +131,43 @@ void main() {
     expect(label('pota'), 'New POTA Park');
     expect(label('dxcc'), 'New DXCC');
   });
+
+  testWidgets('a program that words its own notices is read in its words, with the band or mode filled in', (tester) async {
+    late BuildContext ctx;
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) {
+              ctx = context;
+              return const SizedBox();
+            },
+          ),
+        ),
+      ),
+    );
+    final programs = {
+      'ham2k-dxcc': ChasingProgram.tryParse('ham2k-dxcc', {
+        'label': 'DXCC',
+        'version': 1,
+        'editions': 'lifetime',
+        'notices': {'newRef': 'DXCC ATNO', 'newBand': 'DXCC in {{band}}', 'newMode': 'DXCC in {{ mode }}'},
+        'modeLabels': {'PHONE': 'Phone'},
+      })!,
+    };
+    String label(ChaseNotice notice) => scoreNoticeLabel(ctx, notice.key, programs: programs);
+    expect(label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newRef)), 'DXCC ATNO');
+    expect(label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newBand, band: '80m')), 'DXCC in 80m');
+    expect(label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newMode, mode: 'PHONE')), 'DXCC in Phone');
+    expect(label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newMode, mode: 'CW')), 'DXCC in CW');
+    expect(label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newRef, guess: true)), 'Probably DXCC ATNO');
+    // A notice without the band its words name — one made before notices
+    // carried it — reads the app's way rather than "DXCC in ".
+    expect(label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.newBand)), 'New DXCC band');
+    expect(
+      label(const ChaseNotice(program: 'ham2k-dxcc', verdict: ChaseVerdict.unconfirmed)),
+      'DXCC unconfirmed',
+      reason: 'a verdict it does not word',
+    );
+  });
 }

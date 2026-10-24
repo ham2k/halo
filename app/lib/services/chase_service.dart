@@ -34,6 +34,17 @@ class ChaseGoal {
   ChaseGoal withOn(bool on) => ChaseGoal(key: key, label: label, icon: icon, color: color, on: on);
 }
 
+/// Programs that moved to a new key, by their old one: a stored goal under
+/// the old key is the same goal, keeping its place and its switch. The core
+/// `dxcc` program became the catalog's `ham2k-dxcc` (HALO-844). Never
+/// shrinks — an install may skip any number of releases.
+const kRenamedChasePrograms = {'dxcc': 'ham2k-dxcc'};
+
+String? _storedGoalKey(Map<dynamic, dynamic> entry) {
+  final key = entry['key'];
+  return key is String ? kRenamedChasePrograms[key] ?? key : null;
+}
+
 /// The goals [programs] offer, in the operator's [stored] order — `{key,
 /// on}` maps as `LayoutKeys.chaseOptions` keeps them. A program [stored]
 /// does not mention yet joins at the end, on: an extension enabled with a
@@ -46,8 +57,8 @@ List<ChaseGoal> resolveChaseGoals(Map<String, ChasingProgram> programs, List<Obj
 
   final goals = <ChaseGoal>[];
   for (final entry in stored.whereType<Map<dynamic, dynamic>>()) {
-    final key = entry['key'];
-    if (key is! String || !programs.containsKey(key) || goals.any((g) => g.key == key)) continue;
+    final key = _storedGoalKey(entry);
+    if (key == null || !programs.containsKey(key) || goals.any((g) => g.key == key)) continue;
     goals.add(goal(key, entry['on'] != false));
   }
   for (final key in programs.keys) {
@@ -63,7 +74,7 @@ List<ChaseGoal> resolveChaseGoals(Map<String, ChasingProgram> programs, List<Obj
 List<Map<String, dynamic>> storedChaseGoals(List<ChaseGoal> goals, List<Object?> stored) => [
   for (final g in goals) {'key': g.key, 'on': g.on},
   for (final entry in stored.whereType<Map<dynamic, dynamic>>())
-    if (entry['key'] is String && !goals.any((g) => g.key == entry['key'])) {'key': entry['key'], 'on': entry['on'] != false},
+    if (_storedGoalKey(entry) case final key? when !goals.any((g) => g.key == key)) {'key': key, 'on': entry['on'] != false},
 ];
 
 /// What a spot or a call alerts on until the operator picks: something the
@@ -295,7 +306,14 @@ class ChaseService extends ChangeNotifier {
       for (final judgement in judgements)
         for (final verdict in judgement.verdicts)
           if (verdict != ChaseVerdict.worked && (chasing || alerts.contains(verdict)))
-            ChaseNotice(program: judgement.program, verdict: verdict, guess: judgement.guess, alerting: alerts.contains(verdict)).key,
+            ChaseNotice(
+              program: judgement.program,
+              verdict: verdict,
+              guess: judgement.guess,
+              alerting: alerts.contains(verdict),
+              band: verdict == ChaseVerdict.newBand ? judgement.band : null,
+              mode: verdict == ChaseVerdict.newMode ? judgement.mode : null,
+            ).key,
     ];
   }
 

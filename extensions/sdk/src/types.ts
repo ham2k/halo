@@ -1588,6 +1588,26 @@ export interface ChasingProgram {
   /// batch. Listed as data so the app can offer an importer for a file by its
   /// extension before calling anything.
   imports?: ChasingImporter[]
+  /// The program's own words for a verdict's notice ("DXCC ATNO"), by
+  /// verdict; one left out reads the app's way ("New DXCC"). `{{band}}`
+  /// names the band a `newBand` verdict is about, `{{mode}}` the mode a
+  /// `newMode` one is, through `modeLabels`. A guessed verdict reads
+  /// "Probably …" around them.
+  notices?: Partial<Record<ChaseNoticeVerdict, string>>
+  /// What each of the program's modes is called in a notice
+  /// (`{ PHONE: "Phone" }`); a mode left out reads as the program names it.
+  modeLabels?: Record<string, string>
+  /// `notices` and `modeLabels` per language (`es`), in the manifest's
+  /// `translations` shape: each replaces the base entry by entry.
+  translations?: Record<string, ChasingNoticeLabels>
+}
+
+/// The verdicts a program can word for itself.
+export type ChaseNoticeVerdict = "newRef" | "newBand" | "newMode" | "unconfirmed"
+
+export interface ChasingNoticeLabels {
+  notices?: Partial<Record<ChaseNoticeVerdict, string>>
+  modeLabels?: Record<string, string>
 }
 
 /// One kind of file a program imports claims from.

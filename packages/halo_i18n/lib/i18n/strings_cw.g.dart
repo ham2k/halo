@@ -1538,6 +1538,7 @@ class _Translations$chase$notice$cw extends Translations$chase$notice$en {
 	@override String newMode({required Object program}) => '—· · ·—— / ${program} / —— ——— —·· ·';
 	@override String newModeGuess({required Object program}) => '·——· ·—· ——— —··· ·— —··· ·—·· —·—— / —· · ·—— / ${program} / —— ——— —·· ·';
 	@override String unconfirmed({required Object program}) => '${program} / ··— —· —·—· ——— —· ··—· ·· ·—· —— · —··';
+	@override String programGuess({required Object notice}) => '·——· ·—· ——— —··· ·— —··· ·—·· —·—— / ${notice}';
 }
 
 // Path: chase.alerts
@@ -4556,6 +4557,7 @@ extension on TranslationsCw {
 			'chase.notice.newMode' => ({required Object program}) => '—· · ·—— / ${program} / —— ——— —·· ·',
 			'chase.notice.newModeGuess' => ({required Object program}) => '·——· ·—· ——— —··· ·— —··· ·—·· —·—— / —· · ·—— / ${program} / —— ——— —·· ·',
 			'chase.notice.unconfirmed' => ({required Object program}) => '${program} / ··— —· —·—· ——— —· ··—· ·· ·—· —— · —··',
+			'chase.notice.programGuess' => ({required Object notice}) => '·——· ·—· ——— —··· ·— —··· ·—·· —·—— / ${notice}',
 			'chase.alerts.title' => '·— ·—·· · ·—· — ···',
 			'chase.alerts.newRef' => '—· · ·—— / ·—· · ··—· · ·—· · —· —·—· ·',
 			'chase.alerts.newBand' => '—· · ·—— / —··· ·— —· —··',
@@ -4772,9 +4774,9 @@ extension on TranslationsCw {
 			'operation.layout.panels.weatherConditions.sunny' => '··· ··— —· —· —·——',
 			'operation.layout.panels.weatherConditions.clear' => '—·—· ·—·· · ·— ·—·',
 			'operation.layout.panels.weatherConditions.mainlySunny' => '—— ·— ·· —· ·—·· —·—— / ··· ··— —· —· —·——',
-			'operation.layout.panels.weatherConditions.mainlyClear' => '—— ·— ·· —· ·—·· —·—— / —·—· ·—·· · ·— ·—·',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.weatherConditions.mainlyClear' => '—— ·— ·· —· ·—·· —·—— / —·—· ·—·· · ·— ·—·',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => '·——· ·— ·—· — ·—·· —·—— / —·—· ·—·· ——— ··— —·· —·——',
 			'operation.layout.panels.weatherConditions.cloudy' => '—·—· ·—·· ——— ··— —·· —·——',
 			'operation.layout.panels.weatherConditions.foggy' => '··—· ——— ——· ——· —·——',
@@ -5286,9 +5288,9 @@ extension on TranslationsCw {
 			'formChrome.removeItem' => '—·· · ·—·· · — ·',
 			'formChrome.deleteItemTitle' => ({required Object name}) => '—·· · ·—·· · — · / ${name} ··——··',
 			'formChrome.storageUnavailable' => '·—·· ——— ——· ·· —· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
-			'qsoEditForm.title' => '· —·· ·· — / ——·— ··· ———',
 			_ => null,
 		} ?? switch (path) {
+			'qsoEditForm.title' => '· —·· ·· — / ——·— ··· ———',
 			'qsoEditForm.operatorCall' => '——— ·——· · ·—· ·— — ——— ·—·',
 			'qsoEditForm.position' => '·——· ——— ··· ·· — ·· ——— —·',
 			'qsoEditForm.theirName' => '—· ·— —— ·',
@@ -5800,9 +5802,9 @@ extension on TranslationsCw {
 			'settings.station.host' => '·— —·· —·· ·—· · ··· ···',
 			'settings.station.hostDescription' => '— ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ···· ——— ··· — —· ·— —— · / ——— ·—· / ·· ·——· / ·— —·· —·· ·—· · ··· ··· / ——— —· / —·—— ——— ··— ·—· / —· · — ·—— ——— ·—· —·— ·—·—·—',
 			'settings.station.port' => '·——· ——— ·—· —',
-			'settings.station.hostRequired' => '·— —· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.hostRequired' => '·— —· / ·— —·· —·· ·—· · ··· ··· / ·· ··· / ·—· · ——·— ··— ·· ·—· · —··',
 			'settings.station.portInvalid' => '·——· ——— ·—· — / —— ··— ··· — / —··· · / —··· · — ·—— · · —· / ·———— / ·— —· —·· / —···· ····· ····· ···—— ·····',
 			'settings.station.connect' => '—·—· ——— —· —· · —·—· —',
 			'settings.station.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
@@ -6314,9 +6316,9 @@ extension on TranslationsCw {
 			'commands.noDataFilesMatched' => ({required Object target}) => '—· ——— / —·· ·— — ·— / ··—· ·· ·—·· · ··· / —— ·— — —·—· ···· · —·· / ·—··—· ${target} ·—··—· ·—·—·—',
 			'commands.reloadFailed' => ({required Object error}) => '·—· · ·—·· ——— ·— —·· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'commands.reloadingAll' => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ·— ·—·· ·—·· / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
-			'commands.reloadingTarget' => ({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			_ => null,
 		} ?? switch (path) {
+			'commands.reloadingTarget' => ({required Object target}) => '·—· · ·—·· ——— ·— —·· ·· —· ——· / ${target} / —·· ·— — ·— / ··—· ·· ·—·· · ··· …',
 			'commands.unknownExperiment' => ({required Object token}) => '··— —· —·— —· ——— ·—— —· / · —··— ·——· · ·—· ·· —— · —· — / ·—··—· ${token} ·—··—·',
 			'commands.experimentEnabled' => ({required Object name}) => '${name} / · —· ·— —··· ·—·· · —··',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} / —·· ·· ··· ·— —··· ·—·· · —··',
