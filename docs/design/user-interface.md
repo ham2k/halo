@@ -542,6 +542,17 @@ Dialogs can have a title and subtitle pinned at the top, content in the
 middle, and a set of action buttons pinned at the bottom. Clicking outside
 the dialog or pressing Escape dismisses it.
 
+A card floating over the window reaches into the header by
+`dialogHeaderOverlap` (12px) at most — the window controls live there.
+`haloDialogEdgeClearance` is that limit, and a card stops the same distance
+above the window's bottom edge. `HaloDialogFrame` places `showHaloDialog`
+dialogs, Modal Panes and the full-photo modals, and the command bar uses its
+insets. The routes stop above the status footer while `MediaQuery` reports
+the whole window, so centering a card in its route is not enough. A bare
+`showDialog` gets the top clearance from the theme's Dialog inset
+(`haloDialogInsetPadding`, which the Layout Density re-derives along with the
+header height), but its bottom is measured from the route, above the footer.
+
 Every footer is `haloDialogFooterRow` — one implementation, not a convention
 each dialog follows on its own. It carries five roles; `HaloDialog` takes
 all of them, while `showFormDialog`, `showFormPane` and a modal pane's

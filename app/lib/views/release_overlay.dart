@@ -407,13 +407,13 @@ class _ReleaseOverlayContent extends StatelessWidget {
 /// needs a determinate parent size to divide (an `Expanded`/scrollable
 /// section) requires this — same reasoning as `modal_pane.dart`'s
 /// non-scrollable dialog case (its own `minHeight: maxPaneHeight`). Sized
-/// deliberately outside `modal_pane.dart`'s usual `idealPaneWidth`/96
-/// conventions: 70% of the window's width, and a 48 (half the usual 96)
-/// top+bottom margin.
+/// deliberately outside `modal_pane.dart`'s usual `idealPaneWidth` width
+/// convention: 70% of the window's width. The height keeps the shared
+/// `haloDialogEdgeClearance` from each edge of the window (`HaloDialogFrame`).
 Widget wideModalChrome({required BuildContext context, required Widget child, required VoidCallback onDismiss}) {
   final windowSize = MediaQuery.sizeOf(context);
   final paneWidth = windowSize.width * 0.7;
-  final maxPaneHeight = math.max(0.0, windowSize.height - 48);
+  final maxPaneHeight = math.max(0.0, windowSize.height - 2 * haloDialogEdgeClearance(context));
   final Widget content = BackdropFilter(
     // Blurs whatever's painted just behind this in the same compositing
     // layer (the home screen, or — for the About modal — the settings pane).
@@ -429,7 +429,7 @@ Widget wideModalChrome({required BuildContext context, required Widget child, re
       onTap: onDismiss,
       child: ColoredBox(
         color: Colors.black.withValues(alpha: 0.2),
-        child: Center(
+        child: HaloDialogFrame(
           child: SizedBox(
             width: paneWidth,
             height: maxPaneHeight,

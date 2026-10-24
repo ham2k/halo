@@ -502,17 +502,69 @@ const double compactDialogWidth = 400.0;
 /// but still far short of a wide window's full width.
 const double maxDialogWidth = idealPaneWidth * 1.3;
 
+/// How far a card floating over the window may reach up into the header:
+/// enough to read as lifted over it, and no further — the window controls
+/// (macOS traffic lights, Windows caption buttons) live in that header.
+const double dialogHeaderOverlap = 12.0;
+
+/// A Dialog's inset from the window's sides — Material's own default,
+/// restated wherever the vertical inset is set, since an inset is set whole.
+const double dialogSideInset = 40.0;
+
+/// The least distance between the top of the window and a floating card —
+/// the header's height less [dialogHeaderOverlap]. Every floating modal
+/// surface keeps it, and keeps the same distance from the bottom edge.
+double haloDialogEdgeClearance(BuildContext context) => (Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight) - dialogHeaderOverlap;
+
+/// The inset a bare `showDialog` gets for a header [headerHeight] tall: the
+/// same clearance from the top as [HaloDialogFrame], and from its ROUTE's
+/// bottom edge, which is above the status footer. A theme that changes the
+/// header height (the Layout Density does) passes the new height here too,
+/// or its bare dialogs reach the wrong distance into the header.
+EdgeInsets haloDialogInsetPadding(double headerHeight) => EdgeInsets.symmetric(horizontal: dialogSideInset, vertical: headerHeight - dialogHeaderOverlap);
+
 /// One box every modal surface is held to — plain dialogs ([showHaloDialog])
 /// and Modal Panes alike — so they read as one family instead of each sizing
 /// itself to its content. Capped at [maxDialogWidth] and at the window height
-/// less one and a half header bars, leaving the header and the bottom edge
-/// visibly clear. Never negative: a window shorter than that clearance (no
-/// native min-size floor on web/Linux; a large font scale divides the logical
-/// height further) would otherwise assert on invalid constraints.
+/// less [haloDialogEdgeClearance] at each end, so a card that fills it inside
+/// a [HaloDialogFrame] overlaps the header by exactly [dialogHeaderOverlap]
+/// and stops the same distance above the window's bottom edge. Never negative: a
+/// window shorter than that clearance (no native min-size floor on web/Linux;
+/// a large font scale divides the logical height further) would otherwise
+/// assert on invalid constraints.
 BoxConstraints haloDialogConstraints(BuildContext context) {
-  final headerHeight = Theme.of(context).appBarTheme.toolbarHeight ?? kToolbarHeight;
-  final maxHeight = math.max(0.0, MediaQuery.sizeOf(context).height - headerHeight * 1.5);
+  final maxHeight = math.max(0.0, MediaQuery.sizeOf(context).height - 2 * haloDialogEdgeClearance(context));
   return BoxConstraints(maxWidth: maxDialogWidth, maxHeight: maxHeight);
+}
+
+/// Holds a floating card [haloDialogEdgeClearance] from the WINDOW's top and
+/// bottom edges, centered between them.
+///
+/// A route starts at the window's top but stops above the app's bottom chrome
+/// (the status footer), while `MediaQuery` reports the whole window — so a
+/// card sized by [haloDialogConstraints] and merely centered in its route
+/// would sit half the footer's height too high at both ends. The bottom inset
+/// is the clearance less whatever lies below the route.
+class HaloDialogFrame extends StatelessWidget {
+  final Widget child;
+
+  const HaloDialogFrame({super.key, required this.child});
+
+  /// The frame's insets, for a surface that places itself; [area] is the size
+  /// its route lays it out in.
+  static EdgeInsets insetsOf(BuildContext context, Size area) {
+    final clearance = haloDialogEdgeClearance(context);
+    final belowRoute = math.max(0.0, MediaQuery.sizeOf(context).height - area.height);
+    return EdgeInsets.only(top: clearance, bottom: math.max(0.0, clearance - belowRoute));
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => Padding(
+      padding: insetsOf(context, constraints.biggest),
+      child: Center(child: child),
+    ),
+  );
 }
 
 /// The style a [poloFieldDecoration] label paints at. The label always floats,
@@ -708,6 +760,8 @@ final Map<Brightness, ThemeData> _haloThemeCache = {};
 
 ThemeData buildHaLoTheme(Brightness brightness) => _haloThemeCache[brightness] ??= _buildHaLoTheme(brightness);
 
+const double _headerHeight = 48.0;
+
 ThemeData _buildHaLoTheme(Brightness brightness) {
   final isDark = brightness == Brightness.dark;
 
@@ -819,6 +873,8 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
     // Flutter's own transitions, each inside a HoldSizeWhileCovered — see it
     // for why a page behind a dialog's keyboard must not relayout.
     pageTransitionsTheme: haloPageTransitionsTheme,
+    // showHaloDialog zeroes this inset inside its frame, which already holds it.
+    dialogTheme: DialogThemeData(insetPadding: haloDialogInsetPadding(_headerHeight)),
     // The app's icon language is MDI; framework widgets default to built-in
     // Icons.* glyphs in a different visual style. These builders re-point
     // the framework's own buttons (including the BackButton an AppBar
@@ -852,7 +908,7 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
       // per each platform's own convention.
       centerTitle: false,
       elevation: 0,
-      toolbarHeight: 48.0,
+      toolbarHeight: _headerHeight,
       titleSpacing: 4.0,
       titleTextStyle: TextStyle(
         // HaloDialog titles read from here, and they carry extension- and

@@ -550,7 +550,10 @@ class _LayoutDensityFromWindowState extends State<_LayoutDensityFromWindow> {
     final base = Theme.of(context);
     if (_derivedTheme == null || !identical(base, _derivedFrom)) {
       _derivedFrom = base;
-      _derivedTheme = base.copyWith(appBarTheme: base.appBarTheme.copyWith(toolbarHeight: _toolbarHeight));
+      _derivedTheme = base.copyWith(
+        appBarTheme: base.appBarTheme.copyWith(toolbarHeight: _toolbarHeight),
+        dialogTheme: base.dialogTheme.copyWith(insetPadding: haloDialogInsetPadding(_toolbarHeight)),
+      );
     }
     return LayoutDensityScope(
       density: _density,

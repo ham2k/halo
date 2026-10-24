@@ -792,16 +792,19 @@ class _CommandDialogState extends State<CommandDialog> {
           // non-focusable node, and a second autofocus would race the text
           // field's for the initial focus.
           child: LayoutBuilder(
-            builder: (context, constraints) => Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                // The field sits around the upper-middle of the window so
-                // the sheet has room to descend below it without the field
-                // itself moving as results come and go.
-                padding: EdgeInsets.only(top: (constraints.maxHeight * 0.22).clamp(24.0, 220.0), left: Space.xl, right: Space.xl, bottom: Space.xxl),
-                child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: _panel(theme, t, results, selectable)),
-              ),
-            ),
+            builder: (context, constraints) {
+              final frame = HaloDialogFrame.insetsOf(context, constraints.biggest);
+              return Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  // The field sits around the upper-middle of the window so
+                  // the sheet has room to descend below it without the field
+                  // itself moving as results come and go.
+                  padding: EdgeInsets.only(top: (constraints.maxHeight * 0.22).clamp(frame.top, 220.0), left: Space.xl, right: Space.xl, bottom: frame.bottom),
+                  child: ConstrainedBox(constraints: const BoxConstraints(maxWidth: 640), child: _panel(theme, t, results, selectable)),
+                ),
+              );
+            },
           ),
         );
       },

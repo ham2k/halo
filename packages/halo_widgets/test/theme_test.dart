@@ -778,12 +778,12 @@ void main() {
       return (constraints, screenHeight, headerHeight);
     }
 
-    testWidgets('caps width at 30% over a pane and leaves 1.5 header bars of height', (tester) async {
+    testWidgets('caps width at 30% over a pane and leaves the header less the overlap at each end', (tester) async {
       final (constraints, screenHeight, headerHeight) = await measure(tester);
 
       expect(constraints.maxWidth, maxDialogWidth);
       expect(maxDialogWidth, idealPaneWidth * 1.3);
-      expect(constraints.maxHeight, screenHeight - headerHeight * 1.5);
+      expect(constraints.maxHeight, screenHeight - 2 * (headerHeight - dialogHeaderOverlap));
     });
 
     testWidgets('never goes negative on a window shorter than the header clearance', (tester) async {

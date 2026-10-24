@@ -34,12 +34,21 @@ Future<T?> showHaloDialog<T>({required BuildContext context, required WidgetBuil
   context: context,
   barrierDismissible: barrierDismissible,
   barrierColor: haloBarrierColor(context),
-  // Center first: showDialog hands its builder TIGHT full-screen constraints,
-  // and a ConstrainedBox can't shrink below a tight incoming width — the cap
-  // would silently do nothing. Center loosens them so the cap actually bites.
+  // The frame first: showDialog hands its builder TIGHT full-screen
+  // constraints, and a ConstrainedBox can't shrink below a tight incoming
+  // width — the cap would silently do nothing. The frame's Center loosens them
+  // so the cap actually bites. The frame already keeps the edge clearance, so
+  // a Dialog inside it drops the theme's vertical inset rather than adding the
+  // clearance twice.
   builder: (context) => HoldSizeWhileCovered(
-    child: Center(
-      child: ConstrainedBox(constraints: haloDialogConstraints(context), child: builder(context)),
+    child: HaloDialogFrame(
+      child: ConstrainedBox(
+        constraints: haloDialogConstraints(context),
+        child: DialogTheme(
+          data: DialogTheme.of(context).copyWith(insetPadding: const EdgeInsets.symmetric(horizontal: dialogSideInset)),
+          child: Builder(builder: builder),
+        ),
+      ),
     ),
   ),
 );
@@ -282,7 +291,7 @@ class _ModalPaneScaffold extends StatelessWidget {
     final theme = Theme.of(context);
     // The same box every dialog gets, so panes and plain dialogs read as one
     // family (haloDialogConstraints also guards the height against going
-    // negative on a window shorter than the header clearance).
+    // negative on a window shorter than the edge clearance).
     final dialogConstraints = haloDialogConstraints(context);
     // The transparent full-screen Scaffold exists so the route-scoped
     // ScaffoldMessenger has somewhere to show SnackBars ABOVE the barrier
@@ -313,7 +322,7 @@ class _ModalPaneScaffold extends StatelessWidget {
           // to announce.
           excludeFromSemantics: true,
           child: SafeArea(
-            child: Center(
+            child: HaloDialogFrame(
               child: GestureDetector(
                 // Taps on the card itself must not fall through to the
                 // barrier handler above.
@@ -720,7 +729,7 @@ class _TopModalPaneScaffold extends StatelessWidget {
           ? screenSize.height - topOffset - MediaQuery.of(context).padding.bottom
           // Wide: still a floating card — allowed down to half a header's
           // height above the screen's bottom edge rather than the generic
-          // haloDialogConstraints' 1.5-header-height clearance.
+          // haloDialogConstraints' edge clearance.
           : screenSize.height - topOffset - headerHeight / 2,
     );
     // Not applied in the full-width narrow case. Floored at zero for the same
