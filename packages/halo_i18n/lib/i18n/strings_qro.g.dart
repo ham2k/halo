@@ -2596,6 +2596,26 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get spectrumNoPanadapter => 'THIS SLICE HAS NO PANADAPTER ON THE RADIO';
 	@override String spectrumStreamRefused({required Object code}) => 'THE RADIO REFUSED A DAX IQ STREAM (ERROR ${code})';
 	@override String get spectrumNoUdp => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE';
+	@override String get kx3IqEnabled => 'SHOW KX3 I/Q PANADAPTER';
+	@override String get kx3IqDescription => 'CONNECT RX I/Q (OR THE PX3 RX I/Q PC OUTPUT) TO A TRUE STEREO LINE INPUT. ENABLE RX I/Q ON THE KX3. A MONO MICROPHONE CANNOT PROVIDE A PANADAPTER. AUDIO IS CAPTURED ONLY WHILE THE SPECTRUM IS DISPLAYED; LEVELS ARE RELATIVE, NOT CALIBRATED DBM.';
+	@override String get kx3IqDevice => 'STEREO I/Q INPUT';
+	@override String get kx3IqAllowInput => 'ALLOW AUDIO INPUT AND REFRESH DEVICES';
+	@override String get kx3IqRefreshInputs => 'REFRESH AUDIO INPUTS';
+	@override String get kx3IqRate => 'I/Q SAMPLE RATE';
+	@override String get kx3IqSwap => 'SWAP I AND Q CHANNELS';
+	@override String get kx3IqOffset => 'I/Q CENTER CORRECTION (HZ)';
+	@override String get kx3IqOffsetDescription => 'ADDED TO THE CAT DIAL FREQUENCY TO LOCATE THE CENTER OF THE CAPTURED SPECTRUM. CHECK A KNOWN SIGNAL AFTER CHANGING RX SHFT, BAND OR MODE. LEAVE BLANK FOR 0 HZ.';
+	@override String get kx3IqSelectDevice => 'SELECT THE STEREO INPUT CONNECTED TO THE KX3.';
+	@override String get kx3IqInvalidRate => 'CHOOSE 48, 96 OR 192 KHZ.';
+	@override String get kx3IqInvalidOffset => 'ENTER A WHOLE NUMBER FROM -24000 TO 24000 HZ.';
+	@override String get kx3IqStarting => 'OPENING THE KX3 STEREO I/Q INPUT…';
+	@override String get kx3IqWaitingForRadio => 'WAITING FOR THE KX3 FREQUENCY.';
+	@override String get kx3IqPermissionDenied => 'ALLOW AUDIO INPUT IN THE KX3 INPUT SELECTOR AND YOUR SYSTEM OR BROWSER SETTINGS, THEN REOPEN THE SPECTRUM.';
+	@override String get kx3IqDeviceUnavailable => 'THE SELECTED I/Q INPUT IS UNAVAILABLE. CONNECT IT, SELECT IT IN THE KX3 SETTINGS, THEN REOPEN THE SPECTRUM.';
+	@override String get kx3IqUnsupported => 'AUDIO CAPTURE IS UNAVAILABLE IN THIS ENVIRONMENT. IN A BROWSER, USE HTTPS AND ALLOW MICROPHONE ACCESS.';
+	@override String get kx3IqInvalidFormat => 'THE I/Q INPUT MUST PROVIDE TWO AUDIO CHANNELS. SELECT A TRUE STEREO LINE INPUT.';
+	@override String get kx3IqSampleRateMismatch => 'THE INPUT COULD NOT CAPTURE AT THE SELECTED I/Q SAMPLE RATE. CHOOSE A SUPPORTED RATE IN HALO AND THE DEVICE SETTINGS, THEN REOPEN THE SPECTRUM.';
+	@override String get kx3IqFailed => 'THE I/Q AUDIO STREAM STOPPED OR COULD NOT START. CHECK THE STEREO INPUT, THEN REOPEN THE SPECTRUM.';
 	@override String get spectrumK4Unavailable => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…';
 	@override String get spectrumScopeRefused => 'THE RADIO REFUSED ITS SCOPE COMMANDS';
 	@override String get spectrumOutOfRange => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW';
@@ -5880,6 +5900,26 @@ extension on TranslationsQro {
 			'settings.station.spectrumNoPanadapter' => 'THIS SLICE HAS NO PANADAPTER ON THE RADIO',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'THE RADIO REFUSED A DAX IQ STREAM (ERROR ${code})',
 			'settings.station.spectrumNoUdp' => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE',
+			'settings.station.kx3IqEnabled' => 'SHOW KX3 I/Q PANADAPTER',
+			'settings.station.kx3IqDescription' => 'CONNECT RX I/Q (OR THE PX3 RX I/Q PC OUTPUT) TO A TRUE STEREO LINE INPUT. ENABLE RX I/Q ON THE KX3. A MONO MICROPHONE CANNOT PROVIDE A PANADAPTER. AUDIO IS CAPTURED ONLY WHILE THE SPECTRUM IS DISPLAYED; LEVELS ARE RELATIVE, NOT CALIBRATED DBM.',
+			'settings.station.kx3IqDevice' => 'STEREO I/Q INPUT',
+			'settings.station.kx3IqAllowInput' => 'ALLOW AUDIO INPUT AND REFRESH DEVICES',
+			'settings.station.kx3IqRefreshInputs' => 'REFRESH AUDIO INPUTS',
+			'settings.station.kx3IqRate' => 'I/Q SAMPLE RATE',
+			'settings.station.kx3IqSwap' => 'SWAP I AND Q CHANNELS',
+			'settings.station.kx3IqOffset' => 'I/Q CENTER CORRECTION (HZ)',
+			'settings.station.kx3IqOffsetDescription' => 'ADDED TO THE CAT DIAL FREQUENCY TO LOCATE THE CENTER OF THE CAPTURED SPECTRUM. CHECK A KNOWN SIGNAL AFTER CHANGING RX SHFT, BAND OR MODE. LEAVE BLANK FOR 0 HZ.',
+			'settings.station.kx3IqSelectDevice' => 'SELECT THE STEREO INPUT CONNECTED TO THE KX3.',
+			'settings.station.kx3IqInvalidRate' => 'CHOOSE 48, 96 OR 192 KHZ.',
+			'settings.station.kx3IqInvalidOffset' => 'ENTER A WHOLE NUMBER FROM -24000 TO 24000 HZ.',
+			'settings.station.kx3IqStarting' => 'OPENING THE KX3 STEREO I/Q INPUT…',
+			'settings.station.kx3IqWaitingForRadio' => 'WAITING FOR THE KX3 FREQUENCY.',
+			'settings.station.kx3IqPermissionDenied' => 'ALLOW AUDIO INPUT IN THE KX3 INPUT SELECTOR AND YOUR SYSTEM OR BROWSER SETTINGS, THEN REOPEN THE SPECTRUM.',
+			'settings.station.kx3IqDeviceUnavailable' => 'THE SELECTED I/Q INPUT IS UNAVAILABLE. CONNECT IT, SELECT IT IN THE KX3 SETTINGS, THEN REOPEN THE SPECTRUM.',
+			'settings.station.kx3IqUnsupported' => 'AUDIO CAPTURE IS UNAVAILABLE IN THIS ENVIRONMENT. IN A BROWSER, USE HTTPS AND ALLOW MICROPHONE ACCESS.',
+			'settings.station.kx3IqInvalidFormat' => 'THE I/Q INPUT MUST PROVIDE TWO AUDIO CHANNELS. SELECT A TRUE STEREO LINE INPUT.',
+			'settings.station.kx3IqSampleRateMismatch' => 'THE INPUT COULD NOT CAPTURE AT THE SELECTED I/Q SAMPLE RATE. CHOOSE A SUPPORTED RATE IN HALO AND THE DEVICE SETTINGS, THEN REOPEN THE SPECTRUM.',
+			'settings.station.kx3IqFailed' => 'THE I/Q AUDIO STREAM STOPPED OR COULD NOT START. CHECK THE STEREO INPUT, THEN REOPEN THE SPECTRUM.',
 			'settings.station.spectrumK4Unavailable' => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…',
 			'settings.station.spectrumScopeRefused' => 'THE RADIO REFUSED ITS SCOPE COMMANDS',
 			'settings.station.spectrumOutOfRange' => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW',
@@ -6294,6 +6334,8 @@ extension on TranslationsQro {
 			'settings.panels.peersDescription' => 'CONNECT TO OTHER DEVICES NEARBY',
 			'settings.showMoreSettings' => 'SHOW MORE SETTINGS',
 			'settings.numberFormat' => 'NUMBER FORMATTING',
+			_ => null,
+		} ?? switch (path) {
 			'settings.numberFormatOpts.locale' => 'FOLLOW SYSTEM SETTINGS',
 			'settings.numberFormatOpts.period' => 'ALWAYS USE PERIOD FOR DECIMALS',
 			'settings.numberFormatOpts.comma' => 'ALWAYS USE COMMA FOR DECIMALS',
@@ -6314,8 +6356,6 @@ extension on TranslationsQro {
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
-			_ => null,
-		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',
 			'commands.sentryTestSent' => 'TEST ERROR REPORT SENT TO SENTRY',

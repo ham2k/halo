@@ -295,9 +295,9 @@ const kx3Model = EquipmentModel(
   variants: [
     EquipmentVariant(
       key: _kx3SerialKey,
-      driver: KenwoodDriver(),
+      driver: Kx3Driver(),
       transport: SerialTransport(),
-      defaultConfig: {'baudRate': _elecraftBaudRate},
+      defaultConfig: {'baudRate': _elecraftBaudRate, kx3IqRateKey: 48000},
       overrides: {
         KenwoodDriver.ifModeOffsetKey: 27,
         KenwoodDriver.cwDialectKey: 'elecraft',

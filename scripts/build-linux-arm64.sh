@@ -465,6 +465,7 @@ if [ ! -f app/lib/config/secrets.dart ]; then
   cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
 fi
 
+(cd packages/halo_build_tools && dart run bin/prepare_record.dart)
 ( cd app && flutter build linux --release --no-tree-shake-icons --config-only \
     --dart-define=HALO_EDITION="$EDITION" "$@" )
 # Show what actually got baked in, decoded. generated_config.cmake stores the

@@ -24,6 +24,9 @@ cd "$ROOT_DIR"
 
 echo "🚀 Starting Ham2K Logger Web Build & Deployment..."
 
+# Every target resolves all recorder path overrides, including web.
+(cd "$ROOT_DIR/packages/halo_build_tools" && dart run bin/prepare_record.dart)
+
 # 1. Build TypeScript Extensions
 echo "📦 Building TypeScript extensions..."
 cd "$ROOT_DIR/extensions"

@@ -6,6 +6,7 @@
 
 upcoming:
   changes:
+    - "New panadapter and waterfall for Elecraft KX3 radios"
     - "New control and serial port fields on Icom network connections"
     - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
 

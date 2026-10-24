@@ -43,6 +43,8 @@
 	     entitlement files — a Release-only miss is the documented trap. -->
 	<key>com.apple.security.device.bluetooth</key>
 	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 	<!-- Sparkle installs updates from OUTSIDE the sandbox via its Installer
 	     Launcher XPC service (enabled by SUEnableInstallerLauncherService in
 	     Info.plist). App Sandbox blocks global Mach-service lookup by default, so

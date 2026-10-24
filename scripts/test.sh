@@ -37,6 +37,9 @@
 #   test.sh --browser        the browser-platform tests alone, fatal rather
 #                            than skipped when no Chrome is present. Part of
 #                            the full gate; nothing on GitHub runs it.
+#   test.sh --native-iq <platform>
+#                            supplemental I/Q backend tests using native SDKs;
+#                            does not replace the full Dart/browser gate.
 #   test.sh --benchmark-scoring
 #                            scoring timings through the real JS engine,
 #                            with fresh bundles; outside the correctness gate.
@@ -241,6 +244,11 @@ check_clock_discipline() {
     flutter_inappwebview_macos_patched
     usb_serial_patched
     universal_ble_patched
+    record_macos_patched
+    record_android_patched
+    record_ios_patched
+    record_linux_patched
+    record_windows_patched
   )
   for d in "$ROOT_DIR"/packages/*/lib; do
     [[ -d "$d" ]] || continue
@@ -253,6 +261,11 @@ check_clock_discipline() {
     done
     [[ -n "$skip" ]] && continue
     dirs+=("$d")
+  done
+  # The generated dependencies are excluded, but our tracked Dart overlays
+  # are app code and follow the same clock rules as the adapters using them.
+  for d in "$ROOT_DIR"/dependencies/record/overlays/*/lib; do
+    [[ -d "$d" ]] && dirs+=("$d")
   done
   [[ -d "$ROOT_DIR/app_dist/lib" ]] && dirs+=("$ROOT_DIR/app_dist/lib")
 
@@ -321,6 +334,24 @@ check_dart_format() {
     echo "   (the width comes from analysis_options.yaml — do not pass --line-length)." >&2
     exit 1
   fi
+}
+
+check_record_dart() {
+  echo "▶ record: format and analyze authored Dart overlays"
+  local overlay relative package
+  while IFS= read -r overlay; do
+    relative="${overlay#"$ROOT_DIR/dependencies/record/overlays/"}"
+    package="${relative%%/*}"
+    relative="${relative#*/}"
+    # Keep these files in the upstream package's 80-column style. Preparation
+    # verifies their generated copies; do not format or lint upstream sources.
+    dart format --output=none --set-exit-if-changed "$overlay"
+    # Published plugin packages belong to an upstream workspace. Reuse the
+    # app's resolved dependencies instead of running pub get inside them.
+    dart analyze --fatal-infos \
+      --packages="$ROOT_DIR/app/.dart_tool/package_config.json" \
+      "$ROOT_DIR/packages/${package}_patched/$relative"
+  done < <(find "$ROOT_DIR/dependencies/record/overlays" -type f -name '*.dart' | sort)
 }
 
 # ---------------------------------------------------------------------------
@@ -422,7 +453,16 @@ ensure_secrets() {
   fi
 }
 
+ensure_record_packages() {
+  [[ "${RECORD_PACKAGES_PREPARED:-0}" == "1" ]] && return 0
+  echo "▶ record: prepare pinned packages and local I/Q patches"
+  (cd "$ROOT_DIR/packages/halo_build_tools" && dart run bin/prepare_record.dart)
+  RECORD_PACKAGES_PREPARED=1
+}
+
 ensure_pub() {
+  # A cached package config can still point at absent or stale generated code.
+  case "$1" in app | app_dist*) ensure_record_packages ;; esac
   # `flutter test` re-resolves stale deps itself; this only covers the
   # fresh-worktree case where .dart_tool doesn't exist at all.
   if [[ ! -f "$ROOT_DIR/$1/.dart_tool/package_config.json" ]]; then
@@ -459,8 +499,8 @@ run_browser_tests() {
     || command -v chromium >/dev/null 2>&1 \
     || command -v chromium-browser >/dev/null 2>&1 \
     || [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
-    echo "▶ app: browser-platform tests (web number semantics, platform-view shields, extension store)"
-    (cd "$ROOT_DIR/app" && flutter test --platform chrome test/settings/settings_fuzzy_test.dart test/web/platform_view_shield_web_test.dart test/web/bundle_storage_web_test.dart)
+    echo "▶ app: browser-platform tests (web number semantics, platform-view shields, extension store, I/Q capture)"
+    (cd "$ROOT_DIR/app" && flutter test --platform chrome test/settings/settings_fuzzy_test.dart test/web/platform_view_shield_web_test.dart test/web/bundle_storage_web_test.dart test/web/iq_audio_web_test.dart)
   elif [[ "${BROWSER_REQUIRED:-0}" -eq 1 ]]; then
     echo "❌ browser-platform tests: no Chrome found, and this run requires one." >&2
     exit 1
@@ -694,9 +734,10 @@ changed_subset() {
   while IFS= read -r path; do
     case "$path" in
       docs/* | *.md | .agents/* | .claude/*) ;;
-      scripts/* | .github/* | mise.toml | codemagic.yaml) infra=1 ;;
+      scripts/* | mise-tasks/* | .github/* | mise.toml | codemagic.yaml) infra=1 ;;
       extensions/*) groups="$groups extensions extension-host extension" ;;
       packages/halo_core/*) groups="$groups core" ;;
+      packages/halo_build_tools/bin/prepare_record.dart | packages/halo_build_tools/lib/src/record_dependencies.dart) groups="$groups build-tools platform cat" ;;
       packages/halo_build_tools/*) groups="$groups build-tools" ;;
       packages/halo_extension_host/*) groups="$groups extension-host" ;;
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
@@ -723,6 +764,8 @@ changed_subset() {
       # carries the AGP-9 fix. Nothing here runs Gradle, so that's a check on
       # the SOURCE LINE — the build itself is never exercised.
       packages/usb_serial_patched/*) groups="$groups platform" ;;
+      dependencies/record/*) groups="$groups build-tools platform cat" ;;
+      packages/record_macos_patched/* | packages/record_android_patched/* | packages/record_ios_patched/* | packages/record_linux_patched/* | packages/record_windows_patched/*) groups="$groups platform cat" ;;
       # A package this mapping doesn't know (new or renamed) must not fall
       # into the silent catch-all and read as "docs".
       packages/*)
@@ -817,6 +860,13 @@ changed_subset() {
 
 QUICK=0
 case "${1:-}" in
+  --native-iq)
+    if [[ $# -ne 2 ]]; then
+      echo "usage: scripts/test.sh --native-iq <ios|android|windows>" >&2; exit 2
+    fi
+    bash "$ROOT_DIR/scripts/test-iq-native.sh" "$2"
+    exit 0
+    ;;
   --quick | -q)
     if [[ $# -gt 1 ]]; then
       echo "--quick takes no further arguments (groups don't combine with it)" >&2
@@ -888,11 +938,11 @@ case "${1:-}" in
     exit 0
     ;;
   --help | -h)
-    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --benchmark-scoring | --list [group] | <group>...]"
+    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --native-iq <platform> | --benchmark-scoring | --list [group] | <group>...]"
     exit 0
     ;;
   -*)
-    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --benchmark-scoring | --list [group] | <group>...]" >&2
+    echo "usage: scripts/test.sh [--quick | --changed | --guards | --browser | --native-iq <platform> | --benchmark-scoring | --list [group] | <group>...]" >&2
     exit 2
     ;;
   "") ;;
@@ -922,6 +972,7 @@ esac
 # fix — nobody should wait out npm ci and a full analyze to be told about it.
 check_clock_discipline
 check_app_test_layout
+ensure_record_packages
 
 if [[ "$QUICK" -eq 1 ]]; then
   echo "▶ extensions: install, typecheck, format check (quick mode: no tests)"
@@ -984,6 +1035,7 @@ for pkg in "${PACKAGES[@]}"; do
 done
 
 check_dart_format "${PACKAGES[@]}"
+check_record_dart
 
 if [[ "$QUICK" -eq 0 ]]; then
   run_browser_tests

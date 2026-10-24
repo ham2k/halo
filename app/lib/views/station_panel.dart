@@ -275,15 +275,12 @@ class StationPanel extends StatelessWidget {
     final storedSecrets = node == null ? const <String>{} : await _cat.storedSecretFields(node.uuid);
     if (!context.mounted) return null;
 
-    // No-op for every transport except the web serial one, which uses this
-    // to fetch and cache navigator.serial's already-granted device list
-    // before configElements() (synchronous, so it can't await this itself)
-    // reads it. Every offered pairing's transport gets prepared, not just
-    // the selected one: they all render, so they all have to be ready before
-    // the first build.
+    // Device lists are asynchronous, while configElements is synchronous.
+    // Every offered pairing renders, so prepare all of their choices.
     Future<void> prepareVariants() async {
       for (final candidate in variants) {
         await candidate.transport.prepareConfigElements();
+        await candidate.driver.prepareConfigElements();
       }
     }
 

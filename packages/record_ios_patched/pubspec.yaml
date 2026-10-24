@@ -1,0 +1,23 @@
+# Copyright ©️ 2026 Robert Jackson <me@rwjblue.com>
+# SPDX-License-Identifier: MPL-2.0
+
+name: record_ios
+description: Pinned ios recorder backend with HaLo I/Q source validation.
+version: 2.1.1
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.44.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  record_platform_interface: ^2.1.0
+
+flutter:
+  plugin:
+    implements: record
+    platforms:
+      ios:
+        pluginClass: RecordIosPlugin

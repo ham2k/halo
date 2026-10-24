@@ -55,7 +55,11 @@ step "extensions: npm ci, build bundles → app/assets/extensions/"
 step "halo_quickjs: build the host JS engine library"
 packages/halo_quickjs/tool/build_host.sh
 
-# 5. Dependencies for the app and every first-party package — the same set
+# 5. Native recorder packages must exist before pub resolves app path overrides.
+step "record: prepare pinned packages and local I/Q patches"
+(cd packages/halo_build_tools && dart run bin/prepare_record.dart)
+
+# 6. Dependencies for the app and every first-party package — the same set
 #    the gate walks (scripts/test.sh), so `flutter analyze` and a package's
 #    own `flutter test` work from a fresh checkout without the gate first.
 for pkg in app packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_widgets packages/halo_cli; do
@@ -63,7 +67,7 @@ for pkg in app packages/halo_core packages/halo_build_tools packages/halo_i18n p
   (cd "$pkg" && flutter pub get >/dev/null)
 done
 
-# 6. macOS only: CocoaPods builds libserialport (the serial CAT transport)
+# 7. macOS only: CocoaPods builds libserialport (the serial CAT transport)
 #    from source, and `pod install` fails outright without autotools. A
 #    check, not an install — Homebrew is the user's.
 if [[ "$(uname -s)" == "Darwin" ]]; then

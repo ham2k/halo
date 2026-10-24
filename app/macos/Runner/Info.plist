@@ -102,6 +102,8 @@
 	<string>Used to suggest nearby activities (parks, summits), set the operation's grid square, and — when peer device sync is on — share your position with your own paired devices.</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ham2K Logger reads your selected stereo audio input to display the spectrum from your radio's I/Q output.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>SUPublicEDKey</key>

@@ -75,6 +75,10 @@ copy secrets.dart.example secrets.dart
 cd ../../..
 ```
 
+Windows builds download and verify the patched recorder sources automatically
+during CMake configuration. No separate preparation command is needed; see the
+[dependency setup notes](DEVELOPMENT.md#patched-recorder-dependencies).
+
 Build:
 ```
 cd extensions && npm install && npm run build

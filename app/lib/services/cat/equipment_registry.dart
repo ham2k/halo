@@ -430,8 +430,8 @@ class EquipmentType {
   /// Null for equipment that doesn't announce itself.
   Stream<DiscoveredEquipment>? discover() => discoverer?.discover();
 
-  /// Routes a `type: 'action'` element's press to the transport that
-  /// declared it — see [EquipmentTransport.runAction]. Nothing here reads
+  /// Routes a form action to the driver or transport that declared it.
+  /// Nothing here reads
   /// or applies [overrides] to the result: an action-driven field update
   /// (a newly-granted device's port) is exactly the kind of thing the
   /// operator just did, so it's never something a radio definition would
@@ -441,7 +441,7 @@ class EquipmentType {
   /// as if the operator had picked it: the editor applies an action's
   /// updates without reporting them as changes.
   Future<EquipmentActionResult?> runAction(String actionKey, String method, Map<String, dynamic> state) async {
-    final result = await transport.runAction(actionKey, method, state);
+    final result = await (driver.runAction(actionKey, method, state) ?? transport.runAction(actionKey, method, state));
     final updates = result?.fieldUpdates;
     if (result == null || updates == null) return result;
     return EquipmentActionResult(

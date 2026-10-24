@@ -7,6 +7,8 @@ environment:
   sdk: ^3.12.2
 
 dependencies:
+  archive: ^4.0.9
+  crypto: ^3.0.7
   # Pure Dart (collection/source_span/string_scanner), so the no-Flutter
   # promise above still holds. tester_notes_file.dart parses what it rewrites:
   # the release cut tags and pushes that file, and the app degrades a yaml

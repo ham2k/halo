@@ -2596,6 +2596,26 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get spectrumNoPanadapter => 'this slice has no panadapter on the radio';
 	@override String spectrumStreamRefused({required Object code}) => 'the radio refused a dax iq stream (error ${code})';
 	@override String get spectrumNoUdp => 'the radio\'s spectrum data cannot reach this device';
+	@override String get kx3IqEnabled => 'show kx3 i/q panadapter';
+	@override String get kx3IqDescription => 'connect rx i/q (or the px3 rx i/q pc output) to a true stereo line input. enable rx i/q on the kx3. a mono microphone cannot provide a panadapter. audio is captured only while the spectrum is displayed; levels are relative, not calibrated dbm.';
+	@override String get kx3IqDevice => 'stereo i/q input';
+	@override String get kx3IqAllowInput => 'allow audio input and refresh devices';
+	@override String get kx3IqRefreshInputs => 'refresh audio inputs';
+	@override String get kx3IqRate => 'i/q sample rate';
+	@override String get kx3IqSwap => 'swap i and q channels';
+	@override String get kx3IqOffset => 'i/q center correction (hz)';
+	@override String get kx3IqOffsetDescription => 'added to the cat dial frequency to locate the center of the captured spectrum. check a known signal after changing rx shft, band or mode. leave blank for 0 hz.';
+	@override String get kx3IqSelectDevice => 'select the stereo input connected to the kx3.';
+	@override String get kx3IqInvalidRate => 'choose 48, 96 or 192 khz.';
+	@override String get kx3IqInvalidOffset => 'enter a whole number from -24000 to 24000 hz.';
+	@override String get kx3IqStarting => 'opening the kx3 stereo i/q input…';
+	@override String get kx3IqWaitingForRadio => 'waiting for the kx3 frequency.';
+	@override String get kx3IqPermissionDenied => 'allow audio input in the kx3 input selector and your system or browser settings, then reopen the spectrum.';
+	@override String get kx3IqDeviceUnavailable => 'the selected i/q input is unavailable. connect it, select it in the kx3 settings, then reopen the spectrum.';
+	@override String get kx3IqUnsupported => 'audio capture is unavailable in this environment. in a browser, use https and allow microphone access.';
+	@override String get kx3IqInvalidFormat => 'the i/q input must provide two audio channels. select a true stereo line input.';
+	@override String get kx3IqSampleRateMismatch => 'the input could not capture at the selected i/q sample rate. choose a supported rate in halo and the device settings, then reopen the spectrum.';
+	@override String get kx3IqFailed => 'the i/q audio stream stopped or could not start. check the stereo input, then reopen the spectrum.';
 	@override String get spectrumK4Unavailable => 'cannot receive the k4’s lan spectrum. retrying…';
 	@override String get spectrumScopeRefused => 'the radio refused its scope commands';
 	@override String get spectrumOutOfRange => 'the radio\'s scope is set outside the range it can show';
@@ -5880,6 +5900,26 @@ extension on TranslationsQrp {
 			'settings.station.spectrumNoPanadapter' => 'this slice has no panadapter on the radio',
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'the radio refused a dax iq stream (error ${code})',
 			'settings.station.spectrumNoUdp' => 'the radio\'s spectrum data cannot reach this device',
+			'settings.station.kx3IqEnabled' => 'show kx3 i/q panadapter',
+			'settings.station.kx3IqDescription' => 'connect rx i/q (or the px3 rx i/q pc output) to a true stereo line input. enable rx i/q on the kx3. a mono microphone cannot provide a panadapter. audio is captured only while the spectrum is displayed; levels are relative, not calibrated dbm.',
+			'settings.station.kx3IqDevice' => 'stereo i/q input',
+			'settings.station.kx3IqAllowInput' => 'allow audio input and refresh devices',
+			'settings.station.kx3IqRefreshInputs' => 'refresh audio inputs',
+			'settings.station.kx3IqRate' => 'i/q sample rate',
+			'settings.station.kx3IqSwap' => 'swap i and q channels',
+			'settings.station.kx3IqOffset' => 'i/q center correction (hz)',
+			'settings.station.kx3IqOffsetDescription' => 'added to the cat dial frequency to locate the center of the captured spectrum. check a known signal after changing rx shft, band or mode. leave blank for 0 hz.',
+			'settings.station.kx3IqSelectDevice' => 'select the stereo input connected to the kx3.',
+			'settings.station.kx3IqInvalidRate' => 'choose 48, 96 or 192 khz.',
+			'settings.station.kx3IqInvalidOffset' => 'enter a whole number from -24000 to 24000 hz.',
+			'settings.station.kx3IqStarting' => 'opening the kx3 stereo i/q input…',
+			'settings.station.kx3IqWaitingForRadio' => 'waiting for the kx3 frequency.',
+			'settings.station.kx3IqPermissionDenied' => 'allow audio input in the kx3 input selector and your system or browser settings, then reopen the spectrum.',
+			'settings.station.kx3IqDeviceUnavailable' => 'the selected i/q input is unavailable. connect it, select it in the kx3 settings, then reopen the spectrum.',
+			'settings.station.kx3IqUnsupported' => 'audio capture is unavailable in this environment. in a browser, use https and allow microphone access.',
+			'settings.station.kx3IqInvalidFormat' => 'the i/q input must provide two audio channels. select a true stereo line input.',
+			'settings.station.kx3IqSampleRateMismatch' => 'the input could not capture at the selected i/q sample rate. choose a supported rate in halo and the device settings, then reopen the spectrum.',
+			'settings.station.kx3IqFailed' => 'the i/q audio stream stopped or could not start. check the stereo input, then reopen the spectrum.',
 			'settings.station.spectrumK4Unavailable' => 'cannot receive the k4’s lan spectrum. retrying…',
 			'settings.station.spectrumScopeRefused' => 'the radio refused its scope commands',
 			'settings.station.spectrumOutOfRange' => 'the radio\'s scope is set outside the range it can show',
@@ -6294,6 +6334,8 @@ extension on TranslationsQrp {
 			'settings.panels.peersDescription' => 'connect to other devices nearby',
 			'settings.showMoreSettings' => 'show more settings',
 			'settings.numberFormat' => 'number formatting',
+			_ => null,
+		} ?? switch (path) {
 			'settings.numberFormatOpts.locale' => 'follow system settings',
 			'settings.numberFormatOpts.period' => 'always use period for decimals',
 			'settings.numberFormatOpts.comma' => 'always use comma for decimals',
@@ -6314,8 +6356,6 @@ extension on TranslationsQrp {
 			'commands.reloadingAll' => 'reloading all data files…',
 			'commands.reloadingTarget' => ({required Object target}) => 'reloading ${target} data files…',
 			'commands.unknownExperiment' => ({required Object token}) => 'unknown experiment "${token}"',
-			_ => null,
-		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} enabled',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} disabled',
 			'commands.sentryTestSent' => 'test error report sent to sentry',
