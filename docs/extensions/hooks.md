@@ -1926,7 +1926,7 @@ the extension. `value` names what it shows and sets.
 
 | Kind | Binds to | Sends | Also takes |
 |---|---|---|---|
-| `button` | — | `activate` | `menu` |
+| `button` | — | `activate` | `menu`, `tapAt` (extension API 12: a click's `value` is where along the button's longer side it landed, 0 at its top or left end to 1 at its bottom or right; a key or screen reader activates it with none) |
 | `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover`, `valueLabels`, `continuous`, `scrollThrough` |
 | `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `invertDrag`, `scrollThrough`, `valueLabels`, `continuous`, `menu`, a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
 | `nativeButton` | — | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |
@@ -2104,6 +2104,13 @@ control and takes the fields of `PanelSceneSpectrum` in the SDK:
   (`both`, `pan`, `waterfall`), `split`, and `flow` — which way the waterfall
   moves (`down`, `up`, `right`, `left`), the panadapter on the side it comes
   from.
+- `rising` (extension API 12): which way frequency increases, across the
+  flow — `right` or `left` for `down` and `up`, `down` or `up` for `right` and
+  `left`; one along the flow is refused. Omitted, each flow is `down` turned a
+  quarter, never mirrored: `right` for `down` and `up`, `up` for `right`,
+  `down` for `left` (before API 12, `left` rose up the screen too). Text stays
+  upright, and offsets, `align` and pointer corners are measured as if
+  frequency rose to the right.
 - `floor`, `range`, `average` (0–99, default 40), `fps` (default 15),
   `waterfallSpeed`, `waterfallFloor`, `waterfallRange`: numbers, or the names
   of scene values the control reads on every sweep.
@@ -2121,7 +2128,10 @@ control and takes the fields of `PanelSceneSpectrum` in the SDK:
   number or a scene value. A wider sweep is cropped to it, so a radio whose
   scope comes in a few fixed widths can be shown at any narrower one; set the
   scope to the narrowest that covers it. Everything is drawn, labelled and
-  clicked on the window shown.
+  clicked on the window shown. Where the radio's `spectrum` says `autoSpan`
+  (extension API 12), the app sets the scope itself, to the narrowest span
+  covering the widest `span` among the spectrum controls on screen, so each
+  panel names its width here and leaves `setRadioSpectrum`'s `spanHz` alone.
 - `follow` (0–0.45): keeps the tuned frequency at least this share of the
   width from either edge, by moving the radio's scope just far enough to put
   it on that margin — the picture scrolls with the dial rather than jumping
@@ -2357,7 +2367,13 @@ for a radio without a scope, otherwise its settings as the radio reports them
 (`mode`, `spanHz`, `lowHz`/`highHz`, `refLevelDb`, `speed`), what it accepts
 (`spansHz`, `refMinDb`…`refStepDb`, `modes`, `speeds`) and `problem`, why it
 cannot run, in the operator's language. The settings are known only while a
-`spectrum` control has the scope running, and null otherwise.
+`spectrum` control has the scope running, and null otherwise. `autoSpan`
+(extension API 12) is true where the app sizes the scope for its displays — a
+sweep it computes, whose width changes nothing on the radio (a FlexRadio's DAX
+IQ): it runs at the narrowest span covering the widest spectrum control's
+`span` on screen, each control cropping its own width from it, and narrows
+again as wider ones go. A panel there names its width with `span`; setting
+`spanHz` too has the panels take turns.
 `host.setRadioSpectrum({id, selection?, mode?, spanHz?, refLevelDb?, speed?})`
 changes them; a span between two the radio offers is snapped to the nearer. It
 answers `stopped` when no control is running the scope: nothing is queued for
