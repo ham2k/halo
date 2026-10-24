@@ -457,7 +457,12 @@ class PeerScreenViews extends ChangeNotifier {
   /// Long enough not to spin against a peer that is refusing, short enough
   /// that a pane recovers from a blip while the operator is still looking
   /// at it.
-  static const Duration retryDelay = Duration(seconds: 3);
+  static const Duration defaultRetryDelay = Duration(seconds: 3);
+
+  /// [defaultRetryDelay], shortened only by a test that waits one out —
+  /// anywhere else a short delay is one a loaded machine can trip.
+  @visibleForTesting
+  Duration retryDelay = defaultRetryDelay;
 
   /// How long a subscribe may go unanswered before the pane says so.
   ///
@@ -465,7 +470,11 @@ class PeerScreenViews extends ChangeNotifier {
   /// message deliberately, a build predating this feature has never heard of
   /// it, and a wedged capture answers neither grant nor refusal. All three
   /// end at "Connecting…" for the life of the session without this.
-  static const Duration answerDeadline = Duration(seconds: 8);
+  static const Duration defaultAnswerDeadline = Duration(seconds: 8);
+
+  /// [defaultAnswerDeadline], shortened only by a test that waits one out.
+  @visibleForTesting
+  Duration answerDeadline = defaultAnswerDeadline;
 
   /// Subscribes still waiting on an answer.
   final Map<PeerScreenTarget, Timer> _awaitingAnswer = {};

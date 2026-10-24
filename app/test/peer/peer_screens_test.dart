@@ -203,6 +203,12 @@ class _Device {
   }
 }
 
+/// What a test that waits out a deadline shortens it to, on the device under
+/// test only. Each such test asserts that the deadline eventually fires,
+/// which a late timer cannot falsify; a short deadline anywhere else is one a
+/// loaded machine can trip (docs/design/time.md §7).
+const _waitedOut = Duration(milliseconds: 500);
+
 const _display = PeerScreenSource(id: 'display:1', name: 'Built-in', kind: 'display');
 const _window = PeerScreenSource(id: 'window:99', name: 'WSJT-X', kind: 'window');
 
@@ -409,9 +415,10 @@ void main() {
       await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
       const target = PeerScreenTarget('device-b', 'display:1');
 
+      tablet.views.retryDelay = _waitedOut;
       tablet.host.dialFailure = StateError('the dialler lost its own state');
       tablet.views.subscribe('remoteScreen#1', target);
-      await waitFor('the bug reaches the backend', () => backend.exceptions.isNotEmpty, timeout: PeerScreenViews.retryDelay * 4);
+      await waitFor('the bug reaches the backend', () => backend.exceptions.isNotEmpty);
       final reported = backend.exceptions.single;
       expect(reported.error, isA<PeerMediaDialFailure>().having((f) => f.peerDeviceId, 'peer', 'device-b').having((f) => f.cause, 'cause', isA<StateError>()));
       expect(reported.context, contains('failed 3 times in a row'));
@@ -423,7 +430,7 @@ void main() {
       await waitFor('the link comes up', () => shack.screens.hasMediaLink('device-a'));
       expect(ErrorReportingService.failureStreak(PeerScreenViews.dialStreakKey('device-b')), 0);
     }, backend: backend);
-  }, timeout: const Timeout(Duration(seconds: 90)));
+  });
 
   test('a peer going away leaves the pane its last picture and a reason', () async {
     await paired();
@@ -670,6 +677,7 @@ void main() {
     await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
 
     const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.retryDelay = _waitedOut;
     tablet.views.subscribe('remoteScreen#1', target);
     await waitFor('the first frame', () {
       shack.capture.emit('display:1', 1, [1]);
@@ -684,7 +692,7 @@ void main() {
     await waitFor('it comes back without anyone touching anything', () {
       shack.capture.emit('display:1', 2, [2]);
       return tablet.views.viewFor(target)?.status == PeerScreenViewStatus.live && shack.capture.started.length >= 2;
-    }, timeout: PeerScreenViews.retryDelay * 4);
+    });
   });
 
   test('two panes on one peer, both asking before the link is up, both connect', () async {
@@ -804,7 +812,7 @@ void main() {
     // router drops the message deliberately and nothing on this side would
     // otherwise ever stop waiting.
     await paired();
-    final deaf = PeerScreenViews(peers: tablet.service, screens: null, localName: 'Tablet');
+    final deaf = PeerScreenViews(peers: tablet.service, screens: null, localName: 'Tablet')..answerDeadline = _waitedOut;
     addTearDown(deaf.dispose);
     // The shack machine's router has no producer, exactly as a build with
     // the experiment off would.
@@ -813,11 +821,7 @@ void main() {
 
     const target = PeerScreenTarget('device-b', 'display:1');
     deaf.subscribe('remoteScreen#1', target);
-    await waitFor(
-      'it stops waiting and says why',
-      () => deaf.viewFor(target)?.status == PeerScreenViewStatus.refused,
-      timeout: PeerScreenViews.answerDeadline * 3,
-    );
+    await waitFor('it stops waiting and says why', () => deaf.viewFor(target)?.status == PeerScreenViewStatus.refused);
     expect(deaf.viewFor(target)!.refusal, 'noAnswer');
   });
 
@@ -833,14 +837,13 @@ void main() {
     // never acted on and no media link is ever opened — a viewer behind a
     // firewall, as far as this device can tell.
     tablet.channels.dispose();
+    shack.screens.mediaDeadline = _waitedOut;
     await shack.screens.handleSubscribe('device-a', const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
     expect(shack.capture.started, contains('display:1'));
 
-    await waitFor('the producer gives up on it', () => shack.capture.stopCalls.contains('display:1'), timeout: PeerScreens.mediaDeadline * 2);
+    await waitFor('the producer gives up on it', () => shack.capture.stopCalls.contains('display:1'));
     expect(shack.screens.isWatched('display:1'), isFalse);
-    // The deadline is deliberately longer than a viewer's retry round, so
-    // this test outlives the framework's own 30s default.
-  }, timeout: const Timeout(Duration(seconds: 90)));
+  });
 
   test('a viewer that takes frames but never acknowledges stops being sent them', () async {
     // The whole point. Without a window a viewer that falls behind takes
@@ -1105,6 +1108,7 @@ void main() {
     // side that knows it is holding frames it cannot send, has to say so.
     await paired();
     await sharing([_display.id]);
+    shack.screens.stallDeadline = _waitedOut;
     final deaf = await rawViewer(shack, tablet, sourceId: _display.id, acks: false, declareAcks: true);
     // Installed after rawViewer, which takes the same hook to catch the grant.
     final refusals = <String>[];
@@ -1116,12 +1120,12 @@ void main() {
     await waitFor('the producer gives up and says why', () {
       shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
       return refusals.contains('stalled');
-    }, timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    });
     // Freeing the capture is the point: a source held open for a viewer that
     // is not watching it costs the operator's machine for nothing.
     expect(shack.screens.watchers, isEmpty);
     expect(deaf.received, isNotEmpty, reason: 'it was served before it went quiet');
-  }, timeout: const Timeout(Duration(seconds: 120)));
+  });
 
   test('a viewer told the producer does not read acks sends none', () async {
     // The compatibility half, from the viewer's side. A producer that
@@ -1162,6 +1166,7 @@ void main() {
     // until somebody happened to touch it.
     await paired();
     await sharing([_display.id]);
+    shack.screens.stallDeadline = _waitedOut;
     final refusals = <String>[];
     final deaf = await rawViewer(shack, tablet, sourceId: _display.id, acks: false, declareAcks: true);
     tablet.service.onEphemeral = (peer, message) {
@@ -1176,11 +1181,11 @@ void main() {
 
     // The screen now sits still: nothing more is captured, ever.
     final capturedWhenQuiet = shack.screens.framesCaptured;
-    await waitFor('the producer gives up anyway', () => refusals.contains('stalled'), timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    await waitFor('the producer gives up anyway', () => refusals.contains('stalled'));
     expect(shack.screens.framesCaptured, capturedWhenQuiet, reason: 'nothing may have been captured — that is the whole point');
     expect(shack.screens.watchers, isEmpty);
     expect(deaf.received, isNotEmpty);
-  }, timeout: const Timeout(Duration(seconds: 120)));
+  });
 
   test('a frame from the old capture session does not shut the new one out', () async {
     // A restart stops the old session asynchronously on the native side, so a
@@ -1259,7 +1264,7 @@ void main() {
     await waitFor('it keeps receiving well past the window', () {
       shack.capture.emit('display:1', ++seq, [seq & 0xFF]);
       return viewer.received.length > PeerScreens.inFlightWindow + 10;
-    }, timeout: PeerScreens.stallDeadline + const Duration(seconds: 20));
+    }, timeout: PeerScreens.defaultStallDeadline + const Duration(seconds: 20));
     expect(refusals, isEmpty, reason: 'a build mismatch must not be reported as a slow link');
     expect(shack.screens.watchers, isNotEmpty);
   }, timeout: const Timeout(Duration(seconds: 120)));
@@ -1275,17 +1280,14 @@ void main() {
     await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
 
     const target = PeerScreenTarget('device-b', 'display:1');
+    tablet.views.retryDelay = _waitedOut;
     tablet.views.subscribe('remoteScreen#1', target);
     await waitFor('the producer is serving it', () => shack.screens.watchers.isNotEmpty);
 
     for (var attempt = 1; attempt <= 2; attempt++) {
       await shack.screens.removeWatcher('device-a', 'display:1');
       tablet.views.onRefused('device-b', 'display:1', 'stalled');
-      await waitFor(
-        're-asked after stall $attempt',
-        () => shack.screens.watchers.isNotEmpty,
-        timeout: PeerScreenViews.retryDelay + const Duration(seconds: 10),
-      );
+      await waitFor('re-asked after stall $attempt', () => shack.screens.watchers.isNotEmpty);
     }
 
     await shack.screens.removeWatcher('device-a', 'display:1');
@@ -1293,10 +1295,10 @@ void main() {
     // Waiting well past the retry rather than just past it: this asserts
     // something has NOT happened, so a timer that merely ran late would hide
     // a re-ask rather than expose one (time.md §7).
-    await Future<void>.delayed(PeerScreenViews.retryDelay * 3);
+    await Future<void>.delayed(_waitedOut * 4);
     expect(shack.screens.watchers, isEmpty, reason: 'it stops asking and leaves the notice up');
     expect(tablet.views.viewFor(target)!.refusal, 'stalled');
-  }, timeout: const Timeout(Duration(seconds: 120)));
+  });
 
   test('a straggler that lands after the restart is cleared by the renumbering', () async {
     // Ordering the flow reset after the capture starts covers the frames

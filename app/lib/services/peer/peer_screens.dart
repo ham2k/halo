@@ -115,7 +115,12 @@ class PeerScreens extends ChangeNotifier {
   /// Generous: a viewer on a slow link is congested, not gone, and dropping
   /// it costs a reconnect. Six seconds of a ten-a-second stream is sixty
   /// frames' worth of nothing acknowledged.
-  static const Duration stallDeadline = Duration(seconds: 6);
+  static const Duration defaultStallDeadline = Duration(seconds: 6);
+
+  /// [defaultStallDeadline], shortened only by a test that waits one out —
+  /// anywhere else a short deadline is one a loaded machine can trip.
+  @visibleForTesting
+  Duration stallDeadline = defaultStallDeadline;
 
   /// How many frames may be outstanding before the producer stops sending.
   ///
@@ -140,7 +145,11 @@ class PeerScreens extends ChangeNotifier {
 
   /// Generous: it spans several of a viewer's own retry rounds, so an
   /// ordinary slow dial is never mistaken for one that will not arrive.
-  static const Duration mediaDeadline = Duration(seconds: 25);
+  static const Duration defaultMediaDeadline = Duration(seconds: 25);
+
+  /// [defaultMediaDeadline], shortened only by a test that waits one out.
+  @visibleForTesting
+  Duration mediaDeadline = defaultMediaDeadline;
 
   /// What a pane on this device is handed, standing in for the media link a
   /// peer would dial. Same bytes, same format — only the transport is
