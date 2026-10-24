@@ -83,7 +83,7 @@ void main() {
     });
   });
 
-  test('a carrier retains its frequency when the source bin count changes', () {
+  test('a 1024-bin remote sweep retains the same frequency scale as a 2048-bin LAN sweep', () {
     fakeAsync((async) {
       presenter.start();
       for (final count in [1024, 2048]) {

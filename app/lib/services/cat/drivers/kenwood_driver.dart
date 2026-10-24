@@ -38,6 +38,7 @@ import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'k4_codec.dart';
 import 'k4_spectrum.dart';
+import 'k4_shared_session_config.dart';
 import 'keyer_config.dart';
 import 'optional_read.dart';
 import 'poll_config.dart';
@@ -47,8 +48,8 @@ import 'voice_activity_tracker.dart';
 part 'k4_spectrum_session.dart';
 
 class KenwoodDriver extends EquipmentDriver {
-  const KenwoodDriver() : isK4 = false, lanSpectrum = false;
-  const KenwoodDriver.k4({this.lanSpectrum = false}) : isK4 = true;
+  const KenwoodDriver() : isK4 = false, lanSpectrum = false, remote = false;
+  const KenwoodDriver.k4({this.lanSpectrum = false, this.remote = false}) : isK4 = true;
 
   /// Pinned by the model, never inferred from the optional voice dialect.
   final bool isK4;
@@ -56,6 +57,17 @@ class KenwoodDriver extends EquipmentDriver {
   /// Pinned by the Ethernet pairing: a serial node can retain a saved host
   /// after switching variants, without that authorizing a second LAN link.
   final bool lanSpectrum;
+  final bool remote;
+
+  @override
+  String? get channelKey => remote ? k4ReceiverConfigKey : null;
+  @override
+  List<String> get channelValues => remote ? k4ReceiverValues : const [];
+  @override
+  String? describeChannel(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => remote ? describeK4Receiver(config, overrides) : null;
+  @override
+  String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) =>
+      remote ? describeK4Receiver(config, overrides, suffix: true) : null;
 
   /// What most of the Kenwood line ships set to, and what its CAT menu calls
   /// 9600. Only a default — a mismatch answers with garbage and no error, so
@@ -179,10 +191,11 @@ class KenwoodDriver extends EquipmentDriver {
       _ => null,
     };
     final host = lanSpectrum ? trimmedHost(config) : '';
-    if (lanSpectrum && host.isNotEmpty) {
+    final spectrum = lanSpectrum && host.isNotEmpty ? K4Spectrum(host: host, sink: sink is SpectrumSink ? sink as SpectrumSink : null) : null;
+    if (spectrum != null) {
       return K4SpectrumSession(
         sink,
-        spectrum: K4Spectrum(host: host, sink: sink is SpectrumSink ? sink as SpectrumSink : null),
+        spectrum: spectrum,
         declaredModeOffset: modeOffset,
         cwDialect: cwDialectFrom(config),
         voiceDialect: voiceDialectFrom(config),
@@ -194,6 +207,7 @@ class KenwoodDriver extends EquipmentDriver {
     return KenwoodSession(
       sink,
       isK4: isK4,
+      remote: remote,
       declaredModeOffset: modeOffset,
       cwDialect: cwDialectFrom(config),
       voiceDialect: voiceDialectFrom(config),
@@ -220,6 +234,7 @@ class KenwoodDriver extends EquipmentDriver {
   /// entry exists (docs/design/cat.md § Voice keying).
   @override
   List<Map<String, dynamic>> configElements({Map<String, dynamic> overrides = const {}, Map<String, dynamic> restrictions = const {}}) => [
+    if (remote && !overrides.containsKey(k4ReceiverConfigKey)) k4ReceiverConfigElement(),
     if (!overrides.containsKey(cwDialectKey))
       {
         'type': 'field',
@@ -250,12 +265,13 @@ class KenwoodDriver extends EquipmentDriver {
         ],
       },
     if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
-    telemetryConfigElement(),
-    pollConfigElement(),
+    if (!remote) telemetryConfigElement(),
+    if (!remote) pollConfigElement(),
   ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
+    k4ReceiverConfigKey when remote => validateK4Receiver(value),
     voiceMemoriesKey => validateVoiceMemories(value),
     telemetryIntervalConfigKey => validateTelemetryInterval(value),
     pollIntervalConfigKey => validatePollInterval(value),
@@ -287,6 +303,18 @@ class KenwoodSession
     implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
   final EquipmentSink _sink;
   final bool isK4;
+  final bool remote;
+  bool? _remoteTransmitting;
+
+  bool get _transmitting => remote ? _remoteTransmitting == true : _telemetry.transmitting;
+
+  bool _noteTransmitting(bool value) {
+    if (!remote) return _telemetry.noteTransmitting(value);
+    final changed = _remoteTransmitting != value;
+    _remoteTransmitting = value;
+    return changed;
+  }
+
   num? _pendingK4Power;
   Timer? _k4PowerTimeout;
 
@@ -416,6 +444,7 @@ class KenwoodSession
   KenwoodSession(
     this._sink, {
     this.isK4 = false,
+    this.remote = false,
     this.declaredModeOffset,
     this.cwDialect,
     this.voiceDialect,
@@ -471,12 +500,9 @@ class KenwoodSession
   /// could only infer it from timing.
   Duration get pollInterval => _poller.interval;
 
-  /// This session polls, so a quiet VFO is only settled once a poll has come
-  /// and gone without a change. Auto-Information rides on top of that and
-  /// only ever makes readings arrive sooner, never later, so the poll cadence
-  /// is the honest upper bound.
+  /// Remote AI4 pushes changes; other links settle after the next poll.
   @override
-  Duration? get expectedUpdateInterval => _poller.interval;
+  Duration? get expectedUpdateInterval => remote ? null : _poller.interval;
 
   void _send(String command) => _sink.send(ascii.encode(command));
 
@@ -591,7 +617,7 @@ class KenwoodSession
   /// K3 line answers `?;` to commands it will not handle on the air, and two
   /// of those would stop the reads for the connection.
   void _requestPassband() {
-    if (passbandDialect == null || !_passbandRead.available || _telemetry.transmitting) return;
+    if (passbandDialect == null || !_passbandRead.available || _transmitting) return;
     if (_passbandPollsToSkip > 0) {
       _passbandPollsToSkip--;
       return;
@@ -724,7 +750,7 @@ class KenwoodSession
   /// Every [kenwoodAntennaReadEvery]th poll, never while transmitting — the
   /// passband's reason: a K3-line `?;` on the air would count as a refusal.
   void _requestAntennas() {
-    if (antennaDialect == null || !_antennaRead.available || _telemetry.transmitting) return;
+    if (antennaDialect == null || !_antennaRead.available || _transmitting) return;
     if (_antennaPollsToSkip > 0) {
       _antennaPollsToSkip--;
       return;
@@ -801,7 +827,7 @@ class KenwoodSession
     // Before the framer, which drops `?;` — it has no letters to frame.
     // Not on the air: the K3 line answers `?;` to commands it will not handle
     // while transmitting, which says nothing about whether it has them.
-    if (!_telemetry.transmitting && !_rawGrace.active && text.contains(kenwoodRefusal)) {
+    if (!_transmitting && !_rawGrace.active && text.contains(kenwoodRefusal)) {
       _tunerRead.heardRefusal();
       _passbandRead.heardRefusal();
       _antennaRead.heardRefusal();
@@ -841,6 +867,7 @@ class KenwoodSession
 
       case 'PC':
         if (isK4) {
+          if (remote && RegExp(r'^\d{3}$').hasMatch(command.params)) _send('PCX;');
           final power = parseK4Power(command.params);
           if (power == null) return;
           _sink.reportPower(power.watts);
@@ -980,10 +1007,17 @@ class KenwoodSession
       case 'ER':
         if (isK4) _sink.reportDiagnostic('K4 refused a command: ER${command.params}');
       case 'TQ':
-        if (voiceDialect != KenwoodVoiceDialect.kx) return;
+        if (voiceDialect != KenwoodVoiceDialect.kx && !remote) return;
         final transmitting = parseElecraftTransmitQueryParams(command.params);
         if (transmitting == null) return;
-        _voicePollSays(going: transmitting);
+        if (remote) {
+          if (_noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
+        } else {
+          _voicePollSays(going: transmitting);
+        }
+      case 'PO' when remote:
+        // The shared CAT framer splits the command after two characters.
+        if (RegExp(r'^NG[0-9]*$').hasMatch(command.params)) _sink.reportAlive();
     }
     // Everything else is an acknowledgement or something we don't track;
     // ignoring them is what lets AI mode be noisy without harm.
@@ -998,7 +1032,7 @@ class KenwoodSession
         return;
       }
       _report(VfoReading(freqKHz: info.freqHz / 1000, mode: info.mode));
-      if (_telemetry.noteTransmitting(info.transmitting)) _sink.reportTransmitting(info.transmitting);
+      if (_noteTransmitting(info.transmitting)) _sink.reportTransmitting(info.transmitting);
       return;
     }
     // Always safe: the eleven-digit frequency opens the packet on every
@@ -1018,7 +1052,7 @@ class KenwoodSession
     // reports nothing rather than a character read from the wrong place.
     if (learned != null) {
       final transmitting = parseKenwoodInfoTransmittingBeforeMode(params, learned);
-      if (transmitting != null && _telemetry.noteTransmitting(transmitting)) {
+      if (transmitting != null && _noteTransmitting(transmitting)) {
         _sink.reportTransmitting(transmitting);
       }
     }
@@ -1099,6 +1133,7 @@ class KenwoodSession
       _k4Band = band;
     }
     _send(buildKenwoodSetFrequencyCommand((freqKHz * 1000).round()));
+    if (remote) _send('IF;'); // AI4 omits changes made by this client.
   }
 
   @override
@@ -1177,7 +1212,7 @@ class KenwoodSession
   @override
   void startTune() {
     final flags = _tunerFlags;
-    if (flags == null || _telemetry.transmitting || flags.tuning) return;
+    if (flags == null || _transmitting || flags.tuning) return;
     _send(buildKenwoodStartTuneCommand(rxInline: flags.rxInline));
     _readTuner();
   }
@@ -1199,7 +1234,7 @@ class KenwoodSession
   @override
   void setAntenna({String? rx, String? tx}) {
     final antennas = _antennas;
-    if (antennas == null || _telemetry.transmitting) return;
+    if (antennas == null || _transmitting) return;
     final txIndex = tx == null ? -1 : kenwoodAntennaPorts.indexOf(tx);
     switch (antennaDialect) {
       case KenwoodAntennaDialect.twoPort:
@@ -1376,6 +1411,7 @@ class KenwoodSession
     // throws leaves [teardown] an unkey to send.
     _keyedByUs |= on;
     _send(buildKenwoodSetTxCommand(on));
+    if (remote) _send('TQ;');
     _keyedByUs = on;
   }
 
@@ -1386,6 +1422,7 @@ class KenwoodSession
     _pendingK4Power = null;
     _k4PowerResync = false;
     _k4InfoRejected = false;
+    _remoteTransmitting = null;
     _k4PowerTimeout?.cancel();
     _tunerFlags = null;
     _tunerPollsToSkip = 0;
@@ -1410,14 +1447,16 @@ class KenwoodSession
     // Once: the protocol is a menu setting, not something that changes while
     // connected.
     if (modeDialect == KenwoodModeDialect.lab599) _send(buildKenwoodReadIdCommand());
-    _send(buildKenwoodAutoInformationCommand(true));
+    // RDY enables the remote connection's AI4 push stream. The meta-mode
+    // selection above is per client and keeps our existing K31 IF parser.
+    _send(remote ? 'RDY;' : buildKenwoodAutoInformationCommand(true));
     _requestState();
-    _telemetry.start();
+    if (!remote) _telemetry.start();
     // Once, not per poll — the same reasoning as the Icom driver's: the
     // speed changes only when someone turns the knob, and the dialog that
     // shows it re-reads it when it opens.
     if (cwDialect != null) _send(buildKenwoodReadKeyerSpeedCommand());
-    _poller.start();
+    if (!remote) _poller.start();
   }
 
   @override
@@ -1434,7 +1473,7 @@ class KenwoodSession
     // session that was superseded before it ever spoke.
     if (!_started) return;
     _started = false;
-    _send(buildKenwoodAutoInformationCommand(false));
+    if (!remote) _send(buildKenwoodAutoInformationCommand(false));
   }
 
   @override

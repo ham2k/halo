@@ -2597,6 +2597,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String spectrumStreamRefused({required Object code}) => 'THE RADIO REFUSED A DAX IQ STREAM (ERROR ${code})';
 	@override String get spectrumNoUdp => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE';
 	@override String get spectrumK4Unavailable => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…';
+	@override String get spectrumK4RemoteUnavailable => 'CANNOT RECEIVE THE K4’S REMOTE SPECTRUM';
 	@override String get spectrumScopeRefused => 'THE RADIO REFUSED ITS SCOPE COMMANDS';
 	@override String get spectrumOutOfRange => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW';
 	@override String get spectrumBandUnsupported => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND';
@@ -2669,6 +2670,16 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get k4SerialNotes => 'CONNECT THE K4’S REAR USB-B (PC) SOCKET. EITHER USB-PC1 OR USB-PC2 WORKS FOR CAT; CHOOSE AN UNUSED PORT AND MATCH ITS SERIAL USB-PCN: BAUD RATE SETTING ON THE RADIO. HALO PREFILLS 38400; CHANGE IT IF NEEDED. ANOTHER APPLICATION MUST USE THE OTHER PORT OR ETHERNET.\n\nTHIS CONNECTION CONTROLS THE RADIO AND ITS KEYERS; IT DOES NOT SEND AUDIO TO HALO.';
 	@override String get k4TcpNotes => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. HALO USES THE SAME HOST ON FIXED PORT 9201 WHEN A PANADAPTER OR WATERFALL IS VISIBLE; CHANGING THE CAT PORT DOES NOT CHANGE THE SPECTRUM PORT.\n\nTHE SPECTRUM SHOWS THE MAIN RECEIVER. ITS ZOOM, REFERENCE ADJUSTMENT AND SPEED CONTROLS AFFECT ONLY HALO’S DISPLAY. AUDIO STREAMING IS NOT SUPPORTED.';
 	@override String get k4PowerTimeout => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.';
+	@override String get k4RemoteNotes => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.';
+	@override String get k4Receiver => 'RECEIVER';
+	@override String get k4ReceiverMain => 'MAIN';
+	@override String get k4ReceiverSub => 'SUB';
+	@override String get k4ReceiverInvalid => 'CHOOSE MAIN OR SUB';
+	@override String get k4ReceiverAlreadyConfigured => 'THAT RECEIVER IS ALREADY CONFIGURED FOR THIS K4';
+	@override String get k4SubReceiverOff => 'THE K4 SUB RECEIVER IS OFF';
+	@override String get k4RemotePasswordRequired => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.';
+	@override String get k4RemoteHandshakeFailed => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.';
+	@override String get k4RemoteUnreachable => 'THE K4’S SECURE CONNECTION COULD NOT BE REACHED. CHECK ITS ADDRESS, PORT AND REMOTE ACCESS SETTINGS.';
 	@override String get k4PowerRange => 'K4 POWER MUST BE 0.1–110 W, OR 0.0001–0.01 W WHEN THE TRANSVERTER MILLIWATT OUTPUT IS ACTIVE.';
 	@override String get elecraftTroubleshootingTitle => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY';
 	@override String get elecraftTroubleshooting => 'ELECRAFT RIGS SPEAK KENWOOD CAT, AND A KX2 AND A KX3 HAVE BOTH BEEN RUN THIS WAY — VFO IN BOTH DIRECTIONS, MODE SWITCHING AND CW ZERO-BEAT ALL WORKING.\n\nIF THE RADIO DOES NOT RESPOND, ALMOST ALWAYS ONE OF:\n\n- **SPEED MUST MATCH** THE RATE SET UNDER **RS232** IN THE RADIO\'S MENU. 38400 IS WHAT THESE SHIP ON. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\n**IF THE FREQUENCY IS RIGHT BUT THE MODE IS WRONG**, TELL US. THE KX2 AND KX3 ENTRIES READ THE MODE FROM A POSITION IN THE RADIO\'S STATUS REPLY THAT WE HAVE PINNED FROM THE RIGS WE HAVE SEEN, AND A FIRMWARE THAT PUTS IT ELSEWHERE IS SOMETHING ONLY A REPORT REACHES US AS.\n\nTHE K3 HAS NOT BEEN REPORTED EITHER WAY, SO PLEASE SAY WHAT HAPPENS IF YOU RUN ONE. A K4 HAS ITS OWN ENTRY.';
@@ -4173,6 +4184,7 @@ class _Translations$settings$station$transports$qro extends Translations$setting
 
 	// Translations
 	@override String get network => 'NETWORK/WIFI';
+	@override String get secureNetwork => 'SECURE NETWORK/WIFI';
 	@override String get usbSerial => 'USB SERIAL';
 	@override String get wifi => 'NETWORK/WIFI';
 	@override String get bluetoothSerial => 'BLUETOOTH SERIAL';
@@ -5881,6 +5893,7 @@ extension on TranslationsQro {
 			'settings.station.spectrumStreamRefused' => ({required Object code}) => 'THE RADIO REFUSED A DAX IQ STREAM (ERROR ${code})',
 			'settings.station.spectrumNoUdp' => 'THE RADIO\'S SPECTRUM DATA CANNOT REACH THIS DEVICE',
 			'settings.station.spectrumK4Unavailable' => 'CANNOT RECEIVE THE K4’S LAN SPECTRUM. RETRYING…',
+			'settings.station.spectrumK4RemoteUnavailable' => 'CANNOT RECEIVE THE K4’S REMOTE SPECTRUM',
 			'settings.station.spectrumScopeRefused' => 'THE RADIO REFUSED ITS SCOPE COMMANDS',
 			'settings.station.spectrumOutOfRange' => 'THE RADIO\'S SCOPE IS SET OUTSIDE THE RANGE IT CAN SHOW',
 			'settings.station.spectrumBandUnsupported' => 'THE RADIO\'S SCOPE CANNOT BE SHOWN ON THIS BAND',
@@ -5996,6 +6009,7 @@ extension on TranslationsQro {
 			'settings.station.models.nesdr' => 'NOOELEC NESDR',
 			'settings.station.models.sdrplay' => 'SDRPLAY RSP',
 			'settings.station.transports.network' => 'NETWORK/WIFI',
+			'settings.station.transports.secureNetwork' => 'SECURE NETWORK/WIFI',
 			'settings.station.transports.usbSerial' => 'USB SERIAL',
 			'settings.station.transports.wifi' => 'NETWORK/WIFI',
 			'settings.station.transports.bluetoothSerial' => 'BLUETOOTH SERIAL',
@@ -6019,6 +6033,16 @@ extension on TranslationsQro {
 			'settings.station.k4SerialNotes' => 'CONNECT THE K4’S REAR USB-B (PC) SOCKET. EITHER USB-PC1 OR USB-PC2 WORKS FOR CAT; CHOOSE AN UNUSED PORT AND MATCH ITS SERIAL USB-PCN: BAUD RATE SETTING ON THE RADIO. HALO PREFILLS 38400; CHANGE IT IF NEEDED. ANOTHER APPLICATION MUST USE THE OTHER PORT OR ETHERNET.\n\nTHIS CONNECTION CONTROLS THE RADIO AND ITS KEYERS; IT DOES NOT SEND AUDIO TO HALO.',
 			'settings.station.k4TcpNotes' => 'CONNECT THE K4’S ETHERNET SOCKET TO YOUR LOCAL NETWORK. ENTER ITS HOSTNAME OR IP ADDRESS AND CAT PORT 9200. HALO USES THE SAME HOST ON FIXED PORT 9201 WHEN A PANADAPTER OR WATERFALL IS VISIBLE; CHANGING THE CAT PORT DOES NOT CHANGE THE SPECTRUM PORT.\n\nTHE SPECTRUM SHOWS THE MAIN RECEIVER. ITS ZOOM, REFERENCE ADJUSTMENT AND SPEED CONTROLS AFFECT ONLY HALO’S DISPLAY. AUDIO STREAMING IS NOT SUPPORTED.',
 			'settings.station.k4PowerTimeout' => 'K4 POWER WAS NOT CHANGED BECAUSE THE RADIO DID NOT CONFIRM ITS OUTPUT RANGE. TRY AGAIN.',
+			'settings.station.k4RemoteNotes' => 'ENABLE REMOTE ACCESS ON YOUR K4 AND ENTER ITS NETWORK PASSWORD. MAIN AND SUB SHARE ONE ENCRYPTED CONNECTION FOR RADIO CONTROL AND SPECTRUM. THE DEFAULT PORT IS 9204; ENTER YOUR FORWARDED PORT WHEN CONNECTING REMOTELY.\n\nAUDIO PLAYBACK AND MICROPHONE STREAMING ARE NOT SUPPORTED.',
+			'settings.station.k4Receiver' => 'RECEIVER',
+			'settings.station.k4ReceiverMain' => 'MAIN',
+			'settings.station.k4ReceiverSub' => 'SUB',
+			'settings.station.k4ReceiverInvalid' => 'CHOOSE MAIN OR SUB',
+			'settings.station.k4ReceiverAlreadyConfigured' => 'THAT RECEIVER IS ALREADY CONFIGURED FOR THIS K4',
+			'settings.station.k4SubReceiverOff' => 'THE K4 SUB RECEIVER IS OFF',
+			'settings.station.k4RemotePasswordRequired' => 'ENTER THE K4’S NETWORK PASSWORD TO CONNECT SECURELY.',
+			'settings.station.k4RemoteHandshakeFailed' => 'THE K4 COULD NOT ESTABLISH A SECURE CONNECTION. CHECK ITS NETWORK PASSWORD AND REMOTE ACCESS SETTINGS.',
+			'settings.station.k4RemoteUnreachable' => 'THE K4’S SECURE CONNECTION COULD NOT BE REACHED. CHECK ITS ADDRESS, PORT AND REMOTE ACCESS SETTINGS.',
 			'settings.station.k4PowerRange' => 'K4 POWER MUST BE 0.1–110 W, OR 0.0001–0.01 W WHEN THE TRANSVERTER MILLIWATT OUTPUT IS ACTIVE.',
 			'settings.station.elecraftTroubleshootingTitle' => 'IF THE RADIO CONNECTS BUT SHOWS NO FREQUENCY',
 			'settings.station.elecraftTroubleshooting' => 'ELECRAFT RIGS SPEAK KENWOOD CAT, AND A KX2 AND A KX3 HAVE BOTH BEEN RUN THIS WAY — VFO IN BOTH DIRECTIONS, MODE SWITCHING AND CW ZERO-BEAT ALL WORKING.\n\nIF THE RADIO DOES NOT RESPOND, ALMOST ALWAYS ONE OF:\n\n- **SPEED MUST MATCH** THE RATE SET UNDER **RS232** IN THE RADIO\'S MENU. 38400 IS WHAT THESE SHIP ON. WITH A MISMATCH, THE RADIO SENDS BACK GARBAGE OR NOTHING, AND NEVER AN ERROR.\n- **ANOTHER APP MAY HOLD THE PORT**: WSJT-X, FLDIGI AND RIGCTLD ALL KEEP IT OPEN.\n\n**IF THE FREQUENCY IS RIGHT BUT THE MODE IS WRONG**, TELL US. THE KX2 AND KX3 ENTRIES READ THE MODE FROM A POSITION IN THE RADIO\'S STATUS REPLY THAT WE HAVE PINNED FROM THE RIGS WE HAVE SEEN, AND A FIRMWARE THAT PUTS IT ELSEWHERE IS SOMETHING ONLY A REPORT REACHES US AS.\n\nTHE K3 HAS NOT BEEN REPORTED EITHER WAY, SO PLEASE SAY WHAT HAPPENS IF YOU RUN ONE. A K4 HAS ITS OWN ENTRY.',
@@ -6302,6 +6326,8 @@ extension on TranslationsQro {
 			'settings.numberFormatDescription.comma' => 'ALWAYS USING COMMA FOR DECIMALS',
 			'settings.numberFormatSeparators.comma' => 'COMMA',
 			'settings.numberFormatSeparators.period' => 'PERIOD',
+			_ => null,
+		} ?? switch (path) {
 			'settings.gridPrecision' => 'GRID PRECISION',
 			'settings.gridPrecisionOpts.six' => '6 DIGITS (FN31PR)',
 			'settings.gridPrecisionOpts.eight' => '8 DIGITS (FN31PR55)',
@@ -6314,8 +6340,6 @@ extension on TranslationsQro {
 			'commands.reloadingAll' => 'RELOADING ALL DATA FILES…',
 			'commands.reloadingTarget' => ({required Object target}) => 'RELOADING ${target} DATA FILES…',
 			'commands.unknownExperiment' => ({required Object token}) => 'UNKNOWN EXPERIMENT "${token}"',
-			_ => null,
-		} ?? switch (path) {
 			'commands.experimentEnabled' => ({required Object name}) => '${name} ENABLED',
 			'commands.experimentDisabled' => ({required Object name}) => '${name} DISABLED',
 			'commands.sentryTestSent' => 'TEST ERROR REPORT SENT TO SENTRY',

@@ -810,7 +810,7 @@ Two rules the UI follows:
   Findings are keyed by serial where the protocol offers one, so a radio that changes address
   updates in place instead of appearing twice.
 - **"Already configured" is per channel, not per radio**, for equipment that offers several
-  (`EquipmentDriver.channelKey` — a FlexRadio's slices, and nothing else today). A Flex with slice A
+  (`EquipmentDriver.channelKey`, such as a FlexRadio's slices). A Flex with slice A
   set up is still something you could add, so it keeps being offered, each offer carrying the lowest
   channel not yet spoken for and named after it from the second on. Filtering per radio instead is
   what left the second slice reachable only by typing the address in from the catalogue.
@@ -2646,6 +2646,14 @@ radio's own knob moves it while nothing listens. `setSpectrum` on a stopped
 scope answers false, and the host API says `stopped`, rather than queueing a
 change for whenever a display next opens.
 
+Receivers exposed as separate logical radios each have an ordinary
+`SpectrumSession`, addressed by their own radio UUID. Demand, settings and
+problems belong to that radio, even when its physical connection is shared.
+`readRadio(id).spectrum` and `setRadioSpectrum` address the selected radio's
+scope. K4 secure Main and Sub use this model; their shared owner routes PAN
+packets to the corresponding receiver presenter without an additional
+spectrum-channel API.
+
 Levels are dB on the radio's own scale — not calibrated dBm — with a drawing
 floor and ceiling reported by the radio or estimated locally. A display maps
 that range to its height and an operator's contrast moves from there.
@@ -2654,7 +2662,7 @@ that range to its height and an operator's contrast moves from there.
 
 The K4 Ethernet pairing opens a separate spectrum connection to the same
 host on port 9201 while a visible display listens. It receives passively,
-decodes checksum-verified main-pan `A` frames, and closes when the last
+decodes checksum-verified Main `A` frames, and closes when the last
 listener leaves or the CAT session stops. Failed or stalled spectrum links
 retry independently; they do not disconnect CAT or interrupt keying.
 
@@ -2667,9 +2675,14 @@ window is available; HaLo sends no pan-center or span CAT commands.
 
 Reference adjustment and sweep-speed controls are local to HaLo. The
 existing noise-floor estimator supplies a drawing range, without claiming
-to reproduce the radio's AutoRef or calibrated dBm. USB spectrum, sub/mini-pan
-display and remote services on 9204/9205 are not part of this pairing.
+to reproduce the radio's AutoRef or calibrated dBm. This pairing displays
+Main only; Sub and mini-pan packets do not keep a stalled Main stream alive.
+USB spectrum and remote services on 9204/9205 are not part of this pairing.
 See [k4-cat.md](k4-cat.md) for wire fixtures and hardware evidence.
+
+The separate secure pairing on port 9204 exposes Main and Sub as logical
+radios with receiver-aware CAT controls and independent spectra. See
+[k4-remote.md](k4-remote.md) for connection ownership, split and diversity.
 
 ### Icom (CI-V `0x27`)
 

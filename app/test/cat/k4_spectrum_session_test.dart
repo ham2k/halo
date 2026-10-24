@@ -329,6 +329,27 @@ void main() {
     expect(sink.sent, contains('FA00014250000;'));
   });
 
+  test('CAT polling and spectrum demand have separate lifetimes', () async {
+    final sink = _Sink();
+    final transport = _Transport();
+    final session = K4SpectrumSession(
+      sink,
+      spectrum: K4Spectrum(host: '192.0.2.4', sink: sink, transport: transport),
+    );
+    addTearDown(session.teardown);
+    session.startSpectrum();
+    await pumpEventQueue();
+    final connection = transport.attempts.single.connection!;
+    connection.receive(_capturedPans());
+    expect(sink.frames, hasLength(1));
+    session.stopUpdates();
+    await pumpEventQueue();
+    expect(connection.isClosed, isFalse, reason: 'the mounted display still owns spectrum demand');
+    session.stopSpectrum();
+    await pumpEventQueue();
+    expect(connection.isClosed, isTrue);
+  });
+
   test('CatService opens the K4 stream for the first listener and releases it after the last', () async {
     final (:cat, :uuid, :spectrumTransport, :catTransport) = await _connectedK4();
     expect(spectrumTransport.attempts, isEmpty, reason: 'CAT connects before any spectrum pane exists');

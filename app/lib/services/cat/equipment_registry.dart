@@ -49,6 +49,7 @@ import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_transport.dart';
 import 'transports/serial_transport.dart';
 import 'transports/tcp_transport.dart';
+import 'transports/k4_remote_transport.dart';
 
 export 'equipment_models_accessories.dart';
 export 'equipment_models_icom.dart';
@@ -474,6 +475,7 @@ String? transportLabelFor(String transportKey) {
   final labels = t.settings.station.transports;
   return switch (transportKey) {
     TcpTransport.transportKey => labels.network,
+    K4RemoteTransport.transportKey => labels.secureNetwork,
     SerialTransport.transportKey => labels.usbSerial,
     BluetoothSerialTransport.transportKey => labels.bluetoothSerial,
     BleSerialTransport.transportKey => labels.bleSerial,
@@ -498,7 +500,7 @@ String? transportLabelFor(String transportKey) {
 String? transportIconNameFor(String transportKey) => switch (transportKey) {
   SerialTransport.transportKey => 'usb-port',
   BluetoothSerialTransport.transportKey || BleSerialTransport.transportKey => 'bluetooth',
-  TcpTransport.transportKey || IcomNetworkTransport.transportKey => 'wifi',
+  TcpTransport.transportKey || IcomNetworkTransport.transportKey || K4RemoteTransport.transportKey => 'wifi',
   // Not a way of plugging anything in — the exception the rule above
   // allows for, because what this transport connects to is nothing.
   PlaceholderTransport.transportKey => 'flask-outline',
@@ -592,6 +594,7 @@ class EquipmentRegistry {
           transports ??
           {
             TcpTransport.transportKey: const TcpTransport(),
+            K4RemoteTransport.transportKey: const K4RemoteTransport(),
             SerialTransport.transportKey: const SerialTransport(),
             BluetoothSerialTransport.transportKey: const BluetoothSerialTransport(),
             BleSerialTransport.transportKey: const BleSerialTransport(),

@@ -821,15 +821,15 @@ void main() {
     expect(const IcomCredentialsMissing().toString(), contains('required'));
   });
 
-  test('the registry offers every model\'s every variant over six transports', () {
+  test('the registry offers every model\'s every variant over seven transports', () {
     final registry = EquipmentRegistry();
     expect(registry.typeFor('ic705-network')?.key, 'ic705-network');
     // Derived from the models, so a variant added to one has to appear here
     // without anything else being edited — including the placeholder every
     // real transceiver gains.
-    expect(registry.types, hasLength(149));
+    expect(registry.types, hasLength(150));
     expect(registry.models, hasLength(56));
-    expect(registry.transports.keys, containsAll(['tcp', 'serial', 'bluetoothSerial', 'bleSerial', 'icom-network', 'placeholder']));
+    expect(registry.transports.keys, containsAll(['tcp', 'serial', 'bluetoothSerial', 'bleSerial', 'icom-network', 'k4-remote', 'placeholder']));
   });
 
   // A wrong CI-V address is answered with silence. Each network entry has

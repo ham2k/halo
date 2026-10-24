@@ -16,19 +16,25 @@ import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_spectrum.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
 
+const _mainRadio = 'radio-1';
+const _subRadio = 'radio-sub';
+
 class _Source extends ChangeNotifier implements SceneSpectrumSource {
   int listening = 0;
+  int subListening = 0;
   String? problemText;
   late final controller = StreamController<SpectrumFrame>.broadcast(onListen: () => listening++, onCancel: () => listening--);
+  late final subController = StreamController<SpectrumFrame>.broadcast(onListen: () => subListening++, onCancel: () => subListening--);
 
+  String defaultRadio = _mainRadio;
   @override
-  String? resolve(String? radio) => radio ?? 'radio-1';
+  String? resolve(String? radio) => radio ?? defaultRadio;
   @override
-  Stream<SpectrumFrame> frames(String uuid) => controller.stream;
+  Stream<SpectrumFrame> frames(String uuid) => uuid == _subRadio ? subController.stream : controller.stream;
   @override
   String? problem(String uuid) => problemText;
   @override
-  double? vfoHz(String uuid) => 14074000;
+  double? vfoHz(String uuid) => uuid == _subRadio ? 7074000 : 14074000;
   @override
   Listenable get changes => this;
   @override
@@ -40,9 +46,11 @@ class _Source extends ChangeNotifier implements SceneSpectrumSource {
   @override
   Listenable get readingChanges => this;
   final recentered = <int>[];
+  final recenteredRadios = <String>[];
   @override
   bool recenter(String uuid, int centerHz) {
     recentered.add(centerHz);
+    recenteredRadios.add(uuid);
     return true;
   }
 }
@@ -91,18 +99,20 @@ Future<void> _show(
   bool visible = true,
   SceneEventHandler? onEvent,
   Map<String, dynamic> spectrum = const {},
+  Map<String, dynamic>? document,
+  Size size = const Size(400, 300),
 }) async {
   await tester.pumpWidget(
     TranslationProvider(
       child: MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 400,
-            height: 300,
+            width: size.width,
+            height: size.height,
             child: DockPaneVisibility(
               visible: visible,
               child: PanelSceneView(
-                scene: PanelScene(_doc(spectrum: spectrum)),
+                scene: PanelScene(document ?? _doc(spectrum: spectrum)),
                 onEvent: onEvent,
                 spectrum: source,
               ),
@@ -115,10 +125,173 @@ Future<void> _show(
   await tester.pump();
 }
 
+Finder _spectrum(String id) => find.byWidgetPredicate((widget) => widget is SceneSpectrumView && widget.control.id == id);
+
+dynamic _waterfall(WidgetTester tester, String id) => tester
+    .widgetList<CustomPaint>(find.descendant(of: _spectrum(id), matching: find.byType(CustomPaint)))
+    .map((widget) => widget.painter)
+    .singleWhere((painter) => painter.runtimeType.toString() == '_WaterfallPainter');
+
+Future<void> _waitForRows(WidgetTester tester, String id, int count) async {
+  final rows = _waterfall(tester, id).rows as List;
+  await tester.runAsync(() async {
+    final elapsed = Stopwatch()..start();
+    while (rows.length < count && elapsed.elapsed < const Duration(seconds: 5)) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
+    expect(rows, hasLength(count), reason: 'native row rasterization must finish before inspecting retained history');
+  });
+  await tester.pump();
+}
+
+Map<String, dynamic> _dualDoc(String view) {
+  final document = _doc();
+  document['controls'] = [
+    for (final channel in ['main', 'sub']) ...[
+      if (view == 'both' || view == channel) {'id': '$channel-heading', 'kind': 'nativeText', 'label': channel},
+      {
+        'id': '$channel-pan',
+        'kind': 'spectrum',
+        'label': channel,
+        'radio': channel == 'main' ? _mainRadio : _subRadio,
+        'event': '$channel:tune',
+        'opacity': view == 'both' || view == channel ? 1 : 0,
+      },
+    ],
+  ];
+  document['layout'] = {
+    'column': [
+      for (final channel in ['main', 'sub'])
+        {
+          'column': [
+            if (view == 'both' || view == channel) {'control': '$channel-heading', 'height': 20},
+            {'control': '$channel-pan', 'flex': 1},
+          ],
+          if (view == 'both' || view == channel) 'flex': 1 else 'height': 0,
+          'crossAxisAlignment': 'stretch',
+        },
+      {'scene': true, 'height': 20},
+    ],
+    'crossAxisAlignment': 'stretch',
+  };
+  return document;
+}
+
+// Panafall's compact Both toolbar. Its TypeScript contract tests keep the
+// controls and dimensions in sync; this exercises their native Flutter layout.
+Map<String, dynamic> _compactBothDoc() => {
+  'version': 1,
+  'width': 600,
+  'height': 48,
+  'values': {
+    for (final channel in ['main', 'sub']) '$channel-ref': 0,
+  },
+  'strings': {
+    'channels': 'both',
+    for (final channel in ['main', 'sub']) '$channel-span': '100000',
+  },
+  'layers': [
+    for (final (index, channel) in ['main', 'sub'].indexed)
+      {
+        'id': '$channel-readout',
+        'x': 0,
+        'y': index * 24,
+        'width': 600,
+        'height': 24,
+        'text': {'literal': channel, 'size': 14},
+      },
+  ],
+  'controls': [
+    {
+      'id': 'channels',
+      'kind': 'nativeSegmented',
+      'label': 'Receiver',
+      'value': 'channels',
+      'event': 'channels',
+      'options': [
+        {'label': 'Main', 'value': 'main'},
+        {'label': 'Sub', 'value': 'sub'},
+        {'label': 'Both', 'value': 'both'},
+      ],
+    },
+    for (final channel in ['main', 'sub']) ...[
+      {'id': '$channel-heading', 'kind': 'nativeText', 'label': channel == 'main' ? 'Main' : 'Sub'},
+      {
+        'id': '$channel-span',
+        'kind': 'nativeDropdown',
+        'label': '$channel span',
+        'value': '$channel-span',
+        'event': '$channel:span',
+        'options': [
+          {'label': '±50 kHz', 'value': '50000'},
+          {'label': '±100 kHz', 'value': '100000'},
+        ],
+      },
+      {'id': '$channel-label-Ref', 'kind': 'nativeText', 'label': 'Ref'},
+      {
+        'id': '$channel-ref',
+        'kind': 'nativeSlider',
+        'label': '$channel reference level',
+        'value': '$channel-ref',
+        'event': '$channel:ref',
+        'min': -30,
+        'max': 30,
+        'step': 1,
+      },
+      {
+        'id': '$channel-pan',
+        'kind': 'spectrum',
+        'label': '$channel panadapter',
+        'radio': channel == 'main' ? _mainRadio : _subRadio,
+        'scale': {'gap': 26},
+      },
+    ],
+  ],
+  'layout': {
+    'column': [
+      {'control': 'channels'},
+      for (final channel in ['main', 'sub'])
+        {
+          'column': [
+            {
+              'wrap': [
+                {'control': '$channel-heading'},
+                {'control': '$channel-span', 'width': 120},
+                {
+                  'wrap': [
+                    {'control': '$channel-label-Ref'},
+                    {'control': '$channel-ref', 'width': 120},
+                  ],
+                  'spacing': 4,
+                  'crossAxisAlignment': 'center',
+                },
+              ],
+              'spacing': 8,
+              'runSpacing': 4,
+              'padding': 4,
+            },
+            {'control': '$channel-pan', 'flex': 1},
+          ],
+          'flex': 1,
+          'crossAxisAlignment': 'stretch',
+        },
+      {'scene': true, 'height': 48},
+    ],
+    'crossAxisAlignment': 'stretch',
+  },
+};
+
 void main() {
   group('the document', () {
     test('a spectrum is laid out without a rect, like a native control', () {
       expect(PanelScene(_doc()).controlsById['pan']!.spectrum!.hoverHz, 'hz');
+    });
+
+    test('a spectrum names one logical radio and has no separate channel selector', () {
+      expect(PanelScene(_doc()).controlsById['pan']!.spectrum!.radio, isNull);
+      expect(PanelScene(_doc(spectrum: {'radio': _subRadio})).controlsById['pan']!.spectrum!.radio, _subRadio);
+      // Unknown fields stay forward-compatible; only the radio ID selects a source.
+      expect(PanelScene(_doc(spectrum: {'radio': _subRadio, 'channel': 'sub'})).controlsById['pan']!.spectrum!.radio, _subRadio);
     });
 
     test('is refused for a value the spectrum names but the scene lacks', () {
@@ -339,6 +512,162 @@ void main() {
     expect(source.listening, 1);
     await _show(tester, source: source, visible: false);
     expect(source.listening, 0);
+  });
+
+  testWidgets('main and sub retain separate histories across single and dual layouts', (tester) async {
+    final source = _Source();
+    await _show(tester, source: source, document: _dualDoc('both'));
+    final mainState = tester.state(_spectrum('main-pan'));
+    final subState = tester.state(_spectrum('sub-pan'));
+    expect((source.listening, source.subListening), (1, 1));
+    source.controller.add(_frame(20));
+    source.subController.add(_frame(60, 7000000));
+    await tester.pump();
+    await _waitForRows(tester, 'main-pan', 1);
+    await _waitForRows(tester, 'sub-pan', 1);
+
+    await _show(tester, source: source, document: _dualDoc('sub'));
+    expect(tester.takeException(), isNull, reason: 'a hidden receiver must not overflow its zero-height slot');
+    expect((source.listening, source.subListening), (0, 1));
+    expect(tester.state(_spectrum('main-pan')), same(mainState));
+    expect(tester.state(_spectrum('sub-pan')), same(subState));
+    source.controller.add(_frame(100));
+    source.subController.add(_frame(80, 7000000));
+    await tester.pump();
+    await _waitForRows(tester, 'sub-pan', 2);
+    expect(_waterfall(tester, 'main-pan').rows, hasLength(1));
+
+    await _show(tester, source: source, document: _dualDoc('main'));
+    expect((source.listening, source.subListening), (1, 0));
+    expect(tester.state(_spectrum('main-pan')), same(mainState));
+    source.controller.add(_frame(40));
+    await tester.pump();
+    await _waitForRows(tester, 'main-pan', 2);
+    expect((_waterfall(tester, 'main-pan').frame() as SpectrumFrame).levels.first, 32);
+    expect((_waterfall(tester, 'sub-pan').frame() as SpectrumFrame).levels.first, 72);
+    expect((_waterfall(tester, 'main-pan').frame() as SpectrumFrame).lowHz, 14000000);
+    expect((_waterfall(tester, 'sub-pan').frame() as SpectrumFrame).lowHz, 7000000);
+
+    await _show(tester, source: source, document: _dualDoc('both'));
+    expect((source.listening, source.subListening), (1, 1));
+    expect(tester.state(_spectrum('main-pan')), same(mainState));
+    expect(tester.state(_spectrum('sub-pan')), same(subState));
+    expect(_waterfall(tester, 'main-pan').rows, hasLength(2));
+    expect(_waterfall(tester, 'sub-pan').rows, hasLength(2));
+  });
+
+  testWidgets('compact Both keeps two drawable receivers on a narrow phone', (tester) async {
+    const size = Size(360, 640);
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final source = _Source();
+    await _show(tester, source: source, document: _compactBothDoc(), size: size);
+    expect((source.listening, source.subListening), (1, 1));
+    source.controller.add(_frame(20));
+    source.subController.add(_frame(60, 7000000));
+    await tester.pump();
+    await _waitForRows(tester, 'main-pan', 1);
+    await _waitForRows(tester, 'sub-pan', 1);
+
+    expect(tester.takeException(), isNull, reason: 'both compact toolbars must fit without a RenderFlex overflow');
+    for (final channel in ['main', 'sub']) {
+      final spectrum = _spectrum('$channel-pan');
+      expect(tester.getSize(spectrum).height, greaterThan(120), reason: '$channel needs room for its trace and waterfall');
+      for (final painter in ['_PanPainter', '_WaterfallPainter']) {
+        final painted = find.descendant(
+          of: spectrum,
+          matching: find.byWidgetPredicate((widget) => widget is CustomPaint && widget.painter.runtimeType.toString() == painter),
+        );
+        expect(painted, findsOneWidget);
+        expect(tester.getSize(painted).width, 360);
+        expect(tester.getSize(painted).height, greaterThan(40), reason: '$channel $painter must retain visible paint area');
+      }
+    }
+    expect(tester.getRect(_spectrum('main-pan')).bottom, lessThan(tester.getRect(_spectrum('sub-pan')).top));
+  });
+
+  testWidgets('changing a control radio or source cannot mix traces or waterfall rows', (tester) async {
+    final source = _Source();
+    await _show(tester, source: source);
+    source.controller.add(_frame(20));
+    await tester.pump();
+    await _waitForRows(tester, 'pan', 1);
+    // A row may still be rasterizing when this control changes identity.
+    source.controller.add(_frame(30));
+    await tester.pump();
+    await _show(tester, source: source, spectrum: {'radio': _subRadio});
+    expect((source.listening, source.subListening), (0, 1));
+    expect(_waterfall(tester, 'pan').rows, isEmpty);
+    expect(_waterfall(tester, 'pan').frame(), isNull);
+    source.subController.add(_frame(60));
+    await tester.pump();
+    await _waitForRows(tester, 'pan', 1);
+    expect((_waterfall(tester, 'pan').frame() as SpectrumFrame).levels.first, 60);
+
+    await _show(tester, source: source, spectrum: {'radio': 'radio-2'});
+    expect(_waterfall(tester, 'pan').rows, isEmpty);
+    expect(_waterfall(tester, 'pan').frame(), isNull);
+    source.controller.add(_frame(80));
+    await tester.pump();
+    await _waitForRows(tester, 'pan', 1);
+    final replacement = _Source();
+    await _show(tester, source: replacement, spectrum: {'radio': 'radio-2'});
+    expect((source.listening, source.subListening), (0, 0));
+    expect(replacement.listening, 1);
+    expect(_waterfall(tester, 'pan').rows, isEmpty);
+    expect(_waterfall(tester, 'pan').frame(), isNull);
+  });
+
+  testWidgets('a changed designated radio clears its old trace and waterfall', (tester) async {
+    final source = _Source();
+    await _show(tester, source: source);
+    source.controller.add(_frame(20));
+    await tester.pump();
+    await _waitForRows(tester, 'pan', 1);
+
+    source.defaultRadio = _subRadio;
+    source.notifyListeners();
+    await tester.pump();
+    expect((source.listening, source.subListening), (0, 1));
+    expect(_waterfall(tester, 'pan').rows, isEmpty);
+    expect(_waterfall(tester, 'pan').frame(), isNull);
+    source.subController.add(_frame(60, 7000000));
+    await tester.pump();
+    await _waitForRows(tester, 'pan', 1);
+    expect((_waterfall(tester, 'pan').frame() as SpectrumFrame).lowHz, 7000000);
+  });
+
+  testWidgets('each logical radio uses its own VFO marker, follow and tuning event', (tester) async {
+    final source = _Source();
+    final events = <Map<String, dynamic>>[];
+    final document = _dualDoc('both');
+    for (final control in document['controls'] as List) {
+      if (control['kind'] == 'spectrum') control['follow'] = .15;
+    }
+    await _show(
+      tester,
+      source: source,
+      document: document,
+      onEvent: (event) async {
+        events.add(event);
+        return {};
+      },
+    );
+    source.controller.add(_frame(20, 14080000));
+    source.subController.add(_frame(60, 7080000));
+    await tester.pump();
+    expect(source.recenteredRadios, [_mainRadio, _subRadio]);
+    expect(source.recentered, [14109000, 7109000]);
+    expect(_waterfall(tester, 'main-pan').marks.vfoHz, 14074000);
+    expect(_waterfall(tester, 'sub-pan').marks.vfoHz, 7074000);
+    for (final receiver in ['main', 'sub']) {
+      await tester.tapAt(tester.getRect(_spectrum('$receiver-pan')).center);
+      await tester.pump();
+    }
+    expect(events.map((event) => event['action']), ['main:tune', 'sub:tune']);
+    expect(events.map((event) => event['value']), [14130000, 7130000]);
   });
 
   testWidgets('a click sends the frequency under it as a commit', (tester) async {

@@ -6,6 +6,7 @@
 
 upcoming:
   changes:
+    - "New secure network connection for Elecraft K4, with Main and Sub receivers"
     - "New control and serial port fields on Icom network connections"
     - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
 

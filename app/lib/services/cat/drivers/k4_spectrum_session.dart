@@ -3,7 +3,7 @@
 
 part of 'kenwood_driver.dart';
 
-/// Only the K4 Ethernet pairing owns a second connection for spectrum.
+/// K4 Ethernet supplies spectrum; USB serial stays a CAT-only session.
 class K4SpectrumSession extends KenwoodSession implements SpectrumSession {
   K4SpectrumSession(
     super._sink, {
@@ -29,9 +29,9 @@ class K4SpectrumSession extends KenwoodSession implements SpectrumSession {
   @override
   bool setSpectrum(SpectrumRequest request) => _spectrum.set(request);
 
-  // No stopUpdates override: CatService alone starts and stops the scope
-  // (runtime.spectrumStarted), and a stop it did not make leaves an open
-  // display blank after the next startUpdates.
+  // Scope demand belongs to CatService; stopping CAT updates must not stop
+  // a spectrum that the service still considers active.
+
   @override
   void teardown() {
     _spectrum.teardown();

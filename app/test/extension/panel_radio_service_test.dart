@@ -53,6 +53,12 @@ class TestCat extends Fake implements CatService {
   EquipmentType? typeFor(EquipmentNode node) => node.uuid == 'switch' ? TestSwitchType() : TestRadioType(modelConfig);
   @override
   bool isRadio1(String uuid) => selected == LocalRadio(uuid);
+  final deviceIds = <String, String>{};
+  final channels = <String, Map<String, String>>{};
+  @override
+  String? logicalDeviceIdFor(String uuid) => deviceIds[uuid];
+  @override
+  Map<String, String>? logicalChannelFor(String uuid) => channels[uuid];
   final connections = <String>[];
   @override
   Future<void> connect(String uuid) async {
@@ -223,6 +229,42 @@ class TestRadio extends Fake implements RadioService {
 }
 
 void main() {
+  test('logical radios expose stable device grouping and their own receiver metadata even while disconnected', () {
+    final cat = TestCat()
+      ..deviceIds.addAll({'a': 'physical-k4', 'b': 'physical-k4'})
+      ..channels.addAll({
+        'a': {'key': 'main', 'label': 'Main'},
+        'b': {'key': 'sub', 'label': 'Sub'},
+      });
+    final bridge = PanelRadioService(cat, TestRadio());
+    for (final status in [EquipmentStatus.connected, EquipmentStatus.disconnected]) {
+      cat.state = cat.state.copyWith(status: status);
+      final radios = bridge.list();
+      expect(radios.map((radio) => radio['id']), ['a', 'b']);
+      expect(radios.map((radio) => radio['deviceId']), ['physical-k4', 'physical-k4']);
+      expect(radios.map((radio) => radio['channel']), [
+        {'key': 'main', 'label': 'Main'},
+        {'key': 'sub', 'label': 'Sub'},
+      ]);
+      expect(bridge.read()['channel'], {'key': 'main', 'label': 'Main'});
+      expect(bridge.read('b')['channel'], {'key': 'sub', 'label': 'Sub'});
+    }
+    cat.selected = const LocalRadio('b');
+    expect(bridge.read()['id'], 'b');
+    expect(bridge.read()['channel'], {'key': 'sub', 'label': 'Sub'});
+  });
+
+  test('ordinary radios and non-radio selections do not acquire logical receiver metadata', () {
+    final cat = TestCat()
+      ..deviceIds['switch'] = 'not-a-radio'
+      ..channels['switch'] = {'key': 'sub', 'label': 'Not a receiver'};
+    final bridge = PanelRadioService(cat, TestRadio());
+    for (final radio in [...bridge.list(), bridge.read(), bridge.read('switch'), bridge.read('missing')]) {
+      expect(radio.containsKey('deviceId'), false);
+      expect(radio.containsKey('channel'), false);
+    }
+  });
+
   test('connection requests honor placement selection and reject stale identities', () {
     final cat = TestCat(), bridge = PanelRadioService(TestCat(), TestRadio());
     final local = PanelRadioService(cat, TestRadio());
