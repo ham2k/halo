@@ -104,6 +104,15 @@ This is the multiplicity ham2k/halo-dist#389 left unbuilt for want of a
 producer; it consumes #389 rather than changing it, declaring `refType` so the
 core slices to the segments where the activity was actually running.
 
+A program whose uploader refuses a file spanning two UTC days — PPOTA's —
+sets `splitByUtcDay`, and an operation across 00:00 UTC is offered one file per
+reference AND day (`ppota-adif@2026-07-01:PPAR-0004`), each counted and dated
+by its own contacts. The days are listed from the same per-reference segment
+slice the core hands `generateExport` (`ExportOptionsRequest.segments`), so a
+day spent only hunting, or at another park, after a break is not offered as an
+empty file.
+A log of one UTC day is offered what it always was.
+
 Not to be confused with the *other* multiplicity, which **is** built (A0):
 **one QSO can owe several ADIF records.** §4's per-reference rule says a
 park-to-park contact with a two-park station counts twice because it is
@@ -488,6 +497,13 @@ programs genuinely disagree, not because the shape was unclear:
 
 A joining program must declare NO `fieldCombinationsForOneQSO`, not one that
 returns a single set — the exporter would otherwise ask twice for one answer.
+
+HOTA and PPOTA, which only the catalog carries, brought two more:
+
+| Rule | Who needs it |
+|---|---|
+| `distinctCallsPerDay` — does the activation count different callsigns in a UTC day, rather than contacts? | `hota`, `ppota`: five different stations, so a two-park station is one, and so is a station worked again that day at no reference |
+| `splitByUtcDay` (on `activityExportHook`) — one file per reference and UTC day? | `ppota`, whose uploader refuses a log spanning two |
 
 ---
 

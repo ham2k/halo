@@ -1186,6 +1186,12 @@ export interface ExportResult {
 export interface ExportOptionsRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
+  /// Present only when the operation has segments — the same payload
+  /// `ExportRequest.segments` carries, so an option can be listed from what
+  /// was true for each contact: which stretches an activity actually ran in,
+  /// and so which days its file will hold. `operationForQso` resolves one
+  /// contact's operation from it.
+  segments?: OperationSegmentPayload[]
   /// The user's "Use compact file names" setting, so the `filename` a hook
   /// offers here is the one the panel shows AND the one that gets written.
   compactFilenames?: boolean

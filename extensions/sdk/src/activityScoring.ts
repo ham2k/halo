@@ -97,6 +97,19 @@ export interface ActivityScoringRules {
   /// award", in SiOTA's own words. Defaults to true, which is what a program
   /// with no opinion (and every A1 award) gets.
   freshRefRescuesActivation?: boolean
+  /// Whether the activation counts different STATIONS in a UTC day rather
+  /// than contacts. HOTA and PPOTA ask five contacts with five different
+  /// callsigns: the first contact with a callsign on a UTC day advances the
+  /// activation by at most one, and every later one that day by nothing.
+  ///
+  /// It caps the ways one station otherwise earns more: the two-park
+  /// station's one-per-reference credit, a repeat on a band or mode
+  /// `uniquePer` makes fresh, and a station worked at a reference and again
+  /// that day at none, which the `ref` axis calls a fresh contact. The band or
+  /// mode repeat is still a good contact, with its notice and no credit; the
+  /// one with nothing new is a duplicate; one that hunts a new reference keeps
+  /// its reference-to-reference credit. Defaults to false.
+  distinctCallsPerDay?: boolean
   /// Whether ONE contact can credit several hunted references — POTA n-fers do,
   /// SOTA does not (only the first ref on the QSO counts).
   allowsMultipleReferences?: boolean
@@ -165,6 +178,10 @@ export type ActivityScoresheet = {
   dayActivatedQsos: number
   dayHuntedQsos: number
   dayDuplicates: number
+  /// call → the UTC day number it last advanced the activation on. Kept only
+  /// under `distinctCallsPerDay`, and optional so a checkpoint from before the
+  /// rule existed still resumes.
+  activationCallDays?: Record<string, number>
 }
 
 function str(value: JSONValue | undefined): string | undefined {
@@ -213,6 +230,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
     return typeof rule === "function" ? rule(activatedRefs) : rule
   }
   const freshRefRescuesActivation = rules.freshRefRescuesActivation ?? true
+  const distinctCallsPerDay = rules.distinctCallsPerDay ?? false
   const tracksActivation = rules.tracksActivation ?? true
   const tracksOperators = rules.tracksOperators ?? true
   const allowsMultiple = rules.allowsMultipleReferences ?? false
@@ -361,14 +379,27 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
 
       const priors = sheet.workedByCall[call] ?? []
       const verdict = judge(priors, now)
-      const isDupe = verdict === "duplicate"
+      let isDupe = verdict === "duplicate"
 
       // A contact that is only fresh because it hands over a reference this
       // station hasn't given before. It earns the reference-to-reference
       // credit, but for MOTA and SiOTA it does NOT advance the activation —
       // the operator already worked this station on this band and day.
       const freshRefOnly = verdict === "ref" && !freshRefRescuesActivation
-      const activationCredit = freshRefOnly ? 0 : activationValue
+      let activationCredit = freshRefOnly ? 0 : activationValue
+
+      // HOTA and PPOTA count stations: one per callsign per UTC day, however
+      // many references it stood at or contacts it took.
+      if (distinctCallsPerDay && activationCredit > 0 && !isDupe) {
+        const days = (sheet.activationCallDays ??= {})
+        activationCredit = days[call] === day ? 0 : 1
+        days[call] = day
+        // A station already counted today, on a new band or mode, is a good
+        // contact worth nothing toward the activation. With nothing new at
+        // all — the `ref` axis alone kept it, because one of the two contacts
+        // named a reference — it is the duplicate the axes missed.
+        if (activationCredit + huntingValue === 0 && !verdict) isDupe = true
+      }
 
       // A contact this scorer could award nothing — the operation activates
       // nothing and the contact hunts none of its references — gets no
@@ -384,7 +415,7 @@ export function activityScorer(rules: ActivityScoringRules): ContestScorer<Activ
       } else if (isDupe) {
         score.dupe = true
         score.alerts = ["duplicate"]
-      } else if (verdict) {
+      } else if (verdict && verdict !== "duplicate") {
         score.notices = [NOTICE_KEYS[verdict]]
       } else if (priors.length > 0 && score.value > 0 && freshRefRescuesActivation) {
         // Worked before, and this contact counts anyway — the ref filter kept

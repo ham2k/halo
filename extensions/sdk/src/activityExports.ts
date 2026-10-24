@@ -37,7 +37,8 @@ import type {
 } from "./types.ts"
 import { exportTypeDefinition } from "./exportSettings.ts"
 import { exportFilename, startMillisOf } from "./exportNames.ts"
-import { segmentsWith } from "./segments.ts"
+import { operationForQso, segmentsWith } from "./segments.ts"
+import { utcDate } from "./templateContext.ts"
 import { createCachedTranslator } from "./i18n.ts"
 
 import en from "./i18n/activityExports.en.json" with { type: "json" }
@@ -66,6 +67,13 @@ export interface ActivityExportRules {
   /// OPERATOR on every record of this program's file, falling back to the
   /// station call or its base call — `ExportRequest.operatorFallback`.
   operatorFallback?: OperatorFallback
+  /// One file per reference AND UTC day, for a program whose uploader refuses
+  /// a log spanning two — PPOTA's ("Separe el log por fecha UTC"), which
+  /// judges an activation one UTC day at a time. An evening activation west of
+  /// Greenwich crosses 00:00 UTC as a matter of course, so it owes one file
+  /// per day. A log of one UTC day is offered exactly what it would be
+  /// without this. Defaults to false.
+  splitByUtcDay?: boolean
 }
 
 /// Separates the program's own exportKey prefix from the reference it names.
@@ -75,6 +83,69 @@ export interface ActivityExportRules {
 /// searching for a colon. Don't switch this to `split(':')`: it would truncate
 /// such a reference and then fail to match it back against the operation.
 const SEPARATOR = ":"
+
+/// Marks a day in the exportKey under `splitByUtcDay`: `ppota-adif@2026-07-01:PPAR-0004`.
+/// The day goes BEFORE the separator, on the prefix's side, so the reference
+/// after it is still everything that follows — a reference with a colon, or
+/// one that ends in something shaped like a date, reads back whole.
+const DAY_MARK = "@"
+const DAY_LENGTH = "YYYY-MM-DD".length
+
+/// The contacts of each UTC day, days in order. A day is one at least one
+/// live contact falls on; a deleted contact rides along with its day but makes
+/// none of its own. A contact with no time at all — an import, a hand edit —
+/// joins the first day rather than vanishing from every file.
+function byUtcDay(qsos: Record<string, JSONValue>[]): Map<string, Record<string, JSONValue>[]> {
+  const timed = new Map<string, Record<string, JSONValue>[]>()
+  const timeless: Record<string, JSONValue>[] = []
+  for (const qso of qsos) {
+    const millis = Number(qso.startAtMillis ?? 0)
+    if (!(millis > 0)) {
+      timeless.push(qso)
+      continue
+    }
+    const day = utcDate(millis)
+    const list = timed.get(day)
+    if (list) list.push(qso)
+    else timed.set(day, [qso])
+  }
+  const days = [...timed.keys()].filter((day) => timed.get(day)!.some((qso) => !qso.deleted)).sort()
+  return new Map(days.map((day, i) => [day, i === 0 ? [...timeless, ...timed.get(day)!] : timed.get(day)!]))
+}
+
+/// The contacts `generateExport` will be handed for an option naming
+/// [activationType] as its `refType` and [ref] as its `ref`: those made while
+/// that reference was being activated. The host's own slice
+/// (`export_service.dart`, `_qsosForOption`), so the days offered are the days
+/// that file will have — a day spent only hunting, after a break that ended
+/// the activation, or at the park before this one, gets no empty file. The
+/// same fallbacks too: a reference with no contacts of its own that the log
+/// did not move to from another widens to every reference of the type, and a
+/// slice that keeps nothing at all means the segments and the operation
+/// disagree, where the whole log beats an empty file.
+function activeQsos(
+  operation: Record<string, JSONValue>,
+  qsos: Record<string, JSONValue>[],
+  segments: ExportOptionsRequest["segments"],
+  activationType: string,
+  ref: string,
+): Record<string, JSONValue>[] {
+  if (!segments || segments.length === 0) return qsos
+  const refsAt = (qso: Record<string, JSONValue>) => refsOfType(operationForQso(operation, qso, segments), activationType)
+
+  const segmentRefs = segments.map((segment) => refsOfType(segment.operation, activationType).map((r) => r.ref))
+  const known = new Set(segmentRefs.flat())
+  if (known.has(ref)) {
+    const own = qsos.filter((qso) => refsAt(qso).some((r) => r.ref === ref))
+    // Switched to at a break with nothing logged here yet: the previous
+    // park's contacts are not this one's.
+    const movedHere = known.size > 1 && segmentRefs.slice(1).some((refs) => refs.includes(ref))
+    if (own.length > 0 || movedHere) return own
+  }
+
+  const active = qsos.filter((qso) => refsAt(qso).length > 0)
+  return active.length > 0 ? active : qsos
+}
 
 interface ActivationRef {
   ref: string
@@ -128,13 +199,13 @@ export function activityExportHook(rules: ActivityExportRules) {
         },
       ]
     },
-    async suggestExportOptions({ operation, qsos, compactFilenames }: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
+    async suggestExportOptions({ operation, qsos, segments, compactFilenames }: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
       // No activation, nothing to submit. A pure hunting log is the plain ADIF
       // export's business, not ours.
       const refs = refsOfType(operation, rules.activationType)
       const t = tFor(ctx)
 
-      return refs.map((ref) => ({
+      const whole = (ref: ActivationRef): ExportOption => ({
         exportType: `${rules.activationType}-adif`,
         templateData: { ref: ref.ref, refName: ref.name ?? "", activity: rules.label },
         exportKey: `${prefix}${SEPARATOR}${ref.ref}`,
@@ -154,7 +225,41 @@ export function activityExportHook(rules: ActivityExportRules) {
         // being activated.
         refType: rules.activationType,
         ref: ref.ref,
-      }))
+      })
+
+      // Each reference's days are its own: a park moved to at a break was
+      // activated on the days after it, not on the ones before.
+      const daysOf = (ref: string) => byUtcDay(activeQsos(operation, qsos ?? [], segments, rules.activationType, ref))
+      const split = rules.splitByUtcDay ? refs.map((ref) => ({ ref, days: daysOf(ref.ref) })) : []
+      if (split.some(({ days }) => days.size > 1)) {
+        // A park switched to with nothing logged yet has no day at all; it
+        // keeps its undated file, which the core hands nothing.
+        return split.flatMap(({ ref, days }) =>
+          days.size === 0
+            ? [whole(ref)]
+            : [...days].map(([day, dayQsos]): ExportOption => ({
+                exportType: `${rules.activationType}-adif`,
+                // The day rides as the filename template's modifier: a template
+                // is dated by the whole log's first contact, and two files that
+                // differed only in their contents would overwrite each other.
+                templateData: { ref: ref.ref, refName: ref.name ?? "", activity: rules.label, modifier: day },
+                exportKey: `${prefix}${DAY_MARK}${day}${SEPARATOR}${ref.ref}`,
+                format: "adif",
+                label: t("adifForRefOnDay", { program: rules.label, ref: ref.ref, day }),
+                // Dated by the day's own first contact, which the file is.
+                filename: filenameFor(operation, dayQsos, ref.ref, compactFilenames),
+                // The day's own count: the operator checking that a day reached
+                // its threshold needs that day's number, not the whole log's.
+                qsoCount: dayQsos.filter((qso) => !qso.deleted).length,
+                icon: rules.icon,
+                selectedByDefault: true,
+                refType: rules.activationType,
+                ref: ref.ref,
+              })),
+        )
+      }
+
+      return refs.map(whole)
     },
 
     async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
@@ -163,10 +268,14 @@ export function activityExportHook(rules: ActivityExportRules) {
       // itself and hang the export (see contest_export_test.dart).
       const exportType = String(args.exportType ?? "")
       const exportKey = String(args.exportKey ?? "")
-      if (exportType !== `${rules.activationType}-adif` || !exportKey.startsWith(`${prefix}${SEPARATOR}`)) {
+      // `prefix:REF`, or `prefix@YYYY-MM-DD:REF` for one day of it.
+      const dayed = exportKey.startsWith(`${prefix}${DAY_MARK}`) && exportKey.charAt(prefix.length + DAY_MARK.length + DAY_LENGTH) === SEPARATOR
+      const day = dayed ? exportKey.slice(prefix.length + DAY_MARK.length, prefix.length + DAY_MARK.length + DAY_LENGTH) : undefined
+      const head = dayed ? prefix.length + DAY_MARK.length + DAY_LENGTH : prefix.length
+      if (exportType !== `${rules.activationType}-adif` || !(dayed || exportKey.startsWith(`${prefix}${SEPARATOR}`))) {
         throw new Error(`${rules.key}: unknown export type/key '${exportType}' / '${exportKey}'`)
       }
-      const wanted = exportKey.slice(prefix.length + SEPARATOR.length)
+      const wanted = exportKey.slice(head + SEPARATOR.length)
 
       // The option was listed from the operation's refs, but the two are read
       // at different moments — remove a park between opening the Exports panel
@@ -194,9 +303,17 @@ export function activityExportHook(rules: ActivityExportRules) {
         ) as unknown as JSONValue,
       })
 
+      // One UTC day's file holds that day's contacts and no other's. Gone by
+      // now — every contact of it deleted or moved since the panel listed it —
+      // is a failure for the same reason a missing reference is above.
+      const qsos = day === undefined ? args.qsos : (byUtcDay(args.qsos ?? []).get(day) ?? [])
+      if (day !== undefined && !qsos.some((qso) => !qso.deleted)) {
+        throw new Error(`${rules.key}: no contacts on ${day} for ${wanted}`)
+      }
+
       const content = await adifForExport({
         operation: claimOnly(args.operation),
-        qsos: args.qsos,
+        qsos,
         segments: segmentsWith(args.segments, claimOnly),
         includePrivateData: args.includePrivateData,
         includeLookupData: args.includeLookupData,
@@ -208,7 +325,7 @@ export function activityExportHook(rules: ActivityExportRules) {
         operatorFallback: rules.operatorFallback,
       })
       return {
-        filename: filenameFor(args.operation, args.qsos, wanted, args.compactFilenames),
+        filename: filenameFor(args.operation, qsos, wanted, args.compactFilenames),
         mimeType: "text/plain",
         content,
       }

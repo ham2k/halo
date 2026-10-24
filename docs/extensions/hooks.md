@@ -413,7 +413,7 @@ interface ExportHook {
   suggestExportOptions?(args: ExportOptionsRequest, ctx): Promise<ExportOption[]>
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
-// ExportOptionsRequest: {operation, qsos, compactFilenames?}
+// ExportOptionsRequest: {operation, qsos, segments?, compactFilenames?}
 // ExportOption: {exportType, exportKey?, format, label, filename?, icon?, color?, refType?, ref?, priority?, selectedByDefault?}
 // ExportRequest: {operation, qsos, segments?, events?, exportType?, exportKey?, compactFilenames?}  — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}

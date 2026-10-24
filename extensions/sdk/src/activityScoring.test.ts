@@ -388,6 +388,100 @@ test("WWBOTA is the exception: a fresh bunker does advance the activation", asyn
   assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "B/G-0001": 2 })
 })
 
+// --- Different callsigns, not contacts -------------------------------------
+// HOTA and PPOTA: five contacts with five DIFFERENT callsigns in a UTC day.
+
+const PPOTA = {
+  label: "PPOTA",
+  activationType: "ppotaActivation",
+  huntingType: "ppota",
+  qsosToActivate: 5,
+  allowsMultipleReferences: true,
+  uniquePer: ["day", "ref"] as const,
+  activates: "daily" as const,
+  distinctCallsPerDay: true,
+}
+
+test("a station at two references is one callsign toward the activation", async () => {
+  const operation = operationActivating("ppotaActivation", "PPAR-0004")
+  const result = await score(PPOTA, operation, [qso("LU2AAA", { uuid: "q1", huntingType: "ppota", hunting: ["PPAR-0100", "PPAR-0101"] })])
+  assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "PPAR-0004": 1 })
+  // Both references are still hunted.
+  assert.deepEqual((result.scoresheet as { huntedRefs: Record<string, number> }).huntedRefs, { "PPAR-0100": 1, "PPAR-0101": 1 })
+})
+
+test("a station worked at a reference and again with none is a duplicate", async () => {
+  const operation = operationActivating("ppotaActivation", "PPAR-0004")
+  const result = await score(PPOTA, operation, [
+    qso("LU2AAA", { uuid: "q1", huntingType: "ppota", hunting: ["PPAR-0100"] }),
+    qso("LU2AAA", { uuid: "q2", at: DAY_1 + 60_000 }),
+  ])
+  assert.equal(result.qsoScores.q2.dupe, true)
+  assert.deepEqual(result.qsoScores.q2.alerts, ["duplicate"])
+  assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "PPAR-0004": 1 })
+  assert.equal(tally(result.operationSummary, "activation")!.duplicates, 1)
+})
+
+test("a station worked again on a band or mode the program makes fresh is a good contact, but no new callsign", async () => {
+  // HOTA: contacts are unique per band, mode, day and site, as in POTA, and
+  // the activation still needs five different stations.
+  const HOTA = { ...PPOTA, activationType: "hotaActivation", huntingType: "hota", uniquePer: ["band", "mode", "day", "ref"] as const }
+  const operation = operationActivating("hotaActivation", "G-0001")
+  const result = await score(HOTA, operation, [
+    qso("W1AW", { uuid: "q1" }),
+    qso("W1AW", { uuid: "q2", band: "40m" }),
+    qso("W1AW", { uuid: "q3", mode: "CW" }),
+    qso("W1AW", { uuid: "q4" }),
+  ])
+  assert.notEqual(result.qsoScores.q2.dupe, true)
+  assert.deepEqual(result.qsoScores.q2.notices, ["newBand"])
+  assert.deepEqual(result.qsoScores.q3.notices, ["newMode"])
+  assert.equal(result.qsoScores.q2.value, 0)
+  assert.equal(result.qsoScores.q4.dupe, true)
+  assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "G-0001": 1 })
+})
+
+test("the same station at a new reference keeps its hunting credit, and adds no callsign", async () => {
+  const operation = operationActivating("ppotaActivation", "PPAR-0004")
+  const result = await score(PPOTA, operation, [
+    qso("LU2AAA", { uuid: "q1", huntingType: "ppota", hunting: ["PPAR-0100"] }),
+    qso("LU2AAA", { uuid: "q2", at: DAY_1 + 60_000, huntingType: "ppota", hunting: ["PPAR-0101"] }),
+  ])
+  assert.notEqual(result.qsoScores.q2.dupe, true)
+  assert.deepEqual(result.qsoScores.q2.notices, ["newRef"])
+  assert.equal(result.qsoScores.q2.value, 1)
+  assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "PPAR-0004": 1 })
+})
+
+test("five different callsigns activate; the same callsign counts again on a new UTC day", async () => {
+  const operation = operationActivating("ppotaActivation", "PPAR-0004")
+  const calls = ["LU2AAA", "LU3BBB", "CX1CCC", "EA4DDD", "LW5ECI"]
+  const result = await score(PPOTA, operation, [
+    ...calls.map((call, i) => qso(call, { at: DAY_1 + i * 60_000 })),
+    ...calls.map((call, i) => qso(call, { at: DAY_1 + DAY + i * 60_000 })),
+  ])
+  assert.deepEqual(
+    result.daySections.map((d) => tally(d.scores, "activation")!.activated),
+    [true, true],
+  )
+})
+
+test("each operator's share counts callsigns too", async () => {
+  const operation = { ...operationActivating("ppotaActivation", "PPAR-0004"), stationCall: "LU1ABC" }
+  const result = await score(PPOTA, operation, [qso("LU2AAA", { uuid: "q1", operator: "LU9XYZ", huntingType: "ppota", hunting: ["PPAR-0100", "PPAR-0101"] })])
+  assert.deepEqual((result.scoresheet as { operatorRefs: Record<string, Record<string, number>> }).operatorRefs, {
+    "PPAR-0004": { LU9XYZ: 1 },
+  })
+})
+
+test("without the rule, the two-park station still counts twice", async () => {
+  const operation = operationActivating("ppotaActivation", "PPAR-0004")
+  const result = await score({ ...PPOTA, distinctCallsPerDay: false }, operation, [
+    qso("LU2AAA", { uuid: "q1", huntingType: "ppota", hunting: ["PPAR-0100", "PPAR-0101"] }),
+  ])
+  assert.deepEqual(tally(result.operationSummary, "activation")!.activatedRefs, { "PPAR-0004": 2 })
+})
+
 // --- What the operator reads ------------------------------------------------
 
 test("the label is singular for one contact", async () => {

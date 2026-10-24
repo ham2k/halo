@@ -1,4 +1,5 @@
 {
   "adifForRef": "ADIF for {{program}} {{ref}}",
+  "adifForRefOnDay": "ADIF for {{program}} {{ref}} on {{day}}",
   "adifForHunter": "{{program}} Hunter Log"
 }
