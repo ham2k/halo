@@ -22,10 +22,13 @@ extension CatServiceSpectrum on CatService {
   /// null once it no longer draws them. Where the span is the app's to
   /// choose ([SpectrumCapabilities.autoSpan]), the scope runs at the narrowest
   /// span that covers the widest display, or the widest it has; a display
-  /// that names no width asks for none. Elsewhere the span stays the radio's.
+  /// that names no width asks for none, so with no display naming one the
+  /// span stays where it was until the scope stops. Elsewhere the span stays
+  /// the radio's.
   void wantSpectrumWidth(String uuid, Object owner, int? widthHz) {
-    final runtime = _runtimeFor(uuid);
-    if (runtime.spectrumWidths[owner] == widthHz) return;
+    // A display closing after its radio was removed has nothing to take back.
+    final runtime = widthHz == null ? _runtimes[uuid] : _runtimeFor(uuid);
+    if (runtime == null || runtime.spectrumWidths[owner] == widthHz) return;
     if (widthHz == null) {
       runtime.spectrumWidths.remove(owner);
     } else {

@@ -653,6 +653,20 @@ void main() {
       expect(() => spec({'flow': 'right', 'rising': 'left'}), throwsFormatException);
     });
 
+    test('a rising the flow does not take names the ones it does', () {
+      Object? error(Map<String, dynamic> s) {
+        try {
+          PanelScene(_doc(spectrum: s));
+        } on FormatException catch (e) {
+          return e.message;
+        }
+        return null;
+      }
+
+      expect(error({'rising': 'up'}), 'Invalid scene rising: up for flow down, which rises right or left');
+      expect(error({'flow': 'left', 'rising': 'right'}), 'Invalid scene rising: right for flow left, which rises down or up');
+    });
+
     testWidgets('rising against its default, a click tunes from the other end', (tester) async {
       for (final (flow, rising, at) in [
         ('down', 'left', (Size s) => Offset(s.width / 4, s.height / 2)),

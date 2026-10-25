@@ -236,6 +236,21 @@ void main() {
     expect(scope.spans.last, 40000);
   });
 
+  // Nothing says what a display that names no width wants, so it gets what is there.
+  test('with no display naming a width, the span stays where it was', () async {
+    final scope = driver.sessions.single
+      ..capabilities = const SpectrumCapabilities(spansHz: [10000, 20000, 40000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1, autoSpan: true)
+      ..running = true;
+    final drawing = cat.spectrumFrames(uuid).listen((_) {});
+    addTearDown(drawing.cancel);
+    final map = Object();
+    cat.wantSpectrumWidth(uuid, map, 450000);
+    await pumpEventQueue();
+    cat.wantSpectrumWidth(uuid, map, null);
+    await pumpEventQueue();
+    expect(scope.spans, [80000]);
+  });
+
   test("a span that is the radio's own is left to it, whatever the displays show", () async {
     final scope = driver.sessions.single
       ..capabilities = const SpectrumCapabilities(spansHz: [10000, 80000], refMinDb: 0, refMaxDb: 1, refStepDb: 1)

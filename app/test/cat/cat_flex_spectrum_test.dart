@@ -265,6 +265,42 @@ void main() {
     expect(sent.where((c) => c.contains('daxiq_rate')), isEmpty);
   });
 
+  test('a rate the radio refuses is not asked of the next stream', () {
+    ready(channel: '1');
+    replies.last(0, '20000000');
+    spectrum.set(const SpectrumRequest(spanHz: 84000));
+    expect(sent.last, 'stream set 0x20000000 daxiq_rate=192000');
+    replies.last(0x50000015, '');
+    sent.clear();
+    spectrum.slicePan('0x40000001');
+    spectrum.panStatus('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
+    replies.last(0, '20000001');
+    expect(sent.where((c) => c.contains('daxiq_rate')), isEmpty);
+  });
+
+  test('a refusal for a stream since gone leaves the rate for the next', () {
+    ready(channel: '1');
+    replies.last(0, '20000000');
+    spectrum.set(const SpectrumRequest(spanHz: 84000));
+    final refuse = replies.last;
+    spectrum.streamStatus('0x20000000', {'removed': ''});
+    final create = replies.last;
+    refuse(0x50000015, '');
+    create(0, '20000001');
+    expect(sent.last, 'stream set 0x20000001 daxiq_rate=192000');
+  });
+
+  test("a new stream is asked the rate even when the last one ran at it: only its own status says its rate", () {
+    ready(channel: '1');
+    replies.last(0, '20000000');
+    spectrum.streamStatus('0x20000000', {'daxiq_rate': '192000'});
+    spectrum.set(const SpectrumRequest(spanHz: 84000));
+    spectrum.slicePan('0x40000001');
+    spectrum.panStatus('0x40000001', {'center': '7.100000', 'bandwidth': '0.064120', 'daxiq_channel': '1'});
+    replies.last(0, '20000001');
+    expect(sent.last, 'stream set 0x20000001 daxiq_rate=192000');
+  });
+
   test('a display opened before the handshake subscribes to pans once the session does', () {
     final early = FlexDaxSpectrum(send: (c, {onReply}) => sent.add(c), sink: sink);
     early.start();

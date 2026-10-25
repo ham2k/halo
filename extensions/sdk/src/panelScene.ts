@@ -415,7 +415,8 @@ export interface PanelSceneControl extends PanelSceneSpectrum {
   /**
    * A `button` only: a click sends, as the event's `value`, where along the button's longer side it
    * landed — 0 at its top or left end, 1 at its bottom or right — so a scale can be clicked at a
-   * place. Keys and screen readers activate it with no value, as does an app before this. Extension API 12.
+   * place. Keys and screen readers activate it with no value, as does an app before this. It needs an
+   * `event`, and takes no `menu`, whose click opens the menu instead. Extension API 12.
    */
   tapAt?: boolean
   /**

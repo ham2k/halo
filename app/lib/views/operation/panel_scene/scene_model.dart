@@ -279,14 +279,17 @@ class SceneBinding {
 /// `right`, down for `left`.
 bool _reversed(Map<dynamic, dynamic> json) {
   final across = const ['right', 'left'].contains(json['flow']) ? const ['down', 'up'] : const ['right', 'left'];
-  final rising = _oneOf(json, 'rising', across) ?? (json['flow'] == 'right' ? 'up' : across.first);
+  // Each value is valid with some flow, so the error says which this one allows.
+  final rising =
+      _oneOf(json, 'rising', across, why: 'for flow ${json['flow'] ?? 'down'}, which rises ${across.join(' or ')}') ??
+      (json['flow'] == 'right' ? 'up' : across.first);
   return rising == 'left' || rising == 'up';
 }
 
-String? _oneOf(Map<dynamic, dynamic> json, String key, List<String> allowed) {
+String? _oneOf(Map<dynamic, dynamic> json, String key, List<String> allowed, {String? why}) {
   final value = json[key];
   if (value == null) return null;
-  if (!allowed.contains(value)) throw FormatException('Invalid scene $key: $value');
+  if (!allowed.contains(value)) throw FormatException('Invalid scene $key: $value${why == null ? '' : ' $why'}');
   return value as String;
 }
 
@@ -553,6 +556,8 @@ class SceneControl {
         !only(json['invertDrag'], {'knob'}) ||
         !only(json['scrollThrough'], {'slider', 'knob'}) ||
         !only(json['tapAt'], {'button'}) ||
+        // A click on a menu's button opens the menu, and one with no event goes nowhere: either way the place is lost.
+        (tapAt && (menu != null || event == null)) ||
         (json['valueY'] != null && kind != 'knob') ||
         // An event carries no other mark of which axis moved: the second needs its own.
         (!isYAxis && json['valueY'] != null && json['event'] != null && (json['eventY'] == null || json['eventY'] == json['event'])) ||

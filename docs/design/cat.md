@@ -2725,10 +2725,14 @@ to. Where the sweep is computed here and a wider one changes nothing on the
 radio (`SpectrumCapabilities.autoSpan`, a FlexRadio's DAX IQ), the scope runs
 at the narrowest span covering the widest display, or its widest, and each
 display crops its own width from it: a band map can take in all 168 kHz while
-the radio panel shows 50. A display leaving narrows it again; one that names no
-width asks for none. Elsewhere the span is the radio's own — widening an Icom's
-would change the radio's own screen, and cropping its few hundred points gets
-coarse — and a panel sets it with `setRadioSpectrum`, as before.
+the radio panel shows 50. A display leaving narrows it to the widest left; one
+that names no width asks for none, so with none naming one the span stays where
+it was until the scope stops. A rate the radio refuses leaves the stream at the
+rate it had, which its status reports, and is not asked again until the displays
+need a different span or the scope starts again. Elsewhere the span is the
+radio's own — widening an Icom's would change the radio's own screen, and
+cropping its few hundred points gets coarse — and a panel sets it with
+`setRadioSpectrum`, as before.
 
 Levels are dB on the radio's own scale — not calibrated dBm — with a drawing
 floor and ceiling reported by the radio or estimated locally. A display maps

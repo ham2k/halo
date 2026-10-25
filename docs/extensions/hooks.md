@@ -1926,7 +1926,7 @@ the extension. `value` names what it shows and sets.
 
 | Kind | Binds to | Sends | Also takes |
 |---|---|---|---|
-| `button` | — | `activate` | `menu`, `tapAt` (extension API 12: a click's `value` is where along the button's longer side it landed, 0 at its top or left end to 1 at its bottom or right; a key or screen reader activates it with none) |
+| `button` | — | `activate` | `menu`, `tapAt` (extension API 12: a click's `value` is where along the button's longer side it landed, 0 at its top or left end to 1 at its bottom or right; a key or screen reader activates it with none; it needs an `event` and takes no `menu`) |
 | `slider` | number | `commit` | `min`, `max`, `step`, `discrete`, `hover`, `valueLabels`, `continuous`, `scrollThrough` |
 | `knob` | number | `commit` | `min`, `max`, `step`, `sensitivity`, `invertDrag`, `scrollThrough`, `valueLabels`, `continuous`, `menu`, a second axis (`valueY`, `eventY`, `minY`, `maxY`, `stepY`, `sensitivityY`) |
 | `nativeButton` | — | `activate` | `variant` (`filled`, `tonal`, `outlined`, `text`), `icon`, `menu`; needs `event` or `menu` |

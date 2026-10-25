@@ -1213,6 +1213,27 @@ void main() {
       (doc['controls'] as List).add({'id': 's', 'label': 'S', 'kind': 'slider', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'value': 'v', 'tapAt': true});
       expect(() => PanelScene(doc), throwsFormatException);
     });
+
+    // A menu's button opens the menu, and a button with no event sends nothing: the place has nowhere to go.
+    test('needs an event, and no menu', () {
+      PanelScene scene(Map<String, Object> extra) {
+        final doc = document(local: true);
+        (doc['controls'] as List).add({'id': 'b', 'label': 'B', 'kind': 'button', 'x': 0, 'y': 0, 'width': 10, 'height': 10, 'tapAt': true, ...extra});
+        return PanelScene(doc);
+      }
+
+      expect(scene({'event': 'b'}).controlsById['b']!.tapAt, isTrue);
+      expect(() => scene({}), throwsFormatException);
+      expect(
+        () => scene({
+          'event': 'b',
+          'menu': [
+            {'label': 'M', 'event': 'm'},
+          ],
+        }),
+        throwsFormatException,
+      );
+    });
   });
 
   group('hoverSet', () {

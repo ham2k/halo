@@ -84,7 +84,8 @@ class FlexDaxSpectrum {
 
   /// The rate last asked for while the scope runs: sent to each stream made
   /// for it — the one created after the ask, and a new one when the slice
-  /// moves to another pan — and forgotten when the scope stops.
+  /// moves to another pan — and forgotten when the scope stops, or when the
+  /// radio refuses it. A refused stream keeps its rate, which its status reports.
   int? _askedRate;
 
   /// The radio refused the stream. Not asked again until the display, or
@@ -187,7 +188,7 @@ class FlexDaxSpectrum {
     }
     if (request.spanHz case final span?) {
       final rate = _askedRate = flexDaxIqRates[flexDaxIqSpans.indexOf(capabilities.snapSpan(span))];
-      if (_stream case final stream?) send('stream set 0x$stream daxiq_rate=$rate');
+      if (_stream case final stream?) _setRate(stream, rate);
     }
     return true;
   }
@@ -329,13 +330,24 @@ class FlexDaxSpectrum {
         _watchdog = Timer(_firstPacketDeadline, () {
           if (_wanted && _stream == stream) sink?.reportSpectrumProblem(t.settings.station.spectrumNoUdp);
         });
-        if (_unclaimed.remove(stream) case final fields?) _applyStream(fields);
+        final early = _unclaimed.remove(stream);
+        if (early != null) _applyStream(early);
         _unclaimed.clear();
-        if (_askedRate case final rate? when rate != _rate) send('stream set 0x$stream daxiq_rate=$rate');
+        // Only the new stream's own status says its rate: until it does, [_rate] is the last stream's.
+        if (_askedRate case final rate? when early?['daxiq_rate'] != '$rate') _setRate(stream, rate);
       },
     );
     _report(_settings.copyWith(spanHz: _visibleHalfWidth(_rate)));
   }
+
+  /// A refusal is the rate's only for the stream still running: one for a
+  /// stream since removed says nothing about the rate asked of the next.
+  void _setRate(String stream, int rate) => send(
+    'stream set 0x$stream daxiq_rate=$rate',
+    onReply: (code, _) {
+      if (code != 0 && _stream == stream && _askedRate == rate) _askedRate = null;
+    },
+  );
 
   /// Hands back what [_settle] took, in reverse.
   void _release() {
