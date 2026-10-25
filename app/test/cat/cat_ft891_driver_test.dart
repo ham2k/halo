@@ -312,6 +312,95 @@ void main() {
       });
     });
 
+    // The FT-2000's and FTDX5000's `PC` is 000-255 of the rated output, and
+    // one entry covers the 100 W FT-2000 and the 200 W FT-2000D. Sent as
+    // watts, a 200 W radio asked for 100 W puts out 78; scaled against the
+    // wrong rating, the FT-2000 puts out half or is refused.
+    group('with the relative power form pinned', () {
+      late Ft891Session ft2000;
+      setUp(() => ft2000 = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000, yaesuRelativePowerConfigKey: true}));
+
+      test("scales against the rating the radio's ID names", () {
+        ft2000.feed('ID0252;');
+        ft2000.feed('PC255;');
+        expect(sink.powers, [200]);
+        ft2000.setPower(100);
+        expect(sink.sent.last, 'PC128;');
+      });
+
+      test('the 100 W FT-2000 reads its full scale as 100 W', () {
+        ft2000.feed('ID0251;');
+        ft2000.feed('PC255;');
+        expect(sink.powers, [100]);
+        ft2000.setPower(150);
+        expect(sink.sent.last, 'PC255;', reason: 'clamped to the rating, not past full scale');
+      });
+
+      // The same trap as the FTX-1's: CatService never re-sends a value it
+      // recorded as delivered, so a set dropped for want of a rating is lost.
+      test('holds a set and a reading until the radio has identified itself', () {
+        ft2000.setPower(100);
+        ft2000.feed('PC051;');
+        expect(sink.sent, isEmpty);
+        expect(sink.powers, isEmpty);
+        ft2000.feed('ID0362;');
+        expect(sink.sent, ['PC128;']);
+        expect(sink.powers, isEmpty, reason: 'the level read is the one being replaced');
+      });
+
+      test('reports a level read before the ID once the rating is known', () {
+        ft2000.feed('PC051;');
+        ft2000.feed('ID0362;');
+        expect(sink.powers, [40]);
+      });
+
+      // The one `ID;` at start can be lost — the line settling, or a radio
+      // with CAT RTS on answering a single burst. Without asking again,
+      // every level read is parked and every set waits for the session.
+      test('asks ID again on the poll until the radio has answered it', () {
+        fakeAsync((async) {
+          ft2000.startUpdates();
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 5));
+          expect(sink.sent, contains('ID;'));
+          ft2000.feed('ID0362;');
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 5));
+          expect(sink.sent, isNot(contains('ID;')));
+          ft2000.teardown();
+          async.flushTimers();
+        });
+      });
+
+      test('an ID with no known rating neither reads nor sets power, and says so', () {
+        ft2000.feed('ID0999;');
+        ft2000.feed('PC100;');
+        ft2000.setPower(50);
+        expect(sink.powers, isEmpty);
+        expect(sink.sent, isEmpty);
+        expect(sink.diagnostics.single, contains('0999'));
+      });
+
+      // A radio that refuses `ID` would otherwise be asked on every poll
+      // forever, with every set the operator makes parked and never sent.
+      test('a radio that never answers ID is asked a few times, then given up on', () {
+        fakeAsync((async) {
+          ft2000.startUpdates();
+          ft2000.setPower(50);
+          async.elapse(const Duration(minutes: 2));
+          sink.sent.clear();
+          async.elapse(const Duration(minutes: 1));
+          expect(sink.sent, isNot(contains('ID;')), reason: 'given up');
+          expect(sink.diagnostics.where((d) => d?.contains('never answered ID') ?? false), hasLength(1), reason: 'said once, not on every poll');
+          ft2000.setPower(40);
+          ft2000.feed('ID0362;');
+          expect(sink.sent.where((c) => c.startsWith('PC0')), isEmpty, reason: 'the held set was dropped, not replayed later');
+          ft2000.teardown();
+          async.flushTimers();
+        });
+      });
+    });
+
     // The FT-450's `FA` and `IF` carry eight digits of Hz (hamlib's
     // newcat.c). On the line's nine every answer is dropped as malformed
     // and every tune is refused, with nothing anywhere saying why.

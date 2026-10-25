@@ -176,6 +176,17 @@ void main() {
       expect(calibration.convert(MeterTable.swr, 89), 2.0);
       expect(calibration.convert(MeterTable.swr, 126), 3.0);
     });
+
+    // Hamlib reads these two radios' SWR from the panel-tied RM2 whenever
+    // the tuner is on, so the RM6 the driver reads would report a match the
+    // radio is not seeing, under the threshold the operator is warned at.
+    // And hamlib has no FTDX3000 power table, only a placeholder curve.
+    test('the FTDX3000 and FTDX5000 show no SWR, and the FTDX3000 no power', () {
+      expect(_load('yaesu/ftdx3000').has(MeterTable.swr), isFalse);
+      expect(_load('yaesu/ftdx3000').has(MeterTable.power), isFalse);
+      expect(_load('yaesu/ftdx5000').has(MeterTable.swr), isFalse);
+      expect(_load('yaesu/ftdx5000').convert(MeterTable.power, 161), 100.0);
+    });
   });
 
   group('reading a scale', () {

@@ -5827,6 +5827,9 @@ class Translations$settings$station$en {
 	/// en: 'The radio is receiving commands but not responding. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio's own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.'
 	String get yaesuTroubleshooting => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.';
 
+	/// en: '**Menu 037 CAT SELECT must be USB** for CAT over the radio's USB port; set to RS232C, CAT is on the jack on the back. This entry was written from published CAT documentation and has not been run against an FTDX3000. If it half-works, that is worth reporting.'
+	String get ftdx3000Troubleshooting => '**Menu 037 CAT SELECT must be USB** for CAT over the radio\'s USB port; set to RS232C, CAT is on the jack on the back.\n\nThis entry was written from published CAT documentation and has not been run against an FTDX3000. If it half-works, that is worth reporting.';
+
 	/// en: 'The radio is receiving commands but not responding. Almost always one of: - **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing. - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings. - **Speed must match** the radio's CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error. - **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open. This entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.'
 	String get yaesuRs232Troubleshooting => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.';
 
@@ -8828,6 +8831,21 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu FT-450 / FT-450D'
 	String get ft450 => 'Yaesu FT-450 / FT-450D';
 
+	/// en: 'Yaesu FTDX3000'
+	String get ftdx3000 => 'Yaesu FTDX3000';
+
+	/// en: 'Yaesu FT-950'
+	String get ft950 => 'Yaesu FT-950';
+
+	/// en: 'Yaesu FTDX1200'
+	String get ftdx1200 => 'Yaesu FTDX1200';
+
+	/// en: 'Yaesu FT-2000 / FT-2000D'
+	String get ft2000 => 'Yaesu FT-2000 / FT-2000D';
+
+	/// en: 'Yaesu FTDX5000'
+	String get ftdx5000 => 'Yaesu FTDX5000';
+
 	/// en: 'Guohetec Q900'
 	String get q900 => 'Guohetec Q900';
 
@@ -10880,6 +10898,11 @@ extension on Translations {
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.ft450' => 'Yaesu FT-450 / FT-450D',
+			'settings.station.models.ftdx3000' => 'Yaesu FTDX3000',
+			'settings.station.models.ft950' => 'Yaesu FT-950',
+			'settings.station.models.ftdx1200' => 'Yaesu FTDX1200',
+			'settings.station.models.ft2000' => 'Yaesu FT-2000 / FT-2000D',
+			'settings.station.models.ftdx5000' => 'Yaesu FTDX5000',
 			'settings.station.models.q900' => 'Guohetec Q900',
 			'settings.station.models.tenTecEagle' => 'Ten-Tec Eagle (599)',
 			'settings.station.models.tenTecOrion' => 'Ten-Tec Orion (565)',
@@ -10951,6 +10974,7 @@ extension on Translations {
 			'settings.station.guohetecTroubleshooting' => 'The Q900 has two CAT protocols, and this entry uses its native one rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation supports fewer commands, and the radio does not say which one it is using.\n\n- **The USB-C cable is the CAT link**, and it connects the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low. On a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. On the radio\'s own USB port, **Hold RTS high** under Advanced Settings is the alternative. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show and set the wrong one for those. The frequency is unaffected.',
+			'settings.station.ftdx3000Troubleshooting' => '**Menu 037 CAT SELECT must be USB** for CAT over the radio\'s USB port; set to RS232C, CAT is on the jack on the back.\n\nThis entry was written from published CAT documentation and has not been run against an FTDX3000. If it half-works, that is worth reporting.',
 			'settings.station.yaesuRs232Troubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **The CAT jack is RS-232.** It needs a USB-to-serial adapter and a straight-through DB-9 cable — a null-modem cable swaps the lines, and the radio never hears a thing.\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app keeps low unless **Hold RTS high** is on under Advanced Settings.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.\n\nThis entry was written from published CAT documentation and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuUsbTroubleshooting' => 'The radio is receiving commands but not responding. Almost always one of:\n\n- **Use the first of the radio\'s two USB ports.** CAT is normally on the first (the **Enhanced** COM port on Windows); the second (**Standard**) is for PTT and keying. The picker points at the first wherever it can tell the two apart.\n- **CAT RTS off at the radio, or Hold RTS high on.** With the radio\'s **CAT RTS** menu on, it stays silent while RTS is low — it may answer once as the port opens, then nothing. Picking the radio\'s own USB port turns on **Hold RTS high** under Advanced Settings. On a Digirig, SignaLink or most home-brew cables RTS is PTT, and holding it high keys your transmitter: turn CAT RTS off at the radio instead.\n- **Speed must match** the radio\'s CAT RATE menu. With a mismatch, the radio sends back garbage or nothing, and never an error.\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.k4SerialNotes' => 'Connect the K4’s rear USB-B (PC) socket. Either USB-PC1 or USB-PC2 works for CAT; choose an unused port and match its Serial USB-PCn: Baud Rate setting on the radio. HaLo prefills 38400; change it if needed. Another application must use the other port or Ethernet.\n\nThis connection controls the radio and its keyers; it does not send audio to HaLo.',
@@ -11230,14 +11254,14 @@ extension on Translations {
 			'settings.panels.stationDescription' => 'CAT control and more options',
 			'settings.panels.peers' => 'Peer Devices',
 			'settings.panels.peersDescription' => 'Connect to other devices nearby',
+			_ => null,
+		} ?? switch (path) {
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.gridPrecision' => 'Grid Precision',
 			'settings.gridPrecisionOpts.six' => '6 digits (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 digits (FN31pr55)',
 			'settings.gridPrecisionDescription.six' => '6 digits',
 			'settings.gridPrecisionDescription.eight' => '8 digits',
-			_ => null,
-		} ?? switch (path) {
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',

@@ -143,6 +143,7 @@ class Ft891Driver extends EquipmentDriver {
     voiceCeilingConfigKey,
     meterInfoConfigKey,
     yaesuHeadPowerConfigKey,
+    yaesuRelativePowerConfigKey,
     yaesuFrequencyDigitsConfigKey,
     yaesuKeyerMemoryConfigKey,
     yaesuKeyerMemoryCharsConfigKey,
@@ -290,9 +291,15 @@ const yaesuMeterCaptureConfigKey = 'yaesuMeterCapture';
 /// a fact about the model.
 const yaesuHeadPowerConfigKey = 'yaesuHeadPower';
 
+/// Pinned by an entry whose `PC` is a 0-255 level of the rated output rather
+/// than watts — the FT-2000's and FTDX5000's (see [yaesuRatedWattsById]).
+/// Never a field, for the same reason as [yaesuHeadPowerConfigKey].
+const yaesuRelativePowerConfigKey = 'yaesuRelativePower';
+
 /// Pinned by an entry whose `FA` and `IF` carry eight digits of Hz rather
-/// than the line's nine — the FT-450's (see [yaesuFrequencyDigits]). Never a
-/// field, for the same reason as [yaesuHeadPowerConfigKey].
+/// than the line's nine — the FT-450's and the generation before the FT-891
+/// (see [yaesuFrequencyDigits]). Never a field, for the same reason as
+/// [yaesuHeadPowerConfigKey].
 const yaesuFrequencyDigitsConfigKey = 'yaesuFrequencyDigits';
 
 /// Pinned by an entry whose radio has fewer than five text memories — the
@@ -417,6 +424,7 @@ class Ft891Session
   }) : _config = config,
        _captureMeters = config[yaesuMeterCaptureConfigKey] == true,
        _headPower = config[yaesuHeadPowerConfigKey] == true,
+       _relativePower = config[yaesuRelativePowerConfigKey] == true,
        _frequencyDigits = config[yaesuFrequencyDigitsConfigKey] as int? ?? yaesuFrequencyDigits,
        _keyerMemory = config[yaesuKeyerMemoryConfigKey] as int? ?? yaesuAppKeyerMemory,
        _keyerMemoryChars = config[yaesuKeyerMemoryCharsConfigKey] as int? ?? yaesuKeyerMemoryMaxChars,
@@ -449,6 +457,25 @@ class Ft891Session
   bool _warnedPowerForm = false;
   num? _pendingPower;
   static const _plainPowerForm = 0;
+
+  /// See [yaesuRelativePowerConfigKey].
+  final bool _relativePower;
+
+  /// What [_relativePower]'s level is a fraction of, from the radio's `ID`
+  /// answer; null until it answers, or for an ID [yaesuRatedWattsById] does
+  /// not know — power is then neither read nor set. A set asked for before
+  /// the answer waits in [_pendingPower], and the last level read waits in
+  /// [_relativePowerLevel], for the same reason as [_powerHead].
+  int? _ratedWatts;
+  String? _relativePowerLevel;
+
+  /// Polls that have asked `ID` again without an answer. At
+  /// [optionalReadSilences] the session stops asking, drops any held set,
+  /// and says so: a radio that refuses `ID` — an FTDX3000 on the FTDX5000's
+  /// entry — would otherwise park every power read and set for the session
+  /// while the app shows the operator's pick as if it had been obeyed.
+  int _ratingAsks = 0;
+  bool get _ratingGivenUp => _ratingAsks > optionalReadSilences;
 
   void _warnPowerForm(String note) {
     if (_warnedPowerForm) return;
@@ -700,6 +727,10 @@ class Ft891Session
     _send(buildReadModeCommand());
     // Documented (PC, see yaesu_cat_codec.dart) but NOT part of the bench
     // verification this driver's freq/mode path has — see the file header.
+    // A relative `PC` cannot be read or set without the rating `ID` names,
+    // so a lost first answer is asked again rather than leaving power dead
+    // for the session.
+    if (_relativePower && !_identified && !_ratingGivenUp) _askRating();
     _send(buildReadPowerCommand());
     // On every poll while a tune runs, so its outcome shows when it lands
     // rather than a whole tuner interval later.
@@ -815,6 +846,15 @@ class Ft891Session
         }
         if (reading?.watts ?? plain case final watts?) _sink.reportPower(watts);
 
+      case 'PC' when _relativePower:
+        final rated = _ratedWatts;
+        if (rated == null) {
+          _relativePowerLevel = command.params;
+          return;
+        }
+        final watts = parseRelativePowerParams(command.params, rated);
+        if (watts != null) _sink.reportPower(watts);
+
       case 'PC':
         final watts = parsePowerParams(command.params);
         if (watts != null) _sink.reportPower(watts);
@@ -859,6 +899,7 @@ class Ft891Session
         final id = parseIdParams(command.params);
         if (id == null) return;
         _identified = true;
+        if (_relativePower) _noteRatedWatts(yaesuRatedWattsById[id], id);
         _widthProfile = yaesuWidthProfilesById[id];
         _antennaPorts = yaesuAntennaPortsById[id];
         _readPassband();
@@ -935,8 +976,45 @@ class Ft891Session
     if (command != null) _send(command);
   }
 
+  void _noteRatedWatts(int? rated, String id) {
+    if (rated == null) {
+      _pendingPower = null;
+      return _sink.reportDiagnostic('ID $id names no rated output; power is neither read nor set');
+    }
+    _ratedWatts = rated;
+    if (_pendingPower case final watts?) {
+      _pendingPower = null;
+      _relativePowerLevel = null;
+      return setPower(watts);
+    }
+    if (_relativePowerLevel case final level?) {
+      _relativePowerLevel = null;
+      if (parseRelativePowerParams(level, rated) case final watts?) _sink.reportPower(watts);
+    }
+  }
+
+  void _askRating() {
+    if (++_ratingAsks <= optionalReadSilences) return _send(buildReadIdCommand());
+    _pendingPower = null;
+    _sink.reportDiagnostic('the radio never answered ID; power is neither read nor set');
+  }
+
   @override
   void setPower(num watts) {
+    if (_relativePower) {
+      final rated = _ratedWatts;
+      if (rated == null) {
+        // Waits only while the radio may still answer `ID`; once it cannot,
+        // nothing would ever send it.
+        if (!_identified && !_ratingGivenUp) {
+          _pendingPower = watts;
+        } else {
+          debugPrint('[cat] yaesu: power not sent — the radio\'s rated output is unknown');
+        }
+        return;
+      }
+      return _send(buildSetRelativePowerCommand(watts, rated));
+    }
     if (!_headPower) return _send(buildSetPowerCommand(watts));
     if (!_powerAnswered) {
       _pendingPower = watts;

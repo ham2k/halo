@@ -20,6 +20,7 @@ import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/meter_calibration.dart' show meterInfoConfigKey;
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart' show yaesuVoiceMemoryCount;
 import 'package:ham2k_logger/services/cat/equipment_brands.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -242,6 +243,11 @@ void main() {
       'ftdx10-serial',
       'ftx1-serial',
       'ft450-serial',
+      'ftdx3000-serial',
+      'ft950-serial',
+      'ftdx1200-serial',
+      'ft2000-serial',
+      'ftdx5000-serial',
       'yaesu-serial',
       'ft817-serial',
       'ft857-serial',
@@ -312,6 +318,11 @@ void main() {
       'ftdx10-placeholder',
       'ftx1-placeholder',
       'ft450-placeholder',
+      'ftdx3000-placeholder',
+      'ft950-placeholder',
+      'ftdx1200-placeholder',
+      'ft2000-placeholder',
+      'ftdx5000-placeholder',
       'ft817-placeholder',
       'ft857-placeholder',
       'ft897-placeholder',
@@ -354,6 +365,11 @@ void main() {
       'ftdx10-ble',
       'ftx1-ble',
       'ft450-ble',
+      'ftdx3000-ble',
+      'ft950-ble',
+      'ftdx1200-ble',
+      'ft2000-ble',
+      'ftdx5000-ble',
       'ft817-ble',
       'ft857-ble',
       'ft897-ble',
@@ -652,6 +668,37 @@ void main() {
     expect(type.driver.canKeyCwWith(config), isTrue);
     expect(type.driver.voiceMemoryCountWith(config), 0, reason: 'no DVS its CAT is documented to reach');
     expect(type.driver.telemetryMetersWith(config), isEmpty, reason: 'no calibration table');
+  });
+
+  // Outside the table of radios operators have run, like the FT-450: nobody
+  // has run these. The generation before the FT-891 shares its eight digits; on
+  // the generic entry's nine every frequency answer is dropped and every
+  // tune rejected, which is the radio "not being recognized". Voice memories
+  // follow whether the DVS is built in: on the FT-950 and FTDX1200 `PB`
+  // reaches only the optional DVS-6, so offering memories there offers
+  // buttons that play nothing. On the FT-2000 and FTDX5000 `PC` is a level,
+  // not watts: unpinned, an operator's 100 W reaches a 200 W radio as 39%.
+  test('the generation before the FT-891 reads eight frequency digits', () {
+    for (final (key, voiceMemories, ownUsbPort, relativePower) in [
+      ('ftdx3000-serial', 5, true, false),
+      ('ft950-serial', 0, false, false),
+      ('ftdx1200-serial', 0, false, false),
+      ('ft2000-serial', 5, false, true),
+      ('ftdx5000-serial', 5, false, true),
+    ]) {
+      final type = registry.typeFor(key)!;
+      final config = type.driverConfig(const {});
+      expect(type.driver.key, 'ft891', reason: key);
+      expect(type.transportKey, SerialTransport.transportKey, reason: key);
+      expect(type.defaultConfig['baudRate'], 4800, reason: key);
+      expect(config[yaesuFrequencyDigitsConfigKey], 8, reason: key);
+      expect(config[yaesuKeyerMemoryConfigKey], isNull, reason: '$key has the line\'s five text memories');
+      expect(type.driver.canKeyCwWith(config), isTrue, reason: key);
+      expect(type.driver.voiceMemoryCountWith(config), voiceMemories, reason: key);
+      expect(type.restrictions.containsKey('port'), ownUsbPort, reason: '$key: only the FTDX3000 has a USB bridge of its own');
+      expect(config[yaesuRelativePowerConfigKey] == true, relativePower, reason: key);
+      expect(config[meterInfoConfigKey], startsWith('yaesu/'), reason: '$key names its hamlib table');
+    }
   });
 
   // The FX-4CR sits outside the table above because the claim that table's

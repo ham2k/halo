@@ -146,7 +146,16 @@ void main() {
     });
 
     test('an entry reached through some other cable leaves RTS where the operator put it', () {
-      for (final key in ['yaesu-serial', 'ft450-serial', 'ft817-serial', 'tentec-566-serial']) {
+      for (final key in [
+        'yaesu-serial',
+        'ft450-serial',
+        'ft950-serial',
+        'ftdx1200-serial',
+        'ft2000-serial',
+        'ftdx5000-serial',
+        'ft817-serial',
+        'tentec-566-serial',
+      ]) {
         expect(registry.typeFor(key)!.fieldChanged('port', enhanced.name), isNull, reason: key);
       }
     });

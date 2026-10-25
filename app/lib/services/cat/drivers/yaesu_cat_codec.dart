@@ -49,10 +49,11 @@ String? codeForModeName(String? name) => name == null ? null : yaesuModeCodes[na
 
 /// How many digits of Hz the line's `FA` and `IF` carry: nine on the FT-891
 /// and every radio after it (P1 range 000030000–056000000, i.e. 30 kHz–56
-/// MHz), eight on the FT-450 — hamlib's `newcat.c` tells the two apart by
-/// the `IF` answer's length. A width is a fact about the radio, never
-/// guessed from an answer: an eight-digit read on a nine-digit radio is a
-/// frame that lost a byte, not a frequency.
+/// MHz), eight on the FT-450 and the generation before the FT-891 (FT-950,
+/// FTDX1200, FT-2000, FTDX3000, FTDX5000) — hamlib's `newcat.c` tells the
+/// two apart by the `IF` answer's length. A width is a fact about the radio,
+/// never guessed from an answer: an eight-digit read on a nine-digit radio
+/// is a frame that lost a byte, not a frequency.
 const yaesuFrequencyDigits = 9;
 
 /// Hz, zero-padded to [digits].
@@ -90,6 +91,26 @@ String buildReadPowerCommand() => 'PC;';
 
 /// `PC100;` → 100. Null unless it's exactly three digits.
 int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+
+/// The FT-2000's and FTDX5000's `PC`: a level 000-255, not watts. Their CAT
+/// manuals give the range and no unit; hamlib's `newcat` reads it as a
+/// fraction of the radio's rated output, and so does this — unverified
+/// against a radio. The FT-891 form would ask a 200 W radio for 39% when
+/// the operator picked 100 W.
+///
+/// The rated output by the radio's own `ID` answer, because one catalogue
+/// entry covers the 100 W FT-2000 and the 200 W FT-2000D.
+const yaesuRatedWattsById = <String, int>{'0251': 100, '0252': 200, '0362': 200};
+
+/// Clamped to 5 W-[ratedWatts]: the floor of the line's watts form, since
+/// these manuals state none.
+String buildSetRelativePowerCommand(num watts, int ratedWatts) => 'PC${(watts.clamp(5, ratedWatts) * 255 / ratedWatts).round().toString().padLeft(3, '0')};';
+
+/// `255` on a 200 W radio → 200. Null unless it's three digits up to 255.
+int? parseRelativePowerParams(String params, int ratedWatts) {
+  final level = parsePowerParams(params);
+  return level == null || level > 255 ? null : (level * ratedWatts / 255).round();
+}
 
 /// The FTX-1's `PC`, which names the unit it drives before the level: `1`
 /// the field head (0.5-10 W, tenths written as `PC11.5;`), `2` the SPA-1

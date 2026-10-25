@@ -9,6 +9,7 @@ upcoming:
     - "New control and serial port fields on Icom network connections"
     - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
     - "New Cluster Console: type CLUSTER, or Show Console in DX Cluster settings"
+    - "Added Yaesu FTDX3000, FTDX5000, FTDX1200, FT-2000 and FT-950 to the radio list (tell us how it behaves)"
 
 "183":
   changes:

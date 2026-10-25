@@ -1,0 +1,51 @@
+{
+  "manufacturer": "Yaesu",
+  "model": "FTdx3000",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "_notes": "Strength is the FTDX5000 table, which hamlib uses for this radio. No power: hamlib has no FTDX3000 table, only a generic curve it marks as a placeholder. No SWR: hamlib reads it from RM2 with the front-panel meter on SWR whenever the tuner is on, and RM6, the only SWR read here, is not it then. Drain, voltage, compression and ALC are hamlib's generic Yaesu defaults (newcat.c).",
+    "strength": [
+      { "value": 0, "db": -54, "tick": "S0" },
+      { "value": 12, "db": -48, "tick": "S1" },
+      { "value": 27, "db": -42, "tick": "S2" },
+      { "value": 40, "db": -36, "tick": "S3" },
+      { "value": 55, "db": -30, "tick": "S4" },
+      { "value": 65, "db": -24, "tick": "S5" },
+      { "value": 80, "db": -18, "tick": "S6" },
+      { "value": 95, "db": -12, "tick": "S7" },
+      { "value": 112, "db": -6, "tick": "S8" },
+      { "value": 130, "db": 0, "tick": "S9" },
+      { "value": 150, "db": 10, "tick": "S9+10" },
+      { "value": 172, "db": 20, "tick": "S9+20" },
+      { "value": 190, "db": 30, "tick": "S9+30" },
+      { "value": 220, "db": 40, "tick": "S9+40" },
+      { "value": 240, "db": 50, "tick": "S9+50" },
+      { "value": 255, "db": 60, "tick": "S9+60" }
+    ],
+    "drain": [
+      { "value": 0, "amperes": 0.0 },
+      { "value": 100, "amperes": 10.0 },
+      { "value": 255, "amperes": 25.5 }
+    ],
+    "voltage": [
+      { "value": 0, "volts": 0.0 },
+      { "value": 196, "volts": 13.8 },
+      { "value": 255, "volts": 17.95 }
+    ],
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 40, "db": 2.5 },
+      { "value": 60, "db": 5.0 },
+      { "value": 85, "db": 7.5 },
+      { "value": 135, "db": 10.0 },
+      { "value": 150, "db": 12.5 },
+      { "value": 175, "db": 15.0 },
+      { "value": 195, "db": 17.5 },
+      { "value": 220, "db": 20.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 64, "level": 1.0 }
+    ]
+  }
+}

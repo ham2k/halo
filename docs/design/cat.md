@@ -369,12 +369,14 @@ lets the second cost a codec and a driver rather than a rework.
 
 The ASCII line is one protocol, not one radio. Where a model leaves it, its catalogue entry pins
 the difference as driver config the operator never sees, rather than a new driver: the FTX-1's
-`PC` names the unit it drives (`yaesuHeadPower`, §Power), and the FT-450 carries eight digits of Hz
-in `FA` and `IF` instead of nine (`yaesuFrequencyDigits`) and has three CW text memories of forty
-characters instead of five of fifty (`yaesuKeyerMemory`, the one the app writes and plays through;
-`yaesuKeyerMemoryChars`). The FT-710 plays a text memory with `KY0n;` rather than the line's
-`KY6;`–`KYA;` (`yaesuKeyerPlayByChannel`). A width is never guessed from an answer: an eight-digit
-read on a nine-digit radio is a frame that lost a byte.
+`PC` names the unit it drives (`yaesuHeadPower`, §Power), and the FT-2000's and FTDX5000's is a
+0-255 level of the rated output their `ID` names (`yaesuRelativePower`); the FT-450 and the
+generation before the FT-891 (FT-950, FTDX1200, FT-2000, FTDX3000, FTDX5000) carry eight digits of
+Hz in `FA` and `IF` instead of nine (`yaesuFrequencyDigits`); and the FT-450 has three CW text
+memories of forty characters instead of five of fifty (`yaesuKeyerMemory`, the
+one the app writes and plays through; `yaesuKeyerMemoryChars`). The FT-710 plays a text memory with
+`KY0n;` rather than the line's `KY6;`–`KYA;` (`yaesuKeyerPlayByChannel`). A width is never guessed
+from an answer: an eight-digit read on a nine-digit radio is a frame that lost a byte.
 
 ### RTS and DTR
 

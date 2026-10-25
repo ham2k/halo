@@ -22,6 +22,11 @@ const _ft710SerialKey = 'ft710-serial';
 const _ftdx10SerialKey = 'ftdx10-serial';
 const _ftx1SerialKey = 'ftx1-serial';
 const _ft450SerialKey = 'ft450-serial';
+const _ftdx3000SerialKey = 'ftdx3000-serial';
+const _ft950SerialKey = 'ft950-serial';
+const _ftdx1200SerialKey = 'ftdx1200-serial';
+const _ft2000SerialKey = 'ft2000-serial';
+const _ftdx5000SerialKey = 'ftdx5000-serial';
 const _yaesuSerialKey = 'yaesu-serial';
 const _ft817SerialKey = 'ft817-serial';
 const _ft857SerialKey = 'ft857-serial';
@@ -261,14 +266,172 @@ const ft450Model = EquipmentModel(
         voiceMemoriesConfigKey: 0,
         meterInfoConfigKey: '',
       },
-      notes: _ft450SerialNotes,
+      notes: _yaesuRs232SerialNotes,
     ),
   ],
 );
 
 String _ft450Name() => t.settings.station.models.ft450;
 
-List<Map<String, dynamic>> _ft450SerialNotes() => [
+/// Yaesu FTDX3000 over its built-in USB CAT port — the line's ASCII CAT with
+/// the FT-450's eight digits of Hz in `FA` and `IF`, per its CAT Operation
+/// Manual. Without the pin it reads as a radio that never answers: every
+/// frequency is dropped as malformed and every tune rejected.
+///
+/// It shows no passband: its CAT manual has no `ID` (hamlib's `newcat`
+/// expects `0462`), and no width profile is known for it. Its five text
+/// memories and five voice memories are the line's (`KM`/`KY6`-`KYA`,
+/// `PB0n`), the voice ones built in. Neither has been tried on the radio,
+/// and no recording procedure has been written for it. Its meter table has
+/// no power and no SWR — see the file's notes.
+const ftdx3000Model = EquipmentModel(
+  key: 'ftdx3000',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ftdx3000Name,
+  variants: [
+    EquipmentVariant(
+      key: _ftdx3000SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {
+        yaesuFrequencyDigitsConfigKey: 8,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
+        meterInfoConfigKey: 'yaesu/ftdx3000',
+      },
+      // Its own USB to dual UART bridge, with menu 037 CAT SELECT on USB.
+      restrictions: {'port': _ownUsbCatPort},
+      notes: _ftdx3000SerialNotes,
+    ),
+  ],
+);
+
+String _ftdx3000Name() => t.settings.station.models.ftdx3000;
+
+/// The proven radios' USB note, plus what this unproven one adds: its CAT
+/// SELECT menu, and that nobody has run it.
+List<Map<String, dynamic>> _ftdx3000SerialNotes() => [
+  {
+    'type': 'markdown',
+    'collapsible': true,
+    'title': t.settings.station.troubleshootingNotes,
+    'text':
+        '**${t.settings.station.troubleshootingTitle}**\n\n'
+        '${t.settings.station.yaesuUsbTroubleshooting}\n\n'
+        '${t.settings.station.ftdx3000Troubleshooting}',
+  },
+];
+
+/// Yaesu FT-950 over the RS-232 CAT jack on the back. The same eight-digit
+/// line as [ftdx3000Model], per the FT-950 CAT Operation Reference Book.
+///
+/// No voice memories: `PB` and `LM` reach only the optional DVS-6 unit, and
+/// on a radio without one every memory would be offered and none would play.
+/// No port restriction, for the same reason as [ft450Model].
+const ft950Model = EquipmentModel(
+  key: 'ft950',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft950Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft950SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {..._eightDigitDvs6Overrides, meterInfoConfigKey: 'yaesu/ft-950'},
+      notes: _yaesuRs232SerialNotes,
+    ),
+  ],
+);
+
+String _ft950Name() => t.settings.station.models.ft950;
+
+/// Yaesu FTDX1200 over the RS-232 CAT jack, or USB through the external
+/// SCU-17 — not a bridge of its own, so no port restriction. Same eight-digit
+/// line and the same optional DVS-6 as [ft950Model], per its CAT Operation
+/// Reference Book.
+const ftdx1200Model = EquipmentModel(
+  key: 'ftdx1200',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ftdx1200Name,
+  variants: [
+    EquipmentVariant(
+      key: _ftdx1200SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {..._eightDigitDvs6Overrides, meterInfoConfigKey: 'yaesu/ftdx1200'},
+      notes: _yaesuRs232SerialNotes,
+    ),
+  ],
+);
+
+String _ftdx1200Name() => t.settings.station.models.ftdx1200;
+
+/// Yaesu FT-2000 and FT-2000D over the RS-232 CAT jack — one entry, as their
+/// one CAT Operation Reference Book is. The same eight-digit line as
+/// [ftdx3000Model], with a `PC` of its own: a 0-255 level of the rated
+/// output, which the radio's `ID` names (100 W, or the D's 200 W — see
+/// [yaesuRatedWattsById]). Its five voice memories are the line's, and its
+/// manual names no option for them.
+const ft2000Model = EquipmentModel(
+  key: 'ft2000',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ft2000Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft2000SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {..._eightDigitRelativePowerOverrides, meterInfoConfigKey: 'yaesu/ft-2000'},
+      notes: _yaesuRs232SerialNotes,
+    ),
+  ],
+);
+
+String _ft2000Name() => t.settings.station.models.ft2000;
+
+/// Yaesu FTDX5000 over the RS-232 CAT jack. The same line, `PC` and voice
+/// memories as [ft2000Model], at 200 W.
+const ftdx5000Model = EquipmentModel(
+  key: 'ftdx5000',
+  manufacturer: yaesuBrand,
+  category: kCategoryTransceiver,
+  name: _ftdx5000Name,
+  variants: [
+    EquipmentVariant(
+      key: _ftdx5000SerialKey,
+      driver: Ft891Driver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      overrides: {..._eightDigitRelativePowerOverrides, meterInfoConfigKey: 'yaesu/ftdx5000'},
+      notes: _yaesuRs232SerialNotes,
+    ),
+  ],
+);
+
+String _ftdx5000Name() => t.settings.station.models.ftdx5000;
+
+/// The FT-2000's and FTDX5000's — see [ft2000Model].
+const _eightDigitRelativePowerOverrides = {
+  yaesuFrequencyDigitsConfigKey: 8,
+  yaesuRelativePowerConfigKey: true,
+  cwKeyerConfigKey: true,
+  voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
+};
+
+/// The FT-950's and FTDX1200's — see [ft950Model].
+const _eightDigitDvs6Overrides = {yaesuFrequencyDigitsConfigKey: 8, cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0};
+
+/// The FT-450's, FT-950's, FTDX1200's, FT-2000's and FTDX5000's: an RS-232 jack, reached through
+/// whatever adapter the operator bought.
+List<Map<String, dynamic>> _yaesuRs232SerialNotes() => [
   {
     'type': 'markdown',
     'collapsible': true,

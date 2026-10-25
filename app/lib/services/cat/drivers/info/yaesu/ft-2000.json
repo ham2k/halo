@@ -1,0 +1,72 @@
+{
+  "manufacturer": "Yaesu",
+  "model": "FT-2000",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "_notes": "Strength is hamlib's FT-2000 table. Power is its FT-2000D (200 W) table, which hamlib also uses for the 100 W FT-2000. SWR, drain, voltage, compression and ALC are hamlib's generic Yaesu defaults (newcat.c), which it uses for every radio with no table of its own.",
+    "strength": [
+      { "value": 0, "db": -54, "tick": "S0" },
+      { "value": 12, "db": -48, "tick": "S1" },
+      { "value": 27, "db": -42, "tick": "S2" },
+      { "value": 40, "db": -36, "tick": "S3" },
+      { "value": 55, "db": -30, "tick": "S4" },
+      { "value": 65, "db": -24, "tick": "S5" },
+      { "value": 80, "db": -18, "tick": "S6" },
+      { "value": 95, "db": -12, "tick": "S7" },
+      { "value": 112, "db": -6, "tick": "S8" },
+      { "value": 130, "db": 0, "tick": "S9" },
+      { "value": 150, "db": 10, "tick": "S9+10" },
+      { "value": 172, "db": 20, "tick": "S9+20" },
+      { "value": 190, "db": 30, "tick": "S9+30" },
+      { "value": 220, "db": 40, "tick": "S9+40" },
+      { "value": 240, "db": 50, "tick": "S9+50" },
+      { "value": 255, "db": 60, "tick": "S9+60" }
+    ],
+    "power": [
+      { "value": 0, "watts": 0.0 },
+      { "value": 51, "watts": 10.0 },
+      { "value": 67, "watts": 20.0 },
+      { "value": 97, "watts": 40.0 },
+      { "value": 123, "watts": 60.0 },
+      { "value": 140, "watts": 80.0 },
+      { "value": 161, "watts": 100.0 },
+      { "value": 168, "watts": 120.0 },
+      { "value": 184, "watts": 140.0 },
+      { "value": 195, "watts": 160.0 },
+      { "value": 215, "watts": 180.0 },
+      { "value": 224, "watts": 200.0 }
+    ],
+    "swr": [
+      { "value": 12, "ratio": 1.0 },
+      { "value": 39, "ratio": 1.35 },
+      { "value": 65, "ratio": 1.5 },
+      { "value": 89, "ratio": 2.0 },
+      { "value": 242, "ratio": 5.0 }
+    ],
+    "drain": [
+      { "value": 0, "amperes": 0.0 },
+      { "value": 100, "amperes": 10.0 },
+      { "value": 255, "amperes": 25.5 }
+    ],
+    "voltage": [
+      { "value": 0, "volts": 0.0 },
+      { "value": 196, "volts": 13.8 },
+      { "value": 255, "volts": 17.95 }
+    ],
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 40, "db": 2.5 },
+      { "value": 60, "db": 5.0 },
+      { "value": 85, "db": 7.5 },
+      { "value": 135, "db": 10.0 },
+      { "value": 150, "db": 12.5 },
+      { "value": 175, "db": 15.0 },
+      { "value": 195, "db": 17.5 },
+      { "value": 220, "db": 20.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 64, "level": 1.0 }
+    ]
+  }
+}
