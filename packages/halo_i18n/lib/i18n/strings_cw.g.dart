@@ -273,6 +273,14 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get restoreRuntimeDeadBody => '·—— · / ·· —· ··· — ·— ·—·· ·—·· · —·· / — ···· · —— / ·— ——· ·— ·· —· ——··—— / —··· ··— — / —·—— ——— ··— ·—· / · —··— — · —· ··· ·· ——— —· ··· / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· — ·— ·—· — ·—·—·— / ·—· · ··· — ·— ·—· — ·· —· ——· / — ···· · / ·— ·——· ·——· / ··· ···· ——— ··— ·—·· —·· / —··· ·—· ·· —· ——· / — ···· · —— / —··· ·— —·—· —·— ·—·—·—';
 	@override String revokedTitle({required Object name}) => '${name} / ·—— ·— ··· / ·—— ·· — ···· —·· ·—· ·— ·—— —·';
 	@override String get revokedBody => '— ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·—— ·· — ···· —·· ·—· · ·—— / — ···· ·· ··· / ···— · ·—· ··· ·· ——— —· ——··—— / ··· ——— / ·· — / ···· ·— ··· / —··· · · —· / —·· ·· ··· ·— —··· ·—·· · —·· ·—·—·—';
+	@override String forceDisabledTitle({required Object name}) => '${name} / ·—— ·— ··· / —·· ·· ··· ·— —··· ·—·· · —··';
+	@override String get forceDisabledBody => '···· ·— —— ··——— —·— / ···· ·— ··· / —·· ·· ··· ·— —··· ·—·· · —·· / — ···· ·· ··· / · —··— — · —· ··· ·· ——— —· / ··—· ——— ·—· / —· ——— ·—— ·—·—·—';
+	@override String replacedTitle({required Object name}) => '${name} / ···· ·— ··· / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —··';
+	@override String replacedBody({required Object replacement}) => '${replacement} / — ·— —·— · ··· / ·· — ··· / ·——· ·—·· ·— —·—· · ·—·—·— / —·—— ——— ··— / —·—· ·— —· / ··· ·—— ·· — —·—· ···· / ——— ···— · ·—· / ·· —· / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—';
+	@override String replacedBy({required Object name}) => '·—· · ·——· ·—·· ·— —·—· · —·· / —··· —·—— / ${name}';
+	@override String replacedByInstalled({required Object name}) => '·—· · ·——· ·—·· ·— —·—· · —·· / —··· —·—— / ${name} ——··—— / ·—— ···· ·· —·—· ···· / —·—— ——— ··— / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ···— ·';
+	@override String get replaceAction => '·—· · ·——· ·—·· ·— —·—· ·';
+	@override String replaceInstalledBody({required Object replacement}) => '·· — ··· / ··· · — — ·· —· ——· ··· / —— ——— ···— · / — ——— / ${replacement} ——··—— / ·—— ···· ·· —·—· ···· / —·—— ——— ··— / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ···— · ·—·—·— / —·—— ——— ··— ·—· / ·—·· ——— ——· ··· / ·—— ·· ·—·· ·—·· / ·—· · —— ·— ·· —· / ··— —· — ——— ··— —·—· ···· · —·· ·—·—·—';
 	@override String get downloadHashMismatch => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·· ··· / —· ——— — / — ···· · / · —··— — · —· ··· ·· ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / —·· · ··· —·—· ·—· ·· —··· · —·· ·—·—·—';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => '— ···· · / —·—· ·— — ·— ·—·· ——— ——· / ···· ·— ··· / —· ——— / ···— · ·—· ··· ·· ——— —· / ${version} / ——— ··—· / ${key} ·—·—·—';
 	@override String get catalogLinkUnknown => '— ···· ·— — / —·—· ·— — ·— ·—·· ——— ——· / ·—·· ·· —· —·— / —·· ——— · ··· / —· ——— — / —· ·— —— · / ·— —· / · —··— — · —· ··· ·· ——— —· / ···— · ·—· ··· ·· ——— —· ·—·—·—';
@@ -286,6 +294,7 @@ class _Translations$extensionsPanel$cw extends Translations$extensionsPanel$en {
 	@override String get followsBleeding => '·—· · —·—· · ·· ···— · ··· / —··· ·—·· · · —·· ·· —· ——· —····— · —·· ——· · ——··—— / ··— —· ··· — ·— —··· ·—·· · / ·— —· —·· / ··· — ·— —··· ·—·· · / ·—· · ·—·· · ·— ··· · ···';
 	@override String get followStableAction => '··—· ——— ·—·· ·—·· ——— ·—— / ··· — ·— —··· ·—·· · / ·—· · ·—·· · ·— ··· · ··· / ——— —· ·—·· —·——';
 	@override String get revokedBadge => '·—· · ···— ——— —·— · —··';
+	@override String get forceDisabledBadge => '—·· ·· ··· ·— —··· ·—·· · —·· / —··· —·—— / ···· ·— —— ··——— —·—';
 	@override String get refusedBadge => '—·· ·· —·· / —· ——— — / ·—·· ——— ·— —··';
 	@override String get downloadNotHttps => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·· ··· / —· ——— — / ——— ···— · ·—· / ·— / ··· · —·—· ··— ·—· · / —·—· ——— —· —· · —·—· — ·· ——— —· ·—·—·—';
 	@override String downloadUnreachable({required Object source}) => '${source} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —·· / ··—· ——— ·—· / — ···· ·— — / · —··— — · —· ··· ·· ——— —· ·—·—·—';
@@ -4389,6 +4398,14 @@ extension on TranslationsCw {
 			'extensionsPanel.restoreRuntimeDeadBody' => '·—— · / ·· —· ··· — ·— ·—·· ·—·· · —·· / — ···· · —— / ·— ——· ·— ·· —· ——··—— / —··· ··— — / —·—— ——— ··— ·—· / · —··— — · —· ··· ·· ——— —· ··· / ·—— ——— ··— ·—·· —·· / —· ——— — / ··· — ·— ·—· — ·—·—·— / ·—· · ··· — ·— ·—· — ·· —· ——· / — ···· · / ·— ·——· ·——· / ··· ···· ——— ··— ·—·· —·· / —··· ·—· ·· —· ——· / — ···· · —— / —··· ·— —·—· —·— ·—·—·—',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} / ·—— ·— ··· / ·—— ·· — ···· —·· ·—· ·— ·—— —·',
 			'extensionsPanel.revokedBody' => '— ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·—— ·· — ···· —·· ·—· · ·—— / — ···· ·· ··· / ···— · ·—· ··· ·· ——— —· ——··—— / ··· ——— / ·· — / ···· ·— ··· / —··· · · —· / —·· ·· ··· ·— —··· ·—·· · —·· ·—·—·—',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} / ·—— ·— ··· / —·· ·· ··· ·— —··· ·—·· · —··',
+			'extensionsPanel.forceDisabledBody' => '···· ·— —— ··——— —·— / ···· ·— ··· / —·· ·· ··· ·— —··· ·—·· · —·· / — ···· ·· ··· / · —··— — · —· ··· ·· ——— —· / ··—· ——— ·—· / —· ——— ·—— ·—·—·—',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} / ···· ·— ··· / —··· · · —· / ·—· · ·——· ·—·· ·— —·—· · —··',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '${replacement} / — ·— —·— · ··· / ·· — ··· / ·——· ·—·· ·— —·—· · ·—·—·— / —·—— ——— ··— / —·—· ·— —· / ··· ·—— ·· — —·—· ···· / ——— ···— · ·—· / ·· —· / · —··— — · —· ··· ·· ——— —· ··· ·—·—·—',
+			'extensionsPanel.replacedBy' => ({required Object name}) => '·—· · ·——· ·—·· ·— —·—· · —·· / —··· —·—— / ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => '·—· · ·——· ·—·· ·— —·—· · —·· / —··· —·—— / ${name} ——··—— / ·—— ···· ·· —·—· ···· / —·—— ——— ··— / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ···— ·',
+			'extensionsPanel.replaceAction' => '·—· · ·——· ·—·· ·— —·—· ·',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => '·· — ··· / ··· · — — ·· —· ——· ··· / —— ——— ···— · / — ——— / ${replacement} ——··—— / ·—— ···· ·· —·—· ···· / —·—— ——— ··— / ·— ·—·· ·—· · ·— —·· —·—— / ···· ·— ···— · ·—·—·— / —·—— ——— ··— ·—· / ·—·· ——— ——· ··· / ·—— ·· ·—·· ·—·· / ·—· · —— ·— ·· —· / ··— —· — ——— ··— —·—· ···· · —·· ·—·—·—',
 			'extensionsPanel.downloadHashMismatch' => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·· ··· / —· ——— — / — ···· · / · —··— — · —· ··· ·· ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / —·· · ··· —·—· ·—· ·· —··· · —·· ·—·—·—',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => '— ···· · / —·—· ·— — ·— ·—·· ——— ——· / ···· ·— ··· / —· ——— / ···— · ·—· ··· ·· ——— —· / ${version} / ——— ··—· / ${key} ·—·—·—',
 			'extensionsPanel.catalogLinkUnknown' => '— ···· ·— — / —·—· ·— — ·— ·—·· ——— ——· / ·—·· ·· —· —·— / —·· ——— · ··· / —· ——— — / —· ·— —— · / ·— —· / · —··— — · —· ··· ·· ——— —· / ···— · ·—· ··· ·· ——— —· ·—·—·—',
@@ -4402,6 +4419,7 @@ extension on TranslationsCw {
 			'extensionsPanel.followsBleeding' => '·—· · —·—· · ·· ···— · ··· / —··· ·—·· · · —·· ·· —· ——· —····— · —·· ——· · ——··—— / ··— —· ··· — ·— —··· ·—·· · / ·— —· —·· / ··· — ·— —··· ·—·· · / ·—· · ·—·· · ·— ··· · ···',
 			'extensionsPanel.followStableAction' => '··—· ——— ·—·· ·—·· ——— ·—— / ··· — ·— —··· ·—·· · / ·—· · ·—·· · ·— ··· · ··· / ——— —· ·—·· —·——',
 			'extensionsPanel.revokedBadge' => '·—· · ···— ——— —·— · —··',
+			'extensionsPanel.forceDisabledBadge' => '—·· ·· ··· ·— —··· ·—·· · —·· / —··· —·—— / ···· ·— —— ··——— —·—',
 			'extensionsPanel.refusedBadge' => '—·· ·· —·· / —· ——— — / ·—·· ——— ·— —··',
 			'extensionsPanel.downloadNotHttps' => '— ···· ·— — / —·· ——— ·—— —· ·—·· ——— ·— —·· / ·· ··· / —· ——— — / ——— ···— · ·—· / ·— / ··· · —·—· ··— ·—· · / —·—· ——— —· —· · —·—· — ·· ——— —· ·—·—·—',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} / —·—· ——— ··— ·—·· —·· / —· ——— — / —··· · / ·—· · ·— —·—· ···· · —·· / ··—· ——— ·—· / — ···· ·— — / · —··— — · —· ··· ·· ——— —· ·—·—·—',
@@ -4746,6 +4764,8 @@ extension on TranslationsCw {
 			'operation.layout.panels.weatherNoLocation' => '—· ——— / ·—·· ——— —·—· ·— — ·· ——— —· / ··· · — ·—·—·— / ——· ·· ···— · / — ···· ·· ··· / ·——· ·— —· · ·—·· / ·— / ·—·· ——— —·—· ·— — ·· ——— —· / ·· —· / ·· — ··· / ··· · — — ·· —· ——· ··· ——··—— / ——— ·—· / ·——· ·—·· ·— —·—· · / ·· — / ·· —· ··· ·· —·· · / ·— —· / ——— ·——· · ·—· ·— — ·· ——— —· / — ···· ·— — / ···· ·— ··· / ——— —· · ·—·—·—',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·· / — ···· · / ·—·· ——— —·—· ·— — ·· ——— —· / ${location} ·—·—·— / ··— ··· · / ·— / ——· ·—· ·· —·· / ··· ——·— ··— ·— ·—· · / ·—·· ·· —·— · / ··—· —· ···—— ·———— ·——· ·—· ——··—— / ——— ·—· / ····— ··——— ·—·—·— ···—— —···· ——··—— —····— ——··· ·———— ·—·—·— ————— —···· ·—·—·—',
 			'operation.layout.panels.weatherUnreachable' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·—· ···· / ——— ·——· · —· —····— —— · — · ——— / — / —· ——— / —· · — ·—— ——— ·—· —·— ··——·· / ·—— ·· ·—·· ·—·· / — ·—· —·—— / ·— ——· ·— ·· —· / ··· ···· ——— ·—· — ·—·· —·—— ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherUnreadable' => '——— ·——· · —· —····— —— · — · ——— / ·—· · ··· ·——· ——— —· —·· · —·· ——··—— / —··· ··— — / —· ——— — / ·—— ·· — ···· / ·— —· —·—— — ···· ·· —· ——· / ·—· · ·— —·· ·— —··· ·—·· · ·—·—·— / ·—— ·· ·—·· ·—·· / — ·—· —·—— / ·— ——· ·— ·· —· / ··· ···· ——— ·—· — ·—·· —·—— ·—·—·—',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => '——· ··— ··· — ··· / ${speed}',
 			'operation.layout.panels.panelAgeNow' => '·——— ··— ··· — / —· ——— ·——',
@@ -4755,8 +4775,6 @@ extension on TranslationsCw {
 			'operation.layout.panels.weatherConditions.sunny' => '··· ··— —· —· —·——',
 			'operation.layout.panels.weatherConditions.clear' => '—·—· ·—·· · ·— ·—·',
 			'operation.layout.panels.weatherConditions.mainlySunny' => '—— ·— ·· —· ·—·· —·—— / ··· ··— —· —· —·——',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.mainlyClear' => '—— ·— ·· —· ·—·· —·—— / —·—· ·—·· · ·— ·—·',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => '·——· ·— ·—· — ·—·· —·—— / —·—· ·—·· ——— ··— —·· —·——',
 			'operation.layout.panels.weatherConditions.cloudy' => '—·—· ·—·· ——— ··— —·· —·——',
@@ -5260,6 +5278,8 @@ extension on TranslationsCw {
 			'formChrome.manage' => '—— ·— —· ·— ——· ·',
 			'formChrome.connect' => '—·—· ——— —· —· · —·—· —',
 			'formChrome.formTitle' => '··—· ——— ·—· ——',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => '·— —·· —·· / ${label}',
 			'formChrome.editItem' => ({required Object label}) => '· —·· ·· — / ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => '··· ···· ——— ·—— ·· —· ——· / ${shown} / ——— ··—· / ${total} / —·——· ${selected} / ··· · ·—·· · —·—· — · —·· —·——·—',
@@ -5269,8 +5289,6 @@ extension on TranslationsCw {
 			'formChrome.removeItem' => '—·· · ·—·· · — ·',
 			'formChrome.deleteItemTitle' => ({required Object name}) => '—·· · ·—·· · — · / ${name} ··——··',
 			'formChrome.storageUnavailable' => '·—·· ——— ——· ·· —· ··· / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· ·',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.title' => '· —·· ·· — / ——·— ··· ———',
 			'qsoEditForm.operatorCall' => '——— ·——· · ·—· ·— — ——— ·—·',
 			'qsoEditForm.position' => '·——· ——— ··· ·· — ·· ——— —·',
@@ -5774,6 +5792,8 @@ extension on TranslationsCw {
 			'settings.accounts.pastedLinkNoCode' => '— ···· ·— — / ·—·· ·· —· —·— / ···· ·— ··· / —· ——— / ·—·· ——— ——· ·· —· / —·—· ——— —·· · ·—·—·— / ··—· ·· —· ·· ··· ···· / ··· ·· ——· —· ·· —· ——· / ·· —· / ··—· ·· ·—· ··· — ——··—— / — ···· · —· / —·—· ——— ·——· —·—— / — ···· · / ·—·· ·· —· —·— / ·· — / ··· · —· —·· ··· / —·—— ——— ··— / — ——— ·—·—·—',
 			'settings.accounts.pastedLinkMalformed' => '— ···· ·— — / ·—·· ·· —· —·— / ·—·· ——— ——— —·— ··· / —·—· ··— — / ——— ··—· ··—· ·—·—·— / —·—· ——— ·——· —·—— / — ···· · / ·—— ···· ——— ·—·· · / — ···· ·· —· ——· / ·— —· —·· / ·——· ·— ··· — · / ·· — / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.accounts.relayLoginWaiting' => '·—— ·— ·· — ·· —· ——· / ··—· ——— ·—· / —·—— ——— ··— / — ——— / ··—· ·· —· ·· ··· ···· / ··· ·· ——· —· ·· —· ——· / ·· —· / — / — ···· ·· ··· / ·—— ·· ·—·· ·—·· / —·—· ——— —· — ·· —· ··— · / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— / ——— —· —·—· · / —·—— ——— ··— / —·· ——— ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => '— ···· ·· ··· / —·· · ···— ·· —·—· · / ···· ·— ··· —· ·————· — / ···· · ·— ·—· —·· / —··· ·— —·—· —·— / ··—· ·—· ——— —— / — ···· · / ··· ·· ——· —· —····— ·· —· / —·—— · — ·—·—·— / ·· ··—· / —·—— ——— ··— / ·— ·—·· ·—· · ·— —·· —·—— / ··—· ·· —· ·· ··· ···· · —·· / ·· —· / —·—— ——— ··— ·—· / —··· ·—· ——— ·—— ··· · ·—· ——··—— / —·—· ·— —· —·—· · ·—·· / ·— —· —·· / — ·—· —·—— / —·—· ——— —· —· · —·—· — ·· —· ——· / ·— ——· ·— ·· —· ·—·—·—',
 			'settings.accounts.relayLoginNotOpened' => '···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· / —·—· ——— ··— ·—·· —·· / —· ——— — / ——— ·——· · —· / —·—— ——— ··— ·—· / —··· ·—· ——— ·—— ··· · ·—· / ·— ··— — ——— —— ·— — ·· —·—· ·— ·—·· ·—·· —·—— ·—·—·— / ··— ··· · / — ···· · / —··· ··— — — ——— —· / —··· · ·—·· ——— ·—— / — ——— / ——— ·——· · —· / — ···· · / ·—·· ——— ——· ·· —· / ·——· ·— ——· · / —·—— ——— ··— ·—· ··· · ·—·· ··—· ·—·—·—',
 			'settings.accounts.relayLoginUnavailable' => '—·—· ——— ··— ·—·· —·· —· ·————· — / ·—· · ·— —·—· ···· / — ···· · / ··· —·—— —· —·—· / ··· · ·—· ···— · ·—· / —· · · —·· · —·· / — ——— / —·—· ——— —— ·——· ·—·· · — · / — ···· ·· ··· / ·—·· ——— ——· ·· —· ·—·—·— / —·—· ···· · —·—· —·— / —·—— ——— ··— ·—· / —·—· ——— —· —· · —·—· — ·· ——— —· / ·— —· —·· / — ·—· —·—— / ·— ——· ·— ·· —· ·—·—·—',
@@ -5783,8 +5803,6 @@ extension on TranslationsCw {
 			'settings.accounts.noKeyringInline' => '·—·· ——— ——· ·· —· ··· / —·—· ·— —· ’ — / —··· · / ··· ·— ···— · —·· ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ’ ··· / —·— · —·—— ·—· ·· —· ——· / —·—· ·— —· ’ — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·— / ·· —· ··· — ·— ·—·· ·—·· / ·— —· —·· / ··· — ·— ·—· — / ——· —· ——— —— · —····— —·— · —·—— ·—· ·· —· ——· ——··—— / —·— ·—— ·— ·—·· ·—·· · — / ——— ·—· / —·— · · ·——· ·— ··· ··· —··— —·—· ——··—— / ——— ·—· / ··— —· ·—·· ——— —·—· —·— / — ···· · / ——— —· · / —·—— ——— ··— / ···· ·— ···— · ·—·—·—',
 			'settings.accounts.noSecureStorageInline' => '·—·· ——— ——· ·· —· ··· / —·—· ·— —· ’ — / —··· · / ··· ·— ···— · —·· ———··· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· ’ ··· / ··· · —·—· ··— ·—· · / ··· — ——— ·—· ·— ——· · / —·—· ·— —· ’ — / —··· · / ·—· · ·— —·—· ···· · —·· ·—·—·—',
 			'settings.station.title' => '··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / ·—··· / —·—· ·— — / —·—· ——— —· — ·—· ——— ·—··',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.none' => '—· ——— / · ——·— ··— ·· ·——· —— · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
 			'settings.station.add' => '·— —·· —··',
 			'settings.station.addTitle' => '·— —·· —·· / · ——·— ··— ·· ·——· —— · —· —',
@@ -6288,6 +6306,8 @@ extension on TranslationsCw {
 			'settings.panels.profilesDescription' => '——— ·——· · ·—· ·— — ——— ·—· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· / ·— —· —·· / ··· — ·— — ·· ——— —· / ·——· ·—· ——— ··—· ·· ·—·· ·',
 			'settings.panels.stationProfiles' => '··· — ·— — ·· ——— —· / ·——· ·—· ——— ··—· ·· ·—·· · ···',
 			'settings.panels.developerSettings' => '—·· · ···— · ·—·· ——— ·——· · ·—· / ··· · — — ·· —· ——· ···',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => '—·· · —··· ··— ——· ——· ·· —· ——· / ·— —· —·· / —·· · ···— · ·—·· ——— ·——· —— · —· — / — ——— ——— ·—·· ···',
 			'settings.panels.about' => '·— —··· ——— ··— —',
 			'settings.panels.aboutDescription' => '···— · ·—· ··· ·· ——— —· ——··—— / —·—· ·—· · —·· ·· — ··· ——··—— / ·— —· —·· / ·—·· · ——· ·— ·—·· / ·· —· ··—· ——— ·—· —— ·— — ·· ——— —·',
@@ -6297,8 +6317,6 @@ extension on TranslationsCw {
 			'settings.panels.stationDescription' => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·— —· —·· / —— ——— ·—· · / ——— ·——· — ·· ——— —· ···',
 			'settings.panels.peers' => '·——· · · ·—· / —·· · ···— ·· —·—· · ···',
 			'settings.panels.peersDescription' => '—·—· ——— —· —· · —·—· — / — ——— / ——— — ···· · ·—· / —·· · ···— ·· —·—· · ··· / —· · ·— ·—· —··· —·——',
-			_ => null,
-		} ?? switch (path) {
 			'settings.showMoreSettings' => '··· ···· ——— ·—— / —— ——— ·—· · / ··· · — — ·· —· ——· ···',
 			'settings.gridPrecision' => '——· ·—· ·· —·· / ·——· ·—· · —·—· ·· ··· ·· ——— —·',
 			'settings.gridPrecisionOpts.six' => '—···· / —·· ·· ——· ·· — ··· / —·——· ··—· —· ···—— ·———— ·——· ·—· —·——·—',

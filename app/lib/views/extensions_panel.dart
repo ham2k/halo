@@ -283,6 +283,31 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     screenshots: entry.screenshots,
   );
 
+  /// Moves [info] onto the extension the catalog replaced it with: the
+  /// replacement through the consent screen like any install, on the track
+  /// [info] follows and carrying its settings — or, when the replacement is
+  /// already installed, the same carry without the install, behind the
+  /// uninstall's own confirmation.
+  Future<void> _replace(ExtensionInfo info, CatalogRedirect redirect) async {
+    final services = widget.services;
+    if (services.extensions.extensionInfo(redirect.to)?.isInstalled ?? false) {
+      return _uninstall(
+        info,
+        body: t.extensionsPanel.replaceInstalledBody(replacement: redirect.entry.nameFor(LocaleSettings.currentLocale.languageCode)),
+        remove: () => services.extensions.replaceInstalledExtension(from: info.key, to: redirect.to),
+      );
+    }
+    await installFromCatalog(
+      context,
+      services: services,
+      release: redirect.entry.release,
+      name: redirect.entry.nameFor(LocaleSettings.currentLocale.languageCode),
+      screenshots: redirect.entry.screenshots,
+      track: services.catalog.channelFollowedBy(info.key),
+      replacing: info.key,
+    );
+  }
+
   /// Takes every pending update — the shared path, which confirms first.
   ///
   /// The list is captured by the caller: each install changes what is
@@ -409,14 +434,17 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     return (label: t.extensionsPanel.installedFrom(source: provenance.host), icon: MdiIcons.downloadOutline);
   }
 
-  Future<void> _uninstall(ExtensionInfo info) async {
+  /// [remove] stands in for the plain uninstall, and [body] for what the
+  /// confirmation says it does.
+  Future<void> _uninstall(ExtensionInfo info, {String? body, Future<void> Function()? remove}) async {
     final locale = LocaleSettings.currentLocale.languageCode;
     final name = info.nameFor(locale);
-    if (!await confirmUninstall(context, name: name)) return;
+    if (!await confirmUninstall(context, name: name, body: body)) return;
     if (!mounted) return;
     setState(() => _applying = true);
     try {
-      await widget.services.extensions.uninstallExtension(info.key);
+      await (remove ?? () => widget.services.extensions.uninstallExtension(info.key))();
+      widget.services.catalogUpdateCheck.noteReplaced(info.key);
       widget.services.track('extension_uninstalled', {});
     } catch (e, stack) {
       // Otherwise the spinner clears, the row is still there, and nothing says
@@ -592,11 +620,20 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
           for (final entry in held)
             if (entry.isNewerThan(visibleByKey[entry.key]!.version) && !installer.isActive(entry.key)) entry,
         ];
-        if (query.isEmpty && held.isNotEmpty) {
+        // What the catalog replaced with another extension. Under the same
+        // band, since it is the same kind of thing owed — but never in Update
+        // all: each one is a new extension, and asks consent of its own.
+        final redirects = [
+          if (_catalogShown && query.isEmpty)
+            for (final redirect in widget.services.catalogUpdateCheck.pendingRedirects.values)
+              if (visibleByKey.containsKey(redirect.from)) redirect,
+        ];
+        if (query.isEmpty && (held.isNotEmpty || redirects.isNotEmpty)) {
           // Row identities, so taking an update remounts the list rather than
           // leaving the web's hit-testing on the geometry that had one more
           // row in it (docs/quirks.md, listContentsKey).
           shownOffers.addAll(held.map((entry) => 'pending:${entry.key}'));
+          shownOffers.addAll(redirects.map((redirect) => 'redirect:${redirect.from}'));
           // On the post-it yellow, edge to edge, band and rows alike: this
           // section is a standing notice rather than one more group, and it is
           // the one part of the panel that says something is owed rather than
@@ -657,6 +694,38 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                         child: FilledButton(
                           onPressed: _applying ? null : () => unawaited(_installFromCatalog(entry)),
                           child: Text(t.extensionsPanel.updateAction),
+                        ),
+                      ),
+              ),
+            );
+          }
+          for (final redirect in redirects) {
+            final info = visibleByKey[redirect.from]!;
+            final replacementInstalled = extensionService.extensionInfo(redirect.to)?.isInstalled ?? false;
+            final busy = installer.isActive(redirect.to) || installer.isActive(redirect.from);
+            final replacement = redirect.entry.nameFor(locale);
+            rows.add(
+              ListTile(
+                key: ValueKey('redirect-${redirect.from}'),
+                tileColor: notice,
+                leading: ExtensionIconTile(icon: info.icon, accentColor: info.accentColor, fallbackIcon: extensionCategoryIcon(info.category)),
+                title: Text(info.nameFor(locale), style: TextStyle(color: onNotice)),
+                subtitle: busy
+                    ? _InstallProgressLine(extensionKey: redirect.to, statusBar: widget.services.statusBar, color: onNotice)
+                    : Text(
+                        [
+                          replacementInstalled ? t.extensionsPanel.replacedByInstalled(name: replacement) : t.extensionsPanel.replacedBy(name: replacement),
+                          if (redirect.note.isNotEmpty) redirect.note,
+                        ].join(' · '),
+                        style: TextStyle(color: onNotice),
+                      ),
+                trailing: busy
+                    ? _InstallSpinner(color: onNotice)
+                    : SizedBox(
+                        height: _trailingControlHeight,
+                        child: FilledButton(
+                          onPressed: _applying ? null : () => unawaited(_replace(info, redirect)),
+                          child: Text(replacementInstalled ? t.extensionsPanel.uninstallAction : t.extensionsPanel.replaceAction),
                         ),
                       ),
               ),
@@ -755,8 +824,13 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // not turn it on would only say the panel is broken. What is
               // left is the catalog's note, an update if there is one, and
               // the way out.
+              //
+              // The flags' force-disable is the same thing said by Ham2K
+              // rather than the catalog, and gets the same row.
               final isRevoked = extensionService.isExtensionRevoked(info);
-              final revokedNote = isRevoked ? (revoked[info.key]?['note'] ?? '') : '';
+              final isForceDisabled = extensionService.isExtensionForceDisabled(info);
+              final pulled = isRevoked || isForceDisabled;
+              final revokedNote = isRevoked ? (revoked[info.key]?['note'] ?? '') : (extensionService.forceDisableOf(info)?.note ?? '');
               // An update under way, from anywhere — this row, its details,
               // Update all, the notice. The switch goes with it: the install
               // restarts the runtime, and a toggle then is a restart racing it.
@@ -776,8 +850,8 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   // switch to [_trailingControlHeight] to make room for the
                   // version under it takes its tap target below the 48 Material
                   // asks for, and the row is what gives that back.
-                  onTap: isRevoked || busy ? null : () => toggle(!enabled),
-                  mouseCursor: isRevoked || busy ? null : SystemMouseCursors.click,
+                  onTap: pulled || busy ? null : () => toggle(!enabled),
+                  mouseCursor: pulled || busy ? null : SystemMouseCursors.click,
                   // No "Installed" here any more: it sits under the same headings
                   // as the app's own extensions, so saying so on every row said
                   // nothing the section did not. What is left is what is
@@ -787,6 +861,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                       : _DescriptionLine(
                           description: [
                             if (isRevoked) t.extensionsPanel.revokedBadge,
+                            if (isForceDisabled) t.extensionsPanel.forceDisabledBadge,
                             if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
                             if (_catalogEntryFor(info, records) != null) t.extensionsPanel.updateAvailableBadge,
                             if (revokedNote.isNotEmpty) revokedNote,
@@ -804,7 +879,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                     // the row it sat on could not say what would be removed.
                     control: busy
                         ? const _InstallSpinner()
-                        : isRevoked
+                        : pulled
                         ? const SizedBox(height: _trailingControlHeight)
                         : _trailingSwitch(value: enabled, onChanged: toggle),
                   ),

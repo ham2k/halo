@@ -30,7 +30,9 @@ import 'database_snapshot_service.dart';
 import 'hang_watchdog.dart';
 
 import 'error_reporting_service.dart';
+import 'extensions/extension_force_disable.dart' show forceDisabledBeforeStart, keepForceDisabledFromBoot;
 import 'extensions/extension_service.dart';
+import 'flags_service.dart' show fetchFlagsDefaultsBeforeStart;
 import 'unclean_quit.dart';
 import 'metrics_service.dart';
 import 'purchase_service.dart';
@@ -127,6 +129,13 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
   // the extension runtime and the settings load, which currently overlap it.
   final logRefusal = _openLogNow(db);
   final extensions = ExtensionService();
+  // The flags' force-disable, read before the first start chooses what to
+  // load: the kept list, and `defaults.json` now, on a short budget. The
+  // start waits for it — the full flags refresh needs the runtime up, so it
+  // can never stop an extension that breaks the start — and nothing else
+  // does. Docs: extension_force_disable.dart.
+  final earlyForceDisabled = forceDisabledBeforeStart(fetchDefaults: fetchFlagsDefaultsBeforeStart);
+  extensions.earlyForceDisabled = earlyForceDisabled;
   // Fire-and-forget, and kicked off before awaiting settings below so these
   // two independent boot steps run concurrently instead of serialized; the
   // core logging loop never waits on the extension runtime either way.
@@ -144,6 +153,7 @@ Future<HaLoServices> bootstrap({MetricsService? metrics, PurchaseService? purcha
     },
   );
   final settings = await SettingsService.load();
+  unawaited(earlyForceDisabled.then((early) => keepForceDisabledFromBoot(settings, early)));
   // The previous run's database close, if it left a mark: the quit itself has
   // no time to report one, so this boot is the first moment it can be told.
   // Not awaited — the report is fire-and-forget either way, and a boot must

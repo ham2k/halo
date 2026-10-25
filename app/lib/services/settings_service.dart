@@ -233,12 +233,15 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
     }
     // A panel's key is the extension's own or prefixed with it, which is what
     // makes the leading segment safe to rewrite.
+    // And a docked panel's values, which hang off its panel id instead.
     for (final prefsKey in _prefs.getKeys().toList()) {
       String? moved;
       if (prefsKey.startsWith('settingsPanel.$from.')) {
         moved = 'settingsPanel.$to.${prefsKey.substring('settingsPanel.$from.'.length)}';
       } else if (prefsKey.startsWith('settingsPanel.${from}_')) {
         moved = 'settingsPanel.${to}_${prefsKey.substring('settingsPanel.${from}_'.length)}';
+      } else if (prefsKey.startsWith('settingsPanel.ext:')) {
+        if (renamedExtensionPanelId(prefsKey.substring('settingsPanel.'.length), from: from, to: to) case final id?) moved = 'settingsPanel.$id';
       }
       if (moved == null || _prefs.get(moved) != null) continue;
       final value = _prefs.get(prefsKey);
@@ -268,8 +271,11 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
     // handle left once the extension is gone and cannot be asked what panels
     // it had. Secrets live in the keychain and are ExtensionService's to
     // remove — this half is the plain values.
+    // A docked panel's values hang off its panel id instead.
     for (final prefsKey in _prefs.getKeys().toList()) {
-      if (prefsKey.startsWith('settingsPanel.$key.') || prefsKey.startsWith('settingsPanel.${key}_')) {
+      if (prefsKey.startsWith('settingsPanel.$key.') ||
+          prefsKey.startsWith('settingsPanel.${key}_') ||
+          (prefsKey.startsWith('settingsPanel.ext:') && isExtensionPanelIdOf(prefsKey.substring('settingsPanel.'.length), key))) {
         await _prefs.remove(prefsKey);
       }
     }
@@ -744,6 +750,27 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   }
 
   Map<String, dynamic>? _layoutCache;
+
+  /// Points every dock arrangement that names one of [from]'s panels at
+  /// [to]'s, keys and values alike — so an extension replacing another
+  /// (catalog SPEC §8.3 `redirects`) takes its place on screen rather than
+  /// leaving a "missing panel" there. A move, not a copy: by now [from] is
+  /// gone.
+  Future<void> moveExtensionPanels({required String from, required String to}) async {
+    Object? rename(Object? value) => switch (value) {
+      String() => renamedExtensionPanelId(value, from: from, to: to) ?? value,
+      // Typed as a decoded map is, which is what [layoutData] reads back.
+      Map() => <String, dynamic>{for (final e in value.entries) '${rename(e.key)}': rename(e.value)},
+      List() => <dynamic>[for (final item in value) rename(item)],
+      _ => value,
+    };
+    final layout = _layoutCache ??= jsonMapPref(layoutPrefsKey);
+    final moved = {
+      for (final e in layout.entries)
+        if (rename(e.value) case final Object value when jsonEncode(value) != jsonEncode(e.value)) e.key: value,
+    };
+    if (moved.isNotEmpty) await setLayoutValues(moved);
+  }
 
   @override
   bool get developerMode => _prefs.getBool(_developerModeKey) ?? false;

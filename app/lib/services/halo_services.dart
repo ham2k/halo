@@ -47,6 +47,7 @@ import 'error_policy.dart';
 
 import 'error_reporting_service.dart';
 import 'extensions/extension_dev_client.dart';
+import 'extensions/extension_force_disable.dart' show applyForceDisabledFlags;
 import 'extensions/extension_installer.dart';
 import 'extensions/extension_service.dart';
 import 'opened_files_service.dart';
@@ -646,6 +647,20 @@ class HaLoServices with _TimeTravel {
         prefs: settings.prefs,
         onTrack: track,
         staleness: staleness,
+        // A complete refresh is the authority from here on: what the boot
+        // read ahead of the runtime goes, and what loads is judged again
+        // without it.
+        onRefreshed: (flags) async {
+          final heldEarly = extensions.dropEarlyForceDisabled();
+          await applyForceDisabledFlags(
+            flags: flags,
+            settings: settings,
+            statusBar: statusBar,
+            available: extensions.availableExtensions,
+            applyAvailability: extensions.applyExtensionAvailability,
+          );
+          if (heldEarly) await extensions.applyExtensionAvailability();
+        },
       );
 
   /// The extension catalog (services/extensions/catalog_service.dart). Built at

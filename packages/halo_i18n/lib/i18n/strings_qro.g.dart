@@ -273,6 +273,14 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get restoreRuntimeDeadBody => 'WE INSTALLED THEM AGAIN, BUT YOUR EXTENSIONS WOULD NOT START. RESTARTING THE APP SHOULD BRING THEM BACK.';
 	@override String revokedTitle({required Object name}) => '${name} WAS WITHDRAWN';
 	@override String get revokedBody => 'THE CATALOG WITHDREW THIS VERSION, SO IT HAS BEEN DISABLED.';
+	@override String forceDisabledTitle({required Object name}) => '${name} WAS DISABLED';
+	@override String get forceDisabledBody => 'HAM2K HAS DISABLED THIS EXTENSION FOR NOW.';
+	@override String replacedTitle({required Object name}) => '${name} HAS BEEN REPLACED';
+	@override String replacedBody({required Object replacement}) => '${replacement} TAKES ITS PLACE. YOU CAN SWITCH OVER IN EXTENSIONS.';
+	@override String replacedBy({required Object name}) => 'REPLACED BY ${name}';
+	@override String replacedByInstalled({required Object name}) => 'REPLACED BY ${name}, WHICH YOU ALREADY HAVE';
+	@override String get replaceAction => 'REPLACE';
+	@override String replaceInstalledBody({required Object replacement}) => 'ITS SETTINGS MOVE TO ${replacement}, WHICH YOU ALREADY HAVE. YOUR LOGS WILL REMAIN UNTOUCHED.';
 	@override String get downloadHashMismatch => 'THAT DOWNLOAD IS NOT THE EXTENSION THE CATALOG DESCRIBED.';
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'THE CATALOG HAS NO VERSION ${version} OF ${key}.';
 	@override String get catalogLinkUnknown => 'THAT CATALOG LINK DOES NOT NAME AN EXTENSION VERSION.';
@@ -286,6 +294,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get followsBleeding => 'RECEIVES BLEEDING-EDGE, UNSTABLE AND STABLE RELEASES';
 	@override String get followStableAction => 'FOLLOW STABLE RELEASES ONLY';
 	@override String get revokedBadge => 'REVOKED';
+	@override String get forceDisabledBadge => 'DISABLED BY HAM2K';
 	@override String get refusedBadge => 'DID NOT LOAD';
 	@override String get downloadNotHttps => 'THAT DOWNLOAD IS NOT OVER A SECURE CONNECTION.';
 	@override String downloadUnreachable({required Object source}) => '${source} COULD NOT BE REACHED FOR THAT EXTENSION.';
@@ -4389,6 +4398,14 @@ extension on TranslationsQro {
 			'extensionsPanel.restoreRuntimeDeadBody' => 'WE INSTALLED THEM AGAIN, BUT YOUR EXTENSIONS WOULD NOT START. RESTARTING THE APP SHOULD BRING THEM BACK.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} WAS WITHDRAWN',
 			'extensionsPanel.revokedBody' => 'THE CATALOG WITHDREW THIS VERSION, SO IT HAS BEEN DISABLED.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} WAS DISABLED',
+			'extensionsPanel.forceDisabledBody' => 'HAM2K HAS DISABLED THIS EXTENSION FOR NOW.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} HAS BEEN REPLACED',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '${replacement} TAKES ITS PLACE. YOU CAN SWITCH OVER IN EXTENSIONS.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'REPLACED BY ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'REPLACED BY ${name}, WHICH YOU ALREADY HAVE',
+			'extensionsPanel.replaceAction' => 'REPLACE',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'ITS SETTINGS MOVE TO ${replacement}, WHICH YOU ALREADY HAVE. YOUR LOGS WILL REMAIN UNTOUCHED.',
 			'extensionsPanel.downloadHashMismatch' => 'THAT DOWNLOAD IS NOT THE EXTENSION THE CATALOG DESCRIBED.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'THE CATALOG HAS NO VERSION ${version} OF ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'THAT CATALOG LINK DOES NOT NAME AN EXTENSION VERSION.',
@@ -4402,6 +4419,7 @@ extension on TranslationsQro {
 			'extensionsPanel.followsBleeding' => 'RECEIVES BLEEDING-EDGE, UNSTABLE AND STABLE RELEASES',
 			'extensionsPanel.followStableAction' => 'FOLLOW STABLE RELEASES ONLY',
 			'extensionsPanel.revokedBadge' => 'REVOKED',
+			'extensionsPanel.forceDisabledBadge' => 'DISABLED BY HAM2K',
 			'extensionsPanel.refusedBadge' => 'DID NOT LOAD',
 			'extensionsPanel.downloadNotHttps' => 'THAT DOWNLOAD IS NOT OVER A SECURE CONNECTION.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} COULD NOT BE REACHED FOR THAT EXTENSION.',
@@ -4746,6 +4764,8 @@ extension on TranslationsQro {
 			'operation.layout.panels.weatherNoLocation' => 'NO LOCATION SET. GIVE THIS PANEL A LOCATION IN ITS SETTINGS, OR PLACE IT INSIDE AN OPERATION THAT HAS ONE.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'COULDN\'T READ THE LOCATION ${location}. USE A GRID SQUARE LIKE FN31PR, OR 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'COULDN\'T REACH OPEN-METEO — NO NETWORK? WILL TRY AGAIN SHORTLY.',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherUnreadable' => 'OPEN-METEO RESPONDED, BUT NOT WITH ANYTHING READABLE. WILL TRY AGAIN SHORTLY.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'GUSTS ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'JUST NOW',
@@ -4755,8 +4775,6 @@ extension on TranslationsQro {
 			'operation.layout.panels.weatherConditions.sunny' => 'SUNNY',
 			'operation.layout.panels.weatherConditions.clear' => 'CLEAR',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'MAINLY SUNNY',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.mainlyClear' => 'MAINLY CLEAR',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'PARTLY CLOUDY',
 			'operation.layout.panels.weatherConditions.cloudy' => 'CLOUDY',
@@ -5260,6 +5278,8 @@ extension on TranslationsQro {
 			'formChrome.manage' => 'MANAGE',
 			'formChrome.connect' => 'CONNECT',
 			'formChrome.formTitle' => 'FORM',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => 'ADD ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'EDIT ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'SHOWING ${shown} OF ${total} (${selected} SELECTED)',
@@ -5269,8 +5289,6 @@ extension on TranslationsQro {
 			'formChrome.removeItem' => 'DELETE',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'DELETE ${name}?',
 			'formChrome.storageUnavailable' => 'LOGINS UNAVAILABLE',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.title' => 'EDIT QSO',
 			'qsoEditForm.operatorCall' => 'OPERATOR',
 			'qsoEditForm.position' => 'POSITION',
@@ -5774,6 +5792,8 @@ extension on TranslationsQro {
 			'settings.accounts.pastedLinkNoCode' => 'THAT LINK HAS NO LOGIN CODE. FINISH SIGNING IN FIRST, THEN COPY THE LINK IT SENDS YOU TO.',
 			'settings.accounts.pastedLinkMalformed' => 'THAT LINK LOOKS CUT OFF. COPY THE WHOLE THING AND PASTE IT AGAIN.',
 			'settings.accounts.relayLoginWaiting' => 'WAITING FOR YOU TO FINISH SIGNING IN — THIS WILL CONTINUE AUTOMATICALLY ONCE YOU DO.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'THIS DEVICE HASN\'T HEARD BACK FROM THE SIGN-IN YET. IF YOU ALREADY FINISHED IN YOUR BROWSER, CANCEL AND TRY CONNECTING AGAIN.',
 			'settings.accounts.relayLoginNotOpened' => 'HAM2K LOGGER COULD NOT OPEN YOUR BROWSER AUTOMATICALLY. USE THE BUTTON BELOW TO OPEN THE LOGIN PAGE YOURSELF.',
 			'settings.accounts.relayLoginUnavailable' => 'COULDN\'T REACH THE SYNC SERVER NEEDED TO COMPLETE THIS LOGIN. CHECK YOUR CONNECTION AND TRY AGAIN.',
@@ -5783,8 +5803,6 @@ extension on TranslationsQro {
 			'settings.accounts.noKeyringInline' => 'LOGINS CAN’T BE SAVED: THIS COMPUTER’S KEYRING CAN’T BE REACHED. INSTALL AND START GNOME-KEYRING, KWALLET OR KEEPASSXC, OR UNLOCK THE ONE YOU HAVE.',
 			'settings.accounts.noSecureStorageInline' => 'LOGINS CAN’T BE SAVED: THIS COMPUTER’S SECURE STORAGE CAN’T BE REACHED.',
 			'settings.station.title' => 'STATION CONFIGURATION & CAT CONTROL',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.none' => 'NO EQUIPMENT CONFIGURED',
 			'settings.station.add' => 'ADD',
 			'settings.station.addTitle' => 'ADD EQUIPMENT',
@@ -6288,6 +6306,8 @@ extension on TranslationsQro {
 			'settings.panels.profilesDescription' => 'OPERATOR CALLSIGN AND STATION PROFILE',
 			'settings.panels.stationProfiles' => 'STATION PROFILES',
 			'settings.panels.developerSettings' => 'DEVELOPER SETTINGS',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'DEBUGGING AND DEVELOPMENT TOOLS',
 			'settings.panels.about' => 'ABOUT',
 			'settings.panels.aboutDescription' => 'VERSION, CREDITS, AND LEGAL INFORMATION',
@@ -6297,8 +6317,6 @@ extension on TranslationsQro {
 			'settings.panels.stationDescription' => 'CAT CONTROL AND MORE OPTIONS',
 			'settings.panels.peers' => 'PEER DEVICES',
 			'settings.panels.peersDescription' => 'CONNECT TO OTHER DEVICES NEARBY',
-			_ => null,
-		} ?? switch (path) {
 			'settings.showMoreSettings' => 'SHOW MORE SETTINGS',
 			'settings.gridPrecision' => 'GRID PRECISION',
 			'settings.gridPrecisionOpts.six' => '6 DIGITS (FN31PR)',

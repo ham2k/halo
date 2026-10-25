@@ -330,18 +330,42 @@ class CatalogRevocation {
   const CatalogRevocation({required this.key, required this.version, required this.note});
 }
 
+/// One row of `POST /api/v1/updates`' `redirects`: an installed key the
+/// catalog says has been replaced by another ([entry]'s), with root's note.
+/// The client offers the replacement; nothing moves without the operator.
+class CatalogRedirect {
+  final String from;
+
+  /// The replacement's release on the track the request asked about — what
+  /// the operator's Replace installs.
+  final CatalogEntry entry;
+  final String note;
+
+  const CatalogRedirect({required this.from, required this.entry, required this.note});
+
+  String get to => entry.key;
+}
+
 /// The answer to `POST /api/v1/updates`.
 class CatalogUpdates {
   final List<CatalogUpdate> updates;
   final List<CatalogRevocation> revoked;
+  final List<CatalogRedirect> redirects;
 
   /// Installed pairs the catalog could not judge, with its reason — a
   /// version that is not strict semver, typically.
   final List<({String key, String reason})> ignored;
 
-  const CatalogUpdates({required this.updates, required this.revoked, required this.ignored});
+  /// Whether the answer carried a `revoked` list at all. What a revocation
+  /// is lifted on (CatalogUpdateCheck), so an answer of some other shape — a
+  /// proxy's, a catalog that is not this one — cannot read as "nothing is
+  /// revoked" and run what was pulled.
+  final bool listsRevoked;
+
+  const CatalogUpdates({required this.updates, required this.revoked, required this.ignored, this.redirects = const [], this.listsRevoked = true});
 
   static CatalogUpdates fromJson(Map<String, dynamic> json, {Uri? catalog}) => CatalogUpdates(
+    listsRevoked: json['revoked'] is List,
     updates: [
       if (json['updates'] is List)
         for (final raw in json['updates'] as List)
@@ -358,6 +382,15 @@ class CatalogUpdates {
       if (json['ignored'] is List)
         for (final raw in json['ignored'] as List)
           if (raw is Map && raw['key'] is String) (key: raw['key'] as String, reason: raw['reason'] is String ? raw['reason'] as String : ''),
+    ],
+    // A row whose entry is not the key it names is dropped: Replace would
+    // install something other than what the notice said.
+    redirects: [
+      if (json['redirects'] is List)
+        for (final raw in json['redirects'] as List)
+          if (raw is Map && raw['from'] is String && raw['from'] != raw['to'])
+            if (CatalogEntry.fromJson(raw['entry'], catalog: catalog) case final entry? when entry.key == raw['to'])
+              CatalogRedirect(from: raw['from'] as String, entry: entry, note: raw['note'] is String ? raw['note'] as String : ''),
     ],
   );
 }
@@ -584,8 +617,8 @@ class CatalogService {
     return listing;
   }
 
-  /// Asks which of [installed] have a newer release, and which are revoked.
-  /// Only the installed store's extensions are sent — a built-in one is not
+  /// Asks which of [installed] have a newer release, which are revoked, and
+  /// which have been replaced by another key. Only the installed store's extensions are sent — a built-in one is not
   /// the catalog's to update — and nothing is asked when there are none:
   /// what keeps every fresh install and every developer build off the
   /// network for this.
@@ -614,6 +647,8 @@ class CatalogService {
       updates: [for (final answer in answers) ...answer.updates],
       revoked: [for (final answer in answers) ...answer.revoked],
       ignored: [for (final answer in answers) ...answer.ignored],
+      redirects: [for (final answer in answers) ...answer.redirects],
+      listsRevoked: answers.every((answer) => answer.listsRevoked),
     );
   }
 
@@ -794,6 +829,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   static const interval = Duration(hours: 24);
   static const noticeKey = 'catalog:updates';
   static String revokedNoticeKey(String key) => 'catalog:revoked:$key';
+  static String redirectNoticeKey(String from) => 'catalog:redirect:$from';
 
   final CatalogService catalog;
   final SettingsService settings;
@@ -842,6 +878,13 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// before its own catalog fetch has resolved.
   Map<String, CatalogEntry> get pendingUpdates => _pending;
 
+  Map<String, CatalogRedirect> _redirects = const {};
+
+  /// The installed keys the last answer said were replaced, by the key
+  /// replaced — the panel's only source for them: the catalog's listing
+  /// leaves a replaced key out.
+  Map<String, CatalogRedirect> get pendingRedirects => _redirects;
+
   bool _checking = false;
 
   void start() {
@@ -886,18 +929,29 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
       if (result == null) return false;
       await settings.setCatalogUpdateCheckedAt(_realNow());
       final installed = {for (final info in candidates) info.key: info.version};
+      final previous = _redirects;
+      _redirects = {
+        for (final redirect in result.redirects)
+          if (installed.containsKey(redirect.from)) redirect.from: redirect,
+      };
       // Newer only. The catalog also answers with a LOWER release as the
       // replacement for an installed version the channel cannot see (SPEC
       // §8.3) — an install just put back on stable from an unstable
       // prerelease, every time — and a notice announcing it is an update
       // that Update all then finds nothing to take for.
+      //
+      // And not for a key that is replaced: the catalog keeps answering its
+      // updates for apps that cannot read `redirects`, and offering both
+      // here would have Update all keep the operator on the extension the
+      // Replace row is moving them off.
       _pending = {
         for (final update in result.updates)
-          if (update.entry.isNewerThan(installed[update.entry.key])) update.entry.key: update.entry,
+          if (update.entry.isNewerThan(installed[update.entry.key]) && !_redirects.containsKey(update.entry.key)) update.entry.key: update.entry,
       };
       notifyListeners();
       _noticeUpdates(candidates, announce: announce);
-      await _handleRevoked(result.revoked, candidates);
+      _noticeRedirects(candidates, previous, announce: announce);
+      await _handleRevoked(result.revoked, candidates, lift: result.listsRevoked);
       return true;
     } finally {
       _checking = false;
@@ -925,6 +979,45 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     _pending = {..._pending}..remove(key);
     notifyListeners();
     if (_pending.isEmpty) statusBar.dismissNotice(noticeKey);
+  }
+
+  /// [from] was replaced as the catalog asked, or removed: the offer is over.
+  void noteReplaced(String from) {
+    if (!_redirects.containsKey(from)) return;
+    _redirects = {..._redirects}..remove(from);
+    notifyListeners();
+    statusBar.dismissNotice(redirectNoticeKey(from));
+  }
+
+  /// One notice per replaced extension, naming both, since the operator has
+  /// to choose each one — Update all never takes a replacement. Not persisted,
+  /// like the updates notice: the next check says so again while it is true.
+  void _noticeRedirects(List<ExtensionInfo> candidates, Map<String, CatalogRedirect> previous, {required bool announce}) {
+    for (final from in previous.keys) {
+      if (!_redirects.containsKey(from)) statusBar.dismissNotice(redirectNoticeKey(from));
+    }
+    if (!announce) return;
+    final locale = LocaleSettings.currentLocale.languageCode;
+    for (final redirect in _redirects.values) {
+      final name = candidates.where((info) => info.key == redirect.from).firstOrNull?.nameFor(locale) ?? redirect.from;
+      statusBar.showNotice(
+        key: redirectNoticeKey(redirect.from),
+        icon: 'update',
+        title: t.extensionsPanel.replacedTitle(name: name),
+        text: [t.extensionsPanel.replacedBody(replacement: redirect.entry.nameFor(locale)), if (redirect.note.isNotEmpty) redirect.note].join(' '),
+        actions: [
+          if (openExtensions != null)
+            StatusBarAction(
+              label: t.extensionsPanel.updatesNoticeAction,
+              onTap: () {
+                statusBar.dismissNotice(redirectNoticeKey(redirect.from));
+                openExtensions!();
+              },
+            ),
+        ],
+        persist: false,
+      );
+    }
   }
 
   void _noticeUpdates(List<ExtensionInfo> candidates, {bool announce = true}) {
@@ -986,16 +1079,22 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// must not repeat the notice, and the operator's own switch cannot stand
   /// in for it — an extension they had already switched off is revoked all
   /// the same, and would otherwise never learn it.
-  Future<void> _handleRevoked(List<CatalogRevocation> revoked, List<ExtensionInfo> candidates) async {
+  ///
+  /// And lifts the record of an installed version the answer no longer
+  /// reports. A revoked VERSION stays reported for good, so what stops being
+  /// reported is a KEY the catalog disabled and has since let go of (SPEC
+  /// §8.3) — without this, that extension stays off on every install that
+  /// heard of it until the operator happens to update it.
+  Future<void> _handleRevoked(List<CatalogRevocation> revoked, List<ExtensionInfo> candidates, {required bool lift}) async {
     final locale = LocaleSettings.currentLocale.languageCode;
     final records = settings.extensionRevoked;
-    var recorded = false;
+    var changed = false;
     for (final revocation in revoked) {
       final info = candidates.where((i) => i.key == revocation.key && i.version == revocation.version).firstOrNull;
       if (info == null) continue;
       if (records[info.key]?['version'] == revocation.version) continue;
       records[info.key] = {'version': revocation.version, 'note': revocation.note};
-      recorded = true;
+      changed = true;
       statusBar.showNotice(
         key: revokedNoticeKey(info.key),
         icon: 'alert',
@@ -1003,7 +1102,14 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
         text: [t.extensionsPanel.revokedBody, if (revocation.note.isNotEmpty) revocation.note].join(' '),
       );
     }
-    if (!recorded) return;
+    for (final info in lift ? candidates : const <ExtensionInfo>[]) {
+      if (records[info.key]?['version'] != info.version) continue;
+      if (revoked.any((r) => r.key == info.key && r.version == info.version)) continue;
+      records.remove(info.key);
+      changed = true;
+      statusBar.dismissNotice(revokedNoticeKey(info.key));
+    }
+    if (!changed) return;
     await settings.setExtensionRevoked(records);
     await applyAvailability();
   }

@@ -621,6 +621,87 @@ whatever the operator's own switch says — the row shows "Revoked" with the
 note and no switch, and the record dies with an install of another version
 or an uninstall.
 
+### Pulling an extension
+
+Three ways stop an installed extension running whatever the operator's switch
+says. Each leaves the row listed, with no switch and a note saying why. Each
+tells the operator once, with a notice carrying the note.
+
+- **A revoked version.** The catalog pulls one release, for good (above).
+- **A disabled key.** The catalog can disable an extension as a whole, every
+  version of it, including one it never served. While it is disabled, the
+  update check reports every installed version of it as revoked, so an app
+  that predates the key-wide disable stops it all the same. Unlike a revoked
+  version, a disabled key can be let go of. The app lifts a revocation the
+  catalog no longer reports, but only from an answer that carries a
+  `revoked` list at all, so an answer of any other shape can never run what
+  was pulled. Like a revocation, it reaches the app with the next update
+  check, at most a day later.
+- **The flags.** The fast path, which needs no catalog deploy, reaches a
+  sideloaded key the catalog never heard of, and can name versions:
+
+  ```json
+  {
+    "halo-extensions-disabled": [
+      { "key": "ki2d-my-clock", "versions": ["1.2.3"], "note": "Crashes on start." },
+      { "key": "w7abc-notes", "note": "Uploads the whole log." }
+    ]
+  }
+  ```
+
+  An entry without `versions` covers every version; one whose `versions` is
+  not a list is dropped rather than read as all of them. It can sit in
+  `defaults.json` or in any per-entity or per-call file; entries for one key
+  combine, and one naming no versions covers them all.
+
+  The full flags refresh needs the extension runtime up, so on its own it
+  could never stop an extension that breaks the start. Before the first
+  start, then, the boot reads `defaults.json` on a two-second budget and
+  adds it to the list kept from the last refresh (`extensionForceDisabled`),
+  and the start waits for that. An entry meant to stop an extension that
+  breaks the start belongs in `defaults.json`, the one file read that early.
+  After the start, a COMPLETE refresh — `defaults.json` answered, and no
+  file errored or timed out — replaces the kept list, and a key that leaves
+  it runs again. A round that missed a file changes nothing, since it cannot
+  tell a lifted entry from one it did not read, and an offline launch keeps
+  the list it has. Who has been told is a record of its own
+  (`extensionForceDisabledTold`), so an entry the boot read before anything
+  knew what was installed is still announced by the refresh after it. Only
+  an installed extension can be stopped this way: a core one is the app's
+  own code, which a release or a code push fixes. The record outlives an
+  uninstall, so a reinstall of a version it covers stays off. A
+  force-disabled extension's downloaded data expires on the same clock as
+  any extension the app is not loading.
+
+### Replaced extensions
+
+The catalog can say that one key has been replaced by another — an extension
+that moved to Ham2K's namespace, or to a new maintainer — and only its root
+account can say so. The update check carries the replacement, as a release of
+the new key on the track the old one follows, while there is one this app can
+install; the catalog's listing then leaves the old key out. The catalog still
+answers the old key's own updates, for an app that predates replacements, and
+the app takes none of them while the replacement is pending.
+
+The app only ever OFFERS the replacement. Each one has a notice of its own
+naming both extensions, and a row under Pending Updates whose **Replace**
+installs the new key through the consent screen like any install. Update all
+never takes one, since each is a new extension that asks consent of its own.
+Until the operator replaces it, the old one keeps running.
+
+Replacing carries everything the old extension stored onto the new one,
+BEFORE the install, so its first activation finds it: its settings group,
+its settings-panel values, docked panels' values and secrets, its account
+credentials, and the operator's on/off choice, which a replacement keeps
+rather than switching on. Dock arrangements that name the old extension's
+panels name the new one's. Then the old extension is uninstalled, in the same
+restart. A panel id is `ext:<hook key>:<panel key>`, and only a hook key that
+IS the old key, or the old key and `_…`, is renamed: a `-…` one could as well
+be another extension's key. When the new key is already installed, the row
+offers to remove the old one instead, carrying the same things across
+without the install. An uninstall forgets the docked panels' values and
+secrets along with everything else the extension stored.
+
 ## What is checked at install
 
 Beyond what the packer already refused:

@@ -202,6 +202,9 @@ Future<String?> installExtensionFromBytes(
 /// it is rougher than the release's own: a link to an extension's unstable
 /// page that lands on a stable release is still the operator choosing
 /// unstable, and its next unstable release must reach them.
+///
+/// [replacing] is the installed key the catalog says [release]'s replaces —
+/// see [ExtensionService.installBundle].
 Future<String?> installFromCatalog(
   BuildContext context, {
   required HaLoServices services,
@@ -209,6 +212,7 @@ Future<String?> installFromCatalog(
   String? name,
   bool askConsent = true,
   CatalogChannel track = CatalogChannel.stable,
+  String? replacing,
 
   /// The extension's screenshots from the listing that named [release]:
   /// what the consent screen shows of it beside what it can reach.
@@ -270,7 +274,7 @@ Future<String?> installFromCatalog(
       provenance: provenance,
       releaseChannel: release.channel,
       screenshots: screenshots,
-      commit: commitThroughInstaller(services),
+      commit: commitThroughInstaller(services, replacing: replacing),
       askConsent: askConsent,
       beforeRefusal: () => installer.clearProgress(release.key),
     ),
@@ -289,9 +293,10 @@ Future<String?> installFromCatalog(
 ///
 /// Whatever the bytes came from, the update check hears of it: an offer an
 /// install from a file has overtaken is one the notice must stop making.
-Future<void> Function(InspectedBundle) commitThroughInstaller(HaLoServices services) => (bundle) async {
-  await services.extensionInstaller.commit(bundle.key, bundle.name, () => services.extensions.installBundle(bundle));
+Future<void> Function(InspectedBundle) commitThroughInstaller(HaLoServices services, {String? replacing}) => (bundle) async {
+  await services.extensionInstaller.commit(bundle.key, bundle.name, () => services.extensions.installBundle(bundle, replacing: replacing));
   services.catalogUpdateCheck.noteInstalled(bundle.key, bundle.version);
+  if (replacing != null) services.catalogUpdateCheck.noteReplaced(replacing);
 };
 
 /// Update all — from the Extensions panel or the update notice: one
@@ -579,12 +584,12 @@ class _Capability extends StatelessWidget {
 
 /// Confirms removing an installed extension. Returns true when the operator
 /// agreed.
-Future<bool> confirmUninstall(BuildContext context, {required String name}) async {
+Future<bool> confirmUninstall(BuildContext context, {required String name, String? body}) async {
   return await showHaloDialog<bool>(
         context: context,
         builder: (context) => HaloDialog(
           title: Text(context.t.extensionsPanel.uninstallTitle(name: name)),
-          content: Text(context.t.extensionsPanel.uninstallBody),
+          content: Text(body ?? context.t.extensionsPanel.uninstallBody),
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
           // Removing is this dialog's whole purpose, so here — unlike the
           // details dialog it was opened from — the destructive verb IS the

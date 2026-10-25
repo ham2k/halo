@@ -279,21 +279,23 @@ Future<bool> installShippedExtensions({
   return installedAny;
 }
 
-/// Copies the built-in predecessor's settings and credentials onto [key], and
-/// answers whether there was one.
+/// Copies the predecessor's settings and credentials onto [key], and answers
+/// whether there was one: [from] when given — the key a catalog redirect
+/// replaces — else the retired built-in [key] is named after.
 ///
 /// Copied rather than moved: a twin whose install fails after the carry has
 /// to find the built-in's state still there on the next attempt.
 Future<bool> carryPredecessorRecords({
   required String key,
+  String? from,
   required SettingsService? settings,
   required Future<void> Function({required String from, required String to}) copySecrets,
 }) async {
   if (settings == null) return false;
-  final from = predecessorBuiltInKey(key);
-  if (from == null) return false;
-  await settings.copyExtensionRecords(from: from, to: key);
-  await copySecrets(from: from, to: key);
+  final source = from ?? predecessorBuiltInKey(key);
+  if (source == null) return false;
+  await settings.copyExtensionRecords(from: source, to: key);
+  await copySecrets(from: source, to: key);
   return true;
 }
 

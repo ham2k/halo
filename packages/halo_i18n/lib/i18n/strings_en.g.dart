@@ -568,6 +568,30 @@ class Translations$extensionsPanel$en {
 	/// en: 'The catalog withdrew this version, so it has been disabled.'
 	String get revokedBody => 'The catalog withdrew this version, so it has been disabled.';
 
+	/// en: '${name} was disabled'
+	String forceDisabledTitle({required Object name}) => '${name} was disabled';
+
+	/// en: 'Ham2K has disabled this extension for now.'
+	String get forceDisabledBody => 'Ham2K has disabled this extension for now.';
+
+	/// en: '${name} has been replaced'
+	String replacedTitle({required Object name}) => '${name} has been replaced';
+
+	/// en: '${replacement} takes its place. You can switch over in Extensions.'
+	String replacedBody({required Object replacement}) => '${replacement} takes its place. You can switch over in Extensions.';
+
+	/// en: 'Replaced by ${name}'
+	String replacedBy({required Object name}) => 'Replaced by ${name}';
+
+	/// en: 'Replaced by ${name}, which you already have'
+	String replacedByInstalled({required Object name}) => 'Replaced by ${name}, which you already have';
+
+	/// en: 'Replace'
+	String get replaceAction => 'Replace';
+
+	/// en: 'Its settings move to ${replacement}, which you already have. Your logs will remain untouched.'
+	String replaceInstalledBody({required Object replacement}) => 'Its settings move to ${replacement}, which you already have. Your logs will remain untouched.';
+
 	/// en: 'That download is not the extension the catalog described.'
 	String get downloadHashMismatch => 'That download is not the extension the catalog described.';
 
@@ -606,6 +630,9 @@ class Translations$extensionsPanel$en {
 
 	/// en: 'Revoked'
 	String get revokedBadge => 'Revoked';
+
+	/// en: 'Disabled by Ham2K'
+	String get forceDisabledBadge => 'Disabled by Ham2K';
 
 	/// en: 'Did not load'
 	String get refusedBadge => 'Did not load';
@@ -9346,6 +9373,14 @@ extension on Translations {
 			'extensionsPanel.restoreRuntimeDeadBody' => 'We installed them again, but your extensions would not start. Restarting the app should bring them back.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
 			'extensionsPanel.revokedBody' => 'The catalog withdrew this version, so it has been disabled.',
+			'extensionsPanel.forceDisabledTitle' => ({required Object name}) => '${name} was disabled',
+			'extensionsPanel.forceDisabledBody' => 'Ham2K has disabled this extension for now.',
+			'extensionsPanel.replacedTitle' => ({required Object name}) => '${name} has been replaced',
+			'extensionsPanel.replacedBody' => ({required Object replacement}) => '${replacement} takes its place. You can switch over in Extensions.',
+			'extensionsPanel.replacedBy' => ({required Object name}) => 'Replaced by ${name}',
+			'extensionsPanel.replacedByInstalled' => ({required Object name}) => 'Replaced by ${name}, which you already have',
+			'extensionsPanel.replaceAction' => 'Replace',
+			'extensionsPanel.replaceInstalledBody' => ({required Object replacement}) => 'Its settings move to ${replacement}, which you already have. Your logs will remain untouched.',
 			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'The catalog has no version ${version} of ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'That catalog link does not name an extension version.',
@@ -9359,6 +9394,7 @@ extension on Translations {
 			'extensionsPanel.followsBleeding' => 'Receives bleeding-edge, unstable and stable releases',
 			'extensionsPanel.followStableAction' => 'Follow stable releases only',
 			'extensionsPanel.revokedBadge' => 'Revoked',
+			'extensionsPanel.forceDisabledBadge' => 'Disabled by Ham2K',
 			'extensionsPanel.refusedBadge' => 'Did not load',
 			'extensionsPanel.downloadNotHttps' => 'That download is not over a secure connection.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} could not be reached for that extension.',
@@ -9703,6 +9739,8 @@ extension on Translations {
 			'operation.layout.panels.weatherNoLocation' => 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo responded, but not with anything readable. Will try again shortly.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'gusts ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'just now',
@@ -9712,8 +9750,6 @@ extension on Translations {
 			'operation.layout.panels.weatherConditions.sunny' => 'Sunny',
 			'operation.layout.panels.weatherConditions.clear' => 'Clear',
 			'operation.layout.panels.weatherConditions.mainlySunny' => 'Mainly Sunny',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherConditions.mainlyClear' => 'Mainly Clear',
 			'operation.layout.panels.weatherConditions.partlyCloudy' => 'Partly Cloudy',
 			'operation.layout.panels.weatherConditions.cloudy' => 'Cloudy',
@@ -10217,6 +10253,8 @@ extension on Translations {
 			'formChrome.manage' => 'Manage',
 			'formChrome.connect' => 'Connect',
 			'formChrome.formTitle' => 'Form',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => 'Add ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'Edit ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'Showing ${shown} of ${total} (${selected} selected)',
@@ -10226,8 +10264,6 @@ extension on Translations {
 			'formChrome.removeItem' => 'Delete',
 			'formChrome.deleteItemTitle' => ({required Object name}) => 'Delete ${name}?',
 			'formChrome.storageUnavailable' => 'Logins unavailable',
-			_ => null,
-		} ?? switch (path) {
 			'qsoEditForm.title' => 'Edit QSO',
 			'qsoEditForm.operatorCall' => 'Operator',
 			'qsoEditForm.position' => 'Position',
@@ -10731,6 +10767,8 @@ extension on Translations {
 			'settings.accounts.pastedLinkNoCode' => 'That link has no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
@@ -10740,8 +10778,6 @@ extension on Translations {
 			'settings.accounts.noKeyringInline' => 'Logins can’t be saved: this computer’s keyring can’t be reached. Install and start gnome-keyring, KWallet or KeePassXC, or unlock the one you have.',
 			'settings.accounts.noSecureStorageInline' => 'Logins can’t be saved: this computer’s secure storage can’t be reached.',
 			'settings.station.title' => 'Station Configuration & CAT Control',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.none' => 'No equipment configured',
 			'settings.station.add' => 'Add',
 			'settings.station.addTitle' => 'Add equipment',
@@ -11245,6 +11281,8 @@ extension on Translations {
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
 			'settings.panels.developerSettings' => 'Developer Settings',
+			_ => null,
+		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',
@@ -11254,8 +11292,6 @@ extension on Translations {
 			'settings.panels.stationDescription' => 'CAT control and more options',
 			'settings.panels.peers' => 'Peer Devices',
 			'settings.panels.peersDescription' => 'Connect to other devices nearby',
-			_ => null,
-		} ?? switch (path) {
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.gridPrecision' => 'Grid Precision',
 			'settings.gridPrecisionOpts.six' => '6 digits (FN31pr)',

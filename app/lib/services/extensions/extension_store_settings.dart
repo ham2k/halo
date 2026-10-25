@@ -4,10 +4,11 @@
 // The per-extension records SettingsService keeps about what is installed
 // and what may run — the operator's enable/disable overrides, when each
 // disabled one was switched off, which arrived hash-verified from the
-// catalog, which the catalog has revoked — and the catalog's own three
-// scalars. Every one of them is a TOP-LEVEL pref, outside the `settings.*`
-// group system: app infrastructure, not a setting, and being top-level keeps
-// them out of the extension-facing getSettings view
+// catalog, which the catalog has revoked, which the flags force-disable —
+// and the catalog's own three scalars. Every one of them is a TOP-LEVEL
+// pref, outside the `settings.*` group system: app infrastructure, not a
+// setting, and being top-level keeps them out of the extension-facing
+// getSettings view
 // (SettingsService.extensionSettingsGroups only scans group keys). A mixin
 // rather than a service of its own so readers keep the one SettingsService
 // and the one ChangeNotifier.
@@ -17,7 +18,19 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'extension_force_disable.dart' show ExtensionForceDisable, forceDisabledFromJson, kForceDisabledPrefsKey;
 import 'installed_extensions.dart' show CatalogChannel;
+
+/// [id] with [from]'s hook key swapped for [to]'s, when it is a panel id of
+/// [from]'s (`ext:<hookKey>:<panelKey>`, PanelService.extensionPanelId), else
+/// null. A hook key is the extension's own or that key and `_…`; the `-…`
+/// form it may also take is left alone, since `ki2d-radio-` prefixes the key
+/// `ki2d-radio-panel` of another extension just as well.
+String? renamedExtensionPanelId(String id, {required String from, required String to}) =>
+    isExtensionPanelIdOf(id, from) ? 'ext:$to${id.substring('ext:$from'.length)}' : null;
+
+/// Whether [id] is a panel id of [key]'s, by the same rule.
+bool isExtensionPanelIdOf(String id, String key) => id.startsWith('ext:$key:') || id.startsWith('ext:${key}_');
 
 mixin ExtensionStoreSettings on ChangeNotifier {
   SharedPreferences get prefs;
@@ -239,6 +252,26 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     await prefs.setString(_extensionRevokedKey, jsonEncode(revoked));
     notifyListeners();
   }
+
+  /// What the flags server force-disables, as the last complete refresh said
+  /// it — with what the boot read of `defaults.json` before the first start
+  /// added (extension_force_disable.dart). Kept across an uninstall, unlike
+  /// [extensionRevoked]: it is about the key, and a reinstall of a version it
+  /// covers must stay off.
+  Map<String, ExtensionForceDisable> get extensionForceDisabled => forceDisabledFromJson(jsonMapPref(kForceDisabledPrefsKey));
+
+  Future<void> setExtensionForceDisabled(Map<String, ExtensionForceDisable> disabled) async {
+    await prefs.setString(kForceDisabledPrefsKey, jsonEncode({for (final e in disabled.entries) e.key: e.value.toJson()}));
+    notifyListeners();
+  }
+
+  /// The installed extensions whose force-disable the operator has been told
+  /// of — what keeps the notice to once, apart from the list itself.
+  static const _extensionForceDisabledToldKey = 'extensionForceDisabledTold';
+
+  Set<String> get extensionForceDisabledTold => {...?prefs.getStringList(_extensionForceDisabledToldKey)};
+
+  Future<void> setExtensionForceDisabledTold(Set<String> keys) => prefs.setStringList(_extensionForceDisabledToldKey, keys.toList()..sort());
 
   /// When the unattended catalog update check last got an answer, epoch
   /// millis on the REAL clock (docs/design/time.md §1: it persists and

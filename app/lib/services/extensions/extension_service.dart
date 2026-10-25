@@ -25,6 +25,7 @@ import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
 import 'extension_info.dart';
 import 'extension_keychain.dart';
+import 'extension_force_disable.dart';
 import 'extension_refusals.dart';
 import 'extension_messages.dart';
 import 'extension_ref_results.dart';
@@ -387,6 +388,7 @@ class ExtensionService
     // The flags the cache was read under may change with this generation.
     _accountItems.clear();
     try {
+      await _awaitEarlyForceDisabled();
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
       await loadAvailableExtensions(index: index);

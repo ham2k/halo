@@ -2,18 +2,21 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // What an install writes to settings besides the files: the provenance
-// record, the operator's own switch, and the catalog's revocation record. The
-// traps are one write standing in for another — an update turning on what
-// the operator turned off, a switch standing in for a revocation — so each
-// test here flips one and reads the others.
+// record, the operator's own switch, the catalog's revocation record, the
+// flags' force-disable, and what a replacement carries from the extension it
+// replaces. The traps are one write standing in for another — an update
+// turning on what the operator turned off, a switch standing in for a
+// revocation — so each test here flips one and reads the others.
 
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/extensions/extension_force_disable.dart' show ExtensionForceDisable;
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/extensions/bundle_storage_io.dart';
 import 'package:ham2k_logger/services/extensions/installed_extensions.dart';
@@ -184,6 +187,193 @@ void main() {
       await settings.forgetExtension('ki2d-my-clock');
       expect(settings.extensionRevoked, isEmpty);
     });
+  });
+
+  group('a release the flags force-disable', () {
+    const info = ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
+    const other = ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.4');
+
+    test('does not run whatever the switch says, for the versions it names', () async {
+      // Mutated to consult the override alone, the switched-on version loads;
+      // mutated to ignore `versions`, the fixed 1.2.4 stays off too.
+      final (extensions, _, _) = await setup({
+        'extensionForceDisabled': {
+          'ki2d-my-clock': {
+            'note': 'Crashes on start.',
+            'versions': ['1.2.3'],
+          },
+        },
+        'extensionOverrides': {'ki2d-my-clock': true},
+      });
+      expect(extensions.isExtensionForceDisabled(info), isTrue);
+      expect(extensions.isExtensionEnabled(info), isFalse);
+      expect(extensions.isExtensionActive(info), isFalse);
+      expect(extensions.isExtensionEnabled(other), isTrue);
+    });
+
+    test('covers every version when it names none, and never a core extension', () async {
+      // A core extension is the app's own code: taking it out is an install
+      // quietly missing part of itself, which a release or a code push fixes.
+      final (extensions, _, _) = await setup({
+        'extensionForceDisabled': {
+          'ki2d-my-clock': {'note': ''},
+          'adif': {'note': ''},
+        },
+      });
+      expect(extensions.isExtensionEnabled(info), isFalse);
+      expect(extensions.isExtensionEnabled(other), isFalse);
+      const core = ExtensionInfo(key: 'adif', file: 'adif.js', core: true, name: 'ADIF');
+      expect(extensions.isExtensionForceDisabled(core), isFalse);
+      expect(extensions.isExtensionEnabled(core), isTrue);
+    });
+
+    test('outlives an uninstall, unlike a revocation', () async {
+      // It is about the key, not about one install of it: a reinstall of the
+      // version that crashes the app must stay off. Dropped with the other
+      // install records, the reinstall loads it.
+      final (_, settings, _) = await setup({
+        'extensionForceDisabled': {
+          'ki2d-my-clock': {'note': ''},
+        },
+      });
+      await settings.forgetExtension('ki2d-my-clock');
+      expect(settings.extensionForceDisabled.keys, ['ki2d-my-clock']);
+    });
+  });
+
+  group('a replacement the catalog offered', () {
+    List<int> replacement() => rebuilt((m) => {...m, 'key': 'ki2d-new-clock', 'name': 'KI2D New Clock'});
+
+    test('carries what the operator set, takes its place on screen, and takes the old one out', () async {
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({
+        'settings.extension_ki2d-my-clock': {'format': '24h'},
+        'extensionOverrides': {'ki2d-my-clock': false},
+        'layout': {
+          'home.dock.spec': {
+            'panels': ['ext:ki2d-my-clock:clock', 'ext:ki2d-my-clock-other:clock', 'native:log'],
+          },
+        },
+      });
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      await settings.setExtensionOverrides({'ki2d-my-clock': false});
+      await settings.prefs.setString('settingsPanel.ext:ki2d-my-clock:clock.color', jsonEncode('red'));
+      const keychain = FlutterSecureStorage();
+      await keychain.write(key: 'settingsPanel_secret_ext:ki2d-my-clock:clock_password', value: jsonEncode('hunter2'));
+
+      final bytes = replacement();
+      await extensions.installBundle(await fromCatalog(store, bytes, '1.2.3'), replacing: 'ki2d-my-clock');
+
+      expect(await store.isInstalled('ki2d-my-clock'), isFalse);
+      expect(await store.isInstalled('ki2d-new-clock'), isTrue);
+      expect(settings.settingsGroup('extension_ki2d-new-clock'), {'format': '24h'});
+      expect(settings.prefs.getString('settingsPanel.ext:ki2d-new-clock:clock.color'), jsonEncode('red'));
+      // A docked panel's secret too — a network radio's password, say, which
+      // the operator would otherwise have to find and type again.
+      expect(await keychain.read(key: 'settingsPanel_secret_ext:ki2d-new-clock:clock_password'), jsonEncode('hunter2'));
+      // The operator's switch, not the fresh-catalog-install rule that turns
+      // it on: Replace is not the operator choosing to run something new.
+      expect(settings.extensionOverrides['ki2d-new-clock'], isFalse);
+      // A `-…` hook key is left alone: it can as well be another
+      // extension's key.
+      expect(settings.layoutData('home.dock.spec'), {
+        'panels': ['ext:ki2d-new-clock:clock', 'ext:ki2d-my-clock-other:clock', 'native:log'],
+      });
+      // Gone with the old extension, so nothing it stored comes back with a
+      // later reinstall of it.
+      expect(settings.extensionsInstalled.keys, ['ki2d-new-clock']);
+      expect(settings.settingsGroup('extension_ki2d-my-clock'), isEmpty);
+      expect(settings.extensionOverrides.containsKey('ki2d-my-clock'), isFalse);
+    });
+  });
+
+  group('a replacement, around the edges', () {
+    List<int> replacement() => rebuilt((m) => {...m, 'key': 'ki2d-new-clock', 'name': 'KI2D New Clock'});
+
+    test('carries what the operator set even when the replacement got installed first', () async {
+      // Replace's consent screen is up while a link installs the new key. The
+      // commit then finds it installed — not fresh — and the old one is still
+      // uninstalled. Carried only on a fresh install, the old extension's
+      // settings and login go with it.
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({
+        'settings.extension_ki2d-my-clock': {'format': '24h'},
+      });
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      final bytes = replacement();
+      await extensions.installBundle(await fromCatalog(store, bytes, '1.2.3'));
+      await extensions.installBundle(await fromCatalog(store, bytes, '1.2.3'), replacing: 'ki2d-my-clock');
+      expect(await store.isInstalled('ki2d-my-clock'), isFalse);
+      expect(settings.settingsGroup('extension_ki2d-new-clock'), {'format': '24h'});
+    });
+
+    test('carries the switch the old one ran by, a manifest default included', () async {
+      // Never toggled, the old extension ran by its own default and left no
+      // override to copy; the replacement's manifest defaults to off. Without
+      // carrying the effective switch, the extension the operator was using
+      // lands switched off.
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({});
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      await settings.setExtensionOverrides({});
+      final bytes = rebuilt((m) => {...m, 'key': 'ki2d-new-clock', 'name': 'KI2D New Clock', 'enabledByDefault': false});
+      await extensions.installBundle(await fromCatalog(store, bytes, '1.2.3'), replacing: 'ki2d-my-clock');
+      expect(settings.extensionOverrides['ki2d-new-clock'], isTrue);
+    });
+
+    test('onto one already installed, moves the docked panels and settings without an install', () async {
+      // The "which you already have" row. A plain uninstall leaves the dock
+      // naming panels nothing provides, and every one becomes a placeholder.
+      useInMemoryKeychain();
+      final (extensions, settings, store) = await setup({
+        'settings.extension_ki2d-my-clock': {'format': '24h'},
+        'layout': {
+          'home.dock.spec': {
+            'panels': ['ext:ki2d-my-clock:clock'],
+          },
+        },
+      });
+      await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+      await extensions.installBundle(await fromCatalog(store, replacement(), '1.2.3'));
+      await extensions.replaceInstalledExtension(from: 'ki2d-my-clock', to: 'ki2d-new-clock');
+      expect(await store.isInstalled('ki2d-my-clock'), isFalse);
+      expect(settings.settingsGroup('extension_ki2d-new-clock'), {'format': '24h'});
+      expect(settings.layoutData('home.dock.spec'), {
+        'panels': ['ext:ki2d-new-clock:clock'],
+      });
+    });
+  });
+
+  test('an uninstall forgets its docked panels\' values and secrets', () async {
+    // They hang off the panel id rather than the extension key. Left behind, a
+    // reinstall docking the same panel brings the old credential back — the
+    // resurrection the uninstall dialog promises does not happen.
+    useInMemoryKeychain();
+    final (extensions, settings, store) = await setup({});
+    await extensions.installBundle(await fromCatalog(store, fixture, '1.2.3'));
+    await settings.prefs.setString('settingsPanel.ext:ki2d-my-clock:clock.color', jsonEncode('red'));
+    await settings.prefs.setString('settingsPanel.ext:ki2d-my-clock-other:clock.color', jsonEncode('blue'));
+    const keychain = FlutterSecureStorage();
+    await keychain.write(key: 'settingsPanel_secret_ext:ki2d-my-clock:clock_password', value: 'x');
+    await extensions.uninstallExtension('ki2d-my-clock');
+    expect(settings.prefs.getString('settingsPanel.ext:ki2d-my-clock:clock.color'), isNull);
+    expect(await keychain.read(key: 'settingsPanel_secret_ext:ki2d-my-clock:clock_password'), isNull);
+    // Positive control: another extension's panel, whose key only starts the same.
+    expect(settings.prefs.getString('settingsPanel.ext:ki2d-my-clock-other:clock.color'), isNotNull);
+  });
+
+  test('what the boot read before settings arrived keeps the extension out', () async {
+    // The first start can beat the settings, and with none every installed
+    // extension loads. Consulting the kept list alone, the one the flags
+    // stop runs on exactly the launch it would break.
+    const info = ExtensionInfo(key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
+      ..earlyForceDisabled = Future.value({'ki2d-my-clock': const ExtensionForceDisable(note: 'Crashes.')});
+    await extensions.debugAwaitEarlyForceDisabled();
+    expect(extensions.isExtensionEnabled(info), isFalse);
+    expect(extensions.forceDisableOf(info)?.note, 'Crashes.');
+    expect(extensions.dropEarlyForceDisabled(), isTrue);
+    expect(extensions.isExtensionEnabled(info), isTrue);
   });
 
   group('a bundle the engine refused', () {

@@ -34,6 +34,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/user_agent.dart';
 import '../config/version.dart';
+import 'error_reporting_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'extensions/extension_relevance.dart';
 import 'notices.dart';
@@ -47,6 +48,33 @@ import 'update_service.dart' show currentCodePush;
 const kFlagsBaseUrl = 'https://api.ham2k.net/flags';
 
 const _maxRequestTime = Duration(seconds: 5);
+
+/// One flags file: its decoded JSON object, or null for a non-200 or a body
+/// that is not one. Throws [TimeoutException] past [timeout]. Sends the
+/// canonical HaLo User-Agent like every other core network call
+/// (docs/design/network.md); the fallback resolver never throws, so a missing
+/// build number can't block a flag fetch.
+Future<Map<String, dynamic>?> fetchFlagsFile(http.Client client, String baseUrl, String location, {Duration timeout = _maxRequestTime}) async {
+  final response = await client.get(Uri.parse('$baseUrl/$location'), headers: {'User-Agent': await ham2kUserAgentOrFallback()}).timeout(timeout);
+  if (response.statusCode != 200) return null;
+  final decoded = jsonDecode(response.body);
+  return decoded is Map ? decoded.cast<String, dynamic>() : null;
+}
+
+/// `defaults.json` on its own, before any [FlagsService] exists — the boot's
+/// read ahead of the extension runtime (extension_force_disable.dart). Null
+/// for anything but an answer: the boot goes on without it.
+Future<Map<String, dynamic>?> fetchFlagsDefaultsBeforeStart({Duration timeout = const Duration(seconds: 2), http.Client? client}) async {
+  final http.Client using = client ?? http.Client();
+  try {
+    return await fetchFlagsFile(using, kFlagsBaseUrl, 'defaults.json', timeout: timeout);
+  } catch (e) {
+    debugPrint('[flags] defaults.json before the runtime: $e');
+    return null;
+  } finally {
+    if (client == null) using.close();
+  }
+}
 
 /// Fetches one flags file by relative [location] (e.g. `defaults.json`),
 /// returning its decoded JSON object, or null if it's missing/unparseable.
@@ -137,6 +165,14 @@ class FlagsService extends ChangeNotifier {
   /// is how a rule gets tried before it ships.
   final bool isReleaseBuild;
 
+  /// Told the merged flags after every COMPLETE refresh — `defaults.json`
+  /// answered, and no file errored or timed out — and only then. A reader
+  /// that persists what they say (the force-disabled extensions) reads an
+  /// absent entry as lifted, and a round missing a file cannot tell a lifted
+  /// entry from one it did not read. Not awaited by the refresh: what it does
+  /// (a runtime restart) must not hold the server's notices behind it.
+  final Future<void> Function(Map<String, dynamic> flags)? onRefreshed;
+
   FlagsService({
     required this.statusBar,
     this.annotate,
@@ -149,6 +185,7 @@ class FlagsService extends ChangeNotifier {
     this._onTrack,
     this.isReleaseBuild = kReleaseMode,
     this.staleness,
+    this.onRefreshed,
   }) : _client = client ?? http.Client(),
        _environmentProvider = environmentProvider ?? defaultNoticeEnvironment {
     // Gating the push alone isn't enough: notices persist, so one an earlier
@@ -223,7 +260,8 @@ class FlagsService extends ChangeNotifier {
         notifyListeners();
       }
 
-      final merged = await _fetchAndMerge(normalizedCall, baseCall: baseCall, entityPrefix: entityPrefix);
+      final round = await _fetchAndMerge(normalizedCall, baseCall: baseCall, entityPrefix: entityPrefix);
+      final merged = round?.flags;
 
       // Every request failed (offline, or the server is down) — keep the
       // flags we already have rather than clobbering them with an empty map,
@@ -238,6 +276,15 @@ class FlagsService extends ChangeNotifier {
       _flags = merged;
       _lastFetchedCall = normalizedCall;
       notifyListeners();
+
+      final onRefreshed = this.onRefreshed;
+      if (onRefreshed != null && round!.complete) {
+        unawaited(
+          Future.sync(
+            () => onRefreshed(merged),
+          ).catchError((Object e, StackTrace stack) => ErrorReportingService.report(e, stack, context: 'flags:on-refreshed')),
+        );
+      }
 
       await _pushNotices(
         call: normalizedCall,
@@ -275,7 +322,10 @@ class FlagsService extends ChangeNotifier {
   /// Fetches and deep-merges the flag files for [call]. Returns null if NOT
   /// A SINGLE file could be fetched (total failure — likely offline), so the
   /// caller can preserve the previous flags instead of overwriting them.
-  Future<Map<String, dynamic>?> _fetchAndMerge(String call, {required String baseCall, String? entityPrefix}) async {
+  /// `complete` is whether the round read everything it asked for:
+  /// `defaults.json` answered (it always exists, so a null there is the
+  /// server failing), and nothing errored or timed out.
+  Future<({Map<String, dynamic> flags, bool complete})?> _fetchAndMerge(String call, {required String baseCall, String? entityPrefix}) async {
     final locations = <String>['defaults.json'];
     if (call.isNotEmpty) {
       final cleanCall = _clean(call);
@@ -291,6 +341,7 @@ class FlagsService extends ChangeNotifier {
     var flags = <String, dynamic>{};
     final fetched = <String>{};
     var successCount = 0;
+    var complete = true;
     while (locations.isNotEmpty) {
       final location = locations.removeAt(0);
       if (!fetched.add(location)) continue;
@@ -302,15 +353,20 @@ class FlagsService extends ChangeNotifier {
         // A timeout aborts the whole round (app-polo re-raises to stop all
         // further fetches) — the network is slow, don't compound the wait.
         debugPrint('[flags] timed out fetching $location, stopping');
+        complete = false;
         break;
       } catch (e) {
         debugPrint('[flags] error fetching $location: $e');
+        complete = false;
         continue;
       }
       // Null is a missing file (e.g. a 404 for an absent per-entity/per-call
       // file) — normal, not a failure. Only a successful body counts toward
       // "we reached the server".
-      if (data == null) continue;
+      if (data == null) {
+        if (location == 'defaults.json') complete = false;
+        continue;
+      }
       successCount++;
 
       final more = data['more'];
@@ -324,7 +380,7 @@ class FlagsService extends ChangeNotifier {
 
       flags = _deepMerge(flags, data);
     }
-    return successCount == 0 ? null : flags;
+    return successCount == 0 ? null : (flags: flags, complete: complete);
   }
 
   Future<void> _pushNotices({
@@ -449,17 +505,8 @@ class FlagsService extends ChangeNotifier {
     return result;
   }
 
-  /// The default HTTP fetcher. Throws [TimeoutException] on a slow request
-  /// (aborting the round) and returns null for a non-200 or non-object body.
-  /// Sends the canonical HaLo User-Agent like every other core network call
-  /// (docs/design/network.md); the fallback resolver never throws, so a
-  /// missing build number can't block a flag fetch.
-  Future<Map<String, dynamic>?> _httpFetch(String location) async {
-    final response = await _client.get(Uri.parse('$baseUrl/$location'), headers: {'User-Agent': await ham2kUserAgentOrFallback()}).timeout(_maxRequestTime);
-    if (response.statusCode != 200) return null;
-    final decoded = jsonDecode(response.body);
-    return decoded is Map ? decoded.cast<String, dynamic>() : null;
-  }
+  /// The default HTTP fetcher ([fetchFlagsFile]); its timeout aborts the round.
+  Future<Map<String, dynamic>?> _httpFetch(String location) => fetchFlagsFile(_client, baseUrl, location);
 
   /// The environment a real build reports.
   ///

@@ -15,12 +15,19 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../error_reporting_service.dart';
+import 'extension_store_settings.dart' show isExtensionPanelIdOf, renamedExtensionPanelId;
 
 /// Every shape a key `<extension>` may own, as a prefix that ends in `_`.
 List<String> _prefixesFor(String key) => ['settingsPanel_secret_${key}_', 'account_creds_${key}_', 'account_session_${key}_'];
 
 /// The two that are the bare key rather than a prefix of one.
 List<String> _exactFor(String key) => ['account_creds_$key', 'account_session_$key'];
+
+/// A docked panel's secret is `settingsPanel_secret_<panel id>_<field>`, and
+/// the panel id names the extension (`renamedExtensionPanelId`).
+const _docked = 'settingsPanel_secret_';
+
+bool _isDockedSecretOf(String storedKey, String key) => storedKey.startsWith(_docked) && isExtensionPanelIdOf(storedKey.substring(_docked.length), key);
 
 /// Whether [storedKey] is an account credential or session, which carry
 /// per-account keychain options and so may not be read or written with the
@@ -139,13 +146,16 @@ String? _renamed(String storedKey, {required String from, required String to}) {
       return prefix.replaceFirst('_${from}_', '_${to}_') + storedKey.substring(prefix.length);
     }
   }
+  if (storedKey.startsWith(_docked)) {
+    if (renamedExtensionPanelId(storedKey.substring(_docked.length), from: from, to: to) case final rest?) return '$_docked$rest';
+  }
   final exactFrom = _exactFor(from);
   final index = exactFrom.indexOf(storedKey);
   return index < 0 ? null : _exactFor(to)[index];
 }
 
-/// Removes every keychain item [key] owned — its settings-panel secrets and
-/// its account credentials.
+/// Removes every keychain item [key] owned — its settings-panel secrets, its
+/// docked panels' secrets and its account credentials.
 ///
 /// A reinstall inheriting these is the resurrection `forgetPanelConfig`
 /// exists to prevent, and the uninstall dialog says they are removed.
@@ -154,7 +164,9 @@ String? _renamed(String storedKey, {required String from, required String to}) {
 /// same limit, as the copy above.
 Future<void> forgetExtensionKeychainItems(FlutterSecureStorage storage, String key, {required Future<void> Function(String name) deleteOne}) async {
   final stored = await _readAllOrNull(storage, context: 'extension-uninstall:secrets');
-  final names = stored == null ? _exactFor(key) : stored.keys.where((k) => _prefixesFor(key).any(k.startsWith) || _exactFor(key).contains(k)).toList();
+  final names = stored == null
+      ? _exactFor(key)
+      : stored.keys.where((k) => _prefixesFor(key).any(k.startsWith) || _exactFor(key).contains(k) || _isDockedSecretOf(k, key)).toList();
   for (final name in names) {
     try {
       // Through the caller where enumeration failed, because an item written

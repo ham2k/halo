@@ -151,7 +151,7 @@ class _MissingExtensionActionState extends State<MissingExtensionAction> {
       };
     }
     if (!extensions.isExtensionAvailable(installed)) return Text(t.missingExtensionUnavailable, style: note);
-    if (extensions.isExtensionRevoked(installed) || extensions.isExtensionRefused(installed)) {
+    if (extensions.isExtensionRevoked(installed) || extensions.isExtensionForceDisabled(installed) || extensions.isExtensionRefused(installed)) {
       return Text(t.missingExtensionWontRun, style: note, textAlign: TextAlign.center);
     }
     if (!extensions.isExtensionEnabled(installed)) {

@@ -764,8 +764,8 @@ void main() {
       );
     }
 
-    http.Response answer({List<Object?> updates = const [], List<Object?> revoked = const []}) =>
-        http.Response(jsonEncode({'updates': updates, 'revoked': revoked, 'ignored': []}), 200);
+    http.Response answer({List<Object?> updates = const [], List<Object?> revoked = const [], List<Object?>? redirects}) =>
+        http.Response(jsonEncode({'updates': updates, 'revoked': revoked, 'ignored': [], 'redirects': ?redirects}), 200);
 
     Iterable<StatusBarNotice> notices(String key) => statusBar.activeNotices.where((n) => n.key == key);
 
@@ -1069,6 +1069,141 @@ void main() {
       expect(settings.extensionRevoked['k2hrc-llota']?['version'], '1.0.0');
       expect(notices(CatalogUpdateCheck.revokedNoticeKey('k2hrc-llota')), hasLength(1));
       expect(applied, 1);
+    });
+
+    test('a revocation the catalog stops reporting is lifted, and the extension runs again', () async {
+      // A revoked VERSION is reported for good; what stops being reported is
+      // a key the catalog disabled and let go of. Kept, the extension stays
+      // off on every install that heard of it until the operator happens to
+      // update it — which, with no newer release, is never.
+      var revoked = true;
+      final check = await checker(
+        (_) async => answer(
+          revoked: [
+            if (revoked) {'key': 'k2hrc-llota', 'version': '1.0.0', 'note': 'Disabled for now.'},
+          ],
+        ),
+      );
+      await check.check();
+      expect(settings.extensionRevoked.keys, ['k2hrc-llota']);
+      expect(applied, 1);
+
+      revoked = false;
+      await check.check(force: true);
+      expect(settings.extensionRevoked, isEmpty);
+      expect(applied, 2);
+      expect(notices(CatalogUpdateCheck.revokedNoticeKey('k2hrc-llota')), isEmpty);
+    });
+
+    test('an answer with no revoked list lifts nothing', () async {
+      // Lifting runs what was pulled. Read off an answer of some other shape
+      // — a proxy's page, a catalog that is not this one — "no list" would be
+      // "nothing revoked", and every revoked extension would start again.
+      final check = await checker(
+        (_) async => http.Response(jsonEncode({'updates': []}), 200),
+        prefs: {
+          'extensionRevoked': jsonEncode({
+            'k2hrc-llota': {'version': '1.0.0', 'note': ''},
+          }),
+        },
+      );
+      expect(await check.check(), isTrue);
+      expect(settings.extensionRevoked.keys, ['k2hrc-llota']);
+    });
+
+    test('a record of another installed version is not the answer\'s to lift', () async {
+      // The record outlives nothing but a version change, and the check asks
+      // about what is installed: a record naming a version that is not
+      // installed is not one this answer could have reported.
+      final check = await checker(
+        (_) async => answer(),
+        prefs: {
+          'extensionRevoked': jsonEncode({
+            'k2hrc-llota': {'version': '0.9.0', 'note': ''},
+          }),
+        },
+      );
+      await check.check();
+      expect(settings.extensionRevoked.keys, ['k2hrc-llota']);
+      expect(applied, 0);
+    });
+
+    group('a replacement', () {
+      Map<String, Object?> redirect({String from = 'k2hrc-llota', String to = 'ham2k-llota', Object? entryKey}) => {
+        'from': from,
+        'to': to,
+        'note': 'Now maintained by Ham2K.',
+        'entry': _entry(key: (entryKey ?? to) as String, name: 'Ham2K LLOTA', version: '2.0.0'),
+      };
+
+      test('is offered for an installed key, named in a notice of its own, and never in Update all', () async {
+        final check = await checker(
+          (_) async => answer(
+            redirects: [
+              redirect(),
+              redirect(from: 'not-installed'),
+            ],
+          ),
+        );
+        await check.check();
+        expect(check.pendingRedirects.keys, ['k2hrc-llota']);
+        expect(check.pendingRedirects['k2hrc-llota']!.entry.version, '2.0.0');
+        expect(check.pendingUpdates, isEmpty, reason: 'Update all takes what is pending, and a replacement asks consent of its own');
+        final notice = notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')).single;
+        expect(notice.title, contains('LLOTA'));
+        expect(notice.text, allOf(contains('Ham2K LLOTA'), contains('Now maintained by Ham2K.')));
+        expect(notice.persist, isFalse);
+        notice.actions.single.onTap();
+        expect(opened, 1);
+      });
+
+      test('takes the place of an update the catalog also answers for the replaced key', () async {
+        // The catalog keeps answering the old key's updates for apps that
+        // cannot read `redirects`. Taken here too, Update all would move the
+        // operator forward on the extension the Replace row moves them off.
+        final check = await checker(
+          (_) async => answer(
+            updates: [_entry(version: '1.1.0')],
+            redirects: [redirect()],
+          ),
+        );
+        await check.check();
+        expect(check.pendingRedirects.keys, ['k2hrc-llota']);
+        expect(check.pendingUpdates, isEmpty);
+        expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
+      });
+
+      test('whose release is not the key it names is dropped', () async {
+        // Replace installs the entry: one naming another key would install
+        // something other than what the notice said.
+        final check = await checker((_) async => answer(redirects: [redirect(entryKey: 'someone-else')]));
+        await check.check();
+        expect(check.pendingRedirects, isEmpty);
+        expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
+      });
+
+      test('is over once taken, and once the catalog stops offering it', () async {
+        var offered = true;
+        final check = await checker((_) async => answer(redirects: [if (offered) redirect()]));
+        await check.check();
+        check.noteReplaced('k2hrc-llota');
+        expect(check.pendingRedirects, isEmpty);
+        expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
+
+        await check.check(force: true);
+        expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), hasLength(1));
+        offered = false;
+        await check.check(force: true);
+        expect(check.pendingRedirects, isEmpty);
+        expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
+      });
+
+      test('the check the panel runs on opening does not raise the notice', () async {
+        final check = await checker((_) async => answer(redirects: [redirect()]));
+        await check.check(announce: false);
+        expect(check.pendingRedirects.keys, ['k2hrc-llota']);
+        expect(notices(CatalogUpdateCheck.redirectNoticeKey('k2hrc-llota')), isEmpty);
+      });
     });
   });
 }

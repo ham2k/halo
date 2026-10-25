@@ -151,32 +151,76 @@ mixin _ExtensionInstalls {
   ///
   /// The consent the operator gave belongs to the caller — this is the commit,
   /// and by here the asking has happened.
-  Future<void> installBundle(InspectedBundle bundle) async {
+  ///
+  /// [replacing] is an installed key the catalog says this one replaces
+  /// (catalog SPEC §8.3 `redirects`): its settings, credentials, docked panels
+  /// and on/off choice move onto this one, and it is uninstalled in the same
+  /// restart. Carried BEFORE the write, so the first activation already sees
+  /// them — an account hook that finds no credentials reports itself
+  /// disconnected, and the operator is asked to log in again.
+  Future<void> installBundle(InspectedBundle bundle, {String? replacing}) async {
     final store = _requireInstalledStore();
     // Asked BEFORE the write: afterwards the key is always there.
     final fresh = !await store.isInstalled(bundle.key);
     // Only on a FRESH install of catalog bytes: an update has its own state
     // already, and a file install of a `ham2k-` key never reaches here.
-    final carried = fresh && bundle.provenance != null && await carryPredecessorRecords(key: bundle.key, settings: settings, copySecrets: copyExtensionSecrets);
+    // A replacement carries whether or not it is fresh: the old extension is
+    // uninstalled below either way, and a replacement installed meanwhile —
+    // from a link, while the consent screen was up — must not cost the
+    // operator its settings. The copy never overwrites what is there.
+    final carried = replacing != null
+        ? await _carryReplaced(from: replacing, to: bundle.key)
+        : fresh && bundle.provenance != null && await carryPredecessorRecords(key: bundle.key, settings: settings, copySecrets: copyExtensionSecrets);
     await store.install(bundle);
     // `fresh` drops a stale on/off choice; one just carried is not stale.
     await _recordInstall(bundle, fresh: fresh && !carried);
     // But the operator just chose to install it from the catalog, which is
     // choosing to run it: a switch carried from a built-in they had off, or
     // kept from a removal that left their settings in place, would land it
-    // switched off.
+    // switched off. Not for a replacement: the switch it carries is the
+    // operator's choice about this very extension under its old name.
     final currentSettings = settings;
-    if (fresh && bundle.provenance != null && currentSettings != null && currentSettings.extensionOverrides[bundle.key] == false) {
+    if (fresh && replacing == null && bundle.provenance != null && currentSettings != null && currentSettings.extensionOverrides[bundle.key] == false) {
       await currentSettings.setExtensionOverrides({...currentSettings.extensionOverrides, bundle.key: true});
+    }
+    if (replacing != null) {
+      await store.uninstall(replacing);
+      await currentSettings?.forgetExtensionInstalls({replacing});
+      await currentSettings?.moveExtensionPanels(from: replacing, to: bundle.key);
     }
     // Re-read, not merely dropped: an empty list for the length of the
     // restart is every panel reading it losing all its rows until the new
     // generation is up, and the restart's own sweep deciding which
     // extensions return against nothing at all.
     await _reloadBeforeRestart();
+    if (replacing != null) await _forgetUninstalled(replacing);
     // [fresh]: a restart already in flight (a toggle's, another install's)
     // began before this bundle was written, and would load without it.
     await restartRuntime(fresh: true);
+  }
+
+  /// Copies [from]'s settings and credentials onto [to], and its on/off
+  /// choice — the one it RUNS by, which for an extension never toggled is its
+  /// manifest default, and would otherwise give way to [to]'s. Answers whether
+  /// there were settings to copy them with. Copied rather than moved, like a
+  /// predecessor's: an install that fails after the carry leaves [from]
+  /// installed and still configured.
+  Future<bool> _carryReplaced({required String from, required String to}) async {
+    final currentSettings = settings;
+    if (!await carryPredecessorRecords(key: to, from: from, settings: currentSettings, copySecrets: copyExtensionSecrets)) return false;
+    final old = extensionInfo(from);
+    final overrides = currentSettings!.extensionOverrides;
+    if (old != null && !overrides.containsKey(to)) await currentSettings.setExtensionOverrides({...overrides, to: isExtensionSwitchedOn(old)});
+    return true;
+  }
+
+  /// [from] retired in favour of [to], which is already installed — the
+  /// replacement a catalog redirect offers, without the install: what [from]
+  /// stored and its place on screen move to [to], and [from] is uninstalled.
+  Future<void> replaceInstalledExtension({required String from, required String to}) async {
+    await _carryReplaced(from: from, to: to);
+    await settings?.moveExtensionPanels(from: from, to: to);
+    await uninstallExtension(from);
   }
 
   /// [reloadAvailableExtensions] ahead of a restart that must happen whatever
@@ -247,11 +291,16 @@ mixin _ExtensionInstalls {
     // with no override reads as on — its switch flipping on for as long as
     // the keychain takes to clear.
     await _reloadBeforeRestart();
-    await currentSettings?.forgetExtension(key);
+    await _forgetUninstalled(key);
+    await restartRuntime(fresh: true);
+  }
+
+  /// Everything an uninstalled [key] stored, once the list no longer has it.
+  Future<void> _forgetUninstalled(String key) async {
+    await settings?.forgetExtension(key);
     await _leaveShippedSwitchedOff(key);
     await forgetExtensionKeychainItems(_secureStorage, key, deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
     statusBar?.clearNamespace(key);
-    await restartRuntime(fresh: true);
   }
 
   /// Records [key] switched off when it is a bundle the app pre-loads or a
@@ -434,16 +483,17 @@ mixin _ExtensionInstalls {
 
   /// Core extensions are always on; the rest follow the user's override,
   /// falling back to the build index's default — except a release the
-  /// catalog revoked, which is off whatever the override says: the switch is
-  /// the operator's intent, and the revocation is not theirs to undo. A null
-  /// [settings] (tests, benches) resolves to defaults. Enabled is the user's
-  /// intent only — whether the extension actually loads also requires
-  /// [isExtensionAvailable].
-  bool isExtensionEnabled(ExtensionInfo info) => info.core || (!isExtensionRevoked(info) && !isExtensionRefused(info) && isExtensionSwitchedOn(info));
+  /// catalog revoked or the flags force-disable, which is off whatever the
+  /// override says: the switch is the operator's intent, and neither is
+  /// theirs to undo. A null [settings] (tests, benches) resolves to
+  /// defaults. Enabled is the user's intent only — whether the extension
+  /// actually loads also requires [isExtensionAvailable].
+  bool isExtensionEnabled(ExtensionInfo info) =>
+      info.core || (!isExtensionRevoked(info) && !isExtensionForceDisabled(info) && !isExtensionRefused(info) && isExtensionSwitchedOn(info));
 
   /// The operator's own choice for [info] — its override, else the build
   /// index's default — whatever the app then does with it. Differs from
-  /// [isExtensionEnabled] exactly for a revoked or refused release, where
+  /// [isExtensionEnabled] exactly for a revoked, force-disabled or refused release, where
   /// offering the switch again cannot help: it is already on.
   bool isExtensionSwitchedOn(ExtensionInfo info) => settings?.extensionOverrides[info.key] ?? info.enabledByDefault;
 
@@ -459,6 +509,41 @@ mixin _ExtensionInstalls {
 
   /// See [isBundleRevoked].
   bool isExtensionRevoked(ExtensionInfo info) => isBundleRevoked(settings, info);
+
+  /// See [isBundleForceDisabled].
+  bool isExtensionForceDisabled(ExtensionInfo info) => isBundleForceDisabled(settings, info, early: _earlyForceDisabled);
+
+  /// The force-disable that covers [info], with its note, or null.
+  ExtensionForceDisable? forceDisableOf(ExtensionInfo info) =>
+      isExtensionForceDisabled(info) ? (settings?.extensionForceDisabled[info.key] ?? _earlyForceDisabled[info.key]) : null;
+
+  /// What the flags force-disable as the boot read it before settings reach
+  /// this service (`forceDisabledBeforeStart`). The first runtime start waits
+  /// for it: that start can beat the settings, and with none every installed
+  /// extension loads — the one the flags stop included, on the very launch
+  /// it would break. Held until a complete flags refresh speaks
+  /// ([dropEarlyForceDisabled]).
+  Future<Map<String, ExtensionForceDisable>>? earlyForceDisabled;
+  Map<String, ExtensionForceDisable> _earlyForceDisabled = const {};
+
+  /// Waits for [earlyForceDisabled], once; the start's own step.
+  Future<void> _awaitEarlyForceDisabled() async {
+    final early = earlyForceDisabled;
+    if (early != null) _earlyForceDisabled = await early;
+  }
+
+  /// The start's wait, for a test that runs no start.
+  @visibleForTesting
+  Future<void> debugAwaitEarlyForceDisabled() => _awaitEarlyForceDisabled();
+
+  /// A complete flags refresh replaces what the boot read; answers whether it
+  /// held anything, so the caller knows to re-apply what loads.
+  bool dropEarlyForceDisabled() {
+    final held = _earlyForceDisabled.isNotEmpty;
+    earlyForceDisabled = null;
+    _earlyForceDisabled = const {};
+    return held;
+  }
 
   /// Whether [info] is offered at all: every experiment its manifest
   /// declares (experiments.yaml keys) must be enabled. An unavailable

@@ -11,6 +11,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show File;
 
+import 'package:archive/archive.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1513,6 +1514,49 @@ void main() {
     expect(inRow('zz-current', find.textContaining('Revoked')), findsNothing);
   });
 
+  testWidgets('a release the flags force-disable has no switch, and says why', (tester) async {
+    // Switched ON by the operator: a switch that cannot turn it on would
+    // only say the panel is broken.
+    tester.view.physicalSize = const Size(1000, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({
+      'extensionForceDisabled': jsonEncode({
+        'k2hrc-llota': {'note': 'Crashes on start.'},
+      }),
+      'extensionOverrides': jsonEncode({'k2hrc-llota': true}),
+    });
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+        key: 'k2hrc-llota',
+        file: 'index.js',
+        core: false,
+        name: 'LLOTA',
+        category: 'activity',
+        source: ExtensionSource.installed,
+        version: '1.0.0',
+      ),
+    ]);
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: ExtensionsPanel(services: services)),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Finder inRow(Finder what) => find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: what);
+    expect(inRow(find.byType(Switch)), findsNothing);
+    expect(inRow(find.textContaining('Disabled by Ham2K')), findsOneWidget);
+    expect(inRow(find.textContaining('Crashes on start.')), findsOneWidget);
+  });
+
   testWidgets('the catalog section says when it is loading, and when it could not be read', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
@@ -1902,6 +1946,125 @@ void main() {
       expect(panel.storage.files.keys, ['ki2d-my-clock']);
       expect(panel.settings.extensionInstalledFrom['ki2d-my-clock']?['channel'], 'unstable');
       // The footer's "Installed" line takes itself down on a timer.
+      await tester.pump(StatusBarService.completedDismissDelay);
+    });
+  });
+
+  group('a replacement the catalog offered', () {
+    late List<int> fixture;
+
+    /// The fixture under another key: the extension being replaced.
+    List<int> asOldClock() {
+      final out = Archive();
+      for (final file in ZipDecoder().decodeBytes(fixture).files) {
+        if (file.name != 'manifest.json') {
+          out.addFile(file);
+          continue;
+        }
+        final manifest = jsonDecode(utf8.decode(file.content as List<int>)) as Map<String, dynamic>;
+        final bytes = utf8.encode(jsonEncode({...manifest, 'key': 'ki2d-old-clock', 'name': 'KI2D Old Clock'}));
+        out.addFile(ArchiveFile('manifest.json', bytes.length, bytes));
+      }
+      return ZipEncoder().encode(out);
+    }
+
+    testWidgets('sits under Pending Updates, outside Update all, and Replace moves the operator onto it through the consent screen', (tester) async {
+      tester.view.physicalSize = const Size(1200, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      useInMemoryKeychain();
+
+      fixture = File('test/fixtures/ki2d-my-clock.h2kext').readAsBytesSync();
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final storage = MemoryBundleStorage();
+      final store = InstalledExtensions(builtInKeys: () => const {}, hostSharedModules: const {'i18next': '23.11.5'}, storage: storage);
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
+        ..settings = settings
+        ..debugInstalledStore = store;
+      await tester.runAsync(() async {
+        await extensions.installBundle(await store.inspect(asOldClock()));
+        await settings.setSettingValue('extension_ki2d-old-clock', 'format', '24h');
+      });
+      extensions.debugSetAvailableExtensions(const [
+        ExtensionInfo(
+          key: 'ki2d-old-clock',
+          file: 'index.js',
+          core: false,
+          name: 'KI2D Old Clock',
+          category: 'activity',
+          source: ExtensionSource.installed,
+          version: '1.2.3',
+        ),
+      ]);
+      final sha = sha256Hex(fixture);
+      final catalog = CatalogService(
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/bundle')) return http.Response.bytes(fixture, 200);
+          if (request.url.path == '/api/v1/updates') {
+            return http.Response(
+              jsonEncode({
+                'updates': [],
+                'revoked': [],
+                'ignored': [],
+                'redirects': [
+                  {
+                    'from': 'ki2d-old-clock',
+                    'to': 'ki2d-my-clock',
+                    'note': 'Same clock, new home.',
+                    'entry': {..._entry('ki2d-my-clock', 'KI2D My Clock', version: '1.2.3'), 'sha256': sha},
+                  },
+                ],
+              }),
+              200,
+            );
+          }
+          return http.Response(jsonEncode({'extensions': []}), 200);
+        }),
+        settings: settings,
+        userAgent: () async => 'Ham2K Logger/test',
+        locale: () => 'en',
+      );
+      final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            navigatorKey: navigatorKey,
+            home: Scaffold(body: ExtensionsPanel(services: services)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final row = find.byKey(const ValueKey('redirect-ki2d-old-clock'));
+      expect(find.descendant(of: row, matching: find.text('Replaced by KI2D My Clock · Same clock, new home.')), findsOneWidget);
+      // Each replacement is a new extension asking consent of its own: Update
+      // all with nothing else pending has nothing to take.
+      expect(tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Update all')).onPressed, isNull);
+
+      // Polled with plain pumps: the row's progress bar is indeterminate
+      // while the download runs, and never lets pumpAndSettle settle.
+      Future<void> until(bool Function() done) async {
+        for (var i = 0; i < 500 && !done(); i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 10)));
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+      }
+
+      await tester.tap(find.descendant(of: row, matching: find.widgetWithText(FilledButton, 'Replace')));
+      final consent = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_ConsentDialog');
+      await until(() => consent.evaluate().isNotEmpty);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(consent, findsOneWidget, reason: 'the replacement asks, like any install');
+      expect(storage.files.keys, ['ki2d-old-clock'], reason: 'nothing moves before the operator agrees');
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Install'));
+      await until(() => !storage.files.containsKey('ki2d-old-clock') && services.catalogUpdateCheck.pendingRedirects.isEmpty);
+      expect(storage.files.keys, ['ki2d-my-clock']);
+      expect(settings.settingsGroup('extension_ki2d-my-clock'), {'format': '24h'});
+      expect(services.catalogUpdateCheck.pendingRedirects, isEmpty);
       await tester.pump(StatusBarService.completedDismissDelay);
     });
   });

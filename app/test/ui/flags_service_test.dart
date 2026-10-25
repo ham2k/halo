@@ -285,6 +285,67 @@ void main() {
       expect(service.flags['latestRelease'], '26.8');
     });
 
+    test('tells onRefreshed only about a refresh that reached the server', () async {
+      // The force-disabled extensions are PERSISTED from what this reports,
+      // and read at the next boot. Told on an offline refresh — which keeps
+      // no new flags — the reader would see no `halo-extensions-disabled` and
+      // lift every force-disable on the install that most needs it kept.
+      var failing = false;
+      final told = <Map<String, dynamic>>[];
+      final service = FlagsService(
+        statusBar: statusBar,
+        baseUrl: 'https://example.test/flags',
+        environmentProvider: () async => env,
+        onRefreshed: (flags) async => told.add(flags),
+        fetcher: (location) async {
+          if (failing) throw Exception('offline');
+          if (location != 'defaults.json') return null;
+          return {
+            'halo-extensions-disabled': [
+              {'key': 'ki2d-my-clock'},
+            ],
+          };
+        },
+      );
+
+      failing = true;
+      await service.refreshForCall('KI2D');
+      expect(told, isEmpty);
+
+      failing = false;
+      await service.refreshForCall('KI2D', force: true);
+      expect(told.single['halo-extensions-disabled'], [
+        {'key': 'ki2d-my-clock'},
+      ]);
+    });
+
+    test('tells onRefreshed nothing about a round that missed a file', () async {
+      // An entry lives in whichever file names it. Told about a round where
+      // the entity file timed out, or defaults.json answered 503, the reader
+      // takes every entry those files held as lifted and runs what they stop.
+      for (final (label, timeoutAt, missing) in [
+        ('entity timed out', {'entities/k.json'}, <String>{}),
+        ('defaults unanswered', <String>{}, {'defaults.json'}),
+      ]) {
+        final told = <Map<String, dynamic>>[];
+        final service = FlagsService(
+          statusBar: statusBar,
+          baseUrl: 'https://example.test/flags',
+          annotate: (_) async => {'baseCall': 'KI2D', 'entityPrefix': 'K'},
+          environmentProvider: () async => env,
+          onRefreshed: (flags) async => told.add(flags),
+          fetcher: (location) async {
+            if (timeoutAt.contains(location)) throw TimeoutException('slow');
+            if (missing.contains(location)) return null;
+            return {'from': location};
+          },
+        );
+        await service.refreshForCall('KI2D');
+        expect(service.flags, isNotEmpty, reason: '$label: the round still committed what it read');
+        expect(told, isEmpty, reason: label);
+      }
+    });
+
     test('a timeout aborts the round but keeps prior flags', () async {
       final b = build(
         {
