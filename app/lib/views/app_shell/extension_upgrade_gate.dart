@@ -51,7 +51,7 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     if (navigator == null || !navigator.mounted) return;
 
     final accepted =
-        await showDialog<bool>(
+        await showHaloDialog<bool>(
           context: navigator,
           barrierDismissible: false,
           builder: (context) => StatefulBuilder(
@@ -96,33 +96,31 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
                 ],
               );
 
-              return HoldSizeWhileCovered(
-                child: HaloDialog(
-                  title: Text(t.restoreTitle),
-                  content: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Forget on every row: one the catalog stopped
-                        // serving would otherwise come back every launch.
-                        if (fetchable.isNotEmpty) ...[Text(t.restoreBody), for (final m in fetchable) forgettable(m)],
-                        if (fromFile.isNotEmpty) ...[
-                          if (fetchable.isNotEmpty) const SizedBox(height: Space.md),
-                          Text(t.restoreFromFile),
-                          for (final m in fromFile) forgettable(m),
-                        ],
-                        if (elsewhere.isNotEmpty) ...[
-                          if (fetchable.isNotEmpty || fromFile.isNotEmpty) const SizedBox(height: Space.md),
-                          Text(t.restoreOtherCatalog),
-                          for (final m in elsewhere) forgettable(m),
-                        ],
+              return HaloDialog(
+                title: Text(t.restoreTitle),
+                content: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Forget on every row: one the catalog stopped
+                      // serving would otherwise come back every launch.
+                      if (fetchable.isNotEmpty) ...[Text(t.restoreBody), for (final m in fetchable) forgettable(m)],
+                      if (fromFile.isNotEmpty) ...[
+                        if (fetchable.isNotEmpty) const SizedBox(height: Space.md),
+                        Text(t.restoreFromFile),
+                        for (final m in fromFile) forgettable(m),
                       ],
-                    ),
+                      if (elsewhere.isNotEmpty) ...[
+                        if (fetchable.isNotEmpty || fromFile.isNotEmpty) const SizedBox(height: Space.md),
+                        Text(t.restoreOtherCatalog),
+                        for (final m in elsewhere) forgettable(m),
+                      ],
+                    ],
                   ),
-                  cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.restoreLater)),
-                  actions: [if (fetchable.isNotEmpty) FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.restoreInstall))],
                 ),
+                cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(t.restoreLater)),
+                actions: [if (fetchable.isNotEmpty) FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.restoreInstall))],
               );
             },
           ),
@@ -137,24 +135,22 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // left standing with no way out.
     ModalRoute<Object?>? spinner;
     unawaited(
-      showDialog<void>(
+      showHaloDialog<void>(
         context: navigator,
         barrierDismissible: false,
-        builder: (context) => HoldSizeWhileCovered(
-          child: Builder(
-            builder: (context) {
-              spinner ??= ModalRoute.of(context);
-              return HaloDialog(
-                content: Row(
-                  children: [
-                    const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
-                    const SizedBox(width: Space.lg),
-                    Expanded(child: Text(t.restoreInstalling)),
-                  ],
-                ),
-              );
-            },
-          ),
+        builder: (context) => Builder(
+          builder: (context) {
+            spinner ??= ModalRoute.of(context);
+            return HaloDialog(
+              content: Row(
+                children: [
+                  const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3)),
+                  const SizedBox(width: Space.lg),
+                  Expanded(child: Text(t.restoreInstalling)),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
@@ -229,14 +225,12 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
       widget.services.statusBar.showNotice(key: 'extensions:restoreResult', title: title, text: body.toPlainText());
       return;
     }
-    await showDialog<void>(
+    await showHaloDialog<void>(
       context: navigator,
-      builder: (context) => HoldSizeWhileCovered(
-        child: HaloDialog(
-          title: Text(title),
-          content: Text.rich(body),
-          cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
-        ),
+      builder: (context) => HaloDialog(
+        title: Text(title),
+        content: Text.rich(body),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );
   }

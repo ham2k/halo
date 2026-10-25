@@ -9,8 +9,8 @@
 // S/L boundary re-presents in place — no pop-and-reshow, no lost state, and
 // `Navigator.pop(context, result)` resolves the same `await` either way.
 //
-// For brief messages or one-or-two-field prompts keep using plain
-// `showDialog` — Modal Panes are for content that fills a pane.
+// For brief messages or one-or-two-field prompts keep using
+// `showHaloDialog` — Modal Panes are for content that fills a pane.
 
 import 'dart:math' as math;
 
@@ -39,19 +39,42 @@ Future<T?> showHaloDialog<T>({required BuildContext context, required WidgetBuil
   // width — the cap would silently do nothing. The frame's Center loosens them
   // so the cap actually bites. The frame already keeps the edge clearance, so
   // a Dialog inside it drops the theme's vertical inset rather than adding the
-  // clearance twice.
+  // clearance twice. On a phone or tablet the frame's margin is the whole
+  // margin, so the Dialog drops its side inset too.
   builder: (context) => HoldSizeWhileCovered(
     child: HaloDialogFrame(
       child: ConstrainedBox(
         constraints: haloDialogConstraints(context),
         child: DialogTheme(
-          data: DialogTheme.of(context).copyWith(insetPadding: const EdgeInsets.symmetric(horizontal: dialogSideInset)),
+          data: DialogTheme.of(context).copyWith(insetPadding: isMobilePlatform ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: dialogSideInset)),
           child: Builder(builder: builder),
         ),
       ),
     ),
   ),
 );
+
+/// The `builder:` for a framework picker (`showDatePicker`,
+/// `showDateRangePicker`, `showTimePicker`), which opens its own dialog and so
+/// cannot go through [showHaloDialog]: it gets the same frame and size cap.
+/// A picker sets its own Dialog inset, so the theme's cannot place it — the
+/// range picker's calendar sets none at all and fills the window, over the
+/// header and the window controls in it. Rounded like every other card, now
+/// that it no longer meets the window's edges.
+Widget haloPickerFrame(BuildContext context, Widget? child) {
+  final theme = Theme.of(context);
+  return HaloDialogFrame(
+    child: ConstrainedBox(
+      constraints: haloDialogConstraints(context),
+      child: Theme(
+        data: theme.copyWith(
+          datePickerTheme: theme.datePickerTheme.copyWith(rangePickerShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28))),
+        ),
+        child: child!,
+      ),
+    ),
+  );
+}
 
 /// Shows [builder]'s content as a Modal Pane and completes with the value
 /// passed to `Navigator.pop`. Call it like `showDialog`.
@@ -704,8 +727,12 @@ class _TopModalPaneScaffold extends StatelessWidget {
     );
   }
 
+  // Measured against its route, as HaloDialogFrame measures: the route stops
+  // above the app's bottom chrome, which the window size does not show.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, constraints) => _build(context, constraints.biggest));
+
+  Widget _build(BuildContext context, Size area) {
     final theme = Theme.of(context);
     final headerHeight = theme.appBarTheme.toolbarHeight ?? kToolbarHeight;
     final screenSize = MediaQuery.sizeOf(context);
@@ -740,10 +767,9 @@ class _TopModalPaneScaffold extends StatelessWidget {
       0.0,
       isNarrow
           ? screenSize.height - topOffset - MediaQuery.of(context).padding.bottom
-          // Wide: still a floating card — allowed down to half a header's
-          // height above the screen's bottom edge rather than the generic
-          // haloDialogConstraints' edge clearance.
-          : screenSize.height - topOffset - headerHeight / 2,
+          // Wide: still a floating card, so it stops where the shared frame
+          // stops every other one.
+          : area.height - topOffset - HaloDialogFrame.insetsOf(context, area).bottom,
     );
     // Not applied in the full-width narrow case. Floored at zero for the same
     // reason as [sheetMaxHeight]: callers measure the control to align with,

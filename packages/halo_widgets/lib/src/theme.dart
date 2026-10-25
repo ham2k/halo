@@ -33,6 +33,8 @@ import 'covered_route_hold.dart';
 import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
+import 'platform_chrome.dart';
+import 'spacing.dart';
 
 const _tabularFigures = [FontFeature.tabularFigures()];
 
@@ -528,12 +530,16 @@ EdgeInsets haloDialogInsetPadding(double headerHeight) => EdgeInsets.symmetric(h
 /// itself to its content. Capped at [maxDialogWidth] and at the window height
 /// less [haloDialogEdgeClearance] at each end, so a card that fills it inside
 /// a [HaloDialogFrame] overlaps the header by exactly [dialogHeaderOverlap]
-/// and stops the same distance above the window's bottom edge. Never negative: a
+/// and stops the same distance above the window's bottom edge. On a phone or
+/// tablet the cap is the frame's own [Space.xl] margin instead: the header
+/// clearance there would bind before the frame on a screen with little safe
+/// area, leaving a wider margin than every other edge. Never negative: a
 /// window shorter than that clearance (no native min-size floor on web/Linux;
 /// a large font scale divides the logical height further) would otherwise
 /// assert on invalid constraints.
 BoxConstraints haloDialogConstraints(BuildContext context) {
-  final maxHeight = math.max(0.0, MediaQuery.sizeOf(context).height - 2 * haloDialogEdgeClearance(context));
+  final clearance = isMobilePlatform ? Space.xl : haloDialogEdgeClearance(context);
+  final maxHeight = math.max(0.0, MediaQuery.sizeOf(context).height - 2 * clearance);
   return BoxConstraints(maxWidth: maxDialogWidth, maxHeight: maxHeight);
 }
 
@@ -545,6 +551,12 @@ BoxConstraints haloDialogConstraints(BuildContext context) {
 /// card sized by [haloDialogConstraints] and merely centered in its route
 /// would sit half the footer's height too high at both ends. The bottom inset
 /// is the clearance less whatever lies below the route.
+///
+/// On a phone or tablet there are no window controls to keep clear of, so the
+/// frame keeps the card inside the safe area with just a [Space.xl] margin on
+/// every side. The safe area is the frame's own to apply: under a `SafeArea`
+/// the padding is already spent and adds nothing, and a surface without one
+/// (a `showGeneralDialog`) would otherwise put the card under the status bar.
 class HaloDialogFrame extends StatelessWidget {
   final Widget child;
 
@@ -553,6 +565,7 @@ class HaloDialogFrame extends StatelessWidget {
   /// The frame's insets, for a surface that places itself; [area] is the size
   /// its route lays it out in.
   static EdgeInsets insetsOf(BuildContext context, Size area) {
+    if (isMobilePlatform) return MediaQuery.paddingOf(context) + const EdgeInsets.all(Space.xl);
     final clearance = haloDialogEdgeClearance(context);
     final belowRoute = math.max(0.0, MediaQuery.sizeOf(context).height - area.height);
     return EdgeInsets.only(top: clearance, bottom: math.max(0.0, clearance - belowRoute));

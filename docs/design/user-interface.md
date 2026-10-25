@@ -548,10 +548,25 @@ A card floating over the window reaches into the header by
 above the window's bottom edge. `HaloDialogFrame` places `showHaloDialog`
 dialogs, Modal Panes and the full-photo modals, and the command bar uses its
 insets. The routes stop above the status footer while `MediaQuery` reports
-the whole window, so centering a card in its route is not enough. A bare
-`showDialog` gets the top clearance from the theme's Dialog inset
-(`haloDialogInsetPadding`, which the Layout Density re-derives along with the
-header height), but its bottom is measured from the route, above the footer.
+the whole window, so centering a card in its route is not enough. A top pane
+hangs from the header instead of overlapping it, and stops the same clearance
+above the bottom edge.
+
+All of that is the desktop rule. On a phone or tablet there are no window
+controls, so `HaloDialogFrame` keeps a card inside the safe area with just a
+`Space.xl` margin on every side, and a top pane stops the same margin above
+the bottom.
+
+So app code opens a dialog with `showHaloDialog`, never a bare `showDialog`.
+A framework picker (`showDatePicker`, `showDateRangePicker`,
+`showTimePicker`) opens its own dialog and sets its own inset — the range
+picker's calendar fills the window, header and all — so it passes
+`builder: haloPickerFrame` for the same frame and size cap.
+`app/test/guards/no_bare_show_dialog_test.dart` fails the build on either
+slip. Any other Dialog the framework opens gets the top clearance from the
+theme's Dialog inset (`haloDialogInsetPadding`, which the Layout Density
+re-derives along with the header height), but its bottom is measured from the
+route, above the footer.
 
 Every footer is `haloDialogFooterRow` — one implementation, not a convention
 each dialog follows on its own. It carries five roles; `HaloDialog` takes

@@ -753,6 +753,10 @@ void main() {
   });
 
   group('haloDialogConstraints', () {
+    // The header clearance is the desktop rule; a test runs as Android by
+    // default, where the cap is the plain mobile margin instead.
+    final desktop = TargetPlatformVariant.only(TargetPlatform.macOS);
+
     // Captures the constraints plus the screen/header heights the helper saw,
     // so expectations derive from the same MediaQuery rather than hardcoded
     // numbers. [size] overrides the window via MediaQuery directly.
@@ -784,13 +788,13 @@ void main() {
       expect(constraints.maxWidth, maxDialogWidth);
       expect(maxDialogWidth, idealPaneWidth * 1.3);
       expect(constraints.maxHeight, screenHeight - 2 * (headerHeight - dialogHeaderOverlap));
-    });
+    }, variant: desktop);
 
     testWidgets('never goes negative on a window shorter than the header clearance', (tester) async {
       // No native min-size floor on web/Linux, and a large font scale divides
       // the logical height further — negative constraints would assert.
       final (constraints, _, _) = await measure(tester, size: const Size(400, 40));
       expect(constraints.maxHeight, 0.0);
-    });
+    }, variant: desktop);
   });
 }

@@ -7,7 +7,6 @@
 // (SettingsService.lastSeenReleaseVersion); dismissing it persists that
 // version so it doesn't show again until the next release.
 
-import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -408,12 +407,12 @@ class _ReleaseOverlayContent extends StatelessWidget {
 /// section) requires this — same reasoning as `modal_pane.dart`'s
 /// non-scrollable dialog case (its own `minHeight: maxPaneHeight`). Sized
 /// deliberately outside `modal_pane.dart`'s usual `idealPaneWidth` width
-/// convention: 70% of the window's width. The height keeps the shared
-/// `haloDialogEdgeClearance` from each edge of the window (`HaloDialogFrame`).
+/// convention: 70% of the window's width. The height is the shared
+/// `haloDialogConstraints` cap, which `HaloDialogFrame` places.
 Widget wideModalChrome({required BuildContext context, required Widget child, required VoidCallback onDismiss}) {
   final windowSize = MediaQuery.sizeOf(context);
   final paneWidth = windowSize.width * 0.7;
-  final maxPaneHeight = math.max(0.0, windowSize.height - 2 * haloDialogEdgeClearance(context));
+  final maxPaneHeight = haloDialogConstraints(context).maxHeight;
   final Widget content = BackdropFilter(
     // Blurs whatever's painted just behind this in the same compositing
     // layer (the home screen, or — for the About modal — the settings pane).

@@ -400,16 +400,14 @@ Future<bool> _isInstalled(InstalledExtensions store, InspectedBundle bundle) asy
 /// Why an install did not happen, in the install flow's own dialog — for a
 /// refusal decided before the flow starts (a catalog key that is built in)
 /// as much as for one it decides itself.
-Future<void> showInstallRefusal(BuildContext context, String message) => showDialog<void>(
+Future<void> showInstallRefusal(BuildContext context, String message) => showHaloDialog<void>(
   context: context,
-  builder: (context) => HoldSizeWhileCovered(
-    child: HaloDialog(
-      title: Text(context.t.extensionsPanel.installFailed),
-      content: Text(message),
-      // The way out goes in `cancel:`, not `actions:` — see HaloDialog and
-      // dialog_footer_convention_test.
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
-    ),
+  builder: (context) => HaloDialog(
+    title: Text(context.t.extensionsPanel.installFailed),
+    content: Text(message),
+    // The way out goes in `cancel:`, not `actions:` — see HaloDialog and
+    // dialog_footer_convention_test.
+    cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
   ),
 );
 
@@ -423,11 +421,9 @@ Future<bool> showConsentDialog(
   CatalogChannel? channel,
   List<CatalogScreenshot> screenshots = const [],
 }) async =>
-    await showDialog<bool>(
+    await showHaloDialog<bool>(
       context: context,
-      builder: (context) => HoldSizeWhileCovered(
-        child: _ConsentDialog(bundle: bundle, replacing: replacing, from: from, channel: channel, screenshots: screenshots),
-      ),
+      builder: (context) => _ConsentDialog(bundle: bundle, replacing: replacing, from: from, channel: channel, screenshots: screenshots),
     ) ??
     false;
 
@@ -584,26 +580,24 @@ class _Capability extends StatelessWidget {
 /// Confirms removing an installed extension. Returns true when the operator
 /// agreed.
 Future<bool> confirmUninstall(BuildContext context, {required String name}) async {
-  return await showDialog<bool>(
+  return await showHaloDialog<bool>(
         context: context,
-        builder: (context) => HoldSizeWhileCovered(
-          child: HaloDialog(
-            title: Text(context.t.extensionsPanel.uninstallTitle(name: name)),
-            content: Text(context.t.extensionsPanel.uninstallBody),
-            cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-            // Removing is this dialog's whole purpose, so here — unlike the
-            // details dialog it was opened from — the destructive verb IS the
-            // primary action and takes the trailing edge, with the way out to
-            // its left. In the error colour, because it is the press that
-            // cannot be undone.
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
-                child: Text(context.t.extensionsPanel.uninstallAction),
-              ),
-            ],
-          ),
+        builder: (context) => HaloDialog(
+          title: Text(context.t.extensionsPanel.uninstallTitle(name: name)),
+          content: Text(context.t.extensionsPanel.uninstallBody),
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+          // Removing is this dialog's whole purpose, so here — unlike the
+          // details dialog it was opened from — the destructive verb IS the
+          // primary action and takes the trailing edge, with the way out to
+          // its left. In the error colour, because it is the press that
+          // cannot be undone.
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              child: Text(context.t.extensionsPanel.uninstallAction),
+            ),
+          ],
         ),
       ) ??
       false;
@@ -620,41 +614,39 @@ Future<bool> confirmUninstall(BuildContext context, {required String name}) asyn
 Future<bool> _confirmUpdateAll(BuildContext context, {required List<({String name, String? from, String to})> updates}) async {
   final t = context.t.extensionsPanel;
   final theme = Theme.of(context);
-  return await showDialog<bool>(
+  return await showHaloDialog<bool>(
         context: context,
-        builder: (context) => HoldSizeWhileCovered(
-          child: HaloDialog(
-            title: Text(t.updateAllTitle(count: updates.length)),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final update in updates)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: Space.xs),
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: update.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          TextSpan(
-                            text: '  ${update.from ?? ''} → ${update.to}',
-                            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
+        builder: (context) => HaloDialog(
+          title: Text(t.updateAllTitle(count: updates.length)),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final update in updates)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Space.xs),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: update.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        TextSpan(
+                          text: '  ${update.from ?? ''} → ${update.to}',
+                          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
                     ),
                   ),
-              ],
-            ),
-            cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-            // Confirming is this dialog's whole purpose, so the verb takes the
-            // trailing edge and the way out sits to its left — the same shape as
-            // the remove confirmation.
-            actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.updateAllAction))],
+                ),
+            ],
           ),
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+          // Confirming is this dialog's whole purpose, so the verb takes the
+          // trailing edge and the way out sits to its left — the same shape as
+          // the remove confirmation.
+          actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.updateAllAction))],
         ),
       ) ??
       false;
@@ -754,18 +746,16 @@ Future<ExtensionDetailsAction?> showExtensionDetails(
   String? updateVersion,
   CatalogChannel channel = CatalogChannel.stable,
   List<CatalogScreenshot> screenshots = const [],
-}) => showDialog<ExtensionDetailsAction>(
+}) => showHaloDialog<ExtensionDetailsAction>(
   context: context,
-  builder: (context) => HoldSizeWhileCovered(
-    child: _DetailsDialog(
-      info: info,
-      locale: locale,
-      installedFrom: installedFrom,
-      installedFromIcon: installedFromIcon,
-      updateVersion: updateVersion,
-      channel: channel,
-      screenshots: screenshots,
-    ),
+  builder: (context) => _DetailsDialog(
+    info: info,
+    locale: locale,
+    installedFrom: installedFrom,
+    installedFromIcon: installedFromIcon,
+    updateVersion: updateVersion,
+    channel: channel,
+    screenshots: screenshots,
   ),
 );
 

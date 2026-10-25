@@ -636,6 +636,7 @@ class _LogsViewState extends State<LogsView> with DockHost<LogsView>, _LogsAdifD
         firstDate: DateTime(1900),
         lastDate: today,
         initialDateRange: range == null || range.end.isAfter(today) ? null : range,
+        builder: haloPickerFrame,
       );
       if (range == null || !mounted) return;
     } else if (period == _period) {

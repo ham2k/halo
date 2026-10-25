@@ -24,7 +24,7 @@ final _routeBuilders = RegExp(
 
 /// How many hand-built routes the app has. Raise it with a new one; a count
 /// that falls below it means the scan went blind, not that routes went away.
-const _knownSites = 13;
+const _knownSites = 6;
 
 List<File> _sources() {
   final roots = [Directory('lib'), Directory('../packages/halo_widgets/lib')];

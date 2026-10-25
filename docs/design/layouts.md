@@ -1357,7 +1357,7 @@ ticked; the operator's own unticks stand.
 Two distinct surfaces; pick deliberately:
 
 - **Simple dialogs** — brief messages, confirmations, one or two fields.
-  Plain `showDialog` + `AlertDialog`, no minimum width, identical at every
+  `showHaloDialog` + `HaloDialog`, no minimum width, identical at every
   shirt size.
 - **Modal Panes** — pane-sized content, designed at `idealPaneWidth`. Shown
   via [`showModalPane`](../../packages/halo_widgets/lib/src/modal_pane.dart),
@@ -1384,7 +1384,7 @@ Two distinct surfaces; pick deliberately:
   It is a single route that re-presents itself when the window crosses the
   S/L boundary while open — no pop-and-reshow. Both presentations resolve
   through `Navigator.pop(context, result)`; call sites `await` it exactly
-  like `showDialog`.
+  like `showHaloDialog`.
 
 ---
 
