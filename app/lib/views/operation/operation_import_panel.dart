@@ -219,45 +219,50 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
       // One StreamBuilder around everything below, rather than just around
       // the list: whether "Add to this operation" shows at all depends on
       // [rows], so a rebuild scoped only to the list would leave that row
-      // stale the moment a capture arrives.
-      StreamBuilder<List<InboundCaptureRow>>(
-        stream: widget.services.inboundCaptures.watchPending(),
-        builder: (context, snapshot) {
-          final rows = snapshot.data ?? const <InboundCaptureRow>[];
-          _pending = rows;
-          // Hidden until there's real data to decide about — an operator who
-          // hasn't started the other program yet has nothing to turn this on
-          // FOR, and a toggle with nothing behind it just reads as broken.
-          final showAddToOperation = _receiving || rows.isNotEmpty;
+      // stale the moment a capture arrives. Which puts the Captured QSOs band
+      // inside it, out of the list's sight — so it cuts its own sections and
+      // the list is told it holds slivers.
+      SectionedSlivers(
+        slivers: [
+          StreamBuilder<List<InboundCaptureRow>>(
+            stream: widget.services.inboundCaptures.watchPending(),
+            builder: (context, snapshot) {
+              final rows = snapshot.data ?? const <InboundCaptureRow>[];
+              _pending = rows;
+              // Hidden until there's real data to decide about — an operator who
+              // hasn't started the other program yet has nothing to turn this on
+              // FOR, and a toggle with nothing behind it just reads as broken.
+              final showAddToOperation = _receiving || rows.isNotEmpty;
 
-          final sorted = [...rows]..sort((a, b) => b.receivedAtMillis.compareTo(a.receivedAtMillis));
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (showAddToOperation)
-                SwitchListTile(
-                  secondary: const Icon(MdiIcons.playlistCheck),
-                  title: Text(t.addToOperationTitle),
-                  subtitle: Text(_receiving ? t.addToOperationDescriptionOn : t.addToOperationDescriptionOff),
-                  value: _receiving,
-                  onChanged: (value) => unawaited(_setReceiving(value)),
-                ),
-              SectionHeader(t.pendingSectionTitle),
-              if (sorted.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.lg),
-                  child: Text(t.pendingEmpty, style: theme.textTheme.bodyMedium),
-                )
-              else
-                for (final row in sorted)
-                  _CaptureTile(
-                    row: row,
-                    operationStationCall: operationStationCall,
-                    onDiscard: () => unawaited(widget.services.inboundCaptures.discard([row.uuid])),
-                  ),
-            ],
-          );
-        },
+              final sorted = [...rows]..sort((a, b) => b.receivedAtMillis.compareTo(a.receivedAtMillis));
+              return SliverMainAxisGroup(
+                slivers: sectionSlivers(context, [
+                  if (showAddToOperation)
+                    SwitchListTile(
+                      secondary: const Icon(MdiIcons.playlistCheck),
+                      title: Text(t.addToOperationTitle),
+                      subtitle: Text(_receiving ? t.addToOperationDescriptionOn : t.addToOperationDescriptionOff),
+                      value: _receiving,
+                      onChanged: (value) => unawaited(_setReceiving(value)),
+                    ),
+                  SectionHeader(t.pendingSectionTitle),
+                  if (sorted.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.lg),
+                      child: Text(t.pendingEmpty, style: theme.textTheme.bodyMedium),
+                    )
+                  else
+                    for (final row in sorted)
+                      _CaptureTile(
+                        row: row,
+                        operationStationCall: operationStationCall,
+                        onDiscard: () => unawaited(widget.services.inboundCaptures.discard([row.uuid])),
+                      ),
+                ]),
+              );
+            },
+          ),
+        ],
       ),
     ];
   }
