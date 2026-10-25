@@ -27,11 +27,13 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
+import '../support/fake_extension_host.dart' show LookupCallsOneByOne;
+
 /// Serves a fixed board instead of reaching for the extension runtime, and
 /// answers the call-note lookup the panel makes for every spotted call — that
 /// lookup is what decides the "Calls of Note" section, so a test about the
 /// pinned duplicate has to drive it.
-class _FakeExtensions extends ExtensionService {
+class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
   _FakeExtensions(this.board, {this.notedCalls = const {}, this.dupeCalls = const {}});
 
   final List<Map<String, dynamic>> board;

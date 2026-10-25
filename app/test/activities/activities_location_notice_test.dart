@@ -92,15 +92,16 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
     ({double south, double west, double north, double east})? searchWithin,
   }) async {
     searches++;
-    if (allSourcesFail) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);
+    if (allSourcesFail) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true, someSourcesFailed: true);
     if (!offersNearby || gridToLocation(operationData['grid'] as String?) == null) {
-      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
+      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false, someSourcesFailed: false);
     }
     return (
       suggestions: const [
         {'type': 'pota', 'ref': 'US-0001', 'label': 'POTA US-0001', 'shortLabel': 'US-0001', 'name': 'Some Park'},
       ],
       allSourcesFailed: false,
+      someSourcesFailed: false,
     );
   }
 }

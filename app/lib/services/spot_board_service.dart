@@ -69,6 +69,19 @@ class SpotBoardSubscription {
 /// operator's lookup failing (`ExtensionHookApi.lookupCall`).
 const _lookupStreakKey = 'extensions:lookup-call:spot-board';
 
+/// How many calls one lookup crossing carries. Each call's lookup reads the
+/// database (call history) and those reads queue behind one another, so a
+/// batch is kept small enough that a read from anywhere else — the logging
+/// panel's own lookup, the activity search's nearby parks — waits behind the
+/// batches in flight, never behind the whole board. Passes can overlap, but
+/// each asks only calls no other pass is asking.
+const spotLookupBatchSize = 20;
+
+/// The shortest time between two passes looking up a board's new calls. A
+/// cluster in a contest changes the board several times a second; looked up
+/// per change, the same calls are asked for over and over.
+const spotLookupCoalesce = Duration(milliseconds: 1500);
+
 class SpotBoardService extends ChangeNotifier {
   SpotBoardService({required this.extensions, required this.spots, required this.settings, required this.radio, required this.scoring, this.chase});
 
@@ -95,6 +108,14 @@ class SpotBoardService extends ChangeNotifier {
   /// for cost a lookup. A view, not a copy — the panel reads it per spot.
   Map<String, SpotCallInfo> get callInfo => UnmodifiableMapView(_callInfo);
   final Map<String, SpotCallInfo> _callInfo = {};
+
+  /// Calls whose lookup is out, each to the completion of the pass asking.
+  /// Not yet in [_callInfo], so without this a pass starting meanwhile asks
+  /// for them again — and a lookup timing out leaves its database read
+  /// queued, so every repeat adds to the queue the next one times out behind.
+  final Map<String, Future<void>> _callInfoAsking = {};
+  Timer? _callInfoSoon;
+  bool _callInfoPending = false;
 
   /// The activities' logging controls for [operation] — what picks each
   /// spot's activity icon and tint, as the Spots Panel's rows show them — for
@@ -196,6 +217,9 @@ class SpotBoardService extends ChangeNotifier {
     _unsubscribeSpots?.call();
     _unsubscribeSpots = null;
     _scoreDebounce?.cancel();
+    _callInfoSoon?.cancel();
+    _callInfoSoon = null;
+    _callInfoPending = false;
     _judgedUuid = null;
     _judgedRevision = null;
     _scores = {};
@@ -243,8 +267,27 @@ class SpotBoardService extends ChangeNotifier {
 
   void _onSpotsChanged() {
     _bump();
-    unawaited(refreshCallInfo());
+    _refreshCallInfoSoon();
     _scheduleScores();
+  }
+
+  /// [refreshCallInfo] now, unless a pass ran within [spotLookupCoalesce] —
+  /// then once, when that much time has passed. Now, so a board's first
+  /// spots get their notes as they appear; and never pushed back by the
+  /// changes behind it, as a debounce would be, since a busy cluster never
+  /// goes quiet for long enough to let one fire.
+  void _refreshCallInfoSoon() {
+    if (_callInfoSoon != null) {
+      _callInfoPending = true;
+      return;
+    }
+    unawaited(refreshCallInfo());
+    _callInfoSoon = Timer(spotLookupCoalesce, () {
+      _callInfoSoon = null;
+      if (!_callInfoPending) return;
+      _callInfoPending = false;
+      if (_subscribers > 0) _refreshCallInfoSoon();
+    });
   }
 
   String _filtersKey = '';
@@ -294,8 +337,10 @@ class SpotBoardService extends ChangeNotifier {
   }
 
   /// Looks up (and caches) each currently-fetched spot's callsign info.
-  /// Always runs — only already-cached calls are skipped — so it is there
-  /// from the very first fetch, not only once a reader needs it.
+  /// Always runs — only calls already cached or still being asked about are
+  /// skipped — so it is there from the very first fetch, not only once a
+  /// reader needs it. Asked [spotLookupBatchSize] calls per crossing, one
+  /// crossing at a time, and each batch lands as it answers.
   /// `online: false`: call-notes' data comes from a cached, periodically
   /// refreshed data file, and continent from the bundled DXCC country file
   /// (`annotateCallsign` in the lookups extension), so the offline pass is
@@ -303,37 +348,73 @@ class SpotBoardService extends ChangeNotifier {
   /// HamDB…) for fields nothing here uses, on a board that can easily hold
   /// far more distinct callsigns than the logging field ever looks up.
   Future<void> refreshCallInfo() async {
-    final calls = <String>{
-      for (final list in spots.spotsBySource.values)
-        for (final spot in list) ...spotOperatorCalls(spot),
-    }..removeWhere(_callInfo.containsKey);
-    if (calls.isEmpty) return;
+    final unknown =
+        <String>{
+            for (final list in spots.spotsBySource.values)
+              for (final spot in list) ...spotOperatorCalls(spot),
+          }
+          ..removeWhere(_callInfo.containsKey)
+          // Never answered (`lookupCalls`), so asked it would only hold a batch's
+          // place — and a batch of them answers nothing, which stops the pass.
+          ..removeWhere((call) => call.length < 3);
+    // Waited on, not asked again: a caller awaiting this expects the board's
+    // calls answered when it returns, whichever pass asks.
+    final elsewhere = {for (final call in unknown) ?_callInfoAsking[call]};
+    final calls = [
+      for (final call in unknown)
+        if (!_callInfoAsking.containsKey(call)) call,
+    ];
+    final done = Completer<void>();
+    for (final call in calls) {
+      _callInfoAsking[call] = done.future;
+    }
     final operationData = operation?.data ?? const <String, dynamic>{};
-    final results = await Future.wait(
-      calls.map((call) async {
-        final result = await extensions.lookupCall(call, qso: const {}, operation: operationData, online: false, streakKey: _lookupStreakKey);
+    try {
+      for (final batch in _batches(calls)) {
+        final results = await extensions.lookupCalls(
+          [for (final call in batch) (call: call, qso: const <String, dynamic>{})],
+          operation: operationData,
+          online: false,
+          streakKey: _lookupStreakKey,
+        );
+        if (_subscribers == 0) return;
+        // A batch that answered nothing is a runtime that cannot answer right
+        // now, and the batches after it would only queue behind the one it
+        // is still running. The next refresh asks for them.
+        if (results.every((result) => result == null)) break;
         // Null is no answer at all — a runtime still booting, a lookup timed
         // out — not "nothing known", which comes back as a result. Cached, it
         // would cost that call its note and emoji for the session; left out,
         // the next refresh asks again.
-        if (result == null) return null;
-        // Probed, not cast: an extension answering one field with the wrong
-        // type throws a cast inside this Future.wait, and that loses the
-        // whole batch — every call goes uncached and the next refresh throws
-        // again.
-        final guess = asQsonMap(result['guess']);
-        final emoji = asQsonString(guess?['emoji']);
-        // A note the call-info area would show, not merely a key: it reads
-        // the note as a non-empty string, and the board's mark must agree.
-        final hasNote = guess != null && (emoji != null || (asQsonString(guess['note'])?.isNotEmpty ?? false));
-        final continent = asQsonString(guess?['continent']);
-        final entityPrefix = asQsonString(guess?['entityPrefix']);
-        return MapEntry(call, (hasNote: hasNote, emoji: emoji, continent: continent, entityPrefix: entityPrefix));
-      }),
-    );
-    if (_subscribers == 0) return;
-    _callInfo.addEntries(results.nonNulls);
-    _bump();
+        _callInfo.addEntries([
+          for (final (i, result) in results.indexed)
+            if (result != null) MapEntry(batch[i], _spotCallInfoFrom(result)),
+        ]);
+        _bump();
+      }
+    } finally {
+      _callInfoAsking.removeWhere((_, pass) => pass == done.future);
+      done.complete();
+    }
+    await Future.wait(elsewhere);
+  }
+
+  /// What the board keeps of one call's lookup. Probed, not cast: an
+  /// extension answering one field with the wrong type must cost only that
+  /// field, not the call's info, nor the batch it came back in.
+  static SpotCallInfo _spotCallInfoFrom(Map<String, dynamic> result) {
+    final guess = asQsonMap(result['guess']);
+    final emoji = asQsonString(guess?['emoji']);
+    // A note the call-info area would show, not merely a key: it reads
+    // the note as a non-empty string, and the board's mark must agree.
+    final hasNote = guess != null && (emoji != null || (asQsonString(guess['note'])?.isNotEmpty ?? false));
+    return (hasNote: hasNote, emoji: emoji, continent: asQsonString(guess?['continent']), entityPrefix: asQsonString(guess?['entityPrefix']));
+  }
+
+  static Iterable<List<T>> _batches<T>(List<T> items) sync* {
+    for (var i = 0; i < items.length; i += spotLookupBatchSize) {
+      yield items.sublist(i, i + spotLookupBatchSize < items.length ? i + spotLookupBatchSize : items.length);
+    }
   }
 
   /// Coalesces bursts of triggers into one pass. A run of contacts logged in a
@@ -507,6 +588,12 @@ class SpotBoardService extends ChangeNotifier {
   /// when the extensions runtime restarts ([_statesGeneration]).
   final Map<String, ({String? state, int atMillis})> _candidateStates = {};
   int? _statesGeneration;
+
+  /// The [_stateKey]s a pass is still asking about, each to the pass's
+  /// completion. A pass starting meanwhile waits on it rather than asking
+  /// again — the same reason as [_callInfoAsking] — and rather than judging
+  /// without the state, which the pass asking would land too late to show.
+  final Map<String, Future<void>> _statesAsking = {};
   static const _noStateRetry = Duration(minutes: 5);
 
   /// What an offline lookup's answer depends on: the call and the refs, not
@@ -519,12 +606,17 @@ class SpotBoardService extends ChangeNotifier {
     return '${asQsonString(asQsonMap(candidate['their'])?['call'])?.toUpperCase() ?? ''}|${refs.join(',')}';
   }
 
+  static String _candidateCall(Map<String, dynamic> candidate) => asQsonString(asQsonMap(candidate['their'])?['call']) ?? '';
+
   /// [candidates], each carrying its looked-up state as the lookup's guess
   /// (`their.guess.state`), as a contact typed in the logging panel does.
   Future<Map<String, Map<String, dynamic>>> _withGuessedStates(Map<String, Map<String, dynamic>> candidates, Map<String, dynamic> operationData) async {
     final generation = extensions.runtimeGeneration.value;
     if (generation != _statesGeneration) {
       _candidateStates.clear();
+      // A pass still asking the old runtime drops its answers, so a pass
+      // waiting on it would come back without the states it was owed.
+      _statesAsking.clear();
       _statesGeneration = generation;
     }
     final now = realNowMillis();
@@ -533,25 +625,45 @@ class SpotBoardService extends ChangeNotifier {
       (state: null, :final atMillis) => now - atMillis < _noStateRetry.inMilliseconds,
       _ => true,
     };
-    final asking = <String, Map<String, dynamic>>{
+    final unknown = {
       for (final candidate in candidates.values)
-        if (!known(_stateKey(candidate))) _stateKey(candidate): candidate,
+        // As in [refreshCallInfo]: a call too short to be asked stops a pass.
+        if (!known(_stateKey(candidate)) && _candidateCall(candidate).length >= 3) _stateKey(candidate): candidate,
     };
-    final found = await Future.wait([
-      for (final MapEntry(:key, value: candidate) in asking.entries)
-        () async {
-          final call = asQsonString(asQsonMap(candidate['their'])?['call']) ?? '';
-          final result = await extensions.lookupCall(call, qso: candidate, operation: operationData, online: false, streakKey: _lookupStreakKey);
-          // Null is no answer at all, as in [refreshCallInfo]: asked again
-          // on the next pass rather than cached as knowing nothing.
-          if (result == null) return null;
-          return MapEntry(key, (state: asQsonString(asQsonMap(result['guess'])?['state']), atMillis: now));
-        }(),
-    ]);
-    // Released while asking: what was found describes a board nobody reads,
-    // and would outlive the release that cleared the cache.
+    final elsewhere = {for (final key in unknown.keys) ?_statesAsking[key]};
+    final asking = [
+      for (final entry in unknown.entries)
+        if (!_statesAsking.containsKey(entry.key)) entry,
+    ];
+    final done = Completer<void>();
+    for (final entry in asking) {
+      _statesAsking[entry.key] = done.future;
+    }
+    try {
+      for (final batch in _batches(asking)) {
+        final results = await extensions.lookupCalls(
+          [for (final entry in batch) (call: _candidateCall(entry.value), qso: entry.value)],
+          operation: operationData,
+          online: false,
+          streakKey: _lookupStreakKey,
+        );
+        // Released while asking: what was found describes a board nobody
+        // reads, and would outlive the release that cleared the cache.
+        if (_subscribers == 0 || generation != _statesGeneration) return candidates;
+        if (results.every((result) => result == null)) break;
+        // Null is no answer at all, as in [refreshCallInfo]: asked again
+        // on the next pass rather than cached as knowing nothing.
+        _candidateStates.addEntries([
+          for (final (i, result) in results.indexed)
+            if (result != null) MapEntry(batch[i].key, (state: asQsonString(asQsonMap(result['guess'])?['state']), atMillis: now)),
+        ]);
+      }
+    } finally {
+      _statesAsking.removeWhere((_, pass) => pass == done.future);
+      done.complete();
+    }
+    await Future.wait(elsewhere);
     if (_subscribers == 0 || generation != _statesGeneration) return candidates;
-    _candidateStates.addEntries(found.nonNulls);
     return {
       for (final MapEntry(:key, :value) in candidates.entries)
         key: switch (_candidateStates[_stateKey(value)]?.state) {
@@ -588,6 +700,7 @@ class SpotBoardService extends ChangeNotifier {
   @override
   void dispose() {
     _scoreDebounce?.cancel();
+    _callInfoSoon?.cancel();
     if (_subscribers > 0) {
       spots.removeListener(_onSpotsChanged);
       settings.removeListener(_onSettingsChanged);

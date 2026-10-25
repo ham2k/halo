@@ -154,3 +154,16 @@ class ExtensionServiceWithFakeHost extends ExtensionService {
   @override
   Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {}
 }
+
+/// For a fake [ExtensionService] that scripts [ExtensionService.lookupCall]:
+/// answers a batched lookup call by call through it, so a fake written for
+/// single lookups answers the spot board's batches the same way.
+mixin LookupCallsOneByOne on ExtensionService {
+  @override
+  Future<List<Map<String, dynamic>?>> lookupCalls(
+    List<({String call, Map<String, dynamic> qso})> requests, {
+    required Map<String, dynamic> operation,
+    bool online = true,
+    required String streakKey,
+  }) async => [for (final request in requests) await lookupCall(request.call, qso: request.qso, operation: operation, online: online, streakKey: streakKey)];
+}

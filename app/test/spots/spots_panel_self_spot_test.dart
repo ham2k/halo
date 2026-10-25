@@ -19,9 +19,11 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
 
+import '../support/fake_extension_host.dart' show LookupCallsOneByOne;
+
 /// Serves a fixed board instead of reaching for the extension runtime, same
 /// shape as spots_panel_reveal_test.dart's fake.
-class _FakeExtensions extends ExtensionService {
+class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
   _FakeExtensions(this.board, {this.controls = const []});
 
   final List<Map<String, dynamic>> board;

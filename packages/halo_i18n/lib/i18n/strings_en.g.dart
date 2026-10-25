@@ -1097,8 +1097,8 @@ class Translations$activitiesView$en {
 	/// en: 'Activity search unavailable'
 	String get searchUnavailableTitle => 'Activity search unavailable';
 
-	/// en: 'No activity extension could run the search. Try again in a moment.'
-	String get searchUnavailableReason => 'No activity extension could run the search. Try again in a moment.';
+	/// en: 'An activity extension could not answer the search. Try again in a moment.'
+	String get searchUnavailableReason => 'An activity extension could not answer the search. Try again in a moment.';
 
 	/// en: 'Use suggestions & search below to add one'
 	String get emptySheet => 'Use suggestions & search below to add one';
@@ -2286,6 +2286,12 @@ class Translations$extensionService$en {
 
 	/// en: 'Ham2K’s File Stash can’t be reached right now'
 	String get stashUnavailable => 'Ham2K’s File Stash can’t be reached right now';
+
+	/// en: '${names} didn't answer the activity search, so some results may be missing.'
+	String activitySearchSourcesFailed({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.';
+
+	/// en: 'Some activity extensions didn't answer the search, so some results may be missing.'
+	String get activitySearchSomeSourcesFailed => 'Some activity extensions didn\'t answer the search, so some results may be missing.';
 
 	/// en: '${name} spent too much time in its timers. They're stopped until the extensions restart.'
 	String timersSuspendedBudget({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.';
@@ -10105,7 +10111,7 @@ extension on Translations {
 			'activitiesView.locationSettingsUnavailable' => 'Allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
-			'activitiesView.searchUnavailableReason' => 'No activity extension could run the search. Try again in a moment.',
+			'activitiesView.searchUnavailableReason' => 'An activity extension could not answer the search. Try again in a moment.',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
@@ -11514,6 +11520,8 @@ extension on Translations {
 			'extensionService.commandFailed' => 'The command failed to run',
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'Ham2K’s File Stash can’t be reached right now',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'Some activity extensions didn\'t answer the search, so some results may be missing.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. They\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. Its timers are stopped until the extensions restart.',

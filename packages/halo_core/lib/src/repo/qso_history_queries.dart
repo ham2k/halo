@@ -68,6 +68,51 @@ mixin QsoHistoryQueries {
     return [for (final row in rows) qsoFromRow(row.readTable(db.qsos))];
   }
 
+  /// [historyForCall] for each of [calls] at once: each one's history under
+  /// [filter], most recent first and at most [limit] long, keyed by the call
+  /// uppercased. A call with no history has no key.
+  ///
+  /// For many lookups asking at the same moment — the spot board's, a batch
+  /// of callsigns at a time. A query per call is a queue of queries, and
+  /// every other reader of the database waits behind it. Two reads per
+  /// chunk rather than one: the newest [limit] of each call are picked from
+  /// two narrow columns, and only those rows are read whole, so a station
+  /// worked hundreds of times decodes [limit] rows, not all of them — the
+  /// per-call bound [historyForCall] puts in its SQL, which one query over
+  /// many calls cannot.
+  Future<Map<String, List<Qso>>> historyForCallsEach(Iterable<String> calls, {required int limit, HistoryFilter filter = HistoryFilter.none}) async {
+    final normalized = calls.map((c) => c.trim().toUpperCase()).where((c) => c.isNotEmpty).toSet().toList();
+    final picked = <String, List<String>>{};
+    for (var i = 0; i < normalized.length; i += inClauseChunkSize) {
+      final chunk = normalized.sublist(i, math.min(i + inClauseChunkSize, normalized.length));
+      final query = db.selectOnly(db.qsos).join([leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation))])
+        ..addColumns([db.qsos.uuid, db.qsos.theirCall])
+        ..where(
+          db.qsos.theirCall.isIn(chunk) &
+              db.qsos.deleted.equals(false) &
+              isContact &
+              (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
+              filter.toSql(db.qsos, db.operations),
+        )
+        ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
+      for (final row in await query.get()) {
+        final uuids = picked.putIfAbsent(row.read(db.qsos.theirCall)!, () => []);
+        if (uuids.length < limit) uuids.add(row.read(db.qsos.uuid)!);
+      }
+    }
+    final wanted = [for (final uuids in picked.values) ...uuids];
+    final byUuid = <String, Qso>{};
+    for (var i = 0; i < wanted.length; i += inClauseChunkSize) {
+      final chunk = wanted.sublist(i, math.min(i + inClauseChunkSize, wanted.length));
+      for (final row in await (db.select(db.qsos)..where((q) => q.uuid.isIn(chunk))).get()) {
+        byUuid[row.uuid] = qsoFromRow(row);
+      }
+    }
+    return {
+      for (final MapEntry(key: call, value: uuids) in picked.entries) call: [for (final uuid in uuids) ?byUuid[uuid]],
+    };
+  }
+
   /// When each contact [historyForCall] would list started, most recent
   /// first — the call-info's "worked before" pill, which buckets them by
   /// day. One column rather than the rows, so a callsign worked hundreds of

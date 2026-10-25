@@ -337,9 +337,49 @@ class _ExtensionHostCalls {
     // so it rejects even where there is no log to answer from.
     final filter = HistoryFilter.fromParams(params);
     final historyCall = params['call'] as String?;
-    if (historyCall == null || _service.qsos == null) return const <Map<String, dynamic>>[];
-    final history = await _service.qsos!.historyForCall(historyCall, limit: filter.limit, filter: filter);
-    return [for (final qso in history) qso.data];
+    final qsos = _service.qsos;
+    if (historyCall == null || qsos == null) return const <Map<String, dynamic>>[];
+    final call = historyCall.trim().toUpperCase();
+    if (call.isEmpty) return const <Map<String, dynamic>>[];
+    // Every lookup asks for its call's history, and the spot board runs its
+    // lookups a batch at a time: the requests landing within
+    // [historyCoalesceWindow] of one another with the same options are
+    // answered by one query, not a queue of them that every other reader of
+    // the database would wait behind.
+    final options = jsonEncode({for (final key in params.keys.where((key) => key != 'call').toList()..sort()) key: params[key]});
+    final waiting = _historyWaiting[options] ??= _answerHistorySoon(options, filter, qsos);
+    return (waiting[call] ??= Completer()).future;
+  }
+
+  /// How long a `getHistoryForCall` waits for others to share its query.
+  /// One lookup's history comes this much later; a batch of them comes in
+  /// one read instead of one each.
+  static const historyCoalesceWindow = Duration(milliseconds: 10);
+
+  /// The `getHistoryForCall` requests not yet answered, by their options
+  /// and then by call.
+  final Map<String, Map<String, Completer<List<Map<String, dynamic>>>>> _historyWaiting = {};
+
+  Map<String, Completer<List<Map<String, dynamic>>>> _answerHistorySoon(String options, HistoryFilter filter, QsosRepository qsos) {
+    final waiting = <String, Completer<List<Map<String, dynamic>>>>{};
+    Timer(historyCoalesceWindow, () async {
+      _historyWaiting.remove(options);
+      try {
+        // Alone, a call keeps `historyForCall`'s own LIMIT, which stops at
+        // its newest rows; the shared query reads every row of every call.
+        final history = waiting.length == 1
+            ? {waiting.keys.single: await qsos.historyForCall(waiting.keys.single, limit: filter.limit, filter: filter)}
+            : await qsos.historyForCallsEach(waiting.keys, limit: filter.limit, filter: filter);
+        for (final MapEntry(key: call, value: completer) in waiting.entries) {
+          completer.complete([for (final qso in history[call] ?? const <Qso>[]) qso.data]);
+        }
+      } catch (e, st) {
+        for (final completer in waiting.values) {
+          completer.completeError(e, st);
+        }
+      }
+    });
+    return waiting;
   }
 
   Future<dynamic> _dbLookupSelectOne(Map<String, dynamic> params) async {

@@ -514,7 +514,7 @@ class _Translations$activitiesView$qro extends Translations$activitiesView$en {
 	@override String get locationSettingsUnavailable => 'ALLOW LOCATION ACCESS IN YOUR SYSTEM SETTINGS';
 	@override String get locationGrantRefused => 'STILL NO LOCATION — THE SYSTEM SAID NO AGAIN';
 	@override String get searchUnavailableTitle => 'ACTIVITY SEARCH UNAVAILABLE';
-	@override String get searchUnavailableReason => 'NO ACTIVITY EXTENSION COULD RUN THE SEARCH. TRY AGAIN IN A MOMENT.';
+	@override String get searchUnavailableReason => 'AN ACTIVITY EXTENSION COULD NOT ANSWER THE SEARCH. TRY AGAIN IN A MOMENT.';
 	@override String get emptySheet => 'USE SUGGESTIONS & SEARCH BELOW TO ADD ONE';
 	@override String get exports => 'EXPORTS';
 	@override String get exportLogs => 'EXPORT LOGS';
@@ -1040,6 +1040,8 @@ class _Translations$extensionService$qro extends Translations$extensionService$e
 	@override String get commandFailed => 'THE COMMAND FAILED TO RUN';
 	@override String get reportUnavailable => 'REPORTS CAN\'T BE SENT RIGHT NOW';
 	@override String get stashUnavailable => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW';
+	@override String activitySearchSourcesFailed({required Object names}) => '${names} DIDN\'T ANSWER THE ACTIVITY SEARCH, SO SOME RESULTS MAY BE MISSING.';
+	@override String get activitySearchSomeSourcesFailed => 'SOME ACTIVITY EXTENSIONS DIDN\'T ANSWER THE SEARCH, SO SOME RESULTS MAY BE MISSING.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} SPENT TOO MUCH TIME IN ITS TIMERS. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.';
 	@override String timersSuspendedFailures({required Object name}) => '${name}\'S TIMERS KEPT FAILING. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART.';
@@ -5130,7 +5132,7 @@ extension on TranslationsQro {
 			'activitiesView.locationSettingsUnavailable' => 'ALLOW LOCATION ACCESS IN YOUR SYSTEM SETTINGS',
 			'activitiesView.locationGrantRefused' => 'STILL NO LOCATION — THE SYSTEM SAID NO AGAIN',
 			'activitiesView.searchUnavailableTitle' => 'ACTIVITY SEARCH UNAVAILABLE',
-			'activitiesView.searchUnavailableReason' => 'NO ACTIVITY EXTENSION COULD RUN THE SEARCH. TRY AGAIN IN A MOMENT.',
+			'activitiesView.searchUnavailableReason' => 'AN ACTIVITY EXTENSION COULD NOT ANSWER THE SEARCH. TRY AGAIN IN A MOMENT.',
 			'activitiesView.emptySheet' => 'USE SUGGESTIONS & SEARCH BELOW TO ADD ONE',
 			'activitiesView.exports' => 'EXPORTS',
 			'activitiesView.exportLogs' => 'EXPORT LOGS',
@@ -6539,6 +6541,8 @@ extension on TranslationsQro {
 			'extensionService.commandFailed' => 'THE COMMAND FAILED TO RUN',
 			'extensionService.reportUnavailable' => 'REPORTS CAN\'T BE SENT RIGHT NOW',
 			'extensionService.stashUnavailable' => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} DIDN\'T ANSWER THE ACTIVITY SEARCH, SO SOME RESULTS MAY BE MISSING.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'SOME ACTIVITY EXTENSIONS DIDN\'T ANSWER THE SEARCH, SO SOME RESULTS MAY BE MISSING.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} SPENT TOO MUCH TIME IN ITS TIMERS. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'S TIMERS KEPT FAILING. THEY\'RE STOPPED UNTIL THE EXTENSIONS RESTART.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART.',

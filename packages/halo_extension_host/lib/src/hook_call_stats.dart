@@ -38,7 +38,13 @@ class HookCallSample {
   /// synchronously and there is no queue to wait in.
   final int queueMicros;
 
-  const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis, this.queueMicros = 0});
+  /// The caller stopped waiting at [totalMillis], so that is a floor on the
+  /// call's cost rather than its cost, and its [jsMillis] and [queueMicros]
+  /// were never reported. Kept as a sample regardless: a latency summary
+  /// without its timeouts reads best exactly when a hook stops answering.
+  final bool timedOut;
+
+  const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis, this.queueMicros = 0, this.timedOut = false});
 }
 
 /// The worst and typical queue wait seen for one hook label — see
@@ -69,7 +75,9 @@ List<QueueWaitStat> summarizeQueueWaits(List<HookCallSample> samples) {
   final calls = <String, int>{};
   final worst = <String, int>{};
   final total = <String, int>{};
-  for (final sample in samples) {
+  // A timed-out call's wait was never reported; counted as zero it would
+  // pull its label's mean down while the engine was at its slowest.
+  for (final sample in samples.where((s) => !s.timedOut)) {
     calls[sample.label] = (calls[sample.label] ?? 0) + 1;
     total[sample.label] = (total[sample.label] ?? 0) + sample.queueMicros;
     if (sample.queueMicros > (worst[sample.label] ?? 0)) worst[sample.label] = sample.queueMicros;
@@ -79,5 +87,60 @@ List<QueueWaitStat> summarizeQueueWaits(List<HookCallSample> samples) {
       QueueWaitStat(label: entry.key, calls: entry.value, worstMicros: worst[entry.key] ?? 0, totalMicros: total[entry.key] ?? 0),
   ];
   stats.sort((a, b) => b.worstMicros.compareTo(a.worstMicros));
+  return stats;
+}
+
+/// How long one hook label's calls took end to end, from the caller's side
+/// — see [summarizeLatencies].
+class HookLatencyStat {
+  final String label;
+  final int calls;
+  final int timeouts;
+  final int p50Millis;
+  final int p95Millis;
+  final int worstMillis;
+
+  const HookLatencyStat({
+    required this.label,
+    required this.calls,
+    required this.timeouts,
+    required this.p50Millis,
+    required this.p95Millis,
+    required this.worstMillis,
+  });
+
+  @override
+  String toString() => '$label ×$calls p50 ${p50Millis}ms p95 ${p95Millis}ms max ${worstMillis}ms${timeouts > 0 ? ' timeouts $timeouts' : ''}';
+}
+
+/// Each label's end-to-end latency in [samples], slowest p95 first.
+///
+/// Ranked by p95 rather than the worst call, unlike [summarizeQueueWaits]:
+/// that summary already names the one-off stall, and this one answers
+/// whether a hook is slow as a rule — a lookup that takes a second one time
+/// in twenty is felt on every busy band. A timed-out call counts at the
+/// moment its caller gave up, which understates it but keeps it in the
+/// ranking.
+List<HookLatencyStat> summarizeLatencies(List<HookCallSample> samples) {
+  final byLabel = <String, List<HookCallSample>>{};
+  for (final sample in samples) {
+    (byLabel[sample.label] ??= []).add(sample);
+  }
+  int rank(List<int> sorted, double q) => sorted[((q * sorted.length).ceil() - 1).clamp(0, sorted.length - 1)];
+  final stats = <HookLatencyStat>[];
+  for (final MapEntry(key: label, value: calls) in byLabel.entries) {
+    final sorted = [for (final call in calls) call.totalMillis]..sort();
+    stats.add(
+      HookLatencyStat(
+        label: label,
+        calls: calls.length,
+        timeouts: calls.where((c) => c.timedOut).length,
+        p50Millis: rank(sorted, 0.50),
+        p95Millis: rank(sorted, 0.95),
+        worstMillis: sorted.last,
+      ),
+    );
+  }
+  stats.sort((a, b) => b.p95Millis.compareTo(a.p95Millis));
   return stats;
 }

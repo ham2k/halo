@@ -190,6 +190,30 @@ void main() {
     }),
   );
 
+  test(
+    'a batch that runs out of time is still a sample, marked as a timeout',
+    () => runOnFakeClock((_) async {
+      // A call the caller gave up on never gets a result, and the result is
+      // where a sample is otherwise recorded. Without one here, the latency
+      // summary in the engine-busy report reads fastest exactly while a
+      // hook has stopped answering.
+      // The app's latency trigger hears of samples only through
+      // `sampleAdded`, so a timeout missing from the stream is one it never
+      // counts.
+      final host = await start();
+      final heard = <HookCallSample>[];
+      final subscription = host.sampleAdded.listen(heard.add);
+      addTearDown(subscription.cancel);
+      await host.invokeHookBatch([_decorate('stalled', 'S-1')], timeout: const Duration(seconds: 1), partialOnTimeout: true);
+      await pumpEventQueue();
+
+      final stat = host.latencySummary().singleWhere((s) => s.label == 'batch:decorateRef');
+      expect(stat.calls, 1);
+      expect(stat.timeouts, 1);
+      expect([for (final sample in heard) sample.timedOut], [true]);
+    }),
+  );
+
   test('an empty batch answers without crossing', () async {
     final host = await start();
     final before = host.samples.length;

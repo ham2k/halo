@@ -96,7 +96,7 @@ class _ScopedExtensions extends ExtensionServiceWithFakeHost {
   }) async {
     askedKeys.add(activityKeys);
     this.preferredKeys.add(preferredKeys);
-    return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
+    return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false, someSourcesFailed: false);
   }
 }
 

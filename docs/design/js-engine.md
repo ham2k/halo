@@ -290,6 +290,23 @@ rolled once, so a busy launch does not report itself; a replacement runtime
 gets no such exemption, since an engine that crash-loops is the one most worth
 hearing about.
 
+The report names what kept the engine busy, the hooks that queued worst behind
+it, and the slowest hooks end to end — p50, p95 and max over the host's last
+2,000 calls, with the calls a caller gave up on counted at the moment it did.
+End to end includes the host calls a hook awaits, so a lookup slowed by the
+database shows there even though the engine itself sat idle.
+
+Busy time never sees that wait, so latency has its own trigger: a hook label
+with at least 20 calls in the last minute and a p95 of a second or more sends
+an "Extension hooks slow" diagnostic, led by that label's numbers and
+otherwise the same report. It watches only hooks whose work is local by
+design — the spot board's offline lookup batches and the activity search —
+since an online lookup waiting on QRZ or HamDB would report a slow network as
+a stalled app. The floor is what makes p95 mean "slow as a rule":
+under 20 calls a nearest-rank p95 is the slowest call alone. Both triggers
+share the five-minute cooldown, the startup sample and the consent check, so
+an engine busy enough to slow its hooks reports once, not twice.
+
 ---
 
 ## 6. Where quickjs-ng differs from a browser

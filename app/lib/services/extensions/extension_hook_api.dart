@@ -10,8 +10,9 @@ part of 'extension_service.dart';
 /// What the activity picker's search came back with, and whether it came back
 /// at all. [allSourcesFailed] separates "no extension had a match" from "no
 /// extension could answer" — identical empty lists that mean opposite things
-/// to the operator.
-typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, bool allSourcesFailed});
+/// to the operator. [someSourcesFailed] says at least one could not: with
+/// nothing found, the one that failed may be the one holding the answer.
+typedef ActivitySuggestionResult = ({List<Map<String, dynamic>> suggestions, bool allSourcesFailed, bool someSourcesFailed});
 
 /// The control descriptors an activity fan-out produced, and whether any
 /// source failed to answer. [loadFailed] separates "no extension declares
@@ -275,6 +276,8 @@ mixin _ExtensionHookApi {
   }
 
   SettingsService? get settings;
+  StatusBarService? get statusBar;
+  List<ExtensionInfo> get availableExtensions;
   bool get activationIncomplete;
   void invalidateHookContext();
   Future<void> start();
@@ -669,19 +672,7 @@ mixin _ExtensionHookApi {
         timeout: const Duration(seconds: 8),
       );
       ErrorReportingService.recordSuccess(streakKey);
-      if (result is! Map) return null;
-      final violations = <QsonTypeViolation>[];
-      final answer = normalizeLookupResult(result.cast<String, dynamic>(), violations: violations);
-      for (final violation in violations) {
-        ErrorReportingService.reportIfRepeated(
-          'lookupCall:malformed:${violation.path}',
-          MalformedLookupDataException(violation),
-          null,
-          context: 'lookupCall:malformed',
-          threshold: 1,
-        );
-      }
-      return answer;
+      return _normalizedLookup(result);
     } on ExtensionHostException catch (e, st) {
       // The lookup runs on a debounced keystroke, so an upstream service
       // that is merely slow or briefly down would otherwise upload one
@@ -693,6 +684,92 @@ mixin _ExtensionHookApi {
       ErrorReportingService.reportIfRepeated(streakKey, e, st);
       return null;
     }
+  }
+
+  /// [lookupCall] for each of [requests], in ONE crossing under one budget:
+  /// one answer per request, in order, null where that lookup did not answer.
+  ///
+  /// For a caller looking up many callsigns at once — the spot board. Called
+  /// one by one, a board of a few hundred calls is a few hundred crossings
+  /// arriving together, each running every lookup hook, and the database
+  /// queries behind them (call history) queue up until everything else that
+  /// reads the database waits seconds behind them — the activity search's
+  /// nearby parks among them.
+  ///
+  /// A failure counts toward [streakKey] once per batch, and only when the
+  /// batch answered nothing — `lookupCall`'s "the pipeline answers nothing at
+  /// all". A batch with one straggler among answers is a busy engine, not a
+  /// broken pipeline, and counting it would hold the streak past its one
+  /// report so a real outage later reports nothing.
+  ///
+  /// No partials on a timeout: narrating a batch puts every answer on the
+  /// bridge twice, on every batch, to salvage some answers only when one
+  /// times out — and a batch that times out is asked again on the board's
+  /// next refresh. It fails whole, as the [HookTimeoutException] ErrorPolicy
+  /// tracks timeouts by.
+  Future<List<Map<String, dynamic>?>> lookupCalls(
+    List<({String call, Map<String, dynamic> qso})> requests, {
+    required Map<String, dynamic> operation,
+    bool online = true,
+    required String streakKey,
+  }) async {
+    if (ExtensionService.stubLookups) return [for (final r in requests) r.call.length < 3 ? null : stubbedLookupResult(r.call)];
+    final host = this.host;
+    final asked = [
+      for (final (i, request) in requests.indexed)
+        if (request.call.length >= 3) i,
+    ];
+    final answers = List<Map<String, dynamic>?>.filled(requests.length, null);
+    if (host == null || asked.isEmpty) return answers;
+    final reachable = online && !ConnectivityService.isOffline;
+
+    try {
+      final entries = await host.invokeHookBatch([
+        for (final i in asked)
+          Hooks.lookupServiceLookupCallInfo.withArgs({
+            'callInfo': {'call': requests[i].call},
+            'qso': requests[i].qso,
+            'operation': operation,
+            'online': reachable,
+            'recentContext': false,
+          }, key: 'core'),
+      ], timeout: const Duration(seconds: 8));
+      final failed = [
+        for (final entry in entries)
+          if (entry['ok'] != true) entry,
+      ];
+      for (final (n, entry) in entries.indexed) {
+        if (entry['ok'] == true) answers[asked[n]] = _normalizedLookup(entry['value']);
+      }
+      if (failed.length < entries.length) ErrorReportingService.recordSuccess(streakKey);
+      if (failed.isNotEmpty) {
+        final summary = '${failed.length} of ${entries.length} batched lookups failed: ${failed.first['error']}';
+        debugPrint('[extensions] $summary');
+        if (failed.length == entries.length) ErrorReportingService.reportIfRepeated(streakKey, ExtensionHostException(summary), null);
+      }
+    } on ExtensionHostException catch (e, st) {
+      debugPrint('[extensions] batched lookup failed: $e');
+      ErrorReportingService.reportIfRepeated(streakKey, e, st);
+    }
+    return answers;
+  }
+
+  /// A lookup hook's raw answer as callers read it, with each malformed field
+  /// dropped and reported. Null for an answer that is not a map.
+  Map<String, dynamic>? _normalizedLookup(Object? result) {
+    if (result is! Map) return null;
+    final violations = <QsonTypeViolation>[];
+    final answer = normalizeLookupResult(result.cast<String, dynamic>(), violations: violations);
+    for (final violation in violations) {
+      ErrorReportingService.reportIfRepeated(
+        'lookupCall:malformed:${violation.path}',
+        MalformedLookupDataException(violation),
+        null,
+        context: 'lookupCall:malformed',
+        threshold: 1,
+      );
+    }
+    return answer;
   }
 
   /// `{hookKey: scope}` for every `scoring` hook. `scope` is a plain data
@@ -1084,7 +1161,7 @@ mixin _ExtensionHookApi {
     ({double south, double west, double north, double east})? searchWithin,
   }) async {
     final host = this.host;
-    if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
+    if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false, someSourcesFailed: false);
 
     // The operation's own coordinate first, then the centre of its grid: a
     // park two kilometres away and one eight kilometres away rank the same
@@ -1144,7 +1221,9 @@ mixin _ExtensionHookApi {
     try {
       if (activityKeys != null) {
         final entries = await _activityBatch(host, activityKeys, argsSearchingFor(searchTerm, scoped: true), 'scoped');
-        return (suggestions: measured(mergeActivitySuggestions(entries)), allSourcesFailed: allActivitySourcesFailed(entries));
+        final suggestions = measured(mergeActivitySuggestions(entries));
+        _noticeActivitySourcesFailed(_failedActivityKeys(entries), found: suggestions.isNotEmpty);
+        return (suggestions: suggestions, allSourcesFailed: allActivitySourcesFailed(entries), someSourcesFailed: entries.any((entry) => entry['ok'] != true));
       }
 
       // The preferred hooks are asked SEPARATELY because they may search for
@@ -1161,11 +1240,13 @@ mixin _ExtensionHookApi {
       // text is not the list that was asked for.
       final ownList = preferredSearchTerm == null && (preferredKeys?.isNotEmpty ?? false);
       var ownListFailed = false;
+      var preferredFailedKeys = const <String>[];
       final preferred = _activityBatch(host, preferredKeys ?? const [], argsSearchingFor(preferredSearchTerm, scoped: ownList), 'preferred')
           // Precedence is otherwise only an ordering: when a preferred hook
           // fails, what the other extensions found is still the right answer.
           .then((entries) {
             ownListFailed = ownList && allActivitySourcesFailed(entries);
+            preferredFailedKeys = _failedActivityKeys(entries);
             return [
               for (final entry in entries)
                 if (entry['ok'] == true) entry,
@@ -1174,15 +1255,22 @@ mixin _ExtensionHookApi {
           .onError<ExtensionHostException>((e, _) {
             debugPrint('[extensions] preferred activity hooks failed: $e');
             ownListFailed = ownList;
+            preferredFailedKeys = [...?preferredKeys];
             return const <Map<String, dynamic>>[];
           });
 
-      // The fan-out is ONE message under ONE timeout, so its failure takes
-      // every hook with it — but not the preferred one, asked separately and
-      // quite possibly already answered. Each side therefore degrades on its
-      // own, and only a search where both failed comes back empty.
+      // The fan-out is ONE message under ONE timeout. Partials are kept, so
+      // one slow hook costs only its own answer: without them, a POTA stuck
+      // behind a busy database throws away what every other extension found.
+      // The preferred hooks, asked separately, degrade on their own as well.
       final everyone = host
-          .invokeAll(Hooks.activitySuggest, args: argsSearchingFor(searchTerm), timeout: const Duration(seconds: 5))
+          .invokeAll(Hooks.activitySuggest, args: argsSearchingFor(searchTerm), timeout: const Duration(seconds: 5), partialOnTimeout: true)
+          .then((entries) {
+            for (final entry in entries) {
+              if (entry['ok'] != true) debugPrint('[extensions] activity hook ${entry['key']} failed: ${entry['error']}');
+            }
+            return entries;
+          })
           .onError<ExtensionHostException>((e, _) {
             debugPrint('[extensions] activity suggestion fan-out failed: $e');
             fanOutFailed = true;
@@ -1196,14 +1284,65 @@ mixin _ExtensionHookApi {
         for (final entry in results[1])
           if (!preferredSet.contains(entry['key'])) entry,
       ];
+      final suggestions = measured(mergeActivitySuggestions(entries, preferredKeys: preferredSet));
+      final failedKeys = [...preferredFailedKeys, ..._failedActivityKeys(entries), if (fanOutFailed) _everyOtherActivity];
+      _noticeActivitySourcesFailed(failedKeys, found: suggestions.isNotEmpty);
       return (
-        suggestions: measured(mergeActivitySuggestions(entries, preferredKeys: preferredSet)),
+        suggestions: suggestions,
         allSourcesFailed: ownListFailed || (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
+        someSourcesFailed: failedKeys.isNotEmpty,
       );
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] suggestActivities failed: $e');
-      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true);
+      return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: true, someSourcesFailed: true);
     }
+  }
+
+  static List<String> _failedActivityKeys(List<Map<String, dynamic>> entries) => [
+    for (final entry in entries)
+      if (entry['ok'] != true)
+        if (entry['key'] case final String key) key,
+  ];
+
+  /// Stands in for the extensions a fan-out that failed as a whole never
+  /// named — it has no roster to name them from.
+  static const _everyOtherActivity = '*';
+
+  /// When each activity extension's failure was last shown in the status bar.
+  final Map<String, int> _activityFailureShownAt = {};
+
+  static const activityFailureNoticeEvery = Duration(minutes: 10);
+
+  /// Names, in the status bar, the activity extensions that did not answer a
+  /// search that still found something: the sheet shows the results it has,
+  /// and nothing else says the list may be short. A search that found
+  /// nothing says so in the sheet itself. Each extension at most once every
+  /// [activityFailureNoticeEvery] — the search runs on every pause in typing
+  /// and every pan of the map, and one that stays down would post on each.
+  void _noticeActivitySourcesFailed(List<String> keys, {required bool found}) {
+    if (!found || keys.isEmpty) return;
+    final now = realNowMillis();
+    bool shownLately(String key) => switch (_activityFailureShownAt[key]) {
+      final shown? => now - shown < activityFailureNoticeEvery.inMilliseconds,
+      null => false,
+    };
+    final due = [
+      for (final key in keys.toSet())
+        if (!shownLately(key)) key,
+    ];
+    if (due.isEmpty) return;
+    for (final key in due) {
+      _activityFailureShownAt[key] = now;
+    }
+    final names = [for (final key in due) availableExtensions.where((info) => info.key == key).firstOrNull?.effectiveShortName ?? key];
+    statusBar?.setMessage(
+      key: 'activity-search:failed',
+      icon: 'alert-circle',
+      text: due.contains(_everyOtherActivity)
+          ? t.extensionService.activitySearchSomeSourcesFailed
+          : t.extensionService.activitySearchSourcesFailed(names: names.join(', ')),
+      dismissAfter: const Duration(seconds: 10),
+    );
   }
 
   /// `suggest` on each of [keys]' activity hooks, in one batch: one entry per

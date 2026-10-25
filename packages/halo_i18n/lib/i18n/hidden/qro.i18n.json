@@ -1063,7 +1063,7 @@
     "locationSettingsUnavailable": "ALLOW LOCATION ACCESS IN YOUR SYSTEM SETTINGS",
     "locationGrantRefused": "STILL NO LOCATION — THE SYSTEM SAID NO AGAIN",
     "searchUnavailableTitle": "ACTIVITY SEARCH UNAVAILABLE",
-    "searchUnavailableReason": "NO ACTIVITY EXTENSION COULD RUN THE SEARCH. TRY AGAIN IN A MOMENT.",
+    "searchUnavailableReason": "AN ACTIVITY EXTENSION COULD NOT ANSWER THE SEARCH. TRY AGAIN IN A MOMENT.",
     "emptySheet": "USE SUGGESTIONS & SEARCH BELOW TO ADD ONE",
     "exports": "EXPORTS",
     "exportLogs": "EXPORT LOGS",
@@ -2701,6 +2701,8 @@
     "commandFailed": "THE COMMAND FAILED TO RUN",
     "reportUnavailable": "REPORTS CAN'T BE SENT RIGHT NOW",
     "stashUnavailable": "HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW",
+    "activitySearchSourcesFailed": "${names} DIDN'T ANSWER THE ACTIVITY SEARCH, SO SOME RESULTS MAY BE MISSING.",
+    "activitySearchSomeSourcesFailed": "SOME ACTIVITY EXTENSIONS DIDN'T ANSWER THE SEARCH, SO SOME RESULTS MAY BE MISSING.",
     "timersSuspendedBudget": "${name} SPENT TOO MUCH TIME IN ITS TIMERS. THEY'RE STOPPED UNTIL THE EXTENSIONS RESTART.",
     "timersSuspendedFailures": "${name}'S TIMERS KEPT FAILING. THEY'RE STOPPED UNTIL THE EXTENSIONS RESTART.",
     "timersSuspendedInterrupted": "${name} GOT STUCK IN A TIMER. ITS TIMERS ARE STOPPED UNTIL THE EXTENSIONS RESTART."

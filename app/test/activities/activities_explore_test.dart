@@ -63,9 +63,9 @@ class _PanningExtensions extends ExtensionServiceWithFakeHost {
     String? preferredSearchTerm,
     ({double south, double west, double north, double east})? searchWithin,
   }) async {
-    if (searchWithin == null) return (suggestions: const [_home], allSourcesFailed: false);
+    if (searchWithin == null) return (suggestions: const [_home], allSourcesFailed: false, someSourcesFailed: false);
     pans.add((view: searchWithin, keys: activityKeys));
-    return (suggestions: viewAnswers, allSourcesFailed: false);
+    return (suggestions: viewAnswers, allSourcesFailed: false, someSourcesFailed: false);
   }
 }
 

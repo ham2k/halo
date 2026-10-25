@@ -1063,7 +1063,7 @@
     "locationSettingsUnavailable": "allow location access in your system settings",
     "locationGrantRefused": "still no location — the system said no again",
     "searchUnavailableTitle": "activity search unavailable",
-    "searchUnavailableReason": "no activity extension could run the search. try again in a moment.",
+    "searchUnavailableReason": "an activity extension could not answer the search. try again in a moment.",
     "emptySheet": "use suggestions & search below to add one",
     "exports": "exports",
     "exportLogs": "export logs",
@@ -2701,6 +2701,8 @@
     "commandFailed": "the command failed to run",
     "reportUnavailable": "reports can't be sent right now",
     "stashUnavailable": "ham2k’s file stash can’t be reached right now",
+    "activitySearchSourcesFailed": "${names} didn't answer the activity search, so some results may be missing.",
+    "activitySearchSomeSourcesFailed": "some activity extensions didn't answer the search, so some results may be missing.",
     "timersSuspendedBudget": "${name} spent too much time in its timers. they're stopped until the extensions restart.",
     "timersSuspendedFailures": "${name}'s timers kept failing. they're stopped until the extensions restart.",
     "timersSuspendedInterrupted": "${name} got stuck in a timer. its timers are stopped until the extensions restart."

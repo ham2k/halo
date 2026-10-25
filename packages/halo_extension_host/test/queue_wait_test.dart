@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Two things: what a caller is left holding when arguments the core cannot
-// encode reach it, and the queue-wait summary's aggregation.
+// encode reach it, and the queue-wait and latency summaries' aggregation.
 //
 // What is NOT here is the queue measurement end to end. It is only ever
 // non-zero when the core runs on its own isolate, and this suite cannot reach
@@ -19,7 +19,11 @@ import 'package:halo_extension_host/src/hook_call_stats.dart';
 
 import 'support/bundles.dart';
 
-HookCallSample _sample(String label, int queueMicros) => HookCallSample(label: label, totalMillis: 0, jsMillis: 0, queueMicros: queueMicros);
+HookCallSample _sample(String label, int queueMicros, {bool timedOut = false}) =>
+    HookCallSample(label: label, totalMillis: 0, jsMillis: 0, queueMicros: queueMicros, timedOut: timedOut);
+
+HookCallSample _took(String label, int totalMillis, {bool timedOut = false}) =>
+    HookCallSample(label: label, totalMillis: totalMillis, jsMillis: 0, timedOut: timedOut);
 
 /// Something `jsonEncode` cannot take and that no `toJson` rescues.
 class _Unencodable {
@@ -117,5 +121,44 @@ void main() {
 
   test('no samples is an empty summary, not a crash', () {
     expect(summarizeQueueWaits([]), isEmpty);
+    expect(summarizeLatencies([]), isEmpty);
+  });
+
+  test('a timed-out call is left out of the queue waits it never reported', () {
+    // Its wait reads as zero only because nobody answered; counted, it
+    // halves this label's mean at the moment the engine was slowest.
+    final stats = summarizeQueueWaits([_sample('lookup', 400 * 1000), _sample('lookup', 0, timedOut: true)]);
+
+    expect(stats.single.calls, 1);
+    expect(stats.single.meanMicros, 400 * 1000);
+  });
+
+  group('the latency summary', () {
+    test('ranks by p95, so a hook slow as a rule outranks a one-off stall', () {
+      // Built so worst-first and p95-first DISAGREE: `once` stalled a single
+      // time in forty, `often` is slow one call in ten.
+      final stats = summarizeLatencies([
+        _took('once', 3000),
+        for (var i = 0; i < 39; i++) _took('once', 5),
+        for (var i = 0; i < 4; i++) _took('often', 800),
+        for (var i = 0; i < 36; i++) _took('often', 20),
+      ]);
+
+      expect(stats.first.worstMillis, lessThan(stats.last.worstMillis));
+      expect([for (final s in stats) s.label], ['often', 'once']);
+      expect(stats.first.p95Millis, 800);
+      expect(stats.first.p50Millis, 20);
+    });
+
+    test('counts timeouts and keeps them in the percentiles', () {
+      // A summary that dropped them would report this label as answering in
+      // 30ms while one call in five never answered at all.
+      final stats = summarizeLatencies([for (var i = 0; i < 4; i++) _took('lookup', 30), _took('lookup', 8000, timedOut: true)]);
+
+      expect(stats.single.timeouts, 1);
+      expect(stats.single.worstMillis, 8000);
+      expect(stats.single.p95Millis, 8000);
+      expect(stats.single.toString(), contains('timeouts 1'));
+    });
   });
 }

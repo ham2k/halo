@@ -45,6 +45,7 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  16: ['DROP INDEX qsos_their_call_start'],
   15: ['DROP INDEX claims_qso', 'DROP INDEX claims_checklist', 'DROP TABLE claims'],
   // v14 changed no schema entities either — it reconciles the two halves of
   // the locations already stored (`_repairStatedLocations`).
@@ -79,7 +80,7 @@ const _undoToGetPreviousVersion = <int, List<String>>{
 /// builds its tests while the file is being declared — before `setUpAll` has
 /// read `schemaVersion` into `currentVersion`. `the upgrade-path loop reaches
 /// the newest version` is what keeps the two in step.
-const _highestUpgradeFrom = 14;
+const _highestUpgradeFrom = 15;
 
 /// The schema every fresh install must produce. Regenerate with
 /// `dart run tool/dump_schema.dart` after a deliberate schema change — and ask
@@ -312,6 +313,7 @@ void main() {
             };
             expect(indexes.containsKey('inbound_captures_dedupe_key'), version >= 10, reason: 'v$version dedupe index');
             expect(indexes.containsKey('peer_events_operation_record'), version >= 13, reason: 'v$version prune index');
+            expect(indexes.containsKey('qsos_their_call_start'), version >= 16, reason: 'v$version call history index');
             if (version >= 11) {
               expect(
                 indexes['peer_events_operation_seq'],
@@ -723,6 +725,7 @@ void main() {
       expect(upgradedIndexes, contains('inbound_captures_dedupe_key'));
       expect(upgradedIndexes, contains('peer_events_operation_seq'));
       expect(upgradedIndexes, contains('peer_events_operation_record'));
+      expect(upgradedIndexes, contains('qsos_their_call_start'));
       expect(upgradedIndexes, freshIndexes);
     });
   });

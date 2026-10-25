@@ -51,7 +51,7 @@ export 'src/engine_load.dart' show EngineLoadBucket, EngineLoadFeed, EngineLoadW
 export 'src/extension_timers.dart' show TimerSuspension;
 export 'src/engine_runtime.dart' show ClockTravelState, ExtensionBundle, ExtensionHostException, HookTimeoutException;
 export 'src/fetch_policy.dart' show fetchBodyTimeout, fetchHeaderTimeout;
-export 'src/hook_call_stats.dart' show HookCallSample, QueueWaitStat;
+export 'src/hook_call_stats.dart' show HookCallSample, HookLatencyStat, QueueWaitStat, batchLabel, summarizeLatencies;
 export 'src/hook_calls.dart' show HookCalls;
 // `show`n rather than exported wholesale: this library is imported unprefixed
 // across the app, and a bare `stringsIn` in its public surface turns any
@@ -84,6 +84,7 @@ class ExtensionHost {
   final _fatalErrors = StreamController<String>.broadcast();
   final _interpretationUpdates = StreamController<Map<String, dynamic>>.broadcast();
   final _timerSuspensions = StreamController<TimerSuspension>.broadcast();
+  final _sampleAdded = StreamController<HookCallSample>.broadcast();
 
   /// Every log line received so far (the stream only carries new ones).
   final List<String> logLines = [];
@@ -128,6 +129,10 @@ class ExtensionHost {
   /// in-process (see [HookCallSample.queueMicros]).
   List<QueueWaitStat> queueWaitSummary() => summarizeQueueWaits(samples);
 
+  /// Each hook label's end-to-end latency over [samples], timeouts included,
+  /// slowest p95 first.
+  List<HookLatencyStat> latencySummary() => summarizeLatencies(samples);
+
   /// See [_activated]'s doc comment.
   Future<void> get activated => _activated.future;
 
@@ -140,6 +145,9 @@ class ExtensionHost {
 
   /// An extension whose timers broke their budget (extensions/sdk/src/timerQueue.ts); its hooks keep working.
   Stream<TimerSuspension> get timerSuspensions => _timerSuspensions.stream;
+
+  /// Each sample as it joins [samples], timeouts included.
+  Stream<HookCallSample> get sampleAdded => _sampleAdded.stream;
 
   /// The engine's busy time, and whether it is still answering.
   late final engineLoad = EngineLoadFeed(ping: () => _dispatch(const {'type': 'ping'}), nowMicros: () => realNowUtc().microsecondsSinceEpoch);
@@ -519,6 +527,13 @@ class ExtensionHost {
     ];
   }
 
+  void _addSample(HookCallSample sample) {
+    samples.add(sample);
+    if (samples.length > _maxSamples) samples.removeAt(0);
+    // A call's timeout can fire after [dispose] has closed the stream.
+    if (!_sampleAdded.isClosed) _sampleAdded.add(sample);
+  }
+
   Future<dynamic> _send(String type, String label, Map<String, Object?> fields, Duration timeout, {int? id}) async {
     if (_dead) {
       throw ExtensionHostException('extension runtime is dead (hook $label not attempted)');
@@ -552,7 +567,9 @@ class ExtensionHost {
       return await completer.future.timeout(timeout);
     } on TimeoutException {
       _pending.remove(id);
-      _inFlight.remove(id);
+      if (_inFlight.remove(id) case (final label, final watch)) {
+        _addSample(HookCallSample(label: label, totalMillis: watch.elapsedMilliseconds, jsMillis: 0, timedOut: true));
+      }
       // Tell the core to stop counting this call as outstanding: a hook
       // that never settles would otherwise keep the 5ms pump timer spinning
       // forever — constant CPU wake-ups on an all-day field session.
@@ -649,7 +666,7 @@ class ExtensionHost {
         if (completer == null) return; // timed out; drop the late result
         if (flight != null) {
           flight.$2.stop();
-          samples.add(
+          _addSample(
             HookCallSample(
               label: flight.$1,
               totalMillis: flight.$2.elapsedMilliseconds,
@@ -657,7 +674,6 @@ class ExtensionHost {
               queueMicros: (msg['queueMicros'] as num?)?.toInt() ?? 0,
             ),
           );
-          if (samples.length > _maxSamples) samples.removeAt(0);
         }
         _partials.remove(id);
         if (msg['ok'] == true) {
@@ -807,6 +823,7 @@ class ExtensionHost {
     await _fatalErrors.close();
     await _interpretationUpdates.close();
     await _timerSuspensions.close();
+    await _sampleAdded.close();
     await engineLoad.dispose();
   }
 }

@@ -62,7 +62,7 @@ class _DataBackedExtensions extends ExtensionServiceWithFakeHost {
     ({double south, double west, double north, double east})? searchWithin,
   }) async {
     asked.add(searchTerm);
-    return (suggestions: parks, allSourcesFailed: false);
+    return (suggestions: parks, allSourcesFailed: false, someSourcesFailed: false);
   }
 }
 

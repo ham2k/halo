@@ -24,7 +24,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_extension_host.dart';
 
-class _FakeExtensions extends ExtensionService {
+class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
   _FakeExtensions(this.board);
 
   final List<Map<String, dynamic>> board;

@@ -67,6 +67,7 @@ class Operations extends Table {
 
 @DataClassName('QsoRow')
 @TableIndex(name: 'qsos_operation_start', columns: {#operation, #startAtMillis})
+@TableIndex(name: 'qsos_their_call_start', columns: {#theirCall, #startAtMillis})
 class Qsos extends Table {
   TextColumn get uuid => text()();
   TextColumn get operation => text()();
@@ -366,7 +367,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -450,6 +451,9 @@ class HaLoDatabase extends _$HaLoDatabase {
           await m.createTable(claims);
           await m.createIndex(claimsQso);
           await m.createIndex(claimsChecklist);
+        }
+        if (from < 16) {
+          await m.createIndex(qsosTheirCallStart);
         }
       });
     },

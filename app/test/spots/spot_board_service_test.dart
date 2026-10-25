@@ -57,16 +57,12 @@ class _FakeExtensions extends ExtensionService {
   @override
   ExtensionHost? get host => _host;
 
+  /// The spots every refresh reports; two stations unless a test sets more.
+  List<Map<String, dynamic>> spotItems = [_spot('K1ABC', hookKey: 'pota'), _spot('W1AW', hookKey: 'sota')];
+
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async => (
-    items: [
-      _spot('K1ABC', hookKey: 'pota'),
-      _spot('W1AW', hookKey: 'sota'),
-    ],
-    succeeded: const ['pota', 'sota'],
-    unreachable: const <String>[],
-    failed: const <String>[],
-  );
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async =>
+      (items: spotItems, succeeded: const ['pota', 'sota'], unreachable: const <String>[], failed: const <String>[]);
 
   @override
   Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
@@ -119,6 +115,24 @@ class _FakeExtensions extends ExtensionService {
       'guess': <String, dynamic>{'state': ?states[call]},
     };
   }
+
+  /// Every batch of calls looked up together, in the order asked.
+  final List<List<String>> lookupBatches = [];
+
+  /// While set, a batch waits on it — a lookup still out.
+  Completer<void>? lookupHold;
+
+  @override
+  Future<List<Map<String, dynamic>?>> lookupCalls(
+    List<({String call, Map<String, dynamic> qso})> requests, {
+    required Map<String, dynamic> operation,
+    bool online = true,
+    required String streakKey,
+  }) async {
+    lookupBatches.add([for (final request in requests) request.call]);
+    await lookupHold?.future;
+    return [for (final request in requests) await lookupCall(request.call, qso: request.qso, operation: operation, online: online, streakKey: streakKey)];
+  }
 }
 
 Map<String, dynamic> _spot(String call, {required String hookKey}) => {
@@ -133,6 +147,9 @@ Map<String, dynamic> _spot(String call, {required String hookKey}) => {
 
 /// Longer than the board's scoring debounce.
 const _debounce = Duration(milliseconds: 700);
+
+/// Longer than the board waits before looking up a refresh's new calls.
+const _lookupWait = Duration(milliseconds: 1600);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -155,7 +172,7 @@ void main() {
     view = services.spotBoard.subscribe();
     addTearDown(view.cancel);
     await services.spots.refresh();
-    await pumpEventQueue();
+    await Future<void>.delayed(_lookupWait);
   }
 
   /// A fresh operation shown, its pass landed and nothing left pending.
@@ -323,11 +340,11 @@ void main() {
       view = services.spotBoard.subscribe();
       addTearDown(view.cancel);
       await services.spots.refresh();
-      await pumpEventQueue();
+      await Future<void>.delayed(_lookupWait);
       expect(services.spotBoard.callInfo.containsKey('K1ABC'), isFalse);
       extensions.unanswered.clear();
       await services.spots.refresh();
-      await pumpEventQueue();
+      await Future<void>.delayed(_lookupWait);
       expect(services.spotBoard.callInfo.containsKey('K1ABC'), isTrue);
     }),
   );
@@ -381,10 +398,97 @@ void main() {
     () => runOnFakeClock((_) async {
       await openBoard();
       await services.spots.refresh();
-      await pumpEventQueue();
+      await Future<void>.delayed(_lookupWait);
       expect(extensions.lookedUp..sort(), ['K1ABC', 'W1AW']);
     }),
   );
+
+  // A contest cluster changes the board several times a second, and each
+  // call's lookup reads the database. Asked once per change, per call and all
+  // at once, those reads queue for seconds — long enough that every other
+  // reader of the database, the activity search's nearby parks among them,
+  // times out behind the board.
+  group('lookups under a busy cluster', () {
+    List<Map<String, dynamic>> board(int count) => [for (var i = 0; i < count; i++) _spot('N${i}XYZ', hookKey: 'pota')];
+
+    test(
+      'a board of many calls is looked up in small batches, one at a time',
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.spotItems = board(45);
+        extensions.lookupBatches.clear();
+        extensions.lookupHold = Completer<void>();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        expect(extensions.lookupBatches, hasLength(1), reason: 'the next batch waits for this one to answer');
+        expect(extensions.lookupBatches.single, hasLength(spotLookupBatchSize));
+
+        extensions.lookupHold!.complete();
+        extensions.lookupHold = null;
+        await pumpEventQueue();
+        expect([for (final batch in extensions.lookupBatches) batch.length], [20, 20, 5]);
+        expect(services.spotBoard.callInfo.keys, containsAll([for (var i = 0; i < 45; i++) 'N${i}XYZ']));
+      }),
+    );
+
+    // A call too short to be a callsign is never answered, so asked it holds a
+    // batch's place, and a batch of them answers nothing and stops the pass —
+    // every pass, since nothing caches them.
+    test(
+      'a call too short to be a callsign is not asked',
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.spotItems = [_spot('K1', hookKey: 'pota'), _spot('N0XYZ', hookKey: 'pota')];
+        extensions.lookedUp.clear();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        expect(extensions.lookedUp, ['N0XYZ']);
+      }),
+    );
+
+    // On a stalled runtime, every batch after one that answered nothing
+    // queues behind it for its whole timeout, one after another.
+    test(
+      'a pass stops at a batch that answered nothing, and the next refresh asks again',
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.spotItems = board(45);
+        extensions.unanswered.addAll([for (var i = 0; i < 45; i++) 'N${i}XYZ']);
+        extensions.lookupBatches.clear();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        expect(extensions.lookupBatches, hasLength(1));
+
+        extensions.unanswered.clear();
+        await services.spots.refresh();
+        await Future<void>.delayed(_lookupWait);
+        expect([for (final batch in extensions.lookupBatches) batch.length], [20, 20, 20, 5]);
+      }),
+    );
+
+    test(
+      'a burst of changes is looked up once, and a call still out is not asked for again',
+      () => runOnFakeClock((_) async {
+        await openBoard();
+        extensions.spotItems = board(3);
+        extensions.lookedUp.clear();
+        extensions.lookupHold = Completer<void>();
+        for (var i = 0; i < 5; i++) {
+          await services.spots.refresh();
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+        await Future<void>.delayed(_lookupWait);
+        // Changes keep landing while the lookup is out.
+        for (var i = 0; i < 3; i++) {
+          await services.spots.refresh();
+          await Future<void>.delayed(_lookupWait);
+        }
+        extensions.lookupHold!.complete();
+        await pumpEventQueue();
+        expect(extensions.lookedUp..sort(), ['N0XYZ', 'N1XYZ', 'N2XYZ']);
+      }),
+    );
+  });
 
   group('chasing', () {
     final callsProgram = {'calls': const ChasingProgram(key: 'calls', label: 'Calls', version: 1, editions: ChasingEditions.lifetime)};

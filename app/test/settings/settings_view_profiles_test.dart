@@ -32,7 +32,7 @@ class _StubLookupExtensionService extends ExtensionServiceWithFakeHost {
   /// be during app launch.
   final Completer<void>? startGate;
 
-  int lookupCalls = 0;
+  int lookupCallCount = 0;
 
   _StubLookupExtensionService(this.entityPrefixes, {this.startGate}) : super(FakeExtensionHost({}));
 
@@ -50,8 +50,8 @@ class _StubLookupExtensionService extends ExtensionServiceWithFakeHost {
     bool recentContext = false,
     String? streakKey,
   }) async {
-    final prefix = entityPrefixes[lookupCalls.clamp(0, entityPrefixes.length - 1)];
-    lookupCalls++;
+    final prefix = entityPrefixes[lookupCallCount.clamp(0, entityPrefixes.length - 1)];
+    lookupCallCount++;
     return prefix == null
         ? null
         : {
@@ -266,7 +266,7 @@ void main() {
     final gate = Completer<void>();
     await pumpProfilesPanel(tester, entityPrefix: 'K', startGate: gate);
 
-    expect(extensions.lookupCalls, 0, reason: 'looked the call up before the runtime was up');
+    expect(extensions.lookupCallCount, 0, reason: 'looked the call up before the runtime was up');
     expect(find.text('ARRL Section'), findsNothing);
 
     gate.complete();

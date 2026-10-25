@@ -180,9 +180,10 @@ class ActivitySearchState extends ChangeNotifier {
   bool get areSearchResults => _areSearchResults;
   bool _areSearchResults = false;
 
-  /// Whether the last search came back with every source broken rather than
-  /// merely empty-handed. The two are the same empty list, and only one of
-  /// them is worth an apology.
+  /// Whether the last search came back broken rather than merely
+  /// empty-handed: every source failed, or it found nothing while one did.
+  /// The contest extensions answer an empty list to nearly everything, so a
+  /// failed POTA beside them would otherwise read as "nothing nearby".
   bool get failed => _failed;
   bool _failed = false;
 
@@ -237,7 +238,7 @@ class ActivitySearchState extends ChangeNotifier {
     _exploredSuggestions = const [];
     _lastQuery = query;
     _answeredSearches++;
-    _failed = results.allSourcesFailed;
+    _failed = results.allSourcesFailed || (results.someSourcesFailed && results.suggestions.isEmpty);
     _areSearchResults = trimmed.isNotEmpty;
     // Still looking while parks found by their outline are: otherwise one
     // whose point is far off is "not nearby" moments before it appears.
@@ -259,7 +260,9 @@ class ActivitySearchState extends ChangeNotifier {
   /// with text in the box panning finds nothing more.
   ///
   /// Answers whether the view came back whole — every program answered, for
-  /// the search still in the box — so the map knows whether to ask again.
+  /// the search still in the box — so the map knows whether to ask again. One
+  /// program failing is enough: the others' answers are kept, and asked
+  /// again, the view gets the one that was missing.
   Future<bool> explore(MapViewBounds bounds) async {
     final query = _lastQuery;
     // Nothing to find: a typed search has its answer. Whole, so the map
@@ -299,7 +302,7 @@ class ActivitySearchState extends ChangeNotifier {
       _exploredSuggestions = [..._exploredSuggestions, ...fresh];
       notifyListeners();
     }
-    return !results.allSourcesFailed && (outline?.settled ?? true);
+    return !results.someSourcesFailed && (outline?.settled ?? true);
   }
 
   /// Puts [ref] back at the top of [suggestions] — for one the operator just

@@ -514,7 +514,7 @@ class _Translations$activitiesView$qrp extends Translations$activitiesView$en {
 	@override String get locationSettingsUnavailable => 'allow location access in your system settings';
 	@override String get locationGrantRefused => 'still no location — the system said no again';
 	@override String get searchUnavailableTitle => 'activity search unavailable';
-	@override String get searchUnavailableReason => 'no activity extension could run the search. try again in a moment.';
+	@override String get searchUnavailableReason => 'an activity extension could not answer the search. try again in a moment.';
 	@override String get emptySheet => 'use suggestions & search below to add one';
 	@override String get exports => 'exports';
 	@override String get exportLogs => 'export logs';
@@ -1040,6 +1040,8 @@ class _Translations$extensionService$qrp extends Translations$extensionService$e
 	@override String get commandFailed => 'the command failed to run';
 	@override String get reportUnavailable => 'reports can\'t be sent right now';
 	@override String get stashUnavailable => 'ham2k’s file stash can’t be reached right now';
+	@override String activitySearchSourcesFailed({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.';
+	@override String get activitySearchSomeSourcesFailed => 'some activity extensions didn\'t answer the search, so some results may be missing.';
 	@override String timersSuspendedBudget({required Object name}) => '${name} spent too much time in its timers. they\'re stopped until the extensions restart.';
 	@override String timersSuspendedFailures({required Object name}) => '${name}\'s timers kept failing. they\'re stopped until the extensions restart.';
 	@override String timersSuspendedInterrupted({required Object name}) => '${name} got stuck in a timer. its timers are stopped until the extensions restart.';
@@ -5130,7 +5132,7 @@ extension on TranslationsQrp {
 			'activitiesView.locationSettingsUnavailable' => 'allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'activity search unavailable',
-			'activitiesView.searchUnavailableReason' => 'no activity extension could run the search. try again in a moment.',
+			'activitiesView.searchUnavailableReason' => 'an activity extension could not answer the search. try again in a moment.',
 			'activitiesView.emptySheet' => 'use suggestions & search below to add one',
 			'activitiesView.exports' => 'exports',
 			'activitiesView.exportLogs' => 'export logs',
@@ -6539,6 +6541,8 @@ extension on TranslationsQrp {
 			'extensionService.commandFailed' => 'the command failed to run',
 			'extensionService.reportUnavailable' => 'reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'ham2k’s file stash can’t be reached right now',
+			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',
+			'extensionService.activitySearchSomeSourcesFailed' => 'some activity extensions didn\'t answer the search, so some results may be missing.',
 			'extensionService.timersSuspendedBudget' => ({required Object name}) => '${name} spent too much time in its timers. they\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedFailures' => ({required Object name}) => '${name}\'s timers kept failing. they\'re stopped until the extensions restart.',
 			'extensionService.timersSuspendedInterrupted' => ({required Object name}) => '${name} got stuck in a timer. its timers are stopped until the extensions restart.',

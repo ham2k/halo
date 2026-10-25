@@ -130,8 +130,8 @@ void main() {
   /// Lets the scripted futures run. Nothing timed waits on this.
   Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 20));
 
-  void answer(int ask, List<Map<String, dynamic>> suggestions, {bool allSourcesFailed = false}) =>
-      extensions.asks[ask].answer.complete((suggestions: suggestions, allSourcesFailed: allSourcesFailed));
+  void answer(int ask, List<Map<String, dynamic>> suggestions, {bool allSourcesFailed = false, bool someSourcesFailed = false}) => extensions.asks[ask].answer
+      .complete((suggestions: suggestions, allSourcesFailed: allSourcesFailed, someSourcesFailed: allSourcesFailed || someSourcesFailed));
 
   group('searches', () {
     test('an older search answering after a newer one is dropped', () async {
@@ -221,6 +221,25 @@ void main() {
       await settle();
       expect(state.failed, isFalse);
       expect(state.areSearchResults, isFalse);
+    });
+
+    // The contest extensions answer an empty list to nearly every search, so
+    // "every source failed" alone misses a failed POTA beside them and tells
+    // the operator there is nothing nearby.
+    test('one source failing fails a search that found nothing, but not one that found something', () async {
+      final state = await makeState();
+      unawaited(state.search(''));
+      await settle();
+      answer(0, const [], someSourcesFailed: true);
+      await settle();
+      expect(state.failed, isTrue);
+
+      unawaited(state.search(''));
+      await settle();
+      answer(1, [_park('US-0001')], someSourcesFailed: true);
+      await settle();
+      expect(state.failed, isFalse);
+      expect(state.suggestions.map((s) => s['ref']), ['US-0001']);
     });
 
     // A location typed while the hooks were answering is where "nearby" is
@@ -361,6 +380,19 @@ void main() {
       answer(2, const []);
       await settle();
       expect(state.exploredSuggestions, isEmpty);
+    });
+
+    // The fan-out keeps what answered when one program times out, so a pan
+    // can come back with parks and still be missing a program's. Called
+    // whole, the map never asks that view again and those parks never come.
+    test('a pan one program failed keeps what the others found, and says to ask again', () async {
+      final state = await answeredNearby([_park('US-0001')]);
+      final whole = state.explore(_view);
+      await settle();
+      answer(1, [_park('US-0002')], someSourcesFailed: true);
+
+      expect(await whole, isFalse);
+      expect(state.exploredSuggestions.map((s) => s['ref']), ['US-0002']);
     });
 
     test('a pan answering after a newer search adds nothing, and says to ask again', () async {
