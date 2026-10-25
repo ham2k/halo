@@ -374,7 +374,14 @@ class _Translations$dialogs$qrp extends Translations$dialogs$en {
 	@override String get operationDetails => 'operation details';
 	@override String get activities => 'activities';
 	@override String get stationCallsign => 'station callsign';
-	@override String get multiStationIdentifier => 'multi-station identifier (numbers only)';
+	@override String get advanced => 'advanced';
+	@override String get operatingPosition => 'operating position (multi-station)';
+	@override String get assistance => 'assistance';
+	@override String get assistanceDescription => 'use spotting services and other sources of information';
+	@override String get selfSpotting => 'self-spotting';
+	@override String get selfSpottingDescription => 'allow features that report your own frequency info';
+	@override String disabledByRules({required Object rules}) => 'disabled to comply with ${rules} rules';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$qrp lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$qrp._(_root);
 	@override String get notes => 'notes';
 	@override String get deleteOperationTitle => 'delete operation';
 	@override String get purgeTestsTitle => 'purge test operations';
@@ -603,6 +610,7 @@ class _Translations$loggingControls$qrp extends Translations$loggingControls$en 
 	@override String spotOtherAt({required Object call, required Object freq}) => 'spot ${call} at ${freq}';
 	@override String spotTooLate({required Object call}) => 'too late to spot ${call}';
 	@override String get spotNoFreq => 'first set a frequency to spot';
+	@override String get selfSpotDisabled => 'self-spot disabled';
 	@override String get spotComment => 'comment';
 	@override String get spottingAutoControl => 'auto re-spot';
 	@override String spotAutoEvery({required Object minutes}) => 're-spot every ${minutes} min';
@@ -1580,6 +1588,19 @@ class _Translations$chase$imports$qrp extends Translations$chase$imports$en {
 	@override String noProgram({required Object file}) => 'no chasing program imports ${file}';
 }
 
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$qrp extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
+
+	final TranslationsQrp _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'look up online?';
+	@override String get body => 'assistance is disabled for this operation. looking up all qsos will use online services like qrz for this one pass.';
+	@override String bodyRules({required Object rules}) => 'assistance is disabled for this operation to comply with ${rules} rules. looking up all qsos will use online services like qrz for this one pass.';
+	@override String get action => 'look up online';
+}
+
 // Path: dialogs.callChange
 class _Translations$dialogs$callChange$qrp extends Translations$dialogs$callChange$en {
 	_Translations$dialogs$callChange$qrp._(TranslationsQrp root) : this._root = root, super.internal(root);
@@ -1830,6 +1851,7 @@ class _Translations$operation$spots$qrp extends Translations$operation$spots$en 
 		other: '${count} spots',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'showing ${count} of ${total} spots';
+	@override String get spotsDisabled => 'spots disabled for this operation';
 	@override String ageMinutes({required Object minutes}) => '${minutes} minutes';
 	@override String get callsOfNote => 'calls of note';
 	@override String get yourSpots => 'your spots';
@@ -4577,7 +4599,17 @@ extension on TranslationsQrp {
 			'dialogs.operationDetails' => 'operation details',
 			'dialogs.activities' => 'activities',
 			'dialogs.stationCallsign' => 'station callsign',
-			'dialogs.multiStationIdentifier' => 'multi-station identifier (numbers only)',
+			'dialogs.advanced' => 'advanced',
+			'dialogs.operatingPosition' => 'operating position (multi-station)',
+			'dialogs.assistance' => 'assistance',
+			'dialogs.assistanceDescription' => 'use spotting services and other sources of information',
+			'dialogs.selfSpotting' => 'self-spotting',
+			'dialogs.selfSpottingDescription' => 'allow features that report your own frequency info',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'disabled to comply with ${rules} rules',
+			'dialogs.lookupDespiteAssistance.title' => 'look up online?',
+			'dialogs.lookupDespiteAssistance.body' => 'assistance is disabled for this operation. looking up all qsos will use online services like qrz for this one pass.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'assistance is disabled for this operation to comply with ${rules} rules. looking up all qsos will use online services like qrz for this one pass.',
+			'dialogs.lookupDespiteAssistance.action' => 'look up online',
 			'dialogs.notes' => 'notes',
 			'dialogs.deleteOperationTitle' => 'delete operation',
 			'dialogs.purgeTestsTitle' => 'purge test operations',
@@ -4756,6 +4788,8 @@ extension on TranslationsQrp {
 			'operation.layout.panels.clockFaceLcd' => 'lcd',
 			'operation.layout.panels.clockFaceAnalog' => 'analog',
 			'operation.layout.panels.clockZone' => 'time zone',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.clockZoneUtc' => 'utc',
 			'operation.layout.panels.clockZoneDevice' => 'this device',
 			'operation.layout.panels.clockShowSeconds' => 'show seconds',
@@ -4766,8 +4800,6 @@ extension on TranslationsQrp {
 			'operation.layout.panels.weatherNoLocation' => 'no location set. give this panel a location in its settings, or place it inside an operation that has one.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'couldn\'t read the location ${location}. use a grid square like fn31pr, or 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'couldn\'t reach open-meteo — no network? will try again shortly.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherUnreadable' => 'open-meteo responded, but not with anything readable. will try again shortly.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'gusts ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'just now',
@@ -4952,6 +4984,7 @@ extension on TranslationsQrp {
 			'operation.spots.phoneAndCw' => 'phone & cw',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'showing ${count} of ${total} spots',
+			'operation.spots.spotsDisabled' => 'spots disabled for this operation',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'calls of note',
 			'operation.spots.yourSpots' => 'your spots',
@@ -5209,6 +5242,7 @@ extension on TranslationsQrp {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'spot ${call} at ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'first set a frequency to spot',
+			'loggingControls.selfSpotDisabled' => 'self-spot disabled',
 			'loggingControls.spotComment' => 'comment',
 			'loggingControls.spottingAutoControl' => 'auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 're-spot every ${minutes} min',
@@ -5268,6 +5302,8 @@ extension on TranslationsQrp {
 			'loggingControls.info.noticeOurLocation' => 'set our county',
 			'loggingControls.info.noticeShortGrid' => 'grid too short',
 			'formChrome.untitled' => '(untitled)',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.showMore' => 'show more',
 			'formChrome.showAll' => 'show all',
 			'formChrome.showFewer' => 'show fewer',
@@ -5280,8 +5316,6 @@ extension on TranslationsQrp {
 			'formChrome.manage' => 'manage',
 			'formChrome.connect' => 'connect',
 			'formChrome.formTitle' => 'form',
-			_ => null,
-		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => 'add ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'edit ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'showing ${shown} of ${total} (${selected} selected)',
@@ -5782,6 +5816,8 @@ extension on TranslationsQrp {
 			'settings.accounts.test' => 'test',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'save failed: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'login failed: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.lookupFailed' => 'accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'when you are done, the browser will try to open a link starting with "${prefix}". your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.',
@@ -5794,8 +5830,6 @@ extension on TranslationsQrp {
 			'settings.accounts.pastedLinkNoCode' => 'that link has no login code. finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'that link looks cut off. copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'waiting for you to finish signing in — this will continue automatically once you do.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'this device hasn\'t heard back from the sign-in yet. if you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'ham2k logger could not open your browser automatically. use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'couldn\'t reach the sync server needed to complete this login. check your connection and try again.',
@@ -6296,6 +6330,8 @@ extension on TranslationsQrp {
 			'settings.developer.catalogSearchBleeding' => 'bleeding or better',
 			'settings.about.notices' => 'notices & messages',
 			'settings.about.noticesDescription' => 'announcements and status messages',
+			_ => null,
+		} ?? switch (path) {
 			'settings.about.releaseNotes' => 'release notes',
 			'settings.about.copiedVersion' => 'copied version details to clipboard',
 			'settings.panels.settings' => 'application preferences',
@@ -6308,8 +6344,6 @@ extension on TranslationsQrp {
 			'settings.panels.profilesDescription' => 'operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'station profiles',
 			'settings.panels.developerSettings' => 'developer settings',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'debugging and development tools',
 			'settings.panels.about' => 'about',
 			'settings.panels.aboutDescription' => 'version, credits, and legal information',

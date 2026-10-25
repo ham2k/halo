@@ -15,6 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
+import '../services/extensions/extension_info.dart';
 import '../tools/operation_title.dart';
 
 const _monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -224,6 +225,8 @@ class _DetailsResult {
   final String userTitle;
   final String notes;
   final String multiIdentifier;
+  final bool assistance;
+  final bool selfSpotting;
 
   /// Contacts the operator asked to restamp with the new operator call.
   /// Empty unless they asked; carried out of the dialog rather than
@@ -243,6 +246,8 @@ class _DetailsResult {
     required this.userTitle,
     required this.notes,
     required this.multiIdentifier,
+    required this.assistance,
+    required this.selfSpotting,
     this.restampOperator = const [],
   });
 }
@@ -255,6 +260,37 @@ class _DetailsResult {
 Qso _qsoWithOur(Qso qso, Map<String, String> fields) {
   final our = {...(asQsonMap(qso.data['our']) ?? const <String, dynamic>{}), ...fields};
   return Qso(uuid: qso.uuid, operationUuid: qso.operationUuid, data: {...qso.data, 'our': our});
+}
+
+/// The names of the rules [operation]'s refs impose against [key], one per
+/// activity or contest: the short name of the extension that claims each
+/// forbidding ref, as the activities header names it, or the bare ref type
+/// when no extension claims it.
+List<String> _rulesForbidding(HaLoServices services, Operation operation, String key) => {
+  for (final ref in operation.refsForbidding(key))
+    if (asQsonString(ref['type']) case final type?)
+      extensionsDeclaringRefs(services.extensions.availableExtensions, [(type: type, code: asQsonString(ref['ref']))]).firstOrNull?.effectiveShortName ??
+          type.toUpperCase(),
+}.toList();
+
+/// Warns, before Lookup All QSOs, that [operation] has assistance off — the
+/// operator's switch or the named rules — and that this pass will use online
+/// services anyway. True to go ahead.
+Future<bool> confirmLookupDespiteAssistance(BuildContext context, HaLoServices services, Operation operation) async {
+  final rules = _rulesForbidding(services, operation, Operation.assistanceKey);
+  final confirmed = await showHaloDialog<bool>(
+    context: context,
+    builder: (context) {
+      final t = context.t.dialogs.lookupDespiteAssistance;
+      return HaloDialog(
+        title: Text(t.title),
+        content: Text(rules.isEmpty ? t.body : t.bodyRules(rules: rules.join(', '))),
+        cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+        actions: [FilledButton(onPressed: () => Navigator.of(context).pop(true), child: Text(t.action))],
+      );
+    },
+  );
+  return confirmed == true;
 }
 
 /// Edits station callsign/title on an existing operation. Returns the
@@ -275,15 +311,24 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
   // Read before the dialog: the notices below are posted after it closes, and
   // the status bar outlives the context they would otherwise come from.
   final t = context.t.dialogs.callChange;
-  final result = await showHaloDialog<_DetailsResult>(
-    context: context,
+  final result = await showModalPane<_DetailsResult>(
+    context,
+    title: context.t.dialogs.operationDetails,
+    closeLabel: context.t.common.close,
+    // The footer stays pinned under a body that scrolls on its own.
+    scrollable: false,
     builder: (context) => _OperationDetailsDialog(
       stationCall: operation.stationCall,
       operatorCall: operatorCall,
       userTitle: operation.userTitle,
       notes: asQsonString(operation.data['notes']) ?? '',
       multiIdentifier: multiIdentifier,
-      showMultiIdentifier: settings.developerMode,
+      // The operator's own choices, not the effective values: a switch a ref
+      // forces off still shows, and keeps, what the operator chose.
+      assistance: operation.data[Operation.assistanceKey] != false,
+      selfSpotting: operation.data[Operation.selfSpottingKey] != false,
+      assistanceRules: _rulesForbidding(services, operation, Operation.assistanceKey),
+      selfSpottingRules: _rulesForbidding(services, operation, Operation.selfSpottingKey),
       ownCall: settings.activeProfile.operatorCall.trim().toUpperCase(),
       suggestDefaultOperator: settings.suggestDefaultOperator,
       operatorWasSet: operation.data.containsKey(operatorCallKeyFor(multiIdentifier)) || operation.localData.containsKey(operatorCallKey),
@@ -330,6 +375,10 @@ Future<Operation?> editOperationDetails(BuildContext context, HaLoServices servi
       'userTitle': result.userTitle.trim(),
       'notes': result.notes.trim(),
       if (writeOperator) operatorCallKeyFor(newMultiIdentifier): newOperatorCall,
+      // Written only when changed, so an operation nobody decided for keeps
+      // reading as absent rather than gaining a stored default.
+      if (result.assistance != (operation.data[Operation.assistanceKey] != false)) Operation.assistanceKey: result.assistance,
+      if (result.selfSpotting != (operation.data[Operation.selfSpottingKey] != false)) Operation.selfSpottingKey: result.selfSpotting,
     },
     qsoCount: operation.qsoCount,
     startAtMillisMin: operation.startAtMillisMin,
@@ -646,7 +695,15 @@ class _OperationDetailsDialog extends StatefulWidget {
   /// `ExtensionService.sendSpot`). Empty means a plain single-station
   /// operation and no suffix at all.
   final String multiIdentifier;
-  final bool showMultiIdentifier;
+
+  /// The operator's own choices — see `Operation.assistance` and
+  /// `Operation.selfSpotting`.
+  final bool assistance;
+  final bool selfSpotting;
+
+  /// The rules that force each switch off, by name; empty when none do.
+  final List<String> assistanceRules;
+  final List<String> selfSpottingRules;
 
   /// The operator's own callsign, and whether they want it offered as the
   /// operator of an operation run under a different station call.
@@ -669,7 +726,10 @@ class _OperationDetailsDialog extends StatefulWidget {
     required this.userTitle,
     required this.notes,
     required this.multiIdentifier,
-    required this.showMultiIdentifier,
+    required this.assistance,
+    required this.selfSpotting,
+    required this.assistanceRules,
+    required this.selfSpottingRules,
     required this.ownCall,
     required this.suggestDefaultOperator,
     required this.operatorWasSet,
@@ -686,6 +746,17 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   late final _titleController = TextEditingController(text: widget.userTitle);
   late final _notesController = TextEditingController(text: widget.notes);
   late final _multiIdentifierController = TextEditingController(text: widget.multiIdentifier);
+  late bool _assistance = widget.assistance;
+  late bool _selfSpotting = widget.selfSpotting;
+
+  /// Open from the start when anything in it differs from the default, so a
+  /// setting that changes how the operation behaves is never out of sight.
+  late bool _advancedOpen =
+      widget.multiIdentifier.isNotEmpty ||
+      !widget.assistance ||
+      !widget.selfSpotting ||
+      widget.assistanceRules.isNotEmpty ||
+      widget.selfSpottingRules.isNotEmpty;
 
   /// Null until the contacts have been read. The dialog opens without them
   /// and grows the advice in when they arrive, rather than making the
@@ -855,9 +926,9 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
         operatorCall: operatorCall,
         userTitle: _titleController.text.trim(),
         notes: _notesController.text.trim(),
-        // Hidden means untouched: the controller still holds what came in, so
-        // the caller's change check sees no change and writes nothing.
         multiIdentifier: _multiIdentifierController.text.trim(),
+        assistance: _assistance,
+        selfSpotting: _selfSpotting,
         restampOperator: _restampTargets(
           ticked: _restampOperator,
           advice: _operatorAdvice,
@@ -878,6 +949,26 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
     if (calls.isEmpty) return null;
     final t = context.t.dialogs.callChange;
     return calls.length == 1 ? t.invalidCallsign(call: calls.single) : t.invalidCallsigns(calls: calls.join(', '));
+  }
+
+  /// A switch an activity's [rules] can force off. Forced, it shows off and
+  /// cannot be changed, and names the rules in place of its description; the
+  /// operator's own choice underneath is left as it was.
+  Widget _rulesSwitch({
+    required String title,
+    required String description,
+    required bool value,
+    required List<String> rules,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final forced = rules.isNotEmpty;
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(title),
+      subtitle: Text(forced ? context.t.dialogs.disabledByRules(rules: rules.join(', ')) : description),
+      value: value && !forced,
+      onChanged: forced ? null : onChanged,
+    );
   }
 
   /// A line of explanation under a field, in the dialog's quieter voice.
@@ -926,100 +1017,132 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return HaloDialog(
-      title: Text(context.t.dialogs.operationDetails),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _CallsignField(
-              controller: _stationCallController,
-              autofocus: true,
-              allowCommas: true,
-              decoration: poloFieldDecoration(context, context.t.dialogs.stationCallsign, errorText: _invalidCallsignsText(_invalidStationCalls)),
-              onSubmitted: (_) => _save(),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Flexible(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xxl, Space.xxl, Space.md),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _CallsignField(
+                  controller: _stationCallController,
+                  autofocus: true,
+                  allowCommas: true,
+                  decoration: poloFieldDecoration(context, context.t.dialogs.stationCallsign, errorText: _invalidCallsignsText(_invalidStationCalls)),
+                  onSubmitted: (_) => _save(),
+                ),
+                // No station-call offer: the call is what a SEGMENT states, so
+                // its contacts follow it with nothing to ask
+                // (`QsosRepository.restampSegmentStationCall`).
+                if (_contactsFailed) _adviceNote(context.t.dialogs.callChange.contactsUnreadable),
+                const SizedBox(height: Space.lg),
+                _CallsignField(
+                  controller: _operatorCallController,
+                  enabled: _operatorApplies,
+                  decoration: poloFieldDecoration(
+                    context,
+                    context.t.settings.operatorCall,
+                    // The station calls themselves, so a disabled field still says
+                    // who the contacts will name — each its own station call.
+                    hintText: _operatorApplies ? null : _stationCalls.join(', '),
+                    errorText: _operatorApplies ? _invalidCallsignsText(_invalidOperatorCall) : null,
+                  ),
+                  onSubmitted: (_) => _save(),
+                ),
+                if (!_operatorApplies) _adviceNote(context.t.dialogs.callChange.operatorSeveralStations),
+                ..._adviceFor(
+                  advice: _operatorAdvice,
+                  typed: _operatorCallController.text.trim().toUpperCase(),
+                  soFar: (previous, typed) => context.t.dialogs.callChange.operatorSoFar(previous: previous, typed: typed),
+                  noneSoFar: (typed) => context.t.dialogs.callChange.operatorNoneSoFar(typed: typed),
+                  several: (calls, typed) => context.t.dialogs.callChange.operatorSeveral(calls: calls, typed: typed),
+                  restamp: (count, typed) => context.t.dialogs.callChange.operatorRestamp(count: count, typed: typed),
+                  checked: _restampOperator,
+                  onChanged: (value) => setState(() => _restampOperator = value),
+                ),
+                const SizedBox(height: Space.xxl),
+                TextField(
+                  selectAllOnFocus: false,
+                  controller: _titleController,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: poloFieldDecoration(context, context.t.home.titleOptional),
+                  onSubmitted: (_) => _save(),
+                ),
+                const SizedBox(height: Space.lg),
+                TextField(
+                  selectAllOnFocus: false,
+                  controller: _notesController,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: null,
+                  keyboardType: TextInputType.multiline,
+                  decoration: poloFieldDecoration(context, context.t.dialogs.notes),
+                ),
+                const SizedBox(height: Space.xxl),
+                CollapsibleSection.row(
+                  title: context.t.dialogs.advanced,
+                  expanded: _advancedOpen,
+                  onToggle: () => setState(() => _advancedOpen = !_advancedOpen),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: Space.lg),
+                      TextField(
+                        selectAllOnFocus: false,
+                        controller: _multiIdentifierController,
+                        keyboardType: TextInputType.number,
+                        style: const TextStyle(fontFamily: 'RobotoMono'),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          // Same ceiling the POSITION command enforces: a station has
+                          // operators, not thousands of them.
+                          LengthLimitingTextInputFormatter(2),
+                        ],
+                        decoration: poloFieldDecoration(context, context.t.dialogs.operatingPosition),
+                        onSubmitted: (_) => _save(),
+                      ),
+                      const SizedBox(height: Space.md),
+                      _rulesSwitch(
+                        title: context.t.dialogs.assistance,
+                        description: context.t.dialogs.assistanceDescription,
+                        value: _assistance,
+                        rules: widget.assistanceRules,
+                        onChanged: (value) => setState(() => _assistance = value),
+                      ),
+                      _rulesSwitch(
+                        title: context.t.dialogs.selfSpotting,
+                        description: context.t.dialogs.selfSpottingDescription,
+                        value: _selfSpotting,
+                        rules: widget.selfSpottingRules,
+                        onChanged: (value) => setState(() => _selfSpotting = value),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            // No station-call offer: the call is what a SEGMENT states, so
-            // its contacts follow it with nothing to ask
-            // (`QsosRepository.restampSegmentStationCall`).
-            if (_contactsFailed) _adviceNote(context.t.dialogs.callChange.contactsUnreadable),
-            const SizedBox(height: Space.lg),
-            _CallsignField(
-              controller: _operatorCallController,
-              enabled: _operatorApplies,
-              decoration: poloFieldDecoration(
-                context,
-                context.t.settings.operatorCall,
-                // The station calls themselves, so a disabled field still says
-                // who the contacts will name — each its own station call.
-                hintText: _operatorApplies ? null : _stationCalls.join(', '),
-                errorText: _operatorApplies ? _invalidCallsignsText(_invalidOperatorCall) : null,
-              ),
-              onSubmitted: (_) => _save(),
-            ),
-            if (!_operatorApplies) _adviceNote(context.t.dialogs.callChange.operatorSeveralStations),
-            ..._adviceFor(
-              advice: _operatorAdvice,
-              typed: _operatorCallController.text.trim().toUpperCase(),
-              soFar: (previous, typed) => context.t.dialogs.callChange.operatorSoFar(previous: previous, typed: typed),
-              noneSoFar: (typed) => context.t.dialogs.callChange.operatorNoneSoFar(typed: typed),
-              several: (calls, typed) => context.t.dialogs.callChange.operatorSeveral(calls: calls, typed: typed),
-              restamp: (count, typed) => context.t.dialogs.callChange.operatorRestamp(count: count, typed: typed),
-              checked: _restampOperator,
-              onChanged: (value) => setState(() => _restampOperator = value),
-            ),
-            if (widget.showMultiIdentifier) ...[
-              const SizedBox(height: Space.lg),
-              TextField(
-                selectAllOnFocus: false,
-                controller: _multiIdentifierController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(fontFamily: 'RobotoMono'),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  // Same ceiling the POSITION command enforces: a station has
-                  // operators, not thousands of them.
-                  LengthLimitingTextInputFormatter(2),
-                ],
-                // Label only, matching FormRenderer's treatment of a
-                // `devMode: true` text field — the value itself stays in the
-                // ordinary field colour.
-                decoration: poloFieldDecoration(context, context.t.dialogs.multiStationIdentifier, labelColor: HaLoColors.of(context).devMode),
-                onSubmitted: (_) => _save(),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
+          child: haloDialogFooterRow(
+            cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
+            actions: [
+              FilledButton(
+                // An operation with no station callsign is not saveable, and the
+                // caller drops the whole edit when one arrives — title, notes and
+                // any ticked restamp with it. Refusing here says so, instead of
+                // making Save behave like Cancel. `_save` refuses too, because
+                // every field submits on Enter and would otherwise walk straight
+                // past this button.
+                onPressed: _stationCalls.isEmpty ? null : _save,
+                child: Text(context.t.common.save),
               ),
             ],
-            const SizedBox(height: Space.xxl),
-            TextField(
-              selectAllOnFocus: false,
-              controller: _titleController,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: poloFieldDecoration(context, context.t.home.titleOptional),
-              onSubmitted: (_) => _save(),
-            ),
-            const SizedBox(height: Space.lg),
-            TextField(
-              selectAllOnFocus: false,
-              controller: _notesController,
-              textCapitalization: TextCapitalization.sentences,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              decoration: poloFieldDecoration(context, context.t.dialogs.notes),
-            ),
-          ],
-        ),
-      ),
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
-      actions: [
-        FilledButton(
-          // An operation with no station callsign is not saveable, and the
-          // caller drops the whole edit when one arrives — title, notes and
-          // any ticked restamp with it. Refusing here says so, instead of
-          // making Save behave like Cancel. `_save` refuses too, because
-          // every field submits on Enter and would otherwise walk straight
-          // past this button.
-          onPressed: _stationCalls.isEmpty ? null : _save,
-          child: Text(context.t.common.save),
+          ),
         ),
       ],
     );

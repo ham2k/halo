@@ -178,9 +178,10 @@ class SpotBoardService extends ChangeNotifier {
 
   VoidCallback? _unsubscribeSpots;
 
-  /// Keeps the board worked out — and the spots it reads fetched — while at
-  /// least one caller holds a subscription, through which it tells the board
-  /// what it shows ([SpotBoardSubscription.show]).
+  /// Keeps the board worked out — and the spots it reads fetched, once the
+  /// operation shown allows it ([spotsAllowed]) — while at least one caller
+  /// holds a subscription, through which it tells the board what it shows
+  /// ([SpotBoardSubscription.show]).
   ///
   /// A [follower] — the Spots Panel inside an Operation View — shows the same
   /// operation its view does, but subscribes later and on its own schedule:
@@ -191,7 +192,6 @@ class SpotBoardService extends ChangeNotifier {
     final viewer = SpotBoardSubscription._(this, follower: follower);
     _viewers.add(viewer);
     if (_viewers.length == 1) {
-      _unsubscribeSpots = spots.subscribe();
       spots.addListener(_onSpotsChanged);
       settings.addListener(_onSettingsChanged);
       radio.addListener(_onRadioChanged);
@@ -201,7 +201,24 @@ class SpotBoardService extends ChangeNotifier {
       _vfoKey = _currentVfoKey;
       if (spots.loaded) unawaited(refreshCallInfo());
     }
+    _holdSpots();
     return viewer;
+  }
+
+  /// Whether the spot sources may be asked at all: only once a viewer has
+  /// shown an operation, and only one with assistance (`Operation.assistance`)
+  /// — an operation that rules it out calls no spot hook, so the board stops
+  /// fetching the moment it is on top, and starts again when it is not.
+  bool get spotsAllowed => _shown?.operation.assistance ?? false;
+
+  /// Takes or lets go of [spots]' fetching to match [spotsAllowed].
+  void _holdSpots() {
+    if (spotsAllowed) {
+      _unsubscribeSpots ??= spots.subscribe();
+    } else {
+      _unsubscribeSpots?.call();
+      _unsubscribeSpots = null;
+    }
   }
 
   void _release(SpotBoardSubscription viewer) {
@@ -239,6 +256,7 @@ class SpotBoardService extends ChangeNotifier {
   /// A different operation is scored straight away, since nothing on screen
   /// was judged against it; a moved log waits out the debounce.
   void _reconcile() {
+    _holdSpots();
     final shown = _shown;
     if (shown == null) return;
     final switched = shown.operation.uuid != _judgedUuid || shown.chasing != _judgedChasing;

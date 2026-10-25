@@ -176,6 +176,21 @@ void main() {
     expect(_calls(await getSpots()), ['K1ABC']);
   });
 
+  test('answers nothing while the open operation rules assistance out, though the board still holds spots', () async {
+    // The board keeps what an earlier operation fetched; an extension panel
+    // reading it would hand those spots to an operator whose rules forbid them.
+    await boot(board);
+    final operation = await services.operations.create(stationCall: 'N0DEV');
+    view.show(
+      Operation(uuid: operation.uuid, data: {...operation.data, 'assistance': false}),
+      const [],
+      logRevision: 'r0',
+    );
+    await pumpEventQueue();
+    expect(services.spots.spotsBySource, isNotEmpty);
+    expect(await getSpots({'filter': 'all'}), isEmpty);
+  });
+
   test('an "auto" band follows the radio, as the panel\'s does', () async {
     await boot(board, filters: {'bandFilter': 'auto'});
     services.radio.setVfo('vfoA', band: '40m');

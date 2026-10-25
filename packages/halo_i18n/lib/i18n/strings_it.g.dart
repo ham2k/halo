@@ -348,7 +348,6 @@ class _Translations$dialogs$it extends Translations$dialogs$en {
 	@override String get operationDetails => 'Dettagli operazione';
 	@override String get activities => 'Attività';
 	@override String get stationCallsign => 'Nominativo di Stazione';
-	@override String get multiStationIdentifier => 'Identificatore multi-stazione (solo numeri)';
 	@override String get notes => 'Note';
 	@override String get deleteOperationTitle => 'Elimina Operazione';
 	@override String get purgeTestsTitle => 'Elimina le Operazioni di Test';
@@ -3847,7 +3846,6 @@ extension on TranslationsIt {
 			'dialogs.operationDetails' => 'Dettagli operazione',
 			'dialogs.activities' => 'Attività',
 			'dialogs.stationCallsign' => 'Nominativo di Stazione',
-			'dialogs.multiStationIdentifier' => 'Identificatore multi-stazione (solo numeri)',
 			'dialogs.notes' => 'Note',
 			'dialogs.deleteOperationTitle' => 'Elimina Operazione',
 			'dialogs.purgeTestsTitle' => 'Elimina le Operazioni di Test',
@@ -4098,9 +4096,9 @@ extension on TranslationsIt {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: 'Condividi ${count} file combinato', other: 'Condividi ${count} file combinati', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: 'Esporta ${count} file combinato', other: 'Esporta ${count} file combinati', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('it'))(count, one: 'Scarica ${count} file combinato', other: 'Scarica ${count} file combinati', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Salva ${name}',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => 'Salva ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Condividi ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Esporta ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Scarica ${name}',
@@ -4612,9 +4610,9 @@ extension on TranslationsIt {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} non può ascoltare sulla porta ${port}: questo computer non lo consente. Scegli una porta superiore a 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} ha smesso di ascoltare sulla porta ${port}. Nuovo tentativo…',
 			'settings.radio.title' => 'Controllo CAT',
+			'settings.radio.loggingAndCat' => 'Logging e CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'Logging e CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Keyer',
 			'settings.radio.servicesSection' => 'Servizi',
@@ -5126,9 +5124,9 @@ extension on TranslationsIt {
 			'settings.station.n3fjpTroubleshootingTitle' => 'Se l\'app non riesce a connettersi',
 			'settings.station.n3fjpTroubleshooting' => 'Questa voce si connette a **un programma di logging N3FJP in esecuzione sul tuo computer**, non direttamente alla radio — N3FJP comunica con la radio.\n\n- **L\'API del programma deve essere attiva**: Settings → Application Program Interface, seleziona **TCP API Enabled**.\n- **La porta** è 1100 a meno che tu non l\'abbia cambiata lì.\n- **N3FJP deve avere un\'interfaccia radio configurata** per seguire o sintonizzare la radio. Senza, segnala solo ciò che viene digitato nella sua finestra di inserimento.\n- N3FJP segnala solo banda, modo e frequenza: niente potenza, niente stato di trasmissione.\n\nQuesta voce è stata scritta a partire dall\'API pubblicata di N3FJP e non è stata provata con N3FJP. Se funziona solo in parte, vale la pena segnalarlo.',
 			'settings.station.commanderTroubleshootingTitle' => 'Se l\'app non riesce a connettersi',
+			'settings.station.commanderTroubleshooting' => 'Questa voce si connette a **DXLab Commander, in esecuzione sul tuo computer**, non direttamente alla radio — Commander comunica con la radio.\n\n- **Commander deve essere già in esecuzione** e connesso alla radio.\n- **Il suo servizio di rete deve essere attivo**: il pulsante **Net Serv** nel pannello Radio della finestra Configuration di Commander.\n- **La porta** è 52002, la terza porta del blocco che inizia dalla **Base Port** di Net Serv (52000 a meno che tu non l\'abbia cambiata).\n- **Da un\'altra macchina**, assicurati che il firewall lasci passare la connessione.\n\nQuesta voce è stata scritta a partire dai messaggi TCP pubblicati di Commander e non è stata provata con Commander. Se funziona solo in parte, vale la pena segnalarlo.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'Questa voce si connette a **DXLab Commander, in esecuzione sul tuo computer**, non direttamente alla radio — Commander comunica con la radio.\n\n- **Commander deve essere già in esecuzione** e connesso alla radio.\n- **Il suo servizio di rete deve essere attivo**: il pulsante **Net Serv** nel pannello Radio della finestra Configuration di Commander.\n- **La porta** è 52002, la terza porta del blocco che inizia dalla **Base Port** di Net Serv (52000 a meno che tu non l\'abbia cambiata).\n- **Da un\'altra macchina**, assicurati che il firewall lasci passare la connessione.\n\nQuesta voce è stata scritta a partire dai messaggi TCP pubblicati di Commander e non è stata provata con Commander. Se funziona solo in parte, vale la pena segnalarlo.',
 			'settings.station.ic705TroubleshootingTitle' => 'Se la radio non risponde mai',
 			'settings.station.ic705Troubleshooting' => 'La radio ha una **sola** sessione di controllo remoto. Quando l\'accesso viene ignorato, quasi sempre qualcos\'altro la sta usando.\n\n- **Chiudi qualsiasi altro client.** wfview o RS-BA1 connessi alla stessa radio occupano quell\'unica sessione, e nel frattempo l\'accesso da qui viene semplicemente ignorato.\n- **Controlla le impostazioni di rete della radio.** La WLAN deve essere attiva, la radio deve essere sulla stessa rete e la sua funzione di controllo remoto (Network) deve essere abilitata.\n- **Spegni e riaccendi la WLAN della radio** se resta bloccata. Questo libera in modo affidabile una sessione bloccata sulla radio.\n\nUna **password errata viene rifiutata esplicitamente**, non accolta dal silenzio. Se sei arrivato qui invece di vedere un messaggio di "rifiuto", il problema non è la password.',
 			'settings.station.statusStale' => 'Non risponde',

@@ -17,6 +17,10 @@ class _SpotsFilterPill extends StatelessWidget {
   /// progress bar reserved at the bottom of this pill's own background.
   final bool loading;
 
+  /// The operation fetches no spots (`Operation.assistance`): every pill
+  /// shows disabled and the count line says why.
+  final bool disabled;
+
   const _SpotsFilterPill({
     required this.bandLabel,
     required this.modeLabel,
@@ -27,15 +31,19 @@ class _SpotsFilterPill extends StatelessWidget {
     required this.onRefresh,
     required this.refreshing,
     required this.loading,
+    this.disabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = context.t;
     final theme = Theme.of(context);
-    final countLabel = filteredCount == totalCount
+    final countLabel = disabled
+        ? t.operation.spots.spotsDisabled
+        : filteredCount == totalCount
         ? t.operation.spots.spotsCount(count: totalCount)
         : t.operation.spots.spotsCountFiltered(count: filteredCount, total: totalCount);
+    final onTap = disabled ? null : this.onTap;
 
     return Container(
       // Same background as the main logging control area (logging_controls.dart's
@@ -55,25 +63,28 @@ class _SpotsFilterPill extends StatelessWidget {
                 // Extra breathing room above and below the pill row.
                 Padding(
                   padding: EdgeInsets.symmetric(vertical: LayoutDensity.metricsOf(context).spotTilePaddingV),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Desktop-only manual refresh — mobile refreshes by
-                      // pull-to-refresh instead (RefreshIndicator on the list below).
-                      if (!isMobilePlatform) ...[
-                        _FilterInfoPill(icon: 'refresh', loading: refreshing, onTap: refreshing ? null : onRefresh),
+                  child: Opacity(
+                    opacity: disabled ? 0.38 : 1,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Desktop-only manual refresh — mobile refreshes by
+                        // pull-to-refresh instead (RefreshIndicator on the list below).
+                        if (!isMobilePlatform) ...[
+                          _FilterInfoPill(icon: 'refresh', loading: refreshing, onTap: refreshing || disabled ? null : onRefresh),
+                          const SizedBox(width: Space.sm),
+                        ],
+                        // The only pill that can grow; flex it so it ellipsizes on a
+                        // narrow panel rather than overflowing the row.
+                        Flexible(
+                          child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
+                        ),
                         const SizedBox(width: Space.sm),
+                        _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
+                        const SizedBox(width: Space.sm),
+                        _FilterInfoPill(icon: 'tune', onTap: onTap),
                       ],
-                      // The only pill that can grow; flex it so it ellipsizes on a
-                      // narrow panel rather than overflowing the row.
-                      Flexible(
-                        child: _FilterInfoPill(icon: 'radio', label: '$bandLabel • $modeLabel', onTap: onTap),
-                      ),
-                      const SizedBox(width: Space.sm),
-                      _FilterInfoPill(icon: 'clock', label: '${ageMinutes}m', onTap: onTap),
-                      const SizedBox(width: Space.sm),
-                      _FilterInfoPill(icon: 'tune', onTap: onTap),
-                    ],
+                    ),
                   ),
                 ),
                 Text(
@@ -94,7 +105,7 @@ class _SpotsFilterPill extends StatelessWidget {
           // the plain scaffold background below the whole filter area.
           SizedBox(
             height: _spotsProgressHeight,
-            child: loading ? const LinearProgressIndicator(minHeight: _spotsProgressHeight) : null,
+            child: loading && !disabled ? const LinearProgressIndicator(minHeight: _spotsProgressHeight) : null,
           ),
         ],
       ),

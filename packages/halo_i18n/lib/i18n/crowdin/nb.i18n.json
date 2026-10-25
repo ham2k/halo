@@ -308,7 +308,6 @@
     "operationDetails": "Operasjonsdetaljer",
     "activities": "Aktiviteter",
     "stationCallsign": "Stasjonskallesignal",
-    "multiStationIdentifier": "Identifikator for multistasjon (kun tall)",
     "notes": "Notater",
     "deleteOperationTitle": "Slett operasjon",
     "purgeTestsTitle": "Fjern testoperasjoner",

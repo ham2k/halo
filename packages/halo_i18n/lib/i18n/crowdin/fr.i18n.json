@@ -308,7 +308,6 @@
     "operationDetails": "Détails de l'opération",
     "activities": "Activités",
     "stationCallsign": "Indicatif de la station",
-    "multiStationIdentifier": "Identifiant multi-station (uniquement des chiffres)",
     "notes": "Notes",
     "deleteOperationTitle": "Supprimer l'opération",
     "purgeTestsTitle": "Purger les opérations de test",

@@ -809,4 +809,71 @@ void main() {
     expect(done.progressValue, 1.0);
     expect(lookups, 4);
   });
+
+  // Lookup All QSOs on an operation without assistance: the operator was
+  // warned and confirmed, so that batch goes through the lookup that may go
+  // online, and nothing else does.
+  group('a pass confirmed despite assistance being off', () {
+    late List<String> ordinary;
+    late List<String> despite;
+    late Completer<void> hold;
+
+    LookupQueueService routed() {
+      ordinary = [];
+      despite = [];
+      hold = Completer<void>()..complete();
+      Future<Map<String, dynamic>?> answer(List<String> into, String call) async {
+        into.add(call);
+        await hold.future;
+        return {
+          'lookups': [
+            {'source': 'test', 'online': true},
+          ],
+        };
+      }
+
+      return LookupQueueService(
+        lookup: (call, {required qso, required operation, bool online = true, bool recentContext = false}) => answer(ordinary, call),
+        lookupDespiteAssistance: (call, {required qso, required operation, bool online = true, bool recentContext = false}) => answer(despite, call),
+        qsos: qsos,
+        operations: operations,
+        statusBar: statusBar,
+      );
+    }
+
+    test('goes through the lookup that may go online; an ordinary batch does not', () async {
+      final a = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      final queue = routed();
+      queue.enqueueAll([a], despiteAssistance: true);
+      await queue.idle;
+      queue.enqueueAll([a]);
+      await queue.idle;
+      expect(despite, ['W1AW']);
+      expect(ordinary, ['W1AW']);
+    });
+
+    test('takes over a QSO already waiting from an ordinary enqueue', () async {
+      // Without the takeover the waiting entry runs local-only and the
+      // confirmed one is dropped as a duplicate — the operator confirmed a
+      // pass that never happened for that QSO.
+      final a = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+      });
+      final b = await qsos.add(operation.uuid, {
+        'their': {'call': 'K1ABC'},
+      });
+      final queue = routed();
+      hold = Completer<void>();
+      queue.enqueue(a);
+      queue.enqueue(b);
+      await pumpEventQueue();
+      queue.enqueueAll([b], despiteAssistance: true);
+      hold.complete();
+      await queue.idle;
+      expect(ordinary, ['W1AW']);
+      expect(despite, ['K1ABC']);
+    });
+  });
 }

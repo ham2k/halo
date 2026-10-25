@@ -348,7 +348,6 @@ class _Translations$dialogs$sk extends Translations$dialogs$en {
 	@override String get operationDetails => 'Podrobnosti o prevádzke';
 	@override String get activities => 'Aktivity';
 	@override String get stationCallsign => 'Volací znak stanice';
-	@override String get multiStationIdentifier => 'Identifikátor pre viac staníc (iba čísla)';
 	@override String get notes => 'Poznámky';
 	@override String get deleteOperationTitle => 'Odstrániť prevádzku';
 	@override String get purgeTestsTitle => 'Vyčistiť testovacie prevádzky';
@@ -3847,7 +3846,6 @@ extension on TranslationsSk {
 			'dialogs.operationDetails' => 'Podrobnosti o prevádzke',
 			'dialogs.activities' => 'Aktivity',
 			'dialogs.stationCallsign' => 'Volací znak stanice',
-			'dialogs.multiStationIdentifier' => 'Identifikátor pre viac staníc (iba čísla)',
 			'dialogs.notes' => 'Poznámky',
 			'dialogs.deleteOperationTitle' => 'Odstrániť prevádzku',
 			'dialogs.purgeTestsTitle' => 'Vyčistiť testovacie prevádzky',
@@ -4098,9 +4096,9 @@ extension on TranslationsSk {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Zdieľať ${count} zlúčený súbor', other: 'Zdieľať ${count} zlúčených súborov', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Exportovať ${count} zlúčený súbor', other: 'Exportovať ${count} zlúčených súborov', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('sk'))(count, one: 'Stiahnuť ${count} zlúčený súbor', other: 'Stiahnuť ${count} zlúčených súborov', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Uložiť ${name}',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => 'Uložiť ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Zdieľať ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportovať ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Stiahnuť ${name}',
@@ -4612,9 +4610,9 @@ extension on TranslationsSk {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nemôže počúvať na porte ${port}: tento počítač to nepovoľuje. Vyberte port nad 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} prestal počúvať na porte ${port}. Skúša sa znova…',
 			'settings.radio.title' => 'Ovládanie CAT',
+			'settings.radio.loggingAndCat' => 'Logovanie a CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'Logovanie a CAT',
 			'settings.radio.tuningSection' => 'Ladenie',
 			'settings.radio.keyerSection' => 'Kľúčovač',
 			'settings.radio.servicesSection' => 'Služby',
@@ -5126,9 +5124,9 @@ extension on TranslationsSk {
 			'settings.station.n3fjpTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
 			'settings.station.n3fjpTroubleshooting' => 'Toto sa pripája k **logovaciemu programu N3FJP, ktorý beží na vašom počítači**, nie priamo k rádiostanici — N3FJP komunikuje s rádiostanicou.\n\n- **API programu musí byť zapnuté**: Settings → Application Program Interface, zaškrtnite **TCP API Enabled**.\n- **Port** je 1100, pokiaľ ste ho tam nezmenili.\n- **N3FJP musí mať nastavené rozhranie rádiostanice**, aby mohol sledovať alebo ladiť rádiostanicu. Bez neho hlási iba to, čo sa zadá do jeho vstupného okna.\n- N3FJP hlási iba pásmo, mód a frekvenciu: žiadny výkon, žiadny stav vysielania.\n\nTáto položka bola napísaná podľa zverejneného API N3FJP a s N3FJP ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.commanderTroubleshootingTitle' => 'Ak sa aplikácia nemôže pripojiť',
+			'settings.station.commanderTroubleshooting' => 'Toto sa pripája k **DXLab Commander, ktorý beží na vašom počítači**, nie priamo k rádiostanici — Commander komunikuje s rádiostanicou.\n\n- **Commander už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho sieťová služba musí byť zapnutá**: tlačidlo **Net Serv** na paneli Radio v okne Configuration programu Commander.\n- **Port** je 52002, tretí port bloku začínajúceho na **Base Port** v Net Serv (52000, pokiaľ ste ho nezmenili).\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených TCP správ programu Commander a s Commanderom ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'Toto sa pripája k **DXLab Commander, ktorý beží na vašom počítači**, nie priamo k rádiostanici — Commander komunikuje s rádiostanicou.\n\n- **Commander už musí bežať** a byť pripojený k rádiostanici.\n- **Jeho sieťová služba musí byť zapnutá**: tlačidlo **Net Serv** na paneli Radio v okne Configuration programu Commander.\n- **Port** je 52002, tretí port bloku začínajúceho na **Base Port** v Net Serv (52000, pokiaľ ste ho nezmenili).\n- **Z iného počítača** sa uistite, že váš firewall pripojenie prepustí.\n\nTáto položka bola napísaná podľa zverejnených TCP správ programu Commander a s Commanderom ešte nebežala. Ak funguje len napoly, oplatí sa to nahlásiť.',
 			'settings.station.ic705TroubleshootingTitle' => 'Ak rádiostanica nikdy neodpovie',
 			'settings.station.ic705Troubleshooting' => 'Rádiostanica má **jedinú** reláciu diaľkového ovládania. Keď sa prihlásenie ignoruje, takmer vždy ju používa niečo iné.\n\n- **Zatvorte všetkých ostatných klientov.** wfview alebo RS-BA1 pripojený k tej istej rádiostanici drží túto jedinú reláciu a prihlásenie tu sa medzitým jednoducho ignoruje.\n- **Skontrolujte sieťové nastavenia rádiostanice.** WLAN musí byť zapnutá, rádiostanica musí byť v tej istej sieti a jej funkcia diaľkového ovládania (Network) musí byť povolená.\n- **Vypnite a zapnite WLAN rádiostanice**, ak zostane zaseknutá. Spoľahlivo to uvoľní reláciu zaseknutú na rádiostanici.\n\n**Nesprávne heslo je výslovne odmietnuté**, nie prijaté mlčaním. Ak ste sa dostali sem a nie k správe „odmietnuté“, problém nie je v hesle.',
 			'settings.station.statusStale' => 'Neodpovedá',

@@ -348,7 +348,6 @@ class _Translations$dialogs$zh extends Translations$dialogs$en {
 	@override String get operationDetails => '操作详情';
 	@override String get activities => '活动';
 	@override String get stationCallsign => '电台呼号';
-	@override String get multiStationIdentifier => '多站标识符（仅限数字）';
 	@override String get notes => '备注';
 	@override String get deleteOperationTitle => '删除操作';
 	@override String get purgeTestsTitle => '清除测试操作';
@@ -3847,7 +3846,6 @@ extension on TranslationsZh {
 			'dialogs.operationDetails' => '操作详情',
 			'dialogs.activities' => '活动',
 			'dialogs.stationCallsign' => '电台呼号',
-			'dialogs.multiStationIdentifier' => '多站标识符（仅限数字）',
 			'dialogs.notes' => '备注',
 			'dialogs.deleteOperationTitle' => '删除操作',
 			'dialogs.purgeTestsTitle' => '清除测试操作',
@@ -4098,9 +4096,9 @@ extension on TranslationsZh {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '分享合并的 ${count} 个文件', other: '分享合并的 ${count} 个文件', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '导出合并的 ${count} 个文件', other: '导出合并的 ${count} 个文件', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('zh'))(count, one: '下载合并的 ${count} 个文件', other: '下载合并的 ${count} 个文件', ), 
+			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => '保存 ${name}',
 			'operation.export.shareOne' => ({required Object name}) => '分享 ${name}',
 			'operation.export.exportOne' => ({required Object name}) => '导出 ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => '下载 ${name}',
@@ -4612,9 +4610,9 @@ extension on TranslationsZh {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} 无法在端口 ${port} 上监听：此计算机不允许。请选择 1024 以上的端口。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} 已停止在端口 ${port} 上监听。正在重试…',
 			'settings.radio.title' => 'CAT 控制',
+			'settings.radio.loggingAndCat' => '记录与 CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => '记录与 CAT',
 			'settings.radio.tuningSection' => '调谐',
 			'settings.radio.keyerSection' => '电键',
 			'settings.radio.servicesSection' => '服务',
@@ -5126,9 +5124,9 @@ extension on TranslationsZh {
 			'settings.station.n3fjpTroubleshootingTitle' => '如果应用无法连接',
 			'settings.station.n3fjpTroubleshooting' => '这会连接到**在您计算机上运行的 N3FJP 日志程序**，而不是直接连接电台——由 N3FJP 与电台通信。\n\n- **必须开启该程序的 API**：Settings → Application Program Interface，勾选 **TCP API Enabled**。\n- **端口**为 1100，除非您在那里更改过。\n- **N3FJP 必须设置了电台接口**，才能跟随或调谐电台。没有接口时，它只报告在其输入窗口中键入的内容。\n- N3FJP 只报告频段、模式和频率：不报告功率，也不报告发射状态。\n\n此条目根据 N3FJP 公开的 API 编写，尚未与 N3FJP 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.commanderTroubleshootingTitle' => '如果应用无法连接',
+			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => '这会连接到**在您计算机上运行的 DXLab Commander**，而不是直接连接电台——由 Commander 与电台通信。\n\n- **Commander 必须已在运行**并已连接到电台。\n- **必须开启其网络服务**：Commander 配置窗口 Radio 面板中的 **Net Serv** 按钮。\n- **端口**为 52002，即从 Net Serv 的 **Base Port**（默认为 52000，除非您更改过）开始的端口段中的第三个端口。\n- **从另一台计算机连接时**，请确保防火墙允许该连接。\n\n此条目根据 Commander 公开的 TCP 消息编写，尚未与 Commander 实际运行过。如果它只部分可用，非常值得报告。',
 			'settings.station.ic705TroubleshootingTitle' => '如果电台始终没有响应',
 			'settings.station.ic705Troubleshooting' => '电台只有**一个**远程控制会话。登录被忽略时，几乎总是有其他程序在使用它。\n\n- **关闭任何其他客户端。** 连接到同一电台的 wfview 或 RS-BA1 会占用这个会话，在此期间这里的登录会被直接忽略。\n- **检查电台的网络设置。** 必须开启 WLAN，电台必须在同一网络上，并且必须启用其远程控制（Network）功能。\n- 如果一直卡住，**请将电台的 WLAN 关闭再打开**。这样可以可靠地清除卡在电台上的会话。\n\n**密码错误会被明确拒绝**，而不是没有响应。如果您看到的是这里而不是“被拒绝”的消息，问题就不在密码。',
 			'settings.station.statusStale' => '无响应',

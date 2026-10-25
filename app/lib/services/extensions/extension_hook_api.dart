@@ -413,6 +413,8 @@ mixin _ExtensionHookApi {
     // Every poster would send the call as typed, `?` and all, to a network
     // other operators chase from.
     if (qsonHasIncompleteCall(qso)) return const [];
+    // No source is even asked to self-spot an operation that rules it out.
+    if (qso == null && !Operation.dataAllows(operation, Operation.selfSpottingKey)) return const [];
     final hook = qso == null ? Hooks.spotsIsSelfSpotEnabled : Hooks.spotsIsOtherSpotEnabled;
     final args = qso == null ? {'operation': operation} : {'qso': qso};
     try {
@@ -635,6 +637,29 @@ mixin _ExtensionHookApi {
     bool online = true,
     bool recentContext = false,
     String? streakKey,
+  }) => _lookupCall(call, qso: qso, operation: operation, online: online, recentContext: recentContext, streakKey: streakKey, despiteAssistance: false);
+
+  /// [lookupCall], going online even for an operation without assistance —
+  /// only for a pass the operator confirmed after being warned (Lookup All
+  /// QSOs; `confirmLookupDespiteAssistance`). Everything else still applies:
+  /// [online], and the connectivity gate.
+  Future<Map<String, dynamic>?> lookupCallDespiteAssistance(
+    String call, {
+    required Map<String, dynamic> qso,
+    required Map<String, dynamic> operation,
+    bool online = true,
+    bool recentContext = false,
+    String? streakKey,
+  }) => _lookupCall(call, qso: qso, operation: operation, online: online, recentContext: recentContext, streakKey: streakKey, despiteAssistance: true);
+
+  Future<Map<String, dynamic>?> _lookupCall(
+    String call, {
+    required Map<String, dynamic> qso,
+    required Map<String, dynamic> operation,
+    required bool online,
+    required bool recentContext,
+    required String? streakKey,
+    required bool despiteAssistance,
   }) async {
     if (ExtensionService.stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
     final host = this.host;
@@ -656,7 +681,12 @@ mixin _ExtensionHookApi {
     // is worthless by the time it would land — the background enrichment
     // queue (`LookupQueueService`) is where a deferred lookup belongs, and it
     // holds its own entries.
-    final reachable = online && !ConnectivityService.isOffline;
+    //
+    // An operation without assistance (`Operation.assistance`) is asked the
+    // same way, for good: an online source is outside information, while the
+    // local answers are the operator's own. The background enrichment of
+    // logged contacts takes that local pass as its answer too.
+    final reachable = online && !ConnectivityService.isOffline && (despiteAssistance || Operation.dataAllows(operation, Operation.assistanceKey));
 
     try {
       final result = await host.invoke(

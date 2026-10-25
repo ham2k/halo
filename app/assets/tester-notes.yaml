@@ -11,6 +11,7 @@ upcoming:
     - "New Cluster Console: type CLUSTER, or Show Console in DX Cluster settings"
     - "Added Yaesu FTDX3000, FTDX5000, FTDX1200, FT-2000 and FT-950 to the radio list (tell us how it behaves)"
     - "New: picking a band moves a CAT-connected radio to that band"
+    - "New Advanced section in Operation Details: Operating Position, Assistance, Self-spotting"
 
 "183":
   changes:

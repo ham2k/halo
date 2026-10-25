@@ -374,7 +374,14 @@ class _Translations$dialogs$qro extends Translations$dialogs$en {
 	@override String get operationDetails => 'OPERATION DETAILS';
 	@override String get activities => 'ACTIVITIES';
 	@override String get stationCallsign => 'STATION CALLSIGN';
-	@override String get multiStationIdentifier => 'MULTI-STATION IDENTIFIER (NUMBERS ONLY)';
+	@override String get advanced => 'ADVANCED';
+	@override String get operatingPosition => 'OPERATING POSITION (MULTI-STATION)';
+	@override String get assistance => 'ASSISTANCE';
+	@override String get assistanceDescription => 'USE SPOTTING SERVICES AND OTHER SOURCES OF INFORMATION';
+	@override String get selfSpotting => 'SELF-SPOTTING';
+	@override String get selfSpottingDescription => 'ALLOW FEATURES THAT REPORT YOUR OWN FREQUENCY INFO';
+	@override String disabledByRules({required Object rules}) => 'DISABLED TO COMPLY WITH ${rules} RULES';
+	@override late final _Translations$dialogs$lookupDespiteAssistance$qro lookupDespiteAssistance = _Translations$dialogs$lookupDespiteAssistance$qro._(_root);
 	@override String get notes => 'NOTES';
 	@override String get deleteOperationTitle => 'DELETE OPERATION';
 	@override String get purgeTestsTitle => 'PURGE TEST OPERATIONS';
@@ -603,6 +610,7 @@ class _Translations$loggingControls$qro extends Translations$loggingControls$en 
 	@override String spotOtherAt({required Object call, required Object freq}) => 'SPOT ${call} AT ${freq}';
 	@override String spotTooLate({required Object call}) => 'TOO LATE TO SPOT ${call}';
 	@override String get spotNoFreq => 'FIRST SET A FREQUENCY TO SPOT';
+	@override String get selfSpotDisabled => 'SELF-SPOT DISABLED';
 	@override String get spotComment => 'COMMENT';
 	@override String get spottingAutoControl => 'AUTO RE-SPOT';
 	@override String spotAutoEvery({required Object minutes}) => 'RE-SPOT EVERY ${minutes} MIN';
@@ -1580,6 +1588,19 @@ class _Translations$chase$imports$qro extends Translations$chase$imports$en {
 	@override String noProgram({required Object file}) => 'NO CHASING PROGRAM IMPORTS ${file}';
 }
 
+// Path: dialogs.lookupDespiteAssistance
+class _Translations$dialogs$lookupDespiteAssistance$qro extends Translations$dialogs$lookupDespiteAssistance$en {
+	_Translations$dialogs$lookupDespiteAssistance$qro._(TranslationsQro root) : this._root = root, super.internal(root);
+
+	final TranslationsQro _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'LOOK UP ONLINE?';
+	@override String get body => 'ASSISTANCE IS DISABLED FOR THIS OPERATION. LOOKING UP ALL QSOS WILL USE ONLINE SERVICES LIKE QRZ FOR THIS ONE PASS.';
+	@override String bodyRules({required Object rules}) => 'ASSISTANCE IS DISABLED FOR THIS OPERATION TO COMPLY WITH ${rules} RULES. LOOKING UP ALL QSOS WILL USE ONLINE SERVICES LIKE QRZ FOR THIS ONE PASS.';
+	@override String get action => 'LOOK UP ONLINE';
+}
+
 // Path: dialogs.callChange
 class _Translations$dialogs$callChange$qro extends Translations$dialogs$callChange$en {
 	_Translations$dialogs$callChange$qro._(TranslationsQro root) : this._root = root, super.internal(root);
@@ -1830,6 +1851,7 @@ class _Translations$operation$spots$qro extends Translations$operation$spots$en 
 		other: '${count} SPOTS',
 	);
 	@override String spotsCountFiltered({required Object count, required Object total}) => 'SHOWING ${count} OF ${total} SPOTS';
+	@override String get spotsDisabled => 'SPOTS DISABLED FOR THIS OPERATION';
 	@override String ageMinutes({required Object minutes}) => '${minutes} MINUTES';
 	@override String get callsOfNote => 'CALLS OF NOTE';
 	@override String get yourSpots => 'YOUR SPOTS';
@@ -4577,7 +4599,17 @@ extension on TranslationsQro {
 			'dialogs.operationDetails' => 'OPERATION DETAILS',
 			'dialogs.activities' => 'ACTIVITIES',
 			'dialogs.stationCallsign' => 'STATION CALLSIGN',
-			'dialogs.multiStationIdentifier' => 'MULTI-STATION IDENTIFIER (NUMBERS ONLY)',
+			'dialogs.advanced' => 'ADVANCED',
+			'dialogs.operatingPosition' => 'OPERATING POSITION (MULTI-STATION)',
+			'dialogs.assistance' => 'ASSISTANCE',
+			'dialogs.assistanceDescription' => 'USE SPOTTING SERVICES AND OTHER SOURCES OF INFORMATION',
+			'dialogs.selfSpotting' => 'SELF-SPOTTING',
+			'dialogs.selfSpottingDescription' => 'ALLOW FEATURES THAT REPORT YOUR OWN FREQUENCY INFO',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'DISABLED TO COMPLY WITH ${rules} RULES',
+			'dialogs.lookupDespiteAssistance.title' => 'LOOK UP ONLINE?',
+			'dialogs.lookupDespiteAssistance.body' => 'ASSISTANCE IS DISABLED FOR THIS OPERATION. LOOKING UP ALL QSOS WILL USE ONLINE SERVICES LIKE QRZ FOR THIS ONE PASS.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'ASSISTANCE IS DISABLED FOR THIS OPERATION TO COMPLY WITH ${rules} RULES. LOOKING UP ALL QSOS WILL USE ONLINE SERVICES LIKE QRZ FOR THIS ONE PASS.',
+			'dialogs.lookupDespiteAssistance.action' => 'LOOK UP ONLINE',
 			'dialogs.notes' => 'NOTES',
 			'dialogs.deleteOperationTitle' => 'DELETE OPERATION',
 			'dialogs.purgeTestsTitle' => 'PURGE TEST OPERATIONS',
@@ -4756,6 +4788,8 @@ extension on TranslationsQro {
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'ANALOG',
 			'operation.layout.panels.clockZone' => 'TIME ZONE',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'THIS DEVICE',
 			'operation.layout.panels.clockShowSeconds' => 'SHOW SECONDS',
@@ -4766,8 +4800,6 @@ extension on TranslationsQro {
 			'operation.layout.panels.weatherNoLocation' => 'NO LOCATION SET. GIVE THIS PANEL A LOCATION IN ITS SETTINGS, OR PLACE IT INSIDE AN OPERATION THAT HAS ONE.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'COULDN\'T READ THE LOCATION ${location}. USE A GRID SQUARE LIKE FN31PR, OR 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'COULDN\'T REACH OPEN-METEO — NO NETWORK? WILL TRY AGAIN SHORTLY.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherUnreadable' => 'OPEN-METEO RESPONDED, BUT NOT WITH ANYTHING READABLE. WILL TRY AGAIN SHORTLY.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'GUSTS ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'JUST NOW',
@@ -4952,6 +4984,7 @@ extension on TranslationsQro {
 			'operation.spots.phoneAndCw' => 'PHONE & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} SPOT', other: '${count} SPOTS', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'SHOWING ${count} OF ${total} SPOTS',
+			'operation.spots.spotsDisabled' => 'SPOTS DISABLED FOR THIS OPERATION',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} MINUTES',
 			'operation.spots.callsOfNote' => 'CALLS OF NOTE',
 			'operation.spots.yourSpots' => 'YOUR SPOTS',
@@ -5209,6 +5242,7 @@ extension on TranslationsQro {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'SPOT ${call} AT ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'TOO LATE TO SPOT ${call}',
 			'loggingControls.spotNoFreq' => 'FIRST SET A FREQUENCY TO SPOT',
+			'loggingControls.selfSpotDisabled' => 'SELF-SPOT DISABLED',
 			'loggingControls.spotComment' => 'COMMENT',
 			'loggingControls.spottingAutoControl' => 'AUTO RE-SPOT',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'RE-SPOT EVERY ${minutes} MIN',
@@ -5268,6 +5302,8 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeOurLocation' => 'SET OUR COUNTY',
 			'loggingControls.info.noticeShortGrid' => 'GRID TOO SHORT',
 			'formChrome.untitled' => '(UNTITLED)',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.showMore' => 'SHOW MORE',
 			'formChrome.showAll' => 'SHOW ALL',
 			'formChrome.showFewer' => 'SHOW FEWER',
@@ -5280,8 +5316,6 @@ extension on TranslationsQro {
 			'formChrome.manage' => 'MANAGE',
 			'formChrome.connect' => 'CONNECT',
 			'formChrome.formTitle' => 'FORM',
-			_ => null,
-		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => 'ADD ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'EDIT ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'SHOWING ${shown} OF ${total} (${selected} SELECTED)',
@@ -5782,6 +5816,8 @@ extension on TranslationsQro {
 			'settings.accounts.test' => 'TEST',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'SAVE FAILED: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'LOGIN FAILED: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.lookupFailed' => 'ACCOUNTS ARE UNAVAILABLE RIGHT NOW — TRY AGAIN IN A MOMENT',
 			'settings.accounts.browserLoginTitle' => 'FINISH SIGNING IN WITH YOUR WEB BROWSER',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'WHEN YOU ARE DONE, THE BROWSER WILL TRY TO OPEN A LINK STARTING WITH "${prefix}". YOUR DESKTOP MOST LIKELY HAS NOTHING REGISTERED TO OPEN IT, SO COPY THAT LINK (FROM THE ADDRESS BAR, OR FROM THE ERROR PAGE THE BROWSER SHOWS) AND PASTE IT HERE.',
@@ -5794,8 +5830,6 @@ extension on TranslationsQro {
 			'settings.accounts.pastedLinkNoCode' => 'THAT LINK HAS NO LOGIN CODE. FINISH SIGNING IN FIRST, THEN COPY THE LINK IT SENDS YOU TO.',
 			'settings.accounts.pastedLinkMalformed' => 'THAT LINK LOOKS CUT OFF. COPY THE WHOLE THING AND PASTE IT AGAIN.',
 			'settings.accounts.relayLoginWaiting' => 'WAITING FOR YOU TO FINISH SIGNING IN — THIS WILL CONTINUE AUTOMATICALLY ONCE YOU DO.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'THIS DEVICE HASN\'T HEARD BACK FROM THE SIGN-IN YET. IF YOU ALREADY FINISHED IN YOUR BROWSER, CANCEL AND TRY CONNECTING AGAIN.',
 			'settings.accounts.relayLoginNotOpened' => 'HAM2K LOGGER COULD NOT OPEN YOUR BROWSER AUTOMATICALLY. USE THE BUTTON BELOW TO OPEN THE LOGIN PAGE YOURSELF.',
 			'settings.accounts.relayLoginUnavailable' => 'COULDN\'T REACH THE SYNC SERVER NEEDED TO COMPLETE THIS LOGIN. CHECK YOUR CONNECTION AND TRY AGAIN.',
@@ -6296,6 +6330,8 @@ extension on TranslationsQro {
 			'settings.developer.catalogSearchBleeding' => 'BLEEDING OR BETTER',
 			'settings.about.notices' => 'NOTICES & MESSAGES',
 			'settings.about.noticesDescription' => 'ANNOUNCEMENTS AND STATUS MESSAGES',
+			_ => null,
+		} ?? switch (path) {
 			'settings.about.releaseNotes' => 'RELEASE NOTES',
 			'settings.about.copiedVersion' => 'COPIED VERSION DETAILS TO CLIPBOARD',
 			'settings.panels.settings' => 'APPLICATION PREFERENCES',
@@ -6308,8 +6344,6 @@ extension on TranslationsQro {
 			'settings.panels.profilesDescription' => 'OPERATOR CALLSIGN AND STATION PROFILE',
 			'settings.panels.stationProfiles' => 'STATION PROFILES',
 			'settings.panels.developerSettings' => 'DEVELOPER SETTINGS',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'DEBUGGING AND DEVELOPMENT TOOLS',
 			'settings.panels.about' => 'ABOUT',
 			'settings.panels.aboutDescription' => 'VERSION, CREDITS, AND LEGAL INFORMATION',

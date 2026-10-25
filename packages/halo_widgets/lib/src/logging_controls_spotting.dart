@@ -352,6 +352,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     }
 
     final vfoFreq = cfg.radioService?.vfoA.freq;
+    // Ahead of a running auto-respot: its next round stops on the same rule,
+    // and until then the button must not say another spot is coming.
+    if (selfSpotForbidden) {
+      return (summary: t.loggingControls.spottingSelfControl, buttonLabel: t.loggingControls.selfSpotDisabled, enabled: false, showComment: false);
+    }
     if (_autoRespotting) {
       return (summary: _pillCountdown(), buttonLabel: t.loggingControls.spotAutoNext(time: _untilNextRespot()), enabled: true, showComment: false);
     }
@@ -364,6 +369,14 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     }
     final freqLabel = fmtFreq(vfoFreq);
     return (summary: summary, buttonLabel: t.loggingControls.spotSelfAt(freq: freqLabel), enabled: true, showComment: true);
+  }
+
+  /// Whether the operation rules self-spotting out (`Operation.selfSpotting`)
+  /// while the control would offer one — spotting a QSO being edited is
+  /// spotting somebody else, and stays allowed.
+  bool get selfSpotForbidden {
+    final cfg = config();
+    return cfg.editingQso == null && !cfg.operation.selfSpotting;
   }
 
   /// The operation as a spot sees it: its shared data plus `local`, this
@@ -536,6 +549,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       if (_autoRespotting) stopAutoRespotting();
     }
     final cfg = config();
+    if (!cfg.operation.selfSpotting) return (failure: t.loggingControls.selfSpotDisabled, spot: null, skipped: false);
     final vfo = cfg.radioService?.vfoA;
     final freq = vfo?.freq;
     if (freq == null) return (failure: t.spotting.setFrequencyFirst, spot: null, skipped: false);
@@ -589,6 +603,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
   Future<String?> respotEvery([num? minutes]) async {
     // Clamped before it becomes a Duration: a huge number overflows one.
     final every = minutes == null ? _interval : Duration(seconds: (minutes.clamp(minRespotInterval.inMinutes, maxRespotInterval.inMinutes) * 60).round());
+    if (!config().operation.selfSpotting) return t.loggingControls.selfSpotDisabled;
     final freq = config().radioService?.vfoA.freq;
     if (freq == null) return t.spotting.setFrequencyFirst;
     final spot = _ownSelfSpot;
@@ -770,6 +785,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final cfg = config();
     final suggest = cfg.suggestSpotSources;
     if (cfg.operation.uuid != spot.operationUuid) return _stopWith(t.loggingControls.spotAutoStopped);
+    if (!cfg.operation.selfSpotting) return _stopWith(t.loggingControls.selfSpotDisabled);
     if (cfg.sendSpot == null || suggest == null) return _stopWith(t.spotting.nothingToSpot);
     final vfoFreq = cfg.radioService?.vfoA.freq;
     if (vfoFreq != null && !_onFrequency(spot.freq)) return followVfo();
@@ -974,7 +990,8 @@ class SpottingControlFields extends StatelessWidget {
         // editable: a new comment is a new spot, which this row cannot send
         // while auto-respotting holds the button. Not [state.showComment],
         // so the focus ladder never lands on a field that takes no input.
-        if (model.autoRespotting && model.config().editingQso == null)
+        // A forbidden self-spot shows its own field below, never both.
+        if (model.autoRespotting && !model.selfSpotForbidden && model.config().editingQso == null)
           SizedBox(
             width: 160,
             child: TextFormField(
@@ -982,6 +999,18 @@ class SpottingControlFields extends StatelessWidget {
               // a respot of a newer spot must show that one's.
               key: ValueKey(('respotComment', model.respotComment)),
               initialValue: model.respotComment ?? '',
+              enabled: false,
+              style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: poloFieldDecoration(context, t.loggingControls.spotComment, labelColor: theme.colorScheme.onTertiaryContainer),
+            ),
+          ),
+        // Shown so the row keeps its shape, but out of the focus ladder like
+        // the respot comment above: it takes no input.
+        if (model.selfSpotForbidden)
+          SizedBox(
+            width: 160,
+            child: TextField(
+              controller: model.commentController,
               enabled: false,
               style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
               decoration: poloFieldDecoration(context, t.loggingControls.spotComment, labelColor: theme.colorScheme.onTertiaryContainer),

@@ -188,6 +188,11 @@ lookup once afterwards so QSO-scoped hooks (POTA/SOTA) see the new ref and
 can resolve its grid. Because an already-applied type is filtered out on the
 next pass, that re-run settles instead of cycling.
 
+For an operation without assistance (see `ref:<type>`), every lookup runs
+with `ctx.online` false — the background enrichment of logged contacts
+included — so a source answers from local data or not at all. The one
+exception is a Lookup All QSOs the operator confirms after being warned.
+
 Return `[]` for "can't answer" (not configured, not found, or `!ctx.online`
 and this source has no offline data) — never throw for expected conditions.
 `callInfo`/`qso`/`operation` are the full QSON-shaped objects (all from
@@ -353,6 +358,13 @@ reported `enabled: true`. Implemented by: `pota` (self + other, posts
 directly to the POTA API, no auth required). `sota`'s spot API requires an
 authenticated account app-halo doesn't have yet, so `sota` stays
 fetch-only for now.
+
+**An operation without assistance asks no spot source.** The board stops
+calling `fetchSpots` while such an operation is open, and `ctx.getSpots`
+answers it with nothing. Without self-spotting, no source is asked
+`isSelfSpotEnabled` and no self-spot is posted. Spotting somebody else
+(`isOtherSpotEnabled`/`postOtherSpot`) is allowed under both. Both are the
+operator's switches or a ref's rules (`ref:<type>` above).
 
 A poster whose own rules decline a particular spot — a Discord channel whose
 message template renders blank for it — answers `{ok: true, skipped: true}`.
@@ -559,7 +571,8 @@ interface RefHandlerHook {
   geojsonUrlForRef?(args: { ref: Ref }, ctx): Promise<RefGeojson | null>
 }
 // Ref: {type, ref?, name?, label?, shortLabel?, grid?, lat?, lon?, location?, program?,
-//       activationRadiusInMeters?, activationRadiusInFeet?, largeArea?, ...}
+//       activationRadiusInMeters?, activationRadiusInFeet?, largeArea?,
+//       assistance?, selfSpotting?, ...}
 // TitleSuggestion: {title?, for?, at?, subtitle?, priority?} — a fragment of
 // the operation's title/subtitle sentence (ham2k/halo-dist#174). Only
 // return one for the ref type that means "this operation is happening AT/FOR
@@ -571,6 +584,13 @@ interface RefHandlerHook {
 `decorateRef` fills names/locations/labels (park names via the POTA API,
 etc.); results update ref chips asynchronously in the UI. Implemented by:
 `pota` (both types).
+
+**A ref states what its rules forbid.** `assistance: false` on an operation's
+ref — a contest's non-assisted category — turns assistance off for the whole
+operation, and `selfSpotting: false` turns self-spotting off; the Operation
+Details switches show off, locked, naming the extension's short name as the
+rules complied with. Absent means the ref has no say. What the host then does
+is in the `spots` and `lookup` sections; no other extension needs to check.
 
 **The core asks about references in batches.** Every reference an ADIF import
 or a deep link brings is decorated in one bridge round-trip, and so is every

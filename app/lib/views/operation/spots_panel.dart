@@ -852,6 +852,30 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
     final theme = Theme.of(context);
     final vfo = widget.services.radio.vfoA;
 
+    // The board asks no spot source for this operation (see
+    // `SpotBoardService.spotsAllowed`), and what it still holds came from
+    // another one — so no list at all, rather than those spots.
+    if (!widget.operation.assistance) {
+      _reveal.forget();
+      return Column(
+        children: [
+          _SpotsFilterPill(
+            bandLabel: spotsFilterBandPillLabel(t, _filterState.bandFilter, vfo.band),
+            modeLabel: spotsFilterModePillLabel(t, _filterState.modeFilter, superModeForMode(vfo.mode)),
+            ageMinutes: _filterState.ageMinutes,
+            filteredCount: 0,
+            totalCount: 0,
+            onTap: _openFilterDialog,
+            onRefresh: _refresh,
+            refreshing: false,
+            loading: false,
+            disabled: true,
+          ),
+          const Spacer(),
+        ],
+      );
+    }
+
     if (_error != null) {
       // There is no list while this shows, so nothing is revealed on it.
       _reveal.forget();

@@ -348,7 +348,6 @@ class _Translations$dialogs$ca extends Translations$dialogs$en {
 	@override String get operationDetails => 'Detalls de l\'operació';
 	@override String get activities => 'Activitats';
 	@override String get stationCallsign => 'Indicatiu d\'estació';
-	@override String get multiStationIdentifier => 'Identificador multiestació (només números)';
 	@override String get notes => 'Notes';
 	@override String get deleteOperationTitle => 'Esborra l\'operació';
 	@override String get purgeTestsTitle => 'Purga les operacions de prova';
@@ -3847,7 +3846,6 @@ extension on TranslationsCa {
 			'dialogs.operationDetails' => 'Detalls de l\'operació',
 			'dialogs.activities' => 'Activitats',
 			'dialogs.stationCallsign' => 'Indicatiu d\'estació',
-			'dialogs.multiStationIdentifier' => 'Identificador multiestació (només números)',
 			'dialogs.notes' => 'Notes',
 			'dialogs.deleteOperationTitle' => 'Esborra l\'operació',
 			'dialogs.purgeTestsTitle' => 'Purga les operacions de prova',
@@ -4098,9 +4096,9 @@ extension on TranslationsCa {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Comparteix ${count} fitxer combinat', other: 'Comparteix ${count} fitxers combinats', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Exporta ${count} fitxer combinat', other: 'Exporta ${count} fitxers combinats', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ca'))(count, one: 'Descarrega ${count} fitxer combinat', other: 'Descarrega ${count} fitxers combinats', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Desa ${name}',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => 'Desa ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Comparteix ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exporta ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarrega ${name}',
@@ -4612,9 +4610,9 @@ extension on TranslationsCa {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} no pot escoltar al port ${port}: aquest ordinador no ho permet. Tria un port per sobre de 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} ha deixat d\'escoltar al port ${port}. Tornant-ho a provar…',
 			'settings.radio.title' => 'Control CAT',
+			'settings.radio.loggingAndCat' => 'Registre i CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'Registre i CAT',
 			'settings.radio.tuningSection' => 'Sintonia',
 			'settings.radio.keyerSection' => 'Manipulador',
 			'settings.radio.servicesSection' => 'Serveis',
@@ -5126,9 +5124,9 @@ extension on TranslationsCa {
 			'settings.station.n3fjpTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
 			'settings.station.n3fjpTroubleshooting' => 'Això es connecta a **un programa de registre N3FJP que s\'executa al teu ordinador**, no directament a la ràdio: N3FJP parla amb la ràdio.\n\n- **L\'API del programa ha d\'estar activada**: Settings → Application Program Interface, marca **TCP API Enabled**.\n- **El port** és el 1100, tret que l\'hagis canviat allà.\n- **N3FJP ha de tenir configurada una interfície de ràdio** per seguir o sintonitzar la ràdio. Sense, només informa del que s\'escriu a la seva finestra d\'entrada.\n- N3FJP només informa de banda, mode i freqüència: ni potència ni estat de transmissió.\n\nAquesta entrada s\'ha escrit a partir de l\'API publicada d\'N3FJP i no s\'ha provat amb N3FJP. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.commanderTroubleshootingTitle' => 'Si l\'aplicació no es pot connectar',
+			'settings.station.commanderTroubleshooting' => 'Això es connecta a **DXLab Commander, que s\'executa al teu ordinador**, no directament a la ràdio: Commander parla amb la ràdio.\n\n- **Commander ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servei de xarxa ha d\'estar activat**: el botó **Net Serv** al panell Radio de la finestra Configuration de Commander.\n- **El port** és el 52002, el tercer port del bloc que comença al **Base Port** de Net Serv (52000 tret que l\'hagis canviat).\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir dels missatges TCP publicats de Commander i no s\'ha provat amb Commander. Si funciona a mitges, val la pena informar-ne.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'Això es connecta a **DXLab Commander, que s\'executa al teu ordinador**, no directament a la ràdio: Commander parla amb la ràdio.\n\n- **Commander ja s\'ha d\'estar executant** i connectat a la ràdio.\n- **El seu servei de xarxa ha d\'estar activat**: el botó **Net Serv** al panell Radio de la finestra Configuration de Commander.\n- **El port** és el 52002, el tercer port del bloc que comença al **Base Port** de Net Serv (52000 tret que l\'hagis canviat).\n- **Des d\'una altra màquina**, assegura\'t que el tallafoc deixi passar la connexió.\n\nAquesta entrada s\'ha escrit a partir dels missatges TCP publicats de Commander i no s\'ha provat amb Commander. Si funciona a mitges, val la pena informar-ne.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la ràdio no respon mai',
 			'settings.station.ic705Troubleshooting' => 'La ràdio té una **única** sessió de control remot. Quan s\'ignora l\'inici de sessió, gairebé sempre és perquè alguna altra cosa l\'està fent servir.\n\n- **Tanca qualsevol altre client.** wfview o RS-BA1 connectats a la mateixa ràdio ocupen aquesta única sessió, i mentrestant l\'inici de sessió d\'aquí simplement s\'ignora.\n- **Comprova la configuració de xarxa de la ràdio.** La WLAN ha d\'estar activada, la ràdio ha de ser a la mateixa xarxa i la seva funció de control remot (Network) ha d\'estar activada.\n- **Apaga i torna a encendre la WLAN de la ràdio** si continua bloquejada. Això allibera de manera fiable una sessió encallada a la ràdio.\n\nUna **contrasenya incorrecta es rebutja explícitament**, no amb silenci. Si has arribat aquí en lloc de rebre un missatge de "rebutjat", el problema no és la contrasenya.',
 			'settings.station.statusStale' => 'No respon',

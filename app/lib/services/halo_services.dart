@@ -563,6 +563,7 @@ class HaLoServices with _TimeTravel {
       _lookupQueueOverride ??
       LookupQueueService(
         lookup: extensions.lookupCall,
+        lookupDespiteAssistance: extensions.lookupCallDespiteAssistance,
         qsos: qsos,
         operations: operations,
         statusBar: statusBar,

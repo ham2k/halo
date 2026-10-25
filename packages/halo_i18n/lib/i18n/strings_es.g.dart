@@ -354,7 +354,6 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	@override String get operationDetails => 'Detalles de la operación';
 	@override String get activities => 'Actividades';
 	@override String get stationCallsign => 'Indicativo de la estación';
-	@override String get multiStationIdentifier => 'Identificador multiestación (solo números)';
 	@override String get notes => 'Notas';
 	@override String get deleteOperationTitle => 'Borrar operación';
 	@override String purgeTestsLooseQsos({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
@@ -3941,7 +3940,6 @@ extension on TranslationsEs {
 			'dialogs.operationDetails' => 'Detalles de la operación',
 			'dialogs.activities' => 'Actividades',
 			'dialogs.stationCallsign' => 'Indicativo de la estación',
-			'dialogs.multiStationIdentifier' => 'Identificador multiestación (solo números)',
 			'dialogs.notes' => 'Notas',
 			'dialogs.deleteOperationTitle' => 'Borrar operación',
 			'dialogs.purgeTestsLooseQsos' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Más ${count} contacto de prueba que no pertenece a ninguna operación.', other: 'Más ${count} contactos de prueba que no pertenecen a ninguna operación.', ), 
@@ -4166,9 +4164,9 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioTransmitting' => 'TX',
 			'operation.layout.panels.radioSwr' => 'ROE',
 			'operation.layout.panels.radioAlc' => 'ALC',
+			'operation.layout.panels.radioVolts' => 'V',
 			_ => null,
 		} ?? switch (path) {
-			'operation.layout.panels.radioVolts' => 'V',
 			'operation.layout.panels.radioSwrHigh' => 'ROE alta',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer',
@@ -4680,9 +4678,9 @@ extension on TranslationsEs {
 			'settings.logging.defaultReportFT8.title' => 'Reporte por defecto — FT8 y FT4',
 			'settings.logging.defaultReportFT8.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en los modos FT',
 			'settings.logging.numbersRow.title' => 'Fila de Números',
+			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			_ => null,
 		} ?? switch (path) {
-			'settings.logging.numbersRow.description' => 'Muestra una fila de teclas numéricas sobre el teclado al registrar',
 			'settings.logging.numbersRowExtra.title' => 'Tecla de barra y punto',
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
@@ -5194,9 +5192,9 @@ extension on TranslationsEs {
 			'settings.station.sectionTransceivers' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, zero: 'Ninguna radio', one: '${count} radio', other: '${count} radios', ), 
 			'settings.station.sectionAntennas' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} antena', other: '${count} antenas', ), 
 			'settings.station.sectionOtherEquipment' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} otro equipo', other: '${count} otros equipos', ), 
+			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.equipmentInUse' => 'Controles de la radio',
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.peerRadioNotAvailable' => 'No disponible',
@@ -5708,9 +5706,9 @@ extension on TranslationsEs {
 			'exportSettings.retry' => 'Reintentar',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
 			_ => null,
 		} ?? switch (path) {
-			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, direcciones, correos, notas y ubicaciones precisas en los archivos ADIF.',
 			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, direcciones, correos y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
 			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',
 			'exportSettings.includeLookupDataDescriptionOff' => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.',

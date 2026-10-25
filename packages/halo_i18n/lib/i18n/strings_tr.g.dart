@@ -348,7 +348,6 @@ class _Translations$dialogs$tr extends Translations$dialogs$en {
 	@override String get operationDetails => 'Operasyon ayrıntıları';
 	@override String get activities => 'Aktiviteler';
 	@override String get stationCallsign => 'İstasyon Çağrı İşareti';
-	@override String get multiStationIdentifier => 'Çoklu istasyon tanımlayıcısı (yalnızca sayılar)';
 	@override String get notes => 'Notlar';
 	@override String get deleteOperationTitle => 'Operasyonu Sil';
 	@override String get purgeTestsTitle => 'Test Operasyonlarını Temizle';
@@ -3847,7 +3846,6 @@ extension on TranslationsTr {
 			'dialogs.operationDetails' => 'Operasyon ayrıntıları',
 			'dialogs.activities' => 'Aktiviteler',
 			'dialogs.stationCallsign' => 'İstasyon Çağrı İşareti',
-			'dialogs.multiStationIdentifier' => 'Çoklu istasyon tanımlayıcısı (yalnızca sayılar)',
 			'dialogs.notes' => 'Notlar',
 			'dialogs.deleteOperationTitle' => 'Operasyonu Sil',
 			'dialogs.purgeTestsTitle' => 'Test Operasyonlarını Temizle',
@@ -4098,9 +4096,9 @@ extension on TranslationsTr {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı paylaş', other: 'Birleştirilmiş ${count} dosyayı paylaş', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı dışa aktar', other: 'Birleştirilmiş ${count} dosyayı dışa aktar', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('tr'))(count, one: 'Birleştirilmiş ${count} dosyayı indir', other: 'Birleştirilmiş ${count} dosyayı indir', ), 
+			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => '${name} dosyasını kaydet',
 			'operation.export.shareOne' => ({required Object name}) => '${name} dosyasını paylaş',
 			'operation.export.exportOne' => ({required Object name}) => '${name} dosyasını dışa aktar',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} dosyasını indir',
@@ -4612,9 +4610,9 @@ extension on TranslationsTr {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinleyemiyor: bu bilgisayar buna izin vermiyor. 1024\'ün üzerinde bir port seçin.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}, ${port} portunu dinlemeyi bıraktı. Tekrar deneniyor…',
 			'settings.radio.title' => 'CAT Kontrolü',
+			'settings.radio.loggingAndCat' => 'Kayıt ve CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'Kayıt ve CAT',
 			'settings.radio.tuningSection' => 'Ayar',
 			'settings.radio.keyerSection' => 'Keyer',
 			'settings.radio.servicesSection' => 'Hizmetler',
@@ -5126,9 +5124,9 @@ extension on TranslationsTr {
 			'settings.station.n3fjpTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
 			'settings.station.n3fjpTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan bir N3FJP kayıt programına** bağlanır — N3FJP radyoyla konuşur.\n\n- **Programın API\'si açık olmalı**: Settings → Application Program Interface, **TCP API Enabled** seçeneğini işaretleyin.\n- Orada değiştirmediyseniz **port** 1100\'dür.\n- Radyoyu izlemek veya ayarlamak için **N3FJP\'de bir radyo arayüzü kurulu olmalı**. Arayüz olmadan yalnızca giriş penceresine yazılanları bildirir.\n- N3FJP yalnızca bant, mod ve frekans bildirir: güç ve yayın durumu yok.\n\nBu giriş N3FJP\'nin yayımlanmış API\'sinden yazıldı ve N3FJP üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.commanderTroubleshootingTitle' => 'Uygulama bağlanamıyorsa',
+			'settings.station.commanderTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'Bu, radyoya doğrudan değil, **bilgisayarınızda çalışan DXLab Commander\'a** bağlanır — Commander radyoyla konuşur.\n\n- **Commander zaten çalışıyor olmalı** ve radyoya bağlı olmalı.\n- **Ağ hizmeti açık olmalı**: Commander\'ın Configuration penceresindeki Radio panelinde **Net Serv** düğmesi.\n- **Port** 52002\'dir; Net Serv\'in **Base Port** değeriyle (değiştirmediyseniz 52000) başlayan bloğun üçüncü portu.\n- **Başka bir makineden** bağlanıyorsanız güvenlik duvarınızın bağlantıya izin verdiğinden emin olun.\n\nBu giriş Commander\'ın yayımlanmış TCP mesajlarından yazıldı ve Commander üzerinde çalıştırılmadı. Yarı yarıya çalışıyorsa bunu bildirmeye değer.',
 			'settings.station.ic705TroubleshootingTitle' => 'Radyo hiç yanıt vermiyorsa',
 			'settings.station.ic705Troubleshooting' => 'Radyonun **tek** bir uzaktan kontrol oturumu vardır. Giriş yok sayıldığında neredeyse her zaman onu başka bir şey kullanıyordur.\n\n- **Diğer istemcileri kapatın.** Aynı radyoya bağlı wfview veya RS-BA1 o tek oturumu tutar ve bu sürece buradaki giriş yok sayılır.\n- **Radyonun ağ ayarlarını kontrol edin.** WLAN açık olmalı, radyo aynı ağda olmalı ve uzaktan kontrol (Network) işlevi etkin olmalı.\n- Takılı kalırsa **radyonun WLAN\'ını kapatıp açın**. Bu, radyoda takılı kalan bir oturumu güvenilir şekilde temizler.\n\n**Yanlış şifre açıkça reddedilir**, sessizlikle karşılanmaz. "Reddedildi" mesajı yerine buraya geldiyseniz sorun şifre değildir.',
 			'settings.station.statusStale' => 'Yanıt vermiyor',

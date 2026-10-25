@@ -9,6 +9,7 @@ part of '../operation_view.dart';
 mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
   // Owned by `_OperationViewState`.
   OperationRuntimeState get _runtime;
+  Operation? get _operation;
   CallInfoData? get _callInfo;
   void _republishPeerHeaderIfChanged(Operation operation);
   void _openFind();
@@ -154,9 +155,14 @@ mixin _OperationDock on State<OperationView>, DockHost<OperationView> {
           // The queue itself filters out event markers etc. Not itself a
           // persisted setting, so it's an Actions-section item rather than
           // a target element.
-          onTap: () {
+          onTap: () async {
             Navigator.of(effectiveContext).pop();
-            widget.services.lookupQueue.enqueueAll(qsos);
+            // An operation without assistance makes no online lookups, so a
+            // refresh here asks first, and the confirmed pass alone goes online.
+            final operation = _operation;
+            final despiteAssistance = operation != null && !operation.assistance;
+            if (despiteAssistance && !await confirmLookupDespiteAssistance(this.context, widget.services, operation)) return;
+            widget.services.lookupQueue.enqueueAll(qsos, despiteAssistance: despiteAssistance);
           },
         ),
       ],

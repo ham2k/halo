@@ -308,7 +308,6 @@
     "operationDetails": "Detalii operațiune",
     "activities": "Activități",
     "stationCallsign": "Indicativul stației",
-    "multiStationIdentifier": "Identificator multi-stație (numai cifre)",
     "notes": "Note",
     "deleteOperationTitle": "Șterge operațiunea",
     "purgeTestsTitle": "Eliminați operațiunile de test",

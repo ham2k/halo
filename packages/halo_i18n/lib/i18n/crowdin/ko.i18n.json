@@ -308,7 +308,6 @@
     "operationDetails": "운용 상세",
     "activities": "활동",
     "stationCallsign": "무선국 콜사인",
-    "multiStationIdentifier": "다중 무선국 구분 ID (숫자만)",
     "notes": "메모",
     "deleteOperationTitle": "운용 삭제",
     "purgeTestsTitle": "테스트 운용 영구 삭제",

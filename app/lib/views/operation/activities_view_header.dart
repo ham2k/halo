@@ -174,10 +174,9 @@ mixin _ActivitiesHeader on State<OperationSheet> {
     const callStyle = TextStyle(fontFamily: 'RobotoMono');
     final stationSpans = [const TextSpan(text: 'Station: '), TextSpan(text: stationCall, style: callStyle)];
     final operatorSpans = [const TextSpan(text: 'Op: '), TextSpan(text: operatorCall, style: callStyle)];
-    // Shown to anyone who has a position set, developer mode or not: the
-    // identifier keeps suffixing this device's spots (`K2SUL/OP2`) after
-    // developer mode goes off, and this pill is the only thing on the sheet
-    // that explains where that came from.
+    // Shown whenever a position is set: the identifier suffixes this device's
+    // spots (`K2SUL/OP2`), and this pill is the only thing on the sheet that
+    // explains where that came from without opening the details dialog.
     final positionSpans = [const TextSpan(text: 'Pos: '), TextSpan(text: multiIdentifier, style: callStyle)];
 
     // What the pills may take before they start shedding: the title keeps

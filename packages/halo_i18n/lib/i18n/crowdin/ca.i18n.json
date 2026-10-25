@@ -308,7 +308,6 @@
     "operationDetails": "Detalls de l'operació",
     "activities": "Activitats",
     "stationCallsign": "Indicatiu d'estació",
-    "multiStationIdentifier": "Identificador multiestació (només números)",
     "notes": "Notes",
     "deleteOperationTitle": "Esborra l'operació",
     "purgeTestsTitle": "Purga les operacions de prova",

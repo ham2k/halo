@@ -783,8 +783,28 @@ class Translations$dialogs$en {
 	/// en: 'Station Callsign'
 	String get stationCallsign => 'Station Callsign';
 
-	/// en: 'Multi-station identifier (numbers only)'
-	String get multiStationIdentifier => 'Multi-station identifier (numbers only)';
+	/// en: 'Advanced'
+	String get advanced => 'Advanced';
+
+	/// en: 'Operating Position (multi-station)'
+	String get operatingPosition => 'Operating Position (multi-station)';
+
+	/// en: 'Assistance'
+	String get assistance => 'Assistance';
+
+	/// en: 'Use spotting services and other sources of information'
+	String get assistanceDescription => 'Use spotting services and other sources of information';
+
+	/// en: 'Self-spotting'
+	String get selfSpotting => 'Self-spotting';
+
+	/// en: 'Allow features that report your own frequency info'
+	String get selfSpottingDescription => 'Allow features that report your own frequency info';
+
+	/// en: 'Disabled to comply with ${rules} rules'
+	String disabledByRules({required Object rules}) => 'Disabled to comply with ${rules} rules';
+
+	late final Translations$dialogs$lookupDespiteAssistance$en lookupDespiteAssistance = Translations$dialogs$lookupDespiteAssistance$en.internal(_root);
 
 	/// en: 'Notes'
 	String get notes => 'Notes';
@@ -1339,6 +1359,9 @@ class Translations$loggingControls$en {
 
 	/// en: 'First set a frequency to spot'
 	String get spotNoFreq => 'First set a frequency to spot';
+
+	/// en: 'Self-spot disabled'
+	String get selfSpotDisabled => 'Self-spot disabled';
 
 	/// en: 'Comment'
 	String get spotComment => 'Comment';
@@ -3361,6 +3384,27 @@ class Translations$chase$imports$en {
 	String noProgram({required Object file}) => 'No chasing program imports ${file}';
 }
 
+// Path: dialogs.lookupDespiteAssistance
+class Translations$dialogs$lookupDespiteAssistance$en {
+	Translations$dialogs$lookupDespiteAssistance$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Look up online?'
+	String get title => 'Look up online?';
+
+	/// en: 'Assistance is disabled for this operation. Looking up all QSOs will use online services like QRZ for this one pass.'
+	String get body => 'Assistance is disabled for this operation. Looking up all QSOs will use online services like QRZ for this one pass.';
+
+	/// en: 'Assistance is disabled for this operation to comply with ${rules} rules. Looking up all QSOs will use online services like QRZ for this one pass.'
+	String bodyRules({required Object rules}) => 'Assistance is disabled for this operation to comply with ${rules} rules. Looking up all QSOs will use online services like QRZ for this one pass.';
+
+	/// en: 'Look Up Online'
+	String get action => 'Look Up Online';
+}
+
 // Path: dialogs.callChange
 class Translations$dialogs$callChange$en {
 	Translations$dialogs$callChange$en.internal(this._root);
@@ -3881,6 +3925,9 @@ class Translations$operation$spots$en {
 
 	/// en: 'Showing ${count} of ${total} spots'
 	String spotsCountFiltered({required Object count, required Object total}) => 'Showing ${count} of ${total} spots';
+
+	/// en: 'Spots disabled for this operation'
+	String get spotsDisabled => 'Spots disabled for this operation';
 
 	/// en: '${minutes} minutes'
 	String ageMinutes({required Object minutes}) => '${minutes} minutes';
@@ -9556,7 +9603,17 @@ extension on Translations {
 			'dialogs.operationDetails' => 'Operation details',
 			'dialogs.activities' => 'Activities',
 			'dialogs.stationCallsign' => 'Station Callsign',
-			'dialogs.multiStationIdentifier' => 'Multi-station identifier (numbers only)',
+			'dialogs.advanced' => 'Advanced',
+			'dialogs.operatingPosition' => 'Operating Position (multi-station)',
+			'dialogs.assistance' => 'Assistance',
+			'dialogs.assistanceDescription' => 'Use spotting services and other sources of information',
+			'dialogs.selfSpotting' => 'Self-spotting',
+			'dialogs.selfSpottingDescription' => 'Allow features that report your own frequency info',
+			'dialogs.disabledByRules' => ({required Object rules}) => 'Disabled to comply with ${rules} rules',
+			'dialogs.lookupDespiteAssistance.title' => 'Look up online?',
+			'dialogs.lookupDespiteAssistance.body' => 'Assistance is disabled for this operation. Looking up all QSOs will use online services like QRZ for this one pass.',
+			'dialogs.lookupDespiteAssistance.bodyRules' => ({required Object rules}) => 'Assistance is disabled for this operation to comply with ${rules} rules. Looking up all QSOs will use online services like QRZ for this one pass.',
+			'dialogs.lookupDespiteAssistance.action' => 'Look Up Online',
 			'dialogs.notes' => 'Notes',
 			'dialogs.deleteOperationTitle' => 'Delete Operation',
 			'dialogs.purgeTestsTitle' => 'Purge Test Operations',
@@ -9735,6 +9792,8 @@ extension on Translations {
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'Analog',
 			'operation.layout.panels.clockZone' => 'Time Zone',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
@@ -9745,8 +9804,6 @@ extension on Translations {
 			'operation.layout.panels.weatherNoLocation' => 'No location set. Give this panel a location in its settings, or place it inside an operation that has one.',
 			'operation.layout.panels.weatherBadLocation' => ({required Object location}) => 'Couldn\'t read the location ${location}. Use a grid square like FN31pr, or 42.36,-71.06.',
 			'operation.layout.panels.weatherUnreachable' => 'Couldn\'t reach Open-Meteo — no network? Will try again shortly.',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.weatherUnreadable' => 'Open-Meteo responded, but not with anything readable. Will try again shortly.',
 			'operation.layout.panels.weatherGusts' => ({required Object speed}) => 'gusts ${speed}',
 			'operation.layout.panels.panelAgeNow' => 'just now',
@@ -9931,6 +9988,7 @@ extension on Translations {
 			'operation.spots.phoneAndCw' => 'Phone & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
+			'operation.spots.spotsDisabled' => 'Spots disabled for this operation',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
 			'operation.spots.callsOfNote' => 'Calls of Note',
 			'operation.spots.yourSpots' => 'Your Spots',
@@ -10188,6 +10246,7 @@ extension on Translations {
 			'loggingControls.spotOtherAt' => ({required Object call, required Object freq}) => 'Spot ${call} at ${freq}',
 			'loggingControls.spotTooLate' => ({required Object call}) => 'Too late to spot ${call}',
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
+			'loggingControls.selfSpotDisabled' => 'Self-spot disabled',
 			'loggingControls.spotComment' => 'Comment',
 			'loggingControls.spottingAutoControl' => 'Auto re-spot',
 			'loggingControls.spotAutoEvery' => ({required Object minutes}) => 'Re-spot every ${minutes} min',
@@ -10247,6 +10306,8 @@ extension on Translations {
 			'loggingControls.info.noticeOurLocation' => 'Set Our County',
 			'loggingControls.info.noticeShortGrid' => 'Grid Too Short',
 			'formChrome.untitled' => '(untitled)',
+			_ => null,
+		} ?? switch (path) {
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',
 			'formChrome.showFewer' => 'Show fewer',
@@ -10259,8 +10320,6 @@ extension on Translations {
 			'formChrome.manage' => 'Manage',
 			'formChrome.connect' => 'Connect',
 			'formChrome.formTitle' => 'Form',
-			_ => null,
-		} ?? switch (path) {
 			'formChrome.addItem' => ({required Object label}) => 'Add ${label}',
 			'formChrome.editItem' => ({required Object label}) => 'Edit ${label}',
 			'formChrome.multiselectStatus' => ({required Object shown, required Object total, required Object selected}) => 'Showing ${shown} of ${total} (${selected} selected)',
@@ -10761,6 +10820,8 @@ extension on Translations {
 			'settings.accounts.test' => 'Test',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Save failed: ${error}',
 			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.',
@@ -10773,8 +10834,6 @@ extension on Translations {
 			'settings.accounts.pastedLinkNoCode' => 'That link has no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
@@ -11275,6 +11334,8 @@ extension on Translations {
 			'settings.developer.catalogSearchBleeding' => 'Bleeding or better',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
+			_ => null,
+		} ?? switch (path) {
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
 			'settings.panels.settings' => 'Application Preferences',
@@ -11287,8 +11348,6 @@ extension on Translations {
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
 			'settings.panels.developerSettings' => 'Developer Settings',
-			_ => null,
-		} ?? switch (path) {
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
 			'settings.panels.aboutDescription' => 'Version, credits, and legal information',

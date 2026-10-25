@@ -31,6 +31,9 @@ class ExtensionSpotsReader {
   Future<List<Map<String, dynamic>>> read(Map<String, dynamic> params) async {
     final query = SpotsQuery.fromParams(params);
     final board = _services.spotBoard;
+    // The board still holds what an earlier operation fetched; an operation
+    // without assistance shows its panels none of it.
+    if (board.operation?.assistance == false) return const [];
     // Narrowed by source BEFORE the merge: a merged spot keeps only one of
     // its reports' `hookKey`, so filtering after it would drop a station two
     // sources spotted from the answer for either.

@@ -342,7 +342,6 @@
     "operationDetails": "Detalles de la operación",
     "activities": "Actividades",
     "stationCallsign": "Indicativo de la estación",
-    "multiStationIdentifier": "Identificador multiestación (solo números)",
     "notes": "Notas",
     "deleteOperationTitle": "Borrar operación",
     "purgeTestsLooseQsos": {

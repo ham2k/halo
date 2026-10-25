@@ -54,6 +54,10 @@ class _Harness {
   bool throwOnSend = false;
 
   String operationUuid = 'op';
+
+  /// The operation's shared data — where its own switches and its refs say
+  /// whether it may self-spot (`Operation.selfSpotting`).
+  Map<String, dynamic> operationData = const {'refs': []};
   final notices = <String>[];
 
   /// The operator's Spotting settings.
@@ -87,7 +91,7 @@ class _Harness {
       },
       radioService: _FakeVfoStore(vfo),
       editingQso: editingQso,
-      operation: Operation(uuid: operationUuid, data: const {'refs': []}, localData: const {'multiIdentifier': 'OP1'}),
+      operation: Operation(uuid: operationUuid, data: operationData, localData: const {'multiIdentifier': 'OP1'}),
       notice: notices.add,
       respotInterval: respotInterval,
       autoRespotByDefault: autoRespotByDefault,
@@ -509,6 +513,36 @@ void main() {
       await tester.pump(_every + const Duration(seconds: 1));
       expect(h.model.autoRespotting, isFalse);
       expect(h.sent, hasLength(1), reason: "the old activation's spot is not announced as the new one's");
+      h.model.dispose();
+    });
+
+    testWidgets('stops, and says so, when the operation is edited to rule self-spotting out', (tester) async {
+      final h = await spotted(tester);
+      await h.model.press();
+      h.operationData = const {'selfSpotting': false};
+      expect(h.model.state.buttonLabel, 'Self-spot disabled', reason: 'the button must not count down to a spot that will not go');
+      await tester.pump(_every + const Duration(seconds: 1));
+      expect(h.model.autoRespotting, isFalse);
+      expect(h.notices.single, 'Self-spot disabled');
+      expect(h.sent, hasLength(1));
+      h.model.dispose();
+    });
+
+    // Until the next round stops it, the model still reads as respotting;
+    // the row must not stack the respot comment beside the disabled one.
+    testWidgets('the row shows one comment field once self-spotting is ruled out mid-respot', (tester) async {
+      final h = await spotted(tester);
+      await h.model.press();
+      h.operationData = const {'selfSpotting': false};
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SpottingControlFields(model: h.model, state: h.model.state, theme: buildHaLoTheme(Brightness.light), onPressed: () {}),
+          ),
+        ),
+      );
+      expect(h.model.autoRespotting, isTrue);
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
       h.model.dispose();
     });
 
@@ -1530,6 +1564,86 @@ void main() {
       h.model.followIntervalSetting();
       await tester.pump(const Duration(minutes: 7, seconds: 1));
       expect(h.sent, hasLength(2));
+      h.model.dispose();
+    });
+  });
+
+  // An operation whose own switch or a contest ref rules self-spotting out
+  // (`Operation.selfSpotting`). The button is the control's way in, but not
+  // the only one — SPOT and RESPOT reach the same send — so each is held to it.
+  group('an operation without self-spotting', () {
+    _Harness forbidden() => _Harness()
+      ..vfo = const Vfo(freq: 14285, mode: 'SSB')
+      ..operationData = const {
+        'refs': [
+          {'type': 'qp', 'ref': 'NY', 'selfSpotting': false},
+        ],
+      };
+
+    test('says so on the button, and offers neither the button nor the comment', () {
+      final h = forbidden();
+      final state = h.model.state;
+      expect(state.buttonLabel, 'Self-spot disabled');
+      expect(state.enabled, isFalse);
+      expect(state.showComment, isFalse, reason: 'the focus ladder must not stop on a field that takes no input');
+      expect(state.summary, 'Self-spotting', reason: 'the pill keeps its label; only the button explains');
+      expect(h.model.selfSpotForbidden, isTrue);
+      h.model.dispose();
+    });
+
+    testWidgets('shows the comment field, disabled', (tester) async {
+      final h = forbidden();
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SpottingControlFields(model: h.model, state: h.model.state, theme: ThemeData(), onPressed: () {}),
+            ),
+          ),
+        ),
+      );
+      final comment = tester.widget<TextField>(find.byType(TextField));
+      expect(comment.enabled, isFalse);
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed, isNull);
+      h.model.dispose();
+    });
+
+    test('still spots somebody else: a recent QSO being edited', () {
+      final h = forbidden();
+      h.editingQso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op',
+        data: {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': nowMillis() - 60 * 1000,
+        },
+      );
+      expect(h.model.selfSpotForbidden, isFalse);
+      expect(h.model.state.enabled, isTrue);
+      expect(h.model.state.buttonLabel, contains('W1AW'));
+      h.model.dispose();
+    });
+
+    test('a typed SPOT sends nothing, and goes on to the app with why', () async {
+      final h = forbidden();
+      final forwarded = <Map<String, dynamic>?>[];
+      await h.model.runCommandAction(
+        {
+          'sendSpots': {'comment': 'CQ NYQP', 'target': 'self'},
+        },
+        qsos: const [],
+        forward: (action, [params]) async => forwarded.add(params),
+      );
+      expect(h.sent, isEmpty);
+      expect(forwarded.single, {'target': 'self', 'failure': 'Self-spot disabled'});
+      h.model.dispose();
+    });
+
+    test('RESPOT sends nothing, and says why', () async {
+      final h = forbidden();
+      expect(await h.model.respotEvery(5), 'Self-spot disabled');
+      expect(h.sent, isEmpty);
+      expect(h.model.autoRespotting, isFalse);
       h.model.dispose();
     });
   });

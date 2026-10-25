@@ -308,7 +308,6 @@
     "operationDetails": "Detalhes da operação",
     "activities": "Atividades",
     "stationCallsign": "Indicativo da Estação",
-    "multiStationIdentifier": "Identificador multiestação (apenas números)",
     "notes": "Notas",
     "deleteOperationTitle": "Eliminar Operação",
     "purgeTestsTitle": "Purgar Operações de Teste",

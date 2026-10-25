@@ -51,10 +51,9 @@ void main() {
     });
   }
 
-  Future<void> openDialog(WidgetTester tester, {bool developerMode = false, String ownCall = '', bool suggestDefaultOperator = true}) async {
-    // The dialog reads all three from settings now, so the test states them
-    // there rather than passing them in.
-    if (developerMode) await settings.setDeveloperMode(true);
+  Future<void> openDialog(WidgetTester tester, {String ownCall = '', bool suggestDefaultOperator = true}) async {
+    // The dialog reads both from settings, so the test states them there
+    // rather than passing them in.
     if (ownCall.isNotEmpty) await settings.setProfileOperatorCall(SettingsService.defaultProfileId, ownCall);
     if (!suggestDefaultOperator) {
       await settings.setSettingValue(SettingsService.loggingGroup, 'suggestDefaultOperator', false);
@@ -254,7 +253,7 @@ void main() {
       await operations.updateLocalData(operation.uuid, {'multiIdentifier': '2'});
       operation = (await operations.get(operation.uuid))!;
 
-      await openDialog(tester, developerMode: true);
+      await openDialog(tester);
       await tester.enterText(operatorField(), 'W2XYZ');
       await tester.pumpAndSettle();
       expect(

@@ -308,7 +308,6 @@
     "operationDetails": "Operasyon ayrıntıları",
     "activities": "Aktiviteler",
     "stationCallsign": "İstasyon Çağrı İşareti",
-    "multiStationIdentifier": "Çoklu istasyon tanımlayıcısı (yalnızca sayılar)",
     "notes": "Notlar",
     "deleteOperationTitle": "Operasyonu Sil",
     "purgeTestsTitle": "Test Operasyonlarını Temizle",

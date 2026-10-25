@@ -308,7 +308,6 @@
     "operationDetails": "オペレーション詳細",
     "activities": "アクティビティ",
     "stationCallsign": "ステーションコールサイン",
-    "multiStationIdentifier": "マルチステーション識別子（数字のみ）",
     "notes": "ノート",
     "deleteOperationTitle": "オペレーションを削除",
     "purgeTestsTitle": "テストオペレーションを完全削除",

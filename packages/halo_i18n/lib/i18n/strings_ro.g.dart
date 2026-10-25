@@ -348,7 +348,6 @@ class _Translations$dialogs$ro extends Translations$dialogs$en {
 	@override String get operationDetails => 'Detalii operațiune';
 	@override String get activities => 'Activități';
 	@override String get stationCallsign => 'Indicativul stației';
-	@override String get multiStationIdentifier => 'Identificator multi-stație (numai cifre)';
 	@override String get notes => 'Note';
 	@override String get deleteOperationTitle => 'Șterge operațiunea';
 	@override String get purgeTestsTitle => 'Eliminați operațiunile de test';
@@ -3847,7 +3846,6 @@ extension on TranslationsRo {
 			'dialogs.operationDetails' => 'Detalii operațiune',
 			'dialogs.activities' => 'Activități',
 			'dialogs.stationCallsign' => 'Indicativul stației',
-			'dialogs.multiStationIdentifier' => 'Identificator multi-stație (numai cifre)',
 			'dialogs.notes' => 'Note',
 			'dialogs.deleteOperationTitle' => 'Șterge operațiunea',
 			'dialogs.purgeTestsTitle' => 'Eliminați operațiunile de test',
@@ -4098,9 +4096,9 @@ extension on TranslationsRo {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Partajează ${count} fișier combinat', other: 'Partajează ${count} fișiere combinate', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Exportă ${count} fișier combinat', other: 'Exportă ${count} fișiere combinate', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ro'))(count, one: 'Descarcă ${count} fișier combinat', other: 'Descarcă ${count} fișiere combinate', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Salvează ${name}',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => 'Salvează ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Partajează ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Exportă ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Descarcă ${name}',
@@ -4612,9 +4610,9 @@ extension on TranslationsRo {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} nu poate asculta pe portul ${port}: acest calculator nu permite. Alegeți un port peste 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} a oprit ascultarea pe portul ${port}. Se reîncearcă…',
 			'settings.radio.title' => 'Control CAT',
+			'settings.radio.loggingAndCat' => 'Înregistrare și CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'Înregistrare și CAT',
 			'settings.radio.tuningSection' => 'Acord',
 			'settings.radio.keyerSection' => 'Keyer',
 			'settings.radio.servicesSection' => 'Servicii',
@@ -5126,9 +5124,9 @@ extension on TranslationsRo {
 			'settings.station.n3fjpTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
 			'settings.station.n3fjpTroubleshooting' => 'Aceasta se conectează la **un program de log N3FJP care rulează pe calculatorul dvs.**, nu direct la stația radio — N3FJP comunică cu stația.\n\n- **API-ul programului trebuie să fie activ**: Settings → Application Program Interface, bifați **TCP API Enabled**.\n- **Portul** este 1100, dacă nu l-ați schimbat acolo.\n- **N3FJP trebuie să aibă configurată o interfață radio** pentru a urmări sau acorda stația. Fără una, raportează doar ce se tastează în fereastra de introducere.\n- N3FJP raportează doar banda, modul și frecvența: fără putere, fără starea de emisie.\n\nAceastă intrare a fost scrisă după API-ul publicat de N3FJP și nu a fost testată cu N3FJP. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.commanderTroubleshootingTitle' => 'Dacă aplicația nu se poate conecta',
+			'settings.station.commanderTroubleshooting' => 'Aceasta se conectează la **DXLab Commander, care rulează pe calculatorul dvs.**, nu direct la stația radio — Commander comunică cu stația.\n\n- **Commander trebuie să ruleze deja** și să fie conectat la stație.\n- **Serviciul de rețea trebuie să fie activ**: butonul **Net Serv** din panoul Radio al ferestrei Configuration din Commander.\n- **Portul** este 52002, al treilea port din blocul care începe la **Base Port** din Net Serv (52000, dacă nu l-ați schimbat).\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după mesajele TCP publicate de Commander și nu a fost testată cu Commander. Dacă funcționează pe jumătate, merită raportat.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'Aceasta se conectează la **DXLab Commander, care rulează pe calculatorul dvs.**, nu direct la stația radio — Commander comunică cu stația.\n\n- **Commander trebuie să ruleze deja** și să fie conectat la stație.\n- **Serviciul de rețea trebuie să fie activ**: butonul **Net Serv** din panoul Radio al ferestrei Configuration din Commander.\n- **Portul** este 52002, al treilea port din blocul care începe la **Base Port** din Net Serv (52000, dacă nu l-ați schimbat).\n- **De pe alt calculator**, asigurați-vă că firewall-ul permite conexiunea.\n\nAceastă intrare a fost scrisă după mesajele TCP publicate de Commander și nu a fost testată cu Commander. Dacă funcționează pe jumătate, merită raportat.',
 			'settings.station.ic705TroubleshootingTitle' => 'Dacă stația radio nu răspunde niciodată',
 			'settings.station.ic705Troubleshooting' => 'Stația are o **singură** sesiune de control la distanță. Când autentificarea este ignorată, aproape întotdeauna altceva o folosește.\n\n- **Închideți orice alt client.** wfview sau RS-BA1 conectat la aceeași stație ocupă acea sesiune, iar autentificarea de aici este pur și simplu ignorată cât timp o face.\n- **Verificați setările de rețea ale stației.** WLAN trebuie să fie activ, stația trebuie să fie în aceeași rețea, iar funcția de control la distanță (Network) trebuie să fie activată.\n- **Reporniți WLAN-ul stației** dacă rămâne blocată. Aceasta eliberează sigur o sesiune blocată pe stație.\n\nO **parolă greșită este refuzată explicit**, nu întâmpinată cu tăcere. Dacă ați ajuns aici în loc de un mesaj "respins", parola nu este problema.',
 			'settings.station.statusStale' => 'Nu răspunde',

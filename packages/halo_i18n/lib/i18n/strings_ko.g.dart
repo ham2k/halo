@@ -348,7 +348,6 @@ class _Translations$dialogs$ko extends Translations$dialogs$en {
 	@override String get operationDetails => '운용 상세';
 	@override String get activities => '활동';
 	@override String get stationCallsign => '무선국 콜사인';
-	@override String get multiStationIdentifier => '다중 무선국 구분 ID (숫자만)';
 	@override String get notes => '메모';
 	@override String get deleteOperationTitle => '운용 삭제';
 	@override String get purgeTestsTitle => '테스트 운용 영구 삭제';
@@ -3847,7 +3846,6 @@ extension on TranslationsKo {
 			'dialogs.operationDetails' => '운용 상세',
 			'dialogs.activities' => '활동',
 			'dialogs.stationCallsign' => '무선국 콜사인',
-			'dialogs.multiStationIdentifier' => '다중 무선국 구분 ID (숫자만)',
 			'dialogs.notes' => '메모',
 			'dialogs.deleteOperationTitle' => '운용 삭제',
 			'dialogs.purgeTestsTitle' => '테스트 운용 영구 삭제',
@@ -4098,9 +4096,9 @@ extension on TranslationsKo {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 공유', other: '통합 파일 ${count}개 공유', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 내보내기', other: '통합 파일 ${count}개 내보내기', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ko'))(count, one: '통합 파일 ${count}개 다운로드', other: '통합 파일 ${count}개 다운로드', ), 
+			'operation.export.saveOne' => ({required Object name}) => '${name} 저장',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => '${name} 저장',
 			'operation.export.shareOne' => ({required Object name}) => '${name} 공유',
 			'operation.export.exportOne' => ({required Object name}) => '${name} 내보내기',
 			'operation.export.downloadOne' => ({required Object name}) => '${name} 다운로드',
@@ -4612,9 +4610,9 @@ extension on TranslationsKo {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기할 수 없습니다: 이 컴퓨터가 허용하지 않습니다. 1024보다 큰 포트를 선택하세요.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}이(가) 포트 ${port}에서 대기를 중지했습니다. 다시 시도 중…',
 			'settings.radio.title' => 'CAT 제어',
+			'settings.radio.loggingAndCat' => '로깅 및 CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => '로깅 및 CAT',
 			'settings.radio.tuningSection' => '튜닝',
 			'settings.radio.keyerSection' => '키어',
 			'settings.radio.servicesSection' => '서비스',
@@ -5126,9 +5124,9 @@ extension on TranslationsKo {
 			'settings.station.n3fjpTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
 			'settings.station.n3fjpTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 N3FJP 로깅 프로그램**에 연결합니다. N3FJP가 무전기와 통신합니다.\n\n- **프로그램의 API가 켜져 있어야 합니다**: Settings → Application Program Interface에서 **TCP API Enabled**를 체크하세요.\n- **포트**는 그곳에서 변경하지 않았다면 1100입니다.\n- 무전기를 따라가거나 튜닝하려면 **N3FJP에 무전기 인터페이스가 설정되어 있어야 합니다.** 없으면 입력 창에 입력된 값만 보고합니다.\n- N3FJP는 밴드, 모드, 주파수만 보고합니다. 출력과 송신 상태는 보고하지 않습니다.\n\n이 항목은 N3FJP가 공개한 API를 바탕으로 작성되었으며 실제 N3FJP에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.commanderTroubleshootingTitle' => '앱이 연결할 수 없는 경우',
+			'settings.station.commanderTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 DXLab Commander**에 연결합니다. Commander가 무전기와 통신합니다.\n\n- **Commander가 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **네트워크 서비스가 켜져 있어야 합니다**: Commander 구성 창의 Radio 패널에 있는 **Net Serv** 버튼.\n- **포트**는 52002이며, Net Serv의 **Base Port**(변경하지 않았다면 52000)부터 시작하는 블록의 세 번째 포트입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 Commander가 공개한 TCP 메시지를 바탕으로 작성되었으며 실제 Commander에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => '이 항목은 무전기에 직접 연결하는 것이 아니라 **컴퓨터에서 실행 중인 DXLab Commander**에 연결합니다. Commander가 무전기와 통신합니다.\n\n- **Commander가 이미 실행 중이며** 무전기에 연결되어 있어야 합니다.\n- **네트워크 서비스가 켜져 있어야 합니다**: Commander 구성 창의 Radio 패널에 있는 **Net Serv** 버튼.\n- **포트**는 52002이며, Net Serv의 **Base Port**(변경하지 않았다면 52000)부터 시작하는 블록의 세 번째 포트입니다.\n- **다른 컴퓨터에서 연결하려면** 방화벽이 연결을 허용하는지 확인하세요.\n\n이 항목은 Commander가 공개한 TCP 메시지를 바탕으로 작성되었으며 실제 Commander에서 실행해 본 적이 없습니다. 부분적으로만 작동한다면 신고해 주세요.',
 			'settings.station.ic705TroubleshootingTitle' => '무전기가 전혀 응답하지 않는 경우',
 			'settings.station.ic705Troubleshooting' => '무전기는 원격 제어 세션을 **하나만** 지원합니다. 로그인이 무시된다면 거의 항상 다른 무언가가 세션을 사용 중입니다.\n\n- **다른 클라이언트를 모두 닫으세요.** 같은 무전기에 연결된 wfview나 RS-BA1이 그 세션을 점유하며, 그동안 여기서의 로그인은 그냥 무시됩니다.\n- **무전기의 네트워크 설정을 확인하세요.** WLAN이 켜져 있고, 무전기가 같은 네트워크에 있으며, 원격 제어(Network) 기능이 활성화되어 있어야 합니다.\n- 계속 멈춰 있다면 **무전기의 WLAN을 껐다 켜세요.** 무전기에 멈춰 있는 세션이 확실히 해제됩니다.\n\n**비밀번호가 틀리면 명시적으로 거부**되며, 응답이 없는 것이 아닙니다. "거부됨" 메시지 대신 이 화면이 나왔다면 비밀번호 문제가 아닙니다.',
 			'settings.station.statusStale' => '응답 없음',

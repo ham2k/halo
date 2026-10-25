@@ -348,7 +348,6 @@ class _Translations$dialogs$ja extends Translations$dialogs$en {
 	@override String get operationDetails => 'オペレーション詳細';
 	@override String get activities => 'アクティビティ';
 	@override String get stationCallsign => 'ステーションコールサイン';
-	@override String get multiStationIdentifier => 'マルチステーション識別子（数字のみ）';
 	@override String get notes => 'ノート';
 	@override String get deleteOperationTitle => 'オペレーションを削除';
 	@override String get purgeTestsTitle => 'テストオペレーションを完全削除';
@@ -3847,7 +3846,6 @@ extension on TranslationsJa {
 			'dialogs.operationDetails' => 'オペレーション詳細',
 			'dialogs.activities' => 'アクティビティ',
 			'dialogs.stationCallsign' => 'ステーションコールサイン',
-			'dialogs.multiStationIdentifier' => 'マルチステーション識別子（数字のみ）',
 			'dialogs.notes' => 'ノート',
 			'dialogs.deleteOperationTitle' => 'オペレーションを削除',
 			'dialogs.purgeTestsTitle' => 'テストオペレーションを完全削除',
@@ -4098,9 +4096,9 @@ extension on TranslationsJa {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルを共有', other: '${count}件の結合ファイルを共有', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをエクスポート', other: '${count}件の結合ファイルをエクスポート', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('ja'))(count, one: '${count}件の結合ファイルをダウンロード', other: '${count}件の結合ファイルをダウンロード', ), 
+			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => '${name}を保存',
 			'operation.export.shareOne' => ({required Object name}) => '${name}を共有',
 			'operation.export.exportOne' => ({required Object name}) => '${name}をエクスポート',
 			'operation.export.downloadOne' => ({required Object name}) => '${name}をダウンロード',
@@ -4612,9 +4610,9 @@ extension on TranslationsJa {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}で待ち受けできません：このコンピューターが許可していません。1024より大きいポートを選んでください。',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol}はポート${port}での待ち受けを停止しました。再試行中…',
 			'settings.radio.title' => 'CAT制御',
+			'settings.radio.loggingAndCat' => 'ロギングとCAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'ロギングとCAT',
 			'settings.radio.tuningSection' => 'チューニング',
 			'settings.radio.keyerSection' => 'キーヤー',
 			'settings.radio.servicesSection' => 'サービス',
@@ -5126,9 +5124,9 @@ extension on TranslationsJa {
 			'settings.station.n3fjpTroubleshootingTitle' => 'アプリが接続できない場合',
 			'settings.station.n3fjpTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のN3FJPロギングプログラム**に接続します。N3FJPが無線機と通信します。\n\n- **プログラムのAPIをオンにする必要があります**：Settings → Application Program Interface で **TCP API Enabled** にチェックします。\n- **ポート** は、そこで変更していない限り1100です。\n- 無線機に追従またはチューニングするには、**N3FJPに無線機インターフェースが設定されている必要があります**。設定がない場合、入力ウィンドウに入力された内容のみを報告します。\n- N3FJPが報告するのはバンド、モード、周波数のみで、出力や送信状態は報告しません。\n\nこのエントリーは公開されているN3FJPのAPIをもとに作成されており、N3FJPの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.commanderTroubleshootingTitle' => 'アプリが接続できない場合',
+			'settings.station.commanderTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'これは無線機に直接ではなく、**コンピューター上で実行中のDXLab Commander**に接続します。Commanderが無線機と通信します。\n\n- **Commanderがすでに実行中で**、無線機に接続されている必要があります。\n- **ネットワークサービスをオンにする必要があります**：CommanderのConfigurationウィンドウのRadioパネルにある **Net Serv** ボタンです。\n- **ポート** は52002で、Net Servの **Base Port**（変更していなければ52000）から始まるブロックの3番目のポートです。\n- **別のマシンから接続する場合**は、ファイアウォールが接続を許可していることを確認してください。\n\nこのエントリーは公開されているCommanderのTCPメッセージをもとに作成されており、Commanderの実機ではテストされていません。一部しか動作しない場合は、ぜひ報告してください。',
 			'settings.station.ic705TroubleshootingTitle' => '無線機がまったく応答しない場合',
 			'settings.station.ic705Troubleshooting' => 'この無線機のリモート制御セッションは **1つだけ** です。ログインが無視される場合、ほぼ確実に他の何かがそれを使用しています。\n\n- **他のクライアントを閉じてください。** 同じ無線機に接続したwfviewやRS-BA1がそのセッションを保持していると、ここでのログインは単に無視されます。\n- **無線機のネットワーク設定を確認してください。** WLANがオンで、無線機が同じネットワーク上にあり、リモート制御（Network）機能が有効になっている必要があります。\n- 固まったままの場合は、**無線機のWLANをオフにしてからオンにしてください**。無線機上で固まったセッションを確実に解除できます。\n\n**パスワードが間違っている場合は明示的に拒否され**、無応答にはなりません。「拒否」のメッセージではなくこの画面に来た場合、パスワードは問題ではありません。',
 			'settings.station.statusStale' => '応答なし',

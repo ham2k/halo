@@ -308,7 +308,6 @@
     "operationDetails": "Podrobnosti aktivity",
     "activities": "Aktivity",
     "stationCallsign": "Volací značka stanice",
-    "multiStationIdentifier": "Identifikátor stanice při provozu více stanic (pouze čísla)",
     "notes": "Poznámky",
     "deleteOperationTitle": "Smazat aktivitu",
     "purgeTestsTitle": "Vyčistit testovací aktivity",

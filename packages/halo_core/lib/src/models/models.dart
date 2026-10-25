@@ -114,6 +114,34 @@ class Operation {
   /// what the travelled clock may write to at all; see [isTestCall].
   bool get isTestOperation => stationCalls.any(isTestCall);
 
+  /// The keys of the operator's own choices in [data], and the keys a ref
+  /// sets to `false` to rule the same thing out (see [refsForbidding]).
+  static const assistanceKey = 'assistance';
+  static const selfSpottingKey = 'selfSpotting';
+
+  /// Whether spotting services and other outside sources of information may
+  /// be used. Absent means allowed: every operation set up before the choice
+  /// existed was run that way. A ref that forbids it wins over the
+  /// operator's choice, which stays stored for when that ref is removed.
+  bool get assistance => dataAllows(data, assistanceKey);
+
+  /// Whether features that report the operator's own frequency may be used,
+  /// on the same terms as [assistance].
+  bool get selfSpotting => dataAllows(data, selfSpottingKey);
+
+  /// [assistance] or [selfSpotting], by [key], read from an operation's
+  /// [data] as hook payloads carry it (`operationPayloadFor`) — for the
+  /// places that hold the map rather than the [Operation].
+  static bool dataAllows(Map<String, dynamic> data, String key) =>
+      data[key] != false && !(asQsonList(data['refs']) ?? const []).any((ref) => ref is Map && ref[key] == false);
+
+  /// The refs whose rules forbid [key] — an activity or contest that states
+  /// `{key: false}` on its ref, as a contest's non-assisted category does.
+  List<Map<String, dynamic>> refsForbidding(String key) => [
+    for (final ref in refs)
+      if (ref[key] == false) ref,
+  ];
+
   /// The user's own title, entered via the operation details dialog —
   /// distinct from [title], which holds the ref-generated one. Empty when
   /// the user hasn't set one.

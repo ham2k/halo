@@ -60,9 +60,14 @@ class _FakeExtensions extends ExtensionService {
   /// The spots every refresh reports; two stations unless a test sets more.
   List<Map<String, dynamic>> spotItems = [_spot('K1ABC', hookKey: 'pota'), _spot('W1AW', hookKey: 'sota')];
 
+  /// How many times the spot sources were asked.
+  int fetches = 0;
+
   @override
-  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async =>
-      (items: spotItems, succeeded: const ['pota', 'sota'], unreachable: const <String>[], failed: const <String>[]);
+  Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})> getSpots() async {
+    fetches++;
+    return (items: spotItems, succeeded: const ['pota', 'sota'], unreachable: const <String>[], failed: const <String>[]);
+  }
 
   @override
   Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
@@ -162,7 +167,7 @@ void main() {
   /// Called inside each test rather than from setUp: the board's scoring
   /// debounce is a timer, and a test can only drive it on a fake clock if
   /// everything that arms it was built inside that clock's zone.
-  Future<void> openBoard({Map<String, Object?> guesses = const {}}) async {
+  Future<void> openBoard({Map<String, Object?> guesses = const {}, bool fetch = true}) async {
     SharedPreferences.setMockInitialValues({});
     settings = await SettingsService.load();
     extensions = _FakeExtensions()..guesses = guesses;
@@ -171,6 +176,7 @@ void main() {
     services = HaLoServices(db, settings, extensions: extensions);
     view = services.spotBoard.subscribe();
     addTearDown(view.cancel);
+    if (!fetch) return;
     await services.spots.refresh();
     await Future<void>.delayed(_lookupWait);
   }
@@ -182,6 +188,68 @@ void main() {
     await Future<void>.delayed(_debounce);
     return operation;
   }
+
+  // An operation without assistance (`Operation.assistance`) calls no spot
+  // hook. The board is what polls the sources, so the rule lives here: a
+  // panel that merely hid the spots would still be fetching them.
+  group('an operation without assistance', () {
+    Future<Operation> create({bool assistance = true}) async {
+      final operation = await services.operations.create(stationCall: 'N0DEV');
+      return Operation(uuid: operation.uuid, data: {...operation.data, 'assistance': ?(assistance ? null : false)});
+    }
+
+    test('asks no spot source while it is shown, and the next operation that allows it does', () async {
+      await openBoard(fetch: false);
+      expect(extensions.fetches, 0, reason: 'nothing is shown yet, so nothing says spots are allowed');
+
+      view.show(await create(assistance: false), const [], logRevision: 'r0');
+      await pumpEventQueue();
+      expect(extensions.fetches, 0);
+
+      view.show(await create(), const [], logRevision: 'r0');
+      await pumpEventQueue();
+      expect(extensions.fetches, 1);
+    });
+
+    test('asks none when a contest ref rules assistance out', () async {
+      await openBoard(fetch: false);
+      final operation = await services.operations.create(stationCall: 'N0DEV');
+      view.show(
+        Operation(
+          uuid: operation.uuid,
+          data: {
+            ...operation.data,
+            'refs': [
+              {'type': 'cqww', 'assistance': false},
+            ],
+          },
+        ),
+        const [],
+        logRevision: 'r0',
+      );
+      await pumpEventQueue();
+      expect(extensions.fetches, 0);
+    });
+
+    test(
+      'stops the polling when the open operation is edited to rule it out',
+      () => runOnFakeClock((_) async {
+        await openBoard(fetch: false);
+        final operation = await create();
+        view.show(operation, const [], logRevision: 'r0');
+        await Future<void>.delayed(Duration.zero);
+        expect(extensions.fetches, 1);
+
+        view.show(
+          Operation(uuid: operation.uuid, data: {...operation.data, 'assistance': false}),
+          const [],
+          logRevision: 'r0',
+        );
+        await Future<void>.delayed(services.spots.refreshInterval * 3);
+        expect(extensions.fetches, 1, reason: 'the refresh timer belongs to the subscription the board let go of');
+      }),
+    );
+  });
 
   group('revision', () {
     test('moves with the radio\'s band and mode, not with every frequency it reports', () async {

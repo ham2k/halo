@@ -308,7 +308,6 @@
     "operationDetails": "Betriebs-Details",
     "activities": "Aktivitäten",
     "stationCallsign": "Stationsrufzeichen",
-    "multiStationIdentifier": "Kennung für Mehrfachstation (nur Zahlen)",
     "notes": "Notizen",
     "deleteOperationTitle": "Betrieb löschen",
     "purgeTestsTitle": "Testbetriebe endgültig löschen",

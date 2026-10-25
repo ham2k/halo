@@ -31,6 +31,11 @@ class LookupQueueService {
   /// Same shape as `ExtensionService.lookupCall` — injected as a function so
   /// tests don't need a JS runtime.
   final CallLookup lookup;
+
+  /// [lookup] for an operation without assistance, when the operator has
+  /// confirmed going online anyway (`ExtensionService.lookupCallDespiteAssistance`).
+  /// Null falls back to [lookup].
+  final CallLookup? lookupDespiteAssistance;
   final QsosRepository qsos;
   final OperationsRepository operations;
   final StatusBarService statusBar;
@@ -67,6 +72,7 @@ class LookupQueueService {
 
   LookupQueueService({
     required this.lookup,
+    this.lookupDespiteAssistance,
     required this.qsos,
     required this.operations,
     required this.statusBar,
@@ -135,12 +141,21 @@ class LookupQueueService {
   /// decide whether the batch is big enough to be worth a status bar, which
   /// is why the skips have to be visible to the caller rather than swallowed
   /// here.
-  _PendingLookup? _enqueueOne(Qso qso, {required bool force}) {
+  _PendingLookup? _enqueueOne(Qso qso, {required bool force, bool despiteAssistance = false}) {
     // An incomplete call would send a callbook the letters around the `?`.
     if (!qso.isRealContact || qso.theirCall.length < 3 || qso.hasIncompleteCall) return null;
     if (!force && _hasOnlineLookup(qso)) return null;
-    if (!_queuedUuids.add(qso.uuid)) return null;
-    final entry = _PendingLookup(qso.uuid, qso.operationUuid);
+    if (!_queuedUuids.add(qso.uuid)) {
+      // Already waiting from an ordinary enqueue: the confirmed pass takes
+      // it over, or that entry would run local-only and this one never run.
+      if (despiteAssistance) {
+        for (final waiting in _queue) {
+          if (waiting.qsoUuid == qso.uuid) waiting.despiteAssistance = true;
+        }
+      }
+      return null;
+    }
+    final entry = _PendingLookup(qso.uuid, qso.operationUuid)..despiteAssistance = despiteAssistance;
     _queue.add(entry);
     return entry;
   }
@@ -164,10 +179,13 @@ class LookupQueueService {
   ///
   /// One progress update for the whole batch — an enqueue-time update per
   /// QSO would rebuild the status bar N times in a single synchronous burst.
-  void enqueueAll(Iterable<Qso> qsos, {bool force = true}) {
+  ///
+  /// [despiteAssistance] goes online for an operation without assistance —
+  /// only for a batch the operator confirmed (`confirmLookupDespiteAssistance`).
+  void enqueueAll(Iterable<Qso> qsos, {bool force = true, bool despiteAssistance = false}) {
     final accepted = <_PendingLookup>[];
     for (final qso in qsos) {
-      final entry = _enqueueOne(qso, force: force);
+      final entry = _enqueueOne(qso, force: force, despiteAssistance: despiteAssistance);
       if (entry != null) accepted.add(entry);
     }
     if (accepted.length > _progressThreshold) {
@@ -307,6 +325,7 @@ class LookupQueueService {
     if (_cachedOperation?.uuid != entry.operationUuid) {
       _cachedOperation = await operations.get(entry.operationUuid);
     }
+    final lookup = entry.despiteAssistance ? lookupDespiteAssistance ?? this.lookup : this.lookup;
     final result = await lookup(call, qso: qso.data, operation: _cachedOperation?.data ?? const {}, online: true);
     // Nothing came back (runtime down mid-call) — leave the record alone.
     if (result == null || (result['guess'] == null && result['lookups'] == null)) return null;
@@ -433,6 +452,10 @@ class _PendingLookup {
   /// is known to be large enough to report — never at construction, because
   /// the count that decides it isn't known until the last QSO is in.
   bool showProgress = false;
+
+  /// From a batch the operator confirmed going online for despite the
+  /// operation's assistance being off ([LookupQueueService.enqueueAll]).
+  bool despiteAssistance = false;
 
   _PendingLookup(this.qsoUuid, this.operationUuid);
 }

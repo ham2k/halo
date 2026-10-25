@@ -348,7 +348,6 @@ class _Translations$dialogs$nb extends Translations$dialogs$en {
 	@override String get operationDetails => 'Operasjonsdetaljer';
 	@override String get activities => 'Aktiviteter';
 	@override String get stationCallsign => 'Stasjonskallesignal';
-	@override String get multiStationIdentifier => 'Identifikator for multistasjon (kun tall)';
 	@override String get notes => 'Notater';
 	@override String get deleteOperationTitle => 'Slett operasjon';
 	@override String get purgeTestsTitle => 'Fjern testoperasjoner';
@@ -3847,7 +3846,6 @@ extension on TranslationsNb {
 			'dialogs.operationDetails' => 'Operasjonsdetaljer',
 			'dialogs.activities' => 'Aktiviteter',
 			'dialogs.stationCallsign' => 'Stasjonskallesignal',
-			'dialogs.multiStationIdentifier' => 'Identifikator for multistasjon (kun tall)',
 			'dialogs.notes' => 'Notater',
 			'dialogs.deleteOperationTitle' => 'Slett operasjon',
 			'dialogs.purgeTestsTitle' => 'Fjern testoperasjoner',
@@ -4098,9 +4096,9 @@ extension on TranslationsNb {
 			'operation.export.shareCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Del ${count} samlet fil', other: 'Del ${count} samlede filer', ), 
 			'operation.export.exportCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Eksporter ${count} samlet fil', other: 'Eksporter ${count} samlede filer', ), 
 			'operation.export.downloadCombined' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('nb'))(count, one: 'Last ned ${count} samlet fil', other: 'Last ned ${count} samlede filer', ), 
+			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
 			_ => null,
 		} ?? switch (path) {
-			'operation.export.saveOne' => ({required Object name}) => 'Lagre ${name}',
 			'operation.export.shareOne' => ({required Object name}) => 'Del ${name}',
 			'operation.export.exportOne' => ({required Object name}) => 'Eksporter ${name}',
 			'operation.export.downloadOne' => ({required Object name}) => 'Last ned ${name}',
@@ -4612,9 +4610,9 @@ extension on TranslationsNb {
 			'settings.catServer.portDenied' => ({required Object protocol, required Object port}) => '${protocol} kan ikke lytte på port ${port}: denne datamaskinen tillater det ikke. Velg en port over 1024.',
 			'settings.catServer.stopped' => ({required Object protocol, required Object port}) => '${protocol} sluttet å lytte på port ${port}. Prøver igjen…',
 			'settings.radio.title' => 'CAT-styring',
+			'settings.radio.loggingAndCat' => 'Logging og CAT',
 			_ => null,
 		} ?? switch (path) {
-			'settings.radio.loggingAndCat' => 'Logging og CAT',
 			'settings.radio.tuningSection' => 'Avstemming',
 			'settings.radio.keyerSection' => 'Keyer',
 			'settings.radio.servicesSection' => 'Tjenester',
@@ -5126,9 +5124,9 @@ extension on TranslationsNb {
 			'settings.station.n3fjpTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
 			'settings.station.n3fjpTroubleshooting' => 'Dette kobler til **et N3FJP-loggeprogram som kjører på datamaskinen din**, ikke direkte til radioen — N3FJP snakker med radioen.\n\n- **Programmets API må være på**: Settings → Application Program Interface, kryss av for **TCP API Enabled**.\n- **Porten** er 1100 med mindre du har endret den der.\n- **N3FJP må ha et radiogrensesnitt satt opp** for å følge eller stille inn radioen. Uten det rapporterer den bare det som skrives inn i registreringsvinduet.\n- N3FJP rapporterer bare bånd, modus og frekvens: ingen effekt, ingen sendestatus.\n\nDenne oppføringen er skrevet etter N3FJPs publiserte API og har ikke blitt kjørt mot N3FJP. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.commanderTroubleshootingTitle' => 'Hvis appen ikke kan koble til',
+			'settings.station.commanderTroubleshooting' => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.',
 			_ => null,
 		} ?? switch (path) {
-			'settings.station.commanderTroubleshooting' => 'Dette kobler til **DXLab Commander, som kjører på datamaskinen din**, ikke direkte til radioen — Commander snakker med radioen.\n\n- **Commander må allerede kjøre** og være koblet til radioen.\n- **Nettverkstjenesten må være på**: **Net Serv**-knappen i Radio-panelet i Commanders Configuration-vindu.\n- **Porten** er 52002, den tredje porten i blokken som starter på Net Servs **Base Port** (52000 med mindre du har endret den).\n- **Fra en annen maskin** må du sørge for at brannmuren slipper tilkoblingen gjennom.\n\nDenne oppføringen er skrevet etter Commanders publiserte TCP-meldinger og har ikke blitt kjørt mot Commander. Hvis den halvveis virker, er det verdt å rapportere.',
 			'settings.station.ic705TroubleshootingTitle' => 'Hvis radioen aldri svarer',
 			'settings.station.ic705Troubleshooting' => 'Radioen har **én enkelt** fjernstyringsøkt. Når innloggingen ignoreres, er det nesten alltid noe annet som bruker den.\n\n- **Lukk alle andre klienter.** wfview eller RS-BA1 koblet til samme radio holder den ene økten, og innloggingen her blir rett og slett ignorert så lenge.\n- **Sjekk radioens nettverksinnstillinger.** WLAN må være på, radioen må være på samme nettverk, og fjernstyringsfunksjonen (Network) må være aktivert.\n- **Slå radioens WLAN av og på** hvis den blir hengende. Det fjerner pålitelig en økt som har hengt seg opp på radioen.\n\nEt **feil passord blir eksplisitt avvist**, ikke møtt med stillhet. Hvis du havnet her i stedet for å få en melding om at det ble avvist, er ikke passordet problemet.',
 			'settings.station.statusStale' => 'Svarer ikke',

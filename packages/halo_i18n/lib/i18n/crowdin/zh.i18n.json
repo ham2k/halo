@@ -308,7 +308,6 @@
     "operationDetails": "操作详情",
     "activities": "活动",
     "stationCallsign": "电台呼号",
-    "multiStationIdentifier": "多站标识符（仅限数字）",
     "notes": "备注",
     "deleteOperationTitle": "删除操作",
     "purgeTestsTitle": "清除测试操作",

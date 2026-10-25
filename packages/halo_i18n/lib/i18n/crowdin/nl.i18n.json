@@ -308,7 +308,6 @@
     "operationDetails": "Activatiegegevens",
     "activities": "Activiteiten",
     "stationCallsign": "Station roepnaam",
-    "multiStationIdentifier": "Multi-station identificatie (alleen cijfers)",
     "notes": "Notities",
     "deleteOperationTitle": "Activatie verwijderen",
     "purgeTestsTitle": "Testactivaties opruimen",
