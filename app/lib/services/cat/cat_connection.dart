@@ -613,6 +613,7 @@ extension _Connection on CatService {
     runtime.subscription = null;
     runtime.staleTimer?.cancel();
     runtime.staleTimer = null;
+    _cancelBandPick(runtime);
     // The echo guard describes what THIS session was told. Carrying it into
     // the next connection would suppress the first tune to a frequency the
     // previous session happened to be on, leaving the app and a

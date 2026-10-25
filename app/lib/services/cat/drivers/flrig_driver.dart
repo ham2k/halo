@@ -140,7 +140,7 @@ enum _Ask { frequency, mode, modes, setMode, power, transmitting, meterPower, me
 /// the bare form loses every typed answer without a trace.
 final _scalar = RegExp(r'<value>(?:<(i4|int|double|string|boolean)>([^<]*)</\1>|([^<]*))</value>');
 
-class FlrigSession implements TransceiverSession, PttSession, RawCommandSession {
+class FlrigSession implements ReadBackSession, PttSession, RawCommandSession {
   final EquipmentSink _sink;
 
   FlrigSession(this._sink, [this._config = const {}]);
@@ -416,6 +416,9 @@ class FlrigSession implements TransceiverSession, PttSession, RawCommandSession 
     }
     _sink.report(reading);
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   @override
   void setFrequency(double freqKHz) => _call(_Ask.ignored, 'rig.set_frequency', '<param><value><double>${(freqKHz * 1000).round()}</double></value></param>');

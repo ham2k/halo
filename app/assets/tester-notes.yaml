@@ -10,6 +10,7 @@ upcoming:
     - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
     - "New Cluster Console: type CLUSTER, or Show Console in DX Cluster settings"
     - "Added Yaesu FTDX3000, FTDX5000, FTDX1200, FT-2000 and FT-950 to the radio list (tell us how it behaves)"
+    - "New: picking a band moves a CAT-connected radio to that band"
 
 "183":
   changes:

@@ -60,6 +60,14 @@ class RadioService extends ChangeNotifier implements VfoStore {
   @override
   Vfo get vfoA => _vfos['vfoA'] ?? const Vfo();
 
+  /// Where the operator of the operation in front of them is licensed, as
+  /// `modeForFrequency` takes it — what a band picked by name is placed
+  /// against (`defaultFrequencyForBand`). Set by the operation as it learns
+  /// its own callsign's entity; null until then, and the band plan's
+  /// unscoped segments answer.
+  int? ourItuRegion;
+  String? ourCountryCode;
+
   VfoOrigin _lastOrigin = VfoOrigin.user;
 
   /// Who made the change listeners are currently being told about. Only

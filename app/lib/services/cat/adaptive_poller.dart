@@ -114,6 +114,14 @@ class AdaptivePoller {
     if (_timer != null) _schedule();
   }
 
+  /// Polls now, then fast: the radio has just been told to move, and its
+  /// answer is wanted before the next poll would come round.
+  void pollNow() {
+    if (_timer == null) return;
+    noteChange();
+    _fire();
+  }
+
   void _schedule() {
     _timer?.cancel();
     _timer = Timer(_interval, _fire);

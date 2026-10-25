@@ -270,6 +270,20 @@ void main() {
       });
     });
 
+    test('a read-back after a tune asks again, behind the tune', () {
+      // The poll's own reads are still queued ahead of the tune; merged into
+      // them, the read-back would be answered with where the radio was.
+      fakeAsync((async) {
+        session.startUpdates();
+        session.setFrequency(7074);
+        session.readBack();
+        ack(20);
+        final afterTune = commands().skip(commands().indexOf(0x05) + 1);
+        expect(afterTune, containsAllInOrder([0x03, 0x04]));
+        session.teardown();
+      });
+    });
+
     test('a command the radio never answers holds the rest back only briefly', () {
       // Without the timeout one lost frame would stop the session talking.
       fakeAsync((async) {

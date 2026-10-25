@@ -82,7 +82,7 @@ const _maxFrameLength = 64 * 1024;
 
 final _digits = RegExp(r'^\d+$');
 
-class HrdSession implements TransceiverSession, RawCommandSession {
+class HrdSession implements ReadBackSession, RawCommandSession {
   final EquipmentSink _sink;
 
   final Map<String, dynamic> _config;
@@ -327,6 +327,9 @@ class HrdSession implements TransceiverSession, RawCommandSession {
     }
     _sink.report(reading);
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   /// A set's reply (`OK`, or an error) says nothing the next poll will not,
   /// but it still has to be waited for: taken as the answer to the question

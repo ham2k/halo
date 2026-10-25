@@ -83,7 +83,7 @@ const _localeTries = 3;
 /// Far past any real answer; reached only when the peer is not Commander.
 const _maxPending = 64 * 1024;
 
-class CommanderSession implements TransceiverSession, RawCommandSession {
+class CommanderSession implements ReadBackSession, RawCommandSession {
   final EquipmentSink _sink;
 
   final Map<String, dynamic> _config;
@@ -239,6 +239,9 @@ class CommanderSession implements TransceiverSession, RawCommandSession {
     }
     _sink.report(reading);
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   @override
   void setFrequency(double freqKHz) => _requests.tell(

@@ -213,6 +213,18 @@ abstract class TransceiverSession implements EquipmentSession {
   void setPower(num watts);
 }
 
+/// A transceiver that can be asked where it is now, ahead of its next poll.
+/// After a band pick the app holds the radio's reports from other bands until
+/// it hears the new one (docs/design/cat.md § Picking a band), and a radio
+/// polled every few seconds would otherwise answer after that hold is over.
+/// A radio that announces every change itself has nothing to add, and does
+/// not implement it.
+abstract class ReadBackSession implements TransceiverSession {
+  /// Asks for the frequency and mode now, queued behind any command already
+  /// sent.
+  void readBack();
+}
+
 /// A session for equipment that routes antennas to devices.
 ///
 /// Reading is not here: state arrives through [EquipmentSink.reportSwitchState]

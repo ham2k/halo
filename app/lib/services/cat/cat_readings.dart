@@ -100,6 +100,16 @@ extension _Readings on CatService {
     // about to receive as its own, instead of re-tuning the radio to the
     // value the radio just gave it.
     if (uuid != _localRadio1) return;
+    // From what the radio SAID: [merged] fills a missing frequency in from
+    // what it was told, which it may not have reached.
+    if (reading.freqKHz case final freqKHz?) {
+      if (bandForFrequency(freqKHz) case final band?) runtime.lastFreqByBand[bandMemoryKey(band, merged.mode)] = freqKHz;
+    }
+    if (_heldByBandPick(runtime, reading)) return;
+    _followRadio(merged);
+  }
+
+  void _followRadio(VfoReading merged) {
     final mode = appModeForRadioReport(current: _radio?.vfoA.mode, reported: merged.mode, freqKHz: merged.freqKHz);
     _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
     _noteSnapReading(merged);

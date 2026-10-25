@@ -1223,7 +1223,7 @@ only inside a microwave band (`10368.100.5`), or the input is refused.
 
 The microwave readings come from a short table of their own — 23cm through
 1.25cm, leaving out the digits 30m and 80m own as MHz — not from `bands`,
-which stops at 23cm. Extensions read the same notation, by the same table,
+which names bands no reading should be rescued into. Extensions read the same notation, by the same table,
 through `@ham2k/lib-format-tools` `parseFreq` (1.3.1 on), so a frequency
 typed as a call-field command lands where the Freq field would put it.
 

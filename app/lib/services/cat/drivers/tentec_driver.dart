@@ -111,7 +111,7 @@ class TenTecDriver extends EquipmentDriver {
 /// What the outstanding message will answer, or [set] for one it will not.
 enum _Ask { assignment, frequency, mode, power, filter, shift, signal, keyer, keyerSpeed, version, set }
 
-class TenTecSession implements TransceiverSession, PttSession, PassbandSession, CwKeyerSession, RawCommandSession {
+class TenTecSession implements ReadBackSession, PttSession, PassbandSession, CwKeyerSession, RawCommandSession {
   final EquipmentSink _sink;
   final Map<String, dynamic> _config;
   final TenTecDialect dialect;
@@ -464,6 +464,9 @@ class TenTecSession implements TransceiverSession, PttSession, PassbandSession, 
   }
 
   // ------------------------------------------------------------ commands
+
+  @override
+  void readBack() => _poller.pollNow();
 
   /// Retunes the main receiver's VFO, then reads it back.
   ///

@@ -136,7 +136,7 @@ class GuohetecDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => GuohetecSession(sink, config: config);
 }
 
-class GuohetecSession implements TransceiverSession, PttSession, RawCommandSession {
+class GuohetecSession implements ReadBackSession, PttSession, RawCommandSession {
   final EquipmentSink _sink;
   final Map<String, dynamic> _config;
   final String? _meterInfoKey;
@@ -415,6 +415,9 @@ class GuohetecSession implements TransceiverSession, PttSession, RawCommandSessi
     }
     _send(command);
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   @override
   void setFrequency(double freqKHz) => _tuneTo((freqKHz * 1000).round());

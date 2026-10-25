@@ -203,7 +203,7 @@ const rigctldKeyerSpeedMaxConfigKey = 'keyerSpeedMax';
 /// with fixed arguments refused for any of these is refused every time.
 const _retiringLevelErrors = {-1, -4, -11};
 
-class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession {
+class RigctldSession implements ReadBackSession, PttSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession {
   final EquipmentSink _sink;
 
   RigctldSession(this._sink, [this._config = const {}]);
@@ -553,6 +553,9 @@ class RigctldSession implements TransceiverSession, PttSession, CwKeyerSession, 
     }
     _sink.report(reading);
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   @override
   void setFrequency(double freqKHz) => _send('F$_vfo ${(freqKHz * 1000).round()}');

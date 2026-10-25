@@ -58,6 +58,7 @@ part 'cat_discovery.dart';
 part 'cat_vfo_snap.dart';
 part 'cat_connection.dart';
 part 'cat_readings.dart';
+part 'cat_band_pick.dart';
 part 'cat_equipment_store.dart';
 part 'cat_tracking.dart';
 part 'cat_peer_offers.dart';
@@ -1146,14 +1147,20 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
       return;
     }
 
+    // Whatever the operator says next replaces a band pick still on its way.
+    final runtime = _runtimes[uuid];
+    final heading = runtime?.bandPick;
+    if (runtime != null) _cancelBandPick(runtime);
     final vfo = radio.vfoA;
-    tuneNode(
-      uuid,
-      VfoReading(
-        freqKHz: vfo.freq,
-        mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band),
-      ),
-    );
+    if (!_pickBand(uuid, vfo, heading: heading)) {
+      tuneNode(
+        uuid,
+        VfoReading(
+          freqKHz: vfo.freq,
+          mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band),
+        ),
+      );
+    }
     // Only a CHANGE of the app's power is a command to the radio. Every VFO
     // notification arrives here — a typed frequency, a band pick — and a
     // remembered power sent on the first of them would re-assert a value

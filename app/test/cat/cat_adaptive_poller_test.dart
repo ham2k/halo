@@ -177,4 +177,30 @@ void main() {
       expect(poller.interval, kPollSlow);
     });
   });
+
+  test('a poll asked for now goes now, and the ones after it come fast', () {
+    // After a band pick: the answer is wanted before the pick stops holding
+    // the old band's reports back, three seconds on — the slow interval.
+    fakeAsync((async) {
+      var polls = 0;
+      final poller = AdaptivePoller(onPoll: () => polls++)..start();
+      addTearDown(poller.stop);
+
+      poller.pollNow();
+      expect(polls, 1);
+      async.elapse(const Duration(seconds: 1));
+      expect(polls, greaterThanOrEqualTo(4));
+    });
+  });
+
+  test('a stopped poller does not poll when asked', () {
+    // The session is gone; its transport with it.
+    fakeAsync((async) {
+      var polls = 0;
+      final poller = AdaptivePoller(onPoll: () => polls++);
+      poller.pollNow();
+      async.elapse(const Duration(seconds: 10));
+      expect(polls, 0);
+    });
+  });
 }

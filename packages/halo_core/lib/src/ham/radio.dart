@@ -11,6 +11,8 @@ import 'dart:async';
 
 import 'band_plan_segments.dart';
 
+part 'band_defaults.dart';
+
 class BandInfo {
   final String name;
   final double minKHz;
@@ -28,6 +30,7 @@ const List<BandInfo> bands = [
   // list, so the two must agree.
   BandInfo('2190m', 135.7, 137.8),
   BandInfo('630m', 472, 479),
+  BandInfo('560m', 500, 505),
   BandInfo('160m', 1800, 2000),
   BandInfo('80m', 3500, 4000),
   BandInfo('60m', 5250, 5450),
@@ -37,14 +40,28 @@ const List<BandInfo> bands = [
   BandInfo('17m', 18068, 18168),
   BandInfo('15m', 21000, 21450),
   BandInfo('12m', 24890, 24990),
+  BandInfo('11m', 26965, 27405),
   BandInfo('10m', 28000, 29700),
   BandInfo('6m', 50000, 54000),
+  BandInfo('5m', 54001, 69999),
   BandInfo('4m', 70000, 70500),
   BandInfo('2m', 144000, 148000),
   BandInfo('1.25m', 219000, 225000),
   BandInfo('70cm', 420000, 450000),
   BandInfo('33cm', 902000, 928000),
   BandInfo('23cm', 1240000, 1300000),
+  // Past 23cm, the extension runtime's own edges.
+  BandInfo('13cm', 2300000, 2450000),
+  BandInfo('9cm', 3300000, 3500000),
+  BandInfo('6cm', 5650000, 5925000),
+  BandInfo('3cm', 10000000, 10500000),
+  BandInfo('1.25cm', 24000000, 24250000),
+  BandInfo('6mm', 47000000, 47200000),
+  BandInfo('4mm', 75500000, 81000000),
+  BandInfo('2.5mm', 122250000, 123000000),
+  BandInfo('2mm', 134000000, 141000000),
+  BandInfo('1mm', 241000000, 250000000),
+  BandInfo('submm', 300000000, 7500000000),
 ];
 
 String? bandForFrequency(double khz) {
@@ -904,9 +921,9 @@ final _freqChars = RegExp(r'^[0-9.]+$');
 
 /// The microwave bands [parseFreq] reads a number a thousandfold up into, in
 /// kHz — the same short table as `@ham2k/lib-format-tools` `parseFreq`, so
-/// the Freq field and a call-field command agree. Not [bands], which stops at
-/// 23cm: only these decide between readings, so a band whose digits mean
-/// something else as MHz leaves them out — 30m read as MHz sits inside 3cm
+/// the Freq field and a call-field command agree. Not [bands]: only these
+/// decide between readings, so a band whose digits mean something else as
+/// MHz leaves them out — 30m read as MHz sits inside 3cm
 /// read as GHz, and 3.5 is 80m.
 const _microwaveRescues = [
   (1240000, 1300000), // 23cm

@@ -302,7 +302,7 @@ class IcomCivDriver extends EquipmentDriver {
 class IcomCivSession
     with _CivScope
     implements
-        TransceiverSession,
+        ReadBackSession,
         CwKeyerSession,
         VoiceKeyerSession,
         PttSession,
@@ -935,6 +935,15 @@ class IcomCivSession
           });
         }
     }
+  }
+
+  /// Sent, not polled: [_poll] drops a read already waiting in the outbox,
+  /// and one queued before the tune answers with where the radio was.
+  @override
+  void readBack() {
+    _send(buildReadFrequencyFrame(to: radioAddress, from: controllerAddress));
+    if (_dataModeSupport.available) _send(_dataModeRead);
+    _send(buildReadModeFrame(to: radioAddress, from: controllerAddress));
   }
 
   @override

@@ -179,7 +179,7 @@ class YaesuBinaryDriver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => YaesuBinarySession(sink, config: config);
 }
 
-class YaesuBinarySession implements TransceiverSession, PttSession, RawCommandSession {
+class YaesuBinarySession implements ReadBackSession, PttSession, RawCommandSession {
   final EquipmentSink _sink;
   final Map<String, dynamic> _config;
 
@@ -410,6 +410,9 @@ class YaesuBinarySession implements TransceiverSession, PttSession, RawCommandSe
   void _requestFrequencyAndMode() => _request(readFrequencyAndModeCommand);
 
   // ------------------------------------------------------------ commands
+
+  @override
+  void readBack() => _poller.pollNow();
 
   @override
   void setFrequency(double freqKHz) => _request(buildSetFrequencyCommand((freqKHz * 1000).round()), isWrite: true);

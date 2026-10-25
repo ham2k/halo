@@ -240,6 +240,9 @@ class OperationRuntimeState extends ChangeNotifier {
     _ourEntityPrefix = asQsonString(ourGuess?['entityPrefix']);
     _ourItuRegion = asQsonNum(ourGuess?['ituRegion'])?.toInt();
     _ourCountryCode = asQsonString(ourGuess?['countryCode']);
+    services.radio
+      ..ourItuRegion = _ourItuRegion
+      ..ourCountryCode = _ourCountryCode;
     notifyListeners();
   }
 

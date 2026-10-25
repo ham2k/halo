@@ -231,9 +231,8 @@ void main() {
     });
 
     testWidgets('every band the app knows takes its place by frequency; a band without a colour is red, like its markers', (tester) async {
-      // Logged out of order, and 11m and the microwave bands are missing from
-      // halo_core's frequency table: ordering by that table puts them last,
-      // in the order they were logged.
+      // Logged out of order: ordered by the band list rather than by when
+      // each was first worked.
       final text = await textFor(tester, [
         contact('a', 0, band: '3cm'),
         contact('b', 0, band: 'weird'),

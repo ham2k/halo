@@ -98,7 +98,7 @@ class _FakeTransport extends EquipmentTransport {
 
 /// Records what the manager asked the radio to do, and can push readings
 /// back the way a real radio's status stream would.
-class _FakeSession implements TransceiverSession, AntennaTunerSession {
+class _FakeSession implements ReadBackSession, AntennaTunerSession {
   final EquipmentSink sink;
   final List<String> commands = [];
   var throwOnSet = false;
@@ -148,6 +148,9 @@ class _FakeSession implements TransceiverSession, AntennaTunerSession {
 
   @override
   void setPower(num watts) => commands.add('power:$watts');
+
+  @override
+  void readBack() => commands.add('read-back');
 
   /// Pushes, like the FlexRadio this fake stands in for — so nothing
   /// here has to reason about a poll cadence.
@@ -549,25 +552,30 @@ void main() {
       expect(await settings.equipmentSecret(node.uuid, 'apiKey'), 'super-secret');
     });
 
-    test('a band pick does not deafen the app to the radio for good', () async {
-      await connectedRadio();
-      session().radioReports(freqKHz: 14074, mode: 'USB');
-      await pumpEventQueue();
-      expect(radio.vfoA.freq, 14074);
+    test('a band pick the radio never reaches does not deafen the app to it', () {
+      // A pick holds back the radio's reports from other bands while the
+      // radio gets there. One that never arrives — the radio refused, or
+      // ignores the command — must not leave the app on a band the radio is
+      // not on, logging QSOs there, until the knob is turned.
+      fakeAsync((async) {
+        late EquipmentNode node;
+        cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        async.flushMicrotasks();
+        cat.connect(node.uuid);
+        async.flushMicrotasks();
+        session().radioReports(freqKHz: 14074, mode: 'USB');
+        async.flushMicrotasks();
 
-      // The operator picks a band by hand, which clears vfoA's frequency.
-      // The radio has not moved, so everything it says from here on is a
-      // restatement of 14074 — and deduping those against CAT's own cache
-      // swallowed every one of them. The panel then showed 40m with no
-      // frequency, and logged QSOs with it, until the knob was turned.
-      radio.setVfo('vfoA', band: '40m');
-      await pumpEventQueue();
-      expect(radio.vfoA.freq, isNull);
+        radio.setVfo('vfoA', band: '40m');
+        async.flushMicrotasks();
+        session().radioReports(freqKHz: 14074, mode: 'USB');
+        async.flushMicrotasks();
+        expect(radio.vfoA.band, '40m', reason: 'still on its way');
 
-      session().radioReports(freqKHz: 14074, mode: 'USB');
-      await pumpEventQueue();
-      expect(radio.vfoA.freq, 14074, reason: 'the radio gets the app back in step');
-      expect(radio.vfoA.band, '20m');
+        async.elapse(catBandPickGrace);
+        expect(radio.vfoA.freq, 14074, reason: 'the radio gets the app back in step');
+        expect(radio.vfoA.band, '20m');
+      });
     });
 
     test('clearing the frequency field does not deafen it either', () async {
@@ -729,6 +737,188 @@ void main() {
       // Must complete quietly rather than throwing "A ChangeNotifier was
       // used after being disposed" out of the retry.
       await expectLater(reconnecting, completes);
+    });
+  });
+
+  group('a band picked by name', () {
+    test('the radio goes where it was last heard on that band in that mode', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 7040, mode: 'CW');
+      await pumpEventQueue();
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7040);
+      // Read back once the tune is on its way: a radio polled every few
+      // seconds would otherwise answer after the hold is over.
+      expect(session().commands, ['freq:7040.0', 'mode:CW', 'freq:7040.0', 'read-back']);
+    });
+
+    test('where it was in another mode is not where it goes', () async {
+      // CW on 40m left at 7040: phone sent there would be in the CW segment.
+      radio
+        ..ourItuRegion = 2
+        ..ourCountryCode = 'us';
+      await connectedRadio();
+      session().radioReports(freqKHz: 7040, mode: 'CW');
+      await pumpEventQueue();
+      session().radioReports(freqKHz: 14250, mode: 'USB');
+      await pumpEventQueue();
+
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7178);
+      expect(radio.vfoA.mode, 'LSB');
+    });
+
+    test('a band never heard on starts where the operator\'s licence starts the mode', () async {
+      // A US callsign is placed as a General: 14150 is an Extra's phone edge.
+      radio
+        ..ourItuRegion = 2
+        ..ourCountryCode = 'us';
+      await connectedRadio();
+      session().radioReports(freqKHz: 7185, mode: 'LSB');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      radio.setVfo('vfoA', band: '20m');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 14225);
+      expect(radio.vfoA.mode, 'USB', reason: 'the sideband is re-derived for the band');
+      expect(session().commands, ['freq:14225.0', 'mode:USB', 'freq:14225.0', 'read-back']);
+    });
+
+    test('a digital mode goes to its dial frequency', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 14074, mode: 'DATA-USB');
+      await pumpEventQueue();
+      radio.setVfo('vfoA', mode: 'FT8');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7074, reason: 'FT8 is only useful on the dial frequency');
+      expect(radio.vfoA.mode, 'FT8');
+      expect(session().commands, ['freq:7074.0', 'mode:DATA-USB', 'freq:7074.0', 'read-back']);
+    });
+
+    test('a report from the band being left does not put the app back on it', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7000.1);
+      // A poll answered before the radio moved.
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7000.1);
+
+      session().radioReports(freqKHz: 7000.1, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7000.1);
+      expect(radio.vfoA.band, '40m');
+    });
+
+    test('picking the band the radio is on sends nothing', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 14074, mode: 'USB');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      radio.setVfo('vfoA', band: '20m');
+      await pumpEventQueue();
+      expect(session().commands, isEmpty, reason: 'the radio is already there; its next report fills the frequency in');
+    });
+
+    test('a frequency typed while a pick is on its way is not held back', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      radio.setVfo('vfoA', freq: 21030);
+      await pumpEventQueue();
+      // What only the radio could say: the knob turned on the typed band.
+      session().radioReports(freqKHz: 21031, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 21031);
+    });
+
+    test('a second pick before the radio has answered the first still moves it', () async {
+      // The radio's last report is the band the first pick is leaving; read
+      // as where the radio is, picking that band back would send nothing,
+      // and the radio would carry on to the other one.
+      await connectedRadio();
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      // Answered from the old band, held — and now what was last sent, as
+      // far as the echo guard knows.
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      radio.setVfo('vfoA', band: '20m');
+      await pumpEventQueue();
+      expect(session().commands, ['freq:14030.0', 'mode:CW', 'freq:14030.0', 'read-back']);
+      expect(radio.vfoA.freq, 14030);
+    });
+
+    test('a report of the mode alone does not end the wait', () async {
+      // It carries no frequency; completed from the one just sent, it would
+      // read as the radio having arrived, and the old band's next answer
+      // would then be followed.
+      await connectedRadio();
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      session().radioReports(mode: 'CW');
+      await pumpEventQueue();
+      session().radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfoA.freq, 7000.1);
+    });
+
+    test('a radio that has not answered when the wait ends is not taken as refusing', () {
+      // Nothing heard is not the radio saying it stayed: following its last
+      // report would put the app back on the old band while the radio is on
+      // the new one, until its next poll.
+      fakeAsync((async) {
+        late EquipmentNode node;
+        cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        async.flushMicrotasks();
+        cat.connect(node.uuid);
+        async.flushMicrotasks();
+        session().radioReports(freqKHz: 14030, mode: 'CW');
+        async.flushMicrotasks();
+
+        radio.setVfo('vfoA', band: '40m');
+        async.flushMicrotasks();
+        async.elapse(catBandPickGrace);
+        expect(radio.vfoA.freq, 7000.1);
+
+        session().radioReports(freqKHz: 7000.1, mode: 'CW');
+        async.flushMicrotasks();
+        expect(radio.vfoA.band, '40m');
+      });
+    });
+
+    test('with no radio connected a band pick sets only the band', () async {
+      radio.setVfo('vfoA', freq: 14074, mode: 'USB');
+      radio.setVfo('vfoA', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfoA.band, '40m');
+      expect(radio.vfoA.freq, isNull);
     });
   });
 

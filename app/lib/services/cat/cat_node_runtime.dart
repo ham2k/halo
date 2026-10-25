@@ -35,6 +35,19 @@ class _NodeRuntime {
   /// What this connection has heard the radio itself say ([RadioProofWatch]).
   final proof = RadioProofWatch();
 
+  /// A band picked by name that this radio is on its way to
+  /// (`cat_band_pick.dart`).
+  String? bandPick;
+  Timer? bandPickTimer;
+
+  /// Whether the radio reported another band while [bandPick] waited.
+  bool bandPickHeldReport = false;
+
+  /// The frequency this radio was last heard on, by band and
+  /// [bandModeFamily] ([bandMemoryKey]): where a band pick sends it. Kept
+  /// across reconnects, like a radio's own band stack.
+  final lastFreqByBand = <String, double>{};
+
   /// [lastSent]'s counterpart for transmit power, which travels on its own
   /// commands rather than inside a [VfoReading].
   num? lastSentPower;

@@ -294,6 +294,44 @@ cd app && HALO_DEV_DATA="$PWD/../.halo-dev-data" flutter run -d macos \
   --dart-define=DEV_LABEL="my task"
 ```
 
+A sandboxed launch is also how to run a branch's build **beside** one that is
+already running — another worktree's Dev build, or an installed Next or
+Prod. Without `HALO_DEV_DATA` the macOS single-instance guard hands the new
+launch to whichever instance of that edition started first, so what comes to
+the front is the other checkout's code.
+
+To start a sandbox from an installed build's data instead of an empty log —
+its operations, settings and configured equipment — copy them in before the
+first launch. On macOS each edition keeps them in its container,
+`~/Library/Containers/<bundle id>/Data` (`com.ham2k.logger.dev`, `.next` or
+`.prod`):
+
+```sh
+BUNDLE=com.ham2k.logger.next
+SRC=~/Library/Containers/$BUNDLE/Data
+DEST="$PWD/.halo-dev-data"          # absolute, and gitignored at the repo root
+mkdir -p "$DEST"
+# .backup, not cp: it reads a database that is open and mid-write consistently
+sqlite3 "$SRC/Documents/ham2k_logger.sqlite" ".backup '$DEST/ham2k_logger.sqlite'"
+cp -R "$SRC/Documents/extensions" "$SRC/Documents/data_files" "$DEST/"
+# The sandbox keeps its settings as JSON, not in the bundle's plist
+python3 - "$SRC/Library/Preferences/$BUNDLE.plist" "$DEST/shared_preferences.json" <<'PY'
+import datetime, json, plistlib, sys
+prefs = plistlib.load(open(sys.argv[1], 'rb'))
+out = {k: v for k, v in prefs.items() if k.startswith('flutter.') and not isinstance(v, (bytes, datetime.datetime))}
+out['flutter.syncEnabled'] = False
+out['flutter.peerSyncEnabled'] = False
+json.dump(out, open(sys.argv[2], 'w'))
+PY
+cd app && HALO_DEV_DATA="$DEST" flutter run -d macos --dart-define=DEV_LABEL="my task"
+```
+
+The two sync switches are forced off because copied settings carry them
+**on**: the copy would then sync to your real account under the Dev
+keychain's identity and dial your LAN peers, pushing its edits as though they
+were the original's. Secrets stay behind — they live in the keychain, keyed
+by bundle id — so equipment that needs a password asks for it again.
+
 Sandbox the data whenever a branch changes `schemaVersion`. Drift migrations
 are one-way and every Dev build otherwise shares one database, so the first
 build to run with a higher version migrates the log for **every** checkout on

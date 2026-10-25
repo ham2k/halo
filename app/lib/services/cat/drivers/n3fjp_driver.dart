@@ -66,7 +66,7 @@ class N3fjpDriver extends EquipmentDriver {
 /// Far past any real message; reached only when the peer is not N3FJP.
 const _maxPending = 64 * 1024;
 
-class N3fjpSession implements TransceiverSession, RawCommandSession {
+class N3fjpSession implements ReadBackSession, RawCommandSession {
   final EquipmentSink _sink;
 
   final Map<String, dynamic> _config;
@@ -140,6 +140,9 @@ class N3fjpSession implements TransceiverSession, RawCommandSession {
     }
     _sink.report(reading);
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   /// With the mode left alone: without `SUPPRESSMODEDEFAULT`, N3FJP puts
   /// the radio in the mode it thinks the new frequency's sub-band calls for.

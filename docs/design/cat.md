@@ -937,9 +937,8 @@ The two directions have to not chase each other, and three things make that work
   stated once the rig is on the new band and the frequency restated in case setting the mode moved
   it. The band is measured against what was last sent, and with nothing to compare against it counts
   as changed — a freshly connected rig is wherever its operator left it, which is exactly when the
-  recall bites, as is a frequency outside every band plan. A **band pick** has no frequency to send
-  at all, so only the mode goes out; what protects it is `RadioService.setVfo` re-deriving the
-  sideband against the band being picked, so the mode the rig is told is already the right one.
+  recall bites, as is a frequency outside every band plan. A **band pick** names no frequency and
+  takes its own route (§ Picking a band).
 - **Dropping no-op writes at the store.** `Vfo` gained value equality, so a radio restating what it
   already reported — every status push, every 60 s resync — is not a change and notifies nobody.
   This has to live *at the store*, and only there. `CatService` deduping against its own cache as
@@ -1229,6 +1228,52 @@ and this runs on every spot tap.
 Smart VFO Snap does not undo it: the snapper only reacts to readings from the radio, app writes
 arrive as `VfoOrigin.user` and rebase it, and its smallest-move rule leaves anything under 200 Hz
 where it is regardless.
+
+## Picking a band
+
+A band named with no frequency — the Band dropdown, `40m` typed into the Frequency field, a `40M`
+command, an extension's `setRadio` with only a band — moves radio1 to that band
+(`cat_band_pick.dart`). Without it a pick only clears the app's frequency: the radio stays where it
+is, and its next report puts the app straight back on the old band. No CAT radio, nothing moves
+(the band alone is recorded, as before); a pick of the band the radio is already on sends nothing,
+and the radio's next report fills the frequency back in.
+
+- **The app picks the frequency and keeps its mode.** Where this radio was last heard on that band
+  in the same mode family — CW, phone, FM, RTTY or data (`bandModeFamily`;
+  `_NodeRuntime.lastFreqByBand`, kept for the session, across reconnects) — failing that
+  `halo_core`'s `defaultFrequencyForBand`, for the operator's IARU region (`RadioService.ourItuRegion`
+  / `ourCountryCode`, set by the operation from its own callsign), on every band the app names:
+  - a digital mode on its dial frequency, RTTY at the start of its segment, FM on the region's
+    calling frequency — Region 2's 146.520 is out of band in Region 1, which calls on 145.500;
+  - 60 m, and every band from 6 m up, where people listen: the US channels on 60 m in Region 2,
+    the WRC-15 allocation elsewhere; the calling frequencies above (144.200 or 144.300, 1296.100 or
+    1296.200, 2304.100 or 2320.200), because there the start of a segment is where nobody is;
+  - otherwise the start of the mode's segment in the region's band plan. A US callsign — Puerto
+    Rico, Guam and the other territories included, whatever their region — is placed as a General,
+    from its own table, because the band plan's US segments are the Extra class's —
+    14225 on 20 m phone, not 14150. CW starts 100 Hz in so the signal does not straddle the
+    segment's edge; phone on a lower-sideband band starts 3 kHz in so the sideband fits.
+
+  The write is an ordinary typed frequency, so the cross-band order above applies.
+- **Not the radio's own band stack**, even on a radio that has one. A FLEX-6000 takes
+  `display pan set <pan> band=20`, but on RadioRoom (FLEX-6600, 4.2.20) the app was not told
+  where the recall put the slice within the grace below, and a mode sent behind the command was
+  overwritten by the recalled one. No capture says which part of the exchange is missing. Hamlib
+  offers a direct band select only on the newer Yaesus (`BS`); for Icom and Elecraft it is in the
+  vendors' references (`0x1A 0x01`, `BN`) and nowhere proven against a radio here.
+- **The radio is read back at once** (`ReadBackSession.readBack`): a polled radio is asked for its
+  frequency right behind the tune, and polled fast for a while after, instead of answering on its
+  next poll — three seconds away, five on an Icom, longer where the operator has slowed polling.
+  A radio that announces its own changes (a FlexRadio) has nothing to add.
+- **Reports from the band being left are held back** until the radio reports the picked band, for
+  at most `catBandPickGrace` (3 s). A poll answered before the radio moved would otherwise put the
+  app back where it came from. Only a report with a frequency in it counts: one of the mode alone is
+  completed from the frequency just sent, which says nothing about where the radio is. A radio
+  that reports another band throughout — the pick refused, the command ignored — is followed there
+  when the grace runs out, so the app never shows a band the radio is not on; one that has said
+  nothing is only slow, and its next report is followed as any is. Any other write by the operator
+  ends the hold at once, and a second pick made while the first is on its way re-sends the tune
+  even to the band the radio last reported, since that is the band it is leaving.
 
 ## Power
 

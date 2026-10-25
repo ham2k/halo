@@ -340,7 +340,7 @@ const yaesuAntennaReadEvery = 5;
 const yaesuSsbPassbandCentreHz = 1500;
 
 class Ft891Session
-    implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
+    implements ReadBackSession, CwKeyerSession, VoiceKeyerSession, PttSession, AntennaTunerSession, PassbandSession, RadioAntennaSession, RawCommandSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -964,6 +964,9 @@ class Ft891Session
     // Every other command is an acknowledgement or something we don't
     // track; ignoring them is what lets AI mode be noisy without harm.
   }
+
+  @override
+  void readBack() => _poller.pollNow();
 
   @override
   void setFrequency(double freqKHz) => _send(buildSetFrequencyCommand((freqKHz * 1000).round(), digits: _frequencyDigits));
