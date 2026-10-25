@@ -62,7 +62,7 @@ class _CwTypingFieldState extends State<CwTypingField> {
   }
 
   /// Space between words. The logging panel binds Space to "next field"
-  /// (logging_controls.dart), which would take the keyboard out of this
+  /// (logging_controls_keys.dart), which would take the keyboard out of this
   /// field instead — the refs field answers the same binding the same way.
   void _insertSpace() {
     final value = _controller.value;

@@ -743,7 +743,7 @@ class HaLoServices with _TimeTravel {
 
   /// The front-most open operation, as the `{...operation.data, 'uuid': …}`
   /// map command hooks expect (the uuid is what lets them reach
-  /// `ctx.getOperation` / `ctx.getQsos`; see `logging_controls.dart`'s
+  /// `ctx.getOperation` / `ctx.getQsos`; see `logging_controls_fields.dart`'s
   /// `_operationDataForCommands`). Null wherever no operation is open: Home,
   /// Settings.
   ///

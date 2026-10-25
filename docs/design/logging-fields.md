@@ -27,6 +27,15 @@ strip's catalog — which controls exist, their order and visibility, and the se
 `logging_controls_catalog.dart`, the information area `logging_info_area.dart`, and the frame
 that seats it and the panel's second action button `logging_controls_info_frame.dart`.
 
+The panel's own behaviour is split across part files of the `logging_controls.dart` library, each
+an extension on its state, which stays in the main file with every callback it hands out for later
+comparison: the entry row's fields as the panel reads them (`logging_controls_fields.dart`), Enter and
+the log (`logging_controls_submit.dart`), what a widget update brings — an edit, a suggestion, a log
+request (`logging_controls_updates.dart`), Escape, the chords, wipe, undo and the second button
+(`logging_controls_wipe.dart`), Space and the numbers row (`logging_controls_keys.dart`), the strip
+and the More pane (`logging_controls_strip.dart`), the call-info and what the host hears
+(`logging_controls_call_info.dart`), and a command's actions (`logging_controls_dispatch.dart`).
+
 ## The three parts
 
 **Main controls.** Always start with the callsign input (also used for

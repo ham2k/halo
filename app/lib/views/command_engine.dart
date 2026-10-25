@@ -34,7 +34,7 @@ import '../services/halo_services.dart';
 /// command's answer, or on none: it eats the space in "NOTE hello" typed in
 /// one motion, and files "REPORT crash on save" shouting. The logging panel's
 /// call field can afford to ask, because there Space is a keystroke it
-/// handles and can await an answer for (`logging_controls.dart`'s
+/// handles and can await an answer for (`logging_controls_keys.dart`'s
 /// `_handleSpace`); here a space is just text.
 ///
 /// Order matters: [CollapseWhitespaceFormatter] runs first so the rest see
@@ -212,9 +212,9 @@ class CommandEngine extends ChangeNotifier {
 
   /// The operation the typed command should run against, as
   /// `{...operation.data, 'uuid': operation.uuid}` — the same shape
-  /// `logging_controls.dart` passes, which command hooks need to reach
-  /// `ctx.getOperation`/`ctx.getQsos` (dev-commands' SEED reads the log
-  /// through it). Null on the Home screen, where no operation is open:
+  /// `logging_controls_fields.dart`'s `_operationDataForCommands` passes,
+  /// which command hooks need to reach `ctx.getOperation`/`ctx.getQsos`
+  /// (dev-commands' SEED reads the log through it). Null on the Home screen, where no operation is open:
   /// operation-scoped hooks then answer with their `error` instead of
   /// pretending to succeed.
   ///
@@ -730,7 +730,7 @@ class CommandEngine extends ChangeNotifier {
 
     // A command still awaiting parameters (expectsParams) isn't complete —
     // leave the field as-is so the user can keep typing, rather than
-    // treating it as executable (mirrors logging_controls.dart's _log()).
+    // treating it as executable (mirrors logging_controls_submit.dart's _log()).
     if (interpretation != null && interpretation['expectsParams'] != true) {
       // The interpretation above may just be the debounce-time preview,
       // whose `commands` a hook like SEED deliberately left cheap/empty
@@ -762,7 +762,7 @@ class CommandEngine extends ChangeNotifier {
       }
 
       // A command can also fail at execute time (mirrors _log() in
-      // logging_controls.dart) — show the message and keep the typed input
+      // logging_controls_submit.dart) — show the message and keep the typed input
       // instead of clearing the field as if it had succeeded.
       if (executable['error'] is String) {
         _executeMessageTimer?.cancel();

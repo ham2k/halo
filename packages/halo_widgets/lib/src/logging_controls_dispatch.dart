@@ -27,7 +27,7 @@ extension _ActionDispatch on _LoggingControlsState {
         // (debounced) push, which would otherwise also fire from the
         // controller text assignment below.
         _draft.populate(() {
-          _setStateFromDispatch(() {
+          _setStateFromPart(() {
             final freq = params['freq'];
             final band = params['band'];
             final mode = params['mode'];
@@ -63,7 +63,7 @@ extension _ActionDispatch on _LoggingControlsState {
         _lookup.scheduleScore();
       } else if (map.containsKey('updateQso')) {
         final params = (map['updateQso'] as Map).cast<String, dynamic>();
-        _setStateFromDispatch(() {
+        _setStateFromPart(() {
           _draft.extra.addAll(params);
         });
       } else if (map.containsKey('addQso')) {

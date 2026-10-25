@@ -666,7 +666,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   /// Publishes this view's operation into its stack entry, so the ⌘K dialog's
   /// operation-scoped commands (SEED, NOTE, SPOT) have something to run
-  /// against. Same map shape `logging_controls.dart` passes its own
+  /// against. Same map shape `logging_controls_fields.dart` passes its own
   /// `interpretCommand` calls.
   void _setCommandContext(Operation? operation) {
     _commandContext.operation = operation == null ? null : {...operation.data, 'uuid': operation.uuid};

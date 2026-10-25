@@ -373,10 +373,10 @@ class SpotBoardService extends ChangeNotifier {
   /// change would refold the log to learn nothing new.
   ///
   /// Scored against the CURRENT segment, like the call-info pills
-  /// (`logging_controls.dart`) and for the same reason: the spots and the entry
-  /// row have to agree about which activities are running. A contest started at
-  /// a `start` event is named by no ref on the base operation, so without this
-  /// its scorer is never selected and no spot ever shows its multipliers; one
+  /// (`logging_controls_call_info.dart`) and for the same reason: the spots
+  /// and the entry row have to agree about which activities are running. A
+  /// contest started at a `start` event is named by no ref on the base
+  /// operation, so without this its scorer is never selected and no spot ever shows its multipliers; one
   /// ended at a break would keep accenting them. The timeline goes along too,
   /// so the log the candidates are judged against is folded per segment —
   /// otherwise a pre-contest contact makes a fresh station read as a duplicate.

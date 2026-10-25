@@ -306,7 +306,7 @@ path replaces one scorer's contribution at a time.
   current QSO, so its cached verdicts are what the pills show.
 - When unioning notices/alerts across scorers for those pills, sort by scorer key
   — `invokeHookAll` does not guarantee stable ordering, and
-  `logging_controls.dart:4369` builds a dedupe signature by joining these key
+  `_notifyCallInfo` (`logging_controls_call_info.dart`) builds a dedupe signature by joining these key
   lists, so unstable order causes spurious churn.
 
 **Live path (`scoreQso`)** fans out the same way; the core unions each scorer's
@@ -1232,7 +1232,7 @@ contest installed must not put its exchange in front of someone logging an
 ordinary QSO — nor, worse, put a `serial` field there issuing numbers from a
 series nobody is keeping.
 
-This is enforced by the **core** (`logging_controls.dart`'s `_textControls`),
+This is enforced by the **core** (`logging_controls_fields.dart`'s `_textControls`),
 not by each extension. Extensions may still return `[]` early off-contest, and
 the shipped four do, but purely as an optimization — it skips a country-file
 annotation per keystroke-triggered refresh, in the JS isolate, once per enabled
