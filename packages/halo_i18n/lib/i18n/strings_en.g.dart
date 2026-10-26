@@ -361,6 +361,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'Identify itself to servers under its own name'
 	String get canSetUserAgent => 'Identify itself to servers under its own name';
 
+	/// en: 'Your settings, to change them through its commands: any setting, developer mode and experiments'
+	String get canChangeSettings => 'Your settings, to change them through its commands: any setting, developer mode and experiments';
+
 	/// en: 'It asks for nothing outside the app.'
 	String get noCapabilities => 'It asks for nothing outside the app.';
 
@@ -2309,6 +2312,18 @@ class Translations$extensionService$en {
 
 	/// en: 'The command failed to run'
 	String get commandFailed => 'The command failed to run';
+
+	/// en: '${name} can’t change settings: it didn’t ask to at install'
+	String commandMayNotChangeSettings({required Object name}) => '${name} can’t change settings: it didn’t ask to at install';
+
+	/// en: '${name} can’t control the radio: it didn’t ask to at install'
+	String commandMayNotControlRadio({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install';
+
+	/// en: '${name} can’t run that: it’s one of the app’s own developer commands'
+	String commandDeveloperOnly({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands';
+
+	/// en: '${describe} · ${extension}'
+	String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 
 	/// en: 'Reports can't be sent right now'
 	String get reportUnavailable => 'Reports can\'t be sent right now';
@@ -9379,6 +9394,7 @@ extension on Translations {
 			'extensionsPanel.canSpotCluster' => 'The DX cluster, logged in as you, to post spots in your name',
 			'extensionsPanel.canCommandCluster' => 'The DX cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
+			'extensionsPanel.canChangeSettings' => 'Your settings, to change them through its commands: any setting, developer mode and experiments',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
 			'extensionsPanel.installAction' => 'Install',
@@ -9812,9 +9828,9 @@ extension on Translations {
 			'operation.layout.panels.clockFace' => 'Face',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'Analog',
-			'operation.layout.panels.clockZone' => 'Time Zone',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.clockZone' => 'Time Zone',
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'This device',
 			'operation.layout.panels.clockShowSeconds' => 'Show seconds',
@@ -10326,9 +10342,9 @@ extension on Translations {
 			'loggingControls.info.noticeRareCounty' => 'Rare County!',
 			'loggingControls.info.noticeOurLocation' => 'Set Our County',
 			'loggingControls.info.noticeShortGrid' => 'Grid Too Short',
-			'formChrome.untitled' => '(untitled)',
 			_ => null,
 		} ?? switch (path) {
+			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',
 			'formChrome.showFewer' => 'Show fewer',
@@ -10840,9 +10856,9 @@ extension on Translations {
 			'settings.accounts.connectedAs' => 'Connected as',
 			'settings.accounts.test' => 'Test',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'Save failed: ${error}',
-			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.loginFailed' => ({required Object error}) => 'Login failed: ${error}',
 			'settings.accounts.lookupFailed' => 'Accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'Finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'When you are done, the browser will try to open a link starting with "${prefix}". Your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.',
@@ -11354,9 +11370,9 @@ extension on Translations {
 			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
 			'settings.developer.catalogSearchStable' => 'Only Stable',
-			'settings.developer.catalogSearchUnstable' => 'Unstable or better',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.catalogSearchUnstable' => 'Unstable or better',
 			'settings.developer.catalogSearchBleeding' => 'Bleeding or better',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
@@ -11603,6 +11619,10 @@ extension on Translations {
 			'extensionService.validationError' => ({required Object error}) => 'Validation error: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Action failed: ${error}',
 			'extensionService.commandFailed' => 'The command failed to run',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} can’t change settings: it didn’t ask to at install',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'Reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'Ham2K’s File Stash can’t be reached right now',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',

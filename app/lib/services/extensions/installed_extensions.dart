@@ -252,15 +252,23 @@ class InspectedBundle {
   bool get requiresClusterSpot => requiresClusterCommand || manifest['requiresClusterSpot'] == true;
   bool get requiresClusterRead => requiresClusterSpot || manifest['requiresClusterRead'] == true;
   bool get allowUserAgentOverride => manifest['allowUserAgentOverride'] == true;
+  bool get requiresSettingsWrite => manifest['requiresSettingsWrite'] == true;
 
   /// Whether it asks for anything at all beyond running. A bundle claiming
   /// nothing should not be dressed up as though it did.
   bool get claimsCapabilities =>
-      domains.isNotEmpty || webSockets.isNotEmpty || requiresLocation || requiresRadioRead || requiresClusterRead || allowUserAgentOverride;
+      domains.isNotEmpty ||
+      webSockets.isNotEmpty ||
+      requiresLocation ||
+      requiresRadioRead ||
+      requiresClusterRead ||
+      allowUserAgentOverride ||
+      requiresSettingsWrite;
 
   /// Whether this asks for anything [installed] — the version it would
   /// replace — was not granted: a host, or a stronger grant.
   bool asksMoreThan(InspectedBundle installed) =>
+      (requiresSettingsWrite && !installed.requiresSettingsWrite) ||
       !installed.domains.toSet().containsAll(domains) ||
       !installed.webSockets.toSet().containsAll(webSockets) ||
       (requiresLocation && !installed.requiresLocation) ||

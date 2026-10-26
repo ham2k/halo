@@ -267,6 +267,13 @@ class ExtensionInfo with ExtensionSearchable {
   final bool requiresClusterSpot;
   final bool requiresClusterCommand;
 
+  /// Whether this extension's `command` hooks may change the app's own
+  /// settings (the manifest's `requiresSettingsWrite`): the `updateSetting`,
+  /// `updateSettings` and `toggleExperiment` actions. Off by default; a
+  /// command carrying one of them from an extension without it is refused
+  /// before it runs.
+  final bool requiresSettingsWrite;
+
   /// Whether [other] declares the same capabilities the host resolves into
   /// allowlists when the runtime STARTS. A dev reload that changes one cannot
   /// be hot-swapped: the running host would keep enforcing the old answer.
@@ -365,6 +372,7 @@ class ExtensionInfo with ExtensionSearchable {
     this.requiresClusterRead = false,
     this.requiresClusterSpot = false,
     this.requiresClusterCommand = false,
+    this.requiresSettingsWrite = false,
     required this.core,
     this.api,
     required this.name,
@@ -402,6 +410,7 @@ class ExtensionInfo with ExtensionSearchable {
     requiresClusterRead: json['requiresClusterRead'] as bool? ?? false,
     requiresClusterSpot: json['requiresClusterSpot'] as bool? ?? false,
     requiresClusterCommand: json['requiresClusterCommand'] as bool? ?? false,
+    requiresSettingsWrite: json['requiresSettingsWrite'] as bool? ?? false,
     // A stale index without metadata degrades to "everything core" —
     // the fail-safe: nothing gets silently disabled.
     core: json['core'] as bool? ?? true,
@@ -444,15 +453,24 @@ class CapabilityGrant {
           if (declares(info)) info.key,
       };
 
-  /// [extensionKey] is the caller's identity as the KERNEL stamped it.
-  bool allows(String? extensionKey) {
-    if (extensionKey == null) return false;
-    if (bundles.contains(extensionKey)) return granted.contains(extensionKey);
+  /// The loaded bundle [extensionKey] belongs to: itself when it is one, else
+  /// the longest loaded key it extends with `-` or `_` — a sub-extension a
+  /// bundle defines under its own key (the kernel's `bundleMayDefine` rule),
+  /// which shares the bundle's grants. Null for a key no bundle owns.
+  String? ownerOf(String? extensionKey) {
+    if (extensionKey == null) return null;
+    if (bundles.contains(extensionKey)) return extensionKey;
     String? owner;
     for (final key in bundles) {
       if (!extensionKey.startsWith('$key-') && !extensionKey.startsWith('${key}_')) continue;
       if (owner == null || key.length > owner.length) owner = key;
     }
+    return owner;
+  }
+
+  /// [extensionKey] is the caller's identity as the KERNEL stamped it.
+  bool allows(String? extensionKey) {
+    final owner = ownerOf(extensionKey);
     return owner != null && granted.contains(owner);
   }
 }

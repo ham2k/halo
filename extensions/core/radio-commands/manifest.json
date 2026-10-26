@@ -4,5 +4,7 @@
   "version": "0.0.1",
   "description": "Frequency, band, mode, power and CW keyer speed shortcuts typed into the call field",
   "keywords": ["band", "frequency", "mode", "power", "vfo", "keyer", "wpm"],
-  "hooks": ["command"]
+  "hooks": ["command"],
+  "requiresSettingsWrite": true,
+  "requiresRadioWrite": true
 }

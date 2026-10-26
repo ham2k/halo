@@ -202,6 +202,7 @@ class _Translations$extensionsPanel$qrp extends Translations$extensionsPanel$en 
 	@override String get canSpotCluster => 'the dx cluster, logged in as you, to post spots in your name';
 	@override String get canCommandCluster => 'the dx cluster, logged in as you, to send it any command in your name';
 	@override String get canSetUserAgent => 'identify itself to servers under its own name';
+	@override String get canChangeSettings => 'your settings, to change them through its commands: any setting, developer mode and experiments';
 	@override String get noCapabilities => 'it asks for nothing outside the app.';
 	@override String get sandboxNote => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.';
 	@override String get installAction => 'install';
@@ -1048,6 +1049,10 @@ class _Translations$extensionService$qrp extends Translations$extensionService$e
 	@override String validationError({required Object error}) => 'validation error: ${error}';
 	@override String actionFailed({required Object error}) => 'action failed: ${error}';
 	@override String get commandFailed => 'the command failed to run';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} can’t change settings: it didn’t ask to at install';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install';
+	@override String commandDeveloperOnly({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'reports can\'t be sent right now';
 	@override String get stashUnavailable => 'ham2k’s file stash can’t be reached right now';
 	@override String activitySearchSourcesFailed({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.';
@@ -4361,6 +4366,7 @@ extension on TranslationsQrp {
 			'extensionsPanel.canSpotCluster' => 'the dx cluster, logged in as you, to post spots in your name',
 			'extensionsPanel.canCommandCluster' => 'the dx cluster, logged in as you, to send it any command in your name',
 			'extensionsPanel.canSetUserAgent' => 'identify itself to servers under its own name',
+			'extensionsPanel.canChangeSettings' => 'your settings, to change them through its commands: any setting, developer mode and experiments',
 			'extensionsPanel.noCapabilities' => 'it asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
 			'extensionsPanel.installAction' => 'install',
@@ -4794,9 +4800,9 @@ extension on TranslationsQrp {
 			'operation.layout.panels.clockFace' => 'face',
 			'operation.layout.panels.clockFaceLcd' => 'lcd',
 			'operation.layout.panels.clockFaceAnalog' => 'analog',
-			'operation.layout.panels.clockZone' => 'time zone',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.clockZone' => 'time zone',
 			'operation.layout.panels.clockZoneUtc' => 'utc',
 			'operation.layout.panels.clockZoneDevice' => 'this device',
 			'operation.layout.panels.clockShowSeconds' => 'show seconds',
@@ -5308,9 +5314,9 @@ extension on TranslationsQrp {
 			'loggingControls.info.noticeRareCounty' => 'rare county!',
 			'loggingControls.info.noticeOurLocation' => 'set our county',
 			'loggingControls.info.noticeShortGrid' => 'grid too short',
-			'formChrome.untitled' => '(untitled)',
 			_ => null,
 		} ?? switch (path) {
+			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'show more',
 			'formChrome.showAll' => 'show all',
 			'formChrome.showFewer' => 'show fewer',
@@ -5822,9 +5828,9 @@ extension on TranslationsQrp {
 			'settings.accounts.connectedAs' => 'connected as',
 			'settings.accounts.test' => 'test',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'save failed: ${error}',
-			'settings.accounts.loginFailed' => ({required Object error}) => 'login failed: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.loginFailed' => ({required Object error}) => 'login failed: ${error}',
 			'settings.accounts.lookupFailed' => 'accounts are unavailable right now — try again in a moment',
 			'settings.accounts.browserLoginTitle' => 'finish signing in with your web browser',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'when you are done, the browser will try to open a link starting with "${prefix}". your desktop most likely has nothing registered to open it, so copy that link (from the address bar, or from the error page the browser shows) and paste it here.',
@@ -6336,9 +6342,9 @@ extension on TranslationsQrp {
 			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'catalog search tracks',
 			'settings.developer.catalogSearchStable' => 'only stable',
-			'settings.developer.catalogSearchUnstable' => 'unstable or better',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.catalogSearchUnstable' => 'unstable or better',
 			'settings.developer.catalogSearchBleeding' => 'bleeding or better',
 			'settings.about.notices' => 'notices & messages',
 			'settings.about.noticesDescription' => 'announcements and status messages',
@@ -6585,6 +6591,10 @@ extension on TranslationsQrp {
 			'extensionService.validationError' => ({required Object error}) => 'validation error: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'action failed: ${error}',
 			'extensionService.commandFailed' => 'the command failed to run',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} can’t change settings: it didn’t ask to at install',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} can’t control the radio: it didn’t ask to at install',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} can’t run that: it’s one of the app’s own developer commands',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'reports can\'t be sent right now',
 			'extensionService.stashUnavailable' => 'ham2k’s file stash can’t be reached right now',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} didn\'t answer the activity search, so some results may be missing.',

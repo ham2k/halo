@@ -277,7 +277,10 @@ function describeError(e: unknown): string {
   }
 }
 
-type SettledEntry = { key: string; ok: boolean; value?: unknown; error?: string; noHandler?: boolean }
+// `extensionKey` is the kernel's own record of who answered, on every entry a
+// hook method produced (ok or not); a noHandler entry, and one the host
+// synthesises for a timeout, name nobody.
+type SettledEntry = { key: string; extensionKey?: string; ok: boolean; value?: unknown; error?: string; noHandler?: boolean }
 
 /// [entry], or — when JSON cannot carry what its hook answered (a circular
 /// object, a BigInt) — that hook's own failure in its place.
@@ -1272,9 +1275,11 @@ const kernel = {
           records.map(async (record) => {
             let entry: SettledEntry
             try {
-              entry = { key: record.key, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
+              // The extension is the kernel's own record of who answered,
+              // for a host that must know (a command's settings actions).
+              entry = { key: record.key, extensionKey: record.extensionKey, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
             } catch (e) {
-              entry = { key: record.key, ok: false, error: describeError(e) }
+              entry = { key: record.key, extensionKey: record.extensionKey, ok: false, error: describeError(e) }
             }
             if (wantsPartials) postPartial(id, entry)
             return entry

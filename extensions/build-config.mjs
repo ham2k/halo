@@ -287,6 +287,7 @@ export function indexEntryFor({ key, manifest: m }) {
     ...(m.requiresClusterRead ? { requiresClusterRead: true } : {}),
     ...(m.requiresClusterSpot ? { requiresClusterSpot: true } : {}),
     ...(m.requiresClusterCommand ? { requiresClusterCommand: true } : {}),
+    ...(m.requiresSettingsWrite ? { requiresSettingsWrite: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
     // Read by the host to place the extension's settings panels; without it

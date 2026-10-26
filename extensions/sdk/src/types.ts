@@ -2563,6 +2563,13 @@ export interface ExtensionManifest {
   /// Also `host.clusterSend()`: any command, in the operator's name.
   /// Implies `requiresClusterSpot`.
   requiresClusterCommand?: boolean
+  /// Declares this extension's `command` hooks may change the app's own
+  /// settings: the `updateSetting`, `updateSettings` and `toggleExperiment`
+  /// actions, which set any catalogued setting, developer mode and the
+  /// experiments. Off by default; the host refuses a command carrying one of
+  /// those from an extension that does not set this, and says so in the
+  /// command bar. Shown to the operator at install.
+  requiresSettingsWrite?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
   /// Extensions panel and its bundle never loads. The user's enable/disable

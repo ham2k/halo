@@ -1276,6 +1276,15 @@ label, section, current value and the coerced new value, each already
 localized; a `secret` field's value is never included. Write the result back
 with the `updateSetting` action, or open the settings form with `openSettings`.
 
+The actions that change the app's own settings — `updateSetting`,
+`updateSettings`, `toggleExperiment`, `setEnterSends`, `setKeyerSpeed` and
+`showKeyer` — run only for an extension whose manifest sets
+`"requiresSettingsWrite": true`, which the install screen shows the operator;
+`setPower` needs `requiresRadioWrite`; and the developer actions (`dev…`,
+`reloadDataFiles`) run only for the app's own extensions. A command carrying
+an action its extension may not run is refused before it runs, and the
+command bar says so.
+
 This call re-enters the extension runtime while the calling hook is still
 awaiting it (reading every `settingsPanel` is part of building the catalog).
 That is safe by construction — hook calls are keyed by id with independent
@@ -2238,6 +2247,10 @@ write. An undeclared call rejects rather than answering null.
 A capability belongs to the bundle that declared it, and to the sub-extensions
 that bundle defines under its own key. A separately installed bundle never
 inherits one through its name: `rigpanel-themes` gets nothing from `rigpanel`.
+
+`"requiresSettingsWrite": true` is the same shape for a `command` hook: it
+lets the extension's commands carry the actions that change the app's own
+settings (see `command` above), and the install screen names it.
 
 An `onEvent` that cannot read its panel's config is refused rather than run
 with an empty one, since a config is where a panel keeps which radio it

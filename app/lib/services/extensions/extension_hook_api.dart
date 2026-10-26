@@ -278,6 +278,8 @@ mixin _ExtensionHookApi {
   SettingsService? get settings;
   StatusBarService? get statusBar;
   List<ExtensionInfo> get availableExtensions;
+  Map<String, dynamic> _attributedCommand(Map<String, dynamic> interpretation, String? extensionKey);
+  String _describedByOwner(String describe, String? extensionKey);
   bool get activationIncomplete;
   void invalidateHookContext();
   Future<void> start();
@@ -845,7 +847,7 @@ mixin _ExtensionHookApi {
       );
       for (final entry in entries) {
         if (entry['ok'] == true && entry['value'] is Map) {
-          return (entry['value'] as Map).cast<String, dynamic>();
+          return _attributedCommand((entry['value'] as Map).cast<String, dynamic>(), entry['extensionKey'] as String?);
         }
       }
     } on ExtensionHostException catch (e) {
@@ -920,6 +922,11 @@ mixin _ExtensionHookApi {
           final map = {...item.cast<String, dynamic>()};
           // A malformed entry would render as a blank, unselectable row.
           if (map['command'] is! String || (map['command'] as String).isEmpty) continue;
+          // The palette shows this text beside the app's own: a third-party
+          // command's says whose it is.
+          if (map['describe'] case final String describe when describe.isNotEmpty) {
+            map['describe'] = _describedByOwner(describe, entry['extensionKey'] as String?);
+          }
           // The palette matches every keystroke against these: one extension
           // sending a bare string here would break search for all of them.
           if (map['keywords'] case final List<dynamic> keywords) {

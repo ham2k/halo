@@ -536,6 +536,7 @@ class _ConsentDialog extends StatelessWidget {
             if (bundle.requiresClusterRead)
               _Capability(icon: MdiIcons.accessPointNetwork, label: _clusterGrantLabel(bundle.requiresClusterCommand, bundle.requiresClusterSpot)),
             if (bundle.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
+            if (bundle.requiresSettingsWrite) _Capability(icon: MdiIcons.cogOutline, label: t.canChangeSettings),
           ],
           const SizedBox(height: Space.xl),
           Text(t.sandboxNote, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
@@ -807,6 +808,7 @@ class _DetailsDialog extends StatelessWidget {
         info.requiresClusterRead ||
         info.requiresClusterSpot ||
         info.requiresClusterCommand ||
+        info.requiresSettingsWrite ||
         info.allowUserAgentOverride;
     final hookLabels = extensionHookLabels(info.hooks, t);
 
@@ -857,6 +859,7 @@ class _DetailsDialog extends StatelessWidget {
             if (info.requiresClusterRead || info.requiresClusterSpot || info.requiresClusterCommand)
               _Capability(icon: MdiIcons.accessPointNetwork, label: _clusterGrantLabel(info.requiresClusterCommand, info.requiresClusterSpot)),
             if (info.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
+            if (info.requiresSettingsWrite) _Capability(icon: MdiIcons.cogOutline, label: t.canChangeSettings),
           ],
           if (hookLabels.isNotEmpty) ...[
             const SizedBox(height: Space.xl),

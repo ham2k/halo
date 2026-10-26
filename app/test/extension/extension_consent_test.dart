@@ -152,6 +152,15 @@ void main() {
     expect(find.text(t.extensionsPanel.canReadRadio), findsNothing);
   });
 
+  // A command hook is consented to nowhere else: this line is the whole of
+  // what lets its words change a setting, developer mode or an experiment.
+  testWidgets('a claim to change settings through commands is named', (tester) async {
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'requiresSettingsWrite': true})));
+
+    expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
+    expect(find.text(t.extensionsPanel.canChangeSettings), findsOneWidget);
+  });
+
   // A raw command is not checked at all, so the line the operator agrees to
   // must not be the one naming the commands the app does check.
   testWidgets('a claim to send the radio any command is named, in place of the control it implies', (tester) async {

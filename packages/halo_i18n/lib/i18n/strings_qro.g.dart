@@ -202,6 +202,7 @@ class _Translations$extensionsPanel$qro extends Translations$extensionsPanel$en 
 	@override String get canSpotCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME';
 	@override String get canCommandCluster => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME';
 	@override String get canSetUserAgent => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME';
+	@override String get canChangeSettings => 'YOUR SETTINGS, TO CHANGE THEM THROUGH ITS COMMANDS: ANY SETTING, DEVELOPER MODE AND EXPERIMENTS';
 	@override String get noCapabilities => 'IT ASKS FOR NOTHING OUTSIDE THE APP.';
 	@override String get sandboxNote => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.';
 	@override String get installAction => 'INSTALL';
@@ -1048,6 +1049,10 @@ class _Translations$extensionService$qro extends Translations$extensionService$e
 	@override String validationError({required Object error}) => 'VALIDATION ERROR: ${error}';
 	@override String actionFailed({required Object error}) => 'ACTION FAILED: ${error}';
 	@override String get commandFailed => 'THE COMMAND FAILED TO RUN';
+	@override String commandMayNotChangeSettings({required Object name}) => '${name} CAN’T CHANGE SETTINGS: IT DIDN’T ASK TO AT INSTALL';
+	@override String commandMayNotControlRadio({required Object name}) => '${name} CAN’T CONTROL THE RADIO: IT DIDN’T ASK TO AT INSTALL';
+	@override String commandDeveloperOnly({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS';
+	@override String commandDescribeBy({required Object describe, required Object extension}) => '${describe} · ${extension}';
 	@override String get reportUnavailable => 'REPORTS CAN\'T BE SENT RIGHT NOW';
 	@override String get stashUnavailable => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW';
 	@override String activitySearchSourcesFailed({required Object names}) => '${names} DIDN\'T ANSWER THE ACTIVITY SEARCH, SO SOME RESULTS MAY BE MISSING.';
@@ -4361,6 +4366,7 @@ extension on TranslationsQro {
 			'extensionsPanel.canSpotCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO POST SPOTS IN YOUR NAME',
 			'extensionsPanel.canCommandCluster' => 'THE DX CLUSTER, LOGGED IN AS YOU, TO SEND IT ANY COMMAND IN YOUR NAME',
 			'extensionsPanel.canSetUserAgent' => 'IDENTIFY ITSELF TO SERVERS UNDER ITS OWN NAME',
+			'extensionsPanel.canChangeSettings' => 'YOUR SETTINGS, TO CHANGE THEM THROUGH ITS COMMANDS: ANY SETTING, DEVELOPER MODE AND EXPERIMENTS',
 			'extensionsPanel.noCapabilities' => 'IT ASKS FOR NOTHING OUTSIDE THE APP.',
 			'extensionsPanel.sandboxNote' => 'EXTENSIONS RUN SANDBOXED: NO ACCESS TO YOUR FILES, AND NO NETWORK BEYOND WHAT IS LISTED HERE.',
 			'extensionsPanel.installAction' => 'INSTALL',
@@ -4794,9 +4800,9 @@ extension on TranslationsQro {
 			'operation.layout.panels.clockFace' => 'FACE',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'ANALOG',
-			'operation.layout.panels.clockZone' => 'TIME ZONE',
 			_ => null,
 		} ?? switch (path) {
+			'operation.layout.panels.clockZone' => 'TIME ZONE',
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'THIS DEVICE',
 			'operation.layout.panels.clockShowSeconds' => 'SHOW SECONDS',
@@ -5308,9 +5314,9 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeRareCounty' => 'RARE COUNTY!',
 			'loggingControls.info.noticeOurLocation' => 'SET OUR COUNTY',
 			'loggingControls.info.noticeShortGrid' => 'GRID TOO SHORT',
-			'formChrome.untitled' => '(UNTITLED)',
 			_ => null,
 		} ?? switch (path) {
+			'formChrome.untitled' => '(UNTITLED)',
 			'formChrome.showMore' => 'SHOW MORE',
 			'formChrome.showAll' => 'SHOW ALL',
 			'formChrome.showFewer' => 'SHOW FEWER',
@@ -5822,9 +5828,9 @@ extension on TranslationsQro {
 			'settings.accounts.connectedAs' => 'CONNECTED AS',
 			'settings.accounts.test' => 'TEST',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'SAVE FAILED: ${error}',
-			'settings.accounts.loginFailed' => ({required Object error}) => 'LOGIN FAILED: ${error}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.loginFailed' => ({required Object error}) => 'LOGIN FAILED: ${error}',
 			'settings.accounts.lookupFailed' => 'ACCOUNTS ARE UNAVAILABLE RIGHT NOW — TRY AGAIN IN A MOMENT',
 			'settings.accounts.browserLoginTitle' => 'FINISH SIGNING IN WITH YOUR WEB BROWSER',
 			'settings.accounts.browserLoginSteps' => ({required Object prefix}) => 'WHEN YOU ARE DONE, THE BROWSER WILL TRY TO OPEN A LINK STARTING WITH "${prefix}". YOUR DESKTOP MOST LIKELY HAS NOTHING REGISTERED TO OPEN IT, SO COPY THAT LINK (FROM THE ADDRESS BAR, OR FROM THE ERROR PAGE THE BROWSER SHOWS) AND PASTE IT HERE.',
@@ -6336,9 +6342,9 @@ extension on TranslationsQro {
 			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'CATALOG SEARCH TRACKS',
 			'settings.developer.catalogSearchStable' => 'ONLY STABLE',
-			'settings.developer.catalogSearchUnstable' => 'UNSTABLE OR BETTER',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.catalogSearchUnstable' => 'UNSTABLE OR BETTER',
 			'settings.developer.catalogSearchBleeding' => 'BLEEDING OR BETTER',
 			'settings.about.notices' => 'NOTICES & MESSAGES',
 			'settings.about.noticesDescription' => 'ANNOUNCEMENTS AND STATUS MESSAGES',
@@ -6585,6 +6591,10 @@ extension on TranslationsQro {
 			'extensionService.validationError' => ({required Object error}) => 'VALIDATION ERROR: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'ACTION FAILED: ${error}',
 			'extensionService.commandFailed' => 'THE COMMAND FAILED TO RUN',
+			'extensionService.commandMayNotChangeSettings' => ({required Object name}) => '${name} CAN’T CHANGE SETTINGS: IT DIDN’T ASK TO AT INSTALL',
+			'extensionService.commandMayNotControlRadio' => ({required Object name}) => '${name} CAN’T CONTROL THE RADIO: IT DIDN’T ASK TO AT INSTALL',
+			'extensionService.commandDeveloperOnly' => ({required Object name}) => '${name} CAN’T RUN THAT: IT’S ONE OF THE APP’S OWN DEVELOPER COMMANDS',
+			'extensionService.commandDescribeBy' => ({required Object describe, required Object extension}) => '${describe} · ${extension}',
 			'extensionService.reportUnavailable' => 'REPORTS CAN\'T BE SENT RIGHT NOW',
 			'extensionService.stashUnavailable' => 'HAM2K’S FILE STASH CAN’T BE REACHED RIGHT NOW',
 			'extensionService.activitySearchSourcesFailed' => ({required Object names}) => '${names} DIDN\'T ANSWER THE ACTIVITY SEARCH, SO SOME RESULTS MAY BE MISSING.',
