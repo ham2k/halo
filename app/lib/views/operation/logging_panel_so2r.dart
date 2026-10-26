@@ -15,7 +15,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
   bool get _trackingPower;
   Future<void> _openStationConfigDialog(BuildContext context);
   LoggingControlsController get _loggingController;
-  ValueNotifier<EsmFacts?> get _esmFacts;
+  bool get _esmEnabled;
 
   /// SO2R (docs/design/logging-fields.md § SO2R): one set of logging
   /// controls per radio. Kept in sync by _onSettingsChanged.
@@ -77,21 +77,8 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     if (!mounted) return;
     widget.services.cat.noteOperatorRadio(_so2r ? _so2rLink.active : 'A');
     _publishDispatch();
-    _showEsmFacts();
     setState(() {});
   }
-
-  /// What each set last said its next Enter would hand ESM. The keyer area
-  /// shows the active set's: the other set's next messages are not what the
-  /// operator's Enter keys.
-  final _esmFactsOf = <String, EsmFacts?>{};
-
-  void _noteEsmFacts(String radio, EsmFacts? facts) {
-    _esmFactsOf[radio] = facts;
-    _showEsmFacts();
-  }
-
-  void _showEsmFacts() => _esmFacts.value = _esmFactsOf[_so2r ? _so2rLink.active : 'A'];
 
   /// Radio B's state as set B's Radio control shows it — compared whole by
   /// _onCatChanged, which rebuilds only when it moves.
@@ -115,7 +102,33 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
     for (final radio in ['A', 'B']) radio: RadioVfoUpdates(widget.services.radio, 'vfo$radio'),
   };
 
+  /// What each set's next Enter would hand ESM, as it last published it —
+  /// what that set's keyer area highlights the next messages from.
+  final _esmFacts = {
+    for (final radio in ['A', 'B']) radio: ValueNotifier<EsmFacts?>(null),
+  };
+
+  /// [radio]'s set's keyer area — its own radio's keyer: its messages going
+  /// out, its repeat, and what waits for the other radio.
+  KeyerArea _keyerArea(String radio, {required bool editingHere}) => KeyerArea(
+    cat: widget.services.cat,
+    radio: radio,
+    services: widget.services,
+    onSendMessage: switch (widget.onSendCwMessage) {
+      final send? => (n) => send(n, radio),
+      null => null,
+    },
+    templateContext: widget.cwTemplateContext,
+    phone: widget.keyingPhone,
+    enterSends: _esmEnabled,
+    esmFacts: _esmFacts[radio],
+    suppressed: editingHere && _selectedQso != null,
+  );
+
   void _disposeSo2r() {
+    for (final facts in _esmFacts.values) {
+      facts.dispose();
+    }
     _so2rTransmitting.dispose();
     for (final updates in _vfoUpdates.values) {
       updates.dispose();
@@ -233,7 +246,10 @@ class _So2rTransmitting extends ValueNotifier<({bool a, bool b})> {
   }
 
   final CatService cat;
-  late final _sources = Listenable.merge([cat, cat.cwProgress, cat.voiceActivity]);
+  late final _sources = Listenable.merge([
+    cat,
+    for (final radio in ['A', 'B']) ...[cat.keyer(radio).cwProgress, cat.keyer(radio).voiceActivity, cat.keyer(radio).voiceStarting],
+  ]);
 
   static ({bool a, bool b}) _read(CatService cat) => (a: cat.isTransmitting('A'), b: cat.isTransmitting('B'));
 

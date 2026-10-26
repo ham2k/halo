@@ -96,7 +96,7 @@ class PanelRadioService {
       // range to the extension rather than inventing one.
       'maxWatts': config?['maxWatts'] as num?,
       'modes': type == null ? const <String>[] : _settableModes(type, config!),
-      'keying': live && keyingEnabled() && cat.isRadio1(node.uuid) ? _keying() : null,
+      'keying': live && keyingEnabled() ? _keying(node.uuid) : null,
       'spectrum': node == null || !live ? null : _spectrum(_spectrumNodeFor(node.uuid)),
     };
   }
@@ -108,20 +108,32 @@ class PanelRadioService {
       if (mode != 'CW-R') mode,
   ];
 
-  /// What the app keys with — the designated key and radio1's own voice
-  /// memories and PTT, the same the keyer area offers. Only ever radio1's.
-  Map<String, dynamic> _keying() {
-    final range = cat.keyerSpeedRange;
+  /// Which of the app's radios [uuid] is — `A` for radio1, `B` for SO2R's
+  /// Radio B — or null for one the app does not key with.
+  String? _keyedRadio(String uuid) => cat.isRadio1(uuid)
+      ? 'A'
+      : cat.isRadio2(uuid)
+      ? 'B'
+      : null;
+
+  /// What the app keys [uuid] with — its key in use, its own voice memories
+  /// and PTT, the same the keyer area offers from its set. Null for a radio
+  /// the app does not key with.
+  Map<String, dynamic>? _keying(String uuid) {
+    final keyed = _keyedRadio(uuid);
+    if (keyed == null) return null;
+    final keyer = cat.keyer(keyed);
+    final range = keyer.keyerSpeedRange;
     return {
-      'canKeyCw': cat.canKeyCw,
-      'cwSending': cat.cwSending,
-      'keyerSpeedWpm': cat.keyerSpeed,
+      'canKeyCw': keyer.canKeyCw,
+      'cwSending': keyer.cwSending,
+      'keyerSpeedWpm': keyer.keyerSpeed,
       'keyerSpeedRange': range == null ? null : {'min': range.min, 'max': range.max},
-      'canPtt': pttEnabled() && cat.canPtt,
-      'ptt': cat.pttHeldOnRadio1,
+      'canPtt': pttEnabled() && keyer.canPtt,
+      'ptt': cat.pttHeldOn(uuid),
       'voiceMemories': [
-        if (cat.canPlayVoice)
-          for (var n = 1; n <= cat.voiceMemoryCount; n++) {'number': n, 'label': cat.voiceMessageLabel(n)},
+        if (keyer.canPlayVoice)
+          for (var n = 1; n <= keyer.voiceMemoryCount; n++) {'number': n, 'label': keyer.voiceMessageLabel(n)},
       ],
     };
   }
@@ -307,14 +319,22 @@ class PanelRadioService {
     final id = state['id'] as String;
     // First, so that a keyer refusing it leaves the radio as it was rather than refusing a call
     // half of which already went out. The keyer clamps to its own range; its report says what it took.
-    if (wpm != null && !cat.setKeyerSpeed((wpm as num).round())) return {'accepted': false, 'reason': 'unsupported', 'state': read(selection)};
+    if (wpm != null && !cat.keyer(_keyedRadio(id)!).setKeyerSpeed((wpm as num).round())) {
+      return {'accepted': false, 'reason': 'unsupported', 'state': read(selection)};
+    }
     final freqKHz = frequency == null ? null : (frequency as num).toDouble() / 1000;
+    // `dial`: an on-screen dial turning, which Smart VFO Snap settles like the radio's own knob.
+    final origin = args['dial'] == true ? VfoOrigin.dial : VfoOrigin.user;
     if (cat.isRadio1(id)) {
       // Through the app's VFO, as the logging controls do, so the power a
       // panel sets is the power the next QSO logs.
-      // `dial`: an on-screen dial turning, which Smart VFO Snap settles like the radio's own knob.
-      final origin = args['dial'] == true ? VfoOrigin.dial : VfoOrigin.user;
       if (freqKHz != null || mode != null || power != null) radio.setVfo('vfoA', freq: freqKHz, mode: mode as String?, power: power as num?, origin: origin);
+    } else if (cat.isRadio2(id)) {
+      // Through Radio B's VFO, so set B's fields follow the tune without
+      // waiting on the rig's report. Power goes to the rig, whose report
+      // brings it to `vfoB`: nothing sends `vfoB`'s own power to Radio B.
+      if (freqKHz != null || mode != null) radio.setVfo('vfoB', freq: freqKHz, mode: mode as String?, origin: origin);
+      if (power != null) cat.setNodePower(id, power as num);
     } else {
       if (freqKHz != null || mode != null) cat.tuneNode(id, VfoReading(freqKHz: freqKHz, mode: mode as String?));
       if (power != null) cat.setNodePower(id, power as num);
@@ -400,17 +420,21 @@ class PanelRadioService {
     _ => null,
   };
 
-  /// The radio [args] names, if it is the one the app keys with — or why not.
-  /// Keying is radio1's: a panel pinned to another radio is refused rather
-  /// than keying the logging radio behind the operator's back.
+  /// The radio [args] names, if it is one the app keys with — radio1, or
+  /// SO2R's Radio B — or why not. A panel pinned to another radio is refused
+  /// rather than keying a logging radio behind the operator's back.
   ({Map<String, dynamic> state, String? reason}) _keyingTarget(Map<String, dynamic> args) {
     final state = read(args['selection'] as String?);
     if (args['id'] == null || args['id'] != state['id']) return (state: state, reason: 'changed');
     final id = state['id'] as String;
-    if (!cat.isRadio1(id) || !keyingEnabled()) return (state: state, reason: 'unsupported');
+    if (_keyedRadio(id) == null || !keyingEnabled()) return (state: state, reason: 'unsupported');
     if (state['keying'] == null) return (state: state, reason: 'disconnected');
     return (state: state, reason: null);
   }
+
+  /// The keyer of [target]'s radio, which keys as a key press from its set
+  /// would — taking its turn on the air under SO2R.
+  RadioKeyer _keyerOf(({Map<String, dynamic> state, String? reason}) target) => cat.keyer(_keyedRadio(target.state['id'] as String)!);
 
   Map<String, dynamic> _refused(({Map<String, dynamic> state, String? reason}) target) => {'accepted': false, 'reason': target.reason, 'state': target.state};
 
@@ -420,7 +444,7 @@ class PanelRadioService {
     if (target.reason != null) return _refused(target);
     final text = args['text'];
     if (text is! String || text.trim().isEmpty || text.length > 1000) return _refused((state: target.state, reason: 'invalid'));
-    if (!cat.sendCw(text)) return _refused((state: target.state, reason: 'unsupported'));
+    if (!_keyerOf(target).sendCw(text)) return _refused((state: target.state, reason: 'unsupported'));
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }
 
@@ -434,11 +458,11 @@ class PanelRadioService {
     final count = ((target.state['keying'] as Map)['voiceMemories'] as List).length;
     if (count == 0) return _refused((state: target.state, reason: 'unsupported'));
     if (memory is! int || memory < 1 || memory > count) return _refused((state: target.state, reason: 'invalid'));
-    cat.playVoiceMemory(memory, repeat: false);
+    _keyerOf(target).playVoiceMemory(memory, repeat: false);
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }
 
-  /// Keys or unkeys radio1's PTT, through the same latch as the app's PTT
+  /// Keys or unkeys the radio's PTT, through the same latch as the app's PTT
   /// key — so the app's own stop releases it.
   Map<String, dynamic> setPtt(Map<String, dynamic> args) {
     // Off is a release, never a toggle — a key held on another radio would be dropped and this one
@@ -450,11 +474,12 @@ class PanelRadioService {
     final target = _keyingTarget(args);
     if (target.reason != null) return _refused(target);
     if (args['on'] != true) return _refused((state: target.state, reason: 'invalid'));
-    if (!pttEnabled() || !cat.canPtt) return _refused((state: target.state, reason: 'unsupported'));
-    if (!cat.pttHeldOnRadio1) {
-      cat.togglePtt(target.state['id'] as String);
+    final id = target.state['id'] as String;
+    if (!pttEnabled() || !_keyerOf(target).canPtt) return _refused((state: target.state, reason: 'unsupported'));
+    if (!cat.pttHeldOn(id)) {
+      cat.togglePtt(id);
       // A radio that refused the key leaves nothing held.
-      if (!cat.pttHeldOnRadio1) return _refused((state: read(args['selection'] as String?), reason: 'disconnected'));
+      if (!cat.pttHeldOn(id)) return _refused((state: read(args['selection'] as String?), reason: 'disconnected'));
     }
     return {'accepted': true, 'state': read(args['selection'] as String?)};
   }

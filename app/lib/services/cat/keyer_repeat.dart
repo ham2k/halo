@@ -77,6 +77,10 @@ class KeyerRepeat {
 
   Timer? _timer;
 
+  /// Whether message 1 has been handed to [_send] and is on its way to the
+  /// radio — rendering, or held for the other radio — until it arms again.
+  bool _sending = false;
+
   /// Where the VFO was when the last repeat went out — what a move is
   /// measured from, re-based at every send, so a slow walk across the band
   /// between repeats is a series of small moves rather than one big one.
@@ -118,6 +122,7 @@ class KeyerRepeat {
     _text = text;
     this.memory = memory;
     _sentAt = vfo?.call();
+    _sending = false;
     _until ??= realNowMillis() + keyerRepeatLimit.inMilliseconds;
     wait.value = null;
     active.value = true;
@@ -130,6 +135,7 @@ class KeyerRepeat {
     _send = null;
     memory = null;
     _sentAt = null;
+    _sending = false;
     _until = null;
     if (wait.value != null) wait.value = null;
     active.value = false;
@@ -155,8 +161,26 @@ class KeyerRepeat {
         cancel();
         return;
       }
+      _sending = true;
       send();
     });
+  }
+
+  /// Sends message 1 again now, rather than at the end of its wait — SO2R's
+  /// resume, once the other radio has sent what the operator keyed on it.
+  /// A message 1 already on its way is not sent a second time.
+  void sendNow() {
+    final send = _send;
+    if (send == null || _sending) return;
+    _timer?.cancel();
+    _timer = null;
+    if (wait.value != null) wait.value = null;
+    if ((_until ?? 0) <= realNowMillis()) {
+      cancel();
+      return;
+    }
+    _sending = true;
+    send();
   }
 
   /// The VFO is now [now]. On another band, or further from where the last

@@ -1144,6 +1144,12 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   bool get enterSendsRunningB => settingValue(radioGroup, 'enterSendsRunningB') == true;
   Future<void> setEnterSendsRunningB(bool running) => setSettingValue(radioGroup, 'enterSendsRunningB', running);
 
+  /// SO2R: whether a message keyed for one radio while the other is on the
+  /// air waits for it to finish (true), or stops it (false, the default) —
+  /// docs/design/cat.md § Radio B, for SO2R.
+  bool get so2rQueueMessages => settingValue(radioGroup, 'so2rQueueMessages') == true;
+  Future<void> setSo2rQueueMessages(bool queue) => setSettingValue(radioGroup, 'so2rQueueMessages', queue);
+
   /// The voice counterpart of [cwRepeatDelay], and the same rule: only
   /// memory 1 repeats, because it is the CQ.
   Duration get voiceRepeatDelay => Duration(seconds: int.tryParse((settingValue(radioGroup, 'voiceRepeatDelay') as String?) ?? '') ?? 0);

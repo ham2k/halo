@@ -917,6 +917,7 @@ class StationPanel extends StatelessWidget {
                 ),
               if (so2r && _cat.radio2 != null && (antennas.isNotEmpty || keys.isNotEmpty))
                 _radio2Picks(context, antennas: antennas, keys: keys, inset: rowInset),
+              if (so2r && _cat.radio2 != null && keyerExperiment) _so2rQueueRow(context, inset: rowInset),
 
               // One keyer row for both keyers: the messages to edit, and the
               // switch that shows the logging panel's strip. In BOTH layouts,
@@ -1085,13 +1086,13 @@ class StationPanel extends StatelessWidget {
     // what keys for this operator unless they pick otherwise (HALO-585).
     final peer = _cat.followedPeerRadio;
     return DesignationDropdown(
-      key: ValueKey('${_cat.designatedFor(kCategoryKey)}:${_cat.peerKeyPicked}'),
+      key: ValueKey('${_cat.designatedFor(kCategoryKey)}:${_cat.peerKeyIsInUse}'),
       label: label,
       nodes: keys,
       // The peer's key is a default, so nothing is stored for it — and a
       // picker reading the stored value alone would say None while F1 keys
       // over the link.
-      selected: peer != null && _cat.peerKeyPicked && _cat.peerOffersCwKeying ? peerRadioValue(peer) : _cat.designatedFor(kCategoryKey),
+      selected: peer != null && _cat.peerKeyIsInUse && _cat.peerOffersCwKeying ? peerRadioValue(peer) : _cat.designatedFor(kCategoryKey),
       // A radio in this list is its keyer, not the radio.
       displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver ? st.keyViaRadio(radio: _displayName(node)) : _displayName(node),
       noneLabel: st.noneSelected,
@@ -1103,6 +1104,30 @@ class StationPanel extends StatelessWidget {
           (value: peerRadioValue(peer), label: st.keyOnDevice(device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName)),
       ],
       onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
+    );
+  }
+
+  /// How the two radios take the air (docs/design/cat.md § Radio B, for
+  /// SO2R): a message keyed for one while the other is sending waits for it,
+  /// or stops it.
+  Widget _so2rQueueRow(BuildContext context, {required EdgeInsets inset}) {
+    final settings = services.settings;
+    final label = context.t.settings.station.so2rQueueMessages;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: Row(
+        children: [
+          ListenableBuilder(
+            listenable: settings,
+            builder: (context, _) => Semantics(
+              label: label,
+              child: Switch(value: settings.so2rQueueMessages, onChanged: (queue) => unawaited(settings.setSo2rQueueMessages(queue))),
+            ),
+          ),
+          const SizedBox(width: Space.sm),
+          Flexible(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+        ],
+      ),
     );
   }
 
@@ -1133,7 +1158,11 @@ class StationPanel extends StatelessWidget {
             picker(
               kCategoryKey,
               st.keyInUse,
-              keys,
+              // Never radio A's key: one key keys one radio's messages.
+              [
+                for (final node in keys)
+                  if (node.uuid != _cat.designatedFor(kCategoryKey)) node,
+              ],
               displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver ? st.keyViaRadio(radio: _displayName(node)) : _displayName(node),
             ),
         ],

@@ -259,7 +259,9 @@ extension _Connection on CatService {
         // shown — and reported to a peer following one of this station's
         // radios, which is why it crosses whether or not anything here is
         // looking at the strip.
-        _keying.noteCwProgress(uuid, progress);
+        for (final keyer in _keyers.values) {
+          keyer.noteCwProgress(uuid, progress);
+        }
       },
       onKeyerSpeed: (wpm) {
         if (runtime.connection != connection) return;
@@ -273,7 +275,9 @@ extension _Connection on CatService {
         // app's own keypress and at a local ceiling timer, never from a byte
         // off the radio, so it says nothing about the link. The poll answers
         // that end one feed the watch through the normal reading path.
-        _keying.noteVoiceActivity(uuid, activity);
+        for (final keyer in _keyers.values) {
+          keyer.noteVoiceActivity(uuid, activity);
+        }
       },
       onVoiceMemories: (memories) {
         if (runtime.connection != connection) return;
@@ -626,7 +630,9 @@ extension _Connection on CatService {
     for (final entry in _runtimes.entries) {
       if (!identical(entry.value, runtime)) continue;
       if (session != null) trafficLog?.note(_logLabel(entry.key), 'session closed');
-      _keying.forgetNode(entry.key, wasKeyInUse: entry.key == keyInUse, wasKeyingRadio: entry.key == localKeyingRadio);
+      for (final keyer in _keyers.values) {
+        keyer.forgetNode(entry.key);
+      }
     }
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a

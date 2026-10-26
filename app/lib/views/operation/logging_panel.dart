@@ -128,15 +128,15 @@ class LoggingPanel extends StatefulWidget {
   /// on wide).
   final VoidCallback? onCallInfoTap;
 
-  /// Keys CW message [n] (1-based) — the keyer area's message buttons, the
-  /// same path as F1-F8 (OperationView renders the template against the
-  /// draft contact, which only it holds).
-  final void Function(int n)? onSendCwMessage;
+  /// Keys CW message [n] (1-based) on [radio] (`A` or `B`) — a keyer area's
+  /// message buttons, the same path as F1-F8 (OperationView renders the
+  /// template against the draft contact, which only it holds).
+  final void Function(int n, String radio)? onSendCwMessage;
 
-  /// Keys what an Enter Sends Messages step picked, rendered against the
-  /// draft handed over — see [LoggingSession.enterSends]. Null leaves ESM
-  /// off whatever its switch says.
-  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged})? onEnterSends;
+  /// Keys on [radio] what an Enter Sends Messages step picked, rendered
+  /// against the draft handed over — see [LoggingSession.enterSends]. Null
+  /// leaves ESM off whatever its switch says.
+  final void Function(String radio, List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged})? onEnterSends;
 
   /// What the keyer area's button labels render against — the operation
   /// and the draft contact, the same context the messages themselves get.
@@ -305,12 +305,8 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 
   /// Enter Sends Messages, on top of the keyer. Kept in sync by
   /// _onSettingsChanged like _keyerEnabled.
-  late bool _esmEnabled = widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
-
-  /// What the next Enter would hand ESM, as the panel last published it —
-  /// what the keyer area highlights the next messages from.
   @override
-  final _esmFacts = ValueNotifier<EsmFacts?>(null);
+  late bool _esmEnabled = widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
 
   // Whether the Radio control's icon should read as CAT-configured.
   late bool _hasConfiguredRadio = _computeHasConfiguredRadio();
@@ -410,7 +406,6 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
 
   @override
   void dispose() {
-    _esmFacts.dispose();
     widget.services.settings.removeListener(_onSettingsChanged);
     _so2rLink.activeSet.removeListener(_onSo2rLinkChanged);
     _so2rLink.dispose();
@@ -826,7 +821,11 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     if (keyer != _keyerEnabled) {
       // Switched off mid-message: the keyer area and its Escape go away with
       // the flag, so nothing would be left to stop what is on the air.
-      if (!keyer && widget.services.cat.cwSending) widget.services.cat.stopCw();
+      if (!keyer) {
+        for (final radio in ['A', 'B']) {
+          if (widget.services.cat.keyer(radio).cwSending) widget.services.cat.keyer(radio).stopCw();
+        }
+      }
       setState(() => _keyerEnabled = keyer);
     }
     final esm = s.experimentEnabled('esm') /* stored key, see experiments.yaml */;
@@ -835,7 +834,6 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     if (so2r != _so2r) {
       setState(() => _so2r = so2r);
       widget.services.cat.noteOperatorRadio(so2r ? _so2rLink.active : 'A');
-      _showEsmFacts();
     }
     final trackingPower = _computeTrackingPower();
     if (trackingPower != _trackingPower) setState(() => _trackingPower = trackingPower);
@@ -866,16 +864,20 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
     }
   }
 
-  /// Enter Sends Messages as it stands at this Enter: on, and the key the
-  /// draft's mode picks able to send — otherwise off, and Enter logs.
+  /// Enter Sends Messages as it stands at this Enter: on, and [radio]'s key
+  /// for the draft's mode able to send — otherwise off, and Enter logs.
   EnterSends? _enterSends(String radio) {
     final send = widget.onEnterSends;
     if (send == null || !_keyerEnabled || !_esmEnabled) return null;
     final cat = widget.services.cat;
     final esm = cat.enterSends.value;
     if (!esm.on) return null;
-    if (!cat.canKeyOn(radio, () => widget.keyingPhone ? cat.canPlayVoice : cat.canKeyCw)) return null;
-    return EnterSends(running: cat.isRunning(radio), send: send);
+    final keyer = cat.keyer(radio);
+    if (!(widget.keyingPhone ? keyer.canPlayVoice : keyer.canKeyCw)) return null;
+    return EnterSends(
+      running: cat.isRunning(radio),
+      send: (messages, qso, {logged}) => send(radio, messages, qso, logged: logged),
+    );
   }
 
   /// Rebuilds the Radio control's icon when CAT equipment is added, removed,
@@ -1025,15 +1027,11 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         // stop itself is OperationView's key handler's, which runs first.
         escapeClaimed: _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
         // A call typed over a CQ stops it — see CatService.stopMessageOne.
-        // Under SO2R only over the radio that is sending: a call typed on the
-        // other radio's set is the operator working it while this one CQs.
-        onCallTyped: _keyerEnabled
-            ? () {
-                if (widget.services.cat.keyingRadio == radio) widget.services.cat.stopMessageOne();
-              }
-            : null,
+        // Under SO2R only that set's radio's: a call typed on the other
+        // radio's set is the operator working it while this one CQs.
+        onCallTyped: _keyerEnabled ? widget.services.cat.keyer(radio).stopMessageOne : null,
         enterSends: () => _enterSends(radio),
-        onEsmFacts: _keyerEnabled && _esmEnabled ? (facts) => _noteEsmFacts(radio, facts) : null,
+        onEsmFacts: _keyerEnabled && _esmEnabled ? (facts) => _esmFacts[radio]!.value = facts : null,
         editingQso: editingHere ? _selectedQso : null,
         suggestedQso: suggestion.qso,
         logRequest: _logRequests[radio],
@@ -1144,18 +1142,7 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
         },
       ),
       strip: ControlStripSettings(
-        aboveEntryRow: _keyerEnabled && radio == 'A'
-            ? KeyerArea(
-                cat: widget.services.cat,
-                services: widget.services,
-                onSendMessage: widget.onSendCwMessage,
-                templateContext: widget.cwTemplateContext,
-                phone: widget.keyingPhone,
-                enterSends: _esmEnabled,
-                esmFacts: _esmFacts,
-                suppressed: _selectedQso != null,
-              )
-            : null,
+        aboveEntryRow: _keyerEnabled ? _keyerArea(radio, editingHere: editingHere) : null,
         controlOrder: _controlOrder,
         hiddenControlKeys: _hiddenControls,
         spottingAfterReferences: widget.scope == LoggingScope.chase,

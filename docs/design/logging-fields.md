@@ -1208,11 +1208,7 @@ are one more press away. Mirrored above the log, as everything else is.
 **Which set an input goes to.** The set the keyboard was last in
 (`So2rLink.active`) speaks for the panel: its draft and call info are what
 the Info pane and the peers see, its command dispatcher is the one ⌘K
-reaches, its ESM facts and its radio's Run or S&P are what the keyer area
-highlights the next messages from, and it is the only one whose default
-focus is reclaimed. Each set publishes its ESM facts as they change, and the
-panel keeps each set's last, so a move between the sets shows the new one's
-at once. A set
+reaches, and it is the only one whose default focus is reclaimed. A set
 forgets what it last published while the other speaks, so coming back it
 publishes its draft afresh — the host would otherwise go on holding the
 other set's, and a message would key the other station's call. Turning
@@ -1223,8 +1219,12 @@ contact logged under SO2R records its radio (`our.radio`: `A` or `B`), and
 picking it from the log loads it into that set — set A for one logged
 without SO2R.
 
-**Keying follows the set the operator is in**, except that a message under
-way keeps its radio until it ends — see [cat.md](cat.md) § Radio B, for SO2R.
+**Each set keys its own radio**, and the two take turns on the air — see
+[cat.md](cat.md) § Radio B, for SO2R. Each set has a keyer area of its own,
+above its fields: its radio's speed or voice pill, Run or S&P, buttons, the
+message going out, its repeat's countdown, and what waits for the other radio
+under an indeterminate bar. Its ESM highlight is that set's own: each set
+publishes its ESM facts, and its area reads them on its radio's Run or S&P.
 Each set's call field stops only its own radio's message as a call is typed
 over it, and the pill and rule of the radio on the air are red, whichever set
 has the keyboard.

@@ -1058,13 +1058,17 @@ under the Main VFO's row. It is the same wiring as `radio1`, narrowed:
   B — two VFOs tuning one radio would fight over it.
 - **Readings and tunes stay on their own VFO.** `_applyReading` writes a radio2 report to `vfoB`
   tagged `radio`, and `_onVfoChanged` dispatches on `RadioService.lastVfoKey`: a `vfoB` change
-  tunes radio2 through `tuneNode` and nothing else. Smart VFO Snap and the idle retry's nudge stay
-  radio1's; the keyer's repeat watches the VFO of the radio keying is for, so pouncing with one
-  radio never ends the CQ the other is repeating.
+  retunes radio2 (`_retune`) and nothing else — a band picked by name included, which moves Radio
+  B exactly as § Picking a band moves radio1, from Radio B's own memory of where it was on each
+  band. A panel or a peer tuning Radio B writes `vfoB` as one tuning radio1 writes `vfoA`, so set
+  B's fields move with the tune; power alone goes to the rig, whose report brings it to `vfoB`.
+  Smart VFO Snap and the idle retry's nudge stay radio1's; the keyer's repeat watches the VFO of
+  the radio keying is for, so pouncing with one radio never ends the CQ the other is repeating.
 - **Inert with the experiment off.** `radio2` answers null, so a stored pick neither drives `vfoB`
   nor auto-connects — and is back when SO2R is turned on again. The service applies the
-  experiment's change, and every change of `radio2`, through `_withKeyInUseTidied`: either moves the
-  key in use, and Radio B's message stops rather than going on with nothing to show or stop it.
+  experiment's change, and every change of `radio2`, through `_withKeyInUseTidied`: either moves
+  Radio B's key in use, and everything Radio B's keyer had going stops, waiting messages and repeat
+  included, rather than going on with nothing to show or stop it.
   Turning the experiment on connects Radio B, as a launch would.
 - **No relay moves while either radio transmits.** `selectAntenna` asks Radio B as well as radio1:
   nothing says which radio a two-radio switch's port feeds.
@@ -1076,24 +1080,55 @@ B records Radio B's rig, antenna, key and power. Its voice memories are its own 
 measured lengths are stored per radio (`voiceMessageLabel(n, radio:)`), since the audio is in each
 rig.
 
-**Keying follows the set the operator is in.** The logging panel says which set that is
-(`noteOperatorRadio`), and while nothing is going out the key in use, the voice memories and PTT
-(`KeyingStation.localKeyingRadio`) move with it — the keyer area shows that radio's speed, and
-whatever is keyed next goes out on it. A message, chain, repeat or held PTT under way keeps its
-radio instead — and so does a voice memory asked for and not yet heard starting
-(`CatKeying.voiceStarting`), which covers the gap between a sequence's memories: a CQ goes on on radio A while the operator works radio B, and keying moves over when
-it ends (`_followOperator`, on the keying notifiers). Keying something from the other set — every
-entry point calls `keyForOperator` first — stops what the radio being left is sending and moves
-keying at once, but only once the operator's radio can key it: asked first (`canKeyOn`), a radio
-that can't stops nothing, and set B with no Radio B keys nothing at all rather than falling back to
-radio A. The key, or the button, says so in the status bar. A key press holds its radio
-(`holdKeying`) until what it keys reaches the radio — a message renders first, and ESM's thanks
-waits for the log — so moving to the other set meanwhile never sends it on the other radio; a key
-in the other set drops the hold with whatever else the radio being left had going out. Escape stops
-whatever is sending, and a call typed in the sending radio's set stops it — a call typed in the
-other set does not. `isTransmitting` says which radio is on the air — its rig's own report, its
-held PTT, or a message or memory keyed through it — and that set's pill, rule and Radio control
-turn red.
+**Each radio has a keyer of its own.** Radio1's and Radio B's: each its own key in use, voice
+memories, PTT, repeat chain, message going out and messages waiting (`CatKeying`, one per radio;
+Radio B's asks the station through `_RadioBKeyingStation`). `CatService.keyer(radio)` is that
+radio's (`RadioKeyer`). The two never share a key — a key keys one message at a time, and two
+keyers on it would stop each other's: Radio B's picker leaves radio A's key out and `setDesignated`
+refuses it, radio A taking Radio B's key leaves Radio B with None, and a pick that collides anyway
+(radio1 switched to a rig whose own pick is Radio B's key) reads as None for Radio B
+(`designatedFor`). The service's own keying API — what the function keys, the WPM command
+and the Station dialog's keyer row use — answers for the set the operator is in, which the logging
+panel reports (`noteOperatorRadio`); outside SO2R that is radio1's. Each set's keyer area is its
+radio's: its buttons, speed, message, countdown and what waits; the CW and Phone Keyer dialogs it
+opens are that radio's too. The CW messages, their sets and labels, and the repeat delay are the
+radios' both; the keyer speed is each key's own, and the voice memories, their names and lengths
+each rig's — the audio is in the radio (a future app-played audio keyer could share them). A panel
+keys the radio it names, radio1 or Radio B. Set B with no Radio B keys nothing at all rather than
+falling back to radio A, and says so in the status bar. `isTransmitting` says which radio is on
+the air — its rig's own report, its held PTT, or its keyer keying — and that set's pill, rule and
+Radio control turn red.
+
+**One radio on the air at a time, taking turns** (`KeyingStation.clearToSend`, `_So2r._pump`).
+What a keyer sends — a message, a memory, a sequence — first asks for its turn:
+
+- **A repeat's send waits** while the other radio is on the air, whatever its delay, and goes the
+  moment it is quiet; two repeating radios so take turns, neither keying over the other. A
+  memory asked for and not yet heard starting (`CatKeying.voiceStarting`) is on the air too.
+- **An operator's message stops the other radio's** — its message and any sequence it is part
+  of (`CatKeying.interrupt`) — and goes at once, unless the station's setting *Messages queued
+  instead of interrupting* (`SettingsService.so2rQueueMessages`, off by default, in Station
+  Configuration under Radio B) is on: then it waits its turn like a repeat. A message that reaches
+  its keyer after its keypress — rendered, or a thanks waiting on its contact's log — is dropped
+  when the other radio was keyed in between (`keyMark`, `keyedOverSince`): going at once it would
+  have been stopped, and going now it would stop the newer one. Queued, it waits its turn.
+- **The other radio's CQ resumes after it.** A repeat interrupted, held off, or counting down
+  when the operator keyed the other radio sends message 1 again the moment that radio is quiet,
+  rather than at the end of another wait (`KeyerRepeat.sendNow`). Keying the repeating radio
+  itself ends its repeat, as it does with one radio. The app's PTT key going down on one radio
+  is the operator keying it, queued messages or not: it takes the other radio off the air
+  through that radio's own keyer, and the other's repeat resumes after it too.
+
+What waits shows in its keyer area under an indeterminate bar (`CatKeying.waiting`), in place of a
+repeat's countdown: how long the other radio has left is not something this one can know. The
+oldest waiting send goes first. Escape stops both radios, their repeats and everything waiting —
+except, with messages queued, while anything but a repeat waits: then only what is on the air
+stops (`CatKeying.stopCurrent`, which keeps what was queued behind it), the waiting messages go
+next, and a repeat stopped mid-CQ resumes after them. Pressed again with only repeats left, it ends
+those. A call typed in a set stops its own radio's message 1, never the other's, and a message 1
+waiting there goes with it; a send waiting for its repeat ends when that repeat does, and a stop
+of a radio's CW or voice drops what of it was waiting. Radio B going — changed, removed, or SO2R
+turned off — lets go of whatever radio A was holding for it.
 
 ### A paired device's panel, over the peer link
 
@@ -1281,8 +1316,8 @@ where it is regardless.
 ## Picking a band
 
 A band named with no frequency — the Band dropdown, `40m` typed into the Frequency field, a `40M`
-command, an extension's `setRadio` with only a band — moves radio1 to that band
-(`cat_band_pick.dart`). Without it a pick only clears the app's frequency: the radio stays where it
+command, an extension's `setRadio` with only a band — moves radio1 to that band, and a pick in
+SO2R's set B moves Radio B the same way (`cat_band_pick.dart`). Without it a pick only clears the app's frequency: the radio stays where it
 is, and its next report puts the app straight back on the old band. No CAT radio, nothing moves
 (the band alone is recorded, as before); a pick of the band the radio is already on sends nothing,
 and the radio's next report fills the frequency back in.

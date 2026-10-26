@@ -12,7 +12,8 @@ import '../halo_services.dart';
 CommandActionOutcome? keyerCommandAction(HaLoServices services, String action, Map<String, dynamic>? params) {
   switch (action) {
     case 'setKeyerSpeed':
-      // WPM command ("20WPM"): straight to radio1's keyer. Unlike power
+      // WPM command ("20WPM"): straight to the keyer of the operator's
+      // radio — under SO2R, the set they are in. Unlike power
       // there is no app-side value to fall back on — the speed is the
       // radio's — so with nothing connected that can key, the command
       // fails out loud rather than confirming a change nothing heard.

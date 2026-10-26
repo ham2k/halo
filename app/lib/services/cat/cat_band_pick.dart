@@ -1,8 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// A band picked by name, with no frequency, sends radio1 to that band
-// (docs/design/cat.md § Picking a band).
+// A band picked by name, with no frequency, sends the radio driving that
+// VFO — radio1, or SO2R's Radio B — to that band (docs/design/cat.md
+// § Picking a band).
 
 part of 'cat_service.dart';
 
@@ -13,9 +14,9 @@ part of 'cat_service.dart';
 const catBandPickGrace = Duration(seconds: 3);
 
 extension _BandPick on CatService {
-  /// Sends [uuid]'s radio to the band [vfo] names when it names a band and no
-  /// frequency, answering whether it did. False leaves the write to
-  /// [tuneNode], as for any other.
+  /// Sends [uuid]'s radio to the band [vfo] — its [vfoKey] — names when it
+  /// names a band and no frequency, answering whether it did. False leaves
+  /// the write to [tuneNode], as for any other.
   ///
   /// Where this radio was last heard on that band in the app's mode family,
   /// failing that the start of the mode's segment for where the operator is
@@ -25,7 +26,7 @@ extension _BandPick on CatService {
   ///
   /// [heading] is the band of a pick this one replaces, which the radio may
   /// still be on its way to.
-  bool _pickBand(String uuid, Vfo vfo, {String? heading}) {
+  bool _pickBand(String uuid, String vfoKey, Vfo vfo, {String? heading}) {
     final band = vfo.band;
     if (vfo.freq != null || band == null) return false;
     final runtime = _runtimes[uuid];
@@ -48,7 +49,7 @@ extension _BandPick on CatService {
     // A write like any typed frequency, so the tune takes the cross-band
     // route; it comes back through [_onVfoChanged], which cancels any pick
     // still waiting, so the wait is armed only after it.
-    _radio?.setVfo('vfoA', freq: freqKHz);
+    _radio?.setVfo(vfoKey, freq: freqKHz);
     _awaitBand(uuid, runtime, band);
     if (runtime.session case final ReadBackSession session) {
       try {
@@ -71,7 +72,8 @@ extension _BandPick on CatService {
       // radio that has said nothing yet is not refusing, only slow, and its
       // next report is followed as any is.
       final reported = runtime.state.vfo;
-      if (runtime.bandPickHeldReport && uuid == _localRadio1 && reported.freqKHz != null) _followRadio(reported);
+      final vfoKey = _vfoKeyOf(uuid);
+      if (runtime.bandPickHeldReport && vfoKey != null && reported.freqKHz != null) _followRadio(vfoKey, reported);
     });
   }
 

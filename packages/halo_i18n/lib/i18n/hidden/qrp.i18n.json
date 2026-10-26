@@ -2156,6 +2156,7 @@
       "currentTransceiver": "current transceiver",
       "currentTransceivers": "current transceivers",
       "so2rRadioName": "${radio}: ${name}",
+      "so2rQueueMessages": "messages queued instead of interrupting",
       "noRadioBSelected": "no radio b selected",
       "radioMode": "radio mode",
       "keyerNotSupported": "not supported by current radio",

@@ -14,6 +14,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cw_live_typing.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:ham2k_logger/views/keyer_area.dart';
@@ -572,6 +573,49 @@ void main() {
     services.cat.togglePtt(services.cat.localRadio1!);
     await tester.pump();
     expect(find.text('Voice').hitTestable(), findsOneWidget);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  // The trap: one radio's keyer shown for both sets — set B's buttons
+  // playing radio A's memories, and radio B's message waiting its turn with
+  // nothing on screen to say so.
+  testWidgets("under SO2R each set's area is its radio's: its memories, what it plays, and what waits for the other", (tester) async {
+    await services.settings.setExperimentEnabled('so2r', true);
+    await services.settings.setSo2rQueueMessages(true);
+    final cat = services.cat;
+    Future<String> rig(String name) async {
+      final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+      await tester.runAsync(() => cat.connect(node.uuid));
+      addTearDown(() => cat.disconnect(node.uuid));
+      return node.uuid;
+    }
+
+    final left = await rig('Left Rig'), right = await rig('Right Rig');
+    await cat.setRadio1(LocalRadio(left));
+    await cat.setRadio2(right);
+    await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
+    await services.settings.setVoiceMessageLabel(3, 'QRZ RIGHT', radio: 'B');
+    Widget area(String radio) => KeyerArea(key: ValueKey(radio), cat: cat, radio: radio, services: services, onSendMessage: sent.add, phone: true);
+    await tester.pumpWidget(
+      TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(body: Column(children: [area('A'), area('B')])),
+        ),
+      ),
+    );
+    cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    Finder inArea(String radio, Finder finder) => find.descendant(of: find.byKey(ValueKey(radio)), matching: finder);
+    expect(inArea('B', find.widgetWithText(InkWell, 'QRZ RIGHT')), findsOneWidget, reason: "set B's buttons are Radio B's memories");
+    expect(inArea('B', find.widgetWithText(InkWell, 'CQ LEFT')), findsNothing);
+
+    cat.keyer('A').playVoiceMemory(2);
+    cat.keyer('B').playVoiceMemory(3);
+    await tester.pump();
+    expect(inArea('A', find.text('Playing CQ LEFT')), findsOneWidget);
+    expect(inArea('B', find.text('QRZ RIGHT')), findsOneWidget, reason: "radio B's memory, waiting for radio A");
+    expect(inArea('B', find.byType(LinearProgressIndicator)), findsOneWidget, reason: 'under a bar that cannot say how long');
     await tester.pump(const Duration(seconds: 62));
   });
 

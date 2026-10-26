@@ -2743,6 +2743,7 @@ class _Translations$settings$station$qro extends Translations$settings$station$e
 	@override String get currentTransceiver => 'CURRENT TRANSCEIVER';
 	@override String get currentTransceivers => 'CURRENT TRANSCEIVERS';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get so2rQueueMessages => 'MESSAGES QUEUED INSTEAD OF INTERRUPTING';
 	@override String get noRadioBSelected => 'NO RADIO B SELECTED';
 	@override String get radioMode => 'RADIO MODE';
 	@override String get keyerNotSupported => 'NOT SUPPORTED BY CURRENT RADIO';
@@ -6117,6 +6118,7 @@ extension on TranslationsQro {
 			'settings.station.currentTransceiver' => 'CURRENT TRANSCEIVER',
 			'settings.station.currentTransceivers' => 'CURRENT TRANSCEIVERS',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'MESSAGES QUEUED INSTEAD OF INTERRUPTING',
 			'settings.station.noRadioBSelected' => 'NO RADIO B SELECTED',
 			'settings.station.radioMode' => 'RADIO MODE',
 			'settings.station.keyerNotSupported' => 'NOT SUPPORTED BY CURRENT RADIO',
@@ -6347,9 +6349,9 @@ extension on TranslationsQro {
 			'settings.developer.extDevServerDisconnected' => 'NOT CONNECTED',
 			'settings.developer.extDevServerReconnect' => 'RECONNECT AT LAUNCH',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'LAST RELOAD: ${key} AT ${time}',
-			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
 			'settings.developer.catalog' => 'EXTENSION CATALOG',
 			'settings.developer.catalogDescription' => 'READ THE CATALOG FROM ANOTHER SERVER — A LOCAL ONE WHILE WORKING ON THE CATALOG ITSELF. EMPTY MEANS CATALOG.HAM2K.NET.',
 			'settings.developer.catalogAddress' => 'CATALOG ADDRESS',

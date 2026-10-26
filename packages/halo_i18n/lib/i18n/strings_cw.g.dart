@@ -2743,6 +2743,7 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get currentTransceiver => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·';
 	@override String get currentTransceivers => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···';
 	@override String so2rRadioName({required Object radio, required Object name}) => '${radio} ———··· / ${name}';
+	@override String get so2rQueueMessages => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·';
 	@override String get noRadioBSelected => '—· ——— / ·—· ·— —·· ·· ——— / —··· / ··· · ·—·· · —·—· — · —··';
 	@override String get radioMode => '·—· ·— —·· ·· ——— / —— ——— —·· ·';
 	@override String get keyerNotSupported => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / —·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———';
@@ -6117,6 +6118,7 @@ extension on TranslationsCw {
 			'settings.station.currentTransceiver' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
 			'settings.station.currentTransceivers' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio} ———··· / ${name}',
+			'settings.station.so2rQueueMessages' => '—— · ··· ··· ·— ——· · ··· / ——·— ··— · ··— · —·· / ·· —· ··· — · ·— —·· / ——— ··—· / ·· —· — · ·—· ·—· ··— ·——· — ·· —· ——·',
 			'settings.station.noRadioBSelected' => '—· ——— / ·—· ·— —·· ·· ——— / —··· / ··· · ·—·· · —·—· — · —··',
 			'settings.station.radioMode' => '·—· ·— —·· ·· ——— / —— ——— —·· ·',
 			'settings.station.keyerNotSupported' => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / —·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———',
@@ -6347,9 +6349,9 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerDisconnected' => '—· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
-			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
 			'settings.developer.catalogDescription' => '·—· · ·— —·· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ··· · ·—· ···— · ·—· / — / ·— / ·—·· ——— —·—· ·— ·—·· / ——— —· · / ·—— ···· ·· ·—·· · / ·—— ——— ·—· —·— ·· —· ——· / ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·· — ··· · ·—·· ··—· ·—·—·— / · —— ·——· — —·—— / —— · ·— —· ··· / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — ·—·—·—',
 			'settings.developer.catalogAddress' => '—·—· ·— — ·— ·—·· ——— ——· / ·— —·· —·· ·—· · ··· ···',

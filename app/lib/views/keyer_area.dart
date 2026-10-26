@@ -53,6 +53,11 @@ const _revealDuration = Duration(milliseconds: 250);
 class KeyerArea extends StatefulWidget {
   final CatService cat;
 
+  /// Whose keyer this is, `A` or `B` — under SO2R each set's area is its
+  /// radio's ([CatService.keyer]): its messages going out, its repeat, and
+  /// what waits for the other radio.
+  final String radio;
+
   /// For the way from the speed dialog to the message editor
   /// (`showCwMessagesDialog`), which takes the whole services object, and
   /// for the messages the idle buttons offer.
@@ -92,6 +97,7 @@ class KeyerArea extends StatefulWidget {
   const KeyerArea({
     super.key,
     required this.cat,
+    this.radio = 'A',
     required this.services,
     this.onSendMessage,
     this.templateContext,
@@ -118,12 +124,12 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   void initState() {
     super.initState();
     _reveal = AnimationController(vsync: this, duration: _revealDuration);
-    widget.cat.cwProgress.addListener(_onProgress);
-    widget.cat.voiceActivity.addListener(_onProgress);
+    _k.cwProgress.addListener(_onProgress);
+    _k.voiceActivity.addListener(_onProgress);
     widget.cat.keyerAreaShown.addListener(_onShownChanged);
     widget.cat.keyerShowRequests.addListener(_onShowRequested);
     widget.cat.addListener(_onCatChanged);
-    widget.cat.keyboardModeRequests.addListener(_onKeyboardModeRequested);
+    _k.keyboardModeRequests.addListener(_onKeyboardModeRequested);
     _onProgress();
     _onShownChanged();
   }
@@ -152,19 +158,19 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   @override
   void didUpdateWidget(KeyerArea old) {
     super.didUpdateWidget(old);
-    if (old.cat != widget.cat) {
-      old.cat.cwProgress.removeListener(_onProgress);
-      old.cat.voiceActivity.removeListener(_onProgress);
+    if (old.cat != widget.cat || old.radio != widget.radio) {
+      old.cat.keyer(old.radio).cwProgress.removeListener(_onProgress);
+      old.cat.keyer(old.radio).voiceActivity.removeListener(_onProgress);
       old.cat.keyerAreaShown.removeListener(_onShownChanged);
       old.cat.keyerShowRequests.removeListener(_onShowRequested);
       old.cat.removeListener(_onCatChanged);
-      old.cat.keyboardModeRequests.removeListener(_onKeyboardModeRequested);
-      widget.cat.cwProgress.addListener(_onProgress);
-      widget.cat.voiceActivity.addListener(_onProgress);
+      old.cat.keyer(old.radio).keyboardModeRequests.removeListener(_onKeyboardModeRequested);
+      _k.cwProgress.addListener(_onProgress);
+      _k.voiceActivity.addListener(_onProgress);
       widget.cat.keyerAreaShown.addListener(_onShownChanged);
       widget.cat.keyerShowRequests.addListener(_onShowRequested);
       widget.cat.addListener(_onCatChanged);
-      widget.cat.keyboardModeRequests.addListener(_onKeyboardModeRequested);
+      _k.keyboardModeRequests.addListener(_onKeyboardModeRequested);
       _onProgress();
       _onShownChanged();
     }
@@ -180,12 +186,12 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
-    widget.cat.cwProgress.removeListener(_onProgress);
-    widget.cat.voiceActivity.removeListener(_onProgress);
+    _k.cwProgress.removeListener(_onProgress);
+    _k.voiceActivity.removeListener(_onProgress);
     widget.cat.keyerAreaShown.removeListener(_onShownChanged);
     widget.cat.keyerShowRequests.removeListener(_onShowRequested);
     widget.cat.removeListener(_onCatChanged);
-    widget.cat.keyboardModeRequests.removeListener(_onKeyboardModeRequested);
+    _k.keyboardModeRequests.removeListener(_onKeyboardModeRequested);
     // What was typed still goes out — the strip going away is not an Escape.
     final typing = _typing;
     _typing = null;
@@ -195,14 +201,15 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  /// This area's radio's keyer.
+  RadioKeyer get _k => widget.cat.keyer(widget.radio);
+
   /// Keyboard mode, while it is on (cw_live_typing.dart).
   CwLiveTyping? _typing;
 
   void _startTyping() {
-    final cat = widget.cat;
-    // Onto the operator's radio, as a message key would be — the button
-    // reaches no key handler.
-    if (!keyForOperatorOrSay(context, widget.services, () => cat.canKeyCw)) return;
+    final cat = _k;
+    if (!keyerOrSay(context, widget.services, cat, () => cat.canKeyCw)) return;
     // Typing is the operator moving on, the same as a message key: a CQ
     // repeat left armed would restart its wait after every typed piece and
     // key message 1 into the middle of the contact.
@@ -226,7 +233,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     final typing = _typing;
     if (typing != null) {
       typing.finish();
-    } else if (widget.cat.canKeyCw) {
+    } else if (_k.canKeyCw) {
       widget.cat.showKeyerArea();
       _startTyping();
     }
@@ -235,7 +242,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   /// The key going away ends keyboard mode: `sendCw` is a no-op without
   /// one, and the field would go on bolding words as sent that went nowhere.
   void _onCatChanged() {
-    if (_typing != null && !widget.cat.canKeyCw) _typing!.cancel();
+    if (_typing != null && !_k.canKeyCw) _typing!.cancel();
   }
 
   void _onTypingDone() {
@@ -255,8 +262,8 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
 
   void _onProgress() {
     if (widget.suppressed) return;
-    final progress = widget.cat.cwProgress.value;
-    final voice = widget.cat.voiceActivity.value;
+    final progress = _k.cwProgress.value;
+    final voice = _k.voiceActivity.value;
     if (progress != null || voice != null) {
       if (progress != null && _shownForMessage != progress.id) {
         _shownForMessage = progress.id;
@@ -306,8 +313,11 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (widget.phone) _VoicePill(cat: widget.cat, services: widget.services) else _KeyerSpeedPill(cat: widget.cat, services: widget.services),
-              if (widget.enterSends) ...[const SizedBox(width: Space.sm), _EnterSendsPill(cat: widget.cat)],
+              if (widget.phone)
+                _VoicePill(cat: widget.cat, keyer: _k, services: widget.services)
+              else
+                _KeyerSpeedPill(cat: widget.cat, keyer: _k, services: widget.services),
+              if (widget.enterSends) ...[const SizedBox(width: Space.sm), _EnterSendsPill(cat: widget.cat, radio: widget.radio)],
               const SizedBox(width: Space.md),
               // Sized to its content unless the typing field is out, so the
               // close button follows the last control rather than standing
@@ -327,10 +337,10 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                   children: [
                     Flexible(
                       child: ListenableBuilder(
-                        listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity, widget.cat.keyerRepeat, widget.cat.keyerRepeatActive]),
+                        listenable: Listenable.merge([_k.cwProgress, _k.voiceActivity, _k.keyerRepeat, _k.keyerRepeatActive, _k.waiting]),
                         builder: (context, _) {
-                          final progress = widget.cat.cwProgress.value;
-                          final voice = widget.cat.voiceActivity.value;
+                          final progress = _k.cwProgress.value;
+                          final voice = _k.voiceActivity.value;
                           // A chain is the message's own time, not the buttons':
                           // the strip shows what is about to go out and nothing
                           // else, the same as while it is going out. The whole
@@ -338,7 +348,9 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                           // the wait ending and the next message reaching the
                           // radio is a template render long — and the buttons
                           // flashing back for it reads as the repeats stopping.
-                          final waiting = widget.cat.keyerRepeatActive.value;
+                          // And what waits for the other SO2R radio to fall quiet.
+                          final held = _k.waiting.value;
+                          final waiting = _k.keyerRepeatActive.value || held.isNotEmpty;
                           return Stack(
                             alignment: AlignmentDirectional.centerStart,
                             children: [
@@ -353,6 +365,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                                 maintainState: true,
                                 child: _MessageButtons(
                                   services: widget.services,
+                                  keyer: _k,
                                   onSendMessage: widget.onSendMessage,
                                   templateContext: widget.templateContext,
                                   esmFacts: widget.enterSends ? widget.esmFacts : null,
@@ -360,23 +373,26 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                               ),
                               Visibility(
                                 visible: widget.phone && progress == null && voice == null && !waiting,
-                                child: _VoiceButtons(services: widget.services, esmFacts: widget.enterSends ? widget.esmFacts : null),
+                                child: _VoiceButtons(services: widget.services, keyer: _k, esmFacts: widget.enterSends ? widget.esmFacts : null),
                               ),
                               // Keyed on the message's id, so a new one restarts the
                               // animation from its own beginning — while a re-report of
                               // the SAME message (the queue behind it changed) keeps the
                               // animation where it is.
-                              if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
-                              if (voice != null && progress == null) _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
+                              if (progress != null) _CwProgressView(key: ValueKey(progress.id), progress: progress, keyer: _k),
+                              if (voice != null && progress == null) _VoiceActivityView(activity: voice, keyer: _k, services: widget.services),
+                              // A send waiting its turn: this radio's own wait is
+                              // over, and the other radio is still on the air.
+                              if (progress == null && voice == null && held.isNotEmpty) _WaitingView(send: held.first, keyer: _k),
                               // The wait between a repeat and the next send. Only
                               // while nothing is keying: the moment the message
                               // goes again its own bar takes the slot back.
-                              if (progress == null && voice == null)
+                              if (progress == null && voice == null && held.isEmpty)
                                 ValueListenableBuilder<KeyerRepeatWait?>(
-                                  valueListenable: widget.cat.keyerRepeat,
+                                  valueListenable: _k.keyerRepeat,
                                   builder: (context, wait, _) => wait == null
                                       ? const SizedBox.shrink()
-                                      : _CwRepeatView(key: ValueKey(wait), wait: wait, cat: widget.cat, services: widget.services),
+                                      : _CwRepeatView(key: ValueKey(wait), wait: wait, keyer: _k, services: widget.services),
                                 ),
                             ],
                           );
@@ -406,7 +422,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                     icon: Icon(typing ? MdiIcons.keyboard : MdiIcons.keyboardOutline, size: 18, semanticLabel: context.t.settings.radio.cwMessages.keyboard),
                     isSelected: typing,
                     visualDensity: VisualDensity.compact,
-                    onPressed: !widget.cat.canKeyCw ? null : (typing ? _typing!.finish : _startTyping),
+                    onPressed: typing ? _typing!.finish : (_k.canKeyCw ? _startTyping : null),
                   );
                 },
               ),
@@ -436,8 +452,8 @@ const cwLabelRenderDelay = Duration(milliseconds: 300);
 /// that Enter keys nothing (docs/design/logging-fields.md § Enter Sends
 /// Messages) — and [logs], the last of them when that Enter also logs the
 /// contact. [phone] leaves out their call, which no memory holds.
-({Set<int> keys, int? logs}) _esmNext(CatService cat, EsmFacts? facts, {bool phone = false}) {
-  final esm = cat.operatorEnterSends;
+({Set<int> keys, int? logs}) _esmNext(CatService cat, String radio, EsmFacts? facts, {bool phone = false}) {
+  final esm = (on: cat.enterSends.value.on, running: cat.isRunning(radio));
   final step = facts == null || !esm.on ? null : esmStepFor(facts, running: esm.running);
   if (step == null) return (keys: const {}, logs: null);
   final keys = [
@@ -454,11 +470,12 @@ const cwLabelRenderDelay = Duration(milliseconds: 300);
 /// `{{ qso.call }} 5NN` reads as the call in the field.
 class _MessageButtons extends StatefulWidget {
   final HaLoServices services;
+  final RadioKeyer keyer;
   final void Function(int n)? onSendMessage;
   final PanelRenderContext? templateContext;
   final ValueListenable<EsmFacts?>? esmFacts;
 
-  const _MessageButtons({required this.services, required this.onSendMessage, required this.templateContext, required this.esmFacts});
+  const _MessageButtons({required this.services, required this.keyer, required this.onSendMessage, required this.templateContext, required this.esmFacts});
 
   @override
   State<_MessageButtons> createState() => _MessageButtonsState();
@@ -619,9 +636,9 @@ class _MessageButtonsState extends State<_MessageButtons> {
         final theme = Theme.of(context);
         // Nothing to key CW with at all, connected or not — say so where the
         // buttons would be, rather than drawing buttons that can never work.
-        if (!services.cat.designatedKeyIsKeyer) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
-        final enabled = services.cat.canKeyCw && widget.onSendMessage != null;
-        final next = enabled ? _esmNext(services.cat, widget.esmFacts?.value) : (keys: const <int>{}, logs: null);
+        if (!widget.keyer.designatedKeyIsKeyer) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
+        final enabled = widget.keyer.canKeyCw && widget.onSendMessage != null;
+        final next = enabled ? _esmNext(services.cat, widget.keyer.radio, widget.esmFacts?.value) : (keys: const <int>{}, logs: null);
         // The pill's geometry and type, outlined in the chips' accent
         // rather than filled: these ACT, the pill only shows.
         var color = theme.colorScheme.tertiary;
@@ -710,9 +727,10 @@ class _NotSupported extends StatelessWidget {
 /// worth seeing before the rig is on.
 class _VoiceButtons extends StatelessWidget {
   final HaLoServices services;
+  final RadioKeyer keyer;
   final ValueListenable<EsmFacts?>? esmFacts;
 
-  const _VoiceButtons({required this.services, required this.esmFacts});
+  const _VoiceButtons({required this.services, required this.keyer, required this.esmFacts});
 
   @override
   Widget build(BuildContext context) {
@@ -723,10 +741,10 @@ class _VoiceButtons extends StatelessWidget {
       listenable: Listenable.merge([settings, cat, cat.enterSends, cat.runningB, ?esmFacts]),
       builder: (context, _) {
         // A radio with no voice memories to play — see the CW buttons.
-        if (!cat.radio1HasVoiceMemories) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
-        final enabled = cat.canPlayVoice;
-        final next = enabled ? _esmNext(cat, esmFacts?.value, phone: true) : (keys: const <int>{}, logs: null);
-        final count = enabled ? cat.voiceMemoryCount : SettingsService.voiceMessageCount;
+        if (!keyer.radio1HasVoiceMemories) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
+        final enabled = keyer.canPlayVoice;
+        final next = enabled ? _esmNext(cat, keyer.radio, esmFacts?.value, phone: true) : (keys: const <int>{}, logs: null);
+        final count = enabled ? keyer.voiceMemoryCount : SettingsService.voiceMessageCount;
         final theme = Theme.of(context);
         var color = theme.colorScheme.tertiary;
         // The label and its icons in the text colour other buttons use; the
@@ -743,7 +761,7 @@ class _VoiceButtons extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               for (var n = 1; n <= count; n++)
-                if (enabled || cat.voiceMessageLabel(n).trim().isNotEmpty)
+                if (enabled || keyer.voiceMessageLabel(n).trim().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(right: Space.sm),
                     child: Material(
@@ -758,7 +776,7 @@ class _VoiceButtons extends StatelessWidget {
                         borderRadius: borderRadius,
                         onTap: enabled
                             ? () {
-                                if (keyForOperatorOrSay(context, services, () => cat.canPlayVoice)) cat.playVoiceMemory(n);
+                                if (keyerOrSay(context, services, keyer, () => keyer.canPlayVoice)) keyer.playVoiceMemory(n);
                               }
                             : null,
                         mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
@@ -776,7 +794,7 @@ class _VoiceButtons extends StatelessWidget {
                               ],
                               const SizedBox(width: Space.xs),
                               Text(
-                                voiceMessageLabelFor(cat, n, m.key(n: n)),
+                                voiceMessageLabelFor(keyer, n, m.key(n: n)),
                                 style: TextStyle(fontFamily: 'RobotoCondensed', fontSize: 12, fontWeight: FontWeight.w500, color: textColor),
                               ),
                               // The submit button's icon — see the CW buttons.
@@ -807,10 +825,10 @@ class _VoiceButtons extends StatelessWidget {
 /// second play is the one that gets the real bar.
 class _VoiceActivityView extends StatefulWidget {
   final VoiceActivity activity;
-  final CatService cat;
+  final RadioKeyer keyer;
   final HaLoServices services;
 
-  const _VoiceActivityView({required this.activity, required this.cat, required this.services});
+  const _VoiceActivityView({required this.activity, required this.keyer, required this.services});
 
   @override
   State<_VoiceActivityView> createState() => _VoiceActivityViewState();
@@ -855,7 +873,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
     // A recording has no length to pace: it lasts as long as the operator
     // holds it, which is what the indeterminate bar says.
     if (widget.activity.recording) return;
-    final millis = widget.cat.voiceMessageDuration(widget.activity.memory);
+    final millis = widget.keyer.voiceMessageDuration(widget.activity.memory);
     if (millis <= 0) return;
     _controller = AnimationController(
       vsync: this,
@@ -866,11 +884,11 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
   @override
   Widget build(BuildContext context) {
     final activity = widget.activity;
-    final cat = widget.cat;
+    final keyer = widget.keyer;
     final m = context.t.settings.radio.voiceMessages;
     final theme = Theme.of(context);
     final style = theme.textTheme.bodyMedium ?? const TextStyle();
-    final label = voiceMessageLabelFor(cat, activity.memory, m.key(n: activity.memory));
+    final label = voiceMessageLabelFor(keyer, activity.memory, m.key(n: activity.memory));
     // Doubt is not shown here. It is a real state — the radio answered
     // "idle" before ever answering "going" — but a question mark on the
     // strip asks the operator something they cannot answer while the memory
@@ -893,7 +911,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
           ),
         ),
         // Armed, not merely configured: this says THIS memory goes again.
-        if (cat.keyerRepeating && !activity.recording) ...[
+        if (keyer.keyerRepeating && !activity.recording) ...[
           const SizedBox(width: Space.xs),
           Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55)),
         ],
@@ -905,7 +923,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
       child: ExcludeSemantics(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: cat.stopVoice,
+          onTap: keyer.stopVoice,
           // The bar is as wide as the text above it and no wider, the same
           // way the CW message's is — the stack takes its width from the row.
           child: Stack(
@@ -951,9 +969,10 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
 /// does not shift each time the operator keys.
 class _VoicePill extends StatelessWidget {
   final CatService cat;
+  final RadioKeyer keyer;
   final HaLoServices services;
 
-  const _VoicePill({required this.cat, required this.services});
+  const _VoicePill({required this.cat, required this.keyer, required this.services});
 
   @override
   Widget build(BuildContext context) {
@@ -963,9 +982,9 @@ class _VoicePill extends StatelessWidget {
     return ListenableBuilder(
       listenable: cat,
       builder: (context, _) {
-        final enabled = cat.canPlayVoice;
-        // Under SO2R, the radio the memories are keyed on.
-        final transmitting = cat.radio2 != null ? cat.isTransmitting(cat.keyingRadio) : cat.radio1IsTransmitting || cat.pttKeys.held.value;
+        final enabled = keyer.canPlayVoice;
+        // Under SO2R, this pill's own radio.
+        final transmitting = cat.radio2 != null ? keyer.transmitting : cat.radio1IsTransmitting || cat.pttKeys.held.value;
         var foreground = transmitting ? theme.colorScheme.error : theme.colorScheme.onTertiaryContainer;
         var background = poloColors.tertiaryLight;
         if (!enabled && !transmitting) {
@@ -978,7 +997,7 @@ class _VoicePill extends StatelessWidget {
           borderRadius: borderRadius,
           child: InkWell(
             borderRadius: borderRadius,
-            onTap: () => showVoiceMessagesDialog(context, services),
+            onTap: () => showVoiceMessagesDialog(context, services, radio: keyer.radio),
             mouseCursor: SystemMouseCursors.click,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
@@ -1031,9 +1050,10 @@ class _VoicePill extends StatelessWidget {
 /// can key.
 class _KeyerSpeedPill extends StatelessWidget {
   final CatService cat;
+  final RadioKeyer keyer;
   final HaLoServices services;
 
-  const _KeyerSpeedPill({required this.cat, required this.services});
+  const _KeyerSpeedPill({required this.cat, required this.keyer, required this.services});
 
   @override
   Widget build(BuildContext context) {
@@ -1043,8 +1063,8 @@ class _KeyerSpeedPill extends StatelessWidget {
     return ListenableBuilder(
       listenable: cat,
       builder: (context, _) {
-        final speed = cat.keyerSpeed;
-        final enabled = cat.canKeyCw;
+        final speed = keyer.keyerSpeed;
+        final enabled = keyer.canKeyCw;
         final label = speed == null ? context.t.settings.radio.keyerSpeed.pillUnknown : context.t.settings.radio.keyerSpeed.pill(wpm: speed);
         var foreground = theme.colorScheme.onTertiaryContainer;
         var background = poloColors.tertiaryLight;
@@ -1059,7 +1079,7 @@ class _KeyerSpeedPill extends StatelessWidget {
             borderRadius: borderRadius,
             // Whether or not anything can key: the messages are the
             // operator's to write before the radio is on.
-            onTap: () => showCwMessagesDialog(context, services),
+            onTap: () => showCwMessagesDialog(context, services, radio: keyer.radio),
             mouseCursor: SystemMouseCursors.click,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
@@ -1093,16 +1113,21 @@ class _KeyerSpeedPill extends StatelessWidget {
 class _EnterSendsPill extends StatelessWidget {
   final CatService cat;
 
-  const _EnterSendsPill({required this.cat});
+  /// Whose Run / S&P it steps, `A` or `B`.
+  final String radio;
+
+  const _EnterSendsPill({required this.cat, required this.radio});
 
   void _step() {
     final esm = cat.enterSends.value;
     if (!esm.on) {
-      cat.setEnterSends(on: true, running: true);
-    } else if (cat.isRunning(cat.operatorRadio)) {
-      cat.setEnterSends(running: false);
+      cat.setEnterSends(on: true);
+      cat.setRunning(radio, true);
+    } else if (cat.isRunning(radio)) {
+      cat.setRunning(radio, false);
     } else {
-      cat.setEnterSends(on: false, running: true);
+      cat.setEnterSends(on: false);
+      cat.setRunning(radio, true);
     }
   }
 
@@ -1118,7 +1143,7 @@ class _EnterSendsPill extends StatelessWidget {
         final esm = cat.enterSends.value;
         final label = !esm.on
             ? strings.pillOff
-            : cat.isRunning(cat.operatorRadio)
+            : cat.isRunning(radio)
             ? strings.pillRun
             : strings.pillSp;
         var foreground = theme.colorScheme.onTertiaryContainer;
@@ -1154,9 +1179,9 @@ class _EnterSendsPill extends StatelessWidget {
 
 class _CwProgressView extends StatefulWidget {
   final CwSendProgress progress;
-  final CatService cat;
+  final RadioKeyer keyer;
 
-  const _CwProgressView({super.key, required this.progress, required this.cat});
+  const _CwProgressView({super.key, required this.progress, required this.keyer});
 
   @override
   State<_CwProgressView> createState() => _CwProgressViewState();
@@ -1256,14 +1281,14 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Flexible(
-                  child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.cat.stopCw, child: current),
+                  child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.keyer.stopCw, child: current),
                 ),
                 // Outside `current`, like the queue behind it and for the
                 // same reason: the bar is as wide as the message it paces,
                 // and an icon inside that stack would stretch it past the
                 // text. Armed, not merely configured — this says THIS
                 // message goes again, which is only ever message 1.
-                if (widget.cat.keyerRepeating)
+                if (widget.keyer.keyerRepeating)
                   Padding(
                     padding: const EdgeInsets.only(left: Space.xs, bottom: Space.xxs * 2),
                     child: Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55)),
@@ -1280,7 +1305,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                             for (final (index, text) in progress.pending.indexed)
                               GestureDetector(
                                 behavior: HitTestBehavior.opaque,
-                                onTap: () => widget.cat.dropQueuedCw(progress.pendingIds[index]),
+                                onTap: () => widget.keyer.dropQueuedCw(progress.pendingIds[index]),
                                 child: Text(' · $text', style: style.copyWith(color: color.withValues(alpha: 0.4)), maxLines: 1, softWrap: false),
                               ),
                           ],
@@ -1305,10 +1330,10 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
 /// ends the repeats, the same way tapping a message keying stops it.
 class _CwRepeatView extends StatefulWidget {
   final KeyerRepeatWait wait;
-  final CatService cat;
+  final RadioKeyer keyer;
   final HaLoServices services;
 
-  const _CwRepeatView({super.key, required this.wait, required this.cat, required this.services});
+  const _CwRepeatView({super.key, required this.wait, required this.keyer, required this.services});
 
   @override
   State<_CwRepeatView> createState() => _CwRepeatViewState();
@@ -1322,7 +1347,7 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
     final memory = widget.wait.memory;
     if (memory == null) return widget.wait.text;
     final m = context.t.settings.radio.voiceMessages;
-    return voiceMessageLabelFor(widget.cat, memory, m.key(n: memory));
+    return voiceMessageLabelFor(widget.keyer, memory, m.key(n: memory));
   }
 
   late final AnimationController _controller;
@@ -1355,7 +1380,7 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
               Flexible(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: widget.cat.cancelKeyerRepeat,
+                  onTap: widget.keyer.cancelKeyerRepeat,
                   child: Stack(
                     children: [
                       Padding(
@@ -1404,20 +1429,68 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
   }
 }
 
-/// [CatService.keyForOperator], saying so when it refuses for SO2R's Radio
-/// B: a key from set B never falls back to radio A, and its refusal is not
-/// the silence of a station with no keyer at all — so a key handler claims
-/// the key exactly when [CatService.operatorRadio] is `B`.
-bool keyForOperatorOrSay(BuildContext context, HaLoServices services, bool Function() can) {
-  final cat = services.cat;
-  if (cat.keyForOperator(can)) return true;
-  if (cat.operatorRadio == 'B') {
+/// Whether [keyer] can do what [can] asks — saying so when SO2R's Radio B's
+/// cannot: a key from set B never falls back to radio A, and its refusal is
+/// not the silence of a station with no keyer at all, so a key handler
+/// claims the key exactly when [RadioKeyer.radio] is `B`.
+bool keyerOrSay(BuildContext context, HaLoServices services, RadioKeyer keyer, bool Function() can) {
+  if (can()) return true;
+  if (keyer.radio == 'B') {
     services.statusBar.showNotice(
       key: 'so2r-cannot-key',
       icon: 'alert-circle-outline',
-      text: cat.radio2 == null ? context.t.commands.so2rNoRadioB : context.t.commands.so2rRadioCannotKey(radio: 'B'),
+      text: services.cat.radio2 == null ? context.t.commands.so2rNoRadioB : context.t.commands.so2rRadioCannotKey(radio: 'B'),
       persist: false,
     );
   }
   return false;
+}
+
+/// A message or memory waiting for the other SO2R radio to fall quiet
+/// ([RadioKeyer.waiting]), in the message's place: under an indeterminate
+/// bar, since how long the other radio has left to send is not something
+/// this one can know — unlike a repeat's own wait, which counts down.
+class _WaitingView extends StatelessWidget {
+  final WaitingSend send;
+  final RadioKeyer keyer;
+
+  const _WaitingView({required this.send, required this.keyer});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium ?? const TextStyle();
+    final color = style.color ?? theme.colorScheme.onSurface;
+    final memory = send.memory;
+    final text = memory == null ? send.text ?? '' : voiceMessageLabelFor(keyer, memory, context.t.settings.radio.voiceMessages.key(n: memory));
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: Space.xxs * 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  text,
+                  style: style.copyWith(fontWeight: FontWeight.bold, color: color.withValues(alpha: 0.7)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
+              ),
+              if (send.repeat) ...[const SizedBox(width: Space.xs), Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55))],
+            ],
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: Space.xxs,
+          child: LinearProgressIndicator(minHeight: Space.xxs, backgroundColor: color.withValues(alpha: 0.25), color: color),
+        ),
+      ],
+    );
+  }
 }

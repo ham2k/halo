@@ -47,15 +47,19 @@ const cwMessageNumberIcons = [
   MdiIcons.numeric8Circle,
 ];
 
-Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
+/// [radio] is the radio whose speed and Run / S&P the dialog shows, `A` or
+/// `B` — a keyer area's own; null for the operator's. The messages are the
+/// same for both radios.
+Future<void> showCwMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showHaloDialog<void>(
   context: context,
-  builder: (context) => _CwMessagesDialog(services: services),
+  builder: (context) => _CwMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
 );
 
 class _CwMessagesDialog extends StatefulWidget {
   final HaLoServices services;
+  final String radio;
 
-  const _CwMessagesDialog({required this.services});
+  const _CwMessagesDialog({required this.services, required this.radio});
 
   @override
   State<_CwMessagesDialog> createState() => _CwMessagesDialogState();
@@ -171,7 +175,8 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
             // because every control below does nothing until it changes.
             ListenableBuilder(
               listenable: widget.services.cat,
-              builder: (context, _) => widget.services.cat.designatedKeyIsKeyer ? const SizedBox.shrink() : KeyerUnsupportedNotice(text: m.notSupported),
+              builder: (context, _) =>
+                  widget.services.cat.keyer(widget.radio).designatedKeyIsKeyer ? const SizedBox.shrink() : KeyerUnsupportedNotice(text: m.notSupported),
             ),
             // How the messages go out first — speed, repeat, ESM — then which
             // set of them is being edited. Message 1 only repeats
@@ -180,7 +185,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
               children: [
                 // The speed messages go out at, first: it is what an
                 // operator adjusts most between contacts.
-                _KeyerSpeedField(cat: widget.services.cat),
+                _KeyerSpeedField(cat: widget.services.cat, keyer: widget.services.cat.keyer(widget.radio)),
                 const SizedBox(width: Space.md),
                 Expanded(
                   child: RepeatDelayField(
@@ -189,8 +194,13 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                     offLabel: m.repeatOff,
                     afterLabel: (n) => m.repeatAfter(n: n),
                     onChanged: (value) {
-                      // Off ends a chain already counting down.
-                      if (value == '0') widget.services.cat.cancelKeyerRepeat();
+                      // Off ends a chain already counting down — on either
+                      // radio, since the delay is theirs both.
+                      if (value == '0') {
+                        for (final radio in ['A', 'B']) {
+                          widget.services.cat.keyer(radio).cancelKeyerRepeat();
+                        }
+                      }
                       unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
                     },
                   ),
@@ -199,8 +209,11 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                   const SizedBox(width: Space.md),
                   Expanded(
                     child: EnterSendsField(
-                      value: widget.services.cat.operatorEnterSends,
-                      onChanged: (value) => widget.services.cat.setEnterSends(on: value.on, running: value.running),
+                      value: (on: widget.services.cat.enterSends.value.on, running: widget.services.cat.isRunning(widget.radio)),
+                      onChanged: (value) {
+                        widget.services.cat.setEnterSends(on: value.on);
+                        widget.services.cat.setRunning(widget.radio, value.running);
+                      },
                     ),
                   ),
                 ],
@@ -573,16 +586,19 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
 class _KeyerSpeedField extends StatelessWidget {
   final CatService cat;
 
-  const _KeyerSpeedField({required this.cat});
+  /// The radio whose keyer's speed this is.
+  final RadioKeyer keyer;
+
+  const _KeyerSpeedField({required this.cat, required this.keyer});
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: cat,
     builder: (context, _) {
       final ks = context.t.settings.radio.keyerSpeed;
-      final range = cat.keyerSpeedRange;
-      final speed = cat.keyerSpeed;
-      final canKey = cat.canKeyCw;
+      final range = keyer.keyerSpeedRange;
+      final speed = keyer.keyerSpeed;
+      final canKey = keyer.canKeyCw;
       final inRange = speed != null && range != null && speed >= range.min && speed <= range.max;
       final theme = Theme.of(context);
       final valueStyle = theme.textTheme.titleMedium ?? const TextStyle();
@@ -605,7 +621,7 @@ class _KeyerSpeedField extends StatelessWidget {
             if (range != null)
               for (var wpm = range.min; wpm <= range.max; wpm++) DropdownMenuItem<int>(value: wpm, child: Text('$wpm ${ks.unit}')),
           ],
-          onChanged: canKey ? (wpm) => wpm == null ? null : cat.setKeyerSpeed(wpm) : null,
+          onChanged: canKey ? (wpm) => wpm == null ? null : keyer.setKeyerSpeed(wpm) : null,
         ),
       );
     },

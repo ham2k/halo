@@ -12,6 +12,7 @@
 // rule under test is the ENGINE's — when a wait starts, when the next send
 // goes, and what stops it.
 
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
@@ -42,6 +43,26 @@ void main() {
     await cat.connect(node.uuid);
     addTearDown(() => cat.disconnect(node.uuid));
   }
+
+  // The trap: SO2R's resume sending message 1 while the one the wait just
+  // sent is still rendering — the CQ keyed twice, back to back.
+  test('sending now does nothing while message 1 is already on its way', () {
+    fakeAsync((async) {
+      final chain = KeyerRepeat();
+      var sends = 0;
+      chain.arm(delay: const Duration(seconds: 3), text: 'CQ', send: () => sends++);
+      chain.startWait();
+      async.elapse(const Duration(seconds: 3));
+      expect(sends, 1);
+      chain.sendNow();
+      expect(sends, 1);
+
+      chain.arm(delay: const Duration(seconds: 3), text: 'CQ', send: () => sends++);
+      chain.sendNow();
+      expect(sends, 2, reason: 'once it arms again, it is a chain at rest');
+      chain.dispose();
+    });
+  });
 
   group('CW', () {
     test(

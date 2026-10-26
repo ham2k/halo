@@ -15,6 +15,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/main_vfo.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/voice_messages_dialog.dart';
 
@@ -159,6 +160,42 @@ void main() {
     await tester.pump();
     // Shown to a tenth, because the measurement has milliseconds in it.
     expect(find.textContaining(RegExp(r'^\d+\.\d s$')), findsWidgets);
+    await tester.pump(const Duration(seconds: 31));
+  });
+
+  // The trap: one radio's memories for both sets, so while radio A plays a
+  // CQ the operator in set B sees A's memories playing, names A's, and a
+  // Play here goes out on A.
+  testWidgets("under SO2R it is the operator's radio's: its labels, its activity, and a Play on it", (tester) async {
+    await services.settings.setExperimentEnabled('so2r', true);
+    final cat = services.cat;
+    Future<String> rig(String name) async {
+      final node = await cat.addNode(typeKey: 'placeholder-radio', name: name, config: placeholderRadioModel.variants.single.defaultConfig);
+      await tester.runAsync(() => cat.connect(node.uuid));
+      addTearDown(() => cat.disconnect(node.uuid));
+      return node.uuid;
+    }
+
+    final left = await rig('Left Rig'), right = await rig('Right Rig');
+    await cat.setRadio1(LocalRadio(left));
+    await cat.setRadio2(right);
+    await services.settings.setVoiceMessageLabel(2, 'CQ LEFT');
+    await services.settings.setVoiceMessageLabel(2, 'CQ RIGHT', radio: 'B');
+    cat.keyer('A').playVoiceMemory(2);
+    await tester.pump();
+    expect(cat.keyer('A').voiceActivity.value?.memory, 2, reason: 'sanity: radio A is playing memory 2');
+    cat.noteOperatorRadio('B');
+
+    await open(tester);
+    expect(find.textContaining('CQ RIGHT'), findsOneWidget);
+    expect(find.textContaining('CQ LEFT'), findsNothing);
+    expect(find.text('Playing…'), findsNothing, reason: "Radio B's memory 2 is not the one on the air");
+
+    await openMemory(tester, 3);
+    await tester.tap(find.widgetWithText(FilledButton, 'Play'));
+    await tester.pump();
+    expect(cat.keyer('B').voiceActivity.value?.memory, 3, reason: 'a Play from set B plays on Radio B');
+    expect(cat.keyer('A').voiceActivity.value, isNull, reason: "and takes the air from radio A's CQ");
     await tester.pump(const Duration(seconds: 31));
   });
 

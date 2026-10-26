@@ -33,35 +33,40 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// has let it through. Read by [_sendCwMessage] and [_keyingPhone] only.
   Map<String, dynamic>? _latestDraftQso;
 
-  /// The last Enter Sends Messages step's CW send — see [_sendEsmMessages].
-  Future<void> _esmSending = Future.value();
+  /// Each radio's last Enter Sends Messages CW send — see [_sendEsmMessages].
+  /// One per radio: a step on one radio never waits on the other's.
+  final _esmSending = <String, Future<void>>{};
 
   /// Whether the function keys play voice memories rather than key CW:
   /// the draft's mode is Phone. From the LATEST draft, and handed to the
   /// keyer area as a value, so the keys and the strip answer from one
   /// snapshot — the strip's rebuild still waits for the debounce, but a
   /// build never disagrees with the keys about which keyer it is. Before the
-  /// view has heard a draft, the radio's mode, which is what a fresh draft
-  /// takes: turning PTT on mid-operation publishes nothing new to hear.
-  bool get _keyingPhone => superModeForMode((_latestDraftQso?['mode'] as String?) ?? widget.services.radio.vfoA.mode) == 'Phone';
+  /// view has heard a draft, the operator's radio's mode, which is what a
+  /// fresh draft takes: turning PTT on mid-operation publishes nothing new to
+  /// hear.
+  bool get _keyingPhone {
+    final vfo = widget.services.radio.vfo(widget.services.cat.operatorRadio == 'B' ? 'vfoB' : 'vfoA');
+    return superModeForMode((_latestDraftQso?['mode'] as String?) ?? vfo.mode) == 'Phone';
+  }
 
   /// Which radio the PTT key keys from this view (cat_ptt.dart): the
   /// operator's — radio1, or under SO2R the radio of the set they are in —
-  /// while this view is in front and the draft is in a Phone mode. Asked as
-  /// the key goes down, so keying moves to that radio first.
+  /// while this view is in front and the draft is in a Phone mode.
   String? _pttTarget() {
     final services = widget.services;
     if (!mounted || testerOverlayCovering.value || !(ModalRoute.of(context)?.isCurrent ?? false)) return null;
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ || !services.settings.pttKey) return null;
     if (!_keyingPhone) return null;
-    if (!keyForOperatorOrSay(context, services, () => services.cat.canPtt)) return null;
-    return services.cat.localKeyingRadio;
+    final cat = services.cat;
+    if (!keyerOrSay(context, services, cat.operatorKeyer, () => cat.operatorKeyer.canPtt)) return null;
+    return cat.operatorRadio == 'B' ? cat.radio2 : cat.localRadio1;
   }
 
   /// The message keys (F1-F8 and ⌥1-⌥8 unless rebound) key the matching CW
-  /// message through the key in use — or, while
+  /// message through the operator's radio's key — or, while
   /// the draft contact is in a Phone mode, play the matching voice memory
-  /// of radio1; Escape stops every message, chain and repeat. Only while
+  /// of that radio; Escape stops every message, chain and repeat. Only while
   /// this view is the front-most route — a dialog over it (the message
   /// editors included) owns the keyboard — and only with a radio that can
   /// key (or play), so on a station without one the keys stay free for
@@ -76,14 +81,16 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // hears every way a call is entered and not only a hardware key.
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return false;
     final cat = services.cat;
+    // Under SO2R, the radio of the set the operator is in.
+    final keyer = cat.operatorKeyer;
     final bindings = keyBindings.value;
 
     // Keyboard mode on or off. Not ⌘K by default, which is the command
     // dialog's (halo_app.dart).
     if (bindings.claim('keyer.keyboardMode', event) != null) {
       if (_keyingPhone) return false;
-      if (!keyForOperatorOrSay(context, services, () => cat.canKeyCw)) return cat.operatorRadio == 'B';
-      cat.toggleKeyboardMode();
+      if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return keyer.radio == 'B';
+      keyer.toggleKeyboardMode();
       return true;
     }
 
@@ -116,42 +123,38 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     if (n == null) return false;
     // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
     // area is built with: the message is for the contact being logged,
-    // whatever the rig sits in. Under SO2R, onto the radio of the set the
-    // operator is in — stopping what the other one is sending — once that
-    // radio can key it.
-    //
-    // Everything that makes the key do nothing is asked first: moving to
-    // the other radio stops what it is sending, which a key that sends
-    // nothing must not do.
+    // whatever the rig sits in. Under SO2R, on the radio of the set the
+    // operator is in, which takes its turn on the air with the other one
+    // (docs/design/cat.md § Radio B, for SO2R).
     final phone = _keyingPhone;
     if (phone) {
       // A recording is not interrupted by a play: the dialog disables its
       // buttons while one runs, and a key must not do what a button cannot
       // — on a K4 the recording would be lost unsaved.
-      if (cat.voiceActivity.value?.recording ?? false) return true;
-      // A key past the operator's radio's last memory keys nothing, and
-      // stays free.
-      final memory = n;
-      if (cat.canKeyOn(cat.operatorRadio, () => cat.canPlayVoice && memory > cat.voiceMemoryCount)) return false;
-      if (!keyForOperatorOrSay(context, services, () => cat.canPlayVoice)) return cat.operatorRadio == 'B';
-      _endChainsForKey();
-      cat.playVoiceMemory(n);
+      if (keyer.voiceActivity.value?.recording ?? false) return true;
+      // A key past the radio's last memory keys nothing, and stays free.
+      if (keyer.canPlayVoice && n > keyer.voiceMemoryCount) return false;
+      if (!keyerOrSay(context, services, keyer, () => keyer.canPlayVoice)) return keyer.radio == 'B';
+      _endChainsForKey(keyer);
+      keyer.playVoiceMemory(n);
       return true;
     }
     final template = services.settings.cwMessage(n);
     if (template.trim().isEmpty) return false;
-    if (!keyForOperatorOrSay(context, services, () => cat.canKeyCw)) return cat.operatorRadio == 'B';
-    _endChainsForKey();
-    unawaited(_sendCwMessage(n, template));
+    if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return keyer.radio == 'B';
+    _endChainsForKey(keyer);
+    unawaited(_sendCwMessages([(n: n, template: template)], radio: keyer.radio, pressed: services.cat.keyMark));
     return true;
   }
 
-  /// A message key ends whatever repeat or sequence is running: another
-  /// message is the operator moving on, and F1 starts a FRESH chain with its
-  /// own five minutes rather than extending the one it lands in.
-  void _endChainsForKey() {
-    widget.services.cat.cancelKeyerRepeat();
-    widget.services.cat.cancelVoiceSequence();
+  /// A message key ends whatever repeat or sequence is running on its radio:
+  /// another message is the operator moving on, and F1 starts a FRESH chain
+  /// with its own five minutes rather than extending the one it lands in.
+  /// The other SO2R radio's repeat is left to the turns
+  /// ([KeyingStation.clearToSend]).
+  void _endChainsForKey(RadioKeyer keyer) {
+    keyer.cancelKeyerRepeat();
+    keyer.cancelVoiceSequence();
   }
 
   /// Keys what an Enter picked (logging-fields.md § Enter Sends Messages),
@@ -163,87 +166,85 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// [logged] too, rendering against the entry the log left behind (see
   /// [EnterSends.send]). Voice keeps one sequence at the keypress: a memory
   /// renders nothing, and a second sequence would cut the first off.
-  void _sendEsmMessages(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) {
+  void _sendEsmMessages(String radio, List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) {
     final services = widget.services;
-    final cat = services.cat;
+    final keyer = services.cat.keyer(radio);
     final keys = [for (final message in messages) CwMessageSet.esmKeys[message]!];
     // The operator says the other station's call: no memory can hold it.
     List<int> memories() => [
       for (final n in keys)
-        if (n != CwMessageSet.esmKeys[EsmMessage.hisCall] && n <= cat.voiceMemoryCount) n,
+        if (n != CwMessageSet.esmKeys[EsmMessage.hisCall] && n <= keyer.voiceMemoryCount) n,
     ];
     final templates = [
       for (final n in keys)
         if (services.settings.cwMessage(n).trim().isNotEmpty) (n: n, template: services.settings.cwMessage(n)),
     ];
     // What a key does before it sends, for an Enter that never passed
-    // through [_onCwKeyEvent] — an on-screen keyboard's: onto the operator's
-    // radio, once there is something to send on it, since the move stops
-    // what the other radio is sending.
+    // through [_onCwKeyEvent] — an on-screen keyboard's: nothing, unless
+    // there is something to send on the radio.
     if (superModeForMode(qso['mode'] as String?) == 'Phone') {
-      if (cat.voiceActivity.value?.recording ?? false) return;
-      if (!keyForOperatorOrSay(context, services, () => cat.canPlayVoice && memories().isNotEmpty)) return;
-      cat.cancelKeyerRepeat();
-      cat.cancelVoiceSequence();
-      cat.playVoiceSequence(memories());
+      if (keyer.voiceActivity.value?.recording ?? false) return;
+      if (!keyerOrSay(context, services, keyer, () => keyer.canPlayVoice && memories().isNotEmpty)) return;
+      keyer.cancelKeyerRepeat();
+      keyer.cancelVoiceSequence();
+      keyer.playVoiceSequence(memories());
       return;
     }
     if (templates.isEmpty) return;
-    if (!keyForOperatorOrSay(context, services, () => cat.canKeyCw)) return;
-    cat.cancelKeyerRepeat();
-    cat.cancelVoiceSequence();
-    // Held from the Enter: the thanks waits for the log, and the operator
-    // moving on to the other set meanwhile must not take it with them.
-    final hold = services.cat.holdKeying();
+    if (!keyerOrSay(context, services, keyer, () => keyer.canKeyCw)) return;
+    keyer.cancelKeyerRepeat();
+    keyer.cancelVoiceSequence();
+    final pressed = services.cat.keyMark;
     // Each step renders its messages one by one, so two Enters close
     // together would otherwise race: a TU rendered while the answer before
     // it is still rendering keys first. A step that logs and thanks is the
     // thanks alone (esmStep); S&P's exchange logs too, but keys unwaited.
-    _esmSending = _esmSending.then((_) async {
+    _esmSending[radio] = (_esmSending[radio] ?? Future.value()).then((_) async {
       try {
-        if (logged == null || !messages.contains(EsmMessage.thanks)) return await _sendCwMessages(templates, qso: qso, once: true, hold: hold);
+        if (logged == null || !messages.contains(EsmMessage.thanks)) {
+          return await _sendCwMessages(templates, radio: radio, qso: qso, once: true, pressed: pressed);
+        }
         // Not [once]: every thanks is the same `TU`, and the one still
         // waiting behind the last exchange belongs to the last contact.
         final after = await logged;
-        if (after != null && mounted) await _sendCwMessages(templates, qso: after, hold: hold);
+        if (after != null && mounted) await _sendCwMessages(templates, radio: radio, qso: after, pressed: pressed);
       } catch (e, st) {
         // Reported rather than left on the chain, where it would stop every
         // later step from keying at all.
         ErrorReportingService.report(e, st, context: 'cw:esm-send');
-      } finally {
-        services.cat.releaseKeying(hold);
       }
     });
   }
 
-  /// The keyer area's message buttons: the same send the function keys make.
-  /// [repeat] is a repeat chain's own send — see [_sendCwMessages].
-  void _sendCwMessageNumber(int n, {bool repeat = false}) {
+  /// The keyer area's message buttons: the same send the function keys make,
+  /// on [radio]. [repeat] is a repeat chain's own send — see
+  /// [_sendCwMessages].
+  void _sendCwMessageNumber(int n, {required String radio, bool repeat = false}) {
     final template = widget.services.settings.cwMessage(n);
     if (template.trim().isEmpty) return;
-    unawaited(_sendCwMessages([(n: n, template: template)], repeat: repeat));
+    unawaited(_sendCwMessages([(n: n, template: template)], radio: radio, repeat: repeat, pressed: widget.services.cat.keyMark));
   }
 
   /// A message other than 1 ends a repeat: the operator has moved on to the
   /// exchange, and message 1 is a CQ nobody wants keyed over it. Called
-  /// where the keyer area's buttons arrive, since a tap reaches no key
-  /// handler.
-  void _sendCwMessageFromArea(int n) {
+  /// where a keyer area's buttons arrive, since a tap reaches no key
+  /// handler — on that area's radio.
+  void _sendCwMessageFromArea(int n, String radio) {
     if (widget.services.settings.cwMessage(n).trim().isEmpty) return;
-    if (!keyForOperatorOrSay(context, widget.services, () => widget.services.cat.canKeyCw)) return;
-    if (n != 1) widget.services.cat.cancelKeyerRepeat();
-    _sendCwMessageNumber(n);
+    final keyer = widget.services.cat.keyer(radio);
+    if (!keyerOrSay(context, widget.services, keyer, () => keyer.canKeyCw)) return;
+    if (n != 1) keyer.cancelKeyerRepeat();
+    _sendCwMessageNumber(n, radio: radio);
   }
 
-  /// Renders message [n]'s template against the operation and the draft
+  /// Renders each message's template against the operation and the draft
   /// contact (the same context a panel gets — docs/extensions/templates.md),
-  /// then hands the text to the radio. A template that does not parse is
-  /// the operator's own typo, shown where they will see it rather than sent
-  /// as-is with the braces keyed out in Morse.
-  Future<void> _sendCwMessage(int n, String template) => _sendCwMessages([(n: n, template: template)]);
-
-  /// [_sendCwMessage] for several messages keyed as ONE — Enter Sends
-  /// Messages' "his call, then the exchange" — so they go out back to back
+  /// then hands the text to [radio]'s keyer. A template that does not parse
+  /// is the operator's own typo, shown where they will see it rather than
+  /// sent as-is with the braces keyed out in Morse.
+  ///
+  /// Several messages are keyed as ONE — Enter Sends Messages' "his call,
+  /// then the exchange" — so they go out back to back
   /// as a single entry in the queue and the keyer area, not as a message and
   /// a second one waiting behind it. [qso] is the draft to render against
   /// when the caller holds a newer one than [_latestDraftQso] (ESM's, taken
@@ -258,33 +259,19 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// ended while it rendered: an Escape, a tap or a QSY landing in that gap
   /// would otherwise key the CQ anyway and arm a fresh chain behind it.
   ///
-  /// [hold] is the caller's claim on the radio keyed from, when it took one
-  /// before this was reached; otherwise this takes its own, from before the
-  /// render to the send — see [KeyingHold].
+  /// [pressed] is [CatService.keyMark] at the keypress: an operator's
+  /// message the other SO2R radio was keyed over since keys nothing
+  /// ([CatService.keyedOverSince]).
   Future<void> _sendCwMessages(
     List<({int n, String template})> messages, {
+    required String radio,
+    required int pressed,
     Map<String, dynamic>? qso,
     bool once = false,
     bool repeat = false,
-    KeyingHold? hold,
   }) async {
     final services = widget.services;
-    final own = hold ?? services.cat.holdKeying();
-    try {
-      await _renderAndSendCw(messages, qso: qso, once: once, repeat: repeat, hold: own);
-    } finally {
-      if (hold == null) services.cat.releaseKeying(own);
-    }
-  }
-
-  Future<void> _renderAndSendCw(
-    List<({int n, String template})> messages, {
-    required Map<String, dynamic>? qso,
-    required bool once,
-    required bool repeat,
-    required KeyingHold hold,
-  }) async {
-    final services = widget.services;
+    final keyer = services.cat.keyer(radio);
     final ctx = panelRenderContext;
     final parts = <String>[];
     for (final (:n, :template) in messages) {
@@ -310,7 +297,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
       // Leaving the operation while the render was in flight is leaving the
       // message behind too — nothing goes on the air from a view that is gone.
       if (!mounted) {
-        services.cat.cancelKeyerRepeat();
+        keyer.cancelKeyerRepeat();
         return;
       }
       if (failure != null) {
@@ -320,7 +307,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           text: context.t.commands.cwMessageError(n: n, error: failure),
           persist: false,
         );
-        services.cat.cancelKeyerRepeat();
+        keyer.cancelKeyerRepeat();
         return;
       }
       if (text == null) {
@@ -332,15 +319,13 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           text: context.t.commands.cwMessageNotRendered(n: n),
           persist: false,
         );
-        services.cat.cancelKeyerRepeat();
+        keyer.cancelKeyerRepeat();
         return;
       }
       if (text.trim().isNotEmpty) parts.add(text.trim());
     }
-    if (repeat && !services.cat.keyerRepeating) return;
-    // The operator keyed something from the other set meanwhile, which
-    // stopped what this radio had going out — this message with it.
-    if (!hold.live) return;
+    if (repeat && !keyer.keyerRepeating) return;
+    if (!repeat && services.cat.keyedOverSince(radio, pressed)) return;
     final text = parts.join(' ');
     // A chain waits for the message to STOP keying before its next send, so
     // a send that keys nothing — a failed render, a dead runtime, a message
@@ -348,18 +333,18 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // armed with nothing to end it, and the keyer area showing neither
     // buttons nor a countdown.
     if (text.trim().isEmpty) {
-      services.cat.cancelKeyerRepeat();
+      keyer.cancelKeyerRepeat();
       return;
     }
-    final progress = once && services.cat.cwSending ? services.cat.cwProgress.value : null;
+    final progress = once && keyer.cwSending ? keyer.cwProgress.value : null;
     final sanitized = sanitizeCwText(text);
     final queued = progress != null && (progress.text == sanitized || progress.pending.contains(sanitized));
     if (!queued) {
-      final sent = services.cat.sendCw(text, hasMessageOne: messages.any((m) => m.n == 1));
+      final sent = keyer.sendCw(text, hasMessageOne: messages.any((m) => m.n == 1), repeat: repeat);
       // Radio B gone between the key and the send: the key keyed nothing,
-      // which must not look like a key that worked — as [keyForOperatorOrSay]
-      // says at the key.
-      if (!sent && hold.radio == 'B' && mounted) {
+      // which must not look like a key that worked — as [keyerOrSay] says at
+      // the key.
+      if (!sent && radio == 'B' && mounted) {
         services.statusBar.showNotice(
           key: 'so2r-cannot-key',
           icon: 'alert-circle-outline',
@@ -367,11 +352,12 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           persist: false,
         );
       }
-      // Nothing keying after the send is a message the queue dropped (empty
-      // once sanitized), a radio that went away, or a peer yet to report —
-      // either way there is no end coming to start the next wait on.
-      if (!services.cat.cwSending) {
-        services.cat.cancelKeyerRepeat();
+      // Nothing keying or waiting its turn after the send is a message the
+      // queue dropped (empty once sanitized), a radio that went away, or a
+      // peer yet to report — either way there is no end coming to start the
+      // next wait on.
+      if (!keyer.cwSending && !keyer.waiting.value.any((send) => send.memory == null)) {
+        keyer.cancelKeyerRepeat();
         return;
       }
     }
@@ -381,7 +367,11 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     // it there cancelled the chain it belonged to.
     final delay = services.settings.cwRepeatDelay;
     if (messages.length == 1 && messages.single.n == 1 && delay > Duration.zero) {
-      services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1, repeat: true));
+      keyer.armKeyerRepeat(
+        delay: delay,
+        text: text,
+        send: () => _sendCwMessageNumber(1, radio: radio, repeat: true),
+      );
     }
     return;
   }

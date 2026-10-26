@@ -99,24 +99,29 @@ extension _Readings on CatService {
     // `radio` is what lets _onVfoChanged recognise the notification it's
     // about to receive as its own, instead of re-tuning the radio to the
     // value the radio just gave it.
-    if (uuid == radio2) {
-      final mode = appModeForRadioReport(current: _radio?.vfo('vfoB').mode, reported: merged.mode, freqKHz: merged.freqKHz);
-      _radio?.setVfo('vfoB', freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
-      return;
-    }
-    if (uuid != _localRadio1) return;
+    final vfoKey = _vfoKeyOf(uuid);
+    if (vfoKey == null) return;
     // From what the radio SAID: [merged] fills a missing frequency in from
     // what it was told, which it may not have reached.
     if (reading.freqKHz case final freqKHz?) {
       if (bandForFrequency(freqKHz) case final band?) runtime.lastFreqByBand[bandMemoryKey(band, merged.mode)] = freqKHz;
     }
     if (_heldByBandPick(runtime, reading)) return;
-    _followRadio(merged);
+    _followRadio(vfoKey, merged);
   }
 
-  void _followRadio(VfoReading merged) {
-    final mode = appModeForRadioReport(current: _radio?.vfoA.mode, reported: merged.mode, freqKHz: merged.freqKHz);
-    _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
-    _noteSnapReading(merged);
+  /// The app VFO [uuid] drives: `vfoA` for radio1, `vfoB` for SO2R's Radio
+  /// B, null for any other node.
+  String? _vfoKeyOf(String uuid) => uuid == _localRadio1
+      ? 'vfoA'
+      : uuid == radio2
+      ? 'vfoB'
+      : null;
+
+  void _followRadio(String vfoKey, VfoReading merged) {
+    final mode = appModeForRadioReport(current: _radio?.vfo(vfoKey).mode, reported: merged.mode, freqKHz: merged.freqKHz);
+    _radio?.setVfo(vfoKey, freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
+    // Smart VFO Snap is radio1's.
+    if (vfoKey == 'vfoA') _noteSnapReading(merged);
   }
 }

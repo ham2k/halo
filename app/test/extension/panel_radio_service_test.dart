@@ -36,6 +36,52 @@ class TestSwitchType extends Fake implements EquipmentType {
   String get category => kCategoryAntennaSwitch;
 }
 
+/// A radio's keyer, as [TestCat] answers for it: the same for either radio,
+/// with the radio each send went to recorded.
+class _TestKeyer extends Fake implements RadioKeyer {
+  _TestKeyer(this.cat, this.radio);
+
+  final TestCat cat;
+  @override
+  final String radio;
+
+  @override
+  bool get canKeyCw => cat.keysCw;
+  @override
+  bool get cwSending => false;
+  @override
+  int? get keyerSpeed => 22;
+  @override
+  ({int min, int max})? get keyerSpeedRange => (min: 5, max: 50);
+  @override
+  bool setKeyerSpeed(int wpm) {
+    cat.keyed.add('wpm:$wpm');
+    return cat.keysCw && !cat.speedRefused;
+  }
+
+  @override
+  bool get canPlayVoice => cat.playsVoice;
+  @override
+  int get voiceMemoryCount => 2;
+  @override
+  String voiceMessageLabel(int n) => 'Message $n';
+  @override
+  bool get canPtt => cat.hasPtt;
+
+  @override
+  bool sendCw(String text, {bool hasMessageOne = false, bool repeat = false}) {
+    cat.keyedFor.add(radio);
+    cat.keyed.add('cw:$text');
+    return cat.keysCw;
+  }
+
+  @override
+  void playVoiceMemory(int n, {bool repeat = true}) {
+    cat.keyedFor.add(radio);
+    cat.keyed.add('voice:$n:${repeat ? 'repeat' : 'once'}');
+  }
+}
+
 class TestCat extends Fake implements CatService {
   MainVfo? selected = const LocalRadio('a');
   EquipmentState state = const EquipmentState(
@@ -53,6 +99,11 @@ class TestCat extends Fake implements CatService {
   EquipmentType? typeFor(EquipmentNode node) => node.uuid == 'switch' ? TestSwitchType() : TestRadioType(modelConfig);
   @override
   bool isRadio1(String uuid) => selected == LocalRadio(uuid);
+
+  /// SO2R's Radio B, when there is one.
+  String? radioB;
+  @override
+  bool isRadio2(String uuid) => radioB == uuid;
   final connections = <String>[];
   @override
   Future<void> connect(String uuid) async {
@@ -107,28 +158,14 @@ class TestCat extends Fake implements CatService {
 
   /// The radio the app's PTT key is on, as CatPtt holds it: one radio at a time.
   String? pttOn;
+
+  /// Each radio's keyer, which radio was read recorded in [askedOf].
   @override
-  bool get canKeyCw => keysCw;
-  @override
-  bool get cwSending => false;
-  @override
-  int? get keyerSpeed => 22;
-  @override
-  ({int min, int max})? get keyerSpeedRange => (min: 5, max: 50);
-  @override
-  bool setKeyerSpeed(int wpm) {
-    keyed.add('wpm:$wpm');
-    return keysCw && !speedRefused;
+  RadioKeyer keyer(String radio) {
+    askedOf.add(radio);
+    return _TestKeyer(this, radio);
   }
 
-  @override
-  bool get canPlayVoice => playsVoice;
-  @override
-  int get voiceMemoryCount => 2;
-  @override
-  String voiceMessageLabel(int n) => 'Message $n';
-  @override
-  bool get canPtt => hasPtt;
   @override
   late final PttKeyboard pttKeys = PttKeyboard(
     held: pttHeld,
@@ -145,13 +182,11 @@ class TestCat extends Fake implements CatService {
   @override
   bool get pttHeldOnRadio1 => pttOn != null && isRadio1(pttOn!);
   @override
-  bool sendCw(String text, {bool hasMessageOne = false}) {
-    keyed.add('cw:$text');
-    return keysCw;
-  }
+  bool pttHeldOn(String? uuid) => pttOn != null && pttOn == uuid;
 
-  @override
-  void playVoiceMemory(int n, {bool repeat = true}) => keyed.add('voice:$n:${repeat ? 'repeat' : 'once'}');
+  /// The radio each keyer read was asked of, and each send went to.
+  final askedOf = <String>[], keyedFor = <String>[];
+
   @override
   void togglePtt(String radio) {
     // CatPtt.toggle: the radio it holds drops; any other radio is keyed, dropping the one held.
@@ -206,7 +241,7 @@ class TestScope extends Fake implements SpectrumSession {
 }
 
 class TestRadio extends Fake implements RadioService {
-  final calls = <({double? freq, String? mode, num? power, int time})>[];
+  final calls = <({String key, double? freq, String? mode, num? power, int time})>[];
   @override
   void setVfo(
     String key, {
@@ -218,7 +253,7 @@ class TestRadio extends Fake implements RadioService {
     bool clearPower = false,
     VfoOrigin origin = VfoOrigin.user,
   }) {
-    calls.add((freq: freq, mode: mode, power: power, time: realNowMillis()));
+    calls.add((key: key, freq: freq, mode: mode, power: power, time: realNowMillis()));
   }
 }
 
@@ -275,6 +310,20 @@ void main() {
     expect(radio.calls, isEmpty);
     expect(cat.radio1, const LocalRadio('a'));
     expect((await bridge.set({'selection': 'gone', 'id': 'gone', 'frequencyHz': 7100000}))['reason'], 'changed');
+  });
+  // The trap: tuning Radio B straight at the rig leaves set B's fields on
+  // the old frequency until the rig reports back — and a band picked there
+  // meanwhile is measured against where the radio was.
+  test("under SO2R, a panel tunes Radio B through Radio B's VFO", () async {
+    final cat = TestCat()..radioB = 'b', radio = TestRadio(), bridge = PanelRadioService(cat, radio);
+    expect((await bridge.set({'selection': 'b', 'id': 'b', 'frequencyHz': 7100000, 'mode': 'CW'}))['accepted'], true);
+    expect(radio.calls.single.key, 'vfoB');
+    expect((radio.calls.single.freq, radio.calls.single.mode), (7100, 'CW'));
+    expect(cat.tuned, isEmpty);
+    // Power still goes to the rig: nothing sends `vfoB`'s own power to Radio B.
+    expect((await bridge.set({'selection': 'b', 'id': 'b', 'powerWatts': 25}))['accepted'], true);
+    expect(cat.powered, {'b': 25});
+    expect(radio.calls, hasLength(1));
   });
   test('expired telemetry is omitted instead of looking like fresh RF output', () {
     final cat = TestCat();
@@ -510,6 +559,20 @@ void main() {
         expect(call()['reason'], 'unsupported');
       }
       expect(cat.keyed, hasLength(3));
+    });
+
+    // The trap: a panel's keying read and sent for radio1 alone — or, under
+    // SO2R, sent on whichever radio happens to be keying, so a panel pinned
+    // to Radio B calls CQ on radio A.
+    test("under SO2R, a panel pinned to Radio B reads and keys Radio B's", () {
+      cat.radioB = 'b';
+      expect(bridge().read('b')['keying'], isNotNull);
+      expect(cat.askedOf.last, 'B', reason: "Radio B's speed and memories, not the logging radio's");
+      expect(bridge().sendCw({'selection': 'b', 'id': 'b', 'text': 'CQ B'})['accepted'], true);
+      expect(bridge().playVoice({'selection': 'b', 'id': 'b', 'memory': 1})['accepted'], true);
+      expect(bridge().sendCw({'id': 'a', 'text': 'CQ A'})['accepted'], true);
+      expect(cat.keyedFor, ['B', 'B', 'A'], reason: 'each send goes to the radio the panel names');
+      expect(cat.keyed, ['cw:CQ B', 'voice:1:once', 'cw:CQ A']);
     });
 
     test('unkeying releases the key and can never key a radio, whatever the identity says', () {

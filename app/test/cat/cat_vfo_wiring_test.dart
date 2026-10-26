@@ -331,6 +331,56 @@ void main() {
       expect(sessionA.commands.where((c) => c.startsWith('freq:')), isEmpty);
     });
 
+    // The trap: a peer's tune sent straight at Radio B, so the rig moves
+    // while set B's fields still show where it was.
+    test("a peer tuning Radio B goes through Radio B's VFO", () async {
+      final (sessionA, sessionB) = await twoRadios();
+      sessionB.radioReports(freqKHz: 7025, mode: 'CW');
+      await pumpEventQueue();
+      sessionA.commands.clear();
+
+      cat.tuneOfferedRadio(cat.radio2!, freqKHz: 7030, mode: 'CW');
+      await pumpEventQueue();
+
+      expect(radio.vfo('vfoB').freq, 7030);
+      expect(sessionB.commands, contains('freq:7030.0'));
+      expect(sessionA.commands, isEmpty);
+    });
+
+    // The trap: band picks wired to radio1 alone, so a band picked in set B
+    // tunes Radio B to no frequency at all, or picks one for radio A.
+    test('a band picked by name in set B sends Radio B where it was last heard on it', () async {
+      final (sessionA, sessionB) = await twoRadios();
+      sessionA.radioReports(freqKHz: 14030, mode: 'CW');
+      sessionB.radioReports(freqKHz: 7040, mode: 'CW');
+      await pumpEventQueue();
+      sessionB.radioReports(freqKHz: 3530, mode: 'CW');
+      await pumpEventQueue();
+      sessionA.commands.clear();
+      sessionB.commands.clear();
+
+      radio.setVfo('vfoB', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfo('vfoB').freq, 7040);
+      expect(sessionB.commands, ['freq:7040.0', 'mode:CW', 'freq:7040.0', 'read-back']);
+      expect(sessionA.commands, isEmpty);
+      expect(radio.vfoA.freq, 14030);
+    });
+
+    test("a report from the band Radio B is leaving does not put set B back on it", () async {
+      final (_, sessionB) = await twoRadios();
+      sessionB.radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+
+      radio.setVfo('vfoB', band: '40m');
+      await pumpEventQueue();
+      expect(radio.vfo('vfoB').freq, 7000.1);
+      // A poll answered before the radio moved.
+      sessionB.radioReports(freqKHz: 14030, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfo('vfoB').band, '40m');
+    });
+
     test('a stored Radio B stays inert while SO2R is off, and comes back with it', () async {
       final (_, sessionB) = await twoRadios();
       final picked = cat.radio2;

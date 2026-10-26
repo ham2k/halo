@@ -144,9 +144,9 @@ void main() {
     await unmount(tester);
   });
 
-  // The trap: crossing to the operator's radio before asking whether the
-  // Enter sends anything — a thanks slot left empty in set B stopping the CQ
-  // radio A is calling, with nothing sent in its place.
+  // The trap: taking the air for radio B before asking whether the Enter
+  // sends anything — a thanks slot left empty in set B stopping the CQ radio
+  // A is calling, with nothing sent in its place.
   testWidgets("under SO2R, an Enter in set B with nothing to send leaves radio A's message going out", (tester) async {
     await services.settings.setExperimentEnabled('so2r', true);
     await services.settings.setCwMessage(3, '');
@@ -157,17 +157,78 @@ void main() {
     await services.cat.setRadio1(LocalRadio(rig));
     await services.cat.setRadio2(right.uuid);
     await tester.pump();
-    services.cat.noteOperatorRadio('A');
-    services.cat.sendCw('CQ TEST');
+    services.cat.keyer('A').sendCw('CQ TEST');
     services.cat.noteOperatorRadio('B');
-    expect(services.cat.keyingRadio, 'A', reason: "sanity: radio A's CQ keeps keying there");
 
     services.cat.setEnterSends(on: true);
-    tester.widget<LoggingControls>(find.byType(LoggingControls).first).session.enterSends!()!.send([EsmMessage.thanks], cwDraft);
+    tester.widget<LoggingControls>(find.byKey(const ValueKey('set-B'))).session.enterSends!()!.send([EsmMessage.thanks], cwDraft);
     await tester.pump();
     await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'CQ TEST');
-    expect(services.cat.keyingRadio, 'A');
+    expect(services.cat.keyer('A').cwProgress.value?.text, 'CQ TEST');
+    await unmount(tester);
+  });
+
+  /// Two placeholder rigs as SO2R's radio A and Radio B, set A in front.
+  Future<void> pumpSo2r(WidgetTester tester) async {
+    await services.settings.setExperimentEnabled('so2r', true);
+    await pumpOperation(tester);
+    final right = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Right Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await tester.runAsync(() => services.cat.connect(right.uuid));
+    addTearDown(() => services.cat.disconnect(right.uuid));
+    await services.cat.setRadio1(LocalRadio(rig));
+    await services.cat.setRadio2(right.uuid);
+    await tester.pump();
+    services.cat.setEnterSends(on: true);
+  }
+
+  EnterSends esmOf(WidgetTester tester, String set) => tester.widget<LoggingControls>(find.byKey(ValueKey('set-$set'))).session.enterSends!()!;
+
+  // The trap: a thanks still waiting on its log keyed after the operator has
+  // moved to the other radio — it cuts off the CQ they keyed there since.
+  testWidgets("under SO2R, a message the other radio was keyed over while it waited keys nothing", (tester) async {
+    await pumpSo2r(tester);
+    final logged = Completer<Map<String, dynamic>?>();
+    esmOf(tester, 'A').send([EsmMessage.thanks], cwDraft, logged: logged.future);
+    await tester.pump();
+    services.cat.keyer('B').sendCw('CQ B');
+
+    logged.complete(cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.keyer('A').cwProgress.value, isNull);
+    expect(services.cat.keyer('A').waiting.value, isEmpty);
+    expect(services.cat.keyer('B').cwProgress.value?.text, 'CQ B', reason: "B's CQ goes on");
+    await unmount(tester);
+  });
+
+  testWidgets('under SO2R with messages queued, such a message waits its turn instead', (tester) async {
+    await services.settings.setSo2rQueueMessages(true);
+    await pumpSo2r(tester);
+    final logged = Completer<Map<String, dynamic>?>();
+    esmOf(tester, 'A').send([EsmMessage.thanks], cwDraft, logged: logged.future);
+    await tester.pump();
+    services.cat.keyer('B').sendCw('CQ B');
+
+    logged.complete(cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.keyer('A').waiting.value.single.text, 'TU');
+    await unmount(tester);
+  });
+
+  // The trap: one ESM queue for both radios — set B's Enter keys only once
+  // set A's contact has logged.
+  testWidgets("under SO2R, an Enter in set B never waits on set A's log", (tester) async {
+    await pumpSo2r(tester);
+    final logged = Completer<Map<String, dynamic>?>();
+    esmOf(tester, 'A').send([EsmMessage.thanks], cwDraft, logged: logged.future);
+    await tester.pump();
+
+    esmOf(tester, 'B').send([EsmMessage.hisCall], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.keyer('B').cwProgress.value?.text, 'W1AW');
+    logged.complete(null);
     await unmount(tester);
   });
 

@@ -66,12 +66,20 @@ abstract class KeyingStation {
   /// dropped answers null rather than throwing at whatever is keyed into it.
   EquipmentSession? connectedSession(String uuid);
 
-  /// The local rig keying is for: radio1 when it is a rig of this station's
-  /// own, or SO2R's Radio B while the operator keys from its set — null when
+  /// The local rig this keyer keys: radio1 when it is a rig of this
+  /// station's own — or, for SO2R's second keyer, Radio B — and null when
   /// radio1 is a peer's or none: the memories are audio in the transceiver,
   /// and there is nothing local to play when the transceiver is somewhere
   /// else.
   String? get localKeyingRadio;
+
+  /// SO2R's turn-taking (docs/design/cat.md § Radio B, for SO2R): whether
+  /// this keyer may go on the air now. False holds the send ([CatKeying.waiting])
+  /// until the other radio is quiet. [repeat] is a repeat chain's own send,
+  /// which always waits its turn; an operator's may instead stop the other
+  /// radio, which this does before answering true. Always true for a station
+  /// with one radio.
+  bool clearToSend({required bool repeat});
 
   /// SO2R's Radio B, or null — whose voice memories are named and timed
   /// apart from radio1's.
@@ -96,6 +104,11 @@ class CatKeying {
     });
     voiceActivity.addListener(() {
       if (voiceActivity.value == null) _voiceMessageOne = false;
+    });
+    // A repeat's send held for the other radio belongs to its chain: once
+    // the chain ends — an entered call, a tap, a QSY — it must not go out.
+    chain.active.addListener(() {
+      if (!chain.active.value) _dropWaiting((send) => send.repeat);
     });
   }
 
@@ -298,7 +311,19 @@ class CatKeying {
   /// here without a keyer is the radio dropping between the check and the
   /// keypress. Answers whether the key took it — over a peer, whether the
   /// request went out, since nothing is keying here until the peer reports.
-  bool sendCw(String text, {bool hasMessageOne = false}) {
+  bool sendCw(String text, {bool hasMessageOne = false, bool repeat = false}) {
+    // Asked before the turn is: a key this radio cannot send must not stop
+    // the other radio's message for nothing.
+    if (!canKeyCw) return false;
+    if (!station.clearToSend(repeat: repeat)) {
+      _hold(
+        text: text,
+        repeat: repeat,
+        messageOne: hasMessageOne || repeat,
+        send: () => sendCw(text, hasMessageOne: hasMessageOne, repeat: repeat),
+      );
+      return true;
+    }
     // Marked only on a send that was taken: a lost request leaves nothing on
     // the air to end the mark, and the next message on a shared radio —
     // somebody else's — would inherit it.
@@ -350,6 +375,7 @@ class CatKeying {
   /// or a TU is the contact being worked (docs/design/cat.md § CW keying).
   void stopMessageOne() {
     chain.cancel();
+    _dropWaiting((send) => send.messageOne);
     final playing = voiceActivity.value;
     if (_voiceSequenceHasOne || (playing != null && !playing.recording && _voiceMessageOne)) {
       if (playing != null && !playing.recording) {
@@ -365,7 +391,17 @@ class CatKeying {
 
   /// Whether a message, chain or repeat is under way — anything Escape would
   /// stop.
-  bool get busy => chain.running || _voiceSequence.isNotEmpty || voiceActivity.value != null || voiceStarting.value || cwSending;
+  bool get busy => chain.running || _voiceSequence.isNotEmpty || voiceActivity.value != null || voiceStarting.value || cwSending || waiting.value.isNotEmpty;
+
+  /// Whether this keyer's radio is on the air for the app: a message keying,
+  /// or a memory playing or asked for and not yet heard starting. A
+  /// recording is not: nothing goes out.
+  bool get onAir => cwSending || voiceStarting.value || (voiceActivity.value != null && !voiceActivity.value!.recording);
+
+  /// Whether anything but a repeat waits to go out on this radio — behind
+  /// the message keying, behind the memory playing, or for the other radio.
+  bool get hasQueued =>
+      waiting.value.any((send) => !send.repeat) || (cwSending && (cwProgress.value?.pending.isNotEmpty ?? false)) || _voiceSequence.isNotEmpty;
 
   /// Escape: stops every message, chain and repeat, whatever the keyer, the
   /// mode, or whose they are. False when there was nothing to stop, so the
@@ -393,6 +429,7 @@ class CatKeying {
     // A memory asked for and not yet heard starting is as much on its way
     // out as one playing.
     final voice = voiceActivity.value != null || voiceStarting.value;
+    clearWaiting();
     chain.cancel();
     cancelVoiceSequence();
     if (voice) stopVoice();
@@ -402,10 +439,16 @@ class CatKeying {
   /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
   /// for how much of what is already on the radio this can reach.
   void stopCw() {
-    cwStops.value++;
     // A stop is a stop: the operator who cut this message short did not ask
-    // for it again in five seconds.
+    // for it again in five seconds, nor for what waits behind it.
     chain.cancel();
+    _dropWaiting((send) => send.text != null);
+    _stopCw();
+  }
+
+  /// [stopCw] without ending the repeat chain — see [interrupt].
+  void _stopCw() {
+    cwStops.value++;
     if (keysOverPeer) {
       // The strip is left to the far side's next status rather than cleared
       // here: on some keyers a stop empties the queue and lets the piece
@@ -414,7 +457,7 @@ class CatKeying {
       requestPeerKey(PeerKeyOp.stopCw);
       return;
     }
-    stopCwLocally();
+    _stopCwSession();
   }
 
   void stopCwLocally() {
@@ -425,6 +468,10 @@ class CatKeying {
     // the one outcome worse than a message cut short. The voice half says the
     // same thing at [stopVoiceLocally].
     chain.cancel();
+    _stopCwSession();
+  }
+
+  void _stopCwSession() {
     final session = _cwKeyer;
     if (session == null) return;
     try {
@@ -432,6 +479,68 @@ class CatKeying {
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:stop-cw');
     }
+  }
+
+  // ----------------------------------------------- SO2R's turn-taking
+
+  /// What waits to go out on this radio for the other one to fall quiet
+  /// ([KeyingStation.clearToSend]), oldest first — for the keyer area, which
+  /// shows it under an indeterminate bar.
+  final waiting = ValueNotifier<List<WaitingSend>>(const []);
+
+  /// Orders the holds of both of a station's keyers: the oldest goes first.
+  static int _holdSequence = 0;
+
+  void _hold({String? text, int? memory, required bool repeat, bool messageOne = false, required void Function() send}) {
+    waiting.value = [...waiting.value, WaitingSend._(++_holdSequence, text: text, memory: memory, repeat: repeat, messageOne: messageOne, send: send)];
+  }
+
+  void _dropWaiting(bool Function(WaitingSend send) test) {
+    if (waiting.value.any(test)) waiting.value = [...waiting.value.where((send) => !test(send))];
+  }
+
+  void clearWaiting() {
+    if (waiting.value.isNotEmpty) waiting.value = const [];
+  }
+
+  /// Sends what [waiting] holds, the other radio having fallen quiet. CW
+  /// queues behind itself on the key; a memory plays one at a time, so the
+  /// sends stop at the first one and the rest wait for it to end.
+  void flushWaiting() {
+    final held = waiting.value;
+    if (held.isEmpty) return;
+    var sent = 0;
+    while (sent < held.length) {
+      final send = held[sent++];
+      if (send.memory != null) break;
+      if (sent < held.length && held[sent].memory != null) break;
+    }
+    waiting.value = held.sublist(sent);
+    for (final send in held.take(sent)) {
+      send.send();
+    }
+  }
+
+  /// Takes this radio off the air for the other one, the repeat chain kept:
+  /// the message or memory going out stops, and so does a sequence it is
+  /// part of, but a CQ repeating here resumes once the other radio is done.
+  void interrupt() {
+    cancelVoiceSequence();
+    if (cwSending) _stopCw();
+    if (voiceActivity.value != null || voiceStarting.value) _stopVoice();
+  }
+
+  /// Escape while messages wait (SO2R's "Messages queued instead of
+  /// interrupting"): only what is on the air stops. What keyed behind it on
+  /// this radio waits instead, and the repeat chain stays.
+  void stopCurrent() {
+    final queued = cwSending ? cwProgress.value?.pending ?? const <String>[] : const <String>[];
+    final memories = [..._voiceSequence];
+    interrupt();
+    for (final text in queued) {
+      _hold(text: text, repeat: false, send: () => sendCw(text));
+    }
+    if (memories.isNotEmpty) _hold(memory: memories.first, repeat: false, messageOne: memories.contains(1), send: () => playVoiceSequence(memories));
   }
 
   /// Drops one message waiting behind the one the key in use is keying — see
@@ -680,7 +789,20 @@ class CatKeying {
   /// editor's Play is the operator listening to what they recorded, and a CQ
   /// that started repeating from inside a settings dialog would be one
   /// nobody was watching the air for.
-  void playVoiceMemory(int n, {bool repeat = true}) {
+  void playVoiceMemory(int n, {bool repeat = true}) => _playVoiceMemory(n, repeat: repeat, fromChain: false);
+
+  void _playVoiceMemory(int n, {required bool repeat, required bool fromChain}) {
+    // Asked before the turn is, as [sendCw] does.
+    if (!canPlayVoice) return;
+    if (!station.clearToSend(repeat: fromChain)) {
+      _hold(
+        memory: n,
+        repeat: fromChain,
+        messageOne: n == 1,
+        send: () => _playVoiceMemory(n, repeat: repeat, fromChain: fromChain),
+      );
+      return;
+    }
     // Whether this play is the next link in a chain, or the end of one. A
     // cancel before an arm would reset the five-minute limit on every repeat
     // (`KeyerRepeat.arm` keeps the deadline it inherits, and a cancel drops
@@ -704,7 +826,7 @@ class CatKeying {
       }
       _voiceMessageOne = n == 1;
       if (chaining) {
-        chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => playVoiceMemory(n));
+        chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => _playVoiceMemory(n, repeat: true, fromChain: true));
       }
       return;
     }
@@ -726,7 +848,7 @@ class CatKeying {
       // otherwise leave a chain armed with nothing playing, and nothing
       // ending to start its next wait.
       if (chaining) {
-        chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => playVoiceMemory(n));
+        chain.arm(delay: settings.voiceRepeatDelay, text: '', memory: n, send: () => _playVoiceMemory(n, repeat: true, fromChain: true));
       }
     } catch (e, st) {
       chain.cancel();
@@ -884,6 +1006,12 @@ class CatKeying {
   void playVoiceSequence(List<int> memories) {
     cancelVoiceSequence();
     if (memories.isEmpty) return;
+    // Held whole: the sequence is one message, whose memories follow each
+    // other with nothing of the other radio's between them.
+    if (memories.length > 1 && canPlayVoice && !station.clearToSend(repeat: false)) {
+      _hold(memory: memories.first, repeat: false, messageOne: memories.contains(1), send: () => playVoiceSequence(memories));
+      return;
+    }
     _voiceSequenceHasOne = memories.length > 1 && memories.contains(1);
     _voiceSequence.addAll(memories.skip(1));
     _awaitSequenceStart();
@@ -949,6 +1077,12 @@ class CatKeying {
   void stopVoice() {
     // A stop is a stop, the same as [stopCw]'s.
     chain.cancel();
+    _dropWaiting((send) => send.memory != null);
+    _stopVoice();
+  }
+
+  /// [stopVoice] without ending the repeat chain — see [interrupt].
+  void _stopVoice() {
     cancelVoiceSequence();
     _voiceStarted();
     // And what it stopped is NOT a measurement: the memory did not play to
@@ -1197,9 +1331,9 @@ class CatKeying {
 
   /// A node's link went down, or the key in use moved off it: whatever it was
   /// keying is not keying now.
-  void forgetNode(String uuid, {required bool wasKeyInUse, required bool wasKeyingRadio}) {
-    if (wasKeyInUse) cwProgress.value = null;
-    if (wasKeyingRadio) {
+  void forgetNode(String uuid) {
+    if (uuid == station.keyInUse) cwProgress.value = null;
+    if (uuid == station.localKeyingRadio) {
       // The silence is the radio going, not a memory ending.
       cancelVoiceSequence();
       _voiceStarted();
@@ -1247,16 +1381,6 @@ class CatKeying {
     }
   }
 
-  /// Keying moved to the other SO2R radio: what ITS voice keyer is doing is
-  /// what shows now. Left on the radio being left, the play would show for
-  /// good — that radio's end report is no longer the keying radio's, and is
-  /// dropped ([noteVoiceActivity]) — and hold keying busy with it.
-  void followKeyingRadio() {
-    _voiceStarted();
-    _voiceFromPeer = false;
-    voiceActivity.value = _voiceActivityByNode[station.localKeyingRadio];
-  }
-
   /// Stops what the OUTGOING key was keying when the key in use changes —
   /// that message would otherwise finish with nothing showing it and nothing
   /// to stop it.
@@ -1280,6 +1404,7 @@ class CatKeying {
     cancelVoiceSequence();
     _voiceStartTimer?.cancel();
     voiceStarting.dispose();
+    waiting.dispose();
     _keyingRevision.dispose();
     cwProgress.dispose();
     cwStops.dispose();
@@ -1289,4 +1414,23 @@ class CatKeying {
     keyerShowRequests.dispose();
     keyboardModeRequests.dispose();
   }
+}
+
+/// A send SO2R holds for the other radio ([CatKeying.waiting]): a CW
+/// message's text or a memory's number, and whether a repeat chain sent it.
+class WaitingSend {
+  WaitingSend._(this.sequence, {this.text, this.memory, required this.repeat, required this.messageOne, required this.send});
+
+  /// When it was held, across both keyers — the oldest goes first.
+  final int sequence;
+  final String? text;
+  final int? memory;
+  final bool repeat;
+
+  /// Whether it is message 1 — what a callsign entered over it stops
+  /// ([CatKeying.stopMessageOne]).
+  final bool messageOne;
+
+  /// Sends it, once the other radio is quiet.
+  final void Function() send;
 }

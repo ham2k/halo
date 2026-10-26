@@ -12,6 +12,7 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
   Map<String, EquipmentNode> get _nodes;
   RadioService? get _radio;
   String? get _localRadio1;
+  String? get radio2;
   set _radio1(MainVfo? value);
   CatKeying get _keying;
   bool get _keyingEnabled;
@@ -82,12 +83,17 @@ mixin _PeerOffers on ChangeNotifier implements PeerStationRadios {
   @override
   void tuneOfferedRadio(String radioId, {double? freqKHz, String? mode}) {
     if (!offeredRadios.any((radio) => radio.id == radioId)) return;
-    // The designated radio keeps going through `RadioService`, which is the
-    // funnel a local keystroke takes: the logging panel follows it and Smart
-    // VFO Snap measures it. Tuning it directly would move the rig with the
-    // operator's own app still showing where it was.
+    // The designated radios — radio1 and SO2R's Radio B — keep going
+    // through `RadioService`, which is the funnel a local keystroke takes:
+    // the logging panel follows it and Smart VFO Snap measures radio1's.
+    // Tuning one directly would move the rig with the operator's own app
+    // still showing where it was.
     if (radioId == _localRadio1) {
       _radio?.setVfo('vfoA', freq: freqKHz, mode: mode);
+      return;
+    }
+    if (radioId == radio2) {
+      _radio?.setVfo('vfoB', freq: freqKHz, mode: mode);
       return;
     }
     tuneNode(radioId, VfoReading(freqKHz: freqKHz, mode: resolveSideband(mode, freqKHz)));

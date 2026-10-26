@@ -6015,6 +6015,9 @@ class Translations$settings$station$en {
 	/// en: '${radio}: ${name}'
 	String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
 
+	/// en: 'Messages queued instead of interrupting'
+	String get so2rQueueMessages => 'Messages queued instead of interrupting';
+
 	/// en: 'No Radio B selected'
 	String get noRadioBSelected => 'No Radio B selected';
 
@@ -11157,6 +11160,7 @@ extension on Translations {
 			'settings.station.currentTransceiver' => 'Current Transceiver',
 			'settings.station.currentTransceivers' => 'Current Transceivers',
 			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.so2rQueueMessages' => 'Messages queued instead of interrupting',
 			'settings.station.noRadioBSelected' => 'No Radio B selected',
 			'settings.station.radioMode' => 'Radio Mode',
 			'settings.station.keyerNotSupported' => 'Not supported by current radio',
@@ -11387,9 +11391,9 @@ extension on Translations {
 			'settings.developer.extDevServerDisconnected' => 'Not connected',
 			'settings.developer.extDevServerReconnect' => 'Reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
-			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.catalog' => 'Extension Catalog',
 			'settings.developer.catalogDescription' => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.',
 			'settings.developer.catalogAddress' => 'Catalog address',

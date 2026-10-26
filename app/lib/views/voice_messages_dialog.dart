@@ -35,16 +35,21 @@ import '../services/cat/cat_service.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
 import 'cw_messages_dialog.dart' show EnterSendsField, KeyerUnsupportedNotice, RepeatDelayField, cwMessageNumberIcons;
+import 'keyer_area.dart' show keyerOrSay;
 
-Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services) => showHaloDialog<void>(
+/// [radio] is the radio whose memories the dialog shows and plays, `A` or
+/// `B` — a keyer area's own; null for the operator's. The memories are audio
+/// in each rig, so each radio's are its own.
+Future<void> showVoiceMessagesDialog(BuildContext context, HaLoServices services, {String? radio}) => showHaloDialog<void>(
   context: context,
-  builder: (context) => _VoiceMessagesDialog(services: services),
+  builder: (context) => _VoiceMessagesDialog(services: services, radio: radio ?? services.cat.operatorRadio),
 );
 
 class _VoiceMessagesDialog extends StatelessWidget {
   final HaLoServices services;
+  final String radio;
 
-  const _VoiceMessagesDialog({required this.services});
+  const _VoiceMessagesDialog({required this.services, required this.radio});
 
   @override
   Widget build(BuildContext context) {
@@ -52,14 +57,15 @@ class _VoiceMessagesDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final settings = services.settings;
     final cat = services.cat;
+    final keyer = cat.keyer(radio);
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, cat, cat.voiceActivity]),
+      listenable: Listenable.merge([settings, cat, keyer.voiceActivity]),
       builder: (context, _) {
-        final canPlay = cat.canPlayVoice;
+        final canPlay = keyer.canPlayVoice;
         // The radio's own count while one can play; every label otherwise,
         // so a memory the next radio has is not unnameable until it is on.
-        final count = canPlay ? cat.voiceMemoryCount : SettingsService.voiceMessageCount;
-        final activity = cat.voiceActivity.value;
+        final count = canPlay ? keyer.voiceMemoryCount : SettingsService.voiceMessageCount;
+        final activity = keyer.voiceActivity.value;
         return HaloDialog(
           title: Text(m.title),
           // The same band the CW editor's picker sits on, and the same rule
@@ -72,7 +78,7 @@ class _VoiceMessagesDialog extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 // A radio with no voice memories at all, connected or not.
-                if (!cat.radio1HasVoiceMemories) KeyerUnsupportedNotice(text: m.notSupported),
+                if (!keyer.radio1HasVoiceMemories) KeyerUnsupportedNotice(text: m.notSupported),
                 Row(
                   children: [
                     Expanded(
@@ -83,7 +89,11 @@ class _VoiceMessagesDialog extends StatelessWidget {
                         afterLabel: (n) => m.repeatAfter(n: n),
                         onChanged: (value) {
                           // Off ends a chain already counting down.
-                          if (value == '0') cat.cancelKeyerRepeat();
+                          if (value == '0') {
+                            for (final radio in ['A', 'B']) {
+                              cat.keyer(radio).cancelKeyerRepeat();
+                            }
+                          }
                           unawaited(settings.setVoiceRepeatDelay(int.parse(value)));
                         },
                       ),
@@ -92,8 +102,11 @@ class _VoiceMessagesDialog extends StatelessWidget {
                       const SizedBox(width: Space.md),
                       Expanded(
                         child: EnterSendsField(
-                          value: cat.operatorEnterSends,
-                          onChanged: (value) => cat.setEnterSends(on: value.on, running: value.running),
+                          value: (on: cat.enterSends.value.on, running: cat.isRunning(radio)),
+                          onChanged: (value) {
+                            cat.setEnterSends(on: value.on);
+                            cat.setRunning(radio, value.running);
+                          },
                         ),
                       ),
                     ],
@@ -116,7 +129,7 @@ class _VoiceMessagesDialog extends StatelessWidget {
                           text: m.key(n: n),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        if (cat.voiceMessageLabel(n).trim().isNotEmpty) TextSpan(text: '  ${cat.voiceMessageLabel(n).trim()}'),
+                        if (keyer.voiceMessageLabel(n).trim().isNotEmpty) TextSpan(text: '  ${keyer.voiceMessageLabel(n).trim()}'),
                       ],
                     ),
                   ),
@@ -126,14 +139,16 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   subtitle: Text(
                     activity?.memory == n
                         ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
-                        : (cat.voiceMessageDuration(n) > 0 ? voiceDurationText(context, cat.voiceMessageDuration(n)) : voiceUnknownLengthText(context, cat)),
+                        : (keyer.voiceMessageDuration(n) > 0
+                              ? voiceDurationText(context, keyer.voiceMessageDuration(n))
+                              : voiceUnknownLengthText(context, keyer)),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: activity?.memory == n || cat.voiceMessageDuration(n) > 0 ? null : theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                      color: activity?.memory == n || keyer.voiceMessageDuration(n) > 0 ? null : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
                   ),
                   onTap: () => showHaloDialog<void>(
                     context: context,
-                    builder: (context) => _VoiceMessageDialog(services: services, n: n),
+                    builder: (context) => _VoiceMessageDialog(services: services, radio: radio, n: n),
                   ),
                   mouseCursor: SystemMouseCursors.click,
                 ),
@@ -160,16 +175,17 @@ class _VoiceMessagesDialog extends StatelessWidget {
 /// undo them — there is nothing here to undo them to.
 class _VoiceMessageDialog extends StatefulWidget {
   final HaLoServices services;
+  final String radio;
   final int n;
 
-  const _VoiceMessageDialog({required this.services, required this.n});
+  const _VoiceMessageDialog({required this.services, required this.radio, required this.n});
 
   @override
   State<_VoiceMessageDialog> createState() => _VoiceMessageDialogState();
 }
 
 class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
-  late final _opened = widget.services.cat.voiceMessageLabel(widget.n);
+  late final _opened = widget.services.cat.keyer(widget.radio).voiceMessageLabel(widget.n);
   late final _label = TextEditingController(text: _opened);
 
   /// Whether the operator changed the label. A Save without a change writes
@@ -189,8 +205,8 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     // Nothing to save for a peer's memory: the name is that device's, and
     // writing this station's own label would rename audio nobody is looking
     // at.
-    if (_edited && widget.services.cat.voiceMessagesAreLocal) {
-      await widget.services.cat.setVoiceMessageLabel(widget.n, _label.text.trim());
+    if (_edited && widget.services.cat.keyer(widget.radio).voiceMessagesAreLocal) {
+      await widget.services.cat.keyer(widget.radio).setVoiceMessageLabel(widget.n, _label.text.trim());
     }
     navigator.pop();
   }
@@ -200,18 +216,19 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
     final m = context.t.settings.radio.voiceMessages;
     final settings = widget.services.settings;
     final cat = widget.services.cat;
+    final keyer = cat.keyer(widget.radio);
     // Zero content inset so the bands run edge to edge; the fields take the
     // dialog's usual inset themselves (halo_dialog.dart's default).
     const rowInset = EdgeInsets.symmetric(horizontal: Space.xxl);
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, cat, cat.voiceActivity]),
+      listenable: Listenable.merge([settings, cat, keyer.voiceActivity]),
       builder: (context, _) {
         final theme = Theme.of(context);
-        final activity = cat.voiceActivity.value;
+        final activity = keyer.voiceActivity.value;
         final recording = activity?.memory == widget.n && activity!.recording;
         final playing = activity?.memory == widget.n && !activity!.recording;
         final busy = activity != null;
-        final duration = cat.voiceMessageDuration(widget.n);
+        final duration = keyer.voiceMessageDuration(widget.n);
         return HaloDialog(
           title: Text(m.messageTitle(n: widget.n)),
           contentPadding: EdgeInsets.zero,
@@ -227,8 +244,8 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                   // the label describes THAT radio's recording, and one
                   // typed here would be saved against this station's own
                   // memories, which are not what the row above is showing.
-                  readOnly: !cat.voiceMessagesAreLocal,
-                  autofocus: cat.voiceMessagesAreLocal,
+                  readOnly: !keyer.voiceMessagesAreLocal,
+                  autofocus: keyer.voiceMessagesAreLocal,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: poloFieldDecoration(context, m.labelField),
                   onSubmitted: (_) => _save(),
@@ -237,7 +254,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
               // Whose memories these are, when they are not this device's —
               // said once, above the buttons, because it explains both the
               // read-only label and the lengths beside it.
-              if (!cat.voiceMessagesAreLocal)
+              if (!keyer.voiceMessagesAreLocal)
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.md),
                   child: Text(
@@ -247,7 +264,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                 )
               // A name typed here reaches every other client of that radio,
               // which is worth knowing before typing one.
-              else if (cat.voiceMessagesNamedOnRadio)
+              else if (keyer.voiceMessagesNamedOnRadio)
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.md),
                   child: Text(m.namedOnRadio, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8))),
@@ -268,33 +285,41 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                     // does not do rather than something this RADIO does not.
                     if (recording)
                       FilledButton.tonalIcon(
-                        onPressed: cat.stopVoice,
+                        onPressed: keyer.stopVoice,
                         icon: Icon(MdiIcons.stop, color: theme.colorScheme.error),
                         label: Text(m.stopButton),
                       )
                     else
                       FilledButton.tonalIcon(
-                        onPressed: busy || !cat.canRecordVoice ? null : () => cat.recordVoiceMemory(widget.n),
+                        onPressed: busy || !keyer.canRecordVoice
+                            ? null
+                            : () {
+                                if (keyerOrSay(context, widget.services, keyer, () => keyer.canRecordVoice)) keyer.recordVoiceMemory(widget.n);
+                              },
                         icon: const Icon(MdiIcons.recordCircleOutline),
                         label: Text(m.recordButton),
                       ),
                     Expanded(
                       child: Text(
-                        duration > 0 ? voiceDurationText(context, duration) : voiceUnknownLengthText(context, cat),
+                        duration > 0 ? voiceDurationText(context, duration) : voiceUnknownLengthText(context, keyer),
                         textAlign: TextAlign.center,
                         style: duration > 0
                             ? theme.textTheme.bodyLarge
                             : theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.5)),
                       ),
                     ),
-                    if (cat.canPlayVoice)
+                    if (keyer.canPlayVoice)
                       if (playing)
-                        FilledButton.tonalIcon(onPressed: cat.stopVoice, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
+                        FilledButton.tonalIcon(onPressed: keyer.stopVoice, icon: const Icon(MdiIcons.stop), label: Text(m.stopButton))
                       else
                         FilledButton.tonalIcon(
                           // Once: this is the operator listening to the
                           // memory, not calling CQ with it.
-                          onPressed: busy ? null : () => cat.playVoiceMemory(widget.n, repeat: false),
+                          onPressed: busy
+                              ? null
+                              : () {
+                                  if (keyerOrSay(context, widget.services, keyer, () => keyer.canPlayVoice)) keyer.playVoiceMemory(widget.n, repeat: false);
+                                },
                           icon: const Icon(MdiIcons.play),
                           label: Text(m.playButton),
                         ),
@@ -304,14 +329,14 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
               // Why the button above is disabled, before anything about how
               // to use it: an operator who cannot record from here needs to
               // know that first.
-              if (!cat.canRecordVoice)
+              if (!keyer.canRecordVoice)
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.xl),
                   child: Text(m.recordOnRadio, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8))),
                 ),
               // Under the buttons: it explains what to do AFTER pressing
               // Record, not what Record is (EquipmentModel.recordingHelp).
-              if (cat.canRecordVoice && cat.voiceRecordingHelp != null)
+              if (keyer.canRecordVoice && keyer.voiceRecordingHelp != null)
                 Padding(
                   padding: rowInset.copyWith(bottom: Space.xl),
                   child: Text.rich(
@@ -320,10 +345,10 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                         // Named, because the note describes ONE rig's front
                         // panel and a station can have more than one radio.
                         TextSpan(
-                          text: '${m.recordHelpTitle(model: cat.voiceRecordingHelp!.model)} ',
+                          text: '${m.recordHelpTitle(model: keyer.voiceRecordingHelp!.model)} ',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        TextSpan(text: cat.voiceRecordingHelp!.text),
+                        TextSpan(text: keyer.voiceRecordingHelp!.text),
                       ],
                     ),
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.8)),
@@ -346,9 +371,9 @@ String voiceDurationText(BuildContext context, int millis) => context.t.settings
 
 /// What a memory with no length says: on a radio that times its own
 /// memories, no length is an empty memory, and playing it measures nothing.
-String voiceUnknownLengthText(BuildContext context, CatService cat) {
+String voiceUnknownLengthText(BuildContext context, RadioKeyer keyer) {
   final m = context.t.settings.radio.voiceMessages;
-  return cat.voiceMessagesNamedOnRadio ? m.emptyOnRadio : m.notMeasured;
+  return keyer.voiceMessagesNamedOnRadio ? m.emptyOnRadio : m.notMeasured;
 }
 
 /// What to CALL the device holding the memories — its name, or its id when a
@@ -360,10 +385,10 @@ String peerDeviceLabel(PeerRadioSelection? selection) {
 
 /// The label for memory [n] — as set, or the key ("M3") when none is.
 ///
-/// Through `CatService` rather than the settings, because the memories can be
-/// a PEER radio's: the label then belongs to the device the audio is in
-/// (docs/design/cat.md § Keying a peer's radio).
-String voiceMessageLabelFor(CatService cat, int n, String key) {
-  final label = cat.voiceMessageLabel(n).trim();
+/// Through the radio's keyer rather than the settings, because the memories
+/// can be a PEER radio's: the label then belongs to the device the audio is
+/// in (docs/design/cat.md § Keying a peer's radio).
+String voiceMessageLabelFor(RadioKeyer keyer, int n, String key) {
+  final label = keyer.voiceMessageLabel(n).trim();
   return label.isEmpty ? key : label;
 }
