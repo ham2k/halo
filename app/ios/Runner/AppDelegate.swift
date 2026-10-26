@@ -147,6 +147,10 @@ import UIKit
       self?.boundKeyCommands = commands
       result(nil)
     }
+    DisplayRegions.shared.channel = FlutterMethodChannel(
+      name: "ham2k/display_regions",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
     hardwareKeyboardChannel = FlutterMethodChannel(
       name: "ham2k/hardware_keyboard",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()

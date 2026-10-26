@@ -1,6 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -54,7 +56,19 @@ class NumberKeys extends StatelessWidget {
   final Color backgroundColor;
   final Color foregroundColor;
 
-  const NumberKeys({super.key, required this.onKey, required this.backgroundColor, required this.foregroundColor, this.extraKey, this.vibrate = true});
+  /// The row's laid-out height when it has more room to fill than [heightOf]
+  /// — the keys grow into it, never shrink below their tap-target minimum.
+  final double? height;
+
+  const NumberKeys({
+    super.key,
+    required this.onKey,
+    required this.backgroundColor,
+    required this.foregroundColor,
+    this.extraKey,
+    this.vibrate = true,
+    this.height,
+  });
 
   void _handle(String key) {
     // app-polo buzzes on press; HapticFeedback is the built-in equivalent, no
@@ -66,11 +80,13 @@ class NumberKeys extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final keys = <String>['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', ?extraKey];
+    final paddingV = LayoutDensity.metricsOf(context).numbersRowPaddingV;
+    final keyHeight = math.max(_keyHeight, (height ?? 0) - paddingV * 2);
     return ChromeTopEdge(
       child: Material(
         color: backgroundColor,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: Space.xs, vertical: LayoutDensity.metricsOf(context).numbersRowPaddingV),
+          padding: EdgeInsets.symmetric(horizontal: Space.xs, vertical: paddingV),
           child: Row(
             children: [
               for (final key in keys)
@@ -80,7 +96,7 @@ class NumberKeys extends StatelessWidget {
                     canRequestFocus: false,
                     onTap: () => _handle(key),
                     child: SizedBox(
-                      height: _keyHeight,
+                      height: keyHeight,
                       child: Center(
                         child: Text(
                           key,

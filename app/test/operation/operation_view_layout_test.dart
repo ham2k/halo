@@ -798,7 +798,7 @@ void main() {
   });
 
   testWidgets('the view header stays visible and reachable on narrow too, not just wide', (tester) async {
-    // Below ShirtSize.sMax (720): narrow, single-pane. showTopModalPane used
+    // Below ShirtSize.sMax (660): narrow, single-pane. showTopModalPane used
     // to cover the whole screen at this width, chevron/Tools and all — this
     // pins that the operation sheet opts out of that and leaves the AppBar
     // uncovered, matching what wide already looked like, AND that Tools is

@@ -105,9 +105,10 @@ enum ShirtSize {
   /// baseline is already S).
   static const double xsMax = 360.0;
 
-  /// Below this → S. At 720 the settings and operation views go two-pane;
-  /// iPad-mini portrait (768) and up qualify.
-  static const double sMax = 720.0;
+  /// Below this → S. At 660 the settings and operation views go two-pane;
+  /// a foldable's inner display held portrait (iPhone Duo, 669) and
+  /// iPad-mini portrait (744) and up qualify, and no phone held portrait does.
+  static const double sMax = 660.0;
 
   /// Below this → L. XL is reserved: it behaves identically to L today and
   /// exists so views can diverge later (third columns, wider gutters)

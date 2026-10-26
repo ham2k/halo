@@ -402,37 +402,39 @@ class _HaLoAppState extends State<HaLoApp> {
               valueListenable: macOSWindowIsFullScreen,
               builder: (context, isFullScreen, _) => MacOSFullScreenScope(
                 isFullScreen: isFullScreen,
-                child: UiScale(
-                  scale: scale,
-                  // INSIDE UiScale, deliberately: the density ladder reads
-                  // the divided height, so a large font scale genuinely
-                  // fits less and reaches for a tighter layout sooner —
-                  // the same bargain ShirtSize makes on width
-                  // (docs/design/ui-scaling.md rule 4). Reading the real
-                  // window height here would leave the operator who zoomed
-                  // in with a sparse layout that no longer fits.
-                  child: _LayoutDensityFromWindow(
-                    settings: widget.services.settings,
+                child: DisplayRegionInsets(
+                  child: UiScale(
                     scale: scale,
-                    // Outermost of the startup gates: the tester overlay
-                    // paints above even the onboarding flow — a tester's
-                    // fresh install gets the caution warning before
-                    // anything else.
-                    child: TesterOverlayGate(
-                      services: widget.services,
-                      child: OnboardingGate(
+                    // INSIDE UiScale, deliberately: the density ladder reads
+                    // the divided height, so a large font scale genuinely
+                    // fits less and reaches for a tighter layout sooner —
+                    // the same bargain ShirtSize makes on width
+                    // (docs/design/ui-scaling.md rule 4). Reading the real
+                    // window height here would leave the operator who zoomed
+                    // in with a sparse layout that no longer fits.
+                    child: _LayoutDensityFromWindow(
+                      settings: widget.services.settings,
+                      scale: scale,
+                      // Outermost of the startup gates: the tester overlay
+                      // paints above even the onboarding flow — a tester's
+                      // fresh install gets the caution warning before
+                      // anything else.
+                      child: TesterOverlayGate(
                         services: widget.services,
-                        child: ReleaseOverlayGate(
+                        child: OnboardingGate(
                           services: widget.services,
-                          // Innermost of the startup gates. Its offer is
-                          // a dialog on the Navigator below, so the release
-                          // notes (an overlay above it) paint over the
-                          // offer on a launch that has both; the offer
-                          // waits underneath and returns next launch if
-                          // it is dismissed unseen.
-                          child: ExtensionUpgradeGate(
+                          child: ReleaseOverlayGate(
                             services: widget.services,
-                            child: StatusBarOverlay(services: widget.services, child: content),
+                            // Innermost of the startup gates. Its offer is
+                            // a dialog on the Navigator below, so the release
+                            // notes (an overlay above it) paint over the
+                            // offer on a launch that has both; the offer
+                            // waits underneath and returns next launch if
+                            // it is dismissed unseen.
+                            child: ExtensionUpgradeGate(
+                              services: widget.services,
+                              child: StatusBarOverlay(services: widget.services, child: content),
+                            ),
                           ),
                         ),
                       ),
@@ -528,7 +530,11 @@ class _LayoutDensityFromWindowState extends State<_LayoutDensityFromWindow> {
     // The DENSITY-RESOLVED value is what gets snapped, not the base constant:
     // snapping 48 and swapping in a shorter header downstream would put the
     // seam straight back at every non-1.0 font scale.
-    final toolbarHeight = PixelGrid.of(context).snap(density.metrics.chromeHeight);
+    //
+    // Raised into the status bar's band, the header takes the band's height
+    // instead, centred on the status bar's clock (see [statusBandHeaderOf]).
+    final chromeHeight = statusBandHeaderOf(context)?.height ?? density.metrics.chromeHeight;
+    final toolbarHeight = PixelGrid.of(context).snap(chromeHeight);
 
     // Plain assignment, no setState: both callers are immediately followed
     // by a build, and marking dirty from didChangeDependencies would only

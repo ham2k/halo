@@ -5,6 +5,7 @@ library;
 
 export 'src/activity_controls.dart';
 export 'src/call_info_summary.dart';
+export 'src/display_regions.dart';
 export 'src/logging_controls_spotting.dart' show spotFailureText, SpottingControlModel;
 export 'src/category_band.dart';
 export 'src/chrome_edge.dart';

@@ -921,12 +921,18 @@ class _TopModalPaneScaffold extends StatelessWidget {
                                         HaloDialogHeader(
                                           leading: route.leading,
                                           title: route.title,
-                                          trailing:
-                                              route.trailing ??
-                                              IconButton(
-                                                icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
-                                                onPressed: () => Navigator.of(context).maybePop(),
-                                              ),
+                                          trailing: Padding(
+                                            // At the window's top edge this
+                                            // row is the window header, and
+                                            // clears what sits over its corner.
+                                            padding: EdgeInsets.only(right: isNarrow && !route.keepHeaderVisible ? windowsCaptionClearance(context) : 0),
+                                            child:
+                                                route.trailing ??
+                                                IconButton(
+                                                  icon: Icon(MdiIcons.close, semanticLabel: route.closeLabel),
+                                                  onPressed: () => Navigator.of(context).maybePop(),
+                                                ),
+                                          ),
                                         ),
                                       if (route.scrollable)
                                         Flexible(
@@ -968,7 +974,11 @@ class _TopModalPaneScaffold extends StatelessWidget {
               top: MediaQuery.of(context).padding.top,
               height: headerHeight,
               left: 0,
-              right: 0,
+              // The AppBar this stands over insets its actions by the
+              // horizontal safe area; pinned to the bare edge, the copy lands
+              // that far right of the row it covers wherever the inset is
+              // nonzero (a landscape notch, iPhone Duo's status bar column).
+              right: MediaQuery.paddingOf(context).right,
               alignment: AlignmentDirectional.centerEnd,
               theme: theme,
             ),

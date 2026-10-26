@@ -8,15 +8,15 @@
 // rather than "put the caret somewhere", which is what it would mean in a
 // field that already holds text.
 //
-// Opt-in per field, and only the callsign fields opt in: the logging panel's
-// and the home screen's Quick Lookup (docs/design/logging-fields.md). Each is
-// where focus comes to rest, emptied — the panel's after a log or a wipe, the
-// Quick Lookup's after a command — and on iOS, where a touch outside a field
-// does not unfocus it, this is the operator's way to put the keyboard away
-// from there. Do not hoist it to cover every field: an operator on a form —
-// account credentials, a settings dialog — who taps an empty field again is
-// placing the caret, not asking for the keyboard to go, and losing it there
-// reads as the app misbehaving.
+// Opt-in per field, and only the fields focus comes to rest in, emptied, opt
+// in: the logging panel's callsign field and the home screen's Quick Lookup
+// (docs/design/logging-fields.md) — after a log, a wipe or a command — and the
+// operation setup sheet's activity search, after its clear button. On iOS,
+// where a touch outside a field does not unfocus it, this is the operator's
+// way to put the keyboard away from there. Do not hoist it to cover every
+// field: an operator on a form — account credentials, a settings dialog — who
+// taps an empty field again is placing the caret, not asking for the keyboard
+// to go, and losing it there reads as the app misbehaving.
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';

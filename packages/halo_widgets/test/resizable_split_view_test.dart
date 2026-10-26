@@ -104,7 +104,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(primaryWidth(tester), 600);
 
-    // 1200 * 2/3 = 800 → capped at sMax (720).
+    // 1200 * 2/3 = 800 → capped at sMax (660).
     tester.view.physicalSize = const Size(1200, 600);
     await tester.pumpWidget(
       harness(
@@ -205,11 +205,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(reported, isEmpty, reason: 'a click must not persist a preference');
 
-    // And the default must still adapt to the window afterwards.
-    tester.view.physicalSize = const Size(1050, 600);
-    await tester.pumpWidget(build(1050));
+    // And the default must still adapt to the window afterwards — to a width
+    // whose 2/3 stays under the sMax cap, or the cap would hide a frozen one.
+    tester.view.physicalSize = const Size(960, 600);
+    await tester.pumpWidget(build(960));
     await tester.pumpAndSettle();
-    expect(primaryWidth(tester), 700, reason: 'still 2/3-adaptive: a click must not freeze the width');
+    expect(primaryWidth(tester), 640, reason: 'still 2/3-adaptive: a click must not freeze the width');
   });
 
   testWidgets('PaneSafeArea advises the secondary of the clearance in both styles', (tester) async {

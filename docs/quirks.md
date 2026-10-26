@@ -446,3 +446,69 @@ has at that pixel, and compare. The method and the before/after numbers are on
 **Revisit** on a Flutter upgrade — this is an upstream defect in the engine's
 semantics geometry, not a design decision. When it is fixed, these keys become
 churn on every filter keystroke and should come out together.
+
+## iPhone Duo: Flutter sees one inset per edge, and no fold
+
+**Breaks:** three ways on the inner display, none of them Flutter's
+arithmetic.
+
+- **The top band.** Held portrait, iOS reports an 82pt top safe area across
+  the whole width, while the status bar it protects fills only the top-right
+  corner. Laid out against it, every screen loses 56pt to an empty band above
+  its header.
+- **The corners.** Held landscape, iOS reports no left inset at all, and the
+  display's rounded corner cuts into the header's leading edge and the app's
+  mark.
+- **The keyboard, half-folded.** iOS reports the keyboard as reaching the
+  fold's upper margin (455.5pt down the 951pt display held portrait) whatever
+  keyboard it draws, and draws it 50–100pt lower, depending on whether the
+  suggestion bar is up. UIKit's own `keyboardLayoutGuide` reports the same
+  frame. Laid out against it, the app leaves an empty strip between the fold
+  and the keyboard.
+
+**Carried for it:** iOS 27.1 reports the display's shape to native code, and
+`DisplayRegions` in `app/ios/Runner/SceneDelegate.swift` sends it over
+`ham2k/display_regions`: the insets of a 58pt header bar at the top edge, the
+safe area adapted to the corners, and the fold (`reservedRegions(kind:
+.division)`) with whether it is active, which it is exactly while
+half-folded. `DisplayRegionInsets` (`display_regions.dart`), at the app root,
+outside `UiScale`, corrects the MediaQuery from it once, for every reader
+below:
+
+- Where the header bar starts above the safe area, the top inset drops to it
+  (24pt), the left inset takes its leading clearance (16pt) so the rail and
+  the app's mark stay in one column, and `statusBandHeaderOf` gives the
+  header's height and what it holds clear beside the status bar. `windowsCaptionClearance` reserves the status
+  bar's side the way it reserves the Windows caption buttons — every
+  window-top header already ends its actions with it.
+- Elsewhere the leading and trailing insets take the corner-adapted ones.
+- Half-folded, the keyboard inset drops to the keyboard actually drawn, and
+  `stripBelowFoldOf` gives the strip up to the fold, which the numbers row
+  stretches over so the fields above it end at the fold.
+- The status footer (`BottomBarSafeArea`, `bottomBarPaddingOf`) sits 12pt
+  off the bottom edge instead of the 34pt safe area, clear of the corners at
+  its sides by the corner-adapted insets.
+
+All of it only on a display that reports a fold; what the same calls answer
+on other phones and tablets is unverified. A report measured at another size
+is ignored until the reporter catches up with a rotation.
+
+**Still hardcoded:** the raised header's height, 46pt from iOS's 24pt start,
+which sets its text on the status bar clock's baseline; iOS's own 58pt bar
+centres it 4pt lower. The footer's 12pt: iOS centres every bottom bar 48pt
+up and no lower than 24pt, so a bar the footer's height lands exactly on the
+safe area. And iOS reports no drawn keyboard height half-folded, so the
+two heights (445pt with the suggestion bar, 396pt without) were measured on
+the iOS 27.1 simulator. Which applies is told by the focused field, the
+taller one wherever iOS might show its suggestion or Passwords bar. Reports
+between the tallest unfolded keyboard (311pt) and the half-folded one are
+taken for the keyboard animating, and the correction scales with them so
+nothing jumps. A keyboard of any other height (a number pad, a third-party
+keyboard) gets the wrong figure.
+
+**When to revisit:** on real hardware, and with each iOS release — re-measure
+the two keyboard heights, and check what the bar and corner regions answer on
+devices without a fold before letting them apply there. Anything drawn in a
+window's top-right corner that is not an AppBar ending in
+`windowsCaptionSpacer` sits under the status bar. Built with an Xcode older
+than 27.1, the reporter sends no fold, and nothing is corrected.

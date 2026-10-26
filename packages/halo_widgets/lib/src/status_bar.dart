@@ -15,6 +15,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'chrome_edge.dart';
 import 'density.dart';
+import 'display_regions.dart';
 import 'format_utils.dart';
 import 'halo_markdown.dart';
 import 'icon_resolver.dart';
@@ -324,10 +325,13 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     // band instead, the strip would come and go with the switcher below: the
     // frame a keyboard finishes leaving, the band starts sliding in from zero
     // and the indicator's strip belongs to nobody until it lands.
+    //
+    // Held at the bottom bar's safe area rather than the window's: on a
+    // foldable's display that sits lower, clear of the corners instead
+    // (see [bottomBarPaddingOf]).
     return Material(
       color: backgroundColor,
-      child: SafeArea(
-        top: false,
+      child: BottomBarSafeArea(
         child: ClipRect(
           child: AnimatedSize(
             duration: const Duration(milliseconds: 200),

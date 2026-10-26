@@ -6,6 +6,7 @@
 // fields always keep their room above the keyboard.
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -526,20 +527,24 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         final perma = footerHidden ? const <StatusBarPermaData>[] : _permaStatuses(context, offline);
 
         final accessory = widget.services.keyboardAccessory.value;
+        // Half-folded, the row stretches over the whole strip between the
+        // keyboard and the fold, so the fields above it end at the fold. Zero
+        // strip everywhere else.
+        final numbersRowHeight = math.max(NumberKeys.heightOf(context), stripBelowFoldOf(context));
         final hasStatusItems = !keyboardUp || footerItems.isNotEmpty || perma.isNotEmpty;
         final bottom = BottomChromeBudget.of(
           windowHeight: MediaQuery.sizeOf(context).height,
           keyboardInset: keyboardInset,
           hasNumbersRow: accessory != null,
           hasStatusItems: hasStatusItems,
-          numbersRowHeight: NumberKeys.heightOf(context),
+          numbersRowHeight: numbersRowHeight,
           // The band's own safe area is part of what a drawn footer takes:
           // it holds the home indicator for the whole window (see
           // [footerHoldsBottomInset]), so a charge of the bar alone leaves
           // the notice and the expanded list a strip of an iPhone that is
           // already spent. Zero with the keyboard up, which is the only state
           // where this term decides whether the footer is drawn at all.
-          footerHeight: StatusBarFooter.collapsedHeightOf(context) + MediaQuery.paddingOf(context).bottom,
+          footerHeight: StatusBarFooter.collapsedHeightOf(context) + bottomBarPaddingOf(context).bottom,
           // Quick Lookup is chrome for the home layer and nothing else, so it
           // is charged exactly while that layer is showing — a view that owns
           // the window replaces it, and charging for it there would take the
@@ -653,6 +658,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
               // could show a row the budget above had not accounted for.
               if (accessory != null && bottom.showNumbersRow)
                 NumberKeys(
+                  height: numbersRowHeight,
                   onKey: accessory.onKey,
                   extraKey: accessory.extraKey,
                   vibrate: accessory.vibrate,

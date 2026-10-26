@@ -20,8 +20,8 @@ separate vocabulary — five density rungs, below.
 | Size | Logical width | Typical device |
 |---|---|---|
 | **XS** | below 360 | small phones |
-| **S** | 360 – 719 | typical phones (360–430) |
-| **L** | 720 – 1199 | tablets, small desktop windows |
+| **S** | 360 – 659 | typical phones (360–430) |
+| **L** | 660 – 1199 | tablets, foldables' inner displays (iPhone Duo, 669), small desktop windows |
 | **XL** | 1200 and up | large windows, full screens |
 
 There is deliberately **no M**. Between S and L lies the **ideal pane width**
@@ -772,15 +772,18 @@ ellipsizes its name to fit. Sizing the strip to its WIDEST tab instead — every
 tab as wide as the longest name in the group — pushes the strip past the pane
 the moment one module has a long name, and a tab pushed off the edge is a pane
 the operator cannot reach without first discovering that the strip scrolls at
-all. It scrolls only below a floor of three letters and an ellipsis per tab —
+all. It scrolls only below a floor of two letters and an ellipsis per tab —
 measured like the editing floor, over every box between a tab's two edges, so
-it holds at every font scale.
+it holds at every font scale. Two rather than the editing floor's three: in
+use a tab only has to tell its pane apart from the others, and each letter is
+paid once per tab, so a third one scrolls a narrow pane — a foldable's inner
+display held portrait — that two letters fit.
 
 **In a tight tab the ACTION slot gives way, not the name.** The action sits
 inside the selected tab's own share, and it is a full chrome height with room
 to spare; approaching the floor it gives up exactly what the name needs, down
 to its own glyph — the same box editing gives it — and no further. So the
-floor reserves that glyph, and a tab AT the floor shows three letters beside
+floor reserves that glyph, and a tab AT the floor shows two letters beside
 the smallest slot. Reserving the whole tap target there instead is the
 tempting alternative and is wrong twice over: the reservation is multiplied by
 the tab count, so a group of four flips to scrolling — tabs no longer filling
@@ -1452,10 +1455,10 @@ not add it.
 
 ## How to verify a change
 
-Run the app on macOS and drag the window width across 360, 720, and 1200.
+Run the app on macOS and drag the window width across 360, 660, and 1200.
 Confirm:
 
-- Home, Operation, and Settings each switch arrangements at 720 — and
+- Home, Operation, and Settings each switch arrangements at 660 — and
   nothing changes at 1200 (XL is reserved).
 - In-progress state survives the flip: a half-typed callsign in the logging
   controls, the operation list's scroll position.

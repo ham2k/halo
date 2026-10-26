@@ -17,17 +17,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_widgets/src/dock_tab.dart' show PaneHeaderPeek;
 
-/// What three letters and an ellipsis measure, in the same style the strip's
-/// floor is measured against — bold for the editing floor, since a tab being
-/// rearranged carries its name in bold, plain for the one the used strip
-/// scrolls at.
-double _threeLetterWidth(WidgetTester tester, {bool bold = true}) {
+/// What the name a strip's floor keeps measures, in the style that floor is
+/// measured against: three letters and an ellipsis in bold for the editing
+/// floor, since a tab being rearranged carries its name in bold; two in plain
+/// for the one the used strip scrolls at.
+double _floorNameWidth(WidgetTester tester, {bool editing = true}) {
   final context = tester.element(find.byType(DockLayoutView));
   final style = Theme.of(context).textTheme.titleSmall;
   final painter = TextPainter(
     text: TextSpan(
-      text: 'Abc…',
-      style: bold ? style?.copyWith(fontWeight: FontWeight.bold) : style,
+      text: editing ? 'Abc…' : 'Ab…',
+      style: editing ? style?.copyWith(fontWeight: FontWeight.bold) : style,
     ),
     textDirection: TextDirection.ltr,
     maxLines: 1,
@@ -713,8 +713,8 @@ void main() {
     // squeezed on past it shows punctuation where a name should be. The
     // floor is every box between the tab's two edges, the label's own insets
     // and the tab's own padding included; one left out of that sum and the
-    // tab ellipsizes below the three letters the floor exists to keep.
-    final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2;
+    // tab ellipsizes below the two letters the floor exists to keep.
+    final floor = _floorNameWidth(tester, editing: false) + Space.lg + Space.sm + Space.xxs * 2;
     expect(bravo.width, moreOrLessEquals(floor));
     expect(charlie.width, moreOrLessEquals(floor));
     expect(bravo.width + charlie.width, greaterThan(strip.width), reason: 'and past the strip, so it scrolls');
@@ -744,7 +744,7 @@ void main() {
       // test font advances every glyph a full em, so a window sized in points
       // is a different number of floors here than in the app.
       await tester.pumpWidget(withSelection(0, const ValueKey(0)));
-      final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
+      final floor = _floorNameWidth(tester, editing: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
       tester.view.physicalSize = Size(floor * 5, 1200);
 
       await tester.pumpWidget(withSelection(0, const ValueKey(1)));
@@ -756,11 +756,11 @@ void main() {
       for (final name in ['INFO', 'SPOTS', 'More', 'Weather']) {
         expect(tabRect(tester, name).width, moreOrLessEquals(strip.width / 4), reason: '$name keeps an equal share');
       }
-      // And the name still gets its three letters beside the action — the slot
+      // And the name still gets its two letters beside the action — the slot
       // shrank toward its glyph rather than taking the whole share. `> 0`
       // would not say that: a full-width slot still leaves the label a few
       // points to render "…" in.
-      expect(tester.getSize(find.text('Weather')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)));
+      expect(tester.getSize(find.text('Weather')).width, greaterThanOrEqualTo(_floorNameWidth(tester, editing: false)));
       // And with room to spare the action keeps its full tap target: the slot
       // yields only where the name would otherwise go short, so a slot pinned
       // at its glyph everywhere is as wrong as one that never shrinks.
@@ -773,7 +773,7 @@ void main() {
       // Exactly at the floor, where the strip shares for the last time before
       // it scrolls. The action's slot is what gives way approaching it, but it
       // only yields down to its glyph — so a floor that reserves less than
-      // that glyph hands the label a share it cannot fit three letters in, and
+      // that glyph hands the label a share it cannot fit two letters in, and
       // the tab reads as a settings button with no name. That band is invisible
       // at any wider width, which is why this test sits ON the floor.
       tester.view.devicePixelRatio = 1;
@@ -788,12 +788,12 @@ void main() {
       // Measured off a first pump, then the view is set to exactly two floors
       // wide — the last width that shares.
       await tester.pumpWidget(group(const ValueKey(0)));
-      final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
+      final floor = _floorNameWidth(tester, editing: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
       tester.view.physicalSize = Size(floor * 2, 600);
       await tester.pumpWidget(group(const ValueKey(1)));
 
       expect(tabRect(tester, 'Bravo').width, moreOrLessEquals(floor), reason: 'sharing, not scrolling');
-      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)));
+      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_floorNameWidth(tester, editing: false)));
       // The slot is down to its glyph here, and the glyph gets ALL of it: an
       // IconButton's own 8pt-a-side padding would leave a 24pt icon 16pt to
       // paint in, outside its box and into whatever clips the strip.
@@ -819,12 +819,12 @@ void main() {
         ),
       );
 
-      final floor = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
+      final floor = _floorNameWidth(tester, editing: false) + Space.lg + Space.sm + Space.xxs * 2 + _glyphSlot;
       expect(tabRect(tester, 'Bravo').width, moreOrLessEquals(floor), reason: "the scrolling floor holds the action's smallest slot");
       expect(tabRect(tester, 'Charlie').width, moreOrLessEquals(floor), reason: 'and every tab gets the same one');
       expect(
         tester.getSize(find.text('Bravo')).width,
-        greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)),
+        greaterThanOrEqualTo(_floorNameWidth(tester, editing: false)),
         reason: 'so the selected tab still names its pane',
       );
       // The glyph gets the whole slot. Measured on the ICON, not the button:
@@ -854,7 +854,7 @@ void main() {
 
       await tester.pumpWidget(group(const ValueKey(0)));
       final tapTarget = LayoutDensity.chromeHeightOf(tester.element(find.byType(DockLayoutView)));
-      final name = _threeLetterWidth(tester, bold: false) + Space.lg + Space.sm + Space.xxs * 2;
+      final name = _floorNameWidth(tester, editing: false) + Space.lg + Space.sm + Space.xxs * 2;
       // Exactly two DESKTOP floors wide — the width where the two rules part
       // company. Off touch this shares; on touch the same width cannot pay
       // for the tap target, so it scrolls instead of shrinking the button.
@@ -866,7 +866,7 @@ void main() {
       expect(bravo.width, moreOrLessEquals(name + tapTarget), reason: 'the floor reserves the whole target');
       expect(bravo.width + tabRect(tester, 'Charlie').width, greaterThan(strip.width), reason: 'so the strip scrolls');
       expect(tester.getSize(find.byType(IconButton)).width, moreOrLessEquals(tapTarget), reason: 'and it keeps it');
-      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_threeLetterWidth(tester, bold: false)));
+      expect(tester.getSize(find.text('Bravo')).width, greaterThanOrEqualTo(_floorNameWidth(tester, editing: false)));
     });
   });
 
@@ -1821,7 +1821,7 @@ void main() {
       // the boxes between the tab's two edges, and one left out of that sum
       // is a tab that ellipsizes below its own minimum — invisible to a test
       // that only compares widths.
-      expect(label.width, greaterThanOrEqualTo(_threeLetterWidth(tester)));
+      expect(label.width, greaterThanOrEqualTo(_floorNameWidth(tester)));
     });
 
     test("a quiet tab action stays legible against whatever header it is on", () {

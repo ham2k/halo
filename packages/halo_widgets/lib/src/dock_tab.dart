@@ -179,16 +179,19 @@ class DockTab extends StatelessWidget {
     return editingHandleSize + _editingActionSize + width + Space.sm * 2 + Space.xxs * 2;
   }
 
-  /// The least a tab is given while the dock is being USED: enough for three
+  /// The least a tab is given while the dock is being USED: enough for two
   /// letters and an ellipsis beside whatever else that tab holds. Below it
   /// the strip scrolls rather than shrinking further, because a tab showing
-  /// nothing but punctuation names no pane.
+  /// nothing but punctuation names no pane. Two, not the three the editing
+  /// floor keeps: a pane only has to be told apart from its neighbours here,
+  /// not read by name, and every letter is multiplied by the tab count before
+  /// a narrow pane — a foldable's inner display held portrait — scrolls.
   ///
   /// Measured, not guessed at, and summed over EVERY box between the tab's
   /// two edges — the label's own insets, the tab's own padding, and the
   /// action slot when this tab carries one — for the same reasons as
   /// [activeMinWidth]: one term left out is a tab that ellipsizes below the
-  /// three letters this floor exists to keep, and a constant is a number for
+  /// two letters this floor exists to keep, and a constant is a number for
   /// one font scale.
   ///
   /// [hasAction] is a tab that carries its module's action, and it counts as
@@ -199,7 +202,7 @@ class DockTab extends StatelessWidget {
   /// while every neighbour still reads fine, which looks like a missing
   /// title rather than a strip out of room.
   static double readableMinWidth(BuildContext context, {bool hasAction = false, bool solo = false}) {
-    final width = textWidth(context, 'Abc…', Theme.of(context).textTheme.titleSmall ?? const TextStyle());
+    final width = textWidth(context, 'Ab…', Theme.of(context).textTheme.titleSmall ?? const TextStyle());
     // A pane heading keeps a title bar's wider trailing inset; a tab's
     // trailing side is the gap to its action, not an edge — see [_tabContent].
     return width + Space.lg + (solo ? Space.lg : Space.sm) + Space.xxs * 2 + (hasAction ? minActionSizeOf(context) : 0);
@@ -322,12 +325,12 @@ class DockTab extends StatelessWidget {
 
   /// The action's own width while the dock is being USED, given [available]
   /// for the name and the action together: its full tap target where the
-  /// name still gets three letters beside it, and down to [minActionSizeOf]
+  /// name still gets two letters beside it, and down to [minActionSizeOf]
   /// where it does not. Shrinking the tap target is the trade — a control
   /// pressed now and then, against the name of the pane it belongs to.
   ///
   /// Between those two ends the slot gives up exactly what the name needs,
-  /// so a tab at [readableMinWidth] shows three letters and the smallest
+  /// so a tab at [readableMinWidth] shows two letters and the smallest
   /// slot — which is why that floor reserves that slot and no more. The two
   /// read the SAME sum, minus the tab's own padding, which is outside
   /// [available]: derived rather than copied, because a label inset that

@@ -13,6 +13,7 @@ import 'package:flutter/foundation.dart' show TargetPlatform, debugPrint, defaul
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'display_regions.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
 import 'ui_scale.dart';
@@ -477,14 +478,21 @@ const double windowsCaptionButtonWidth = 46;
 
 /// Trailing space a window-top AppBar's `actions` must reserve so they
 /// don't sit under the caption-button overlay when
-/// [isWindowsChromelessWindow] or [isLinuxChromelessWindow]; zero
-/// elsewhere, so it can be applied unconditionally as a trailing SizedBox.
-double windowsCaptionClearance(BuildContext context) => (isWindowsChromelessWindow || isLinuxChromelessWindow) ? 3 * windowsCaptionButtonWidth + 8 : 0;
+/// [isWindowsChromelessWindow] or [isLinuxChromelessWindow], or under the
+/// status bar where the header is raised into its band
+/// ([statusBandHeaderOf]); zero elsewhere, so it can be applied
+/// unconditionally as a trailing SizedBox.
+double windowsCaptionClearance(BuildContext context) {
+  if (isWindowsChromelessWindow || isLinuxChromelessWindow) return 3 * windowsCaptionButtonWidth + 8;
+  return statusBandHeaderOf(context)?.trailing ?? 0;
+}
 
 /// The trailing spacer every window-top AppBar puts at the END of its
 /// `actions` (adding one if it has none): it keeps action buttons — and,
 /// by constraining the title's width, long titles — from rendering under
-/// the caption-button overlay. Collapses to zero width off Windows. The
+/// the caption-button overlay, or the status bar beside a header raised into
+/// its band. Collapses to zero width everywhere else (see
+/// [windowsCaptionClearance]). The
 /// counterpart of the macOS side's leading clearance
 /// ([macOSAwareLeadingWidth]), just on the opposite edge.
 Widget windowsCaptionSpacer(BuildContext context) => SizedBox(width: windowsCaptionClearance(context));

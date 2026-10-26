@@ -213,8 +213,9 @@ which blurs), or tapping the focused, still-empty callsign field a second
 time, which blurs it as a way to dismiss the keyboard — a field you focused
 but haven't typed into is the one case where there's nothing to lose by
 closing it (`TapToDismissEmptyField` in `keyboard_dismiss.dart`). Only the
-callsign fields do this — this one and the home screen's Quick Lookup, each
-the field focus comes to rest in, emptied, after a log, a wipe or a command.
+fields focus comes to rest in, emptied, do this — this one and the home
+screen's Quick Lookup, after a log, a wipe or a command, and the operation
+setup sheet's activity search, after its clear button.
 On iOS, where a touch outside a field does not unfocus it, that is the way
 to put the keyboard away; the panel's other main fields, which keep focus
 after Enter too, have none, and the keyboard stays up from them until the

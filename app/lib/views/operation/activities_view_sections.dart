@@ -513,38 +513,44 @@ mixin _ActivitiesSections on State<OperationSheet>, _ActivitiesRefs, _Activities
                         return Row(
                           children: [
                             Expanded(
-                              child: TextField(
-                                selectAllOnFocus: false,
-                                // The map answers where the operator is, not
-                                // what they typed: searching is the list's job.
-                                enabled: !_showResultsMap,
-                                controller: _searchController,
+                              // A field focus comes to rest in, emptied —
+                              // see keyboard_dismiss.dart.
+                              child: TapToDismissEmptyField(
                                 focusNode: _searchFocusNode,
-                                decoration: InputDecoration(
-                                  hintText: t.searchHint,
-                                  prefixIcon: Padding(
-                                    padding: const EdgeInsets.only(left: Space.md, right: Space.sm),
-                                    child: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
+                                controller: _searchController,
+                                child: TextField(
+                                  selectAllOnFocus: false,
+                                  // The map answers where the operator is, not
+                                  // what they typed: searching is the list's job.
+                                  enabled: !_showResultsMap,
+                                  controller: _searchController,
+                                  focusNode: _searchFocusNode,
+                                  decoration: InputDecoration(
+                                    hintText: t.searchHint,
+                                    prefixIcon: Padding(
+                                      padding: const EdgeInsets.only(left: Space.md, right: Space.sm),
+                                      child: Icon(MdiIcons.magnify, color: onAccordionColor.withValues(alpha: 0.6)),
+                                    ),
+                                    prefixIconConstraints: const BoxConstraints(),
+                                    suffixIcon: _searchIsEmpty.value || _showResultsMap
+                                        ? null
+                                        : IconButton(
+                                            icon: Icon(MdiIcons.close, color: onAccordionColor.withValues(alpha: 0.6), semanticLabel: context.t.common.clear),
+                                            onPressed: _clearSearch,
+                                          ),
+                                    filled: true,
+                                    // Paler than the band it sits on, so the field
+                                    // reads as a well rather than blending in.
+                                    fillColor: theme.colorScheme.surface,
+                                    border: searchBorder,
+                                    // Contrast is against the field's own `surface`
+                                    // fill, not the accordion band around it — the
+                                    // indicator is drawn over the well.
+                                    focusedBorder: haloFocusedBorder(searchBorder, context),
+                                    isDense: true,
                                   ),
-                                  prefixIconConstraints: const BoxConstraints(),
-                                  suffixIcon: _searchIsEmpty.value || _showResultsMap
-                                      ? null
-                                      : IconButton(
-                                          icon: Icon(MdiIcons.close, color: onAccordionColor.withValues(alpha: 0.6), semanticLabel: context.t.common.clear),
-                                          onPressed: _clearSearch,
-                                        ),
-                                  filled: true,
-                                  // Paler than the band it sits on, so the field
-                                  // reads as a well rather than blending in.
-                                  fillColor: theme.colorScheme.surface,
-                                  border: searchBorder,
-                                  // Contrast is against the field's own `surface`
-                                  // fill, not the accordion band around it — the
-                                  // indicator is drawn over the well.
-                                  focusedBorder: haloFocusedBorder(searchBorder, context),
-                                  isDense: true,
+                                  onChanged: _searchState.searchSoon,
                                 ),
-                                onChanged: _searchState.searchSoon,
                               ),
                             ),
                             Padding(
