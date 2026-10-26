@@ -7,10 +7,16 @@
 // asynchronously. With no plugin behind that channel the lookup throws
 // MissingPluginException, and whether it lands inside the test that mounted
 // the map, in a later one, or after the last one depends on timing alone.
+//
+// The singleton is made here, in setUpAll, rather than by the first map:
+// its setup and its worker isolate's replies run in the zone that made it,
+// and a testWidgets body's fake-async zone stops advancing when the test
+// ends — a cache born there can never be shut down afterwards.
 
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void useTempMapTileCache() {
@@ -21,6 +27,14 @@ void useTempMapTileCache() {
       const MethodChannel('plugins.flutter.io/path_provider'),
       (call) async => cacheDir.path,
     );
+    BuiltInMapCachingProvider.getOrCreateInstance(cacheDirectory: cacheDir.path);
   });
-  tearDownAll(() => cacheDir.deleteSync(recursive: true));
+  tearDownAll(() async {
+    // The worker writes into this directory on its own schedule, and the
+    // setup creates a folder in it; deleting under either fails ("Directory
+    // not empty", or the setup's create finding no parent). destroy() waits
+    // for both to stop.
+    await BuiltInMapCachingProvider.getOrCreateInstance().destroy();
+    cacheDir.deleteSync(recursive: true);
+  });
 }
