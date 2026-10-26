@@ -8,12 +8,12 @@ upcoming:
   changes:
     - "New control and serial port fields on Icom network connections"
     - "Find on an exact call (`K1AB.`) also lists contacts from other operations"
-    - "New Cluster Console: type CLUSTER, or Show Console in DX Cluster settings"
+    - "New Cluster Console (type `CLUSTER`, or DX Cluster settings)"
     - "Added Yaesu FTDX3000, FTDX5000, FTDX1200, FT-2000 and FT-950 to the radio list (tell us how it behaves)"
     - "New: picking a band moves a CAT-connected radio to that band"
     - "New Advanced section in Operation Details: Operating Position, Assistance, Self-spotting"
     - "New iPhone Duo layout: whole display, two panes, fold-aware keyboard (feedback welcome)"
-    - "Improved spot icons: one per kind of reference, plus chasing alerts"
+    - "Improved spot icons: one per kind of reference"
 
 "183":
   changes:
