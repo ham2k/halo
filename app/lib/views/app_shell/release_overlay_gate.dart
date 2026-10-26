@@ -50,6 +50,9 @@ class _ReleaseOverlayGateState extends State<ReleaseOverlayGate> {
     // First run: onboarding is showing (see OnboardingGate) and marks this
     // version seen on dismissal — don't stack "what's new" behind it.
     if (!widget.services.settings.defaultProfileCallsignDefined) return;
+    // The Cloud Sync question alone is showing instead. Nothing is stamped,
+    // so "what's new" shows on the next launch rather than stacked behind it.
+    if (widget.services.settings.cloudSyncPromptDue) return;
     if (widget.services.settings.lastSeenReleaseVersion == kPublicVersion) return;
     final notes = await loadReleaseNotes();
     ReleaseNotesEntry? current;

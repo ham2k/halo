@@ -4,10 +4,13 @@
 // First-run onboarding: the release overlay's look — full-bleed
 // release photo, brand mark, credits — but the bottom band walks the
 // app-polo onboarding steps (Welcome → Callsign → Activities → Data &
-// Privacy) instead of showing release notes. One step of HaLo's own sits
-// between Welcome and Callsign, and only when another Ham2K logger is
-// installed on the device: an offer to link straight across to
-// its account. Shown by `_OnboardingGate` in
+// Privacy) instead of showing release notes. Two steps are HaLo's own: Cloud
+// Sync, just before Data & Privacy; and, between Welcome and Callsign and
+// only when another Ham2K logger is installed on the device, an offer to
+// link straight across to its account. With `syncOnly` the overlay is the
+// Cloud Sync step alone, asked once of an onboarded install whose sync is off
+// with no recorded choice (SettingsService.cloudSyncPromptDue). Shown by
+// `_OnboardingGate` in
 // main.dart whenever the default profile has NEVER had a callsign set
 // (undefined — an explicit '' from a previous Skip counts as set, see
 // SettingsService.defaultProfileCallsignDefined). Both Skip and Done write
@@ -54,7 +57,7 @@ const _bandMinExpandedHeight = 360.0;
 /// Below this available height the brand mark shrinks.
 const _compactHeightThreshold = 540.0;
 
-enum _OnboardingStep { welcome, foundSibling, callsign, linkAccount, activities, consent }
+enum _OnboardingStep { welcome, foundSibling, callsign, linkAccount, activities, sync, consent }
 
 /// Pins the light theme, and does nothing else.
 ///
@@ -75,7 +78,11 @@ class OnboardingOverlayView extends StatelessWidget {
 
   final VoidCallback onDone;
 
-  const OnboardingOverlayView({super.key, required this.services, required this.release, required this.onDone});
+  /// Shows only the Cloud Sync step, with Not now in place of Back and
+  /// Continue as the exit.
+  final bool syncOnly;
+
+  const OnboardingOverlayView({super.key, required this.services, required this.release, required this.onDone, this.syncOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -84,7 +91,7 @@ class OnboardingOverlayView extends StatelessWidget {
     // null-fontSize trap).
     return Theme(
       data: buildHaLoTheme(Brightness.light),
-      child: _OnboardingContent(services: services, release: release, onDone: onDone),
+      child: _OnboardingContent(services: services, release: release, onDone: onDone, syncOnly: syncOnly),
     );
   }
 }
@@ -93,8 +100,9 @@ class _OnboardingContent extends StatefulWidget {
   final HaLoServices services;
   final ReleaseNotesEntry? release;
   final VoidCallback onDone;
+  final bool syncOnly;
 
-  const _OnboardingContent({required this.services, required this.release, required this.onDone});
+  const _OnboardingContent({required this.services, required this.release, required this.onDone, required this.syncOnly});
 
   @override
   State<_OnboardingContent> createState() => _OnboardingContentState();
@@ -121,7 +129,8 @@ class _OnboardingContentState extends State<_OnboardingContent> {
   /// call-notes' data file and any just-enabled extension's own data file
   /// (POTA/SOTA parks/summits) may still be downloading, and letting the
   /// user in before they land means the app looks broken (empty lookups,
-  /// no nearby suggestions) rather than still setting up.
+  /// no nearby suggestions) rather than still setting up. The sync-only
+  /// question uses it just to disable its buttons while sync turns on.
   bool _finishingSetup = false;
 
   /// The other Ham2K loggers on this device, asked for once on mount; empty
@@ -180,7 +189,9 @@ class _OnboardingContentState extends State<_OnboardingContent> {
       case _OnboardingStep.linkAccount:
         break;
       case _OnboardingStep.activities:
-        _goTo(_OnboardingStep.consent);
+        _goTo(_OnboardingStep.sync);
+      case _OnboardingStep.sync:
+        widget.syncOnly ? _answerSyncPrompt() : _goTo(_OnboardingStep.consent);
       case _OnboardingStep.consent:
         _finish();
     }
@@ -193,6 +204,13 @@ class _OnboardingContentState extends State<_OnboardingContent> {
   bool _wwff = false;
   bool _consentAppData = true;
   bool _consentOpData = false;
+
+  /// Seeded from the setting, never a default of its own:
+  /// [SettingsService.seedSyncEnabledDefault] has already decided it for
+  /// this install (on for a new one, off in a dev data sandbox). Asked on its
+  /// own, the setting is off by definition, and the question starts on — as
+  /// a new install's does.
+  late bool _sync;
 
   /// Whether this is the install's first onboarding rather than a DEVONBOARD
   /// replay over an install already in use — decided as it opens, before the
@@ -220,6 +238,8 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     _wwff = overrides[extensions.offeredKeyFor('wwff')] ?? overrides['wwff'] ?? _wwff;
     _consentAppData = (settings.settingValue(SettingsService.privacyGroup, 'consentAppData') as bool?) ?? _consentAppData;
     _consentOpData = (settings.settingValue(SettingsService.privacyGroup, 'consentOpData') as bool?) ?? _consentOpData;
+    _sync = widget.syncOnly || settings.syncEnabled;
+    if (widget.syncOnly) _step = _OnboardingStep.sync;
 
     // Drop whatever held focus beneath the overlay (a DEVONBOARD re-show
     // can arrive over a focused call field, whose own Enter shortcut would
@@ -310,6 +330,9 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     // there to ask yet.
     await widget.services.extensions.setExtensionsEnabled({'pota': _pota, 'sota': _sota, 'wwff': _wwff});
     await settings.updateSettingsGroup(SettingsService.privacyGroup, {'consentAppData': _consentAppData, 'consentOpData': _consentOpData});
+    // Through HaLoServices, as the Sync panel's toggle does: turning sync on
+    // also establishes the device key and starts the engine.
+    if (_sync != settings.syncEnabled) await widget.services.setSyncEnabled(_sync, via: 'onboarding');
   }
 
   Future<void> _finish() async {
@@ -342,6 +365,60 @@ class _OnboardingContentState extends State<_OnboardingContent> {
       ErrorReportingService.report(e, st, context: 'onboarding:finishing-setup');
     }
     if (!mounted) return;
+    widget.onDone();
+  }
+
+  /// Not now on the sync-only question. Needs no write — the gate records the
+  /// question as answered when it dismisses — but does need [_finishingSetup]:
+  /// the Enter handler stays registered through the dismissal fade, and an
+  /// Enter there would otherwise reach [_answerSyncPrompt] with the switch
+  /// still on, turning sync on for an operator who just declined it.
+  void _declineSyncPrompt() {
+    if (_finishingSetup) return;
+    setState(() => _finishingSetup = true);
+    widget.onDone();
+  }
+
+  /// Continue on the sync-only question.
+  ///
+  /// An install with QSOs of its own does not sync on a yes alone: the
+  /// engine parks on whether to combine them with the account or replace
+  /// them, and the banner that asks lives in Settings › Sync — so go there,
+  /// as the link flow does (see [_hadLocalQsos]). Counted BEFORE enabling,
+  /// for the same reason.
+  Future<void> _answerSyncPrompt() async {
+    if (_finishingSetup) return;
+    setState(() => _finishingSetup = true);
+    var hadLocalQsos = false;
+    if (_sync) {
+      try {
+        hadLocalQsos = (await widget.services.qsos.syncCounts()).total > 0;
+      } catch (e, st) {
+        // Never in the way of the yes: the gate marks the question answered
+        // on dismissal, so a yes that does not land is never asked again.
+        // Assumed true, the cost is a visit to Settings › Sync.
+        hadLocalQsos = true;
+        ErrorReportingService.report(e, st, context: 'onboarding:count-qsos');
+      }
+      try {
+        await widget.services.setSyncEnabled(true, via: 'prompt');
+      } catch (e, st) {
+        // A keychain failure must not strand the operator on the question;
+        // setSyncEnabled writes the setting before anything that can throw.
+        debugPrint('[onboarding] enabling sync failed: $e');
+        ErrorReportingService.report(e, st, context: 'onboarding:enable-sync');
+      }
+    }
+    if (!mounted) return;
+    if (hadLocalQsos) {
+      unawaited(
+        navigatorKey.currentState?.push(
+          MaterialPageRoute<void>(
+            builder: (_) => SettingsView(services: widget.services, initialPanel: 'sync'),
+          ),
+        ),
+      );
+    }
     widget.onDone();
   }
 
@@ -714,7 +791,38 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           secondaryLabel: s.back,
           onSecondary: () => _goTo(_OnboardingStep.callsign),
           primaryLabel: s.kContinue,
-          onPrimary: () => _goTo(_OnboardingStep.consent),
+          onPrimary: () => _goTo(_OnboardingStep.sync),
+        );
+      case _OnboardingStep.sync:
+        return _stepScaffold(
+          title: Text(s.syncTitle, style: titleStyle),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(s.syncBody, style: bodyStyle),
+              const SizedBox(height: Space.md),
+              Text(s.syncPricing, style: bodyStyle),
+              const SizedBox(height: Space.md),
+              SwitchListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Text(s.syncLabel, style: bodyStyle?.copyWith(fontWeight: FontWeight.bold)),
+                value: _sync,
+                onChanged: (v) => setState(() => _sync = v),
+              ),
+              if (!_sync) ...[
+                const SizedBox(height: Space.sm),
+                Text(
+                  s.syncOffWarning,
+                  style: bodyStyle?.copyWith(fontWeight: FontWeight.bold, color: theme.colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+          secondaryLabel: widget.syncOnly ? s.notNow : s.back,
+          onSecondary: _finishingSetup ? null : (widget.syncOnly ? _declineSyncPrompt : () => _goTo(_OnboardingStep.activities)),
+          primaryLabel: s.kContinue,
+          onPrimary: _finishingSetup ? null : (widget.syncOnly ? _answerSyncPrompt : () => _goTo(_OnboardingStep.consent)),
         );
       case _OnboardingStep.consent:
         return _stepScaffold(
@@ -752,7 +860,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
                   ],
                 ),
           secondaryLabel: s.back,
-          onSecondary: _finishingSetup ? null : () => _goTo(_OnboardingStep.activities),
+          onSecondary: _finishingSetup ? null : () => _goTo(_OnboardingStep.sync),
           primaryLabel: s.done,
           onPrimary: _finishingSetup ? null : _finish,
         );

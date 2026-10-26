@@ -1474,12 +1474,20 @@ class HaLoServices with _TimeTravel {
     }
   }
 
-  /// Returns false when the request was REFUSED — callers must not report or
-  /// record a change that did not happen (see `_toggleSync`, which would
-  /// otherwise fire a `sync_enabled` analytics event and install an account
-  /// watcher for a sync that is off).
-  Future<bool> setSyncEnabled(bool enabled) async {
+  /// Returns false when the request was REFUSED — callers must not record a
+  /// change that did not happen (see `_toggleSync`, which would otherwise
+  /// install an account watcher for a sync that is off).
+  ///
+  /// Every caller is the operator deciding, so this is where the decision is
+  /// counted — the `sync_enabled`/`sync_disabled` event, [via] naming where it
+  /// was made (`settings`, `onboarding`, `prompt`) — and where the Cloud Sync
+  /// question is marked answered (see SettingsService.cloudSyncPromptDue).
+  Future<bool> setSyncEnabled(bool enabled, {String via = 'settings'}) async {
     await settings.setSyncEnabled(enabled);
+    track(enabled ? 'sync_enabled' : 'sync_disabled', {'via': via});
+    if (settings.onboardingShownCount(OnboardingFlows.cloudSync) == 0) {
+      await settings.recordOnboardingShown(OnboardingFlows.cloudSync);
+    }
     if (!enabled) return true;
     // Boot skips credential setup when the keyring is locked
     // (ensureSyncDeviceKey returns null), so starting the engine now without a

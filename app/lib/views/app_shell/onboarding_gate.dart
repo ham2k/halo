@@ -3,6 +3,8 @@
 //
 // First-run onboarding, shown over the app until the operator has a
 // callsign. ONBOARD_AS skips it for dev runs; DEVONBOARD forces it back.
+// An install already past it is asked the Cloud Sync step alone, once, when
+// SettingsService.cloudSyncPromptDue says so.
 
 import 'dart:async';
 
@@ -29,10 +31,16 @@ String get _onboardAsConfig => debugEnvFlag(const String.fromEnvironment('ONBOAR
 /// Whether onboarding is about to show for [services]: the default profile
 /// has never had a callsign set, and no ONBOARD_AS debug override is
 /// skipping the flow instead. Shared by `_OnboardingGateState.initState`
-/// (which decides whether to actually show it) and `_BootGateState` (which
-/// decides whether to wait for its photo before switching off the splash)
-/// so the two can't silently drift apart into two different answers.
+/// (which decides whether to actually show it) and, through
+/// [onboardingOverlayWillShow], `_BootGateState` (which decides whether to
+/// wait for its photo before switching off the splash) so the two can't
+/// silently drift apart into two different answers.
 bool onboardingWillShow(HaLoServices services) => !services.settings.defaultProfileCallsignDefined && _onboardAsConfig.isEmpty;
+
+/// Whether the onboarding overlay is about to show in either form: the full
+/// flow, or the Cloud Sync question alone. `_BootGateState` warms the photo
+/// on this answer; `_OnboardingGateState.initState` branches the same way.
+bool onboardingOverlayWillShow(HaLoServices services) => onboardingWillShow(services) || services.settings.cloudSyncPromptDue;
 
 /// Applies an `ONBOARD_AS=CALL,activity,...` spec (see [_onboardAsConfig]):
 /// sets the operator callsign and enables the listed activity extensions.
@@ -83,6 +91,9 @@ class _OnboardingGateState extends State<OnboardingGate> {
   /// re-show) — only the first run stamps the release notes as seen.
   bool _firstRun = false;
 
+  /// Whether the current showing is the Cloud Sync question alone.
+  bool _syncOnly = false;
+
   @override
   void initState() {
     super.initState();
@@ -97,6 +108,10 @@ class _OnboardingGateState extends State<OnboardingGate> {
       // Debug-only: ONBOARD_AS is set — apply it and skip the onboarding
       // flow entirely.
       unawaited(applyOnboardAsSpec(widget.services, _onboardAsConfig));
+    } else if (widget.services.settings.cloudSyncPromptDue) {
+      // Recorded on dismissal, not here: ReleaseOverlayGate, mounted below
+      // this one, reads cloudSyncPromptDue to stay out of the way.
+      _show(syncOnly: true);
     }
     widget.services.devOnboardTrigger.addListener(_show);
   }
@@ -110,11 +125,12 @@ class _OnboardingGateState extends State<OnboardingGate> {
   /// First run, or DEVONBOARD (which bypasses the callsign-undefined gate
   /// for iterating on the flow — and is real: its Done writes settings).
   /// Re-triggering during the dismissal fade re-arms the overlay.
-  void _show() {
+  void _show({bool syncOnly = false}) {
     if (!mounted) return;
     setState(() {
       _pending = true;
       _dismissing = false;
+      _syncOnly = syncOnly;
     });
     // The background photo is the newest release's — same imagery as the
     // release overlay. Onboarding must never be stuck waiting on it (this is
@@ -146,6 +162,10 @@ class _OnboardingGateState extends State<OnboardingGate> {
     // NOT on DEVONBOARD re-shows: those never displayed any notes, and
     // stamping would suppress a pending release overlay.
     if (_firstRun) widget.services.settings.setLastSeenReleaseVersion(kPublicVersion);
+    // Asked once, whatever the answer — Not now writes nothing else.
+    if (_syncOnly && widget.services.settings.onboardingShownCount(OnboardingFlows.cloudSync) == 0) {
+      unawaited(widget.services.settings.recordOnboardingShown(OnboardingFlows.cloudSync));
+    }
     setState(() => _dismissing = true);
   }
 
@@ -155,6 +175,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
       _pending = false;
       _dismissing = false;
       _firstRun = false;
+      _syncOnly = false;
     });
   }
 
@@ -168,10 +189,11 @@ class _OnboardingGateState extends State<OnboardingGate> {
         // Re-inflates the whole subtree per showing, so the content's State is
         // fresh (matters for DEVONBOARD re-shows — step position and toggles
         // reset). This widget holds no state of its own.
-        key: ValueKey('onboarding-$_firstRun-$_pending'),
+        key: ValueKey('onboarding-$_firstRun-$_syncOnly-$_pending'),
         services: widget.services,
         release: _release,
         onDone: _dismiss,
+        syncOnly: _syncOnly,
       );
       // The onboarding subtree mounts inside its OWN Overlay (Overlay.wrap):
       // this gate sits in MaterialApp.builder, above the Navigator, and the

@@ -135,6 +135,12 @@ class _Translations$onboarding$qro extends Translations$onboarding$en {
 	@override String get activityPota => 'PARKS ON THE AIR';
 	@override String get activitySota => 'SUMMITS ON THE AIR';
 	@override String get activityWwff => 'WORLD WIDE FLORA & FAUNA';
+	@override String get syncTitle => 'CLOUD SYNC';
+	@override String get syncBody => 'HAM2K LOG FILER KEEPS A BACKUP OF YOUR LOGS IN THE CLOUD, AND SYNCS THEM ACROSS ALL THE DEVICES WHERE YOU USE HAM2K APPS.';
+	@override String get syncPricing => 'IT\'S FREE! BUT A PAID SUBSCRIPTION WILL MAKE IT FASTER.';
+	@override String get syncLabel => 'ENABLE CLOUD SYNC';
+	@override String get syncOffWarning => 'WARNING: THIS INCREASES YOUR CHANCES OF LOSING OPERATION DATA, FOR EXAMPLE IF YOUR DEVICE CRASHES OR IS LOST.';
+	@override String get notNow => 'NOT NOW';
 	@override String get consentTitle => 'DATA & PRIVACY';
 	@override String get consentUsageBody => 'TO HELP US MAKE THE APP BETTER, WE\'D LIKE TO COLLECT PERFORMANCE, CRASH, AND APP USAGE DATA.';
 	@override String get consentUsageLabel => 'SHARE APP USAGE DATA';
@@ -4326,6 +4332,12 @@ extension on TranslationsQro {
 			'onboarding.activityPota' => 'PARKS ON THE AIR',
 			'onboarding.activitySota' => 'SUMMITS ON THE AIR',
 			'onboarding.activityWwff' => 'WORLD WIDE FLORA & FAUNA',
+			'onboarding.syncTitle' => 'CLOUD SYNC',
+			'onboarding.syncBody' => 'HAM2K LOG FILER KEEPS A BACKUP OF YOUR LOGS IN THE CLOUD, AND SYNCS THEM ACROSS ALL THE DEVICES WHERE YOU USE HAM2K APPS.',
+			'onboarding.syncPricing' => 'IT\'S FREE! BUT A PAID SUBSCRIPTION WILL MAKE IT FASTER.',
+			'onboarding.syncLabel' => 'ENABLE CLOUD SYNC',
+			'onboarding.syncOffWarning' => 'WARNING: THIS INCREASES YOUR CHANCES OF LOSING OPERATION DATA, FOR EXAMPLE IF YOUR DEVICE CRASHES OR IS LOST.',
+			'onboarding.notNow' => 'NOT NOW',
 			'onboarding.consentTitle' => 'DATA & PRIVACY',
 			'onboarding.consentUsageBody' => 'TO HELP US MAKE THE APP BETTER, WE\'D LIKE TO COLLECT PERFORMANCE, CRASH, AND APP USAGE DATA.',
 			'onboarding.consentUsageLabel' => 'SHARE APP USAGE DATA',
@@ -4794,14 +4806,14 @@ extension on TranslationsQro {
 			'operation.layout.panels.summariesDescription' => 'THE OPERATION\'S STATS AND SCORES, IN THE SECTIONS AND ORDER YOU PICK',
 			'operation.layout.panels.summariesSections' => 'SECTIONS AND ORDER',
 			'operation.layout.panels.summariesDays' => 'EACH DAY',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.summariesReset' => 'SHOW ALL',
 			'operation.layout.panels.summariesAllHidden' => 'EVERY SECTION IS HIDDEN. PICK THE ONES TO SHOW IN THIS PANEL\'S SETTINGS.',
 			'operation.layout.panels.clockDescription' => 'A CLOCK FACE, IN ANY TIME ZONE',
 			'operation.layout.panels.clockFace' => 'FACE',
 			'operation.layout.panels.clockFaceLcd' => 'LCD',
 			'operation.layout.panels.clockFaceAnalog' => 'ANALOG',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.clockZone' => 'TIME ZONE',
 			'operation.layout.panels.clockZoneUtc' => 'UTC',
 			'operation.layout.panels.clockZoneDevice' => 'THIS DEVICE',
@@ -5308,14 +5320,14 @@ extension on TranslationsQro {
 			'loggingControls.info.noticeBonusStation' => 'BONUS STATION!',
 			'loggingControls.info.noticeMissingExchange' => 'NO EXCHANGE',
 			'loggingControls.info.noticeInvalidExchange' => 'BAD EXCHANGE',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeUnknownEvent' => 'UNKNOWN EVENT',
 			'loggingControls.info.noticeIncompleteCall' => 'INCOMPLETE CALL — NOT SCORED',
 			'loggingControls.info.noticeOurGrid' => 'SET OUR GRID',
 			'loggingControls.info.noticeRareCounty' => 'RARE COUNTY!',
 			'loggingControls.info.noticeOurLocation' => 'SET OUR COUNTY',
 			'loggingControls.info.noticeShortGrid' => 'GRID TOO SHORT',
-			_ => null,
-		} ?? switch (path) {
 			'formChrome.untitled' => '(UNTITLED)',
 			'formChrome.showMore' => 'SHOW MORE',
 			'formChrome.showAll' => 'SHOW ALL',
@@ -5822,14 +5834,14 @@ extension on TranslationsQro {
 			'settings.accounts.openInBrowser' => 'OPEN IN BROWSER',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'LOGGED IN AS ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'PRESS SAVE TO KEEP THIS ACCOUNT CONNECTED.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.connectedTo' => ({required Object label}) => 'CONNECTED TO ${label}',
 			'settings.accounts.connect' => 'CONNECT',
 			'settings.accounts.disconnect' => 'DISCONNECT',
 			'settings.accounts.connectedAs' => 'CONNECTED AS',
 			'settings.accounts.test' => 'TEST',
 			'settings.accounts.saveFailed' => ({required Object error}) => 'SAVE FAILED: ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginFailed' => ({required Object error}) => 'LOGIN FAILED: ${error}',
 			'settings.accounts.lookupFailed' => 'ACCOUNTS ARE UNAVAILABLE RIGHT NOW — TRY AGAIN IN A MOMENT',
 			'settings.accounts.browserLoginTitle' => 'FINISH SIGNING IN WITH YOUR WEB BROWSER',
@@ -6336,14 +6348,14 @@ extension on TranslationsQro {
 			'settings.developer.extDevServerReconnect' => 'RECONNECT AT LAUNCH',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'LAST RELOAD: ${key} AT ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qro'))(count, one: '${count} EXTENSION FAILING TO BUILD', other: '${count} EXTENSIONS FAILING TO BUILD', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalog' => 'EXTENSION CATALOG',
 			'settings.developer.catalogDescription' => 'READ THE CATALOG FROM ANOTHER SERVER — A LOCAL ONE WHILE WORKING ON THE CATALOG ITSELF. EMPTY MEANS CATALOG.HAM2K.NET.',
 			'settings.developer.catalogAddress' => 'CATALOG ADDRESS',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => 'CATALOG SEARCH TRACKS',
 			'settings.developer.catalogSearchStable' => 'ONLY STABLE',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.catalogSearchUnstable' => 'UNSTABLE OR BETTER',
 			'settings.developer.catalogSearchBleeding' => 'BLEEDING OR BETTER',
 			'settings.about.notices' => 'NOTICES & MESSAGES',

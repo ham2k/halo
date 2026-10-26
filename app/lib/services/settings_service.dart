@@ -425,6 +425,25 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
     await setSyncEnabled(!defaultProfileCallsignDefined);
   }
 
+  /// Whether to ask the Cloud Sync question on its own: this install has
+  /// onboarded, its sync is off, and nothing says the operator chose that.
+  ///
+  /// The stored flag cannot tell a choice from a default —
+  /// [seedSyncEnabledDefault] writes the same `false` for an install already
+  /// onboarded. Two things can: an answer recorded under
+  /// [OnboardingFlows.cloudSync], and an account in [syncState], which
+  /// turning sync off leaves in place — sync that has reached an account
+  /// (adopted, or parked on the combine/replace question) and is now off was
+  /// turned off. A dev data sandbox is never asked, for the reason
+  /// [seedSyncEnabledDefault] leaves it off.
+  bool get cloudSyncPromptDue =>
+      defaultProfileCallsignDefined &&
+      !syncEnabled &&
+      onboardingShownCount(OnboardingFlows.cloudSync) == 0 &&
+      syncState['lastSyncAccountUUID'] == null &&
+      syncState['pendingAccountUUID'] == null &&
+      devDataDirectory.isEmpty;
+
   /// A stable opaque per-install identifier for the LoFi sync server (the
   /// Flutter equivalent of app-polo's `DeviceInfo.syncUniqueId()`), generated
   /// once and persisted in the platform keychain forever after. Since it's

@@ -135,6 +135,12 @@ class _Translations$onboarding$cw extends Translations$onboarding$en {
 	@override String get activityPota => '·——· ·— ·—· —·— ··· / ——— —· / — ···· · / ·— ·· ·—·';
 	@override String get activitySota => '··· ··— —— —— ·· — ··· / ——— —· / — ···· · / ·— ·· ·—·';
 	@override String get activityWwff => '·—— ——— ·—· ·—·· —·· / ·—— ·· —·· · / ··—· ·—·· ——— ·—· ·— / ·—··· / ··—· ·— ··— —· ·—';
+	@override String get syncTitle => '—·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·';
+	@override String get syncBody => '···· ·— —— ··——— —·— / ·—·· ——— ——· / ··—· ·· ·—·· · ·—· / —·— · · ·——· ··· / ·— / —··· ·— —·—· —·— ··— ·——· / ——— ··—· / —·—— ——— ··— ·—· / ·—·· ——— ——· ··· / ·· —· / — ···· · / —·—· ·—·· ——— ··— —·· ——··—— / ·— —· —·· / ··· —·—— —· —·—· ··· / — ···· · —— / ·— —·—· ·—· ——— ··· ··· / ·— ·—·· ·—·· / — ···· · / —·· · ···— ·· —·—· · ··· / ·—— ···· · ·—· · / —·—— ——— ··— / ··— ··· · / ···· ·— —— ··——— —·— / ·— ·——· ·——· ··· ·—·—·—';
+	@override String get syncPricing => '·· — ·————· ··· / ··—· ·—· · · —·—·—— / —··· ··— — / ·— / ·——· ·— ·· —·· / ··· ··— —··· ··· —·—· ·—· ·· ·——· — ·· ——— —· / ·—— ·· ·—·· ·—·· / —— ·— —·— · / ·· — / ··—· ·— ··· — · ·—· ·—·—·—';
+	@override String get syncLabel => '· —· ·— —··· ·—·· · / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·';
+	@override String get syncOffWarning => '·—— ·— ·—· —· ·· —· ——· ———··· / — ···· ·· ··· / ·· —· —·—· ·—· · ·— ··· · ··· / —·—— ——— ··— ·—· / —·—· ···· ·— —· —·—· · ··· / ——— ··—· / ·—·· ——— ··· ·· —· ——· / ——— ·——· · ·—· ·— — ·· ——— —· / —·· ·— — ·— ——··—— / ··—· ——— ·—· / · —··— ·— —— ·——· ·—·· · / ·· ··—· / —·—— ——— ··— ·—· / —·· · ···— ·· —·—· · / —·—· ·—· ·— ··· ···· · ··· / ——— ·—· / ·· ··· / ·—·· ——— ··· — ·—·—·—';
+	@override String get notNow => '—· ——— — / —· ——— ·——';
 	@override String get consentTitle => '—·· ·— — ·— / ·—··· / ·——· ·—· ·· ···— ·— —·—· —·——';
 	@override String get consentUsageBody => '— ——— / ···· · ·—·· ·——· / ··— ··· / —— ·— —·— · / — ···· · / ·— ·——· ·——· / —··· · — — · ·—· ——··—— / ·—— · ·————· —·· / ·—·· ·· —·— · / — ——— / —·—· ——— ·—·· ·—·· · —·—· — / ·——· · ·—· ··—· ——— ·—· —— ·— —· —·—· · ——··—— / —·—· ·—· ·— ··· ···· ——··—— / ·— —· —·· / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·— ·—·—·—';
 	@override String get consentUsageLabel => '··· ···· ·— ·—· · / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·—';
@@ -4326,6 +4332,12 @@ extension on TranslationsCw {
 			'onboarding.activityPota' => '·——· ·— ·—· —·— ··· / ——— —· / — ···· · / ·— ·· ·—·',
 			'onboarding.activitySota' => '··· ··— —— —— ·· — ··· / ——— —· / — ···· · / ·— ·· ·—·',
 			'onboarding.activityWwff' => '·—— ——— ·—· ·—·· —·· / ·—— ·· —·· · / ··—· ·—·· ——— ·—· ·— / ·—··· / ··—· ·— ··— —· ·—',
+			'onboarding.syncTitle' => '—·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·',
+			'onboarding.syncBody' => '···· ·— —— ··——— —·— / ·—·· ——— ——· / ··—· ·· ·—·· · ·—· / —·— · · ·——· ··· / ·— / —··· ·— —·—· —·— ··— ·——· / ——— ··—· / —·—— ——— ··— ·—· / ·—·· ——— ——· ··· / ·· —· / — ···· · / —·—· ·—·· ——— ··— —·· ——··—— / ·— —· —·· / ··· —·—— —· —·—· ··· / — ···· · —— / ·— —·—· ·—· ——— ··· ··· / ·— ·—·· ·—·· / — ···· · / —·· · ···— ·· —·—· · ··· / ·—— ···· · ·—· · / —·—— ——— ··— / ··— ··· · / ···· ·— —— ··——— —·— / ·— ·——· ·——· ··· ·—·—·—',
+			'onboarding.syncPricing' => '·· — ·————· ··· / ··—· ·—· · · —·—·—— / —··· ··— — / ·— / ·——· ·— ·· —·· / ··· ··— —··· ··· —·—· ·—· ·· ·——· — ·· ——— —· / ·—— ·· ·—·· ·—·· / —— ·— —·— · / ·· — / ··—· ·— ··· — · ·—· ·—·—·—',
+			'onboarding.syncLabel' => '· —· ·— —··· ·—·· · / —·—· ·—·· ——— ··— —·· / ··· —·—— —· —·—·',
+			'onboarding.syncOffWarning' => '·—— ·— ·—· —· ·· —· ——· ———··· / — ···· ·· ··· / ·· —· —·—· ·—· · ·— ··· · ··· / —·—— ——— ··— ·—· / —·—· ···· ·— —· —·—· · ··· / ——— ··—· / ·—·· ——— ··· ·· —· ——· / ——— ·——· · ·—· ·— — ·· ——— —· / —·· ·— — ·— ——··—— / ··—· ——— ·—· / · —··— ·— —— ·——· ·—·· · / ·· ··—· / —·—— ——— ··— ·—· / —·· · ···— ·· —·—· · / —·—· ·—· ·— ··· ···· · ··· / ——— ·—· / ·· ··· / ·—·· ——— ··· — ·—·—·—',
+			'onboarding.notNow' => '—· ——— — / —· ——— ·——',
 			'onboarding.consentTitle' => '—·· ·— — ·— / ·—··· / ·——· ·—· ·· ···— ·— —·—· —·——',
 			'onboarding.consentUsageBody' => '— ——— / ···· · ·—·· ·——· / ··— ··· / —— ·— —·— · / — ···· · / ·— ·——· ·——· / —··· · — — · ·—· ——··—— / ·—— · ·————· —·· / ·—·· ·· —·— · / — ——— / —·—· ——— ·—·· ·—·· · —·—· — / ·——· · ·—· ··—· ——— ·—· —— ·— —· —·—· · ——··—— / —·—· ·—· ·— ··· ···· ——··—— / ·— —· —·· / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·— ·—·—·—',
 			'onboarding.consentUsageLabel' => '··· ···· ·— ·—· · / ·— ·——· ·——· / ··— ··· ·— ——· · / —·· ·— — ·—',
@@ -4794,14 +4806,14 @@ extension on TranslationsCw {
 			'operation.layout.panels.summariesDescription' => '— ···· · / ——— ·——· · ·—· ·— — ·· ——— —· ·————· ··· / ··· — ·— — ··· / ·— —· —·· / ··· —·—· ——— ·—· · ··· ——··—— / ·· —· / — ···· · / ··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—· / —·—— ——— ··— / ·——· ·· —·—· —·—',
 			'operation.layout.panels.summariesSections' => '··· · —·—· — ·· ——— —· ··· / ·— —· —·· / ——— ·—· —·· · ·—·',
 			'operation.layout.panels.summariesDays' => '· ·— —·—· ···· / —·· ·— —·——',
+			_ => null,
+		} ?? switch (path) {
 			'operation.layout.panels.summariesReset' => '··· ···· ——— ·—— / ·— ·—·· ·—··',
 			'operation.layout.panels.summariesAllHidden' => '· ···— · ·—· —·—— / ··· · —·—· — ·· ——— —· / ·· ··· / ···· ·· —·· —·· · —· ·—·—·— / ·——· ·· —·—· —·— / — ···· · / ——— —· · ··· / — ——— / ··· ···· ——— ·—— / ·· —· / — ···· ·· ··· / ·——· ·— —· · ·—·· ·————· ··· / ··· · — — ·· —· ——· ··· ·—·—·—',
 			'operation.layout.panels.clockDescription' => '·— / —·—· ·—·· ——— —·—· —·— / ··—· ·— —·—· · ——··—— / ·· —· / ·— —· —·—— / — ·· —— · / ——·· ——— —· ·',
 			'operation.layout.panels.clockFace' => '··—· ·— —·—· ·',
 			'operation.layout.panels.clockFaceLcd' => '·—·· —·—· —··',
 			'operation.layout.panels.clockFaceAnalog' => '·— —· ·— ·—·· ——— ——·',
-			_ => null,
-		} ?? switch (path) {
 			'operation.layout.panels.clockZone' => '— ·· —— · / ——·· ——— —· ·',
 			'operation.layout.panels.clockZoneUtc' => '··— — —·—·',
 			'operation.layout.panels.clockZoneDevice' => '— ···· ·· ··· / —·· · ···— ·· —·—· ·',
@@ -5308,14 +5320,14 @@ extension on TranslationsCw {
 			'loggingControls.info.noticeBonusStation' => '—··· ——— —· ··— ··· / ··· — ·— — ·· ——— —· —·—·——',
 			'loggingControls.info.noticeMissingExchange' => '—· ——— / · —··— —·—· ···· ·— —· ——· ·',
 			'loggingControls.info.noticeInvalidExchange' => '—··· ·— —·· / · —··— —·—· ···· ·— —· ——· ·',
+			_ => null,
+		} ?? switch (path) {
 			'loggingControls.info.noticeUnknownEvent' => '··— —· —·— —· ——— ·—— —· / · ···— · —· —',
 			'loggingControls.info.noticeIncompleteCall' => '·· —· —·—· ——— —— ·——· ·—·· · — · / —·—· ·— ·—·· ·—·· / — / —· ——— — / ··· —·—· ——— ·—· · —··',
 			'loggingControls.info.noticeOurGrid' => '··· · — / ——— ··— ·—· / ——· ·—· ·· —··',
 			'loggingControls.info.noticeRareCounty' => '·—· ·— ·—· · / —·—· ——— ··— —· — —·—— —·—·——',
 			'loggingControls.info.noticeOurLocation' => '··· · — / ——— ··— ·—· / —·—· ——— ··— —· — —·——',
 			'loggingControls.info.noticeShortGrid' => '——· ·—· ·· —·· / — ——— ——— / ··· ···· ——— ·—· —',
-			_ => null,
-		} ?? switch (path) {
 			'formChrome.untitled' => '—·——· ··— —· — ·· — ·—·· · —·· —·——·—',
 			'formChrome.showMore' => '··· ···· ——— ·—— / —— ——— ·—· ·',
 			'formChrome.showAll' => '··· ···· ——— ·—— / ·— ·—·· ·—··',
@@ -5822,14 +5834,14 @@ extension on TranslationsCw {
 			'settings.accounts.openInBrowser' => '——— ·——· · —· / ·· —· / —··· ·—· ——— ·—— ··· · ·—·',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => '·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / ${identity}',
 			'settings.accounts.pressSaveToKeep' => '·——· ·—· · ··· ··· / ··· ·— ···— · / — ——— / —·— · · ·——· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.connectedTo' => ({required Object label}) => '—·—· ——— —· —· · —·—· — · —·· / — ——— / ${label}',
 			'settings.accounts.connect' => '—·—· ——— —· —· · —·—· —',
 			'settings.accounts.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
 			'settings.accounts.connectedAs' => '—·—· ——— —· —· · —·—· — · —·· / ·— ···',
 			'settings.accounts.test' => '— · ··· —',
 			'settings.accounts.saveFailed' => ({required Object error}) => '··· ·— ···— · / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginFailed' => ({required Object error}) => '·—·· ——— ——· ·· —· / ··—· ·— ·· ·—·· · —·· ———··· / ${error}',
 			'settings.accounts.lookupFailed' => '·— —·—· —·—· ——— ··— —· — ··· / ·— ·—· · / ··— —· ·— ···— ·— ·· ·—·· ·— —··· ·—·· · / ·—· ·· ——· ···· — / —· ——— ·—— / — / — ·—· —·—— / ·— ——· ·— ·· —· / ·· —· / ·— / —— ——— —— · —· —',
 			'settings.accounts.browserLoginTitle' => '··—· ·· —· ·· ··· ···· / ··· ·· ——· —· ·· —· ——· / ·· —· / ·—— ·· — ···· / —·—— ——— ··— ·—· / ·—— · —··· / —··· ·—· ——— ·—— ··· · ·—·',
@@ -6336,14 +6348,14 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
 			'settings.developer.catalogDescription' => '·—· · ·— —·· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ··· · ·—· ···— · ·—· / — / ·— / ·—·· ——— —·—· ·— ·—·· / ——— —· · / ·—— ···· ·· ·—·· · / ·—— ——— ·—· —·— ·· —· ——· / ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·· — ··· · ·—·· ··—· ·—·—·— / · —— ·——· — —·—— / —— · ·— —· ··· / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — ·—·—·—',
 			'settings.developer.catalogAddress' => '—·—· ·— — ·— ·—·· ——— ——· / ·— —·· —·· ·—· · ··· ···',
 			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.catalogSearchUnstable' => '··— —· ··· — ·— —··· ·—·· · / ——— ·—· / —··· · — — · ·—·',
 			'settings.developer.catalogSearchBleeding' => '—··· ·—·· · · —·· ·· —· ——· / ——— ·—· / —··· · — — · ·—·',
 			'settings.about.notices' => '—· ——— — ·· —·—· · ··· / ·—··· / —— · ··· ··· ·— ——· · ···',

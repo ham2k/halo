@@ -215,7 +215,6 @@ class _SyncPanelState extends State<SyncPanel> {
       if (mounted) setState(() {});
       return;
     }
-    widget.services.track(enabled ? 'sync_enabled' : 'sync_disabled');
     // That await reaches secure storage, which can sit on a keyring prompt.
     // Closing Settings meanwhile already ran dispose(), so starting the
     // watch now would install a timer and a stream subscription on a dead

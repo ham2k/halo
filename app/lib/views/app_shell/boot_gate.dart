@@ -85,7 +85,7 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
     widget.servicesFuture
         .then((services) async {
           if (!mounted) return;
-          if (onboardingWillShow(services)) {
+          if (onboardingOverlayWillShow(services)) {
             try {
               await _prepareOnboardingPhoto(releaseNotes).timeout(_onboardingPhotoTimeout, onTimeout: () {});
             } catch (error, stackTrace) {

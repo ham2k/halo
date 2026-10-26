@@ -18,8 +18,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/config/dev_flags.dart' show debugDataDirectoryOverride;
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/config/tester_notes.dart';
+import 'package:ham2k_logger/config/version.dart';
+import 'package:ham2k_logger/services/metrics_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -27,6 +30,7 @@ import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/sibling_apps_service.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/onboarding_overlay.dart';
+import 'package:ham2k_logger/views/release_overlay.dart';
 import 'package:ham2k_logger/views/tester_overlay.dart' show testerOverlayCovering;
 import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/splash_view.dart';
@@ -45,7 +49,20 @@ double _contrast(Color a, Color b) {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}, ExtensionService? extensions, SiblingAppsService? siblingApps}) async {
+class _RecordingMetrics implements MetricsService {
+  final events = <(String, Map<String, Object?>)>[];
+  @override
+  void logEvent(String name, {Map<String, Object?> properties = const {}}) => events.add((name, properties));
+  @override
+  void setUserProperty(String name, String? value) {}
+}
+
+Future<HaLoServices> makeServices({
+  Map<String, Object> prefs = const {},
+  ExtensionService? extensions,
+  SiblingAppsService? siblingApps,
+  MetricsService? metrics,
+}) async {
   SharedPreferences.setMockInitialValues(prefs);
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
   final db = HaLoDatabase(NativeDatabase.memory());
@@ -53,7 +70,7 @@ Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}, Extensi
   if (extensions != null) {
     extensions.settings = settings;
   }
-  return HaLoServices(db, settings, extensions: effectiveExtensions, siblingApps: siblingApps);
+  return HaLoServices(db, settings, extensions: effectiveExtensions, siblingApps: siblingApps, metrics: metrics);
 }
 
 Future<void> pumpApp(WidgetTester tester, HaLoServices services) async {
@@ -85,13 +102,13 @@ void main() {
     await drainTimers(tester);
 
     // Explicitly empty (a previous Skip) → no onboarding.
-    final skipped = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": ""}}'});
+    final skipped = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": ""}}', 'syncEnabled': true});
     await pumpApp(tester, skipped);
     expect(find.byType(OnboardingOverlayView), findsNothing);
     await drainTimers(tester);
 
     // A real callsign → no onboarding.
-    final defined = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}'});
+    final defined = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': true});
     await pumpApp(tester, defined);
     expect(find.byType(OnboardingOverlayView), findsNothing);
     await drainTimers(tester);
@@ -157,7 +174,7 @@ void main() {
   });
 
   testWidgets('DEVONBOARD force-shows even with a callsign defined, and re-shows after dismissal', (tester) async {
-    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}'});
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': true});
     await pumpApp(tester, services);
     expect(find.byType(OnboardingOverlayView), findsNothing);
 
@@ -182,7 +199,7 @@ void main() {
     // A callsign is saved and SOTA has been enabled (POTA left at its default).
     // DEVONBOARD re-shows the flow, which must reflect that saved state rather
     // than resetting to the first-run defaults.
-    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}'});
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': true});
     await services.settings.setExtensionOverrides({'sota': true});
     await pumpApp(tester, services);
 
@@ -203,6 +220,157 @@ void main() {
     expect(sota.value, isTrue);
 
     await drainTimers(tester);
+  });
+
+  // An install that onboarded before the Cloud Sync step existed is asked it
+  // alone — but only when its sync is off by default, never when the
+  // operator turned it off. The stored flag reads the same either way; what
+  // tells them apart is a recorded answer, or a sync that has run.
+
+  testWidgets('an onboarded install with sync off by default is asked Cloud Sync alone; Continue turns it on', (tester) async {
+    final metrics = _RecordingMetrics();
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': false}, metrics: metrics);
+    await services.settings.updateSettingsGroup(SettingsService.privacyGroup, {'consentAppData': true});
+    await pumpApp(tester, services);
+
+    expect(find.byType(OnboardingOverlayView), findsOneWidget);
+    expect(find.text('Cloud Sync'), findsOneWidget);
+    expect(find.text('Welcome to Ham2K Portable Logger!'), findsNothing);
+    expect(find.text('Back'), findsNothing, reason: 'there is no earlier step to go back to');
+    // Starts on, as a new install's does: Continue alone is a yes.
+    expect(tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, 'Enable Cloud Sync')).value, isTrue);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(services.settings.syncEnabled, isTrue);
+    expect(services.settings.activeProfile.operatorCall, 'KI2D', reason: 'the question alone must not touch the rest of onboarding');
+    // The prompt's take-up is only measurable if its yes says where it came from.
+    expect(
+      [
+        for (final (name, props) in metrics.events)
+          if (name.startsWith('sync_')) (name, props['via']),
+      ],
+      [('sync_enabled', 'prompt')],
+    );
+    // No QSOs here, so nothing for the engine to park on: no detour to Settings.
+    expect(find.byType(SettingsView), findsNothing);
+    services.syncEngine.dispose();
+    await drainTimers(tester);
+  });
+
+  testWidgets('Not now leaves sync off and the question is never asked again', (tester) async {
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': false});
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Not now'));
+    // Enter mid-fade: the overlay's key handler is still registered, and the
+    // switch still reads on — a decline must not become a yes.
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(services.settings.syncEnabled, isFalse);
+    expect(services.settings.cloudSyncPromptDue, isFalse);
+    await drainTimers(tester);
+  });
+
+  testWidgets('the Cloud Sync question is not asked where sync was chosen, is on, or is a dev sandbox', (tester) async {
+    const onboarded = '{"default": {"operatorCall": "KI2D"}}';
+
+    // Sync has run on this device and is now off: turned off on purpose.
+    final turnedOff = await makeServices(prefs: {'profiles': onboarded, 'syncEnabled': false, 'syncState': '{"lastSyncAccountUUID": "acct-1"}'});
+    await pumpApp(tester, turnedOff);
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+
+    // Sync reached an account and parked on combine/replace, then was turned off.
+    final parked = await makeServices(prefs: {'profiles': onboarded, 'syncEnabled': false, 'syncState': '{"pendingAccountUUID": "acct-1"}'});
+    await pumpApp(tester, parked);
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+
+    // Already answered (here, or by a toggle in the Sync panel).
+    final answered = await makeServices(prefs: {'profiles': onboarded, 'syncEnabled': false, 'onboarding': '{"cloud-sync": {"shownCount": 1}}'});
+    await pumpApp(tester, answered);
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+
+    // Already on.
+    final on = await makeServices(prefs: {'profiles': onboarded, 'syncEnabled': true});
+    await pumpApp(tester, on);
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+
+    // A dev data sandbox shares the developer's real sync device key.
+    debugDataDirectoryOverride = '/tmp/halo-dev';
+    addTearDown(() => debugDataDirectoryOverride = null);
+    final sandbox = await makeServices(prefs: {'profiles': onboarded, 'syncEnabled': false});
+    await pumpApp(tester, sandbox);
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    await drainTimers(tester);
+  });
+
+  testWidgets('Continue on the Cloud Sync question opens Settings › Sync when the device has QSOs', (tester) async {
+    // With local QSOs the engine parks on combine-or-replace, asked only by
+    // the Sync panel's banner. Closing the prompt without going there leaves
+    // an operator who said yes believing a log is backed up that never syncs.
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': false});
+    final op = await services.operations.create(stationCall: 'KI2D');
+    await services.qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(find.byType(SettingsView), findsOneWidget);
+    services.syncEngine.dispose();
+    await drainTimers(tester);
+  });
+
+  testWidgets('what\'s new waits for a launch the Cloud Sync question is not on', (tester) async {
+    // On the update launch both are due; stacked, answering one fades straight
+    // into the other. Mutating ReleaseOverlayGate's cloudSyncPromptDue check
+    // away shows the release overlay under the question here.
+    setReleaseNotesForTesting([
+      ReleaseNotesEntry(version: kPublicVersion, name: 'Test', photoCaption: '', changes: ['A change']),
+    ]);
+
+    // Control: sync on, so no question — what's new shows.
+    final control = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': true});
+    await control.settings.setLastSeenReleaseVersion('0.0.0');
+    await pumpApp(tester, control);
+    expect(find.byType(ReleaseOverlayView), findsOneWidget);
+    await drainTimers(tester);
+
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': false});
+    await services.settings.setLastSeenReleaseVersion('0.0.0');
+    await pumpApp(tester, services);
+    expect(find.byType(OnboardingOverlayView), findsOneWidget);
+    expect(find.byType(ReleaseOverlayView), findsNothing);
+
+    await tester.tap(find.text('Not now'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ReleaseOverlayView), findsNothing);
+    // Unstamped, so the next launch still shows it.
+    expect(services.settings.lastSeenReleaseVersion, '0.0.0');
+    expect(services.settings.cloudSyncPromptDue, isFalse);
+    await drainTimers(tester);
+  });
+
+  test('turning sync off anywhere answers the Cloud Sync question', () async {
+    // The Sync panel's toggle reaches HaLoServices.setSyncEnabled; an operator
+    // who turned sync off there before it ever ran must not be asked to turn
+    // it back on.
+    final services = await makeServices(prefs: {'profiles': '{"default": {"operatorCall": "KI2D"}}', 'syncEnabled': false});
+    expect(services.settings.cloudSyncPromptDue, isTrue);
+    await services.setSyncEnabled(false);
+    expect(services.settings.cloudSyncPromptDue, isFalse);
   });
 
   test('applyOnboardAsSpec (ONBOARD_AS) sets the callsign and enables the listed activities', () async {
@@ -277,8 +445,11 @@ void main() {
     await drainTimers(tester);
   });
 
-  testWidgets('the full flow writes callsign, activity picks, and consents', (tester) async {
-    final services = await makeServices();
+  testWidgets('the full flow writes callsign, activity picks, sync, and consents', (tester) async {
+    // Sync seeded on, as boot seeds it for a new install: the step must start
+    // from that and an opt-out must land — a toggle defaulting on its own, or
+    // a write skipped, reads back true here.
+    final services = await makeServices(prefs: {'syncEnabled': true});
     await pumpApp(tester, services);
 
     // Welcome → Callsign.
@@ -297,6 +468,16 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
 
+    // Cloud Sync: on from the seed; turn it off, which warns.
+    const warning = 'WARNING: this increases your chances of losing operation data, for example if your device crashes or is lost.';
+    expect(find.text('Cloud Sync'), findsOneWidget);
+    expect(find.text(warning), findsNothing);
+    await tester.tap(find.widgetWithText(SwitchListTile, 'Enable Cloud Sync'));
+    await tester.pumpAndSettle();
+    expect(find.text(warning), findsOneWidget);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+
     // Consent: usage pre-checked; also turn operation data on; Done.
     expect(find.text('Data & Privacy'), findsOneWidget);
     await tester.tap(find.widgetWithText(SwitchListTile, 'Share Operation Data'));
@@ -310,6 +491,9 @@ void main() {
     expect(settings.defaultProfileCallsignDefined, isTrue);
     expect(settings.consentAppData, isTrue);
     expect(settings.consentOpData, isTrue);
+    expect(settings.syncEnabled, isFalse);
+    // Turned off right here, so it was chosen: never asked again on its own.
+    expect(settings.cloudSyncPromptDue, isFalse);
     // Activity picks are real extension enable/disable overrides — not
     // settings-group keys — on the twin that runs, and on the built-in key the
     // twin inherits from should it arrive later.
@@ -326,6 +510,8 @@ void main() {
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, "Operator's Callsign"), 'ki2d');
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
@@ -364,6 +550,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Continue'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
     expect(find.text('Data & Privacy'), findsOneWidget);
 
     await tester.tap(find.text('Done'));
@@ -387,6 +575,10 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(find.text('Favorite Activities'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Cloud Sync'), findsOneWidget);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();

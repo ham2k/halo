@@ -22,4 +22,11 @@ abstract final class OnboardingFlows {
   /// `CommandDialog._suggestionsThreshold`). Someone who has opened it a
   /// dozen times knows what's in there.
   static const commandDialog = 'command-dialog';
+
+  /// The Cloud Sync question, asked on its own of an install whose sync is
+  /// off without the operator having chosen it (see
+  /// [SettingsService.cloudSyncPromptDue]). Non-zero once it is answered —
+  /// the question dismissed, or a sync toggle made anywhere — and then it is
+  /// never asked again; written only while zero, so it reads 0 or 1.
+  static const cloudSync = 'cloud-sync';
 }

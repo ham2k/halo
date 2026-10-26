@@ -59,7 +59,7 @@ Names and property keys follow app-polo's set; HaLo-only additions marked *.
 | `command_executed` | `command` (action name) | call-field command actions |
 | `notice_shown` / `notice_dismissed` | `notice_key` | remote notices (FlagsService) |
 | `extension_enabled` / `extension_disabled` * | `extension` | Extensions panel toggle |
-| `sync_enabled` / `sync_disabled` * | — | Sync settings toggle |
+| `sync_enabled` / `sync_disabled` * | `via` (`settings`, `onboarding`, `prompt`) | sync turned on/off: Sync settings toggle, the onboarding Cloud Sync step, or the one-time Cloud Sync prompt |
 | `radio_added` * | `radio`, `transport`, `driver`, `name`, `via` | equipment configured (`discovery`/`manual`) |
 | `radio_connected` * | `radio`, `transport`, `driver`, `name` | first successful connect, once per radio per session |
 | `radio_connect_failed` * | `radio`, `transport`, `driver`, `name`, `reason`, `baud` | first failed connect, once per radio per session |
