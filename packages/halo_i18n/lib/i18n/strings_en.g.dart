@@ -2837,6 +2837,12 @@ class Translations$adifImport$en {
 
 	/// en: '${filename} has more than ${limit} QSOs, the most an operation can import at a time.'
 	String tooMany({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.';
+
+	/// en: '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.'
+	String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.';
+
+	/// en: 'Import anyway'
+	String get importAnyway => 'Import anyway';
 }
 
 // Path: offline
@@ -11733,6 +11739,8 @@ extension on Translations {
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs, the most an operation can import at a time.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} QSOs. Importing an ADIF into an operation is meant to add a few QSOs, not to bring in a large log — use the Logs view for that. Developer mode lets you import it anyway, if you are sure.',
+			'adifImport.importAnyway' => 'Import anyway',
 			'offline.statusOffline' => 'Internet: OFFLINE',
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',

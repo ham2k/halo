@@ -1304,6 +1304,8 @@ class _Translations$adifImport$qrp extends Translations$adifImport$en {
 	@override String get busy => 'an import is already running. wait for it to finish before starting another.';
 	@override String get oneFileOnly => 'drop one adif file at a time — the order files are imported in decides which data wins.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.';
+	@override String get importAnyway => 'import anyway';
 }
 
 // Path: offline
@@ -6719,6 +6721,8 @@ extension on TranslationsQrp {
 			'adifImport.busy' => 'an import is already running. wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'drop one adif file at a time — the order files are imported in decides which data wins.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos, the most an operation can import at a time.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.',
+			'adifImport.importAnyway' => 'import anyway',
 			'offline.statusOffline' => 'internet: offline',
 			'offline.statusOnline' => 'internet: connected',
 			'offline.noRoute' => 'no network connection at all.',

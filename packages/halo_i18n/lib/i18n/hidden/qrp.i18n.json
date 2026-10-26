@@ -2910,7 +2910,9 @@
     "shortfall": "only ${written} of ${planned} could be applied — the log changed while you were deciding.",
     "busy": "an import is already running. wait for it to finish before starting another.",
     "oneFileOnly": "drop one adif file at a time — the order files are imported in decides which data wins.",
-    "tooMany": "${filename} has more than ${limit} qsos, the most an operation can import at a time."
+    "tooMany": "${filename} has more than ${limit} qsos, the most an operation can import at a time.",
+    "tooManyDeveloper": "${filename} has more than ${limit} qsos. importing an adif into an operation is meant to add a few qsos, not to bring in a large log — use the logs view for that. developer mode lets you import it anyway, if you are sure.",
+    "importAnyway": "import anyway"
   },
   "offline": {
     "statusOffline": "internet: offline",

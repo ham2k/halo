@@ -1304,6 +1304,8 @@ class _Translations$adifImport$qro extends Translations$adifImport$en {
 	@override String get busy => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.';
 	@override String get oneFileOnly => 'DROP ONE ADIF FILE AT A TIME — THE ORDER FILES ARE IMPORTED IN DECIDES WHICH DATA WINS.';
 	@override String tooMany({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.';
+	@override String tooManyDeveloper({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.';
+	@override String get importAnyway => 'IMPORT ANYWAY';
 }
 
 // Path: offline
@@ -6719,6 +6721,8 @@ extension on TranslationsQro {
 			'adifImport.busy' => 'AN IMPORT IS ALREADY RUNNING. WAIT FOR IT TO FINISH BEFORE STARTING ANOTHER.',
 			'adifImport.oneFileOnly' => 'DROP ONE ADIF FILE AT A TIME — THE ORDER FILES ARE IMPORTED IN DECIDES WHICH DATA WINS.',
 			'adifImport.tooMany' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS, THE MOST AN OPERATION CAN IMPORT AT A TIME.',
+			'adifImport.tooManyDeveloper' => ({required Object filename, required Object limit}) => '${filename} HAS MORE THAN ${limit} QSOS. IMPORTING AN ADIF INTO AN OPERATION IS MEANT TO ADD A FEW QSOS, NOT TO BRING IN A LARGE LOG — USE THE LOGS VIEW FOR THAT. DEVELOPER MODE LETS YOU IMPORT IT ANYWAY, IF YOU ARE SURE.',
+			'adifImport.importAnyway' => 'IMPORT ANYWAY',
 			'offline.statusOffline' => 'INTERNET: OFFLINE',
 			'offline.statusOnline' => 'INTERNET: CONNECTED',
 			'offline.noRoute' => 'NO NETWORK CONNECTION AT ALL.',

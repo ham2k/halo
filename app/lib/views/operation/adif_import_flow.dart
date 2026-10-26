@@ -55,7 +55,8 @@ bool looksLikeAdif(String filename) {
 /// not a smaller one.
 bool adifImportInFlight = false;
 
-/// The most records one file may bring into an operation.
+/// The most records one file may bring into an operation. Developer mode
+/// turns the refusal into a warning the operator can override.
 ///
 /// Checked on the file's own record count, before the extension hooks, the
 /// plan or the write see any of it: those are the passes a whole-log file
@@ -192,16 +193,31 @@ Future<void> importAdifFile(BuildContext context, {required HaLoServices service
       return;
     }
     if (recordCount > maxOperationImportRecords) {
-      final message = t.tooMany(filename: filename, limit: formatNumber(maxOperationImportRecords));
+      final limit = formatNumber(maxOperationImportRecords);
+      // Cleared before either dialog: a "Reading…" that outlives the read
+      // contradicts a dialog saying the file has been counted.
       statusBar.clear('adifImport:status');
-      // The files this refuses are the slowest to read, so the pane may be
-      // gone by now — and then the notice is the only trace the drop left.
-      if (context.mounted) {
-        await _showNotice(context, message);
-      } else {
-        statusBar.showNotice(key: 'adifImport:tooMany', text: message);
+      // A dialog is the only way to ask, so a pane that is already gone
+      // refuses the same way as without developer mode.
+      if (!services.settings.developerMode || !context.mounted) {
+        final message = t.tooMany(filename: filename, limit: limit);
+        // The files this refuses are the slowest to read, so the pane may be
+        // gone by now — and then the notice is the only trace the drop left.
+        if (context.mounted) {
+          await _showNotice(context, message);
+        } else {
+          statusBar.showNotice(key: 'adifImport:tooMany', text: message);
+        }
+        return;
       }
-      return;
+      final proceed = await _confirmTooMany(context, t.tooManyDeveloper(filename: filename, limit: limit));
+      if (proceed != true) return;
+      // Planning a file this size is the slow case, so it keeps the status
+      // entry the ordinary path has.
+      statusBar.setMessage(
+        key: 'adifImport:status',
+        text: t.reading(filename: filename),
+      );
     }
 
     final AdifImportPlan plan;
@@ -359,6 +375,20 @@ Future<void> _showNotice(BuildContext context, String message) => showHaloDialog
     title: Text(context.t.adifImport.title),
     content: Text(message),
     cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.done)),
+  ),
+);
+
+/// Developer mode's way past [maxOperationImportRecords]: the warning that
+/// the refusal would have been, with the import as an action the operator
+/// has to pick on purpose. Cancel, not Done, because saying nothing abandons
+/// the file.
+Future<bool?> _confirmTooMany(BuildContext context, String message) => showHaloDialog<bool>(
+  context: context,
+  builder: (dialogContext) => HaloDialog(
+    title: Text(context.t.adifImport.title),
+    content: Text(message),
+    actions: [FilledButton(onPressed: () => Navigator.of(dialogContext).pop(true), child: Text(context.t.adifImport.importAnyway))],
+    cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(context.t.common.cancel)),
   ),
 );
 
