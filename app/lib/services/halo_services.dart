@@ -1474,9 +1474,10 @@ class HaLoServices with _TimeTravel {
     }
   }
 
-  /// Returns false when the request was REFUSED — callers must not record a
-  /// change that did not happen (see `_toggleSync`, which would otherwise
-  /// install an account watcher for a sync that is off).
+  /// Nothing refuses the request today, so this always returns true. The
+  /// bool is the contract a refusal would use: on false, callers must not
+  /// record a change that did not happen (see `_toggleSync`, which would
+  /// otherwise install an account watcher for a sync that is off).
   ///
   /// Every caller is the operator deciding, so this is where the decision is
   /// counted — the `sync_enabled`/`sync_disabled` event, [via] naming where it

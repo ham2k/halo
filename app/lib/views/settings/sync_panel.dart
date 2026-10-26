@@ -208,9 +208,8 @@ class _SyncPanelState extends State<SyncPanel> {
   }
 
   Future<void> _toggleSync(bool enabled) async {
-    // A refusal (time travel bars sync) must not be recorded as a change or
-    // followed by the watcher setup an enabled sync gets — the notice
-    // setSyncEnabled posts is the operator's answer.
+    // A refusal (setSyncEnabled returning false) must not be recorded as a
+    // change or followed by the watcher setup an enabled sync gets.
     if (!await widget.services.setSyncEnabled(enabled)) {
       if (mounted) setState(() {});
       return;
