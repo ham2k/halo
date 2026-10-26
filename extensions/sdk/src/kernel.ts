@@ -279,8 +279,11 @@ function describeError(e: unknown): string {
 
 // `extensionKey` is the kernel's own record of who answered, on every entry a
 // hook method produced (ok or not); a noHandler entry, and one the host
-// synthesises for a timeout, name nobody.
-type SettledEntry = { key: string; extensionKey?: string; ok: boolean; value?: unknown; error?: string; noHandler?: boolean }
+// synthesises for a timeout, name nobody. `refTypes` rides on a
+// `processQsoBeforeSave` patch alone: the ref types its extension owns
+// ([refTypesOwnedBy]), which are the refs it may write (`mergeQsoPatch` in
+// the app).
+type SettledEntry = { key: string; extensionKey?: string; ok: boolean; value?: unknown; error?: string; noHandler?: boolean; refTypes?: string[] }
 
 /// [entry], or — when JSON cannot carry what its hook answered (a circular
 /// object, a BigInt) — that hook's own failure in its place.
@@ -386,6 +389,49 @@ function extensionsRouting(refs: unknown[]): Set<string> {
     }
   }
   return keys
+}
+
+/// The ref types each extension may write from a `processQsoBeforeSave` patch,
+/// by extension key — built on first use, and dropped whenever a hook is
+/// registered or an extension defined or unloaded ([refOwnersChanged]).
+let refOwners: Map<string, string[]> | null = null
+
+function refOwnersChanged() {
+  refOwners = null
+}
+
+/// The ref types [extensionKey] may write from its `processQsoBeforeSave`
+/// patch: a contest stamps the exchange it guessed onto its own ref, and its
+/// ref TYPE is log data that rarely matches its key (`ham2k-cqww` keeps `cqww`
+/// refs).
+///
+/// A type is an extension's when it alone registers `ref:<type>` by that bare
+/// name AND its manifest declares the claim in `hooks`, where a catalog review
+/// reads it. Registering a handler is open to any extension, so neither half
+/// is enough alone: a type another extension also answers for belongs to
+/// neither of them — WCA resolves ECA's castles while ECA is off, and a bundle
+/// registering `ref:pota` must not get POTA's refs for it. A qualified
+/// `ref:<type>/<code>` claim confers nothing: it shares the type with every
+/// other code's claimant, and a patch names a type, not a code.
+function refTypesOwnedBy(extensionKey: string): string[] {
+  if (!refOwners) {
+    const claimants = new Map<string, Set<string>>()
+    for (const h of hooks) {
+      if (!h.category.startsWith("ref:") || h.category.includes("/")) continue
+      const type = h.category.slice("ref:".length)
+      const set = claimants.get(type) ?? new Set<string>()
+      set.add(h.extensionKey)
+      claimants.set(type, set)
+    }
+    refOwners = new Map()
+    for (const [type, keys] of claimants) {
+      if (keys.size !== 1) continue
+      const [owner] = keys
+      if (!extensions[owner]?.hooks?.includes(`ref:${type}`)) continue
+      refOwners.set(owner, [...(refOwners.get(owner) ?? []), type])
+    }
+  }
+  return refOwners.get(extensionKey) ?? []
 }
 
 /// Whether [record] is asked whatever references a contact carries: an
@@ -903,6 +949,7 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
           extensionKey: def.key,
           hook: hookObj,
         })
+        if (category.startsWith("ref:")) refOwnersChanged()
       },
     })
     // An `adifFields` hook the full ADIF export will never ask writes nothing,
@@ -970,6 +1017,7 @@ const kernel = {
     }
     extensions[def.key] = def
     definingBundle[def.key] = currentBundleKey
+    refOwnersChanged()
   },
 
   /// Host-only bracketing of bundle evaluation — see the block comment on
@@ -1028,6 +1076,7 @@ const kernel = {
       }
       delete extensions[key]
       delete definingBundle[key]
+      refOwnersChanged()
       activated.delete(key)
       live.delete(key)
     }
@@ -1278,6 +1327,8 @@ const kernel = {
               // The extension is the kernel's own record of who answered,
               // for a host that must know (a command's settings actions).
               entry = { key: record.key, extensionKey: record.extensionKey, ok: true, value: (await callHookMethod(record, method, args, online)) ?? null }
+              // Only on a patch: most hooks answer a save with null.
+              if (entry.value !== null && category === "activity" && method === "processQsoBeforeSave") entry.refTypes = refTypesOwnedBy(record.extensionKey)
             } catch (e) {
               entry = { key: record.key, extensionKey: record.extensionKey, ok: false, error: describeError(e) }
             }

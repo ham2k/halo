@@ -825,8 +825,17 @@ into `our.exchange` too, and the column shows it ahead of theirs, in the RST
 cell's order — keep it to the part that varies, since it repeats on every row.
 Return a PATCH, not a mutated QSO: it merges shallowly except `our` and
 `their`, which merge one level deep, so `{their: {exchange: 'ZN5'}}` sets that
-field and leaves the callsign alone. `refs` and `uuid` in a patch are ignored —
-refs are shared with the core and with other activities. Return null to do
+field and leaves the callsign alone. `refs` in a patch merge field-wise into
+the QSO's ref of each type the extension OWNS (appended when the QSO has none
+yet), so a contest can stamp the exchange it guessed as data of record — by
+its ref TYPE, which for a catalog contest is not its key (`ham2k-cqww` writes
+`cqww`). A type is the extension's when it alone registers a bare
+`ref:<type>` hook for it and its manifest declares that hook in `hooks`.
+Registering a handler is open to anyone, so a type two extensions answer for
+belongs to neither, and a qualified `ref:<type>/<code>` claim owns nothing.
+An entry of any other type is ignored, since refs are shared with the core
+and with other activities, and no ref is ever removed. `uuid` is never
+patchable. Return null to do
 nothing. Called on every save path (single QSO, call list, call stack, edit),
 and skipped entirely when the operation has no refs, so ordinary logging pays
 no bridge crossing. A serial the CORE allocates at commit is NOT visible here

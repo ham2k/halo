@@ -1003,6 +1003,15 @@ export interface ActivityHook {
   /// sets that one field and leaves `their.call` alone. Return null to do
   /// nothing, which is what an operation not running your activity should do.
   ///
+  /// `refs` in the patch merge field-wise into the QSO's ref of each type your
+  /// extension owns — appended if the QSO has none yet — which is how a
+  /// contest stamps the exchange it guessed as data of record. A type is yours
+  /// when your extension alone registers a bare `ref:<type>` hook for it and
+  /// your manifest declares it in `hooks`. An entry of any other type is
+  /// ignored, a type another extension also answers for belongs to neither,
+  /// and a qualified `ref:<type>/<code>` claim owns nothing. Refs are never
+  /// removed.
+  ///
   /// Only called when the operation carries a ref of a type you contribute
   /// controls for, so ordinary non-contest logging costs no bridge crossing.
   ///
@@ -2511,8 +2520,10 @@ export interface ExtensionManifest {
   /// wants it — and the packer refuses a manifest that carries it.
   enabledByDefault?: boolean
   /// The hook categories this extension registers (`ref:<type>` for ref
-  /// handlers). Declarative/informational — the kernel still learns the
-  /// actual hooks from registerHook at activation.
+  /// handlers). The kernel still learns the actual hooks from registerHook at
+  /// activation; a declared `ref:<type>` is what lets a `processQsoBeforeSave`
+  /// patch write refs of that type (see `ActivityHook.processQsoBeforeSave`),
+  /// so the manifest has to be spread into the definition.
   hooks?: string[]
   /// `"always"`: the full ADIF export asks this extension's `adifFields` about
   /// EVERY contact. Left out, it is asked only about contacts carrying a

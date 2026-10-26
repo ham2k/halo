@@ -1073,11 +1073,14 @@ mixin _ExtensionHookApi {
       var merged = qsoData;
       for (final entry in entries) {
         if (entry['ok'] != true || entry['value'] is! Map) continue;
-        // The hook's own key is what lets a patch touch that extension's ref
-        // and no other (see `mergeQsoPatch`). An entry with no key can still
-        // project into `their`/`our`, but writes no ref at all.
-        final owner = entry['key'];
-        merged = mergeQsoPatch(merged, (entry['value'] as Map).cast<String, dynamic>(), owner: owner is String ? owner : '');
+        // The ref types the hook's extension owns, as the kernel reports them,
+        // are what let a patch touch that extension's refs and no other (see
+        // `mergeQsoPatch`) — not the hook's key: a catalog contest's key
+        // (`ham2k-cqww`) is not the ref type its logs carry (`cqww`). An entry
+        // without them can still project into `their`/`our`, but writes no ref.
+        final refTypes = entry['refTypes'];
+        final owners = {if (refTypes is List) ...refTypes.whereType<String>()};
+        merged = mergeQsoPatch(merged, (entry['value'] as Map).cast<String, dynamic>(), owners: owners);
       }
       return merged;
     } on ExtensionHostException catch (e) {

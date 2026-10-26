@@ -5,8 +5,9 @@
 // an extension, so it can be any shape at all; getting the depth wrong here
 // destroys the QSO the operator just logged rather than decorating it.
 //
-// `owner` is the hook key that produced the patch, and it is what confines a
-// ref write to that extension's own ref. Most of these tests are about what an
+// `owners` are the ref types the patch's extension claims, as the kernel
+// reports them, and they are what confine a ref write to that extension's own
+// refs. Most of these tests are about what an
 // extension must NOT be able to reach.
 
 import 'package:flutter_test/flutter_test.dart';
@@ -30,9 +31,13 @@ void main() {
   test('a one-field patch to `their` leaves the rest of `their` alone', () {
     // THE case this exists for: a contest returns {their: {exchange: ...}} and
     // a plain shallow merge would take the callsign and the RST with it.
-    final merged = mergeQsoPatch(_qso(), {
-      'their': {'exchange': 'ZN5'},
-    }, owner: 'cqww');
+    final merged = mergeQsoPatch(
+      _qso(),
+      {
+        'their': {'exchange': 'ZN5'},
+      },
+      owners: {'cqww'},
+    );
 
     expect(merged['their'], {
       'call': 'W1AW',
@@ -43,15 +48,19 @@ void main() {
   });
 
   test('`our` merges one level deep too', () {
-    final merged = mergeQsoPatch(_qso(), {
-      'our': {'exchange': '001'},
-    }, owner: 'cqww');
+    final merged = mergeQsoPatch(
+      _qso(),
+      {
+        'our': {'exchange': '001'},
+      },
+      owners: {'cqww'},
+    );
     expect(merged['our'], {'call': 'N0DEV', 'sent': '599', 'exchange': '001'});
   });
 
   test('a patch cannot rewrite the uuid', () {
     final qso = {..._qso(), 'uuid': 'real'};
-    final merged = mergeQsoPatch(qso, {'uuid': 'hijacked', 'notes': 'ok'}, owner: 'cqww');
+    final merged = mergeQsoPatch(qso, {'uuid': 'hijacked', 'notes': 'ok'}, owners: {'cqww'});
     expect(merged['uuid'], 'real');
     expect(merged['notes'], 'ok');
   });
@@ -66,7 +75,7 @@ void main() {
         {'type': 'cqww', 'theirZone': '14'},
       ],
     };
-    final merged = mergeQsoPatch(original, patch, owner: 'cqww');
+    final merged = mergeQsoPatch(original, patch, owners: {'cqww'});
 
     expect((original['their'] as Map).containsKey('exchange'), isFalse);
     expect(((original['refs'] as List).first as Map)['theirZone'], '5');
@@ -78,18 +87,26 @@ void main() {
 
   test('an empty patch returns the QSO untouched', () {
     final original = _qso();
-    expect(identical(mergeQsoPatch(original, {}, owner: 'cqww'), original), isTrue);
+    expect(identical(mergeQsoPatch(original, {}, owners: {'cqww'}), original), isTrue);
   });
 
   test('several extensions patch in turn without clobbering each other', () {
     // Two contests on one operation: each projects its own field, and the
     // second must not erase the first.
-    var merged = mergeQsoPatch(_qso(), {
-      'their': {'exchange': 'ZN5'},
-    }, owner: 'cqww');
-    merged = mergeQsoPatch(merged, {
-      'their': {'state': 'CT'},
-    }, owner: 'arrl-dx');
+    var merged = mergeQsoPatch(
+      _qso(),
+      {
+        'their': {'exchange': 'ZN5'},
+      },
+      owners: {'cqww'},
+    );
+    merged = mergeQsoPatch(
+      merged,
+      {
+        'their': {'state': 'CT'},
+      },
+      owners: {'arrl-dx'},
+    );
     expect((merged['their'] as Map)['exchange'], 'ZN5');
     expect((merged['their'] as Map)['state'], 'CT');
     expect((merged['their'] as Map)['call'], 'W1AW');
@@ -97,7 +114,7 @@ void main() {
 
   test('a non-map value where a map is expected replaces rather than throwing', () {
     // Extensions are third-party code; a malformed patch must not crash a save.
-    final merged = mergeQsoPatch(_qso(), {'their': 'nonsense'}, owner: 'cqww');
+    final merged = mergeQsoPatch(_qso(), {'their': 'nonsense'}, owners: {'cqww'});
     expect(merged['their'], 'nonsense');
   });
 
@@ -105,11 +122,15 @@ void main() {
     test('an extension fills a field on its OWN ref', () {
       // The point of allowing this at all: a contest records the zone it fell
       // back to, so the log, the scorer and the export cannot disagree.
-      final merged = mergeQsoPatch(_qso(), {
-        'refs': [
-          {'type': 'cqww', 'theirZone': '14'},
-        ],
-      }, owner: 'cqww');
+      final merged = mergeQsoPatch(
+        _qso(),
+        {
+          'refs': [
+            {'type': 'cqww', 'theirZone': '14'},
+          ],
+        },
+        owners: {'cqww'},
+      );
 
       expect(merged['refs'], [
         {'type': 'cqww', 'theirZone': '14'},
@@ -126,11 +147,15 @@ void main() {
           {'type': 'cqww', 'theirZone': '5', 'serial': 42},
         ],
       };
-      final merged = mergeQsoPatch(qso, {
-        'refs': [
-          {'type': 'cqww', 'theirExchange': 'ARRL'},
-        ],
-      }, owner: 'cqww');
+      final merged = mergeQsoPatch(
+        qso,
+        {
+          'refs': [
+            {'type': 'cqww', 'theirExchange': 'ARRL'},
+          ],
+        },
+        owners: {'cqww'},
+      );
 
       expect((merged['refs'] as List).single, {'type': 'cqww', 'theirZone': '5', 'serial': 42, 'theirExchange': 'ARRL'});
     });
@@ -145,11 +170,15 @@ void main() {
           {'type': 'pota', 'ref': 'US-0001'},
         ],
       };
-      final merged = mergeQsoPatch(qso, {
-        'refs': [
-          {'type': 'pota', 'ref': 'HIJACKED'},
-        ],
-      }, owner: 'cqww');
+      final merged = mergeQsoPatch(
+        qso,
+        {
+          'refs': [
+            {'type': 'pota', 'ref': 'HIJACKED'},
+          ],
+        },
+        owners: {'cqww'},
+      );
 
       expect(merged['refs'], [
         {'type': 'cqww', 'theirZone': '5'},
@@ -165,11 +194,15 @@ void main() {
           {'type': 'pota', 'ref': 'US-0001'},
         ],
       };
-      final merged = mergeQsoPatch(qso, {
-        'refs': [
-          {'type': 'cqww', 'theirZone': '14'},
-        ],
-      }, owner: 'cqww');
+      final merged = mergeQsoPatch(
+        qso,
+        {
+          'refs': [
+            {'type': 'cqww', 'theirZone': '14'},
+          ],
+        },
+        owners: {'cqww'},
+      );
 
       expect((merged['refs'] as List), hasLength(2));
       expect(((merged['refs'] as List)[1] as Map)['ref'], 'US-0001');
@@ -179,42 +212,79 @@ void main() {
       // A QSO logged with nothing typed has no contest ref at all yet — the
       // stamped fallback is what creates it.
       final qso = {..._qso(), 'refs': <dynamic>[]};
-      final merged = mergeQsoPatch(qso, {
-        'refs': [
-          {'type': 'iaru-hf', 'theirExchange': '28'},
-        ],
-      }, owner: 'iaru-hf');
+      final merged = mergeQsoPatch(
+        qso,
+        {
+          'refs': [
+            {'type': 'iaru-hf', 'theirExchange': '28'},
+          ],
+        },
+        owners: {'iaru-hf'},
+      );
 
       expect(merged['refs'], [
         {'type': 'iaru-hf', 'theirExchange': '28'},
       ]);
     });
 
-    test('a hook with no key writes no ref, but still projects into `their`', () {
-      // invokeHookAll can return an entry without a key; that patch has no
-      // identity to check a ref against, so it gets the old, stricter contract.
+    test('an extension that claims no ref type writes no ref, but still projects into `their`', () {
+      // An entry the kernel reports no ref types for has nothing to check a
+      // ref against, so its patch reaches `their` and `our` and no ref.
       final merged = mergeQsoPatch(_qso(), {
         'refs': [
           {'type': 'cqww', 'theirZone': '14'},
         ],
         'their': {'exchange': 'ZN5'},
-      }, owner: '');
+      }, owners: {});
 
       expect(((merged['refs'] as List).single as Map)['theirZone'], '5');
       expect((merged['their'] as Map)['exchange'], 'ZN5');
     });
 
+    test('an extension owns every ref type it claims, whatever its key', () {
+      // A catalog contest's key is not its ref type (`ham2k-cqww` keeps `cqww`
+      // refs), and one extension may claim more than one type.
+      final qso = {
+        ..._qso(),
+        'refs': [
+          {'type': 'cqww', 'theirZone': '5'},
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      };
+      final merged = mergeQsoPatch(
+        qso,
+        {
+          'refs': [
+            {'type': 'cqww', 'theirZone': '14'},
+            {'type': 'cqwwExtra', 'note': 'x'},
+            {'type': 'pota', 'ref': 'HIJACKED'},
+          ],
+        },
+        owners: {'cqww', 'cqwwExtra'},
+      );
+
+      expect(merged['refs'], [
+        {'type': 'cqww', 'theirZone': '14'},
+        {'type': 'pota', 'ref': 'US-0001'},
+        {'type': 'cqwwExtra', 'note': 'x'},
+      ]);
+    });
+
     test('a malformed refs patch is ignored rather than replacing the list', () {
-      final merged = mergeQsoPatch(_qso(), {'refs': 'nonsense'}, owner: 'cqww');
+      final merged = mergeQsoPatch(_qso(), {'refs': 'nonsense'}, owners: {'cqww'});
       expect(merged['refs'], [
         {'type': 'cqww', 'theirZone': '5'},
       ]);
 
-      final noType = mergeQsoPatch(_qso(), {
-        'refs': [
-          {'theirZone': '14'},
-        ],
-      }, owner: 'cqww');
+      final noType = mergeQsoPatch(
+        _qso(),
+        {
+          'refs': [
+            {'theirZone': '14'},
+          ],
+        },
+        owners: {'cqww'},
+      );
       expect(noType['refs'], [
         {'type': 'cqww', 'theirZone': '5'},
       ]);
