@@ -3,9 +3,10 @@
 //
 // The two ways a declared form is PRESENTED: over the surface that opened it,
 // as a Modal Pane or as a dialog. The form itself — every element type, and
-// the state behind them — is form_renderer.dart; this is only the shell
-// around one, kept apart because that file has a size budget and the shell is
-// the part of it that answers to nothing else.
+// the state behind them — is the form_renderer.dart library, it and its parts;
+// this is only the shell around one, kept apart because that library's files
+// have a size budget and the shell is the part of it that answers to nothing
+// else.
 
 import 'dart:async';
 
