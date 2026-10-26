@@ -1046,6 +1046,55 @@ construction instead of by maintenance: an earlier version delegated to lib-oper
 `bandForFrequency`, whose edges are wider, whose 60 m starts at 5300 where ours started at 5250, and
 which retries an unmatched argument as MHz — 10300 kHz came back as `3cm`.
 
+### Radio B, for SO2R
+
+Behind the `so2r` experiment, a second role: **`radio2`** (`CatService.radio2`), the transceiver
+providing `vfoB`, which set B of the logging panel follows ([logging-fields.md](logging-fields.md)
+§ SO2R). Stored beside `mainVfo` and picked in Station Configuration's Current Transceivers band,
+under the Main VFO's row. It is the same wiring as `radio1`, narrowed:
+
+- **Local rigs only.** A peer's radio is never Radio B.
+- **Never radio1's rig.** `setRadio2` refuses it, and taking Radio B's rig as radio1 clears Radio
+  B — two VFOs tuning one radio would fight over it.
+- **Readings and tunes stay on their own VFO.** `_applyReading` writes a radio2 report to `vfoB`
+  tagged `radio`, and `_onVfoChanged` dispatches on `RadioService.lastVfoKey`: a `vfoB` change
+  tunes radio2 through `tuneNode` and nothing else. Smart VFO Snap and the idle retry's nudge stay
+  radio1's; the keyer's repeat watches the VFO of the radio keying is for, so pouncing with one
+  radio never ends the CQ the other is repeating.
+- **Inert with the experiment off.** `radio2` answers null, so a stored pick neither drives `vfoB`
+  nor auto-connects — and is back when SO2R is turned on again. The service applies the
+  experiment's change, and every change of `radio2`, through `_withKeyInUseTidied`: either moves the
+  key in use, and Radio B's message stops rather than going on with nothing to show or stop it.
+  Turning the experiment on connects Radio B, as a launch would.
+- **No relay moves while either radio transmits.** `selectAntenna` asks Radio B as well as radio1:
+  nothing says which radio a two-radio switch's port feeds.
+
+**Each radio has its own antenna and key.** The picks were already per radio (§ The picks belong
+to the radio); `designatedFor` and `setDesignated` take an explicit `radio:`, and Station
+Configuration shows Radio B's pair under the Main VFO's while SO2R is on. A contact logged on Radio
+B records Radio B's rig, antenna, key and power. Its voice memories are its own too: the labels and
+measured lengths are stored per radio (`voiceMessageLabel(n, radio:)`), since the audio is in each
+rig.
+
+**Keying follows the set the operator is in.** The logging panel says which set that is
+(`noteOperatorRadio`), and while nothing is going out the key in use, the voice memories and PTT
+(`KeyingStation.localKeyingRadio`) move with it — the keyer area shows that radio's speed, and
+whatever is keyed next goes out on it. A message, chain, repeat or held PTT under way keeps its
+radio instead — and so does a voice memory asked for and not yet heard starting
+(`CatKeying.voiceStarting`), which covers the gap between a sequence's memories: a CQ goes on on radio A while the operator works radio B, and keying moves over when
+it ends (`_followOperator`, on the keying notifiers). Keying something from the other set — every
+entry point calls `keyForOperator` first — stops what the radio being left is sending and moves
+keying at once, but only once the operator's radio can key it: asked first (`canKeyOn`), a radio
+that can't stops nothing, and set B with no Radio B keys nothing at all rather than falling back to
+radio A. The key, or the button, says so in the status bar. A key press holds its radio
+(`holdKeying`) until what it keys reaches the radio — a message renders first, and ESM's thanks
+waits for the log — so moving to the other set meanwhile never sends it on the other radio; a key
+in the other set drops the hold with whatever else the radio being left had going out. Escape stops
+whatever is sending, and a call typed in the sending radio's set stops it — a call typed in the
+other set does not. `isTransmitting` says which radio is on the air — its rig's own report, its
+held PTT, or a message or memory keyed through it — and that set's pill, rule and Radio control
+turn red.
+
 ### A paired device's panel, over the peer link
 
 Peer device sync's ephemeral channel carries the VFO between paired devices

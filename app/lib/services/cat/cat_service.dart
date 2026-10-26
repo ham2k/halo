@@ -63,6 +63,7 @@ part 'cat_equipment_store.dart';
 part 'cat_tracking.dart';
 part 'cat_peer_offers.dart';
 part 'cat_keying_surface.dart';
+part 'cat_so2r.dart';
 
 /// Bump when the stored shape changes in a way a reader has to know about.
 ///
@@ -172,7 +173,9 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
   return '$base $n';
 }
 
-class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface implements PeerStationRadios, KeyingStation {
+class CatService extends ChangeNotifier
+    with _RadioControls, _Discovery, _VfoSnap, _PeerOffers, _KeyingSurface, _So2r
+    implements PeerStationRadios, KeyingStation {
   @override
   final SettingsService _settings;
   @override
@@ -331,6 +334,7 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
     );
     _lastSeenVfoPower = _radio?.vfoA.power;
     _radio?.addListener(_onVfoChanged);
+    _startSo2r(Listenable.merge([cwProgress, voiceActivity, _keying.voiceStarting, _repeat.active, _ptt.held]));
   }
 
   @override
@@ -349,12 +353,16 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
       if (_autoConnectTargets.contains(uuid)) ?_nodes[uuid],
   ];
 
-  /// The nodes an automatic reconnect aims at: radio1, and the key in use when
-  /// it is a device of its own. Both are what the app depends on, and neither
-  /// should wait for a button.
+  /// The nodes an automatic reconnect aims at: radio1 and radio2, and the key
+  /// in use when it is a device of its own. All are what the app depends on,
+  /// and none should wait for a button.
   Set<String> get _autoConnectTargets {
-    final keyer = designatedFor(kCategoryKey);
-    return {?_localRadio1, if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer};
+    return {
+      ?_localRadio1,
+      ?radio2,
+      for (final keyer in {designatedFor(kCategoryKey), if (radio2 != null) designatedFor(kCategoryKey, radio: radio2)})
+        if (keyer != null && _isKeyerDevice(keyer)) keyer,
+    };
   }
 
   @override
@@ -453,6 +461,9 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
       // radio says nothing about where the incoming one is sitting.
       _cancelSnap(null);
       _radio1 = next;
+      // One rig never fills both roles: `vfoA` and `vfoB` would tune it
+      // against each other.
+      if (next case LocalRadio(:final uuid) when uuid == _radio2) _forgetRadio2();
     });
     // No status change carries this one: switching vfoA between two
     // CONNECTED rigs fires no _setState, and a peer pick would leave the tag
@@ -497,10 +508,12 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
     null => _noRadioKey,
   };
 
-  String? designatedFor(String category) {
-    final picks = _designated[_designationKey()];
+  /// [category]'s pick for [radio] — a local transceiver's uuid, SO2R's
+  /// Radio B being the one caller that names one — or for radio1.
+  String? designatedFor(String category, {String? radio}) {
+    final picks = _designated[radio ?? _designationKey()];
     if (picks != null && picks.containsKey(category)) return picks[category];
-    return _defaultDesignation(category);
+    return _defaultDesignation(category, radio ?? _localRadio1);
   }
 
   /// What a radio that has never been asked keys through: itself, when its
@@ -512,10 +525,9 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
   /// on it. Neither does a peer's radio, whose keying is the other device's
   /// key in use — that default is [peerKeyIsInUse] rather than an answer
   /// here, because what keys there is not a node of this station to name.
-  String? _defaultDesignation(String category) {
+  String? _defaultDesignation(String category, String? uuid) {
     if (category != kCategoryKey) return null;
     if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */ ) return null;
-    final uuid = _localRadio1;
     if (uuid == null) return null;
     final node = _nodes[uuid];
     if (node == null) return null;
@@ -535,21 +547,23 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
   /// shared half of [setDesignated] and the rules [addNode] applies.
   void _designateNow(String category, String? uuid) => (_designated[_designationKey()] ??= {})[category] = uuid;
 
-  Future<void> setDesignated(String category, String? uuid) async {
-    final previousUuid = designatedFor(category);
+  /// Picks [uuid] as [category] for [radio] — see [designatedFor].
+  Future<void> setDesignated(String category, String? uuid, {String? radio}) async {
+    final key = radio ?? _designationKey();
+    final previousUuid = designatedFor(category, radio: radio);
     // An ANSWER is stored even when it matches the default it replaces:
     // "nothing chosen" and "chose None" resolve alike right now but are not
     // the same state, and the difference decides whether a default can take
     // over later — a peer radio whose operator said None keys nothing, and
     // one whose operator said nothing keys through that peer.
-    final answered = _designated[_designationKey()]?.containsKey(category) ?? false;
+    final answered = _designated[key]?.containsKey(category) ?? false;
     if (answered && previousUuid == uuid) return;
-    _designateNow(category, uuid);
-    // Only a real CHANGE of key owes the outgoing one anything. A dropdown
-    // reports the already-selected item being tapped, and abandoning the
-    // message going out because the operator re-picked the key that is
-    // keying it would stop a CQ mid-word.
-    if (category == kCategoryKey && previousUuid != uuid) _onKeyInUseChanged(previousUuid);
+    // Only a real CHANGE of the key IN USE owes the outgoing one anything. A
+    // dropdown reports the already-selected item being tapped, and abandoning
+    // the message going out because the operator re-picked the key that is
+    // keying it would stop a CQ mid-word — and under SO2R the radio being
+    // edited may not be the one keying at all.
+    _withKeyInUseTidied(() => (_designated[key] ??= {})[category] = uuid);
     await _save();
     notifyListeners();
   }
@@ -562,10 +576,11 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
   /// a writer of `radio1` is a writer of the key in use whether it meant to
   /// be or not — which is why this is a wrapper rather than a line each of
   /// them has to remember.
+  @override
   void _withKeyInUseTidied(void Function() mutate) {
-    final previous = designatedFor(kCategoryKey);
+    final previous = keyInUse;
     mutate();
-    if (designatedFor(kCategoryKey) != previous) _onKeyInUseChanged(previous);
+    if (keyInUse != previous) _onKeyInUseChanged(previous);
   }
 
   /// What a change of key in use owes the outgoing one — whether the
@@ -610,14 +625,18 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
   /// The key in use, as a node uuid — null for None, and null for a peer's
   /// own keying, which is no node of this station ([peerKeyIsInUse]).
   @override
-  String? get keyInUse => designatedFor(kCategoryKey);
+  String? get keyInUse => designatedFor(kCategoryKey, radio: _keyingRadio2);
 
   /// Whether what keys is the picked peer's own key. The DEFAULT for a peer
   /// radio, because its keying is not a node here to designate (see
   /// [_defaultDesignation]) — but an explicit None still means None, and an
   /// explicit local key still wins.
   @override
-  bool get peerKeyIsInUse {
+  bool get peerKeyIsInUse => _keyingRadio2 == null && peerKeyPicked;
+
+  /// [peerKeyIsInUse] for radio1's own pick, whichever radio keying is on —
+  /// what radio1's Key in Use picker shows.
+  bool get peerKeyPicked {
     final selection = followedPeerRadio;
     if (selection == null) return false;
     final picks = _designated[_designationKey()];
@@ -649,8 +668,22 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
     return runtime!.session;
   }
 
-  @override
   String? get localRadio1 => _localRadio1;
+
+  @override
+  String? get localKeyingRadio => _keyingRadio2 ?? _localRadio1;
+
+  @override
+  bool get _keyingBusy => _keying.busy || _ptt.held.value || _holds.isNotEmpty;
+
+  @override
+  void _onKeyingRadioMoved() => _keying.followKeyingRadio();
+
+  @override
+  void _setEnterSendsOf(bool running) => _keying.setEnterSends(running: running);
+
+  @override
+  Future<void> _connectRadio2() => _reconnectWithRetries(radio2);
 
   /// Puts radio1 in [mode] without touching VFO A: its report comes back the
   /// usual way. Recorded as sent only once it went, as `tuneNode` does.
@@ -686,17 +719,20 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
     // telemetry there was nothing here that knew.
     //
     // Asked of the designated radio, whose antenna this switch is routing
-    // (docs/design/cat.md § The picks belong to the radio). A radio that
-    // cannot say — every driver reporting no TX state, which is most of
-    // them — leaves `transmitting` null and the selection goes through: a
-    // switch an operator could never work would be worse than the switch
-    // they have today.
-    if (radio1IsTransmitting) {
+    // (docs/design/cat.md § The picks belong to the radio) — and under SO2R
+    // of Radio B too: nothing says which radio a two-radio switch's port
+    // feeds, so neither may be transmitting. A radio that cannot say — every
+    // driver reporting no TX state, which is most of them — leaves
+    // `transmitting` null and the selection goes through: a switch an
+    // operator could never work would be worse than the switch they have
+    // today.
+    if (radio1IsTransmitting || _nodeTransmitting(radio2)) {
       // Said out loud, in the one place a developer will look. The refusal
       // is right, but a tap that does nothing at all is indistinguishable
       // from a switch that has stopped working — and the operator has no
       // other way to tell those apart.
-      debugPrint('[cat] antenna selection refused: ${_localRadio1 == null ? 'a radio' : displayNameFor(nodeFor(_localRadio1!)!)} is transmitting');
+      final keyed = radio1IsTransmitting ? _localRadio1 : radio2;
+      debugPrint('[cat] antenna selection refused: ${keyed == null ? 'a radio' : displayNameFor(nodeFor(keyed)!)} is transmitting');
       return;
     }
     try {
@@ -714,8 +750,10 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
   /// otherwise" — a shack whose rigs cannot answer must keep working exactly
   /// as it did before there was any telemetry at all.
   @override
-  bool get radio1IsTransmitting {
-    final uuid = _localRadio1;
+  bool get radio1IsTransmitting => _nodeTransmitting(_localRadio1);
+
+  @override
+  bool _nodeTransmitting(String? uuid) {
     if (uuid == null) return false;
     final state = stateFor(uuid);
     // A radio that has gone SILENT is not a radio that is transmitting, even
@@ -761,6 +799,7 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
       PeerRadio(:final selection) => {'peer': selection.toJson()},
       null => null,
     },
+    'radio2': _radio2,
     'designated': _designated,
     'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
   });
@@ -934,6 +973,7 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
       // moving the logging panel onto a different rig immediately after a
       // destructive action. The dropdown is right there.
       if (_localRadio1 == uuid) _radio1 = null;
+      if (_radio2 == uuid) _forgetRadio2();
       // Same rule for antenna/key designations — across EVERY radio's picks,
       // not just the selected one's, and the removed radio's own set of picks
       // goes with it. A pick that disappears this way is "never decided"
@@ -1087,8 +1127,13 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
     // not the radio's reading while it transmits: working split, a rig may
     // report the frequency it is transmitting on, which is no QSY — and would
     // end every split CQ at its first send. The reading after it unkeys is
-    // the one that says where it went.
-    if (radio.lastVfoOrigin != VfoOrigin.radio || !radio1IsTransmitting) _repeat.noteVfo(radio.vfoA);
+    // the one that says where it went. Only the keying radio's VFO: the
+    // other one moving is the operator working the other radio.
+    final onB = radio.lastVfoKey == 'vfoB';
+    if (onB == (keyingRadio == 'B') && (radio.lastVfoOrigin != VfoOrigin.radio || !_nodeTransmitting(onB ? radio2 : _localRadio1))) {
+      _repeat.noteVfo(radio.vfo(radio.lastVfoKey));
+    }
+    if (onB) return _onVfoBChanged(radio);
     // Our own write, coming back around. Forwarding it would tell the radio
     // to go where it already is, and its confirmation would arrive as
     // another notification.
@@ -1263,6 +1308,7 @@ class CatService extends ChangeNotifier with _RadioControls, _Discovery, _VfoSna
   @override
   void dispose() {
     _disposed = true;
+    _stopSo2r();
     _radio?.removeListener(_onVfoChanged);
     // Cancelled, not merely guarded: the callback checks _disposed, but a
     // pending timer can still sit scheduled for minutes, and a test harness

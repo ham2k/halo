@@ -55,6 +55,8 @@ extension _EquipmentStore on CatService {
         _radio1 = PeerRadio(selection);
       }
     }
+    final storedRadio2 = stored['radio2'];
+    if (storedRadio2 is String && _nodes.containsKey(storedRadio2) && storedRadio2 != _localRadio1) _radio2 = storedRadio2;
     final designated = stored['designated'];
     if (designated is Map) {
       // Two shapes, told apart by the version the blob was written under

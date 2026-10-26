@@ -293,6 +293,85 @@ void main() {
     });
   });
 
+  // SO2R's second radio: `vfoB` is its VFO the way `vfoA` is radio1's, and
+  // the two must never cross — a reading landing in the other VFO would log
+  // set A's contacts on set B's band, and a tune crossing over would QSY the
+  // radio the operator is not working.
+  group('radio2 (SO2R)', () {
+    /// Two connected radios, the first as radio1 and the second as radio2,
+    /// with SO2R on. Returns their sessions in that order.
+    Future<(_FakeSession, _FakeSession)> twoRadios() async {
+      await settings.setExperimentEnabled('so2r', true);
+      final a = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final b = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      await cat.setRadio1(LocalRadio(a.uuid));
+      await cat.setRadio2(b.uuid);
+      await cat.connect(a.uuid);
+      await cat.connect(b.uuid);
+      return (driver.sessions[0], driver.sessions[1]);
+    }
+
+    test('each radio reports into its own VFO', () async {
+      final (sessionA, sessionB) = await twoRadios();
+      sessionA.radioReports(freqKHz: 14025, mode: 'CW');
+      sessionB.radioReports(freqKHz: 7025, mode: 'CW');
+      await pumpEventQueue();
+
+      expect(radio.vfoA.freq, 14025);
+      expect(radio.vfo('vfoB').freq, 7025);
+      expect(radio.vfo('vfoB').band, '40m');
+    });
+
+    test('a vfoB change tunes radio B and leaves radio A alone', () async {
+      final (sessionA, sessionB) = await twoRadios();
+      radio.setVfo('vfoB', freq: 3525, mode: 'CW');
+      await pumpEventQueue();
+
+      expect(sessionB.commands, contains('freq:3525.0'));
+      expect(sessionA.commands.where((c) => c.startsWith('freq:')), isEmpty);
+    });
+
+    test('a stored Radio B stays inert while SO2R is off, and comes back with it', () async {
+      final (_, sessionB) = await twoRadios();
+      final picked = cat.radio2;
+      await settings.setExperimentEnabled('so2r', false);
+
+      expect(cat.radio2, isNull);
+      sessionB.radioReports(freqKHz: 21025, mode: 'CW');
+      await pumpEventQueue();
+      expect(radio.vfo('vfoB').freq, isNull, reason: 'an operator who turned SO2R off has no Radio B');
+
+      await settings.setExperimentEnabled('so2r', true);
+      expect(cat.radio2, picked);
+    });
+
+    test('one rig never fills both roles', () async {
+      await settings.setExperimentEnabled('so2r', true);
+      final a = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
+      final b = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
+      await cat.setRadio1(LocalRadio(a.uuid));
+
+      await cat.setRadio2(a.uuid);
+      expect(cat.radio2, isNull, reason: "radio1's rig is refused as Radio B");
+
+      await cat.setRadio2(b.uuid);
+      await cat.setRadio1(LocalRadio(b.uuid));
+      expect(cat.radio2, isNull, reason: 'taking Radio B as radio1 frees the Radio B role');
+    });
+
+    test('Radio B survives a restart, and goes with its node', () async {
+      await twoRadios();
+      final picked = cat.radio2!;
+
+      final reloaded = CatService(settings, radio: radio, registry: cat.registry);
+      expect(reloaded.radio2, picked);
+      reloaded.dispose();
+
+      await cat.removeNode(picked);
+      expect(cat.radio2, isNull);
+    });
+  });
+
   group('radio → app', () {
     test('what the radio reports becomes the app VFO', () async {
       await connectedRadio();

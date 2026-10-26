@@ -8,6 +8,9 @@
 
 part of 'logging_controls.dart';
 
+/// SO2R's strip: Time, the two radios and Spotting, and nothing else.
+const _so2rStripKeys = {'time', 'radio', 'spotting'};
+
 extension _ControlStrip on _LoggingControlsState {
   /// The field a control expands *into* — what the operator opened it to type
   /// in. Null for a control with nothing to type (Spotting with its comment
@@ -22,6 +25,8 @@ extension _ControlStrip on _LoggingControlsState {
       // into, and on touch platforms the dropdowns refuse focus outright.
       case 'radio':
         return _radio.freqFocus;
+      case 'radioB':
+        return widget.so2r?.link.radioB?.freqFocus;
       case 'power':
         return _radio.powerFocus;
       case 'spotting':
@@ -51,6 +56,11 @@ extension _ControlStrip on _LoggingControlsState {
         return [(_time.timeFocus, _time.timeController), (_time.dateFocus, _time.dateController)];
       case 'radio':
         return [(_radio.bandFocus, _radio.bandController), (_radio.freqFocus, _radio.freqController), (_radio.modeFocus, _radio.modeController)];
+      case 'radioB':
+        final radioB = widget.so2r?.link.radioB;
+        return radioB == null
+            ? const []
+            : [(radioB.bandFocus, radioB.bandController), (radioB.freqFocus, radioB.freqController), (radioB.modeFocus, radioB.modeController)];
       case 'power':
         return [(_radio.powerFocus, _radio.powerController)];
       case 'spotting':
@@ -109,7 +119,9 @@ extension _ControlStrip on _LoggingControlsState {
   /// is its model's.
   List<SecondaryControlSpec> _buildSecondaryControls(ThemeData theme, HaLoColors poloColors, {bool Function(String key)? enabledFor}) {
     final specs = <SecondaryControlSpec>[];
+    final so2r = widget.so2r;
     for (final descriptor in _catalog.visibleControls()) {
+      if (so2r != null && !_so2rStripKeys.contains(descriptor.key)) continue;
       switch (descriptor.key) {
         case 'time':
           specs.add(timeControlSpec(_time));
@@ -125,6 +137,23 @@ extension _ControlStrip on _LoggingControlsState {
               onPicked: _callFocus.requestFocus,
             ),
           );
+          if (so2r?.link.radioB case final radioB?) {
+            specs.last = so2rRadioSpec('A', specs.last);
+            specs.add(
+              so2rRadioSpec(
+                'B',
+                radioControlSpec(
+                  radioB,
+                  theme,
+                  selected: _selectedControlKey == 'radioB',
+                  freqInputFormatters: [_virtualSpace],
+                  freqKeyboardType: _decimalKeyboardType,
+                  onFreqSubmitted: () => _ladder.closeExpandedControl('radioB'),
+                  onPicked: () => so2r!.link.focusSet('B'),
+                ),
+              ),
+            );
+          }
         case 'power':
           specs.add(powerControlSpec(_radio, keyboardType: _decimalKeyboardType));
         case 'spotting':

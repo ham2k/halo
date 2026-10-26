@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart' show LocalRadio;
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/extensions/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -140,6 +141,33 @@ void main() {
     await tester.runAsync(() => services.cat.disconnect(rig));
     await tester.pump();
     expect(enterSends(tester), isNull);
+    await unmount(tester);
+  });
+
+  // The trap: crossing to the operator's radio before asking whether the
+  // Enter sends anything — a thanks slot left empty in set B stopping the CQ
+  // radio A is calling, with nothing sent in its place.
+  testWidgets("under SO2R, an Enter in set B with nothing to send leaves radio A's message going out", (tester) async {
+    await services.settings.setExperimentEnabled('so2r', true);
+    await services.settings.setCwMessage(3, '');
+    await pumpOperation(tester);
+    final right = await services.cat.addNode(typeKey: 'placeholder-radio', name: 'Right Rig', config: placeholderRadioModel.variants.single.defaultConfig);
+    await tester.runAsync(() => services.cat.connect(right.uuid));
+    addTearDown(() => services.cat.disconnect(right.uuid));
+    await services.cat.setRadio1(LocalRadio(rig));
+    await services.cat.setRadio2(right.uuid);
+    await tester.pump();
+    services.cat.noteOperatorRadio('A');
+    services.cat.sendCw('CQ TEST');
+    services.cat.noteOperatorRadio('B');
+    expect(services.cat.keyingRadio, 'A', reason: "sanity: radio A's CQ keeps keying there");
+
+    services.cat.setEnterSends(on: true);
+    tester.widget<LoggingControls>(find.byType(LoggingControls).first).session.enterSends!()!.send([EsmMessage.thanks], cwDraft);
+    await tester.pump();
+    await tester.pump();
+    expect(services.cat.cwProgress.value?.text, 'CQ TEST');
+    expect(services.cat.keyingRadio, 'A');
     await unmount(tester);
   });
 

@@ -155,7 +155,7 @@ extension _CallInfo on _LoggingControlsState {
       locationLine: guess == null ? null : widget.lookups.callLocationLine?.call(guess),
       // Asked only when it would show: it walks the exchange fields.
       gridOnlyLine: message == null && callInfo == null ? _gridOnlyLine : null,
-      statsLines: () => widget.lookups.operationStatsLines?.call(widget.log.qsos) ?? const <String>[],
+      statsLines: () => widget.lookups.operationStatsLines?.call(so2rQsos(widget.so2r, widget.log.qsos)) ?? const <String>[],
       noticeLabel: widget.lookups.scoreNoticeLabel,
       workedBeforeLabel: widget.lookups.workedBeforeLabel,
       onCallInfoTap: widget.lookups.onCallInfoTap,

@@ -67,7 +67,7 @@ import 'platform_chrome.dart';
 /// simulator always does; an iPad can), and then the dismissal the
 /// operator just made is the only thing worth believing.
 class DefaultFocusBackstop {
-  DefaultFocusBackstop({required this.target, required this.routeIsCurrent});
+  DefaultFocusBackstop({required this.target, required this.routeIsCurrent, this.reclaims});
 
   /// The field the backstop reclaims — the callsign field, or the event text
   /// field standing in for it. Read per decision: the panel swaps them.
@@ -76,6 +76,11 @@ class DefaultFocusBackstop {
   /// Whether the panel's route is the current one — read at the end of the
   /// frame, when a route pushed in the same turn as a blur has landed.
   final bool Function() routeIsCurrent;
+
+  /// Whether this panel is the one to reclaim right now — under SO2R two
+  /// panels share a route, and only the set the keyboard was last in takes
+  /// it back, or both would and the last to ask would win. Null: always.
+  final bool Function()? reclaims;
 
   /// The panel's own Tab-trapping scope (the `FocusScope` around the panel);
   /// a node under it is "one of this panel's".
@@ -157,7 +162,7 @@ class DefaultFocusBackstop {
       // and schedules nothing, and this callback decides on what it left.
       FocusManager.instance.applyFocusChangesIfNeeded();
       _reclaimFocusScheduled = false;
-      if (!_focusIsUnclaimed() || !routeIsCurrent()) return;
+      if (!_focusIsUnclaimed() || !routeIsCurrent() || !(reclaims?.call() ?? true)) return;
       if (isMobilePlatform && (leftPanel || !_panelHeldFocus)) {
         _panelHeldFocus = false;
         return;

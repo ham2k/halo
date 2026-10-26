@@ -323,8 +323,11 @@ class CwSendQueue {
       _current = _pending.removeAt(0);
       _currentChunkIndex = 0;
       _currentEnds = cwCharacterEnds(_current!.text, speedWpm() ?? defaultCwSpeedWpm);
-      _reportCurrent();
+      // Reported once its first chunk is keying: a listener the report
+      // wakes reads [sending], which is false until that chunk's timer is
+      // set — and a message starting is the only report a short one makes.
       _sendNext();
+      _reportCurrent();
       return;
     }
     final chunk = current.chunks[_currentChunkIndex++];

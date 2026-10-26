@@ -2147,6 +2147,9 @@
       "notConfigured": "Not configured",
       "currentConfiguration": "Current Configuration",
       "currentTransceiver": "Current Transceiver",
+      "currentTransceivers": "Current Transceivers",
+      "so2rRadioName": "${radio}: ${name}",
+      "noRadioBSelected": "No Radio B selected",
       "radioMode": "Radio Mode",
       "keyerNotSupported": "Not supported by current radio",
       "catControlPreferences": "CAT Control Preferences",
@@ -2515,6 +2518,8 @@
     "cwSending": "Sending CW: $text",
     "cwMessageError": "CW message F$n: $error",
     "cwMessageNotRendered": "CW message F$n was not sent: the extensions are not ready",
+    "so2rRadioCannotKey": "Nothing sent: Radio $radio can't key that",
+    "so2rNoRadioB": "Nothing sent: pick a Radio B in Station Configuration to key from this set",
     "settingNotStored": "“${label}” did not accept that value"
   },
   "commandDialog": {

@@ -105,6 +105,23 @@ void main() {
       });
     });
 
+    // The trap: a message reported before its first chunk's timer runs, so a
+    // listener the report wakes reads the queue as idle — a transmit pill
+    // that never lights for a message whose start is its only report.
+    test('a listener woken by a message starting finds the queue sending', () {
+      fakeAsync((async) {
+        late final CwSendQueue queue;
+        final sendingAtReport = <bool>[];
+        queue = CwSendQueue(maxChunkLength: 30, send: (_) {}, speedWpm: () => 20, onProgress: (p) => sendingAtReport.add(p != null && queue.sending));
+
+        queue.enqueue('cq');
+        queue.enqueue('k');
+        async.elapse(cwDuration('CQ', 20));
+        expect(sendingAtReport, [true, true, true], reason: 'the first start, the re-report for K behind it, and K starting');
+        async.flushTimers();
+      });
+    });
+
     test('a message split into chunks is reported ONCE, as a whole', () {
       fakeAsync((async) {
         final reports = <CwSendProgress?>[];

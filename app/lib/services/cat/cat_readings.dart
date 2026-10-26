@@ -95,10 +95,15 @@ extension _Readings on CatService {
     // [_onVfoChanged].
     runtime.lastSent = merged;
 
-    // Only the designated radio drives the app's VFO. Tagging the write
+    // Only the designated radios drive the app's VFOs. Tagging the write
     // `radio` is what lets _onVfoChanged recognise the notification it's
     // about to receive as its own, instead of re-tuning the radio to the
     // value the radio just gave it.
+    if (uuid == radio2) {
+      final mode = appModeForRadioReport(current: _radio?.vfo('vfoB').mode, reported: merged.mode, freqKHz: merged.freqKHz);
+      _radio?.setVfo('vfoB', freq: merged.freqKHz, mode: mode, origin: VfoOrigin.radio);
+      return;
+    }
     if (uuid != _localRadio1) return;
     // From what the radio SAID: [merged] fills a missing frequency in from
     // what it was told, which it may not have reached.

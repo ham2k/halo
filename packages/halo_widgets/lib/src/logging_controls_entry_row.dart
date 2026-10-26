@@ -61,6 +61,7 @@ class LoggingEntryRow extends StatefulWidget {
     required this.onSubmitted,
     required this.onExchangeSubmitted,
     this.onCallTyped,
+    this.autofocus = true,
   });
 
   /// The callsign field — `Expanded` over whatever the others leave it, and
@@ -132,6 +133,11 @@ class LoggingEntryRow extends StatefulWidget {
   /// The operator's own edit of the call field — see
   /// [LoggingSession.onCallTyped].
   final VoidCallback? onCallTyped;
+
+  /// Whether the callsign field takes the default focus on mount. Under SO2R
+  /// only set A's does: two autofocused fields would leave it with whichever
+  /// mounted last.
+  final bool autofocus;
 
   @override
   State<LoggingEntryRow> createState() => _LoggingEntryRowState();
@@ -425,7 +431,7 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenF
                     // watched: the channel's answer normally beats navigation
                     // into an operation, and losing that race only costs one
                     // tap.
-                    autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
+                    autofocus: widget.autofocus && (!isMobilePlatform || hardwareKeyboardAttached.value),
                     autocorrect: command.mixedCase,
                     enableSuggestions: command.mixedCase,
                     // A command awaiting parameters (expectsParams) switches

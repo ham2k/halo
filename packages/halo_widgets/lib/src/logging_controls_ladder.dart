@@ -7,6 +7,9 @@
 //     QSO list  ──▲──  secondary pills  ──▲──  main logging fields
 //               ──▼──                   ──▼──
 //
+// Under SO2R the fields are two rungs, set A's then set B's
+// ([FocusLadderConfig]'s `crossOutward`/`crossInward`).
+//
 // Arrow Up walks outward from the fields, Arrow Down walks back in, so the
 // whole panel is reachable without leaving the home row. A panel drawn ABOVE
 // its QSO list (`LoggingPreferences.aboveLog`) stacks every rung the other
@@ -78,6 +81,13 @@ typedef FocusLadderConfig = ({
   /// Whether the panel sits above its QSO list, which turns the ladder
   /// upside down — see the file comment.
   bool aboveLog,
+
+  /// SO2R: hands the keyboard from a main field to the other set's, across
+  /// this set's outward edge (set B up to set A) or its inward one (set A
+  /// down to set B); true when it took it. Null where no set lies beyond
+  /// that edge — then outward is the pills, and inward goes nowhere.
+  bool Function()? crossOutward,
+  bool Function()? crossInward,
 });
 
 /// The ladder. See the file comment.
@@ -253,10 +263,12 @@ class LoggingFocusLadder {
     // Not with Shift: Shift+arrow is a text selection, which every rung
     // stands aside for.
     if (key == _outward && !shift) {
+      if (config().crossOutward?.call() ?? false) return KeyEventResult.handled;
       if (config().fieldsLocked()) return KeyEventResult.ignored;
       focusPillAndOpen();
       return KeyEventResult.handled;
     }
+    if (key == _inward && !shift && (config().crossInward?.call() ?? false)) return KeyEventResult.handled;
 
     if (key == LogicalKeyboardKey.tab) {
       final next = _nextStop(fields, index, forward: !shift);

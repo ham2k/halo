@@ -20,6 +20,7 @@ import '../../services/link_opener.dart';
 import '../../services/logging_scope.dart';
 import '../../services/settings_service.dart';
 import '../../services/manual_time_settings.dart';
+import '../../services/radio_service.dart';
 import '../../services/spotting_settings.dart';
 import '../../settings/settings_target_dialog.dart';
 import '../../tools/call_location_line.dart';
@@ -32,6 +33,8 @@ import '../station_config_dialog.dart';
 import '../keyer_area.dart';
 import 'extension_panel.dart' show PanelRenderContext;
 import 'log_find_bar.dart';
+
+part 'logging_panel_so2r.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -228,7 +231,8 @@ class LoggingPanel extends StatefulWidget {
   State<LoggingPanel> createState() => _LoggingPanelState();
 }
 
-class _LoggingPanelState extends State<LoggingPanel> {
+class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
+  @override
   Qso? _selectedQso;
 
   /// What [LoggingPanel.onSelectionChanged] last heard: the pick changes in
@@ -239,6 +243,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   final _listBoxKey = GlobalKey();
   // Imperative handle into LoggingControls, used to drive the dev bridge
   // (window.__halo setField/tap) when it's installed (dev/preview web).
+  @override
   final _loggingController = LoggingControlsController();
   late List<String> _controlOrder = widget.services.settings.secondaryControlsOrderFor(widget.scope);
   late Set<String> _hiddenControls = widget.services.settings.hiddenSecondaryControlsFor(widget.scope);
@@ -246,7 +251,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // and this panel rebuilds on every QSO-stream emission. Fresh values
   // arrive with a fresh panel — the settings view is only reachable from
   // Home, so this state never survives a bands/modes edit.
+  @override
   late final List<String> _enabledBands = widget.services.settings.enabledBands;
+  @override
   late final List<String> _enabledModes = widget.services.settings.enabledModes;
 
   // The mobile numbers row. Unlike the per-operation view
@@ -279,6 +286,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // being logged even with the Power control out of the row — and it can
   // flip while this panel is alive, from the Radio control's own quick
   // Station Configuration dialog.
+  @override
   late bool _trackingPower = _computeTrackingPower();
 
   bool _computeTrackingPower() {
@@ -301,6 +309,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   /// What the next Enter would hand ESM, as the panel last published it —
   /// what the keyer area highlights the next messages from.
+  @override
   final _esmFacts = ValueNotifier<EsmFacts?>(null);
 
   // Whether the Radio control's icon should read as CAT-configured.
@@ -331,55 +340,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   String? _computeRadioName() => widget.services.radio1Name;
 
-  /// Merges the operator's tracked station-info fields (Station
-  /// Configuration's "Track Station Info for each QSO") into a QSO at save
-  /// time. Runs before `decorateQsoBeforeSave`'s extension hooks, so an
-  /// activity can still see and adjust the captured values. Rig/antenna/key
-  /// nest under `our`; power is top-level (`Qso.power`), matching QSON
-  /// convention (freq/band/mode) rather than app-only placement.
-  Map<String, dynamic> _withStationInfo(Map<String, dynamic> qso) {
-    final settings = widget.services.settings;
-    if (!settings.trackStationInfo) return qso;
-    final cat = widget.services.cat;
-    final tracked = settings.stationInfoTrackedFields;
-
-    String? nameFor(String? uuid) {
-      final node = uuid == null ? null : cat.nodeFor(uuid);
-      return node == null ? null : cat.displayNameFor(node);
-    }
-
-    final our = {...(qso['our'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{}};
-    num? power;
-    if (tracked.contains('rig')) {
-      // Whatever drives the VFO — a peer's rig is the one the contact was
-      // worked through, and the panel names it two rows up.
-      final name = widget.services.radio1Name;
-      if (name != null) our['rig'] = name;
-    }
-    // Never over a power the entry already states — the Power control's
-    // field, the More pane, or the record's own value. Ambient capture fills
-    // a gap; it does not correct the operator, and on a saved edit it would
-    // otherwise rewrite what a contact was actually worked at with whatever
-    // the rig is set to today.
-    if (tracked.contains('power') && qso['power'] == null) {
-      power = cat.displayedPower;
-    }
-    if (tracked.contains('antenna')) {
-      final name = nameFor(cat.designatedFor(kCategoryAntenna));
-      if (name != null) our['antenna'] = name;
-    }
-    if (tracked.contains('key')) {
-      // The key in use may be a radio keying over CAT; that is a keying
-      // source, not a key on the desk worth a QSO's key field. A keyer
-      // device is one.
-      final uuid = cat.designatedFor(kCategoryKey);
-      final node = uuid == null ? null : cat.nodeFor(uuid);
-      final name = nameFor(uuid);
-      if (name != null && node != null && cat.typeFor(node)?.category != kCategoryTransceiver) our['key'] = name;
-    }
-    return {...qso, 'our': our, 'power': ?power};
-  }
-
+  @override
   Future<void> _openStationConfigDialog(BuildContext context) => showStationConfigDialog(context, widget.services);
 
   @override
@@ -401,6 +362,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void initState() {
     super.initState();
     widget.services.settings.addListener(_onSettingsChanged);
+    _suggestions['A'] = (qso: widget.suggestedQso, tentative: widget.suggestedQsoIsTentative, settled: widget.suggestionSettledSerial);
+    _logRequests['A'] = widget.logRequest;
+    _startSo2rLink();
     // The QSO list's empty state warns when the VFO needs attention
     // — rebuild so it clears the moment the operator answers via
     // the Radio control, without waiting for an unrelated rebuild.
@@ -435,16 +399,22 @@ class _LoggingPanelState extends State<LoggingPanel> {
       // After the frame: the host lifts whatever kept the panel out of the
       // focus tree in the same rebuild that bumped this.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loggingController.focusLastPrimaryField();
+        if (mounted) _controller.focusLastPrimaryField();
       });
     }
     if (widget.findRequest != oldWidget.findRequest) _openFind();
+    if (!identical(widget.suggestedQso, oldWidget.suggestedQso)) _suggestionSet = _so2r ? _so2rLink.active : 'A';
+    _suggestions[_so2r ? _suggestionSet : 'A'] = (qso: widget.suggestedQso, tentative: widget.suggestedQsoIsTentative, settled: widget.suggestionSettledSerial);
+    if (widget.logRequest?.serial != oldWidget.logRequest?.serial) _logRequests[_so2r ? _so2rLink.active : 'A'] = widget.logRequest;
   }
 
   @override
   void dispose() {
     _esmFacts.dispose();
     widget.services.settings.removeListener(_onSettingsChanged);
+    _so2rLink.activeSet.removeListener(_onSo2rLinkChanged);
+    _so2rLink.dispose();
+    _disposeSo2r();
     widget.services.radio.removeListener(_onRadioChanged);
     widget.services.cat.removeListener(_onCatChanged);
     widget.services.peerRemoteRadios.removeListener(_onCatChanged);
@@ -634,7 +604,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       _findQuery = null;
       _otherQsos = null;
     });
-    if (returnFocus && hadFocus && (!isMobilePlatform || hardwareKeyboardAttached.value)) _loggingController.focusLastPrimaryField();
+    if (returnFocus && hadFocus && (!isMobilePlatform || hardwareKeyboardAttached.value)) _controller.focusLastPrimaryField();
   }
 
   /// The bar's word on its find: how many contacts a callsign matched, or
@@ -711,12 +681,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
   void _focusFieldsAfterLoad({bool call = false}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (_loggingController.isFieldsLocked) {
+      if (_controller.isFieldsLocked) {
         _lockedWalkFocus.requestFocus();
       } else if (call && !(_selectedQso?.isEvent ?? false)) {
-        _loggingController.focusCall();
+        _controller.focusCall();
       } else {
-        _loggingController.focusLastPrimaryField();
+        _controller.focusLastPrimaryField();
       }
     });
   }
@@ -748,7 +718,11 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // held it before that field — the pill the ladder crossed, as likely as
     // not. A step onto or off a deleted row locks or unlocks the fields.
     final to = _selectedQso;
-    if ((to?.isEvent ?? false) != from.isEvent || from.deleted || (to?.deleted ?? false)) _focusFieldsAfterLoad();
+    // Under SO2R a step onto a row the other radio logged moves the edit to
+    // the other set, and the keyboard goes with it.
+    if ((to?.isEvent ?? false) != from.isEvent || from.deleted || (to?.deleted ?? false) || (to != null && _setFor(to) != _setFor(from))) {
+      _focusFieldsAfterLoad();
+    }
     return true;
   }
 
@@ -839,7 +813,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // here too — the same rule LoggingSession.escapeClaimed carries into the
     // fields.
     if (widget.services.cat.escapeStoppedKeying) return;
-    if (_selectedQso == null || _loggingController.isFieldsLocked) return;
+    if (_selectedQso == null || _controller.isFieldsLocked) return;
     setState(() => _selectedQso = null);
   }
 
@@ -857,6 +831,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
     }
     final esm = s.experimentEnabled('esm') /* stored key, see experiments.yaml */;
     if (esm != _esmEnabled) setState(() => _esmEnabled = esm);
+    final so2r = s.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
+    if (so2r != _so2r) {
+      setState(() => _so2r = so2r);
+      widget.services.cat.noteOperatorRadio(so2r ? _so2rLink.active : 'A');
+      _showEsmFacts();
+    }
     final trackingPower = _computeTrackingPower();
     if (trackingPower != _trackingPower) setState(() => _trackingPower = trackingPower);
     if (s.showNumbersRow != _showNumbersRow ||
@@ -888,14 +868,14 @@ class _LoggingPanelState extends State<LoggingPanel> {
 
   /// Enter Sends Messages as it stands at this Enter: on, and the key the
   /// draft's mode picks able to send — otherwise off, and Enter logs.
-  EnterSends? _enterSends() {
+  EnterSends? _enterSends(String radio) {
     final send = widget.onEnterSends;
     if (send == null || !_keyerEnabled || !_esmEnabled) return null;
     final cat = widget.services.cat;
     final esm = cat.enterSends.value;
     if (!esm.on) return null;
-    if (widget.keyingPhone ? !cat.canPlayVoice : !cat.canKeyCw) return null;
-    return EnterSends(running: esm.running, send: send);
+    if (!cat.canKeyOn(radio, () => widget.keyingPhone ? cat.canPlayVoice : cat.canKeyCw)) return null;
+    return EnterSends(running: cat.isRunning(radio), send: send);
   }
 
   /// Rebuilds the Radio control's icon when CAT equipment is added, removed,
@@ -906,6 +886,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final connected = _computeRadioConnected();
     final name = _computeRadioName();
     final transmitting = widget.services.cat.radio1IsTransmitting || widget.services.cat.pttKeys.held.value;
+    final radioB = _radioBSignature();
+    if (radioB != _radioB) setState(() => _radioB = radioB);
     if (has != _hasConfiguredRadio || connected != _radioConnected || name != _radioName || transmitting != _radioTransmitting) {
       setState(() {
         _hasConfiguredRadio = has;
@@ -926,10 +908,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
     if (!selecting || (isMobilePlatform && !hardwareKeyboardAttached.value)) return;
     // Onto or off a locked row, the fields lock or unlock only once they
     // rebuild: a request now goes to a disabled field, which ignores it.
-    if (qso.deleted || _loggingController.isFieldsLocked) {
+    if (qso.deleted || _controller.isFieldsLocked) {
       _focusFieldsAfterLoad(call: true);
     } else {
-      _loggingController.focusCall();
+      _controller.focusCall();
     }
   }
 
@@ -986,6 +968,253 @@ class _LoggingPanelState extends State<LoggingPanel> {
       chasing: widget.scope == LoggingScope.chase,
     );
     return {...?scored, 'notices': merged.notices, 'alerts': merged.alerts};
+  }
+
+  /// One set of logging controls — the panel's only one, or under SO2R
+  /// [so2r]'s set (docs/design/logging-fields.md § SO2R).
+  Widget _buildControls(BuildContext context, {So2rSet? so2r}) {
+    final radio = so2r?.radio ?? 'A';
+    final editingHere = so2r == null || _editingSet == radio;
+    // The set the keyboard is in speaks for the panel: its draft and call
+    // info are what the Info pane and the peers see.
+    final active = so2r == null || _so2rLink.active == radio;
+    final suggestion = _suggestions[radio] ?? (qso: null, tentative: false, settled: 0);
+    return LoggingControls(
+      key: ValueKey('set-$radio'),
+      so2r: so2r,
+      log: LogHooks(
+        operation: widget.operation,
+        qsosRepository: widget.services.qsos,
+        qsos: widget.qsos,
+        decorateQsoBeforeSave: (qso, operation) {
+          final stamped = qsoWithOperator(_withStationInfo(so2r == null ? qso : _withSo2rRadio(qso, so2r.radio), radio: radio), widget.operation);
+          return widget.services.extensions.decorateQsoBeforeSave(widget.stampQso?.call(stamped) ?? stamped, operation);
+        },
+        onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
+        serialNumbers: widget.serialNumbers,
+        onLogged: (qso) {
+          // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation
+          // start/break/end) also arrive here via the command `addQso`
+          // action — they're not contacts and must not count as QSOs.
+          // _selectedQso is still set here for a save-of-edit; it only
+          // clears below — that's what tells the two events apart.
+          // Under SO2R the other set may be the one editing: this set's log is
+          // then a new contact, and the edit stays loaded where it is.
+          if (!qso.isEvent) {
+            widget.services.track(editingHere && _selectedQso != null ? 'qso_edited' : 'qso_added', _qsoTrackProps(qso));
+          }
+          if (editingHere) setState(() => _selectedQso = null);
+          widget.onQsoLogged?.call();
+        },
+        onQsoDeleted: (qso) {
+          if (!qso.isEvent) widget.services.track('qso_deleted', _qsoTrackProps(qso));
+        },
+        onQsoUndeleted: (qso) {
+          if (!qso.isEvent) widget.services.track('qso_undeleted', _qsoTrackProps(qso));
+        },
+        // A comma-separated call list logs several QSOs at
+        // once — one rescore for the whole batch, not one per call.
+        onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
+      ),
+      session: LoggingSession(
+        controller: so2r?.radio == 'B' ? _loggingControllerB : _loggingController,
+        // Only with CAT: the strip reads CatService.cwProgress, which
+        // nothing writes without a keyer-capable radio.
+        // Escape stops every message, chain and repeat before it closes
+        // or cancels anything — see LoggingSession.escapeClaimed. The
+        // stop itself is OperationView's key handler's, which runs first.
+        escapeClaimed: _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
+        // A call typed over a CQ stops it — see CatService.stopMessageOne.
+        // Under SO2R only over the radio that is sending: a call typed on the
+        // other radio's set is the operator working it while this one CQs.
+        onCallTyped: _keyerEnabled
+            ? () {
+                if (widget.services.cat.keyingRadio == radio) widget.services.cat.stopMessageOne();
+              }
+            : null,
+        enterSends: () => _enterSends(radio),
+        onEsmFacts: _keyerEnabled && _esmEnabled ? (facts) => _noteEsmFacts(radio, facts) : null,
+        editingQso: editingHere ? _selectedQso : null,
+        suggestedQso: suggestion.qso,
+        logRequest: _logRequests[radio],
+        confirmLogOverwrite: widget.confirmLogOverwrite,
+        suggestedQsoIsTentative: suggestion.tentative,
+        suggestionSettledSerial: suggestion.settled,
+        onCallEdited: widget.onCallEdited,
+        onEditCanceled: () {
+          setState(() => _selectedQso = null);
+          // A restored row unloads with the keyboard still on the list, where
+          // nothing loaded leaves the walk keys nothing to step from.
+          if (_lockedWalkFocus.hasPrimaryFocus) _focusFieldsAfterLoad();
+        },
+        onNavigateToQsoList: _handleNavigateToQsoList,
+        onWalkQsoList: _walkFromField,
+        onQsoChanged: active ? widget.onQsoChanged : null,
+        onPeerDraftChanged: active ? widget.onPeerDraftChanged : null,
+      ),
+      radio: radio == 'B'
+          ? _radioBHookup(context)
+          : RadioHookup(
+              enabledBands: _enabledBands,
+              enabledModes: _enabledModes,
+              radioService: widget.services.radio,
+              // Same object, as a Listenable — so the Radio control follows a
+              // connected rig (CAT) instead of only reading the VFO when it
+              // seeds; under SO2R, its vfoA alone. See RadioHookup.radioUpdates.
+              radioUpdates: so2r == null ? widget.services.radio : _vfoUpdates['A'],
+              hasConfiguredRadio: _hasConfiguredRadio,
+              radioConnected: _radioConnected,
+              radioTransmitting: so2r == null ? _radioTransmitting : _so2rTransmitting.value.a,
+              // Offered with no radio configured too: the dialog is where
+              // one gets configured.
+              onOpenStationConfig: () => _openStationConfigDialog(context),
+              onConnectRadio: _hasConfiguredRadio ? radio1ConnectAction(widget.services.cat, connected: _radioConnected) : null,
+              radioName: _radioName,
+              ourItuRegion: widget.ourItuRegion,
+              ourCountryCode: widget.ourCountryCode,
+              trackingPower: _trackingPower,
+            ),
+      lookups: LookupHooks(
+        // Call notes carry socials and URLs, styled as links; this makes
+        // them open.
+        onOpenLink: openExternalUrl,
+        lookup: widget.services.extensions.lookupCall,
+        enqueueLookup: widget.services.lookupQueue.enqueue,
+        // force: false — unlike the explicit "Lookup all QSOs" action,
+        // a SEED batch shouldn't force-refresh a QSO that (somehow)
+        // already carries real online lookup data.
+        enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
+        operationStatsLines: (qsos) => operationStatsLines(context, qsos),
+        callLocationLine: (guess) => _callLocationLine(context, guess),
+        // Wrapped rather than torn off, to inject the activities this
+        // operation has hunted — an operation that activates nothing names
+        // no activity on its own refs, so without this the pills fall back
+        // to the core dupe rule and call a station worked at another park a
+        // plain duplicate (docs/design/activities.md §4).
+        scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+          // The last rescore's checkpoints, when the log this panel holds
+          // is exactly what they folded plus appended contacts — so the
+          // pills resume from a cached sheet instead of re-folding a
+          // long log on every keystroke (liveResumeFor says when).
+          final resume = widget.services.scoring.liveResumeFor(widget.operation, widget.qsos, excludeUuid: excludeUuid);
+          // Judged alongside the scoring, not after it: each is a crossing
+          // into the runtime, and the pills wait for both.
+          final judging = _judgeTypedCall(qso);
+          final scored = await widget.services.extensions.scoreQso(
+            operation: operation,
+            qso: qso,
+            excludeUuid: excludeUuid,
+            segments: segments,
+            huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
+            resume: resume,
+          );
+          return _withChaseNotices(scored, await judging);
+        },
+        scoreNoticeLabel: (key) => scoreNoticeLabel(context, key, programs: widget.services.chase.programs),
+        workedBefore: (call, {excludingQsoUuid}) => widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
+        workedBeforeLabel: (times) => workedBeforeLabel(context, times),
+        onCallInfoChanged: active ? widget.onCallInfoChanged : null,
+        onCallInfoTap: widget.onCallInfoTap,
+        // The exact call: the trailing period is the Find bar's "this whole
+        // callsign", so K1AB's history doesn't list K1ABC's contacts too.
+        onFindCall: (call) => _openFind(query: '$call.', focus: false),
+        onOperationInfoTap: widget.onOperationInfoTap,
+      ),
+      activities: ActivityHooks(
+        activityControls: widget.loggingControls,
+        refreshActivityControls: (qso) => widget.services.extensions
+            .loggingControls(operationPayloadFor(widget.operation), qso: qso)
+            .then((result) => result.loadFailed ? null : result.controls),
+        decorateRef: widget.services.extensions.decorateRef,
+      ),
+      commands: CommandHooks(
+        interpretCommand: widget.services.extensions.interpretCommand,
+        interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
+        onCommandMessageChanged: (message) {
+          if (_so2rLink.active == radio) widget.onCommandMessageChanged?.call(message);
+        },
+        onCommandAction: _onCommandAction,
+        // Lets the ⌘K dialog apply a command to this panel — see
+        // HaLoServices.currentCommandDispatch. Attached to this
+        // operation's own stack entry, so a disposing panel can't detach a
+        // still-live one's dispatcher.
+        onDispatcherChanged: (dispatch) {
+          _dispatchers[radio] = dispatch;
+          _publishDispatch();
+        },
+      ),
+      strip: ControlStripSettings(
+        aboveEntryRow: _keyerEnabled && radio == 'A'
+            ? KeyerArea(
+                cat: widget.services.cat,
+                services: widget.services,
+                onSendMessage: widget.onSendCwMessage,
+                templateContext: widget.cwTemplateContext,
+                phone: widget.keyingPhone,
+                enterSends: _esmEnabled,
+                esmFacts: _esmFacts,
+                suppressed: _selectedQso != null,
+              )
+            : null,
+        controlOrder: _controlOrder,
+        hiddenControlKeys: _hiddenControls,
+        spottingAfterReferences: widget.scope == LoggingScope.chase,
+        onControlsSettingsChanged: _handleControlsSettingsChanged,
+      ),
+      spotting: SpottingHooks(
+        suggestSpotSources: widget.services.extensions.suggestSpotSources,
+        // The profile's operator as the spotter, for a QSO with no call of
+        // its own to spot from (POTA's `our.call ?? spotterCall`).
+        sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) => widget.services.extensions.sendSpot(
+          sources: sources,
+          operation: operation,
+          qso: qso,
+          freq: freq,
+          mode: mode,
+          comment: comment,
+          spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
+        ),
+        respotInterval: _spottingSettings.respotInterval,
+        autoRespotByDefault: _spottingSettings.autoRespotByDefault,
+        pulseBeforeRespot: _spottingSettings.pulseBeforeRespot,
+        onOpenSettings: () => showSettingsForTarget(context, services: widget.services, target: 'spotting', title: t.settings.spotting.title),
+      ),
+      prefs: LoggingPreferences(
+        // Leftie Mode is a one-handed-phone layout; a desktop or web session
+        // carrying a stored `true` (restored from a phone) has no toggle to
+        // clear it, so the platform gates the layout, not just the setting.
+        leftieMode: isMobilePlatform && _leftieMode,
+        showRSTFields: widget.showRSTFields,
+        showStateField: widget.showStateField,
+        showGridField: widget.showGridField,
+        defaultReport: widget.defaultReport,
+        defaultReportCW: widget.defaultReportCW,
+        defaultReportFT8: widget.defaultReportFT8,
+        switchSentRcvd: widget.switchSentRcvd,
+        jumpAfterRST: widget.jumpAfterRST,
+        keyboardAccessory: widget.services.keyboardAccessory,
+        showNumbersRow: _showNumbersRow,
+        showExtraInNumbersRow: _showExtraInNumbersRow,
+        vibrateNumbersRow: _vibrateNumbersRow,
+        // What the save path would stamp on a contact that names neither
+        // — the pane offers them as placeholders, not as values.
+        defaultOperatorCall: operatorCallFor(widget.operation),
+        defaultPosition: multiIdentifierFor(widget.operation),
+        showPositionField: operationHasPositions(widget.operation),
+        aboveLog: widget.controlsAboveLog,
+      ),
+      manualTime: ManualTimeHooks(
+        startAtMillis: _storedManualTime,
+        onChanged: (millis) {
+          // Compared first: every write rebuilds the Operation View.
+          if (_storedManualTime == millis) return;
+          _storedManualTime = millis;
+          unawaited(widget.services.operations.updateLocalData(widget.operation.uuid, {_manualTimeKey: millis}));
+        },
+        increment: _manualTimeIncrement,
+        onIncrementChanged: (increment) => unawaited(widget.services.settings.setManualTimeIncrement(increment)),
+      ),
+    );
   }
 
   @override
@@ -1088,223 +1317,17 @@ class _LoggingPanelState extends State<LoggingPanel> {
         ],
       ),
     );
-    final controls = LoggingControls(
-      log: LogHooks(
-        operation: widget.operation,
-        qsosRepository: widget.services.qsos,
-        qsos: widget.qsos,
-        decorateQsoBeforeSave: (qso, operation) {
-          final stamped = qsoWithOperator(_withStationInfo(qso), widget.operation);
-          return widget.services.extensions.decorateQsoBeforeSave(widget.stampQso?.call(stamped) ?? stamped, operation);
-        },
-        onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),
-        serialNumbers: widget.serialNumbers,
-        onLogged: (qso) {
-          // Event rows (NOTE/TODO/SOLAR/WEATHER annotations, operation
-          // start/break/end) also arrive here via the command `addQso`
-          // action — they're not contacts and must not count as QSOs.
-          // _selectedQso is still set here for a save-of-edit; it only
-          // clears below — that's what tells the two events apart.
-          if (!qso.isEvent) {
-            widget.services.track(_selectedQso != null ? 'qso_edited' : 'qso_added', _qsoTrackProps(qso));
-          }
-          setState(() => _selectedQso = null);
-          widget.onQsoLogged?.call();
-        },
-        onQsoDeleted: (qso) {
-          if (!qso.isEvent) widget.services.track('qso_deleted', _qsoTrackProps(qso));
-        },
-        onQsoUndeleted: (qso) {
-          if (!qso.isEvent) widget.services.track('qso_undeleted', _qsoTrackProps(qso));
-        },
-        // A comma-separated call list logs several QSOs at
-        // once — one rescore for the whole batch, not one per call.
-        onCallListLogged: () => widget.services.scoring.rescoreOperation(widget.operation),
-      ),
-      session: LoggingSession(
-        controller: _loggingController,
-        // Only with CAT: the strip reads CatService.cwProgress, which
-        // nothing writes without a keyer-capable radio.
-        // Escape stops every message, chain and repeat before it closes
-        // or cancels anything — see LoggingSession.escapeClaimed. The
-        // stop itself is OperationView's key handler's, which runs first.
-        escapeClaimed: _keyerEnabled ? () => widget.services.cat.escapeStoppedKeying : null,
-        // A call typed over a CQ stops it — see CatService.stopMessageOne.
-        onCallTyped: _keyerEnabled ? widget.services.cat.stopMessageOne : null,
-        enterSends: _enterSends,
-        onEsmFacts: _keyerEnabled && _esmEnabled ? (facts) => _esmFacts.value = facts : null,
-        editingQso: _selectedQso,
-        suggestedQso: widget.suggestedQso,
-        logRequest: widget.logRequest,
-        confirmLogOverwrite: widget.confirmLogOverwrite,
-        suggestedQsoIsTentative: widget.suggestedQsoIsTentative,
-        suggestionSettledSerial: widget.suggestionSettledSerial,
-        onCallEdited: widget.onCallEdited,
-        onEditCanceled: () {
-          setState(() => _selectedQso = null);
-          // A restored row unloads with the keyboard still on the list, where
-          // nothing loaded leaves the walk keys nothing to step from.
-          if (_lockedWalkFocus.hasPrimaryFocus) _focusFieldsAfterLoad();
-        },
-        onNavigateToQsoList: _handleNavigateToQsoList,
-        onWalkQsoList: _walkFromField,
-        onQsoChanged: widget.onQsoChanged,
-        onPeerDraftChanged: widget.onPeerDraftChanged,
-      ),
-      radio: RadioHookup(
-        enabledBands: _enabledBands,
-        enabledModes: _enabledModes,
-        radioService: widget.services.radio,
-        // Same object, as a Listenable — so the Radio control follows a
-        // connected rig (CAT) instead of only reading the VFO when it
-        // seeds. See RadioHookup.radioUpdates.
-        radioUpdates: widget.services.radio,
-        hasConfiguredRadio: _hasConfiguredRadio,
-        radioConnected: _radioConnected,
-        radioTransmitting: _radioTransmitting,
-        // Offered with no radio configured too: the dialog is where
-        // one gets configured.
-        onOpenStationConfig: () => _openStationConfigDialog(context),
-        onConnectRadio: _hasConfiguredRadio ? radio1ConnectAction(widget.services.cat, connected: _radioConnected) : null,
-        radioName: _radioName,
-        ourItuRegion: widget.ourItuRegion,
-        ourCountryCode: widget.ourCountryCode,
-        trackingPower: _trackingPower,
-      ),
-      lookups: LookupHooks(
-        // Call notes carry socials and URLs, styled as links; this makes
-        // them open.
-        onOpenLink: openExternalUrl,
-        lookup: widget.services.extensions.lookupCall,
-        enqueueLookup: widget.services.lookupQueue.enqueue,
-        // force: false — unlike the explicit "Lookup all QSOs" action,
-        // a SEED batch shouldn't force-refresh a QSO that (somehow)
-        // already carries real online lookup data.
-        enqueueAllLookups: (qsos) => widget.services.lookupQueue.enqueueAll(qsos, force: false),
-        operationStatsLines: (qsos) => operationStatsLines(context, qsos),
-        callLocationLine: (guess) => _callLocationLine(context, guess),
-        // Wrapped rather than torn off, to inject the activities this
-        // operation has hunted — an operation that activates nothing names
-        // no activity on its own refs, so without this the pills fall back
-        // to the core dupe rule and call a station worked at another park a
-        // plain duplicate (docs/design/activities.md §4).
-        scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-          // The last rescore's checkpoints, when the log this panel holds
-          // is exactly what they folded plus appended contacts — so the
-          // pills resume from a cached sheet instead of re-folding a
-          // long log on every keystroke (liveResumeFor says when).
-          final resume = widget.services.scoring.liveResumeFor(widget.operation, widget.qsos, excludeUuid: excludeUuid);
-          // Judged alongside the scoring, not after it: each is a crossing
-          // into the runtime, and the pills wait for both.
-          final judging = _judgeTypedCall(qso);
-          final scored = await widget.services.extensions.scoreQso(
-            operation: operation,
-            qso: qso,
-            excludeUuid: excludeUuid,
-            segments: segments,
-            huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const []).whereType<String>().toSet(),
-            resume: resume,
-          );
-          return _withChaseNotices(scored, await judging);
-        },
-        scoreNoticeLabel: (key) => scoreNoticeLabel(context, key, programs: widget.services.chase.programs),
-        workedBefore: (call, {excludingQsoUuid}) => widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
-        workedBeforeLabel: (times) => workedBeforeLabel(context, times),
-        onCallInfoChanged: widget.onCallInfoChanged,
-        onCallInfoTap: widget.onCallInfoTap,
-        // The exact call: the trailing period is the Find bar's "this whole
-        // callsign", so K1AB's history doesn't list K1ABC's contacts too.
-        onFindCall: (call) => _openFind(query: '$call.', focus: false),
-        onOperationInfoTap: widget.onOperationInfoTap,
-      ),
-      activities: ActivityHooks(
-        activityControls: widget.loggingControls,
-        refreshActivityControls: (qso) => widget.services.extensions
-            .loggingControls(operationPayloadFor(widget.operation), qso: qso)
-            .then((result) => result.loadFailed ? null : result.controls),
-        decorateRef: widget.services.extensions.decorateRef,
-      ),
-      commands: CommandHooks(
-        interpretCommand: widget.services.extensions.interpretCommand,
-        interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,
-        onCommandMessageChanged: (message) => widget.onCommandMessageChanged?.call(message),
-        onCommandAction: _onCommandAction,
-        // Lets the ⌘K dialog apply a command to this panel — see
-        // HaLoServices.currentCommandDispatch. Attached to this
-        // operation's own stack entry, so a disposing panel can't detach a
-        // still-live one's dispatcher.
-        onDispatcherChanged: (dispatch) => widget.services.setCommandDispatchFor(widget.operation.uuid, dispatch),
-      ),
-      strip: ControlStripSettings(
-        aboveEntryRow: _keyerEnabled
-            ? KeyerArea(
-                cat: widget.services.cat,
-                services: widget.services,
-                onSendMessage: widget.onSendCwMessage,
-                templateContext: widget.cwTemplateContext,
-                phone: widget.keyingPhone,
-                enterSends: _esmEnabled,
-                esmFacts: _esmFacts,
-                suppressed: _selectedQso != null,
-              )
-            : null,
-        controlOrder: _controlOrder,
-        hiddenControlKeys: _hiddenControls,
-        spottingAfterReferences: widget.scope == LoggingScope.chase,
-        onControlsSettingsChanged: _handleControlsSettingsChanged,
-      ),
-      spotting: SpottingHooks(
-        suggestSpotSources: widget.services.extensions.suggestSpotSources,
-        // The profile's operator as the spotter, for a QSO with no call of
-        // its own to spot from (POTA's `our.call ?? spotterCall`).
-        sendSpot: ({required sources, required operation, qso, freq, mode, comment, spotterCall}) => widget.services.extensions.sendSpot(
-          sources: sources,
-          operation: operation,
-          qso: qso,
-          freq: freq,
-          mode: mode,
-          comment: comment,
-          spotterCall: spotterCall ?? widget.services.settings.activeProfile.operatorCall,
-        ),
-        respotInterval: _spottingSettings.respotInterval,
-        autoRespotByDefault: _spottingSettings.autoRespotByDefault,
-        pulseBeforeRespot: _spottingSettings.pulseBeforeRespot,
-        onOpenSettings: () => showSettingsForTarget(context, services: widget.services, target: 'spotting', title: t.settings.spotting.title),
-      ),
-      prefs: LoggingPreferences(
-        // Leftie Mode is a one-handed-phone layout; a desktop or web session
-        // carrying a stored `true` (restored from a phone) has no toggle to
-        // clear it, so the platform gates the layout, not just the setting.
-        leftieMode: isMobilePlatform && _leftieMode,
-        showRSTFields: widget.showRSTFields,
-        showStateField: widget.showStateField,
-        showGridField: widget.showGridField,
-        defaultReport: widget.defaultReport,
-        defaultReportCW: widget.defaultReportCW,
-        defaultReportFT8: widget.defaultReportFT8,
-        switchSentRcvd: widget.switchSentRcvd,
-        jumpAfterRST: widget.jumpAfterRST,
-        keyboardAccessory: widget.services.keyboardAccessory,
-        showNumbersRow: _showNumbersRow,
-        showExtraInNumbersRow: _showExtraInNumbersRow,
-        vibrateNumbersRow: _vibrateNumbersRow,
-        // What the save path would stamp on a contact that names neither
-        // — the pane offers them as placeholders, not as values.
-        defaultOperatorCall: operatorCallFor(widget.operation),
-        defaultPosition: multiIdentifierFor(widget.operation),
-        showPositionField: operationHasPositions(widget.operation),
-        aboveLog: widget.controlsAboveLog,
-      ),
-      manualTime: ManualTimeHooks(
-        startAtMillis: _storedManualTime,
-        onChanged: (millis) {
-          // Compared first: every write rebuilds the Operation View.
-          if (_storedManualTime == millis) return;
-          _storedManualTime = millis;
-          unawaited(widget.services.operations.updateLocalData(widget.operation.uuid, {_manualTimeKey: millis}));
-        },
-        increment: _manualTimeIncrement,
-        onIncrementChanged: (increment) => unawaited(widget.services.settings.setManualTimeIncrement(increment)),
+    // One tree either way: turning SO2R on or off keeps set A mounted, where
+    // a remount's dispose detaches what the new set A has just attached.
+    final controls = ListenableBuilder(
+      listenable: _so2rPills,
+      builder: (context, _) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!_so2r) _buildControls(context),
+          if (_so2r)
+            for (final radio in widget.controlsAboveLog ? const ['B', 'A'] : const ['A', 'B']) _buildControls(context, so2r: _so2rSet(radio)),
+        ],
       ),
     );
     final panel = CallbackShortcuts(
@@ -1315,7 +1338,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // LoggingControls' modifier chords, for the same reason as Escape above:
     // with a delete staged its fields are disabled, so the keyboard is in the
     // list (or nowhere) exactly when Cmd/Ctrl+Z has something to take back.
-    return Focus(canRequestFocus: false, skipTraversal: true, onKeyEvent: (node, event) => _loggingController.handleChord(event), child: panel);
+    return Focus(canRequestFocus: false, skipTraversal: true, onKeyEvent: (node, event) => _controller.handleChord(event), child: panel);
   }
 
   /// The qso_* events' shared properties — same two app-polo sends: the
@@ -1438,20 +1461,6 @@ class _LazyQsoListState extends State<_LazyQsoList> {
 
   @override
   Widget build(BuildContext context) => (!widget.largeEnough || _ready) ? widget.child : const Center(child: CircularProgressIndicator());
-}
-
-/// What the Radio control's plug does while the main radio is down: connect
-/// it. Only for this station's own radio with somewhere to connect to — a
-/// peer's session is the other device's, and a radio with no port or
-/// address has nothing to open. Null hides the plug.
-VoidCallback? radio1ConnectAction(CatService cat, {required bool connected}) {
-  if (connected) return null;
-  if (cat.radio1 case LocalRadio(:final uuid)) {
-    final node = cat.nodeFor(uuid);
-    if (node == null || (cat.typeFor(node)?.isUnconfigured(node.config) ?? true)) return null;
-    return () => unawaited(cat.connect(uuid));
-  }
-  return null;
 }
 
 /// What the logging panel's QSO list shows under a find — see

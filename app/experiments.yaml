@@ -127,3 +127,11 @@ experiments:
     name: Keyboard Shortcuts
     description: Choose the keys for commands, bind keys to typed commands, and export or import them as files.
     aliases: [keys, shortcuts]
+  # Single Operator Two Radios: a Radio B in Station Configuration, driving
+  # `vfoB`, and a logging panel with one set of main fields per radio under
+  # a shared strip (docs/design/logging-fields.md § SO2R). Private because the
+  # two-set panel is still being shaped.
+  - key: so2r
+    name: SO2R
+    description: Control a second radio, with a set of logging fields for each.
+    private: true

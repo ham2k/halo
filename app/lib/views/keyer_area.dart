@@ -200,6 +200,9 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
 
   void _startTyping() {
     final cat = widget.cat;
+    // Onto the operator's radio, as a message key would be — the button
+    // reaches no key handler.
+    if (!keyForOperatorOrSay(context, widget.services, () => cat.canKeyCw)) return;
     // Typing is the operator moving on, the same as a message key: a CQ
     // repeat left armed would restart its wait after every typed piece and
     // key message 1 into the middle of the contact.
@@ -434,7 +437,7 @@ const cwLabelRenderDelay = Duration(milliseconds: 300);
 /// Messages) — and [logs], the last of them when that Enter also logs the
 /// contact. [phone] leaves out their call, which no memory holds.
 ({Set<int> keys, int? logs}) _esmNext(CatService cat, EsmFacts? facts, {bool phone = false}) {
-  final esm = cat.enterSends.value;
+  final esm = cat.operatorEnterSends;
   final step = facts == null || !esm.on ? null : esmStepFor(facts, running: esm.running);
   if (step == null) return (keys: const {}, logs: null);
   final keys = [
@@ -611,7 +614,7 @@ class _MessageButtonsState extends State<_MessageButtons> {
     final settings = services.settings;
     final m = context.t.settings.radio.cwMessages;
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, services.cat, services.cat.enterSends, ?widget.esmFacts]),
+      listenable: Listenable.merge([settings, services.cat, services.cat.enterSends, services.cat.runningB, ?widget.esmFacts]),
       builder: (context, _) {
         final theme = Theme.of(context);
         // Nothing to key CW with at all, connected or not — say so where the
@@ -717,7 +720,7 @@ class _VoiceButtons extends StatelessWidget {
     final cat = services.cat;
     final m = context.t.settings.radio.voiceMessages;
     return ListenableBuilder(
-      listenable: Listenable.merge([settings, cat, cat.enterSends, ?esmFacts]),
+      listenable: Listenable.merge([settings, cat, cat.enterSends, cat.runningB, ?esmFacts]),
       builder: (context, _) {
         // A radio with no voice memories to play — see the CW buttons.
         if (!cat.radio1HasVoiceMemories) return _NotSupported(text: context.t.settings.station.keyerNotSupported);
@@ -753,7 +756,11 @@ class _VoiceButtons extends StatelessWidget {
                       ),
                       child: InkWell(
                         borderRadius: borderRadius,
-                        onTap: enabled ? () => cat.playVoiceMemory(n) : null,
+                        onTap: enabled
+                            ? () {
+                                if (keyForOperatorOrSay(context, services, () => cat.canPlayVoice)) cat.playVoiceMemory(n);
+                              }
+                            : null,
                         mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
@@ -957,7 +964,8 @@ class _VoicePill extends StatelessWidget {
       listenable: cat,
       builder: (context, _) {
         final enabled = cat.canPlayVoice;
-        final transmitting = cat.radio1IsTransmitting || cat.pttKeys.held.value;
+        // Under SO2R, the radio the memories are keyed on.
+        final transmitting = cat.radio2 != null ? cat.isTransmitting(cat.keyingRadio) : cat.radio1IsTransmitting || cat.pttKeys.held.value;
         var foreground = transmitting ? theme.colorScheme.error : theme.colorScheme.onTertiaryContainer;
         var background = poloColors.tertiaryLight;
         if (!enabled && !transmitting) {
@@ -1080,7 +1088,8 @@ class _KeyerSpeedPill extends StatelessWidget {
 /// steps Off → Run → S&P → Off, the three states an operator moves between
 /// mid-contest without looking away from the call field for long. Shown for
 /// either keyer — ESM plays voice memories in Phone the way it keys messages
-/// in CW (docs/design/logging-fields.md § Enter Sends Messages).
+/// in CW (docs/design/logging-fields.md § Enter Sends Messages). Under SO2R
+/// its Run / S&P is the radio of the set the operator is in.
 class _EnterSendsPill extends StatelessWidget {
   final CatService cat;
 
@@ -1090,7 +1099,7 @@ class _EnterSendsPill extends StatelessWidget {
     final esm = cat.enterSends.value;
     if (!esm.on) {
       cat.setEnterSends(on: true, running: true);
-    } else if (esm.running) {
+    } else if (cat.isRunning(cat.operatorRadio)) {
       cat.setEnterSends(running: false);
     } else {
       cat.setEnterSends(on: false, running: true);
@@ -1103,12 +1112,13 @@ class _EnterSendsPill extends StatelessWidget {
     final poloColors = HaLoColors.of(context);
     final borderRadius = BorderRadius.circular(8);
     final strings = context.t.settings.radio.enterSends;
-    return ValueListenableBuilder<({bool on, bool running})>(
-      valueListenable: cat.enterSends,
-      builder: (context, esm, _) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([cat.enterSends, cat.runningB]),
+      builder: (context, _) {
+        final esm = cat.enterSends.value;
         final label = !esm.on
             ? strings.pillOff
-            : esm.running
+            : cat.isRunning(cat.operatorRadio)
             ? strings.pillRun
             : strings.pillSp;
         var foreground = theme.colorScheme.onTertiaryContainer;
@@ -1392,4 +1402,22 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
       ),
     );
   }
+}
+
+/// [CatService.keyForOperator], saying so when it refuses for SO2R's Radio
+/// B: a key from set B never falls back to radio A, and its refusal is not
+/// the silence of a station with no keyer at all — so a key handler claims
+/// the key exactly when [CatService.operatorRadio] is `B`.
+bool keyForOperatorOrSay(BuildContext context, HaLoServices services, bool Function() can) {
+  final cat = services.cat;
+  if (cat.keyForOperator(can)) return true;
+  if (cat.operatorRadio == 'B') {
+    services.statusBar.showNotice(
+      key: 'so2r-cannot-key',
+      icon: 'alert-circle-outline',
+      text: cat.radio2 == null ? context.t.commands.so2rNoRadioB : context.t.commands.so2rRadioCannotKey(radio: 'B'),
+      persist: false,
+    );
+  }
+  return false;
 }

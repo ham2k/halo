@@ -34,6 +34,7 @@ export 'src/logging_controls_esm.dart';
 export 'src/logging_controls_entry_row.dart' show LoggingEntryRow;
 export 'src/logging_controls_exchange.dart' show exchangeSuggestionsKey;
 export 'src/logging_controls_types.dart';
+export 'src/logging_controls_so2r.dart' show So2rSet, So2rLink;
 export 'src/mdi_icons.g.dart';
 export 'src/modal_pane.dart';
 export 'src/pane_divider.dart';

@@ -92,7 +92,7 @@ class _VoiceMessagesDialog extends StatelessWidget {
                       const SizedBox(width: Space.md),
                       Expanded(
                         child: EnterSendsField(
-                          value: cat.enterSends.value,
+                          value: cat.operatorEnterSends,
                           onChanged: (value) => cat.setEnterSends(on: value.on, running: value.running),
                         ),
                       ),

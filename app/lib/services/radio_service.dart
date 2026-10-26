@@ -1,8 +1,8 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Keeps VFO state — freq/band/mode/power for up to 4 VFOs (`vfoA`..`vfoD`,
-// though only `vfoA` is wired up today). This tracks the radio(s) in use,
+// Keeps VFO state — freq/band/mode/power for up to 4 VFOs (`vfoA`..`vfoD`;
+// `vfoA` is the Main VFO's, `vfoB` SO2R's Radio B, the rest unused). This tracks the radio(s) in use,
 // not any one operation: a physical radio is tuned to one frequency
 // regardless of which operation you're logging into, so this is device-
 // global state (shared across every operation), persisted to
@@ -58,7 +58,10 @@ class RadioService extends ChangeNotifier implements VfoStore {
   }
 
   @override
-  Vfo get vfoA => _vfos['vfoA'] ?? const Vfo();
+  Vfo get vfoA => vfo('vfoA');
+
+  /// Any of the VFOs by key — `vfoB` is SO2R's second radio.
+  Vfo vfo(String key) => _vfos[key] ?? const Vfo();
 
   /// Where the operator of the operation in front of them is licensed, as
   /// `modeForFrequency` takes it — what a band picked by name is placed
@@ -69,10 +72,15 @@ class RadioService extends ChangeNotifier implements VfoStore {
   String? ourCountryCode;
 
   VfoOrigin _lastOrigin = VfoOrigin.user;
+  String _lastKey = 'vfoA';
 
   /// Who made the change listeners are currently being told about. Only
   /// meaningful inside a notification.
   VfoOrigin get lastVfoOrigin => _lastOrigin;
+
+  /// Which VFO the change listeners are currently being told about moved.
+  /// Only meaningful inside a notification, like [lastVfoOrigin].
+  String get lastVfoKey => _lastKey;
 
   /// Updates one VFO (`'vfoA'`..`'vfoD'`) and persists the change. Matches
   /// the `setVfo` command action's convention: passing `freq` replaces the
@@ -150,6 +158,7 @@ class RadioService extends ChangeNotifier implements VfoStore {
 
     _vfos[key] = updated;
     _lastOrigin = origin;
+    _lastKey = key;
     notifyListeners();
     _scheduleWrite();
   }
@@ -213,5 +222,46 @@ class RadioService extends ChangeNotifier implements VfoStore {
 
   Future<void> _persist() async {
     await _prefs.setString(_prefsKey, jsonEncode({for (final entry in _vfos.entries) entry.key: entry.value.toJson()}));
+  }
+}
+
+/// One of [RadioService]'s VFOs presented as a store's `vfoA` — the VFO a
+/// logging panel reads and writes — so SO2R's set B follows `vfoB` without
+/// the panel knowing there is more than one.
+class RadioVfoView implements VfoStore {
+  RadioVfoView(this._radio, this.vfoKey);
+
+  final RadioService _radio;
+  final String vfoKey;
+
+  @override
+  Vfo get vfoA => _radio.vfo(vfoKey);
+
+  @override
+  void setVfo(String key, {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {
+    assert(key == 'vfoA', 'a view stands in for vfoA alone');
+    _radio.setVfo(vfoKey, freq: freq, band: band, mode: mode, power: power, clearFreq: clearFreq, clearPower: clearPower);
+  }
+}
+
+/// [RadioService]'s notifications for one VFO alone — what an SO2R set
+/// listens to, so each report from the other radio does not rebuild and
+/// re-seed it.
+class RadioVfoUpdates extends ChangeNotifier {
+  RadioVfoUpdates(this._radio, this.vfoKey) {
+    _radio.addListener(_relay);
+  }
+
+  final RadioService _radio;
+  final String vfoKey;
+
+  void _relay() {
+    if (_radio.lastVfoKey == vfoKey) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _radio.removeListener(_relay);
+    super.dispose();
   }
 }

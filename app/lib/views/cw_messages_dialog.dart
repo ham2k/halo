@@ -199,7 +199,7 @@ class _CwMessagesDialogState extends State<_CwMessagesDialog> {
                   const SizedBox(width: Space.md),
                   Expanded(
                     child: EnterSendsField(
-                      value: widget.services.cat.enterSends.value,
+                      value: widget.services.cat.operatorEnterSends,
                       onChanged: (value) => widget.services.cat.setEnterSends(on: value.on, running: value.running),
                     ),
                   ),

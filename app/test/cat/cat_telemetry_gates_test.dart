@@ -240,6 +240,22 @@ void main() {
     expect(switchDriver.sessions.single.selections, isEmpty);
   });
 
+  // The trap: only radio1 asked, so under SO2R a relay on a two-radio
+  // switch is thrown while Radio B transmits through it.
+  test('under SO2R, a relay may not move while Radio B says it is transmitting', () async {
+    final station = await connectedStation();
+    await settings.setExperimentEnabled('so2r', true);
+    final radioB = await cat.addNode(typeKey: 'gate-radio-type', config: {'host': 'b.local'});
+    await cat.connect(radioB.uuid);
+    await cat.setRadio1(LocalRadio(station.radioNode.uuid));
+    await cat.setRadio2(radioB.uuid);
+
+    radioDriver.sessions.last.sink.reportTransmitting(true);
+    expect(cat.radio1IsTransmitting, isFalse, reason: 'sanity: radio1 is receiving');
+    cat.selectAntenna(station.switchNode.uuid, '1', '3');
+    expect(switchDriver.sessions.single.selections, isEmpty);
+  });
+
   test(
     'a radio that goes silent mid-over stops holding the switch shut',
     () => runOnFakeClock((_) async {

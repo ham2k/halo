@@ -304,4 +304,20 @@ void main() {
     radio.setVfo('vfoA', freq: 7100, origin: VfoOrigin.radio);
     expect(seen, VfoOrigin.radio);
   });
+
+  // The trap: an SO2R set listening to the whole service, so every report
+  // from the other radio rebuilds and re-seeds it during a contest.
+  test("a VFO's own updates fire for that VFO alone", () {
+    final radio = RadioService(prefs);
+    addTearDown(radio.dispose);
+    final updates = RadioVfoUpdates(radio, 'vfoB');
+    addTearDown(updates.dispose);
+    var fired = 0;
+    updates.addListener(() => fired++);
+
+    radio.setVfo('vfoA', freq: 14025);
+    expect(fired, 0);
+    radio.setVfo('vfoB', freq: 7025);
+    expect(fired, 1);
+  });
 }

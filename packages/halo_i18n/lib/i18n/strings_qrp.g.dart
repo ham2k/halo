@@ -868,6 +868,8 @@ class _Translations$commands$qrp extends Translations$commands$en {
 	@override String cwSending({required Object text}) => 'sending cw: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'cw message f${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'cw message f${n} was not sent: the extensions are not ready';
+	@override String so2rRadioCannotKey({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that';
+	@override String get so2rNoRadioB => 'nothing sent: pick a radio b in station configuration to key from this set';
 	@override String settingNotStored({required Object label}) => '“${label}” did not accept that value';
 }
 
@@ -2726,6 +2728,9 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String get notConfigured => 'not configured';
 	@override String get currentConfiguration => 'current configuration';
 	@override String get currentTransceiver => 'current transceiver';
+	@override String get currentTransceivers => 'current transceivers';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+	@override String get noRadioBSelected => 'no radio b selected';
 	@override String get radioMode => 'radio mode';
 	@override String get keyerNotSupported => 'not supported by current radio';
 	@override String get catControlPreferences => 'cat control preferences';
@@ -6090,6 +6095,9 @@ extension on TranslationsQrp {
 			'settings.station.notConfigured' => 'not configured',
 			'settings.station.currentConfiguration' => 'current configuration',
 			'settings.station.currentTransceiver' => 'current transceiver',
+			'settings.station.currentTransceivers' => 'current transceivers',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.noRadioBSelected' => 'no radio b selected',
 			'settings.station.radioMode' => 'radio mode',
 			'settings.station.keyerNotSupported' => 'not supported by current radio',
 			'settings.station.catControlPreferences' => 'cat control preferences',
@@ -6327,11 +6335,11 @@ extension on TranslationsQrp {
 			'settings.developer.catalogSearchTracks' => 'catalog search tracks',
 			'settings.developer.catalogSearchStable' => 'only stable',
 			'settings.developer.catalogSearchUnstable' => 'unstable or better',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalogSearchBleeding' => 'bleeding or better',
 			'settings.about.notices' => 'notices & messages',
 			'settings.about.noticesDescription' => 'announcements and status messages',
-			_ => null,
-		} ?? switch (path) {
 			'settings.about.releaseNotes' => 'release notes',
 			'settings.about.copiedVersion' => 'copied version details to clipboard',
 			'settings.panels.settings' => 'application preferences',
@@ -6409,6 +6417,8 @@ extension on TranslationsQrp {
 			'commands.cwSending' => ({required Object text}) => 'sending cw: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'cw message f${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'cw message f${n} was not sent: the extensions are not ready',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'nothing sent: radio ${radio} can\'t key that',
+			'commands.so2rNoRadioB' => 'nothing sent: pick a radio b in station configuration to key from this set',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'nothing matches “${text}”',

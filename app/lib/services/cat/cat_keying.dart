@@ -66,10 +66,16 @@ abstract class KeyingStation {
   /// dropped answers null rather than throwing at whatever is keyed into it.
   EquipmentSession? connectedSession(String uuid);
 
-  /// radio1 when it is a rig of this station's own, null when it is a peer's
-  /// or none: the memories are audio in the transceiver, and there is
-  /// nothing local to play when the transceiver is somewhere else.
-  String? get localRadio1;
+  /// The local rig keying is for: radio1 when it is a rig of this station's
+  /// own, or SO2R's Radio B while the operator keys from its set — null when
+  /// radio1 is a peer's or none: the memories are audio in the transceiver,
+  /// and there is nothing local to play when the transceiver is somewhere
+  /// else.
+  String? get localKeyingRadio;
+
+  /// SO2R's Radio B, or null — whose voice memories are named and timed
+  /// apart from radio1's.
+  String? get radio2;
 
   Future<void> updateNode(EquipmentNode node);
 
@@ -122,8 +128,10 @@ class CatKeying {
 
   /// Whether the voice memories in play are the picked peer radio's. No
   /// designation in between, the same as for a local rig: the memories
-  /// belong to whatever radio fills the role.
-  bool get playsVoiceOverPeer => peer.playsVoice;
+  /// belong to whatever radio fills the role — never while keying is SO2R's
+  /// Radio B, whose memories are in that rig, as [peerKeyIsInUse] says for
+  /// CW.
+  bool get playsVoiceOverPeer => peer.playsVoice && (station.radio2 == null || station.localKeyingRadio != station.radio2);
 
   /// Asks the device whose radio is picked for [op] — a no-op when nothing is
   /// picked or no bridge is up, the same no-op every keying surface takes
@@ -310,7 +318,7 @@ class CatKeying {
     if (session == null) return false;
     // The radio that transmits it: the key in use itself when that is a
     // radio's own keyer, radio1 when it is a keyer that keys radio1.
-    station.yieldTransmitter(station.connectedSession(_cwKeyerUuid!) is TransceiverSession ? _cwKeyerUuid : station.localRadio1);
+    station.yieldTransmitter(station.connectedSession(_cwKeyerUuid!) is TransceiverSession ? _cwKeyerUuid : station.localKeyingRadio);
     try {
       session.sendCw(text);
       return true;
@@ -355,13 +363,16 @@ class CatKeying {
     if (_lastCwHasMessageOne && cwSending) stopCw();
   }
 
+  /// Whether a message, chain or repeat is under way — anything Escape would
+  /// stop.
+  bool get busy => chain.running || _voiceSequence.isNotEmpty || voiceActivity.value != null || voiceStarting.value || cwSending;
+
   /// Escape: stops every message, chain and repeat, whatever the keyer, the
   /// mode, or whose they are. False when there was nothing to stop, so the
   /// key keeps its usual meaning in the logging fields. [alsoStopped] says
   /// the same Escape already stopped something outside the keyers (a held
   /// PTT key), which the logging fields must hear about the same way.
   bool stopKeying({bool alsoStopped = false}) {
-    final busy = chain.running || _voiceSequence.isNotEmpty || voiceActivity.value != null || cwSending;
     if (!busy && !alsoStopped) return false;
     // The logging fields hear the same keystroke AFTER the operation view's
     // key handler has run this, and read the answer through
@@ -379,9 +390,12 @@ class CatKeying {
   /// queued: a CQ repeat left armed would play over them when its wait ran
   /// out, and a memory left playing ends with an unkey under their key.
   void stopAll() {
+    // A memory asked for and not yet heard starting is as much on its way
+    // out as one playing.
+    final voice = voiceActivity.value != null || voiceStarting.value;
     chain.cancel();
     cancelVoiceSequence();
-    if (voiceActivity.value != null) stopVoice();
+    if (voice) stopVoice();
     if (cwSending) stopCw();
   }
 
@@ -519,7 +533,7 @@ class CatKeying {
   /// Phone Keyer dialog's Play and Record) exists only while this is
   /// non-null.
   VoiceKeyerSession? get _voiceKeyer {
-    final uuid = station.localRadio1;
+    final uuid = station.localKeyingRadio;
     if (uuid == null) return null;
     return voiceKeyerFor(uuid);
   }
@@ -553,7 +567,7 @@ class CatKeying {
   /// live session knows what the radio actually answered.
   bool get radio1HasVoiceMemories {
     if (playsVoiceOverPeer) return true;
-    final uuid = station.localRadio1;
+    final uuid = station.localKeyingRadio;
     if (uuid == null) return false;
     final node = station.nodeFor(uuid);
     if (node == null) return false;
@@ -579,12 +593,12 @@ class CatKeying {
   /// owner's too — [voiceMessagesAreLocal] is what a surface asks before it
   /// offers to.
   String voiceMessageLabel(int n) {
-    if (!playsVoiceOverPeer) return _localVoiceLabel(station.localRadio1, n);
+    if (!playsVoiceOverPeer) return _localVoiceLabel(station.localKeyingRadio, n);
     return peer.voiceMessageLabel(n);
   }
 
   int voiceMessageDuration(int n) {
-    if (!playsVoiceOverPeer) return _localVoiceDuration(station.localRadio1, n);
+    if (!playsVoiceOverPeer) return _localVoiceDuration(station.localKeyingRadio, n);
     return peer.voiceMessageDuration(n);
   }
 
@@ -604,22 +618,27 @@ class CatKeying {
     return held.where((m) => m.memory == n).firstOrNull ?? VoiceMemory(memory: n);
   }
 
-  String _localVoiceLabel(String? uuid, int n) => _radioHeldMemory(uuid, n)?.name ?? settings.voiceMessageLabel(n);
+  String _localVoiceLabel(String? uuid, int n) => _radioHeldMemory(uuid, n)?.name ?? settings.voiceMessageLabel(n, radio: _settingsRadio(uuid));
 
-  int _localVoiceDuration(String? uuid, int n) => _radioHeldMemory(uuid, n)?.durationMs ?? settings.voiceMessageDuration(n);
+  int _localVoiceDuration(String? uuid, int n) => _radioHeldMemory(uuid, n)?.durationMs ?? settings.voiceMessageDuration(n, radio: _settingsRadio(uuid));
+
+  /// Which radio's labels and lengths the settings keep for [uuid]: Radio
+  /// B's for radio2, radio1's for any other — an offered radio's included,
+  /// whatever set this operator is in.
+  String _settingsRadio(String? uuid) => uuid != null && uuid == station.radio2 ? 'B' : 'A';
 
   /// Names memory [n] — on the radio when radio1 holds its own names, in
   /// the settings otherwise. Nothing for a peer's memory: the name is that
   /// device's ([voiceMessagesAreLocal]).
   Future<void> setVoiceMessageLabel(int n, String label) async {
     if (!voiceMessagesAreLocal) return;
-    final uuid = station.localRadio1;
+    final uuid = station.localKeyingRadio;
     final session = uuid == null ? null : station.connectedSession(uuid);
     if (session is RadioNamedVoiceMemories && _radioHeldMemories(uuid).isNotEmpty) {
       session.renameVoiceMemory(n, label);
       return;
     }
-    await settings.setVoiceMessageLabel(n, label);
+    await settings.setVoiceMessageLabel(n, label, radio: _settingsRadio(uuid));
   }
 
   /// Whether the memories in play are this device's own — false while a
@@ -629,7 +648,7 @@ class CatKeying {
 
   /// Whether radio1 names its memories itself, so a label typed here is
   /// written to the radio rather than kept in the app.
-  bool get voiceMessagesNamedOnRadio => voiceMessagesAreLocal && _radioHeldMemories(station.localRadio1).isNotEmpty;
+  bool get voiceMessagesNamedOnRadio => voiceMessagesAreLocal && _radioHeldMemories(station.localKeyingRadio).isNotEmpty;
 
   /// How to record a memory on radio1, where the radio needs saying — see
   /// [EquipmentModel.recordingHelp]. Null when nothing can record, or when
@@ -639,7 +658,7 @@ class CatKeying {
   ({String model, String text})? get voiceRecordingHelp {
     if (_voiceKeyer?.canRecordVoice != true) return null;
     // The LOCAL node: a peer's rig has a front panel nobody here can reach.
-    final uuid = station.localRadio1;
+    final uuid = station.localKeyingRadio;
     if (uuid == null) return null;
     final node = station.nodeFor(uuid);
     if (node == null) return null;
@@ -698,8 +717,9 @@ class CatKeying {
       // one — a key, a button, the dialog — repeats alike. Any OTHER memory
       // ends a chain: the operator has moved on.
       if (!chaining) chain.cancel();
-      station.yieldTransmitter(station.localRadio1);
+      station.yieldTransmitter(station.localKeyingRadio);
       _startMeasurement(n);
+      _awaitVoiceStart();
       session.playVoiceMemory(n);
       _voiceMessageOne = n == 1;
       // Armed only once the session has taken it: a throw above would
@@ -720,7 +740,7 @@ class CatKeying {
       if (peer.recordsVoice) requestPeerKey(PeerKeyOp.record, memory: n);
       return;
     }
-    recordVoiceLocally(station.localRadio1, n);
+    recordVoiceLocally(station.localKeyingRadio, n);
   }
 
   /// Records into [uuid]'s memory [n] — radio1's for this operator, or an
@@ -744,13 +764,13 @@ class CatKeying {
     if (session == null) return;
     // A peer's memory 1 is not this operator's CQ, the same rule the CW
     // request states at [handleRequest].
-    if (uuid == station.localRadio1) _voiceMessageOne = false;
+    if (uuid == station.localKeyingRadio) _voiceMessageOne = false;
     try {
-      // Measured only on radio1, which is the rig whose memory lengths this
-      // device stores — a second offered radio's memories are timed by
+      // Measured only on this device's own keying radio, the rig whose memory
+      // lengths it stores — a second offered radio's memories are timed by
       // whoever has it as their radio1.
       station.yieldTransmitter(uuid);
-      if (uuid == station.localRadio1) _startMeasurement(n);
+      if (uuid == station.localKeyingRadio) _startMeasurement(n);
       session.playVoiceMemory(n);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
@@ -763,7 +783,7 @@ class CatKeying {
     // stopped for a peer must not start playing again on this operator's
     // repeat delay.
     chain.cancel();
-    if (uuid == station.localRadio1) {
+    if (uuid == station.localKeyingRadio) {
       cancelVoiceSequence();
       // What a stop cut short is not a measurement, the same rule
       // [stopVoice] applies to this operator's own.
@@ -786,6 +806,10 @@ class CatKeying {
   int? _playStart;
   int? _playMemory;
 
+  /// The radio the timed play is on: by its end report keying may have
+  /// moved to the other one, whose memory [_playMemory] is not.
+  String? _playOn;
+
   /// Whether the radio ever DOUBTED this play — answered "not going" before
   /// it ever answered "going" (voice_activity_tracker.dart). That is what a
   /// refused memory looks like, and it is not something to measure.
@@ -798,6 +822,7 @@ class CatKeying {
   void _startMeasurement(int n) {
     _playStart = realNowMillis();
     _playMemory = n;
+    _playOn = station.localKeyingRadio;
     _playDoubted = false;
   }
 
@@ -814,19 +839,21 @@ class CatKeying {
   Future<void> _endMeasurement() async {
     final memory = _playMemory;
     final start = _playStart;
+    final on = _playOn;
     final doubted = _playDoubted;
     _playMemory = null;
     _playStart = null;
+    _playOn = null;
     _playDoubted = false;
-    if (memory == null || start == null || doubted) return;
+    if (memory == null || start == null || on == null || doubted) return;
     // A radio that times its own memories has already said how long this
     // one runs, and a measurement stored here would never be read.
-    if (_radioHeldMemories(station.localRadio1).isNotEmpty) return;
+    if (_radioHeldMemories(on).isNotEmpty) return;
     final elapsed = realNowMillis() - start;
-    final ceiling = _voiceKeyer?.voiceMemoryCeiling ?? voiceActivityCeiling;
+    final ceiling = voiceKeyerFor(on)?.voiceMemoryCeiling ?? voiceActivityCeiling;
     if (elapsed >= ceiling.inMilliseconds) return;
     if (elapsed <= 0) return;
-    await settings.setVoiceMessageDuration(memory, elapsed);
+    await settings.setVoiceMessageDuration(memory, elapsed, radio: _settingsRadio(on));
   }
 
   /// Stops whatever radio1's voice keyer is playing or recording.
@@ -861,6 +888,27 @@ class CatKeying {
     _voiceSequence.addAll(memories.skip(1));
     _awaitSequenceStart();
     playVoiceMemory(memories.first, repeat: memories.length == 1);
+  }
+
+  /// A memory asked to play here and not yet heard starting — keying is busy
+  /// with it all the same. Between a sequence's memories, and between any
+  /// play and the radio's first report, nothing else says a memory is about
+  /// to go out, and keying following the operator to the other radio then
+  /// would leave it playing where nothing shows or stops it. Given up after
+  /// [voiceSequenceStartGrace], as a sequence is.
+  final voiceStarting = ValueNotifier<bool>(false);
+  Timer? _voiceStartTimer;
+
+  void _awaitVoiceStart() {
+    _voiceStartTimer?.cancel();
+    _voiceStartTimer = Timer(voiceSequenceStartGrace, _voiceStarted);
+    voiceStarting.value = true;
+  }
+
+  void _voiceStarted() {
+    _voiceStartTimer?.cancel();
+    _voiceStartTimer = null;
+    voiceStarting.value = false;
   }
 
   void cancelVoiceSequence() {
@@ -902,6 +950,7 @@ class CatKeying {
     // A stop is a stop, the same as [stopCw]'s.
     chain.cancel();
     cancelVoiceSequence();
+    _voiceStarted();
     // And what it stopped is NOT a measurement: the memory did not play to
     // its end, so timing it would store a length shorter than the audio and
     // pace every later bar to finish early.
@@ -1123,9 +1172,11 @@ class CatKeying {
     onKeyingChanged();
     // Only radio1's memories play for THIS app, so only its are shown.
     // The LOCAL radio1: a peer's arrive as that peer's status instead.
-    if (uuid != station.localRadio1) return;
+    if (uuid != station.localKeyingRadio) return;
     _voiceFromPeer = false;
     voiceActivity.value = activity;
+    // After the activity is in place, so keying never reads idle between.
+    if (activity != null) _voiceStarted();
     if (_playMemory == null) return;
     // These same reports time the play: a doubtful one is the radio never
     // confirming, and the end is what the clock stops at.
@@ -1146,11 +1197,12 @@ class CatKeying {
 
   /// A node's link went down, or the key in use moved off it: whatever it was
   /// keying is not keying now.
-  void forgetNode(String uuid, {required bool wasKeyInUse, required bool wasRadio1}) {
+  void forgetNode(String uuid, {required bool wasKeyInUse, required bool wasKeyingRadio}) {
     if (wasKeyInUse) cwProgress.value = null;
-    if (wasRadio1) {
+    if (wasKeyingRadio) {
       // The silence is the radio going, not a memory ending.
       cancelVoiceSequence();
+      _voiceStarted();
       voiceActivity.value = null;
     }
     // A radio that is gone is playing nothing. Left behind, its last
@@ -1179,7 +1231,7 @@ class CatKeying {
           session.stopCw();
         }
         if (session is VoiceKeyerSession && _voiceActivityByNode.containsKey(node.uuid)) {
-          if (node.uuid == station.localRadio1) {
+          if (node.uuid == station.localKeyingRadio) {
             if (chain.memory != null) chain.cancel();
             cancelVoiceSequence();
             // Cut short, so not a measurement — [stopVoice]'s rule.
@@ -1193,6 +1245,16 @@ class CatKeying {
         ErrorReportingService.report(e, st, context: 'cat:quiet-others');
       }
     }
+  }
+
+  /// Keying moved to the other SO2R radio: what ITS voice keyer is doing is
+  /// what shows now. Left on the radio being left, the play would show for
+  /// good — that radio's end report is no longer the keying radio's, and is
+  /// dropped ([noteVoiceActivity]) — and hold keying busy with it.
+  void followKeyingRadio() {
+    _voiceStarted();
+    _voiceFromPeer = false;
+    voiceActivity.value = _voiceActivityByNode[station.localKeyingRadio];
   }
 
   /// Stops what the OUTGOING key was keying when the key in use changes —
@@ -1216,6 +1278,8 @@ class CatKeying {
 
   void dispose() {
     cancelVoiceSequence();
+    _voiceStartTimer?.cancel();
+    voiceStarting.dispose();
     _keyingRevision.dispose();
     cwProgress.dispose();
     cwStops.dispose();

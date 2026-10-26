@@ -608,6 +608,30 @@ void main() {
     expect(drafts.length, settled, reason: 'nothing about the QSO changed');
   });
 
+  // The trap: under SO2R the host hears only the set the keyboard is in, so
+  // a set coming back to it with the draft it last published stays quiet,
+  // and the host goes on holding the other set's — the call a message keys.
+  testWidgets('a set that stops publishing and starts again republishes what it holds', (tester) async {
+    final drafts = <Map<String, dynamic>>[];
+    final infos = <CallInfoData?>[];
+    Widget publishing(bool on) => host(
+      session: LoggingSession(onQsoChanged: on ? drafts.add : null),
+      lookups: LookupHooks(onCallInfoChanged: on ? infos.add : null),
+    );
+    await tester.pumpWidget(publishing(true));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pumpWidget(publishing(false));
+    await tester.pump();
+    drafts.clear();
+    infos.clear();
+
+    await tester.pumpWidget(publishing(true));
+    await tester.pump();
+    expect(drafts.map((d) => (d['their'] as Map)['call']), ['W1AW']);
+    expect(infos.map((i) => i?.call), ['W1AW']);
+  });
+
   testWidgets('moving the cursor within a stack republishes which call the draft names', (tester) async {
     // The QSON half of the draft is identical wherever the cursor sits, so a
     // dedupe on it alone would leave `{{ qso.call }}` naming the segment the

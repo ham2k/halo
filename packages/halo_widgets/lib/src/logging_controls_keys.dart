@@ -82,6 +82,8 @@ extension _SpaceAndNumbers on _LoggingControlsState {
       _ladder.advancePrimaryFocus();
     } else if (_radio.freqFocus.hasFocus) {
       _callFocus.requestFocus();
+    } else if (widget.so2r?.link.radioB?.freqFocus.hasFocus ?? false) {
+      widget.so2r!.link.focusSet('B');
     } else if (_ladder.primaryFocusOrder.any((node) => node.hasFocus)) {
       // An options field accepts the highlighted suggestion first, then advances
       // like everything else. The advance is unconditional either way: it is what

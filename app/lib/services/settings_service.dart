@@ -1080,24 +1080,26 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
   /// The name shown for the radio's voice memory [n] (1-based) — its
   /// button in the keyer area and its row in the Phone Keyer dialog.
   /// A label and nothing more: the audio lives in the radio, which is why
-  /// there is no `voiceMessage$n` beside it.
-  static String voiceMessageLabelKey(int n) => 'voiceMessageLabel$n';
+  /// there is no `voiceMessage$n` beside it. Per radio, as the audio is:
+  /// SO2R's Radio B (`radio: 'B'`) keeps its own beside radio1's.
+  static String voiceMessageLabelKey(int n, {String radio = 'A'}) => radio == 'B' ? 'voiceMessageLabelB$n' : 'voiceMessageLabel$n';
 
-  String voiceMessageLabel(int n) => (settingValue(radioGroup, voiceMessageLabelKey(n)) as String?) ?? '';
+  String voiceMessageLabel(int n, {String radio = 'A'}) => (settingValue(radioGroup, voiceMessageLabelKey(n, radio: radio)) as String?) ?? '';
 
-  Future<void> setVoiceMessageLabel(int n, String value) => setSettingValue(radioGroup, voiceMessageLabelKey(n), value);
+  Future<void> setVoiceMessageLabel(int n, String value, {String radio = 'A'}) => setSettingValue(radioGroup, voiceMessageLabelKey(n, radio: radio), value);
 
   /// How long memory [n] plays for, in MILLISECONDS — timed off the radio's
   /// own end-of-play report (CatService.playVoiceMemory), never guessed.
   /// Zero means unmeasured, which is what a memory stays until it is played
   /// once. Milliseconds rather than seconds because the measurement has
   /// them: a 4.2-second memory rounded to 5 paces a progress bar that
-  /// finishes late every time.
-  static String voiceMessageDurationKey(int n) => 'voiceMessageDurationMs$n';
+  /// finishes late every time. Per radio, like [voiceMessageLabel].
+  static String voiceMessageDurationKey(int n, {String radio = 'A'}) => radio == 'B' ? 'voiceMessageDurationMsB$n' : 'voiceMessageDurationMs$n';
 
-  int voiceMessageDuration(int n) => (settingValue(radioGroup, voiceMessageDurationKey(n)) as num?)?.round() ?? 0;
+  int voiceMessageDuration(int n, {String radio = 'A'}) => (settingValue(radioGroup, voiceMessageDurationKey(n, radio: radio)) as num?)?.round() ?? 0;
 
-  Future<void> setVoiceMessageDuration(int n, int millis) => setSettingValue(radioGroup, voiceMessageDurationKey(n), millis);
+  Future<void> setVoiceMessageDuration(int n, int millis, {String radio = 'A'}) =>
+      setSettingValue(radioGroup, voiceMessageDurationKey(n, radio: radio), millis);
 
   /// Whether the logging panel's keyer area is showing. A setting rather
   /// than session state: an operator who opened the strip wants it there
@@ -1117,6 +1119,11 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings, Engine
 
   Future<void> setEnterSends({required bool on, required bool running}) =>
       updateSettingsGroup(radioGroup, {'enterSendsMessages': on, 'enterSendsRunning': running});
+
+  /// SO2R's Radio B: running, or S&P (the default — the second radio is
+  /// the one an SO2R operator pounces with). Radio A's is [enterSendsRunning].
+  bool get enterSendsRunningB => settingValue(radioGroup, 'enterSendsRunningB') == true;
+  Future<void> setEnterSendsRunningB(bool running) => setSettingValue(radioGroup, 'enterSendsRunningB', running);
 
   /// The voice counterpart of [cwRepeatDelay], and the same rule: only
   /// memory 1 repeats, because it is the CQ.

@@ -13,10 +13,15 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   PeerKeying get _peerKeying;
   String? get _localRadio1;
   bool stopNodeTunes();
+  String get keyingRadio;
+  String get operatorRadio;
+  void setRunning(String radio, bool running);
 
   /// The repeat chain (keyer_repeat.dart) — one engine for both keyers,
-  /// since a message and a memory differ only in what is sent again.
-  late final _repeat = KeyerRepeat(vfo: () => _radio?.vfoA);
+  /// since a message and a memory differ only in what is sent again. It
+  /// watches the VFO of the radio keying is for, which a repeat keeps
+  /// keying on until it ends.
+  late final _repeat = KeyerRepeat(vfo: () => _radio?.vfo(keyingRadio == 'B' ? 'vfoB' : 'vfoA'));
 
   /// The wait between message 1 finishing and it being keyed again — non-null
   /// only while that wait is running, so the keyer area's countdown bar is
@@ -64,7 +69,16 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   void showKeyerArea() => _keying.showKeyerArea();
   void hideKeyerArea() => _keying.hideKeyerArea();
   ValueNotifier<({bool on, bool running})> get enterSends => _keying.enterSends;
-  void setEnterSends({bool? on, bool? running}) => _keying.setEnterSends(on: on, running: running);
+
+  /// [running] is the operator's radio's under SO2R — see [setRunning].
+  void setEnterSends({bool? on, bool? running}) {
+    if (running != null && operatorRadio == 'B') {
+      setRunning('B', running);
+      running = null;
+    }
+    _keying.setEnterSends(on: on, running: running);
+  }
+
   bool sendCw(String text, {bool hasMessageOne = false}) => _keying.sendCw(text, hasMessageOne: hasMessageOne);
   void stopCw() => _keying.stopCw();
   void dropQueuedCw(int id) => _keying.dropQueuedCw(id);
@@ -102,7 +116,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
     final PttSession session => session,
     _ => null,
   };
-  bool get canPtt => _pttSession(_localRadio1) != null;
+  bool get canPtt => _pttSession(localKeyingRadio) != null;
 
   /// Whether the app's PTT key is on the logging radio — [pttKeys]' `held` is true for a key on any radio.
   bool get pttHeldOnRadio1 => _ptt.heldOn(_pttSession(_localRadio1));

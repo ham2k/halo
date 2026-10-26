@@ -666,6 +666,7 @@ class StationPanel extends StatelessWidget {
           );
         }
         final node = localRadio1 == null ? null : _cat.nodeFor(localRadio1);
+        final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
         if (node == null) {
           // Nothing to edit, so the whole row is the way to pick one.
           return ListTile(
@@ -677,7 +678,68 @@ class StationPanel extends StatelessWidget {
           );
         }
         return CurrentTransceiverTile(
-          displayName: _displayName(node),
+          displayName: so2r ? st.so2rRadioName(radio: 'A', name: _displayName(node)) : _displayName(node),
+          connection: connectionTextFor(context, _cat.typeFor(node), node.config),
+          transportType: _cat.typeFor(node),
+          state: _cat.stateFor(node.uuid),
+          unconfigured: _cat.typeFor(node)?.isUnconfigured(node.config) ?? false,
+          onEdit: () => _editEquipment(context, node),
+          onConnect: () => _cat.connect(node.uuid),
+          onDisconnect: () => _cat.disconnect(node.uuid),
+          trailing: picker,
+        );
+      },
+    );
+  }
+
+  /// SO2R's Radio B, under the Main VFO's row: the same row, picked from this
+  /// station's own transceivers only — never the Main VFO's, which one rig
+  /// cannot be at the same time.
+  Widget _radio2Row(BuildContext context) {
+    final st = context.t.settings.station;
+    return TransceiverMenu(
+      rows: (context, close) {
+        void pick(String? uuid) {
+          close();
+          unawaited(_cat.setRadio2(uuid));
+        }
+
+        return [
+          for (final node in _cat.nodes)
+            if (_cat.typeFor(node)?.category == kCategoryTransceiver && !_cat.isRadio1(node.uuid))
+              TransceiverRow(
+                name: _displayName(node),
+                channel: _cat.typeFor(node)?.describeChannel(node.config),
+                connection: connectionTextFor(context, _cat.typeFor(node), node.config),
+                transportType: _cat.typeFor(node),
+                selected: _cat.isRadio2(node.uuid),
+                onSelect: () => pick(node.uuid),
+                onEdit: () => pick(node.uuid),
+              ),
+          TransceiverRow(name: st.noTransceiver, connection: '', selected: _cat.radio2 == null, onSelect: () => pick(null), onEdit: () => pick(null)),
+        ];
+      },
+      builder: (context, toggle) {
+        final picker = SizedBox.square(
+          dimension: transceiverPickerWidth,
+          child: IconButton(
+            icon: Icon(MdiIcons.menuDown, semanticLabel: st.chooseTransceiver),
+            onPressed: toggle,
+          ),
+        );
+        final uuid = _cat.radio2;
+        final node = uuid == null ? null : _cat.nodeFor(uuid);
+        if (node == null) {
+          return ListTile(
+            leading: Icon(iconForCategory(kCategoryTransceiver)),
+            title: Text(st.noRadioBSelected),
+            trailing: picker,
+            onTap: toggle,
+            mouseCursor: SystemMouseCursors.click,
+          );
+        }
+        return CurrentTransceiverTile(
+          displayName: st.so2rRadioName(radio: 'B', name: _displayName(node)),
           connection: connectionTextFor(context, _cat.typeFor(node), node.config),
           transportType: _cat.typeFor(node),
           state: _cat.stateFor(node.uuid),
@@ -766,6 +828,7 @@ class StationPanel extends StatelessWidget {
           _ => null,
         };
         final peerRadios = services.peerRemoteRadios.all;
+        final so2r = services.settings.experimentEnabled('so2r') /* stored key, see experiments.yaml */;
         // A selection whose peer is not here stays SHOWN and selected, said
         // to be unavailable — dropping it would silently hand the VFO back
         // to a local radio the operator had deliberately stepped off, and
@@ -800,12 +863,20 @@ class StationPanel extends StatelessWidget {
               // category is about, and it stays in view while the rest of
               // the page scrolls under it.
               CategoryBand(
-                st.currentTransceiver,
+                so2r ? st.currentTransceivers : st.currentTransceiver,
                 // A ground of its own, half way back to the surface, so the
                 // rig reads as the band's content rather than more heading.
                 below: Material(
                   color: Color.lerp(Theme.of(context).colorScheme.surface, haloCategoryBandColor(context), 0.5),
-                  child: _currentTransceiverRow(context, localRadio1: localRadio1, selection: selection, absentSelection: absentSelection),
+                  child: so2r
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _currentTransceiverRow(context, localRadio1: localRadio1, selection: selection, absentSelection: absentSelection),
+                            _radio2Row(context),
+                          ],
+                        )
+                      : _currentTransceiverRow(context, localRadio1: localRadio1, selection: selection, absentSelection: absentSelection),
                 ),
               ),
               SectionHeader(st.configurationSection),
@@ -824,7 +895,7 @@ class StationPanel extends StatelessWidget {
                         Expanded(
                           child: DesignationDropdown(
                             key: ValueKey(_cat.designatedFor(kCategoryAntenna)),
-                            label: st.antennaInUse,
+                            label: so2r ? st.so2rRadioName(radio: 'A', name: st.antennaInUse) : st.antennaInUse,
                             nodes: antennas,
                             selected: _cat.designatedFor(kCategoryAntenna),
                             displayName: _displayName,
@@ -833,10 +904,19 @@ class StationPanel extends StatelessWidget {
                           ),
                         ),
                       if (antennas.isNotEmpty && (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))) const SizedBox(width: Space.md),
-                      if (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying)) Expanded(child: _keyPicker(context, keys: keys)),
+                      if (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))
+                        Expanded(
+                          child: _keyPicker(
+                            context,
+                            keys: keys,
+                            label: so2r ? st.so2rRadioName(radio: 'A', name: st.keyInUse) : st.keyInUse,
+                          ),
+                        ),
                     ],
                   ),
                 ),
+              if (so2r && _cat.radio2 != null && (antennas.isNotEmpty || keys.isNotEmpty))
+                _radio2Picks(context, antennas: antennas, keys: keys, inset: rowInset),
 
               // One keyer row for both keyers: the messages to edit, and the
               // switch that shows the logging panel's strip. In BOTH layouts,
@@ -998,20 +1078,20 @@ class StationPanel extends StatelessWidget {
   /// The key in use. NOT behind the keyer experiment: choosing which key a
   /// contact is logged with is ordinary station info. Only the peer's key
   /// among its choices, and the speed on the keyer row, are.
-  Widget _keyPicker(BuildContext context, {required List<EquipmentNode> keys}) {
+  Widget _keyPicker(BuildContext context, {required List<EquipmentNode> keys, required String label}) {
     final st = context.t.settings.station;
     final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
     // The peer whose radio drives the VFO, when one does: its own key is
     // what keys for this operator unless they pick otherwise (HALO-585).
     final peer = _cat.followedPeerRadio;
     return DesignationDropdown(
-      key: ValueKey('${_cat.designatedFor(kCategoryKey)}:${_cat.peerKeyIsInUse}'),
-      label: st.keyInUse,
+      key: ValueKey('${_cat.designatedFor(kCategoryKey)}:${_cat.peerKeyPicked}'),
+      label: label,
       nodes: keys,
       // The peer's key is a default, so nothing is stored for it — and a
       // picker reading the stored value alone would say None while F1 keys
       // over the link.
-      selected: peer != null && _cat.peerKeyIsInUse && _cat.peerOffersCwKeying ? peerRadioValue(peer) : _cat.designatedFor(kCategoryKey),
+      selected: peer != null && _cat.peerKeyPicked && _cat.peerOffersCwKeying ? peerRadioValue(peer) : _cat.designatedFor(kCategoryKey),
       // A radio in this list is its keyer, not the radio.
       displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver ? st.keyViaRadio(radio: _displayName(node)) : _displayName(node),
       noneLabel: st.noneSelected,
@@ -1023,6 +1103,41 @@ class StationPanel extends StatelessWidget {
           (value: peerRadioValue(peer), label: st.keyOnDevice(device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName)),
       ],
       onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
+    );
+  }
+
+  /// SO2R's Radio B's own antenna and key, under the Main VFO's: the picks
+  /// are per radio, and a contact logged on Radio B — or a message keyed from
+  /// its set — uses these.
+  Widget _radio2Picks(BuildContext context, {required List<EquipmentNode> antennas, required List<EquipmentNode> keys, required EdgeInsets inset}) {
+    final st = context.t.settings.station;
+    final radio2 = _cat.radio2!;
+    Widget picker(String category, String label, List<EquipmentNode> nodes, {String Function(EquipmentNode)? displayName}) => Expanded(
+      child: DesignationDropdown(
+        key: ValueKey('radio2:$category:${_cat.designatedFor(category, radio: radio2)}'),
+        label: st.so2rRadioName(radio: 'B', name: label),
+        nodes: nodes,
+        selected: _cat.designatedFor(category, radio: radio2),
+        displayName: displayName ?? _displayName,
+        noneLabel: st.noneSelected,
+        onChanged: (uuid) => unawaited(_cat.setDesignated(category, uuid, radio: radio2)),
+      ),
+    );
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: Row(
+        children: [
+          if (antennas.isNotEmpty) picker(kCategoryAntenna, st.antennaInUse, antennas),
+          if (antennas.isNotEmpty && keys.isNotEmpty) const SizedBox(width: Space.md),
+          if (keys.isNotEmpty)
+            picker(
+              kCategoryKey,
+              st.keyInUse,
+              keys,
+              displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver ? st.keyViaRadio(radio: _displayName(node)) : _displayName(node),
+            ),
+        ],
+      ),
     );
   }
 

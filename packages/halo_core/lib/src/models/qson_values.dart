@@ -180,6 +180,9 @@ const _qsoOurFields = <String, QsonFieldType>{
   // naming them after the device moves on to another operator.
   'operatorCall': QsonFieldType.string,
   'multiIdentifier': QsonFieldType.string,
+  // SO2R: which of the two radios — `A` or `B` — the contact was logged
+  // from, so an edit loads it back into that radio's set of fields.
+  'radio': QsonFieldType.string,
   'grid': QsonFieldType.string,
   'rig': QsonFieldType.string,
   'antenna': QsonFieldType.string,

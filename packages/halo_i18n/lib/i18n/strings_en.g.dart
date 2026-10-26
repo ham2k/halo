@@ -1937,6 +1937,12 @@ class Translations$commands$en {
 	/// en: 'CW message F$n was not sent: the extensions are not ready'
 	String cwMessageNotRendered({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready';
 
+	/// en: 'Nothing sent: Radio $radio can't key that'
+	String so2rRadioCannotKey({required Object radio}) => 'Nothing sent: Radio ${radio} can\'t key that';
+
+	/// en: 'Nothing sent: pick a Radio B in Station Configuration to key from this set'
+	String get so2rNoRadioB => 'Nothing sent: pick a Radio B in Station Configuration to key from this set';
+
 	/// en: '“${label}” did not accept that value'
 	String settingNotStored({required Object label}) => '“${label}” did not accept that value';
 }
@@ -5963,6 +5969,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Current Transceiver'
 	String get currentTransceiver => 'Current Transceiver';
+
+	/// en: 'Current Transceivers'
+	String get currentTransceivers => 'Current Transceivers';
+
+	/// en: '${radio}: ${name}'
+	String so2rRadioName({required Object radio, required Object name}) => '${radio}: ${name}';
+
+	/// en: 'No Radio B selected'
+	String get noRadioBSelected => 'No Radio B selected';
 
 	/// en: 'Radio Mode'
 	String get radioMode => 'Radio Mode';
@@ -11094,6 +11109,9 @@ extension on Translations {
 			'settings.station.notConfigured' => 'Not configured',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.currentTransceiver' => 'Current Transceiver',
+			'settings.station.currentTransceivers' => 'Current Transceivers',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio}: ${name}',
+			'settings.station.noRadioBSelected' => 'No Radio B selected',
 			'settings.station.radioMode' => 'Radio Mode',
 			'settings.station.keyerNotSupported' => 'Not supported by current radio',
 			'settings.station.catControlPreferences' => 'CAT Control Preferences',
@@ -11331,11 +11349,11 @@ extension on Translations {
 			'settings.developer.catalogSearchTracks' => 'Catalog Search Tracks',
 			'settings.developer.catalogSearchStable' => 'Only Stable',
 			'settings.developer.catalogSearchUnstable' => 'Unstable or better',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalogSearchBleeding' => 'Bleeding or better',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
-			_ => null,
-		} ?? switch (path) {
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
 			'settings.panels.settings' => 'Application Preferences',
@@ -11413,6 +11431,8 @@ extension on Translations {
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => 'Nothing sent: Radio ${radio} can\'t key that',
+			'commands.so2rNoRadioB' => 'Nothing sent: pick a Radio B in Station Configuration to key from this set',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',

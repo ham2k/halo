@@ -1165,6 +1165,69 @@ a given contact is not recorded per QSO. **Their exchange** and **our
 exchange**: contest exchanges live in refs here, surfaced as their own
 controls ([contests.md](contests.md)).
 
+## SO2R
+
+Behind the `so2r` experiment (`EXP SO2R`). Single Operator, Two Radios: a
+Radio B picked in Station Configuration (`CatService.radio2`, local rigs
+only, never the Main VFO's) drives `vfoB` the way radio1 drives `vfoA`, and
+the logging panel grows a second set of main fields for it.
+
+**Two sets under one strip.** Each set is a whole `LoggingControls` —
+draft, lookups, info area, wipe and log buttons — following its own VFO
+(set B through `RadioVfoView`, which presents `vfoB` as the store's `vfoA`,
+so nothing in the panel knows there are two). Set A draws the only strip,
+and it holds Time, Radio A, Radio B and Spotting and nothing else; Radio B's
+pill is set B's own Radio control, handed across by `So2rLink`. Each set's
+info area and entry row take 90% of the panel width — set A's against
+the leading edge, set B's against the trailing one — framed by a pill that
+runs their full height, with a rule from its top across to the far edge of
+the wipe and log buttons, ending in a round cap. The pill reads, bottom-aligned
+against the entry row, the radio's letter, its band, and Run or S&P. Each
+radio has its own colour — violet for A, gold for B, neither of them a
+colour the theme or editing already uses — and its pill and rule are filled
+solid, with a wash of it behind the set, while the keyboard is in that set. A tap on the Run / S&P
+line flips that radio's mode (each radio has its own, and its set's ESM sends
+that half of the exchange); a tap anywhere else opens the radio's control in
+the strip. The info area starts where the callsign field does, and its
+operation stats count only that set's radio's contacts (one with no
+`our.radio` counts as A's). Only set A draws the divider and shadow against
+the log; nothing separates the two sets.
+
+**The ladder gains a rung.** Set A's fields and set B's are two rungs:
+
+```
+QSO list  ──▲──  pills  ──▲──  set A's fields  ──▲──  set B's fields
+          ──▼──           ──▼──                  ──▼──
+```
+
+From set A, the inward key crosses to set B's remembered field; from set B,
+the outward key crosses back to set A's — never straight to the pills, which
+are one more press away. Mirrored above the log, as everything else is.
+
+**Which set an input goes to.** The set the keyboard was last in
+(`So2rLink.active`) speaks for the panel: its draft and call info are what
+the Info pane and the peers see, its command dispatcher is the one ⌘K
+reaches, its ESM facts and its radio's Run or S&P are what the keyer area
+highlights the next messages from, and it is the only one whose default
+focus is reclaimed. Each set publishes its ESM facts as they change, and the
+panel keeps each set's last, so a move between the sets shows the new one's
+at once. A set
+forgets what it last published while the other speaks, so coming back it
+publishes its draft afresh — the host would otherwise go on holding the
+other set's, and a message would key the other station's call. Turning
+SO2R on or off keeps set A mounted; it joins or leaves the link in place. A spot or
+a log request goes to the set active when it ARRIVES and stays there, so
+moving to the other set never reads as the suggestion being withdrawn. A
+contact logged under SO2R records its radio (`our.radio`: `A` or `B`), and
+picking it from the log loads it into that set — set A for one logged
+without SO2R.
+
+**Keying follows the set the operator is in**, except that a message under
+way keeps its radio until it ends — see [cat.md](cat.md) § Radio B, for SO2R.
+Each set's call field stops only its own radio's message as a call is typed
+over it, and the pill and rule of the radio on the air are red, whichever set
+has the keyboard.
+
 ## Related conventions
 
 - **A default is a placeholder, never a pre-filled value.** The Sent and Rcvd

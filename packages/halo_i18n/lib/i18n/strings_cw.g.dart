@@ -868,6 +868,8 @@ class _Translations$commands$cw extends Translations$commands$en {
 	@override String cwSending({required Object text}) => '··· · —· —·· ·· —· ——· / —·—· ·—— ———··· / ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} ———··· / ${error}';
 	@override String cwMessageNotRendered({required Object n}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} / ·—— ·— ··· / —· ——— — / ··· · —· — ———··· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——';
+	@override String so2rRadioCannotKey({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·—· ·— —·· ·· ——— / ${radio} / —·—· ·— —· ·————· — / —·— · —·—— / — ···· ·— —';
+	@override String get so2rNoRadioB => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / — ——— / —·— · —·—— / ··—· ·—· ——— —— / — ···· ·· ··· / ··· · —';
 	@override String settingNotStored({required Object label}) => '“ ${label} ” / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· ·— — / ···— ·— ·—·· ··— ·';
 }
 
@@ -2726,6 +2728,9 @@ class _Translations$settings$station$cw extends Translations$settings$station$en
 	@override String get notConfigured => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··';
 	@override String get currentConfiguration => '—·—· ··— ·—· ·—· · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·';
 	@override String get currentTransceiver => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·';
+	@override String get currentTransceivers => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···';
+	@override String so2rRadioName({required Object radio, required Object name}) => '${radio} ———··· / ${name}';
+	@override String get noRadioBSelected => '—· ——— / ·—· ·— —·· ·· ——— / —··· / ··· · ·—·· · —·—· — · —··';
 	@override String get radioMode => '·—· ·— —·· ·· ——— / —— ——— —·· ·';
 	@override String get keyerNotSupported => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / —·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———';
 	@override String get catControlPreferences => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·——· ·—· · ··—· · ·—· · —· —·—· · ···';
@@ -6090,6 +6095,9 @@ extension on TranslationsCw {
 			'settings.station.notConfigured' => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
 			'settings.station.currentConfiguration' => '—·—· ··— ·—· ·—· · —· — / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —·',
 			'settings.station.currentTransceiver' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—·',
+			'settings.station.currentTransceivers' => '—·—· ··— ·—· ·—· · —· — / — ·—· ·— —· ··· —·—· · ·· ···— · ·—· ···',
+			'settings.station.so2rRadioName' => ({required Object radio, required Object name}) => '${radio} ———··· / ${name}',
+			'settings.station.noRadioBSelected' => '—· ——— / ·—· ·— —·· ·· ——— / —··· / ··· · ·—·· · —·—· — · —··',
 			'settings.station.radioMode' => '·—· ·— —·· ·· ——— / —— ——— —·· ·',
 			'settings.station.keyerNotSupported' => '—· ——— — / ··· ··— ·——· ·——· ——— ·—· — · —·· / —··· —·—— / —·—· ··— ·—· ·—· · —· — / ·—· ·— —·· ·· ———',
 			'settings.station.catControlPreferences' => '—·—· ·— — / —·—· ——— —· — ·—· ——— ·—·· / ·——· ·—· · ··—· · ·—· · —· —·—· · ···',
@@ -6327,11 +6335,11 @@ extension on TranslationsCw {
 			'settings.developer.catalogSearchTracks' => '—·—· ·— — ·— ·—·· ——— ——· / ··· · ·— ·—· —·—· ···· / — ·—· ·— —·—· —·— ···',
 			'settings.developer.catalogSearchStable' => '——— —· ·—·· —·—— / ··· — ·— —··· ·—·· ·',
 			'settings.developer.catalogSearchUnstable' => '··— —· ··· — ·— —··· ·—·· · / ——— ·—· / —··· · — — · ·—·',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.catalogSearchBleeding' => '—··· ·—·· · · —·· ·· —· ——· / ——— ·—· / —··· · — — · ·—·',
 			'settings.about.notices' => '—· ——— — ·· —·—· · ··· / ·—··· / —— · ··· ··· ·— ——· · ···',
 			'settings.about.noticesDescription' => '·— —· —· ——— ··— —· —·—· · —— · —· — ··· / ·— —· —·· / ··· — ·— — ··— ··· / —— · ··· ··· ·— ——· · ···',
-			_ => null,
-		} ?? switch (path) {
 			'settings.about.releaseNotes' => '·—· · ·—·· · ·— ··· · / —· ——— — · ···',
 			'settings.about.copiedVersion' => '—·—· ——— ·——· ·· · —·· / ···— · ·—· ··· ·· ——— —· / —·· · — ·— ·· ·—·· ··· / — ——— / —·—· ·—·· ·· ·——· —··· ——— ·— ·—· —··',
 			'settings.panels.settings' => '·— ·——· ·——· ·—·· ·· —·—· ·— — ·· ——— —· / ·——· ·—· · ··—· · ·—· · —· —·—· · ···',
@@ -6409,6 +6417,8 @@ extension on TranslationsCw {
 			'commands.cwSending' => ({required Object text}) => '··· · —· —·· ·· —· ——· / —·—· ·—— ———··· / ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} ———··· / ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => '—·—· ·—— / —— · ··· ··· ·— ——· · / ··—· ${n} / ·—— ·— ··· / —· ——— — / ··· · —· — ———··· / — ···· · / · —··— — · —· ··· ·· ——— —· ··· / ·— ·—· · / —· ——— — / ·—· · ·— —·· —·——',
+			'commands.so2rRadioCannotKey' => ({required Object radio}) => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·—· ·— —·· ·· ——— / ${radio} / —·—· ·— —· ·————· — / —·— · —·—— / — ···· ·— —',
+			'commands.so2rNoRadioB' => '—· ——— — ···· ·· —· ——· / ··· · —· — ———··· / ·——· ·· —·—· —·— / ·— / ·—· ·— —·· ·· ——— / —··· / ·· —· / ··· — ·— — ·· ——— —· / —·—· ——— —· ··—· ·· ——· ··— ·—· ·— — ·· ——— —· / — ——— / —·— · —·—— / ··—· ·—· ——— —— / — ···· ·· ··· / ··· · —',
 			'commands.settingNotStored' => ({required Object label}) => '“ ${label} ” / —·· ·· —·· / —· ——— — / ·— —·—· —·—· · ·——· — / — ···· ·— — / ···— ·— ·—·· ··— ·',
 			'commandDialog.hint' => '··· · ·— ·—· —·—· ···· / —·—· ·— ·—·· ·—·· ··· ·· ——· —· ··· / ——— ·—· / — —·—— ·——· · / ·— / —·—· ——— —— —— ·— —· —··',
 			'commandDialog.noResults' => ({required Object text}) => '—· ——— — ···· ·· —· ——· / —— ·— — —·—· ···· · ··· / “ ${text} ”',

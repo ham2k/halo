@@ -54,6 +54,7 @@ import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
 import 'logging_controls_radio.dart';
 import 'logging_controls_refs.dart';
+import 'logging_controls_so2r.dart';
 import 'logging_controls_esm.dart';
 import 'logging_controls_metrics.dart';
 import 'logging_controls_spotting.dart';
@@ -122,6 +123,10 @@ class LoggingControls extends StatefulWidget {
   /// See [ManualTimeHooks].
   final ManualTimeHooks manualTime;
 
+  /// Which SO2R set this is, or null for the one panel of an ordinary
+  /// station — see [So2rSet].
+  final So2rSet? so2r;
+
   const LoggingControls({
     super.key,
     required this.log,
@@ -134,6 +139,7 @@ class LoggingControls extends StatefulWidget {
     this.spotting = const SpottingHooks(),
     this.prefs = const LoggingPreferences(),
     this.manualTime = const ManualTimeHooks(),
+    this.so2r,
   });
 
   @override
@@ -302,6 +308,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       navigateToQsoList: widget.session.onNavigateToQsoList,
       walkQsoList: widget.session.onWalkQsoList,
       aboveLog: widget.prefs.aboveLog,
+      crossOutward: switch (widget.so2r) {
+        final so2r? when !so2r.ownsStrip => () => so2r.link.focusSet('A'),
+        _ => null,
+      },
+      crossInward: switch (widget.so2r) {
+        final so2r? when so2r.ownsStrip => () => so2r.link.focusSet('B'),
+        _ => null,
+      },
     ),
     selectControl: _onSelectControl,
     showControl: _showControl,
@@ -395,6 +409,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // `isCurrentOf`, not `of`: the latter would have every change to the
     // route's status rebuild the panel, not just push and pop over it.
     routeIsCurrent: () => ModalRoute.isCurrentOf(context) != false,
+    reclaims: () => widget.so2r == null || widget.so2r!.link.active == widget.so2r!.radio,
   );
 
   /// Editing an event/annotation row (NOTE, TODO, BREAK, …) rather than a
@@ -575,6 +590,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       node.onKeyEvent = _ladder.onPrimaryFieldKeyEvent;
     }
     _eventTextFocus.onKeyEvent = _ladder.onEventTextKeyEvent;
+    _attachSo2r(widget.so2r);
     _spotting.refreshSources();
     // Constructed already editing a QSO (rather than transitioning into it via
     // didUpdateWidget): score it so its pills show, and enqueue it for a
@@ -629,6 +645,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _syncActivityControls(oldWidget);
     _syncSerialSource(oldWidget);
     _syncController(oldWidget);
+    _syncSo2r(oldWidget);
     _syncRadioUpdates(oldWidget);
     if (widget.spotting.respotInterval != oldWidget.spotting.respotInterval) _spotting.followIntervalSetting();
     // An edit opening or closing, or a contest's exchange fields arriving —
@@ -679,6 +696,51 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _publishEsmFacts();
   }
 
+  void _attachSo2r(So2rSet? so2r) {
+    if (so2r == null) return;
+    so2r.link.attach(so2r.radio, _so2rHandle, radioModel: _radio);
+    // Both sets: the pill marks the set the keyboard is in, and set A's strip
+    // draws set B's Radio control.
+    so2r.link.addListener(_onModelChanged);
+    _focusBackstop.panelScope.addListener(_noteSo2rFocus);
+  }
+
+  void _detachSo2r(So2rSet? so2r) {
+    if (so2r == null) return;
+    so2r.link.detach(so2r.radio, _so2rHandle);
+    so2r.link.removeListener(_onModelChanged);
+    _focusBackstop.panelScope.removeListener(_noteSo2rFocus);
+  }
+
+  /// SO2R turned on or off around a mounted set: the host keeps set A
+  /// mounted across it, so this set joins or leaves the link here. Set A
+  /// joining is where the keyboard is — the only set until now, and set B
+  /// takes no focus as it mounts — which the link may still remember as B
+  /// from before SO2R went off, with no focus change coming to correct it.
+  void _syncSo2r(LoggingControls oldWidget) {
+    final (was, now) = (oldWidget.so2r, widget.so2r);
+    if (was?.link == now?.link && was?.radio == now?.radio) return;
+    _detachSo2r(was);
+    _attachSo2r(now);
+    if (now != null && now.ownsStrip) {
+      // After the frame: the link's listeners rebuild the sets and the host.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && identical(widget.so2r?.link, now.link)) now.link.noteActive(now.radio);
+      });
+    }
+  }
+
+  /// What this SO2R set offers the other — see [So2rLink].
+  late final So2rSetHandle _so2rHandle = (focusLastPrimaryField: _ladder.focusLastPrimaryField, openControl: _onSelectControl);
+
+  void _noteSo2rFocus() {
+    if (_focusBackstop.panelScope.hasFocus) widget.so2r?.link.noteActive(widget.so2r!.radio);
+  }
+
+  /// Whether this set's edge meets the log: SO2R's set B sits against set A
+  /// instead, with no shadow or divider between the two radios' sets.
+  bool get _meetsLog => widget.so2r?.ownsStrip ?? true;
+
   /// Seeds the Radio control from the operation's `vfoA`
   /// ([RadioControlModel.seedFromVfo]), the Power field with it under its
   /// own rule. Never called while editing an existing *contact*, whose own
@@ -728,6 +790,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   @override
   void dispose() {
+    // Ahead of everything below: set A must stop drawing set B's Radio
+    // control before it is disposed.
+    _detachSo2r(widget.so2r);
     // Leaving the operation lets its number go (docs/design/contests.md
     // §5.8.1): a hold with no panel behind it would block the other
     // positions for as long as the operator stays away.
@@ -902,6 +967,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _notifyCallInfo();
         _notifyQsoDraft();
       });
+    } else {
+      // Not publishing — under SO2R, the set the keyboard is not in. What it
+      // published before is forgotten, so its draft is published afresh when
+      // the keyboard comes back: the host holds the other set's by then.
+      // A signature no data has, since a set with none publishes null.
+      _lastCallInfoSig = '\u0000';
+      _lastPublishedQso = null;
+      _lastPublishedFields = null;
+      _lastPublishedCalls = null;
     }
     final theme = Theme.of(context);
     final poloColors = HaLoColors.of(context);
@@ -949,7 +1023,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       },
       child: FocusTraversalGroup(
         child: Material(
-          elevation: 4,
+          elevation: _meetsLog ? 4 : 0,
           // app-polo's logging panel uses the operation's theme color
           // (tertiary here, secondary while editing) as its background,
           // with a divider line in the same tint separating it from the
@@ -958,7 +1032,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!widget.prefs.aboveLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
+              if (!widget.prefs.aboveLog && _meetsLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
               Padding(
                 // No top inset at all — SecondaryControlRow's expanded
                 // panel slides out flush against the divider above, and the
@@ -1002,100 +1076,112 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                     // open — so the fields are what meets the panel's edge.
                     verticalDirection: widget.prefs.aboveLog ? VerticalDirection.up : VerticalDirection.down,
                     children: [
-                      AbsorbPointer(
-                        absorbing: fieldsLocked,
-                        child: Opacity(
-                          opacity: fieldsLocked ? 0.5 : 1,
-                          child: SecondaryControlRow(
-                            // Every pill still shows while editing an event —
-                            // just disabled but Time, so the row's shape
-                            // doesn't change between editing a contact and an
-                            // event. A BREAK's grid/contest-exchange segment
-                            // override has no editing UI yet either
-                            // (docs/design/contests.md §5.1.3), so it stays
-                            // disabled along with the rest.
-                            controls: _buildSecondaryControls(accentTheme, accentPoloColors, enabledFor: _editingEvent ? (key) => key == 'time' : null),
-                            selectedKey: _selectedControlKey,
-                            onSelect: _onSelectControl,
-                            onOpenSettings: _openControlSettingsDialog,
-                            horizontalBleed: secondaryPanelHorizontalInset,
-                            panelBelow: widget.prefs.aboveLog,
-                            // The dupe warning (and the other scoring notices)
-                            // live on the info area's third line — see
-                            // `_buildInfoArea` (issue #40).
+                      if (widget.so2r?.ownsStrip ?? true) ...[
+                        AbsorbPointer(
+                          absorbing: fieldsLocked,
+                          child: Opacity(
+                            opacity: fieldsLocked ? 0.5 : 1,
+                            child: SecondaryControlRow(
+                              // Every pill still shows while editing an event —
+                              // just disabled but Time, so the row's shape
+                              // doesn't change between editing a contact and an
+                              // event. A BREAK's grid/contest-exchange segment
+                              // override has no editing UI yet either
+                              // (docs/design/contests.md §5.1.3), so it stays
+                              // disabled along with the rest.
+                              controls: _buildSecondaryControls(accentTheme, accentPoloColors, enabledFor: _editingEvent ? (key) => key == 'time' : null),
+                              selectedKey: _selectedControlKey,
+                              onSelect: _onSelectControl,
+                              onOpenSettings: _openControlSettingsDialog,
+                              horizontalBleed: secondaryPanelHorizontalInset,
+                              panelBelow: widget.prefs.aboveLog,
+                              // The dupe warning (and the other scoring notices)
+                              // live on the info area's third line — see
+                              // `_buildInfoArea` (issue #40).
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: Space.md),
-                      LoggingInfoFrame(
-                        buttonDiameter: _editButtonDiameter ?? 44,
-                        leftieMode: widget.prefs.leftieMode,
-                        signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
-                        strip: widget.strip.aboveEntryRow,
-                        actionButton: _buildWipeOrEditButton(accentTheme),
+                        const SizedBox(height: Space.md),
+                      ],
+                      ...so2rFramed(
+                        context,
+                        widget.so2r,
+                        accentTheme,
+                        _radio.band,
                         entryRowAbove: widget.prefs.aboveLog,
-                        child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),
-                      ),
-                      const SizedBox(height: Space.md),
-                      // A Stack so the `options` suggestion pills can float over
-                      // the info area above instead of pushing the fields down
-                      // under the operator's cursor. Clip.none: the pills are
-                      // deliberately painted outside this box, and the row itself
-                      // is what gives the Stack its size (the pills are
-                      // positioned, so they never enlarge it).
-                      Stack(
-                        clipBehavior: Clip.none,
                         children: [
-                          LoggingEntryRow(
-                            call: (controller: _callController, focus: _callFocus),
-                            rstFields: widget.prefs.showRSTFields ? _rstPair : const [],
-                            rstPlaceholder: _rstPlaceholder,
-                            numericKeyboardType: _numbersAndPunctuationOnIOS,
-                            exchange: _exchange,
-                            textControls: _textControls,
-                            state: widget.prefs.showStateField ? (controller: _stateController, focus: _stateFocus) : null,
-                            stateHint: _guessStateHint,
-                            onStateChanged: (_) {
-                              _draft.stateTouched = true;
-                              // Scored on (New State / New Province, and a party's
-                              // exchange), so a typed state reaches the scorer the
-                              // way an exchange field's value does.
-                              _lookup.exchangeEdited();
-                            },
-                            grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
-                            gridHint: _guessGridHint,
-                            onGridChanged: (_) {
-                              _draft.markGridTouched();
-                              // A scorer judges the grid (`shortGrid`).
-                              _lookup.exchangeEdited();
-                            },
-                            command: _command,
-                            virtualSpace: _virtualSpace,
-                            commandVirtualSpace: _commandVirtualSpace,
-                            enabled: !fieldsLocked,
+                          LoggingInfoFrame(
+                            buttonDiameter: _editButtonDiameter ?? 44,
                             leftieMode: widget.prefs.leftieMode,
-                            // The log button is a circle as tall as the row, so the
-                            // height already measured for it is also its width. The
-                            // 44 fallback (first frame, before that measurement
-                            // lands) matches the info area's own above.
-                            buttonWidth: _editButtonDiameter ?? 44,
-                            submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
-                            eventFields: _editingEvent
-                                ? EventFieldRow(
-                                    editingQso: widget.session.editingQso!,
-                                    textController: _eventTextController,
-                                    textFocus: _eventTextFocus,
-                                    enabled: !fieldsLocked,
-                                    todoDone: _eventTodoDone,
-                                    onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
-                                    onSubmitted: _log,
-                                  )
-                                : null,
-                            onSubmitted: () => _log(fromEnter: true),
-                            onExchangeSubmitted: _handleEnter,
-                            onCallTyped: widget.session.onCallTyped,
+                            signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
+                            strip: widget.strip.aboveEntryRow,
+                            actionButton: _buildWipeOrEditButton(accentTheme),
+                            entryRowAbove: widget.prefs.aboveLog,
+                            child: fieldsLocked ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso)) : _buildInfoArea(accentTheme),
                           ),
-                          if (exchangeMenu != null) ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
+                          const SizedBox(height: Space.md),
+                          // A Stack so the `options` suggestion pills can float over
+                          // the info area above instead of pushing the fields down
+                          // under the operator's cursor. Clip.none: the pills are
+                          // deliberately painted outside this box, and the row itself
+                          // is what gives the Stack its size (the pills are
+                          // positioned, so they never enlarge it).
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              LoggingEntryRow(
+                                call: (controller: _callController, focus: _callFocus),
+                                rstFields: widget.prefs.showRSTFields ? _rstPair : const [],
+                                rstPlaceholder: _rstPlaceholder,
+                                numericKeyboardType: _numbersAndPunctuationOnIOS,
+                                exchange: _exchange,
+                                textControls: _textControls,
+                                state: widget.prefs.showStateField ? (controller: _stateController, focus: _stateFocus) : null,
+                                stateHint: _guessStateHint,
+                                onStateChanged: (_) {
+                                  _draft.stateTouched = true;
+                                  // Scored on (New State / New Province, and a party's
+                                  // exchange), so a typed state reaches the scorer the
+                                  // way an exchange field's value does.
+                                  _lookup.exchangeEdited();
+                                },
+                                grid: widget.prefs.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
+                                gridHint: _guessGridHint,
+                                onGridChanged: (_) {
+                                  _draft.markGridTouched();
+                                  // A scorer judges the grid (`shortGrid`).
+                                  _lookup.exchangeEdited();
+                                },
+                                command: _command,
+                                virtualSpace: _virtualSpace,
+                                commandVirtualSpace: _commandVirtualSpace,
+                                enabled: !fieldsLocked,
+                                leftieMode: widget.prefs.leftieMode,
+                                // The log button is a circle as tall as the row, so the
+                                // height already measured for it is also its width. The
+                                // 44 fallback (first frame, before that measurement
+                                // lands) matches the info area's own above.
+                                buttonWidth: _editButtonDiameter ?? 44,
+                                submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
+                                eventFields: _editingEvent
+                                    ? EventFieldRow(
+                                        editingQso: widget.session.editingQso!,
+                                        textController: _eventTextController,
+                                        textFocus: _eventTextFocus,
+                                        enabled: !fieldsLocked,
+                                        todoDone: _eventTodoDone,
+                                        onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
+                                        onSubmitted: _log,
+                                      )
+                                    : null,
+                                onSubmitted: () => _log(fromEnter: true),
+                                onExchangeSubmitted: _handleEnter,
+                                onCallTyped: widget.session.onCallTyped,
+                                autofocus: widget.so2r?.ownsStrip ?? true,
+                              ),
+                              if (exchangeMenu != null) ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
+                            ],
+                          ),
                         ],
                       ),
                     ],
@@ -1120,7 +1206,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // panel's own background (Material above), so the home-indicator
               // strip matches the panel.
               if (_bottomReserve > 0) SizedBox(width: double.infinity, height: _bottomReserve),
-              if (widget.prefs.aboveLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
+              if (widget.prefs.aboveLog && _meetsLog) Container(height: 2, color: accentPoloColors.tertiaryLight),
             ],
           ),
         ),

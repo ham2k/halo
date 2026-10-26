@@ -316,6 +316,10 @@ class Qso {
   String get ourOperatorCall => asQsonString(_our['operatorCall']) ?? '';
   String get ourMultiIdentifier => asQsonString(_our['multiIdentifier']) ?? '';
 
+  /// The SO2R radio — `A` or `B` — this contact was logged from, or null
+  /// for one logged outside SO2R.
+  String? get ourRadio => asQsonString(_our['radio']);
+
   String get theirCall => asQsonString(_their['call']) ?? '';
   // `guess` (the merged lookup result) stays nested rather than flattened
   // onto `their`,

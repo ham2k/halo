@@ -163,7 +163,7 @@ class _FakeTransport extends EquipmentTransport {
   }
 }
 
-class _FakeSession implements TransceiverSession, CwKeyerSession, RawCommandSession {
+class _FakeSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession, RawCommandSession {
   final EquipmentSink sink;
   final List<String> log;
   var updatesStarted = false;
@@ -231,6 +231,26 @@ class _FakeSession implements TransceiverSession, CwKeyerSession, RawCommandSess
 
   @override
   void dropQueuedCw(int index) => log.add('dropQueuedCw:$index');
+
+  /// Plays nothing and reports nothing: a test says when a memory is heard
+  /// starting and ending, through [sink], as a radio's own reports would.
+  @override
+  int get voiceMemoryCount => 4;
+
+  @override
+  bool get canRecordVoice => false;
+
+  @override
+  Duration get voiceMemoryCeiling => const Duration(seconds: 30);
+
+  @override
+  void playVoiceMemory(int n) => log.add('playVoice:$n');
+
+  @override
+  void recordVoiceMemory(int n) => log.add('recordVoice:$n');
+
+  @override
+  void stopVoice() => log.add('stopVoice');
 
   @override
   ({int min, int max}) get keyerSpeedRange => (min: 5, max: 50);
@@ -1969,6 +1989,292 @@ void main() {
       log.clear();
       cat.refreshKeyerSpeed();
       expect(log, ['refreshKeyerSpeed']);
+    });
+  });
+
+  // SO2R: keying follows the set the operator keys FROM, not the one they
+  // are looking at. The two traps are opposite: a focus move that stopped
+  // radio A's CQ would make the classic run-on-A, search-on-B pattern
+  // impossible, and a message key on B that left A sending would put two
+  // transmitters on the air from one operator.
+  group('SO2R keying', () {
+    setUp(() async {
+      await settings.setExperimentEnabled('keyer', true);
+      await settings.setExperimentEnabled('so2r', true);
+    });
+
+    Future<(EquipmentNode, EquipmentNode)> twoRadios() async {
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      await cat.setRadio1(LocalRadio(a.uuid));
+      await cat.setRadio2(b.uuid);
+      await connectAndLand(a);
+      await connectAndLand(b);
+      return (a, b);
+    }
+
+    test('with nothing going out, keying and PTT follow the operator between the sets', () async {
+      final (a, b) = await twoRadios();
+      cat.noteOperatorRadio('B');
+      expect(cat.keyingRadio, 'B');
+      expect(cat.keyInUse, b.uuid, reason: 'a message or PTT pressed now goes out on B, and the keyer area shows its speed');
+      expect(cat.localKeyingRadio, b.uuid);
+      cat.noteOperatorRadio('A');
+      expect(cat.keyInUse, a.uuid);
+    });
+
+    // The trap: keying moved with the operator mid-CQ, stopping radio A's
+    // message the moment they went to work B — the SO2R pattern itself.
+    test('a message going out keeps its radio while the operator moves, and keying follows once it ends', () async {
+      final (a, b) = await twoRadios();
+      driver.sessions.first.cwSending = true;
+      log.clear();
+
+      cat.noteOperatorRadio('B');
+      expect(log, isNot(contains('stopCw')), reason: "radio A's CQ goes on while the operator works B");
+      expect(cat.keyingRadio, 'A', reason: 'the message under way stays where the operator can see and stop it');
+
+      driver.sessions.first.cwSending = false;
+      cat.cwProgress.value = const CwSendProgress(id: 1, text: 'CQ', characterEnds: []);
+      cat.cwProgress.value = null;
+      expect(cat.keyingRadio, 'B', reason: 'the end of the message hands keying to the set the operator is in');
+      expect(cat.keyInUse, b.uuid);
+    });
+
+    test('a key pressed in the other set stops the message on the radio left, and keys through its own', () async {
+      final (a, b) = await twoRadios();
+      driver.sessions.first.cwSending = true;
+      log.clear();
+
+      cat.noteOperatorRadio('B');
+      expect(cat.keyInUse, a.uuid);
+
+      expect(cat.keyForOperator(() => cat.canKeyCw), isTrue);
+      expect(log, contains('stopCw'), reason: 'a message key on B is the operator moving on from A');
+      expect(cat.keyingRadio, 'B');
+      expect(cat.keyInUse, b.uuid, reason: "Radio B keys through its own key — itself, by default");
+
+      cat.noteOperatorRadio('A');
+      expect(cat.keyForOperator(() => cat.canKeyCw), isTrue);
+      expect(cat.keyInUse, a.uuid);
+    });
+
+    // The trap: set B with no Radio B falling back to radio A, so a message
+    // keyed for set B's contact goes out on the radio A is running on.
+    test('a key in set B with no Radio B keys nothing, and stops nothing', () async {
+      final a = await addRadio(host: 'a.local');
+      await cat.setRadio1(LocalRadio(a.uuid));
+      await connectAndLand(a);
+      driver.sessions.first.cwSending = true;
+      log.clear();
+
+      cat.noteOperatorRadio('B');
+      expect(cat.keyForOperator(() => cat.canKeyCw), isFalse);
+      expect(log, isNot(contains('stopCw')), reason: "radio A's CQ is not set B's to stop");
+      expect(cat.keyingRadio, 'A');
+      expect(cat.canKeyOn('B', () => cat.canKeyCw), isFalse, reason: "set B's Enter Sends Messages asks the same question");
+      expect(cat.canKeyOn('A', () => cat.canKeyCw), isTrue);
+    });
+
+    // The trap: stopping radio A's CQ before asking whether radio B can key at
+    // all — the CQ gone and nothing sent in its place.
+    test("a key Radio B can't send leaves radio A's message going out", () async {
+      final (a, b) = await twoRadios();
+      await cat.setDesignated(kCategoryKey, null, radio: b.uuid);
+      driver.sessions.first.cwSending = true;
+      log.clear();
+
+      cat.noteOperatorRadio('B');
+      expect(cat.keyForOperator(() => cat.canKeyCw), isFalse);
+      expect(log, isNot(contains('stopCw')));
+      expect(cat.keyingRadio, 'A');
+      expect(cat.keyInUse, a.uuid, reason: 'asking about B moved nothing');
+    });
+
+    // The trap: a message rendered after its key press keys whichever radio
+    // keying has followed the operator to by then — ESM's TU logged on A,
+    // sent on B, the moment the operator moves to pounce.
+    test('a key press holds its radio until what it keys is sent, and crossing sets drops it', () async {
+      await twoRadios();
+      final hold = cat.holdKeying();
+      cat.noteOperatorRadio('B');
+      expect(cat.keyingRadio, 'A', reason: 'the message still rendering is radio A\'s');
+      cat.releaseKeying(hold);
+      expect(cat.keyingRadio, 'B', reason: 'and keying follows the operator once it is handed over');
+
+      final onB = cat.holdKeying();
+      cat.noteOperatorRadio('A');
+      expect(cat.keyForOperator(() => cat.canKeyCw), isTrue);
+      expect(onB.live, isFalse, reason: "a key in set A stops what radio B had going out, the message still rendering with it");
+      expect(cat.keyingRadio, 'A');
+    });
+
+    // The trap: Radio B changed under a message it is sending, the key in use
+    // moved with nothing told — B keying on with no Escape to stop it.
+    test('changing Radio B, or turning SO2R off, stops what Radio B is sending', () async {
+      final (_, b) = await twoRadios();
+      cat.noteOperatorRadio('B');
+      final rendering = cat.holdKeying();
+      cat.armKeyerRepeat(delay: const Duration(seconds: 10), text: 'CQ', send: () {});
+      driver.sessions.last.cwSending = true;
+      log.clear();
+      await cat.setRadio2(null);
+      expect(log, contains('stopCw'));
+      expect(cat.keyingRadio, 'A');
+      expect(cat.keyerRepeating, isFalse, reason: "B's CQ repeat must not come back on radio A");
+      expect(rendering.live, isFalse, reason: 'nor a message still rendering for B');
+
+      await cat.setRadio2(b.uuid);
+      cat.noteOperatorRadio('B');
+      expect(cat.keyingRadio, 'B');
+      driver.sessions.last.cwSending = true;
+      log.clear();
+      await settings.setExperimentEnabled('so2r', false);
+      expect(log, contains('stopCw'));
+      expect(cat.keyingRadio, 'A');
+    });
+
+    // The trap: the repeat watching radio A's VFO whichever radio it runs on —
+    // pouncing with A cancels B's CQ, and B wandering off keeps it calling.
+    test("a CQ repeat on Radio B ends when Radio B's VFO moves, not radio A's", () async {
+      await twoRadios();
+      radio.setVfo('vfoA', freq: 14025, mode: 'CW');
+      radio.setVfo('vfoB', freq: 7025, mode: 'CW');
+      cat.noteOperatorRadio('B');
+      cat.armKeyerRepeat(delay: const Duration(seconds: 10), text: 'CQ', send: () {});
+
+      radio.setVfo('vfoA', freq: 14030, mode: 'CW');
+      expect(cat.keyerRepeating, isTrue, reason: 'radio A tuning is the operator pouncing with it');
+      radio.setVfo('vfoB', freq: 7025.02, mode: 'CW');
+      expect(cat.keyerRepeating, isTrue, reason: "20 Hz is within the tolerance, measured from where B's CQ went out");
+      radio.setVfo('vfoB', freq: 7030, mode: 'CW');
+      expect(cat.keyerRepeating, isFalse);
+      cat.cancelKeyerRepeat();
+    });
+
+    // The trap: the radio left's end-of-play report dropped once keying has
+    // moved, the play showing — and keying held busy — for good.
+    test('crossing sets mid-play hands the voice indicator to the radio keying', () async {
+      final (_, b) = await twoRadios();
+      driver.sessions.first.sink.reportVoiceActivity(const VoiceActivity(memory: 1));
+      expect(cat.voiceActivity.value?.memory, 1);
+      expect(cat.isTransmitting('A'), isTrue, reason: 'a memory playing is radio A on the air');
+
+      cat.noteOperatorRadio('B');
+      expect(cat.keyForOperator(() => cat.canKeyCw), isTrue);
+      expect(cat.voiceActivity.value, isNull, reason: 'radio B is playing nothing');
+      driver.sessions.first.sink.reportVoiceActivity(null);
+      cat.noteOperatorRadio('A');
+      expect(cat.keyingRadio, 'A', reason: 'nothing left busy holds keying on B');
+      expect(cat.designatedFor(kCategoryKey, radio: b.uuid), b.uuid);
+    });
+
+    // The trap: keying idle in the gap between a sequence's memories — the
+    // next one asked for and not yet heard starting — so it follows the
+    // operator to B, and the memory plays on A with nothing showing it and
+    // no Escape to stop it.
+    test('a memory asked for and not yet heard starting keeps keying on its radio', () async {
+      await twoRadios();
+      final a = driver.sessions.first;
+      cat.playVoiceSequence([2, 3]);
+      a.sink.reportVoiceActivity(const VoiceActivity(memory: 2));
+      cat.noteOperatorRadio('B');
+      log.clear();
+
+      a.sink.reportVoiceActivity(null);
+      expect(log, contains('playVoice:3'), reason: 'sanity: the sequence went on to its next memory');
+      expect(cat.keyingRadio, 'A', reason: 'memory 3 is on its way out on radio A');
+      a.sink.reportVoiceActivity(const VoiceActivity(memory: 3));
+      expect(cat.voiceActivity.value?.memory, 3, reason: 'and shows, where Escape reaches it');
+      a.sink.reportVoiceActivity(null);
+      expect(cat.keyingRadio, 'B', reason: 'keying follows once the sequence is over');
+    });
+
+    test('turning SO2R on connects Radio B', () async {
+      await settings.setExperimentEnabled('so2r', false);
+      final a = await addRadio(host: 'a.local');
+      final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+      await cat.setRadio1(LocalRadio(a.uuid));
+      await cat.setRadio2(b.uuid);
+      expect(cat.stateFor(b.uuid).status, isNot(EquipmentStatus.connected), reason: 'sanity');
+
+      await settings.setExperimentEnabled('so2r', true);
+      await pumpEventQueue();
+      expect(cat.stateFor(b.uuid).status, isIn([EquipmentStatus.connecting, EquipmentStatus.connected]));
+    });
+
+    // The trap: a surface showing the ESM switch handing back radio A's Run or
+    // S&P while the operator is in set B, which files it under B.
+    test("the ESM switch shows the operator's radio's Run or S&P, and hands it back unchanged", () async {
+      await twoRadios();
+      cat.noteOperatorRadio('B');
+      expect(cat.operatorEnterSends.running, isFalse, reason: "radio B's S&P, not radio A's Run");
+      final shown = cat.operatorEnterSends;
+      cat.setEnterSends(on: !shown.on, running: shown.running);
+      expect(cat.isRunning('B'), isFalse);
+      expect(cat.isRunning('A'), isTrue);
+    });
+
+    // The trap: one set of voice memory labels and lengths for both radios,
+    // so timing B's memory 1 paces A's bar against a different recording.
+    test("each radio's voice memories are named and timed apart", () async {
+      await twoRadios();
+      await settings.setVoiceMessageLabel(1, 'CQ A');
+      await settings.setVoiceMessageLabel(1, 'CQ B', radio: 'B');
+      await settings.setVoiceMessageDuration(1, 4000, radio: 'B');
+      expect(cat.voiceMessageLabel(1), 'CQ A');
+      expect(cat.voiceMessageDuration(1), 0);
+      cat.noteOperatorRadio('B');
+      expect(cat.voiceMessageLabel(1), 'CQ B');
+      expect(cat.voiceMessageDuration(1), 4000);
+      await cat.setVoiceMessageLabel(1, 'CQ CONTEST');
+      expect(settings.voiceMessageLabel(1, radio: 'B'), 'CQ CONTEST');
+      expect(settings.voiceMessageLabel(1), 'CQ A');
+    });
+
+    // The trap: one app-wide Run / S&P, so the operator running A and
+    // pouncing with B has ESM sending the wrong half of the exchange on one.
+    test("each radio has its own Run / S&P, and ESM's Run / S&P keys set the operator's radio's", () async {
+      expect(cat.isRunning('A'), isTrue, reason: 'radio A runs by default');
+      expect(cat.isRunning('B'), isFalse, reason: 'radio B pounces by default');
+
+      cat.noteOperatorRadio('B');
+      cat.setEnterSends(running: true);
+      expect(cat.isRunning('B'), isTrue);
+      cat.noteOperatorRadio('A');
+      cat.setEnterSends(running: false);
+      expect(cat.isRunning('A'), isFalse);
+      expect(cat.isRunning('B'), isTrue, reason: "radio A's change leaves B's alone");
+      expect(settings.enterSendsRunningB, isTrue, reason: "radio B's is kept across restarts, as A's is");
+
+      await settings.setExperimentEnabled('so2r', false);
+      cat.noteOperatorRadio('B');
+      cat.setEnterSends(running: true);
+      expect(cat.isRunning('A'), isTrue, reason: 'outside SO2R there is only the one Run / S&P');
+    });
+
+    test('each radio is on the air only while it is keying', () async {
+      await twoRadios();
+      cat.noteOperatorRadio('B');
+      expect(cat.isTransmitting('A'), isFalse);
+      expect(cat.isTransmitting('B'), isFalse);
+      driver.sessions.last.cwSending = true;
+      expect(cat.isTransmitting('B'), isTrue);
+      expect(cat.isTransmitting('A'), isFalse, reason: "B's message is not A's transmission");
+    });
+
+    test("Radio B's key pick is its own, and leaves radio A's alone", () async {
+      final (a, b) = await twoRadios();
+      await cat.setDesignated(kCategoryKey, a.uuid, radio: b.uuid);
+
+      expect(cat.designatedFor(kCategoryKey, radio: b.uuid), a.uuid);
+      expect(cat.designatedFor(kCategoryKey), a.uuid, reason: "radio A's own default, untouched");
+      cat.noteOperatorRadio('B');
+      expect(cat.keyForOperator(() => cat.canKeyCw), isTrue);
+      expect(cat.keyInUse, a.uuid, reason: "B's pick, now that keying is B's");
+      await cat.setDesignated(kCategoryKey, null, radio: b.uuid);
+      expect(cat.canKeyCw, isFalse, reason: "None was B's answer");
+      expect(cat.designatedFor(kCategoryKey), a.uuid, reason: "and only B's");
     });
   });
 

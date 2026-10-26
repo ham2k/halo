@@ -33,6 +33,8 @@ class _Harness {
   bool skipSent = false;
   bool aboveLog = false;
   bool Function()? navigateToQsoList;
+  bool Function()? crossOutward;
+  bool Function()? crossInward;
   final selects = <String?>[];
   final shows = <String?>[];
 
@@ -61,6 +63,8 @@ class _Harness {
       navigateToQsoList: navigateToQsoList,
       walkQsoList: null,
       aboveLog: aboveLog,
+      crossOutward: crossOutward,
+      crossInward: crossInward,
     ),
     // The panel's tap: `more` and event rows are its business; the rest
     // comes straight back to the ladder.
@@ -397,5 +401,41 @@ void main() {
     await tester.pump();
     expect(h.eventTextFocus.hasFocus, isTrue, reason: 'an event row has no callsign field to fall back to');
     h.dispose();
+  });
+
+  // SO2R stacks two sets of main fields, and the ladder's rung between the
+  // pills and set A's fields gains one more past it: set B's. The trap is the
+  // two edges disagreeing — set B's outward key climbing straight to the
+  // pills would strand the operator who meant to go back to radio A, and set
+  // A's inward key doing nothing would leave set B reachable only by pointer.
+  testWidgets("SO2R: set A's inward key crosses to set B, set B's outward key back to set A — and never to the pills", (tester) async {
+    final setA = _Harness()..wireCaretRule();
+    var crossedIn = 0;
+    setA.crossInward = () {
+      crossedIn++;
+      return true;
+    };
+    await tester.pumpWidget(setA.build());
+    setA.sentFocus.requestFocus();
+    await tester.pump();
+    await _press(tester, LogicalKeyboardKey.arrowDown);
+    expect(crossedIn, 1, reason: 'Down from set A is set B');
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    expect(setA.selects, ['time'], reason: 'Up from set A is still the pills');
+    setA.dispose();
+
+    final setB = _Harness()..wireCaretRule();
+    var crossedOut = 0;
+    setB.crossOutward = () {
+      crossedOut++;
+      return true;
+    };
+    await tester.pumpWidget(setB.build());
+    setB.sentFocus.requestFocus();
+    await tester.pump();
+    await _press(tester, LogicalKeyboardKey.arrowUp);
+    expect(crossedOut, 1, reason: 'Up from set B is set A');
+    expect(setB.selects, isEmpty, reason: 'set B has no pills of its own to open');
+    setB.dispose();
   });
 }

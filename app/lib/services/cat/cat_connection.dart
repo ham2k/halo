@@ -203,6 +203,8 @@ extension _Connection on CatService {
         if (uuid == _localRadio1) {
           _lastSeenVfoPower = watts;
           _radio?.setVfo('vfoA', power: watts, origin: VfoOrigin.radio);
+        } else if (uuid == radio2) {
+          _radio?.setVfo('vfoB', power: watts, origin: VfoOrigin.radio);
         }
       },
       onTransmitting: (transmitting) {
@@ -515,11 +517,10 @@ extension _Connection on CatService {
     });
   }
 
-  /// Whether [uuid] is the key in use and a device of its own (a keyer node,
-  /// not a radio doubling as one) — what the app's keying depends on, so it
-  /// is brought back the way radio1 is.
-  bool _isDesignatedKeyerDevice(String uuid) {
-    if (designatedFor(kCategoryKey) != uuid) return false;
+  /// Whether [uuid] is a key device of its own (a keyer node, not a radio
+  /// doubling as one) — what the app's keying depends on when it is a
+  /// radio's key, so it is brought back the way radio1 is.
+  bool _isKeyerDevice(String uuid) {
     final node = _nodes[uuid];
     return node != null && typeFor(node)?.category == kCategoryKeyer;
   }
@@ -540,7 +541,7 @@ extension _Connection on CatService {
   /// login" into "ignores the handshake". app-polo's auto-reconnect also ended
   /// up fighting the user's own Connect (see [_ConnectOutcome]). So:
   ///
-  ///  * only the designated radio, the one the logging panel depends on;
+  ///  * only what the logging panel depends on — [_autoConnectTargets];
   ///  * never after a deliberate Disconnect;
   ///  * at most one burst per [_autoReconnectCooldown], so a flapping radio —
   ///    or a second client holding its only session slot — gets a few attempts
@@ -549,7 +550,7 @@ extension _Connection on CatService {
   /// [reconnectDesignatedRadio] supplies the retry policy; this only decides
   /// whether it may run at all.
   void _autoReconnectAfterDrop(String uuid) {
-    if (_disposed || !(isRadio1(uuid) || _isDesignatedKeyerDevice(uuid))) return;
+    if (_disposed || !_autoConnectTargets.contains(uuid)) return;
     final last = _lastAutoReconnect[uuid];
     // Real time: this cooldown rate-limits real reconnect attempts against a
     // real radio, so a rescaled clock would let a storm through.
@@ -625,7 +626,7 @@ extension _Connection on CatService {
     for (final entry in _runtimes.entries) {
       if (!identical(entry.value, runtime)) continue;
       if (session != null) trafficLog?.note(_logLabel(entry.key), 'session closed');
-      _keying.forgetNode(entry.key, wasKeyInUse: entry.key == keyInUse, wasRadio1: entry.key == _localRadio1);
+      _keying.forgetNode(entry.key, wasKeyInUse: entry.key == keyInUse, wasKeyingRadio: entry.key == localKeyingRadio);
     }
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
