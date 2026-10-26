@@ -116,6 +116,11 @@ let currentExtensionKey = "unknown"
 /// ignored fallbacks.
 const privilegedHostCalls: Record<string, (method: string, params: Record<string, unknown>) => Promise<unknown>> = {}
 
+/// The bound `showForm` handed over at activation beside [privilegedHostCalls].
+/// On an app whose kernel hands none out, `host.showForm` falls back to the
+/// kernel's public entry, which takes the extension key from here.
+const boundShowForms: Record<string, (form: FormDefinition, state: Record<string, unknown>) => Promise<Record<string, any> | null>> = {}
+
 function kernel(): KernelApi {
   const k = (globalThis as Record<string, unknown>).__polo as KernelApi | undefined
   if (!k) throw new Error("polo kernel not loaded; kernel.js must be evaluated before extension bundles")
@@ -143,6 +148,7 @@ export function defineExtension(def: ExtensionDefinition): void {
     onHide: def.onHide && (() => def.onHide!()),
     onActivation(api) {
       if (typeof api.hostCall === "function") privilegedHostCalls[def.key] = api.hostCall
+      if (typeof api.showForm === "function") boundShowForms[def.key] = api.showForm
       adoptExtensionTimers(def.key, currentExtensionKey, api.timers)
       return def.onActivation(api)
     },
@@ -531,6 +537,8 @@ export const host = {
   },
 
   async showForm(form: FormDefinition, state: Record<string, any> = {}): Promise<Record<string, any> | null> {
+    const bound = boundShowForms[currentExtensionKey] ?? Object.values(boundShowForms)[0]
+    if (bound) return bound(form, state)
     return kernel().host.showForm(form, state, currentExtensionKey)
   },
 

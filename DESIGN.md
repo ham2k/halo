@@ -350,9 +350,9 @@ database, sync engine, peer protocol), `halo_widgets` (the widget catalog and
 the modules built from it), `halo_i18n` (the strings, as one package every
 first-party package may depend on), `halo_extension_host` (the QuickJS
 bridge) and the rest — plus vendored copies of third-party plugins, each with a
-`PATCH.md`; `extensions/` is the TypeScript workspace (`sdk/`, `activities/`,
-`contests/`, `lookups/`, `spots/`, `sync/`, `core/`) with its bundler, dev
-server and packaging tools beside it; `app_dist/` is the private distribution
+`PATCH.md`; `extensions/` is the TypeScript workspace (`sdk/`, `core/`,
+`sync/`, `samples/`, `shared/`) with its bundler, dev server and packaging
+tools beside them in `tools/` and `shims/`; `app_dist/` is the private distribution
 layer. Domain knowledge stays in `extensions/`; the app knows no program by
 name (§2).
 

@@ -49,7 +49,7 @@ void main() {
   }
 
   Future<Map<String, dynamic>> getAccount(ExtensionService s, String kvKey) async =>
-      (await s.debugHandleHostCall('getAccount', {'kvKey': kvKey})) as Map<String, dynamic>;
+      (await s.debugHandleHostCall('getAccount', {'ns': kvKey, 'kvKey': kvKey})) as Map<String, dynamic>;
 
   setUp(() => AccountContextCache.unreadableRetry = const Duration(seconds: 60));
 
@@ -118,6 +118,7 @@ void main() {
     await getAccount(service, 'qrz');
 
     await service.debugHandleHostCall('setAccountSession', {
+      'ns': 'qrz',
       'kvKey': 'qrz',
       'session': {'token': 'fresh'},
     });
@@ -164,6 +165,7 @@ void main() {
     final unlocked = fakeKeychain();
     unlocked.store['account_creds_qrz'] = '{"username":"n0dev"}';
     await service.debugHandleHostCall('setAccountSession', {
+      'ns': 'qrz',
       'kvKey': 'qrz',
       'session': {'token': 'fresh'},
     });

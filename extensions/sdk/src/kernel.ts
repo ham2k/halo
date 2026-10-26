@@ -46,7 +46,7 @@ import type {
   GetSpotsOptions,
   BoardSpot,
 } from "./types.ts"
-import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
+import { isValidAccountKvKey, isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
 import type { HookCategoryName } from "./hookCategories.ts"
 import { createTimerQueue, removeAmbientTimers } from "./timerQueue.ts"
@@ -176,6 +176,13 @@ interface HookRecord {
   priority: number
   extensionKey: string
   hook: Record<string, unknown>
+  /// Registered through a public entry that takes `extensionKey` from its
+  /// caller (`registerDynamicForm`, `host.showForm`: kept for a bundle whose
+  /// SDK captures no bound entry at activation, until the next extension API
+  /// bump). The key is a claim, so the record is never handed that
+  /// extension's account, reads the log frozen, and only the public entry
+  /// removes it.
+  unattributed?: boolean
 }
 
 interface PendingHostCall {
@@ -414,6 +421,8 @@ const IDENTITY_HOST_METHODS = new Set([
   "kvSet",
   "getAccount",
   "setAccountSession",
+  "setSettings",
+  "showForm",
   "showMessage",
   "statusBarSetMessage",
   "statusBarSetProgress",
@@ -482,6 +491,113 @@ function boundHostCallFor(extensionKey: string) {
   }
 }
 
+/// The keychain key of an `account` hook: its declared `kvKey` when that sits
+/// in the extension's own namespace (docs/extensions/settings.md, "Key
+/// namespacing"), else the hook's key. Judged on every read rather than once
+/// at registration, because the hook object stays the bundle's own and a
+/// `kvKey` set on it later deserves the same answer. A foreign key would read
+/// another extension's credentials out of the keychain.
+function accountKvKeyOf(record: HookRecord): string {
+  const declared = record.hook.kvKey
+  if (typeof declared === "string" && isValidAccountKvKey(record.extensionKey, declared)) return declared
+  return record.key || record.extensionKey
+}
+
+/// A `form` hook for one dialog's lifetime. [unattributed] marks a record
+/// whose `extensionKey` came from the caller rather than from an activation
+/// (HookRecord.unattributed). One record per id: the host addresses a form's
+/// callbacks by id alone, so a second registration under a live id would
+/// answer beside the first and read every field typed into its dialog. An
+/// extension may replace its own; an attributed registration displaces an
+/// unattributed claim; anything else is refused. False when refused.
+function addDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>, unattributed: boolean): boolean {
+  const taken = hooks.find((h) => h.category === "form" && h.key === formId)
+  if (taken) {
+    const own = !unattributed && !taken.unattributed && taken.extensionKey === extensionKey
+    const displaces = !unattributed && taken.unattributed === true
+    if (!own && !displaces) {
+      log(`ERROR registerDynamicForm('${formId}') as ${extensionKey}: the id is in use by ${taken.extensionKey} — not registered`)
+      return false
+    }
+    hooks.splice(hooks.indexOf(taken), 1)
+  }
+  const record: HookRecord = { category: "form", key: formId, priority: 0, extensionKey, hook: hookObj }
+  if (unattributed) record.unattributed = true
+  hooks.push(record)
+  return true
+}
+
+/// Removes [formId]'s record when [owner] may: an extension (its key) only
+/// its own attributed record, the public entry (null) only an unattributed
+/// one — so no bundle can pull another's callbacks out from under its dialog.
+function removeDynamicForm(formId: string, owner: string | null) {
+  const idx = hooks.findIndex(
+    (h) => h.category === "form" && h.key === formId && (owner === null ? h.unattributed === true : !h.unattributed && h.extensionKey === owner),
+  )
+  if (idx !== -1) hooks.splice(idx, 1)
+}
+
+/// Shows [form] as [extensionKey]'s: registers its callbacks as a dynamic
+/// `form` hook for the dialog's lifetime and asks the host through [send] —
+/// the extension's bound host call when the entry was handed out at
+/// activation, the plain dispatcher for the public entry, which stamps no
+/// identity on the call because it has none to stamp.
+async function showFormAs(
+  extensionKey: string,
+  form: FormDefinition,
+  state: Record<string, unknown>,
+  send: (method: string, params: Record<string, unknown>) => Promise<unknown>,
+  unattributed: boolean,
+): Promise<Record<string, any> | null> {
+  let formId = `dynamic:${Math.random().toString(36).substring(2, 10)}`
+  while (hooks.some((h) => h.category === "form" && h.key === formId)) formId = `dynamic:${Math.random().toString(36).substring(2, 10)}`
+
+  const cleanElements = form.elements.map((el) => {
+    if (el.type === "field") {
+      const { validate, transform, ...rest } = el
+      return rest
+    }
+    return el
+  })
+  const cleanForm = { ...form, elements: cleanElements }
+
+  addDynamicForm(
+    formId,
+    extensionKey,
+    {
+      getDefinition: async () => cleanForm,
+      validateField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
+        const field = form.elements.find((el) => el.type === "field" && (el as FormField).key === args.fieldKey) as FormField | undefined
+        if (field?.validate) {
+          return (await field.validate(args.value, args.state)) ?? null
+        }
+        return null
+      },
+      transformField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
+        const field = form.elements.find((el) => el.type === "field" && (el as FormField).key === args.fieldKey) as FormField | undefined
+        if (field?.transform) {
+          return await field.transform(args.value, args.state)
+        }
+        return args.value
+      },
+      onChangeField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
+        if (form.onChange) {
+          return (await form.onChange(args.fieldKey, args.value, args.state)) ?? null
+        }
+        return null
+      },
+    },
+    unattributed,
+  )
+
+  try {
+    const result = await send("showForm", { formId, form: cleanForm, state })
+    return result as Record<string, any> | null
+  } finally {
+    removeDynamicForm(formId, unattributed ? null : extensionKey)
+  }
+}
+
 // Hook-context caching: without it, settings and account credentials get
 // re-fetched over the bridge before EVERY hook method call — 1-2 extra
 // round trips (the account one hitting the platform keychain) multiplied
@@ -519,7 +635,7 @@ function getAccountContext(extensionKey: string): Promise<unknown> {
   if (!accountHookRecord) return Promise.resolve(undefined)
   const cached = cachedAccounts.get(extensionKey)
   if (cached && realNow() - cached.at < CONTEXT_CACHE_TTL_MILLIS) return cached.value
-  const kvKey = accountHookRecord.hook.kvKey || accountHookRecord.key || extensionKey
+  const kvKey = accountKvKeyOf(accountHookRecord)
   const value = (async () => {
     try {
       // Trusted kernel path (this is the kernel deriving identity itself,
@@ -544,7 +660,11 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
   const member = record.hook[method]
   // Plain data members don't get a ctx — skip the context fetches entirely.
   if (typeof member !== "function") return member
-  const account = (await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined
+  // An unattributed record's key is a claim (HookRecord.unattributed), and
+  // the one thing the claim could buy is that extension's account.
+  const account = record.unattributed
+    ? undefined
+    : ((await getAccountContext(record.extensionKey)) as { credentials?: Record<string, string>; session?: Record<string, string> } | undefined)
   let developerMode = false
   let locale = "en"
   const settings = (await getSettingsContext()) as
@@ -586,7 +706,8 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     getOperation: async (uuid: string) => ((await dispatchHostCall("getOperation", { uuid })) as Record<string, unknown> | null) ?? null,
     // Null (unknown operation / no log access) passes through untouched —
     // it means something different from [] (see HookContext.getQsos).
-    getQsos: (operationUuid: string) => logCopies.read(operationUuid, { frozen: apiOf(record.extensionKey) >= FROZEN_QSOS_API }),
+    getQsos: (operationUuid: string) =>
+      logCopies.read(operationUuid, { frozen: record.unattributed === true || apiOf(record.extensionKey) >= FROZEN_QSOS_API }),
     // Reads the host's already-fetched spot cache; never triggers a fetch,
     // so it is cheap enough for the per-keystroke lookup pipeline (see
     // HookContext.getSpotsForCall).
@@ -687,12 +808,21 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
   if (activated.has(def.key)) return null
   activated.add(def.key)
   const timerOwner = timerQueue.owner(def.key)
+  const bound = boundHostCallFor(def.key)
   try {
     await def.onActivation({
       // Activation is the identity hand-off: this function closes over the
       // extension's kernel-recorded key, and the SDK copy inside the bundle
       // captures it in module scope — unreachable from other bundles.
-      hostCall: boundHostCallFor(def.key),
+      hostCall: bound,
+      // Forms, bound the same way. The SDK prefers these to the public
+      // `registerDynamicForm`/`host.showForm`, which take the key from
+      // their caller.
+      showForm: (form: FormDefinition, state: Record<string, unknown> = {}) => showFormAs(def.key, form, state, bound, false),
+      registerDynamicForm: (formId: string, hookObj: Record<string, unknown>) => {
+        addDynamicForm(formId, def.key, hookObj, false)
+      },
+      unregisterDynamicForm: (formId: string) => removeDynamicForm(formId, def.key),
       timers: {
         set: (callback: unknown, delay: unknown, repeat: boolean, args: unknown[]) => timerQueue.set(timerOwner, callback, delay, repeat, args),
         clear: (id: unknown) => timerQueue.clear(timerOwner, id),
@@ -755,6 +885,13 @@ async function activateExtension(def: ExtensionDefinition): Promise<string | nul
             `ERROR registerHook(${category}) in extension ${def.key}: key '${resolvedKey}' must equal '${def.key}' or be prefixed '${def.key}_' — hook not registered`,
           )
           return
+        }
+        if (category === "account" && typeof hookObj.kvKey === "string" && !isValidAccountKvKey(def.key, hookObj.kvKey)) {
+          // Registered all the same, under the hook's own key: the account
+          // still works, only not under the name it asked for.
+          log(
+            `ERROR registerHook(account) in extension ${def.key}: kvKey '${hookObj.kvKey}' must equal '${def.key}' or be prefixed '${def.key}_' — using '${resolvedKey}'`,
+          )
         }
         hooks.push({
           category,
@@ -1012,7 +1149,7 @@ const kernel = {
                     // plain member as-is, so static values cost nothing extra.
                     label: (await callHookMethod(record, "label", {})) ?? record.key,
                     description: (await callHookMethod(record, "description", {})) ?? null,
-                    kvKey: record.hook.kvKey ?? record.key ?? record.extensionKey,
+                    kvKey: accountKvKeyOf(record),
                     fields: (await callHookMethod(record, "fields", {})) ?? [],
                     oauth2,
                     synchronizable: record.hook.synchronizable ?? false,
@@ -1308,69 +1445,24 @@ const kernel = {
 
   getAccountKvKey(extensionKey: string): string {
     const accountHookRecord = hooks.find((h) => h.category === "account" && h.extensionKey === extensionKey)
-    return (accountHookRecord?.hook?.kvKey as string | undefined) || accountHookRecord?.key || extensionKey
+    return accountHookRecord ? accountKvKeyOf(accountHookRecord) : extensionKey
   },
 
+  // Public, caller-named entries, kept for a bundle whose SDK captures no
+  // bound entry at activation; they go at the next extension API bump. The
+  // key is whatever the caller says, so the record is unattributed and the
+  // name buys nothing: the SDK's own wrappers never read a form callback's
+  // ctx, so a form shown this way works as before.
   registerDynamicForm(formId: string, extensionKey: string, hookObj: Record<string, unknown>) {
-    hooks.push({
-      category: "form",
-      key: formId,
-      priority: 0,
-      extensionKey,
-      hook: hookObj,
-    })
+    addDynamicForm(formId, extensionKey, hookObj, true)
   },
-
   unregisterDynamicForm(formId: string) {
-    const idx = hooks.findIndex((h) => h.category === "form" && h.key === formId)
-    if (idx !== -1) {
-      hooks.splice(idx, 1)
-    }
+    removeDynamicForm(formId, null)
   },
 
   host: {
-    async showForm(form: FormDefinition, state: Record<string, any> = {}, extensionKey: string = "kernel"): Promise<Record<string, any> | null> {
-      const formId = `dynamic:${Math.random().toString(36).substring(2, 10)}`
-
-      const cleanElements = form.elements.map((el) => {
-        if (el.type === "field") {
-          const { validate, transform, ...rest } = el
-          return rest
-        }
-        return el
-      })
-      const cleanForm = { ...form, elements: cleanElements }
-
-      kernel.registerDynamicForm(formId, extensionKey, {
-        getDefinition: async () => cleanForm,
-        validateField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
-          const field = form.elements.find((el) => el.type === "field" && (el as FormField).key === args.fieldKey) as FormField | undefined
-          if (field?.validate) {
-            return (await field.validate(args.value, args.state)) ?? null
-          }
-          return null
-        },
-        transformField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
-          const field = form.elements.find((el) => el.type === "field" && (el as FormField).key === args.fieldKey) as FormField | undefined
-          if (field?.transform) {
-            return await field.transform(args.value, args.state)
-          }
-          return args.value
-        },
-        onChangeField: async (args: { fieldKey: string; value: any; state: Record<string, any> }) => {
-          if (form.onChange) {
-            return (await form.onChange(args.fieldKey, args.value, args.state)) ?? null
-          }
-          return null
-        },
-      })
-
-      try {
-        const result = await hostCall("showForm", { formId, form: cleanForm, state })
-        return result as Record<string, any> | null
-      } finally {
-        kernel.unregisterDynamicForm(formId)
-      }
+    showForm(form: FormDefinition, state: Record<string, any> = {}, extensionKey: string = "kernel"): Promise<Record<string, any> | null> {
+      return showFormAs(extensionKey, form, state, dispatchHostCall, true)
     },
   },
 
@@ -1378,7 +1470,21 @@ const kernel = {
   sharedVersions: typeof __SHARED_VERSIONS__ !== "undefined" ? __SHARED_VERSIONS__ : {},
 }
 
-;(globalThis as Record<string, unknown>).__polo = kernel
+// Every bundle shares this realm, and every host entry (`__polo.invokeHook`,
+// `__polo.hostResponse`, …) is resolved from the global at call time. A
+// writable `__polo`, or a kernel whose members can be reassigned, lets one
+// bundle wrap another's traffic — host results, credentials included — and
+// so does a rewritten `JSON`, which every message crosses. Both are frozen,
+// one level deep: the shared libraries' exports stay as they ship. What
+// stays open is the rest of the realm's intrinsics (`Promise.prototype`,
+// `Map.prototype`, …), which a bundle can still rewrite and watch the kernel
+// through; closing that takes a context per extension, not a freeze.
+Object.freeze(JSON)
+Object.freeze(kernel.host)
+Object.freeze(kernel.sharedModules)
+Object.freeze(kernel.sharedVersions)
+Object.freeze(kernel)
+Object.defineProperty(globalThis, "__polo", { value: kernel, writable: false, configurable: false, enumerable: true })
 
 // Route console.log to the host so extension debugging output is visible.
 ;(globalThis as Record<string, unknown>).console = {

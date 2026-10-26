@@ -103,7 +103,7 @@ if (emitted.length < 2) {
 // The kernel IS the host. Published, it would hand every extension author the
 // code that defines `globalThis.__polo` and holds the single instance of every
 // shared library.
-const kernelMarkers = Object.entries(modules).filter(([, code]) => code.includes("__polo ="))
+const kernelMarkers = Object.entries(modules).filter(([, code]) => code.includes("__polo =") || code.includes('"__polo"'))
 if (kernelMarkers.length) {
   throw new Error(`dist/${kernelMarkers[0][0]} defines the kernel — that belongs to the host, not the SDK`)
 }

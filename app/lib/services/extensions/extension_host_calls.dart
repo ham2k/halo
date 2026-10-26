@@ -46,8 +46,20 @@ class _ExtensionHostCalls {
     };
   }
 
+  /// The `kvKey` of an account call, refused unless it sits in the calling
+  /// extension's own namespace ([accountKvKeyBelongsTo]). The kernel derives
+  /// both from its own records; the host judges the pair again itself.
+  String _ownAccountKvKey(String method, Map<String, dynamic> params) {
+    final kvKey = params['kvKey'] as String?;
+    final ns = params['ns'] as String?;
+    if (ns == null || kvKey == null || !accountKvKeyBelongsTo(ns, kvKey)) {
+      throw ExtensionHostException("$method blocked: extension '${ns ?? 'unknown'}' asked for account '${kvKey ?? 'none'}', outside its own namespace");
+    }
+    return kvKey;
+  }
+
   Future<dynamic> _getAccount(Map<String, dynamic> params) async {
-    final kvKey = params['kvKey'] as String;
+    final kvKey = _ownAccountKvKey('getAccount', params);
     final cached = _service._accountItems[kvKey];
     if (cached != null) return cached.toHostResult();
     // A read made through the deadlock bypass (below) used device-local
@@ -77,7 +89,7 @@ class _ExtensionHostCalls {
   }
 
   Future<dynamic> _setAccountSession(Map<String, dynamic> params) async {
-    final kvKey = params['kvKey'] as String;
+    final kvKey = _ownAccountKvKey('setAccountSession', params);
     final o = await _service._accountKeychainOptions(kvKey, fromHostCall: true);
     final session = params['session'] as Map<dynamic, dynamic>;
     final encoded = jsonEncode(session);

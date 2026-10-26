@@ -158,6 +158,11 @@ storage collisions between extensions are prevented, and how KV access
 control will be scoped once that lands — a write can be checked against the
 calling extension's own key prefix without a separate ownership table.
 
+The host enforces it for `AccountHook.kvKey`: a `kvKey` outside the
+extension's namespace is logged as an error and ignored — the account is
+stored under the hook's key instead — and a `getAccount` or
+`setAccountSession` naming a foreign key is refused.
+
 ```ts
 // Extension key: 'pota'. Two panels — the default and one explicit override.
 async getPanels() {

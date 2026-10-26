@@ -176,7 +176,7 @@ void main() {
       addTearDown(db.close);
       final extensions = ExtensionService()..lookups = LookupRepository(db);
 
-      final result = await extensions.debugHandleHostCall('getAccount', {'kvKey': 'sota'});
+      final result = await extensions.debugHandleHostCall('getAccount', {'ns': 'sota', 'kvKey': 'sota'});
       expect(result, isA<Map>());
       expect((result as Map)['unavailable'], isTrue);
       expect(result['credentials'], isEmpty);
@@ -188,7 +188,7 @@ void main() {
       addTearDown(db.close);
       final extensions = ExtensionService()..lookups = LookupRepository(db);
 
-      final result = await extensions.debugHandleHostCall('getAccount', {'kvKey': 'sota'}) as Map;
+      final result = await extensions.debugHandleHostCall('getAccount', {'ns': 'sota', 'kvKey': 'sota'}) as Map;
       expect(result.containsKey('unavailable'), isFalse, reason: 'absent when nothing is wrong');
       expect(result['credentials'], isEmpty);
     });

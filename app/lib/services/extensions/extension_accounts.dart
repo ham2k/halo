@@ -7,6 +7,13 @@
 
 part of 'extension_service.dart';
 
+/// Whether [kvKey] names an account inside extension [ns]'s namespace: the
+/// key itself or `<ns>_…` (docs/extensions/settings.md, "Key namespacing").
+/// The kernel stamps `ns` and derives `kvKey` from the hook's declaration;
+/// this is the host's own check of the pair, so a bundle that reaches the
+/// bridge some other way still reads only its own keychain items.
+bool accountKvKeyBelongsTo(String ns, String kvKey) => kvKey == ns || kvKey.startsWith('${ns}_');
+
 mixin _ExtensionAccounts {
   // Owned by the class or by another part of this library.
   ExtensionHost? get host;

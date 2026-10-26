@@ -39,6 +39,14 @@ export function isValidHookKey(category: string, extensionKey: string, resolvedK
   return resolvedKey === extensionKey || resolvedKey.startsWith(`${extensionKey}_`)
 }
 
+/// `AccountHook.kvKey` falls under the same namespacing as a hook key
+/// (docs/extensions/settings.md): the extension's key, or `<key>_…`. The
+/// keychain is keyed by it, so a foreign `kvKey` would be another
+/// extension's credentials.
+export function isValidAccountKvKey(extensionKey: string, kvKey: string): boolean {
+  return isValidHookKey("account", extensionKey, kvKey)
+}
+
 /// Tier 1 (`kind: 'simple'`) settings panels are static data, not a
 /// getDefinition() function — this builds the FormDefinition shape directly
 /// from the registered object, with no field values overlaid (the host

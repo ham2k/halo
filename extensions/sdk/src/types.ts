@@ -2367,6 +2367,15 @@ export interface ActivationApi {
     set(callback: unknown, delay: unknown, repeat: boolean, args: unknown[]): number
     clear(id: unknown): void
   }
+
+  /// Forms, bound by the kernel like [hostCall]: a dynamic form registered or
+  /// shown through these is THIS extension's. The SDK captures them at
+  /// activation and uses them for `host.showForm`; absent on an app whose
+  /// kernel hands none out, where the SDK falls back to the kernel's public
+  /// entries, which take the key from their caller and go at the next API bump.
+  showForm?(form: FormDefinition, state?: Record<string, unknown>): Promise<Record<string, any> | null>
+  registerDynamicForm?(formId: string, hookObj: Record<string, unknown>): void
+  unregisterDynamicForm?(formId: string): void
 }
 
 /// Where, when and for whom an extension is relevant

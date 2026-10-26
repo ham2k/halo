@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { isValidHookKey, settingsPanelEntriesFor, tier1FormDefinition } from "./settingsPanels.ts"
+import { isValidAccountKvKey, isValidHookKey, settingsPanelEntriesFor, tier1FormDefinition } from "./settingsPanels.ts"
 
 test("isValidHookKey: exact extension key is always valid", () => {
   assert.equal(isValidHookKey("settingsPanel", "pota", "pota"), true)
@@ -174,4 +174,15 @@ test("settingsPanelEntriesFor: a getPanels() descriptor claiming another extensi
   const record = { key: "pota", extensionKey: "pota", hook: { kind: "dynamic" } }
   const descriptors = [{ key: "sota", title: "Someone else's extension key" }]
   assert.deepEqual(settingsPanelEntriesFor(record, descriptors), [])
+})
+
+test("isValidAccountKvKey: the extension key and its underscore prefix, nothing else", () => {
+  assert.equal(isValidAccountKvKey("qrz", "qrz"), true)
+  assert.equal(isValidAccountKvKey("qrz", "qrz_xml"), true)
+  // Another extension's account is the one thing the rule exists to refuse.
+  assert.equal(isValidAccountKvKey("thief", "qrz"), false)
+  // A dash or camelCase names another extension's namespace, not a sub-key.
+  assert.equal(isValidAccountKvKey("qrz", "qrz-xml"), false)
+  assert.equal(isValidAccountKvKey("qrz", "qrzXml"), false)
+  assert.equal(isValidAccountKvKey("qrz", ""), false)
 })
