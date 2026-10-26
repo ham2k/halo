@@ -1,7 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderTable;
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'spacing.dart';
@@ -12,10 +15,13 @@ import 'theme.dart';
 /// last. Inline, single-line markdown is [InlineMarkdownText]'s job.
 ///
 /// The house sheet is [MarkdownStyleSheet.fromTheme] plus the house table
-/// style — no borders, thin cell padding, cells aligned to the top of a row
-/// that wraps, and headers aligned left like their cells (a column's own
-/// `:--:` alignment still wins). A bare `MarkdownBody` gets flutter_markdown's
-/// bordered 16x8 grid instead, and can lose the emoji font;
+/// style — columns as wide as their content, the table no wider than they
+/// make it until it reaches the width there is, and then narrowed column by
+/// column with its text wrapping (see [_ContentColumnWidth]); no borders, thin cell padding, cells
+/// aligned to the top of a row that wraps, and headers aligned left like
+/// their cells (a column's own `:--:` alignment still wins). A bare
+/// `MarkdownBody` gets flutter_markdown's bordered, full-width 16x8 grid
+/// instead, and can lose the emoji font;
 /// `no_bare_markdown_body_test.dart` keeps every render coming through here.
 class HaloMarkdown extends StatelessWidget {
   const HaloMarkdown({super.key, required this.data, this.style, this.selectable = false, this.softLineBreak = false, this.onTapLink});
@@ -34,22 +40,59 @@ class HaloMarkdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = _houseStyleSheet(Theme.of(context));
-    return MarkdownBody(
-      data: data,
-      styleSheet: _withEmojiFallback(style?.call(base) ?? base),
-      selectable: selectable,
-      softLineBreak: softLineBreak,
-      onTapLink: onTapLink,
+    // A loose width, whatever the parent hands down: MarkdownBody returns a
+    // lone block bare, without the start-aligned Column that loosens it, and a
+    // Table under a tight width stretches its columns across all of it.
+    return Align(
+      alignment: AlignmentDirectional.topStart,
+      heightFactor: 1,
+      child: MarkdownBody(
+        data: data,
+        styleSheet: _withEmojiFallback(style?.call(base) ?? base),
+        selectable: selectable,
+        softLineBreak: softLineBreak,
+        onTapLink: onTapLink,
+      ),
     );
   }
 }
 
 MarkdownStyleSheet _houseStyleSheet(ThemeData theme) => MarkdownStyleSheet.fromTheme(theme).copyWith(
+  tableColumnWidth: const _ContentColumnWidth(),
   tableHeadAlign: TextAlign.left,
   tableVerticalAlignment: TableCellVerticalAlignment.top,
   tableBorder: const TableBorder(),
   tableCellsPadding: const EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs),
 );
+
+/// A column as wide as its widest cell, which a [Table] narrows toward its
+/// longest word when the columns overrun the width there is — and no further
+/// than that unless this does: a [Table] never takes a column below its
+/// minimum, and paints one that will not fit past its own edge. So no column
+/// holds out for more than an even share of the width, and a table whose
+/// longest words cannot all fit breaks the longest of them instead.
+/// `postcard_summary.dart`'s `columnWidths` lays a postcard's table out by
+/// the same rule.
+///
+/// Not an [IntrinsicColumnWidth] by type, deliberately: flutter_markdown puts
+/// a table of those in a horizontal scroll view, where the width is unbounded
+/// and nothing narrows it.
+class _ContentColumnWidth extends TableColumnWidth {
+  const _ContentColumnWidth();
+
+  static const _content = IntrinsicColumnWidth();
+
+  @override
+  double minIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) {
+    final least = _content.minIntrinsicWidth(cells, containerWidth);
+    if (cells.isEmpty || !containerWidth.isFinite) return least;
+    final columns = (cells.first.parent! as RenderTable).columns;
+    return math.min(least, containerWidth / columns);
+  }
+
+  @override
+  double maxIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) => _content.maxIntrinsicWidth(cells, containerWidth);
+}
 
 /// [base] with [emojiFontFamily] added as a fallback to every style that can
 /// carry running text.

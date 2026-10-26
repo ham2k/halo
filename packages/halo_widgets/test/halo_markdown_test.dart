@@ -41,6 +41,67 @@ void main() {
       }
     });
 
+    // A full-width table strands a short one's figures at the far edge of a
+    // wide pane, away from the labels they belong to.
+    testWidgets('take only the width their content needs', (tester) async {
+      await _pump(tester);
+      expect(tester.getSize(find.byType(Table)).width, lessThan(tester.getSize(find.byType(Scaffold)).width / 2));
+    });
+
+    // A table alone is the one block MarkdownBody hands its parent's width
+    // unloosened, and a list — the Info and Summaries panes — hands down a
+    // tight one, which a Table fills by stretching every column.
+    testWidgets('take only the width their content needs under a parent that hands down its whole width', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ListView(children: const [HaloMarkdown(data: _table)]),
+          ),
+        ),
+      );
+      expect(tester.getSize(find.byType(Table)).width, lessThan(tester.getSize(find.byType(Scaffold)).width / 2));
+    });
+
+    // flutter_markdown puts a table of IntrinsicColumnWidths in a sideways
+    // scroll view, where nothing narrows it: the columns past a narrow pane's
+    // edge would be out of sight instead of wrapped.
+    testWidgets('wrap inside a pane they would overrun, rather than scroll past its edge', (tester) async {
+      final long = List.filled(20, 'word').join(' ');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: 200, child: HaloMarkdown(data: '| Band | Note |\n| --- | --- |\n| 20m | $long |')),
+            ),
+          ),
+        ),
+      );
+      expect(find.byType(SingleChildScrollView), findsNothing);
+      expect(tester.getSize(find.byType(Table)).width, lessThanOrEqualTo(200));
+      expect(tester.getSize(find.text(long, findRichText: true)).height, greaterThan(tester.getSize(find.text('20m', findRichText: true)).height));
+    });
+
+    // A Table never takes a column below its minimum, and paints the columns
+    // that do not fit past its own edge: on a phone-width pane, a band table's
+    // last columns would be cut off.
+    testWidgets('break their longest words rather than run past a pane too narrow for them', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 200,
+                child: HaloMarkdown(data: '| Alphabet | Bravissimo | Charleston | Delectable |\n| --- | --- | --- | --- |\n| 1 | 2 | 3 | 4 |'),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(tester.getRect(find.text('Delectable', findRichText: true)).right, lessThanOrEqualTo(200));
+    });
+
     testWidgets('pad cells thinly and align them to the top of a row that wraps', (tester) async {
       await _pump(tester);
       expect(tester.widget<Table>(find.byType(Table)).defaultVerticalAlignment, TableCellVerticalAlignment.top);

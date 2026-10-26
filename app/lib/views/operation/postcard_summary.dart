@@ -13,22 +13,30 @@
 // of pages never shown both need. A page then draws the same spans at the same
 // width, each piece held to the height the layout gave it.
 
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart' show precisionErrorTolerance;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'package:markdown/markdown.dart' as md;
 
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
 import 'information_panel.dart' show scorerIconColor, summaryTallies;
 import 'operation_postcard.dart' show PostcardOverlay, PostcardShape, PostcardText, postcardFooterRoom;
 
-/// A stretch of summary text in one weight.
-typedef PostcardRun = ({String text, bool bold, bool struck});
+typedef PostcardRunStyle = ({bool bold, bool italic, bool struck, bool code});
+
+const _plain = (bold: false, italic: false, struck: false, code: false);
+const _code = (bold: false, italic: false, struck: false, code: true);
+
+/// A stretch of summary text in one style.
+typedef PostcardRun = ({String text, PostcardRunStyle style});
 
 sealed class PostcardBlock {
   const PostcardBlock();
@@ -59,7 +67,7 @@ enum PostcardTextKind {
   /// and the worked ones struck through at full strength.
   grid,
 
-  /// A `#` heading inside a tally's detail.
+  /// A heading inside a tally's detail, of any level.
   subheading,
 }
 
@@ -69,7 +77,23 @@ final class PostcardParagraph extends PostcardBlock {
 
   const PostcardParagraph(this.runs, {this.kind = PostcardTextKind.body});
 
-  PostcardParagraph.plain(String text) : this([(text: text, bold: false, struck: false)]);
+  PostcardParagraph.plain(String text) : this([(text: text, style: _plain)]);
+}
+
+/// A Markdown table, laid out as the Info pane lays one out: each column as
+/// wide as its content, the columns narrowed toward their longest words where
+/// together they would overrun the text's width, no rules, a cell's lines
+/// aligned to the top of its row, in body text even in a grid tally's detail. A page breaks
+/// it between rows, never after the header alone, and heads each page it runs
+/// on to with the header again.
+final class PostcardTable extends PostcardBlock {
+  /// The header row first. A cell is its runs.
+  final List<List<List<PostcardRun>>> rows;
+
+  /// Each column's `:--:` alignment.
+  final List<TextAlign> aligns;
+
+  const PostcardTable(this.rows, {required this.aligns});
 }
 
 class PostcardSummarySection {
@@ -194,66 +218,163 @@ PostcardHeading _tallyHeading(Map<dynamic, dynamic> tally, {Color? color, bool m
   );
 }
 
-List<PostcardParagraph> _tallyDetail(Map<dynamic, dynamic> tally) {
+List<PostcardBlock> _tallyDetail(Map<dynamic, dynamic> tally) {
   final detail = tally['longSummary'];
-  return detail is String ? postcardParagraphs(detail, grid: tally['grid'] == true) : const [];
+  return detail is String ? postcardBlocks(detail, grid: tally['grid'] == true) : const [];
 }
 
-final _headingLine = RegExp(r'^ {0,3}#{1,6}\s+(.*?)(\s+#+)?\s*$');
-
-/// [markdown] as the Info pane's MarkdownBody shows it, in the part of
-/// Markdown the scorers write: `**strong**`, `~~struck~~`, `#` headings on
-/// lines of their own, a line break wherever the source breaks a line (the
-/// pane's `softLineBreak`), and a blank line between paragraphs. Anything
-/// else stays the text it is.
-List<PostcardParagraph> postcardParagraphs(String markdown, {bool grid = false}) {
-  final paragraphs = <PostcardParagraph>[];
-  final lines = <String>[];
-  void flush() {
-    if (lines.isEmpty) return;
-    paragraphs.add(PostcardParagraph(_runs(lines.join('\n')), kind: grid ? PostcardTextKind.grid : PostcardTextKind.body));
-    lines.clear();
+/// [markdown] read as the Info pane's MarkdownBody reads it — flutter_markdown's
+/// own parser, GitHub-flavored, with a line break wherever the source breaks
+/// a line (the pane's `softLineBreak`) — as blocks a page can measure and
+/// split. A heading of any level is a subheading; a list is one paragraph,
+/// an item to a line; a code block is a paragraph in the mono face; a quote
+/// is the blocks inside it; a rule is nothing. A picture has no link to tap
+/// and loads no image: a link is its words, and an image is left out.
+List<PostcardBlock> postcardBlocks(String markdown, {bool grid = false}) {
+  final kind = grid ? PostcardTextKind.grid : PostcardTextKind.body;
+  final blocks = <PostcardBlock>[];
+  void paragraph(List<PostcardRun> runs, PostcardTextKind kind) {
+    if (runs.isNotEmpty) blocks.add(PostcardParagraph(runs, kind: kind));
   }
 
-  for (final line in markdown.split('\n')) {
-    final heading = _headingLine.firstMatch(line);
-    if (line.trim().isEmpty) {
-      flush();
-    } else if (heading != null) {
-      flush();
-      paragraphs.add(PostcardParagraph(_runs(heading[1]!), kind: PostcardTextKind.subheading));
-    } else {
-      lines.add(line);
+  void block(md.Node node) {
+    if (node is md.Text) return paragraph(_runs([node]), kind);
+    if (node is! md.Element) return;
+    switch (node.tag) {
+      case 'p':
+        paragraph(_runs(node.children, within: 'p'), kind);
+      case 'h1' || 'h2' || 'h3' || 'h4' || 'h5' || 'h6':
+        paragraph(_runs(node.children), PostcardTextKind.subheading);
+      case 'ul' || 'ol':
+        paragraph(_listRuns(node, 0), kind);
+      case 'pre':
+        final code = node.textContent.replaceFirst(RegExp(r'\n$'), '');
+        if (code.isNotEmpty) paragraph([(text: code, style: _code)], kind);
+      case 'table':
+        blocks.add(_table(node));
+      case 'hr':
+        break;
+      default:
+        node.children?.forEach(block);
     }
   }
-  flush();
-  return paragraphs;
+
+  // Text at the document's own level is an HTML block, which the pane's
+  // builder draws nothing for.
+  md.Document(extensionSet: md.ExtensionSet.gitHubFlavored, encodeHtml: false).parse(markdown).whereType<md.Element>().forEach(block);
+  return blocks;
 }
 
-List<PostcardRun> _runs(String text) {
+/// The tags flutter_markdown's builder drops a text's leading spaces after,
+/// entering or leaving one: the start of a paragraph or a list item, and
+/// the line after a hard break.
+const _trimsAfter = {'p', 'li', 'ul', 'ol', 'br'};
+
+/// [nodes]' inline Markdown as runs, one to each change of style. [within]
+/// is the block they sit in, the tag the pane's builder last visited before
+/// them.
+List<PostcardRun> _runs(Iterable<md.Node>? nodes, {String? within}) {
   final runs = <PostcardRun>[];
-  final buffer = StringBuffer();
-  var bold = false, struck = false;
-  void emit() {
-    if (buffer.isNotEmpty) runs.add((text: buffer.toString(), bold: bold, struck: struck));
-    buffer.clear();
-  }
-
-  for (var i = 0; i < text.length; i++) {
-    if (text.startsWith('**', i)) {
-      emit();
-      bold = !bold;
-      i++;
-    } else if (text.startsWith('~~', i)) {
-      emit();
-      struck = !struck;
-      i++;
+  var last = within;
+  void add(String text, PostcardRunStyle style) {
+    if (text.isEmpty) return;
+    if (runs.isNotEmpty && runs.last.style == style) {
+      runs.last = (text: runs.last.text + text, style: style);
     } else {
-      buffer.write(text[i]);
+      runs.add((text: text, style: style));
     }
   }
-  emit();
+
+  void walk(md.Node node, PostcardRunStyle style) {
+    if (node is md.Text) {
+      add(_trimsAfter.contains(last) ? node.text.replaceFirst(RegExp('^ +'), '') : node.text, style);
+      last = null;
+      return;
+    }
+    if (node is! md.Element) return;
+    last = node.tag;
+    switch (node.tag) {
+      case 'br':
+        add('\n', style);
+      case 'code':
+        add(node.textContent, (bold: style.bold, italic: style.italic, struck: style.struck, code: true));
+      default:
+        final inner = (
+          bold: style.bold || node.tag == 'strong',
+          italic: style.italic || node.tag == 'em',
+          struck: style.struck || node.tag == 'del',
+          code: style.code,
+        );
+        for (final child in node.children ?? const <md.Node>[]) {
+          walk(child, inner);
+        }
+    }
+    last = node.tag;
+  }
+
+  for (final node in nodes ?? const <md.Node>[]) {
+    walk(node, _plain);
+  }
   return runs;
+}
+
+/// A list's items, a line each under its bullet, number or task box, a list
+/// inside an item indented under it, and a loose item's paragraphs a line
+/// each.
+List<PostcardRun> _listRuns(md.Element list, int depth) {
+  final runs = <PostcardRun>[];
+  var number = int.tryParse(list.attributes['start'] ?? '') ?? 1;
+  for (final item in list.children?.whereType<md.Element>() ?? const <md.Element>[]) {
+    final inline = <md.Node>[], nested = <md.Element>[];
+    String? box;
+    for (final child in item.children ?? const <md.Node>[]) {
+      if (child is md.Element && (child.tag == 'ul' || child.tag == 'ol')) {
+        nested.add(child);
+      } else if (child is md.Element && child.tag == 'p') {
+        if (inline.isNotEmpty) inline.add(md.Element.empty('br'));
+        inline.addAll(child.children ?? const []);
+      } else if (child is md.Element && child.tag == 'input') {
+        // Emoji, which the emoji fallback draws on every platform: Roboto
+        // has no ballot box.
+        box = child.attributes['checked'] == 'true' ? '✅ ' : '⬜ ';
+      } else {
+        inline.add(child);
+      }
+    }
+    // A boxed item still takes its number, as the pane counts it.
+    final index = number++;
+    final marker = box ?? (list.tag == 'ol' ? '$index. ' : '• ');
+    runs.addAll([
+      if (runs.isNotEmpty) (text: '\n', style: _plain),
+      (text: '${' ' * (4 * depth)}$marker', style: _plain),
+      ..._runs(inline, within: 'li'),
+      for (final list in nested) ...[(text: '\n', style: _plain), ..._listRuns(list, depth + 1)],
+    ]);
+  }
+  return runs;
+}
+
+PostcardTable _table(md.Element table) {
+  final rows = [
+    for (final part in table.children?.whereType<md.Element>() ?? const <md.Element>[])
+      for (final row in part.children?.whereType<md.Element>() ?? const <md.Element>[])
+        [for (final cell in row.children?.whereType<md.Element>() ?? const <md.Element>[]) cell],
+  ];
+  return PostcardTable(
+    [
+      for (final row in rows) [for (final cell in row) _runs(cell.children)],
+    ],
+    // The pane's house table sets a header as its column does, and a column
+    // with no `:--:` of its own to the left.
+    aligns: [
+      for (final cell in rows.isEmpty ? const <md.Element>[] : rows.first)
+        switch (cell.attributes['align']) {
+          'center' => TextAlign.center,
+          'right' => TextAlign.right,
+          _ => TextAlign.left,
+        },
+    ],
+  );
 }
 
 /// The summary pages' type and its geometry, in the picture's own ink (see
@@ -312,23 +433,82 @@ class _Type {
     PostcardTextKind.grid => TextStyle(fontFamily: 'RobotoMono', fontSize: 17, height: 1.45, color: ink.withValues(alpha: 0.5), fontFamilyFallback: _fallback),
   };
 
-  TextSpan span(PostcardParagraph paragraph) => TextSpan(
-    style: this.paragraph(paragraph.kind),
-    children: [for (final run in paragraph.runs) TextSpan(text: run.text, style: _run(run, paragraph.kind))],
+  TextSpan span(PostcardParagraph paragraph) => _span(paragraph.runs, this.paragraph(paragraph.kind), paragraph.kind);
+
+  /// The house table's cell padding, as the Info pane's.
+  static const cellPadding = EdgeInsets.symmetric(horizontal: Space.xs, vertical: Space.xxs);
+
+  /// Each of [table]'s columns' width, padding included, by the rule
+  /// HaloMarkdown's house table sets the Info pane's by (its
+  /// `_ContentColumnWidth`, under [Table]'s own narrowing): its widest cell's;
+  /// and where together they overrun [width], each narrowed by an even share
+  /// of the excess, none below its longest word — nor held above an even
+  /// share of [width] for one, so a word too long to fit breaks rather than
+  /// running off the picture.
+  List<double> columnWidths(PostcardTable table, double width) {
+    final columns = table.aligns.length;
+    final widths = List.filled(columns, 0.0), least = List.filled(columns, 0.0);
+    for (var row = 0; row < table.rows.length; row++) {
+      for (var column = 0; column < columns; column++) {
+        final painter = _Measurer._painter(cell(table, row, column), double.infinity);
+        widths[column] = math.max(widths[column], painter.maxIntrinsicWidth + cellPadding.horizontal);
+        least[column] = math.max(least[column], painter.minIntrinsicWidth + cellPadding.horizontal);
+        painter.dispose();
+      }
+    }
+    for (var column = 0; column < columns; column++) {
+      least[column] = math.min(least[column], width / columns);
+    }
+    var excess = widths.fold(0.0, (sum, w) => sum + w) - width;
+    while (excess > precisionErrorTolerance) {
+      final open = [
+        for (var column = 0; column < columns; column++)
+          if (widths[column] > least[column]) column,
+      ];
+      if (open.isEmpty) break;
+      final share = excess / open.length;
+      for (final column in open) {
+        final cut = math.min(share, widths[column] - least[column]);
+        widths[column] -= cut;
+        excess -= cut;
+      }
+    }
+    return widths;
+  }
+
+  /// A short row's missing cell is an empty one.
+  TextSpan cell(PostcardTable table, int row, int column) => _span(
+    column < table.rows[row].length ? table.rows[row][column] : const [],
+    // The header a weight up, as the pane's house table sets it.
+    row == 0 ? paragraph(PostcardTextKind.body).copyWith(fontWeight: FontWeight.w600) : paragraph(PostcardTextKind.body),
+    PostcardTextKind.body,
+  );
+
+  TextSpan _span(List<PostcardRun> runs, TextStyle style, PostcardTextKind kind) => TextSpan(
+    style: style,
+    children: [for (final run in runs) TextSpan(text: run.text, style: _run(run, kind))],
   );
 
   TextStyle? _run(PostcardRun run, PostcardTextKind kind) {
+    final style = run.style;
+    if (style == _plain) return null;
     // A worked code, set back to full strength.
-    if (run.struck && kind == PostcardTextKind.grid) return TextStyle(color: ink, fontWeight: FontWeight.w700, decoration: TextDecoration.lineThrough);
-    if (!run.bold && !run.struck) return null;
-    return TextStyle(fontWeight: run.bold ? FontWeight.w700 : null, decoration: run.struck ? TextDecoration.lineThrough : null);
+    final worked = style.struck && kind == PostcardTextKind.grid;
+    return TextStyle(
+      color: worked ? ink : null,
+      fontFamily: style.code ? 'RobotoMono' : null,
+      fontWeight: style.bold || worked ? FontWeight.w700 : null,
+      fontStyle: style.italic ? FontStyle.italic : null,
+      decoration: style.struck ? TextDecoration.lineThrough : null,
+    );
   }
 }
 
 /// A block's place on one page: [top] and [height] in the page's content box
-/// — see [PostcardSummaryLayout.content] — and, for a paragraph, how far down
-/// its own lines the piece begins: [from] is 0 but where a paragraph runs on
-/// from the page before.
+/// — see [PostcardSummaryLayout.content] — and, for a paragraph or a table,
+/// how far down its own lines or rows the piece begins: [from] is 0 but where
+/// one runs on from the page before. A table's piece that does runs its
+/// header row over them, in its [height].
 class PostcardPiece {
   final PostcardBlock block;
   final double top;
@@ -354,9 +534,9 @@ double _gapBefore(PostcardBlock block) => block is PostcardHeading ? Space.lg : 
 /// [sections] laid out on pages of [page] size under a header [header] pixels
 /// tall. A section starts a new page when it does not fit on what is left of
 /// the current one, and one taller than a page starts one and runs on across
-/// as many more as it takes, breaking between lines under its heading
-/// retitled by [continued]. A tally's heading inside a section is kept with
-/// the first line under it.
+/// as many more as it takes, breaking between lines or a table's rows under
+/// its heading retitled by [continued]. A tally's heading inside a section is
+/// kept with the first line under it, or a table's header and first row.
 PostcardSummaryLayout postcardSummaryLayout(
   List<PostcardSummarySection> sections, {
   required Size page,
@@ -402,26 +582,30 @@ PostcardSummaryLayout postcardSummaryLayout(
       final b = body[i];
       final gap = _gapBefore(b.block);
       if (b.block is PostcardHeading) {
-        final next = i + 1 < body.length ? _gapBefore(body[i + 1].block) + body[i + 1].firstLine : 0.0;
+        final next = i + 1 < body.length ? _gapBefore(body[i + 1].block) + body[i + 1].tops[body[i + 1].firstLines] : 0.0;
         if (!fits(gap + b.height + next) && !headingAlone()) runOn();
         put(b.block, gap, b.height);
         continue;
       }
+      final table = b.block is PostcardTable;
       var from = 0;
       while (from < b.lineCount) {
+        // A table's header again, over the rows a page picks up.
+        final repeated = table && from > 0 ? b.tops[1] : 0.0;
+        final least = from == 0 ? b.firstLines : from + 1;
         var to = from;
-        while (to < b.lineCount && fits(gap + b.tops[to + 1] - b.tops[from])) {
+        while (to < b.lineCount && fits(gap + repeated + b.tops[to + 1] - b.tops[from])) {
           to++;
         }
-        if (to == from) {
+        if (to < least) {
           if (!headingAlone()) {
             runOn();
             continue;
           }
           // A line taller than a page, drawn cut off rather than never.
-          to = from + 1;
+          to = least;
         }
-        put(b.block, gap, b.tops[to] - b.tops[from], from: b.tops[from]);
+        put(b.block, gap, repeated + b.tops[to] - b.tops[from], from: b.tops[from]);
         from = to;
         if (from < b.lineCount) runOn();
       }
@@ -431,13 +615,20 @@ PostcardSummaryLayout postcardSummaryLayout(
   return PostcardSummaryLayout(content: content, pages: pages);
 }
 
-/// A block's height, and a paragraph's line tops: [tops] runs from 0 to the
-/// paragraph's height, one entry per line and one more for its foot.
+/// A block's height, and the tops of a paragraph's lines or a table's rows:
+/// [tops] runs from 0 to the block's height, one entry per line or row and
+/// one more for its foot.
 typedef _Measured = ({PostcardBlock block, double height, List<double> tops});
 
 extension on _Measured {
   int get lineCount => tops.length - 1;
-  double get firstLine => tops.length > 1 ? tops[1] : height;
+
+  /// The lines a page may not end before: the first — or a table's header
+  /// and its first row, as a header alone at a page's foot heads nothing.
+  int get firstLines {
+    final least = block is PostcardTable ? 2 : 1;
+    return lineCount < least ? lineCount : least;
+  }
 }
 
 class _Measurer {
@@ -450,6 +641,7 @@ class _Measurer {
   _Measured call(PostcardBlock block) => switch (block) {
     final PostcardHeading heading => _heading(heading),
     final PostcardParagraph paragraph => _paragraph(paragraph),
+    final PostcardTable table => _table(table),
   };
 
   _Measured _heading(PostcardHeading heading) {
@@ -478,6 +670,22 @@ class _Measurer {
     final height = painter.height;
     painter.dispose();
     return (block: paragraph, height: height, tops: tops);
+  }
+
+  /// A table's row is a line: a page breaks it between rows.
+  _Measured _table(PostcardTable table) {
+    final widths = _type.columnWidths(table, width);
+    final tops = <double>[0];
+    for (var row = 0; row < table.rows.length; row++) {
+      var tallest = 0.0;
+      for (var column = 0; column < table.aligns.length; column++) {
+        final painter = _painter(_type.cell(table, row, column), math.max(0, widths[column] - _Type.cellPadding.horizontal));
+        if (painter.height > tallest) tallest = painter.height;
+        painter.dispose();
+      }
+      tops.add(tops.last + tallest + _Type.cellPadding.vertical);
+    }
+    return (block: table, height: tops.last, tops: tops);
   }
 
   static TextPainter _painter(TextSpan text, double maxWidth) => TextPainter(text: text, textDirection: TextDirection.ltr)..layout(maxWidth: maxWidth);
@@ -546,19 +754,27 @@ class PostcardSummaryPage extends StatelessWidget {
                     height: piece.height,
                     child: switch (piece.block) {
                       final PostcardHeading heading => _HeadingRow(heading: heading, type: type),
-                      // The paragraph whole, as the layout measured it, slid up to
+                      // The block whole, as the layout measured it, slid up to
                       // this piece's first line and cut off below its last.
-                      final PostcardParagraph paragraph => ClipRect(
-                        child: Stack(
-                          children: [
-                            Positioned(
-                              left: 0,
-                              right: 0,
-                              top: -piece.from,
-                              child: RichText(text: type.span(paragraph)),
+                      final PostcardParagraph paragraph => _Slid(
+                        from: piece.from,
+                        child: RichText(text: type.span(paragraph)),
+                      ),
+                      final PostcardTable table when piece.from == 0 => _Slid(
+                        from: 0,
+                        child: _TableRows(table: table, type: type, width: layout.content.width),
+                      ),
+                      final PostcardTable table => Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _TableRows(table: table, type: type, width: layout.content.width, headerOnly: true),
+                          Expanded(
+                            child: _Slid(
+                              from: piece.from,
+                              child: _TableRows(table: table, type: type, width: layout.content.width),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     },
                   ),
@@ -570,6 +786,58 @@ class PostcardSummaryPage extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _Slid extends StatelessWidget {
+  final double from;
+  final Widget child;
+
+  const _Slid({required this.from, required this.child});
+
+  @override
+  Widget build(BuildContext context) => ClipRect(
+    child: Stack(
+      children: [Positioned(left: 0, right: 0, top: -from, child: child)],
+    ),
+  );
+}
+
+/// Laid out to the numbers [_Measurer] measures it by: each column
+/// [_Type.columnWidths] wide at the content's [width], a row as tall as its
+/// tallest cell.
+class _TableRows extends StatelessWidget {
+  final PostcardTable table;
+  final _Type type;
+  final double width;
+  final bool headerOnly;
+
+  const _TableRows({required this.table, required this.type, required this.width, this.headerOnly = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final widths = type.columnWidths(table, width);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var row = 0; row < (headerOnly ? 1 : table.rows.length); row++)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var column = 0; column < table.aligns.length; column++)
+                SizedBox(
+                  width: widths[column],
+                  child: Padding(
+                    padding: _Type.cellPadding,
+                    child: RichText(text: type.cell(table, row, column), textAlign: table.aligns[column]),
+                  ),
+                ),
+            ],
+          ),
+      ],
     );
   }
 }

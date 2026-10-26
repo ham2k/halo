@@ -78,6 +78,9 @@ dependencies:
   flutter_inappwebview: 6.2.0-beta.3
   flutter_secure_storage: ^10.3.1
   flutter_markdown: ^0.7.7+1
+  # flutter_markdown's own parser, for markdown laid out by hand (the
+  # Operation Postcard's summary pages) to read as MarkdownBody reads it.
+  markdown: ^7.3.1
   share_plus: ^13.2.0
   http: ^1.6.0
   connectivity_plus: ^6.1.0

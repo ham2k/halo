@@ -478,10 +478,15 @@ notes — renders through `HaloMarkdown` (`halo_widgets`), never a bare
 `HaloMarkdown` applies the house style sheet, then the call site's `style:`
 callback (`(base) => base.copyWith(…)`), then the emoji font:
 
-- **Tables** draw no borders, pad cells thinly (`Space.xs` by `Space.xxs`),
-  align a header left like its cells unless the column sets its own
-  alignment, and align cells to the top of a row that wraps. A call site's
-  `style:` can override any of it.
+- **Tables** take only the width their content needs: each column is as
+  wide as its widest cell, and a table that would overrun the pane narrows
+  its columns toward their longest words and wraps — breaking the longest
+  words where even those cannot all fit — never scrolling sideways or
+  running past the pane's edge. They draw no borders, pad cells thinly (`Space.xs` by
+  `Space.xxs`), align a header left like its cells unless the column sets
+  its own alignment, and align cells to the top of a row that wraps. A call
+  site's `style:` can override any of it. The Operation Postcard's summary
+  pages lay a table out by the same rules (`postcard_summary.dart`).
 - **The emoji font** goes on last, so a `style:` that replaces a text style
   with a hand-built one cannot blank the flags in an extension's text.
 
