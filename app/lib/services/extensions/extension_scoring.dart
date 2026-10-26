@@ -443,6 +443,11 @@ mixin ExtensionScoring {
     // refreshes. Per call rather than per scorer key, since one scorer runs
     // once for each type of reference it covers that the operation carries.
     final iconsByCall = [for (final _ in batches) <String, Map<String, String>>{}];
+    // By call too: the candidates on which a fallback scorer said nothing but
+    // worked-before, whose icon then goes if another scorer ruled on that
+    // axis. Its OWN verdict, not the fallbacks' merged one: a fallback with an
+    // icon and nothing to yield keeps it beside core's yielded duplicate.
+    final yieldingByCall = [for (final _ in batches) <String>{}];
 
     final uncovered = [
       for (final batch in batches)
@@ -496,8 +501,16 @@ mixin ExtensionScoring {
             if (!scorer.fallback && judgesWorkedBefore(value)) judgedByOther.add(key);
             final target = scorer.fallback ? fallbackMerged : merged;
             final into = target.putIfAbsent(key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
-            into.notices.addAll(((value['notices'] as List?) ?? const []).whereType<String>());
-            into.alerts.addAll(((value['alerts'] as List?) ?? const []).whereType<String>());
+            final ownNotices = ((value['notices'] as List?) ?? const []).whereType<String>();
+            final ownAlerts = ((value['alerts'] as List?) ?? const []).whereType<String>();
+            into.notices.addAll(ownNotices);
+            into.alerts.addAll(ownAlerts);
+            if (scorer.fallback &&
+                (ownNotices.isNotEmpty || ownAlerts.isNotEmpty) &&
+                ownNotices.every(kWorkedBeforeNotices.contains) &&
+                ownAlerts.every(kWorkedBeforeAlerts.contains)) {
+              yieldingByCall[index].add(key);
+            }
             if (value['icon'] case final String icon when icon.isNotEmpty) {
               iconsByCall[index][key] = {'icon': icon, if (value['color'] case final String color) 'color': color};
             }
@@ -519,26 +532,22 @@ mixin ExtensionScoring {
     // un-struck worked spot costs a glance, a struck unworked one costs the
     // contact.
     if (!any && !failed) return null;
-    // The candidates a fallback scorer yielded on outright: its icon goes
-    // with its verdict, as nothing says what else the icon was about.
-    final yielded = <String>{};
     for (final entry in fallbackMerged.entries) {
       final judged = judgedByOther.contains(entry.key);
       final notices = judged ? entry.value.notices.where((n) => !kWorkedBeforeNotices.contains(n)) : entry.value.notices;
       final alerts = judged ? entry.value.alerts.where((a) => !kWorkedBeforeAlerts.contains(a)) : entry.value.alerts;
-      if (notices.isEmpty && alerts.isEmpty) {
-        if (judged) yielded.add(entry.key);
-        continue;
-      }
+      if (notices.isEmpty && alerts.isEmpty) continue;
       final into = merged.putIfAbsent(entry.key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
       into.notices.addAll(notices);
       into.alerts.addAll(alerts);
     }
+    // A fallback's icon goes with a verdict it yielded outright, as nothing
+    // says what else the icon was about.
     List<Map<String, String>> iconsOf(String key) {
       final seen = <String>{};
       return [
-        for (final (index, batch) in batches.indexed)
-          if (!(batch.scorer.fallback && yielded.contains(key)))
+        for (final (index, _) in batches.indexed)
+          if (!(yieldingByCall[index].contains(key) && judgedByOther.contains(key)))
             if (iconsByCall[index][key] case final icon? when seen.add(icon['icon']!)) icon,
       ];
     }

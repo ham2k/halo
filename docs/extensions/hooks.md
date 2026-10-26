@@ -1602,7 +1602,10 @@ scorers run, each name once. Name one only where the spot is worth the
 operator's eye — a multiplier, a station a contest is after — since a row has
 room for few. A `contestScorer()` passes on the `icon` and `color` its
 `scoreQso` verdict carries to `scoreCandidates`, and leaves them out of the
-logged contacts' cached verdicts.
+logged contacts' cached verdicts. An `'always'` scorer's icon goes with a
+verdict that said only worked-before things, where another scorer ruled on
+that axis; one that answers with an icon and nothing else keeps it, so a
+scorer that judges nothing can still mark a spot.
 
 `QsosRepository.forOperation` already filters deleted rows and orders by
 `startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no

@@ -393,6 +393,58 @@ void main() {
     ]);
   });
 
+  // Another fallback whose verdict is its icon alone has yielded nothing, and
+  // keeps it beside core's duplicate that did yield.
+  test('a fallback scorer with nothing to yield keeps its icon', () async {
+    final service = _ServiceWithHost(
+      _RecordingHost({
+        'scoring:core:scoreCandidates': {
+          'park': {
+            'notices': const [],
+            'alerts': const ['duplicate'],
+            'icon': 'content-duplicate',
+          },
+        },
+        'scoring:alerts:scoreCandidates': {
+          'park': {'value': 0, 'icon': 'bell-ring', 'color': '#C62828'},
+        },
+        'scoring:pota:scoreCandidates': {
+          'park': {
+            'notices': const ['newRef'],
+            'alerts': const [],
+            'dupe': false,
+          },
+        },
+      }),
+      scopes: const {
+        'core': 'always',
+        'alerts': 'always',
+        'pota': {
+          'refTypes': ['pota'],
+        },
+      },
+    );
+
+    final result = await service.scoreCandidates(
+      operation: const {
+        'stationCall': 'N0DEV',
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      },
+      operationUuid: 'op-1',
+      candidates: {'park': _candidate('K1ABC')},
+    );
+
+    expect(result?['park'], {
+      'notices': const ['newRef'],
+      'alerts': const <String>[],
+      'icons': [
+        {'icon': 'bell-ring', 'color': '#C62828'},
+      ],
+    });
+  });
+
   // The cached checkpoint lets a scorer skip folding the whole log, which is
   // the dominant cost of a pass on a long log; the tail beside it is what the
   // checkpoint has not folded.
