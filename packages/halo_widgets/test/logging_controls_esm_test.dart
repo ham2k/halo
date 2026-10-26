@@ -156,6 +156,7 @@ void main() {
       List<Map<String, dynamic>>? controls,
       ValueChanged<EsmFacts?>? onEsmFacts,
       _TunedVfoStore? radio,
+      Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)? decorate,
     }) {
       radio ??= _TunedVfoStore();
       return MaterialApp(
@@ -174,6 +175,7 @@ void main() {
                     )
                   : operation,
               qsosRepository: qsos,
+              decorateQsoBeforeSave: decorate,
             ),
             session: LoggingSession(enterSends: enterSends, onEsmFacts: onEsmFacts),
             prefs: prefs ?? const LoggingPreferences(),
@@ -394,28 +396,51 @@ void main() {
       expect(saved.data.containsKey('callField'), isFalse, reason: 'a template value, never part of the record');
     });
 
-    testWidgets('a step that logs hands over the entry as the log left it, for the thanks', (tester) async {
-      // The thanks closes this contact and speaks to the next: rendered
-      // against the keypress's draft, "TU {{ qso.call }}" would thank the
-      // station just logged instead of calling the one stacked behind it.
-      Future<Map<String, dynamic>?>? after;
-      await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
+    testWidgets('a step that logs hands over the contact as saved and the entry the log left, for the thanks', (tester) async {
+      // The thanks closes this contact and speaks to the next: `qso` is the
+      // record as written, extensions' additions and all, which the
+      // keypress's draft never saw; `next` is the station stacked behind it,
+      // which the thanks may call.
+      Future<EsmLogged?>? after;
+      await tester.pumpWidget(
+        host(
+          enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged),
+          decorate: (qso, _) async => {...qso, 'notes': 'decorated'},
+        ),
+      );
       await tester.pump();
       await tester.enterText(field('Their call'), 'KN2//KI2D//NK2Y//FR');
       await enter(tester);
       await enter(tester);
 
-      expect((await logged(tester)).single.theirCall, 'NK2Y');
-      final draft = await tester.runAsync(() => after!);
-      expect(draft?['callField'], {'call': 'KI2D', 'fullCall': 'KI2D', 'partial': '', 'nextCall': '', 'nextPartial': 'FR'});
-      expect((draft?['their'] as Map?)?['call'], 'KN2//KI2D//FR');
+      final saved = (await logged(tester)).single;
+      expect(saved.theirCall, 'NK2Y');
+      final handed = (await tester.runAsync(() => after!))!;
+      expect(handed.qso, saved.data, reason: 'the record as written');
+      expect(handed.qso['notes'], 'decorated');
+      expect(handed.qso.containsKey('callField'), isFalse, reason: 'a logged call is a full one, with nothing next to it');
+      expect(handed.next['callField'], {'call': 'KI2D', 'fullCall': 'KI2D', 'partial': '', 'nextCall': '', 'nextPartial': 'FR'});
+      expect((handed.next['their'] as Map?)?['call'], 'KN2//KI2D//FR');
+    });
+
+    testWidgets('a comma list hands over its first contact', (tester) async {
+      Future<EsmLogged?>? after;
+      await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
+      await tester.pump();
+      await tester.enterText(field('Their call'), 'W1AW,K1ABC');
+      await enter(tester);
+      await enter(tester);
+
+      expect((await logged(tester)).map((qso) => qso.theirCall), unorderedEquals(['W1AW', 'K1ABC']));
+      final handed = (await tester.runAsync(() => after!))!;
+      expect((handed.qso['their'] as Map?)?['call'], 'W1AW');
     });
 
     testWidgets('a partial left after the log is handed over as one, not as a call', (tester) async {
       // "KR//KI2D" logs KI2D and leaves KR — a station copied in part. A
       // thanks that keyed it as `fullCall` would call a station that doesn't
       // exist; as `partial` it asks it back ("TU KR?").
-      Future<Map<String, dynamic>?>? after;
+      Future<EsmLogged?>? after;
       await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
       await tester.pump();
       await tester.enterText(field('Their call'), 'KR//KI2D');
@@ -423,12 +448,12 @@ void main() {
       await enter(tester);
 
       expect((await logged(tester)).single.theirCall, 'KI2D');
-      final draft = await tester.runAsync(() => after!);
-      expect(draft?['callField'], {'call': 'KR', 'fullCall': '', 'partial': 'KR', 'nextCall': '', 'nextPartial': ''});
+      final handed = await tester.runAsync(() => after!);
+      expect(handed?.next['callField'], {'call': 'KR', 'fullCall': '', 'partial': 'KR', 'nextCall': '', 'nextPartial': ''});
     });
 
     testWidgets('a log that fails hands over nothing, so no thanks goes out', (tester) async {
-      Future<Map<String, dynamic>?>? after;
+      Future<EsmLogged?>? after;
       await tester.pumpWidget(host(enterSends: () => EnterSends(running: true, send: (_, qso, {logged}) => after = logged)));
       await tester.pump();
       await tester.enterText(field('Their call'), 'W1AW');

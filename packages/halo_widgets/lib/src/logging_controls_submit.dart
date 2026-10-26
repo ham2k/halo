@@ -66,11 +66,10 @@ extension _Submit on _LoggingControlsState {
     final call = calls.call;
     final step = esmStepFor(_esmFacts, running: esm.running);
     if (step == null) return false;
-    // A step that logs hands over what the entry is AFTER the log too, for
-    // the messages that speak to it — the thanks, which may name the next
-    // stacked call.
+    // A step that logs hands over the contact as saved and the entry the log
+    // left too, for the thanks — which may name the next stacked call.
     if (step.send.isNotEmpty && step.then == EsmThen.log) {
-      final logged = _esmLogged = Completer<Map<String, dynamic>?>();
+      final logged = _esmLogged = Completer<EsmLogged?>();
       esm.send(step.send, _withCallField(_draft.toData(), calls), logged: logged.future);
     } else if (step.send.isNotEmpty) {
       esm.send(step.send, _withCallField(_draft.toData(), calls));
@@ -378,18 +377,21 @@ extension _Submit on _LoggingControlsState {
       if (focusCall) _callFocus.requestFocus();
       return;
     }
-    var saved = false;
+    List<Qso>? added;
     try {
-      saved = await _saveContact(editingQso, focusCall: focusCall);
+      added = await _saveContact(editingQso, focusCall: focusCall);
     } finally {
-      // The entry as the save left it: wiped, and the rest of a stack back in
-      // the field — what an ESM thanks renders against. Completed whatever
-      // happens, or the thanks waits on it forever.
-      // A throw building it still goes up from here, after the completion.
+      // What an ESM thanks renders against: the first contact as saved, and
+      // the entry as the save left it — wiped, and the rest of a stack back
+      // in the field. Completed whatever happens, or the thanks waits on it
+      // forever. A throw building it still goes up from here, after the
+      // completion.
       if (logged != null) {
-        Map<String, dynamic>? after;
+        EsmLogged? after;
         try {
-          if (saved && mounted) after = _withCallField(_draft.toData(), _callText.templateCalls);
+          if (added != null && added.isNotEmpty && mounted) {
+            after = (qso: added.first.data, next: _withCallField(_draft.toData(), _callText.templateCalls));
+          }
         } finally {
           logged.complete(after);
         }
@@ -436,9 +438,10 @@ extension _Submit on _LoggingControlsState {
   /// The contact — one QSO per call of a list or a stack segment, or the
   /// edited record updated in place with any calls added to it logged
   /// fresh. Everything up to here has already refused what cannot log.
-  /// Whether every contact was written — false when a write failed and the
-  /// entry was left for the operator to retry.
-  Future<bool> _saveContact(Qso? editingQso, {required bool focusCall}) async {
+  /// The contacts added, as saved and in order — null when a write failed and
+  /// the entry was left for the operator to retry. An edited record is
+  /// updated, not added, so it is not among them.
+  Future<List<Qso>?> _saveContact(Qso? editingQso, {required bool focusCall}) async {
     _isLogging = true;
     try {
       // A comma-separated call list logs one QSO per call, all sharing the
@@ -452,6 +455,7 @@ extension _Submit on _LoggingControlsState {
       // its calls, then leaves the rest of the stack in the field below.
       // Everything else is identical to a typed list, deliberately — no
       // information carries over between stacked calls either way.
+      final added = <Qso>[];
       final stacked = editingQso == null ? _callText.pickStackedCall() : null;
       final calls = stacked?.calls ?? _callList;
       final isList = calls.length > 1;
@@ -511,7 +515,7 @@ extension _Submit on _LoggingControlsState {
         } catch (e, stack) {
           // Nothing committed — the editor stays open with every typed value.
           _reportWriteFailure(e, stack);
-          return false;
+          return null;
         }
         for (var i = 1; i < calls.length; i++) {
           // The base data carries the edited QSO's own uuid (baseData came
@@ -532,9 +536,10 @@ extension _Submit on _LoggingControlsState {
             // twice.
             _callController.text = [calls.first, ...calls.sublist(i)].join(',');
             _reportWriteFailure(e, stack);
-            return false;
+            return null;
           }
           _exchange.releaseCommittedSerials(qso);
+          added.add(qso);
           widget.log.onLogged?.call(qso);
           widget.lookups.enqueueLookup?.call(qso);
         }
@@ -567,9 +572,10 @@ extension _Submit on _LoggingControlsState {
               );
             }
             _reportWriteFailure(e, stack);
-            return false;
+            return null;
           }
           _exchange.releaseCommittedSerials(qso);
+          added.add(qso);
           widget.log.onLogged?.call(qso);
           widget.lookups.enqueueLookup?.call(qso);
         }
@@ -584,7 +590,7 @@ extension _Submit on _LoggingControlsState {
       // call — the on-screen scoring pills already only ever reflect the
       // cursor's own call (see `CallLookupModel.scheduleScore`/`_callAtCursor`).
       if (isList) widget.log.onCallListLogged?.call();
-      return true;
+      return added;
     } finally {
       _isLogging = false;
     }

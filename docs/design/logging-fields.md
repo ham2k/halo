@@ -646,17 +646,21 @@ depends on where the contact stands**, decided by `esmStep`:
   follows wipes it — and keyed as ONE message. In a Phone mode they are the
   radio's voice memories, played one after another, minus their call: no
   memory can hold it, so the operator says it.
-- **The thanks speaks to what comes next.** In CW, on a step that logs, the
-  thanks waits for the log and renders against the entry the log LEFT —
-  wiped, with the rest of a `//` stack back in the field — so
-  `{{ qso.call }}` in it names the station up next, not the one just
-  logged, and a log that fails thanks nobody. Only the thanks waits: S&P's
-  exchange, the other step that logs, keys at the Enter. A stack's thanks
-  can then answer the next caller in the same breath
-  (`TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`,
-  [templates.md](../extensions/templates.md)). Voice keeps one sequence at
-  the Enter: a memory renders nothing, and a second sequence would cut the
-  first off.
+- **The thanks closes the contact as logged, and speaks to what comes
+  next.** In CW, on a step that logs, the thanks waits for the log and
+  renders `qso` as the contact was SAVED — after `decorateQsoBeforeSave`'s
+  extensions and the serial its commit took, the first call of a comma
+  list — and `next` as the entry the log left: wiped, with the rest of a
+  `//` stack back in the field. A log that fails thanks nobody. Only the
+  thanks waits: S&P's exchange, the other step that logs, keys at the
+  Enter. A stack's thanks can then answer the next caller in the same
+  breath
+  (`TU {% if next.fullCall != blank %}{{ next.call }} {{ keyer.msg2 }}{% elsif next.partial != blank %}{{ next.partial }}?{% endif %}`,
+  [templates.md](../extensions/templates.md)) — though a message it
+  includes renders against the same `qso`, so an F2 carrying
+  `{{ qso.serial }}` sends the logged contact's number. Voice keeps one
+  sequence at the Enter: a memory renders nothing, and a second sequence
+  would cut the first off.
 - **The keyer area shows what the next Enter keys.** Its buttons for that
   step's messages get a faint wash of the accent and a heavier outline. On
   a step that also logs, the last of those buttons carries the submit

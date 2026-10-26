@@ -25,7 +25,8 @@ import 'package:ham2k_logger/views/operation_view.dart';
 import '../support/halo_test_support.dart';
 
 /// Stands in for the `template` hook without booting a JS engine: only
-/// `{{qso.call}}` and `{{op.call}}` are filled, and `{%bad%}` fails to parse.
+/// `{{qso.call}}`, `{{qso.notes}}`, `{{next.call}}` and `{{op.call}}` are
+/// filled, and `{%bad%}` fails to parse.
 class _TemplateExtensions extends ExtensionService {
   @override
   bool get ready => true;
@@ -46,6 +47,7 @@ class _TemplateExtensions extends ExtensionService {
     String template, {
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
+    Map<String, dynamic>? next,
     int? qsoCount,
     Map<String, dynamic>? log,
     Map<String, dynamic>? keyer,
@@ -54,7 +56,11 @@ class _TemplateExtensions extends ExtensionService {
     await hold?.future;
     return template.contains('{%bad%}')
         ? throw const TemplateError('bad')
-        : (lastKeyer = keyer, template).$2.replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '').replaceAll('{{op.call}}', 'KI2D');
+        : (lastKeyer = keyer, template).$2
+              .replaceAll('{{qso.call}}', ((qso?['their'] as Map?)?['call'] as String?) ?? '')
+              .replaceAll('{{qso.notes}}', (qso?['notes'] as String?) ?? '')
+              .replaceAll('{{next.call}}', ((next?['their'] as Map?)?['call'] as String?) ?? '')
+              .replaceAll('{{op.call}}', 'KI2D');
   }
 }
 
@@ -187,12 +193,12 @@ void main() {
   // moved to the other radio — it cuts off the CQ they keyed there since.
   testWidgets("under SO2R, a message the other radio was keyed over while it waited keys nothing", (tester) async {
     await pumpSo2r(tester);
-    final logged = Completer<Map<String, dynamic>?>();
+    final logged = Completer<EsmLogged?>();
     esmOf(tester, 'A').send([EsmMessage.thanks], cwDraft, logged: logged.future);
     await tester.pump();
     services.cat.keyer('B').sendCw('CQ B');
 
-    logged.complete(cwDraft);
+    logged.complete((qso: cwDraft, next: cwDraft));
     await tester.pump();
     await tester.pump();
     expect(services.cat.keyer('A').cwProgress.value, isNull);
@@ -204,12 +210,12 @@ void main() {
   testWidgets('under SO2R with messages queued, such a message waits its turn instead', (tester) async {
     await services.settings.setSo2rQueueMessages(true);
     await pumpSo2r(tester);
-    final logged = Completer<Map<String, dynamic>?>();
+    final logged = Completer<EsmLogged?>();
     esmOf(tester, 'A').send([EsmMessage.thanks], cwDraft, logged: logged.future);
     await tester.pump();
     services.cat.keyer('B').sendCw('CQ B');
 
-    logged.complete(cwDraft);
+    logged.complete((qso: cwDraft, next: cwDraft));
     await tester.pump();
     await tester.pump();
     expect(services.cat.keyer('A').waiting.value.single.text, 'TU');
@@ -220,7 +226,7 @@ void main() {
   // set A's contact has logged.
   testWidgets("under SO2R, an Enter in set B never waits on set A's log", (tester) async {
     await pumpSo2r(tester);
-    final logged = Completer<Map<String, dynamic>?>();
+    final logged = Completer<EsmLogged?>();
     esmOf(tester, 'A').send([EsmMessage.thanks], cwDraft, logged: logged.future);
     await tester.pump();
 
@@ -273,26 +279,34 @@ void main() {
     await unmount(tester);
   });
 
-  // The thanks closes the contact and speaks to the next one: on a stack,
-  // "TU {{qso.call}}" rendered at the keypress would thank the station just
-  // logged instead of calling the one up next.
-  testWidgets('a step that logs keys its thanks against the entry the log left', (tester) async {
-    await services.settings.setCwMessage(3, 'TU {{qso.call}}');
+  // The thanks closes the contact as it was logged and speaks to the next
+  // one. Rendered against the keypress's draft, it would miss what an
+  // extension added on the way to the log; against the entry the log left,
+  // `qso` would be the next station rather than the one being thanked.
+  testWidgets('a step that logs keys its thanks against the contact as saved, with the entry the log left as next', (tester) async {
+    await services.settings.setCwMessage(3, 'TU {{qso.call}} {{qso.notes}} {{next.call}}');
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
-    final logged = Completer<Map<String, dynamic>?>();
+    final logged = Completer<EsmLogged?>();
     enterSends(tester)!.send([EsmMessage.thanks], cwDraft, logged: logged.future);
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value, isNull, reason: 'the thanks waits for the log');
 
-    logged.complete(const {
-      'their': {'call': 'K1ABC'},
-      'mode': 'CW',
-    });
+    logged.complete((
+      qso: const {
+        'their': {'call': 'W1AW'},
+        'mode': 'CW',
+        'notes': 'DECORATED',
+      },
+      next: const {
+        'their': {'call': 'K1ABC'},
+        'mode': 'CW',
+      },
+    ));
     await tester.pump();
     await tester.pump();
-    expect(services.cat.cwProgress.value?.text, 'TU K1ABC');
+    expect(services.cat.cwProgress.value?.text, 'TU W1AW DECORATED K1ABC');
     await unmount(tester);
   });
 
@@ -333,10 +347,13 @@ void main() {
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
     final esm = enterSends(tester)!;
-    const next = {
-      'their': {'call': ''},
-      'mode': 'CW',
-    };
+    const next = (
+      qso: cwDraft,
+      next: {
+        'their': {'call': ''},
+        'mode': 'CW',
+      },
+    );
     esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
     await tester.pump();
     await tester.pump();
@@ -418,7 +435,7 @@ void main() {
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
     final esm = enterSends(tester)!;
-    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value(cwDraft));
+    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value((qso: cwDraft, next: cwDraft)));
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value, isNull);
@@ -440,7 +457,7 @@ void main() {
     extensions.hold = Completer<void>();
     esm.send([EsmMessage.hisCall, EsmMessage.exchange], cwDraft);
     await tester.pump();
-    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value(cwDraft));
+    esm.send([EsmMessage.thanks], cwDraft, logged: Future.value((qso: cwDraft, next: cwDraft)));
     await tester.pump();
     await tester.pump();
     expect(extensions.renders, 1, reason: 'the thanks waits for the answer before rendering at all');
@@ -470,7 +487,7 @@ void main() {
   testWidgets('a step that logs without a thanks keys at the keypress', (tester) async {
     await pumpOperation(tester);
     services.cat.setEnterSends(on: true);
-    enterSends(tester)!.send([EsmMessage.exchange], cwDraft, logged: Completer<Map<String, dynamic>?>().future);
+    enterSends(tester)!.send([EsmMessage.exchange], cwDraft, logged: Completer<EsmLogged?>().future);
     await tester.pump();
     await tester.pump();
     expect(services.cat.cwProgress.value?.text, '5NN');

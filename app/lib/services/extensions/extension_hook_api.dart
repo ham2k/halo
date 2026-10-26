@@ -567,10 +567,14 @@ mixin _ExtensionHookApi {
   ///
   /// [keyer] is `{messages, current?}` — the keyer's messages for
   /// `keyer.msgN`, and which one this is, so it can't include itself.
+  ///
+  /// [next] is the contact up next, as `next`, for a [qso] already logged —
+  /// Enter Sends Messages' thanks.
   Future<String?> renderTemplate(
     String template, {
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
+    Map<String, dynamic>? next,
     int? qsoCount,
     Map<String, dynamic>? log,
     Map<String, dynamic>? keyer,
@@ -580,7 +584,7 @@ mixin _ExtensionHookApi {
     final result = await host.invoke(
       Hooks.templateRender,
       key: 'templates',
-      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'qsoCount': ?qsoCount, 'log': ?log, 'keyer': ?keyer},
+      args: {'template': template, 'operation': ?operation, 'qso': ?qso, 'next': ?next, 'qsoCount': ?qsoCount, 'log': ?log, 'keyer': ?keyer},
       timeout: const Duration(seconds: 2),
     );
     if (result is! Map) return null;

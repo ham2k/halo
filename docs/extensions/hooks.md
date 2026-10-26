@@ -1457,7 +1457,7 @@ the key `templates`:
 ```ts
 interface TemplateHook {
   render(
-    args: { template: string; operation?; qso?; qsoCount?: number },
+    args: { template: string; operation?; qso?; next?; qsoCount?: number },
     ctx,
   ): Promise<{ text: string } | { error: string }>
   // Several templates against one context in one crossing (the keyer
@@ -1469,7 +1469,8 @@ interface TemplateHook {
 }
 ```
 
-`operation` and `qso` are the same objects a `panel` hook's `render` gets,
+`operation` and `qso` are the same objects a `panel` hook's `render` gets —
+`next`, the contact up next beside one just logged, is a draft `qso` too —
 and the result is built with the same `templateContext`, so a placeholder
 means the same thing wherever the app renders it. A template that does not
 parse comes back as `error` carrying the renderer's own message — a typo in

@@ -8686,8 +8686,8 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Your exchange: after their call when running, after they answer in S&P'
 	String get helpEsmExchange => 'Your exchange: after their call when running, after they answer in S&P';
 
-	/// en: 'Thanks, once the contact has logged: its placeholders name the next contact, not this one'
-	String get helpEsmThanks => 'Thanks, once the contact has logged: its placeholders name the next contact, not this one';
+	/// en: 'Thanks, once the contact has logged: qso is the contact as logged, next the one up next'
+	String get helpEsmThanks => 'Thanks, once the contact has logged: qso is the contact as logged, next the one up next';
 
 	/// en: 'In S&P, your call to the station you are answering'
 	String get helpEsmMyCall => 'In S&P, your call to the station you are answering';
@@ -8698,8 +8698,8 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'Asks again when nothing of their exchange was copied'
 	String get helpEsmAgain => 'Asks again when nothing of their exchange was copied';
 
-	/// en: 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU'
-	String get helpEsmStackThanks => 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU';
+	/// en: 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU'
+	String get helpEsmStackThanks => 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU';
 }
 
 // Path: settings.radio.voiceMessages
@@ -10705,11 +10705,11 @@ extension on Translations {
 			'settings.radio.cwMessages.helpEsmIntro' => 'With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:',
 			'settings.radio.cwMessages.helpEsmCq' => 'Running, Enter with the call field empty calls CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'Your exchange: after their call when running, after they answer in S&P',
-			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: its placeholders name the next contact, not this one',
+			'settings.radio.cwMessages.helpEsmThanks' => 'Thanks, once the contact has logged: qso is the contact as logged, next the one up next',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'In S&P, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'Running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'Asks again when nothing of their exchange was copied',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU',
 			'settings.radio.voiceMessages.title' => 'Phone Keyer Messages',
 			'settings.radio.voiceMessages.notSupported' => 'Current radio does not support Phone messages',
 			'settings.radio.voiceMessages.description' => 'This uses the radio\'s voice memories',

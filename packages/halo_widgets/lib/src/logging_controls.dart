@@ -329,7 +329,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   String? _esmAnsweredCall;
 
   /// Completed by the log an ESM step handed off to — see [EnterSends.send].
-  Completer<Map<String, dynamic>?>? _esmLogged;
+  Completer<EsmLogged?>? _esmLogged;
 
   /// What [LoggingSession.onEsmFacts] last heard — starting with nothing, so
   /// the first publish always goes out.

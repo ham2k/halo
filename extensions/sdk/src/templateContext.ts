@@ -252,6 +252,9 @@ export function logValues(values: LogValues): Record<string, JSONValue> {
 export interface TemplateContextArgs {
   operation?: Record<string, JSONValue>
   qso?: Record<string, JSONValue>
+  /// The contact up next, under `next` in the same shape as `qso` — given
+  /// only where `qso` is one already logged: Enter Sends Messages' thanks.
+  next?: Record<string, JSONValue>
   /// The count the surface was handed, when it knows better than the
   /// operation record does — a panel is told the live one.
   qsoCount?: number
@@ -285,6 +288,7 @@ export function templateContext(args: TemplateContextArgs): Record<string, unkno
     now: utcIso(nowMillis),
     ...(args.operation ? { op: opValues(args.operation, { qsoCount: args.qsoCount, atMillis: args.atMillis }) } : {}),
     ...(args.qso ? { qso: qsoValues(args.qso) } : {}),
+    ...(args.next ? { next: qsoValues(args.next) } : {}),
     ...(args.log ? { log: logValues(args.log) } : {}),
     ...(args.config ? { config: args.config } : {}),
   }

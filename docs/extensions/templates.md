@@ -45,7 +45,8 @@ is `{{ op.refs | refLabels | sentence }}`.
 | `app` | ✓ | — | ✓ | ✓ |
 | `now` | ✓ | ✓ | ✓ | ✓ |
 | `op` | ✓ | ✓ | ✓ | ✓ |
-| `qso` | when the placement's triggers ask for it | — | ✓ | the draft contact, as far as it is typed |
+| `qso` | when the placement's triggers ask for it | — | ✓ | the draft contact, as far as it is typed — in ESM's thanks, the contact as logged |
+| `next` | — | — | — | ESM's thanks only |
 | `config` | ✓ | — | — | — |
 | `log` | — | ✓ | ✓ | — |
 | `keyer` | — | — | — | ✓ (and the keyer area's labels) |
@@ -112,10 +113,10 @@ is only the first word, since `GM {{ qso.name }}` is a greeting, not a
 directory entry. Reach the whole name through `qso.their.name` /
 `qso.their.guess.name`.
 
-Enter Sends Messages renders its thanks AFTER the contact logs, against the
-entry the log left ([logging-fields.md](../design/logging-fields.md) § Enter
-Sends Messages) — so in a thanks keyed by ESM, `qso.call`, `qso.name` and
-the rest name the NEXT station, or nothing, never the one just logged.
+Enter Sends Messages renders its thanks AFTER the contact logs
+([logging-fields.md](../design/logging-fields.md) § Enter Sends Messages):
+`qso` is the contact as it was saved, with whatever an extension's
+`decorateQsoBeforeSave` added, and the serial it was logged with.
 
 `rstSent` is what WE sent — QSON stores each side's report under its own
 `sent`, and these are named for the operator's view of the contact.
@@ -125,7 +126,14 @@ one. A contest keeps them on its own ref, so they are found by field name —
 the first ref carrying `ourSerial` / `theirSerial` — which is what lets one
 message serve every serial contest (docs/design/contests.md §5.8). In a CW
 message `serialSent` is the number the serial field is SHOWING, the one the
-QSO will be logged with. It is unpadded (`7`, not `007`): use `pad`.
+QSO will be logged with — in ESM's thanks, the one it WAS logged with. It is
+unpadded (`7`, not `007`): use `pad`.
+
+### `next` — the contact up next
+Only in Enter Sends Messages' thanks, beside a `qso` just logged: the entry
+the log left, in the same shape as a draft's `qso` — wiped, with the rest of
+a `//` stack back in the field, so `next.call` is the station to answer
+next, or a partial to ask back. Absent everywhere else.
 
 ### `config` — a panel's own form values
 Whatever that panel's `form` declared, under the keys it used.
@@ -143,7 +151,9 @@ holds. A message is expanded only where a template names it, so a branch
 not taken costs nothing — which is what lets ESM's thanks answer the next
 stacked caller or ask a partial back, and send nothing more when there is
 neither:
-`TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}`.
+`TU {% if next.fullCall != blank %}{{ next.call }} {{ keyer.msg2 }}{% elsif next.partial != blank %}{{ next.partial }}?{% endif %}`.
+An included message renders against the same context — there, the `qso`
+just logged, not `next`.
 
 A message that reaches itself — directly, or through others — is an error
 naming the loop (`a message includes itself: F3 → F1 → F3`), and like any

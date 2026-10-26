@@ -3987,11 +3987,11 @@ class _Translations$settings$radio$cwMessages$qrp extends Translations$settings$
 	@override String get helpEsmIntro => 'with enter sends messages on, enter keys messages by their function key, as n1mm does. the esm messages set starts with these:';
 	@override String get helpEsmCq => 'running, enter with the call field empty calls cq';
 	@override String get helpEsmExchange => 'your exchange: after their call when running, after they answer in s&p';
-	@override String get helpEsmThanks => 'thanks, once the contact has logged: its placeholders name the next contact, not this one';
+	@override String get helpEsmThanks => 'thanks, once the contact has logged: qso is the contact as logged, next the one up next';
 	@override String get helpEsmMyCall => 'in s&p, your call to the station you are answering';
 	@override String get helpEsmHisCall => 'running, their call ahead of your exchange';
 	@override String get helpEsmAgain => 'asks again when nothing of their exchange was copied';
-	@override String get helpEsmStackThanks => 'suggested f3 for // stacks: tu goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (tu kr?); with nothing left, just tu';
+	@override String get helpEsmStackThanks => 'suggested f3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (tu kr?); with nothing left, just tu';
 }
 
 // Path: settings.radio.voiceMessages
@@ -5653,11 +5653,11 @@ extension on TranslationsQrp {
 			'settings.radio.cwMessages.helpEsmIntro' => 'with enter sends messages on, enter keys messages by their function key, as n1mm does. the esm messages set starts with these:',
 			'settings.radio.cwMessages.helpEsmCq' => 'running, enter with the call field empty calls cq',
 			'settings.radio.cwMessages.helpEsmExchange' => 'your exchange: after their call when running, after they answer in s&p',
-			'settings.radio.cwMessages.helpEsmThanks' => 'thanks, once the contact has logged: its placeholders name the next contact, not this one',
+			'settings.radio.cwMessages.helpEsmThanks' => 'thanks, once the contact has logged: qso is the contact as logged, next the one up next',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'in s&p, your call to the station you are answering',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'running, their call ahead of your exchange',
 			'settings.radio.cwMessages.helpEsmAgain' => 'asks again when nothing of their exchange was copied',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'suggested f3 for // stacks: tu goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (tu kr?); with nothing left, just tu',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'suggested f3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (tu kr?); with nothing left, just tu',
 			'settings.radio.voiceMessages.title' => 'phone keyer messages',
 			'settings.radio.voiceMessages.notSupported' => 'current radio does not support phone messages',
 			'settings.radio.voiceMessages.description' => 'this uses the radio\'s voice memories',

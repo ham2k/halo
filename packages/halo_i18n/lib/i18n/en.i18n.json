@@ -1636,11 +1636,11 @@
         "helpEsmIntro": "With Enter Sends Messages on, Enter keys messages by their function key, as N1MM does. The ESM Messages set starts with these:",
         "helpEsmCq": "Running, Enter with the call field empty calls CQ",
         "helpEsmExchange": "Your exchange: after their call when running, after they answer in S&P",
-        "helpEsmThanks": "Thanks, once the contact has logged: its placeholders name the next contact, not this one",
+        "helpEsmThanks": "Thanks, once the contact has logged: qso is the contact as logged, next the one up next",
         "helpEsmMyCall": "In S&P, your call to the station you are answering",
         "helpEsmHisCall": "Running, their call ahead of your exchange",
         "helpEsmAgain": "Asks again when nothing of their exchange was copied",
-        "helpEsmStackThanks": "Suggested F3 for // stacks: TU goes out after the contact logs, so it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU"
+        "helpEsmStackThanks": "Suggested F3 for // stacks: it thanks, then calls the next stacked station and sends your exchange, or asks a partial back (TU KR?); with nothing left, just TU"
       },
       "voiceMessages": {
         "title": "Phone Keyer Messages",

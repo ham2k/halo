@@ -163,10 +163,10 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// TU still completes the contact.
   ///
   /// In CW each step keys after the one before it, and a thanks waits for
-  /// [logged] too, rendering against the entry the log left behind (see
-  /// [EnterSends.send]). Voice keeps one sequence at the keypress: a memory
+  /// [logged] too, rendering against the contact as saved, with the entry the
+  /// log left behind as `next` (see [EnterSends.send]). Voice keeps one sequence at the keypress: a memory
   /// renders nothing, and a second sequence would cut the first off.
-  void _sendEsmMessages(String radio, List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) {
+  void _sendEsmMessages(String radio, List<EsmMessage> messages, Map<String, dynamic> qso, {Future<EsmLogged?>? logged}) {
     final services = widget.services;
     final keyer = services.cat.keyer(radio);
     final keys = [for (final message in messages) CwMessageSet.esmKeys[message]!];
@@ -207,7 +207,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
         // Not [once]: every thanks is the same `TU`, and the one still
         // waiting behind the last exchange belongs to the last contact.
         final after = await logged;
-        if (after != null && mounted) await _sendCwMessages(templates, radio: radio, qso: after, pressed: pressed);
+        if (after != null && mounted) await _sendCwMessages(templates, radio: radio, qso: after.qso, next: after.next, pressed: pressed);
       } catch (e, st) {
         // Reported rather than left on the chain, where it would stop every
         // later step from keying at all.
@@ -248,8 +248,10 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
   /// as a single entry in the queue and the keyer area, not as a message and
   /// a second one waiting behind it. [qso] is the draft to render against
   /// when the caller holds a newer one than [_latestDraftQso] (ESM's, taken
-  /// at the Enter that may log and wipe it). Any template failing keys
-  /// nothing at all: half an exchange is not an exchange.
+  /// at the Enter that may log and wipe it, or the contact just logged).
+  /// [next] is the entry up next, only beside a [qso] already logged — see
+  /// [EnterSends.send]. Any template failing keys nothing at all: half an
+  /// exchange is not an exchange.
   ///
   /// [once] is ESM's: a message already keying or waiting — whoever queued
   /// it — is not queued again, so a second Enter before the first CQ or AGN?
@@ -267,6 +269,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
     required String radio,
     required int pressed,
     Map<String, dynamic>? qso,
+    Map<String, dynamic>? next,
     bool once = false,
     bool repeat = false,
   }) async {
@@ -282,6 +285,7 @@ mixin _OperationKeying on State<OperationView>, DockHost<OperationView> {
           template,
           operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
           qso: qso ?? _latestDraftQso ?? ctx.qso,
+          next: next,
           qsoCount: ctx.qsoCount,
           keyer: {'messages': services.settings.activeCwMessageSet.messages, 'current': n},
         );

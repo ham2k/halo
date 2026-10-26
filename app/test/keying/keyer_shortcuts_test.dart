@@ -32,6 +32,7 @@ class _TemplateExtensions extends ExtensionService {
     String template, {
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
+    Map<String, dynamic>? next,
     int? qsoCount,
     Map<String, dynamic>? log,
     Map<String, dynamic>? keyer,

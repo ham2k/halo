@@ -26,6 +26,13 @@ enum EsmThen {
 
 typedef EsmStep = ({List<EsmMessage> send, EsmThen then});
 
+/// What a step that logs hands its thanks: [qso], the contact as it was
+/// saved — after `decorateQsoBeforeSave` and the serial its commit took — and
+/// [next], the entry as the log left it, wiped, with the rest of a `//` stack
+/// back in the field. A comma list's [qso] is its first call, the one whose
+/// serial the operator saw.
+typedef EsmLogged = ({Map<String, dynamic> qso, Map<String, dynamic> next});
+
 /// Whether ESM is on, and which side of the exchange the operator is on.
 /// [LoggingSession.enterSends] answering null means off — Enter logs, as always.
 class EnterSends {
@@ -38,12 +45,12 @@ class EnterSends {
   /// the keypress, since a log that follows wipes it before any render would
   /// finish.
   ///
-  /// [logged], on a step that logs, completes with the entry as the log left
-  /// it — wiped, with the rest of a `//` stack back in the field — or null
-  /// when the log failed. The thanks renders against that instead: it closes
-  /// this contact and speaks to the next one, so `{{ qso.call }}` in it names
-  /// the station up next, and a failed log thanks nobody.
-  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged}) send;
+  /// [logged], on a step that logs, completes with the contact as saved and
+  /// the entry the log left ([EsmLogged]), or null when the log failed. The
+  /// thanks renders against that instead: `{{ qso.call }}` in it is the
+  /// station just logged, with whatever an extension added on the way to the
+  /// log, `{{ next.call }}` the one up next, and a failed log thanks nobody.
+  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso, {Future<EsmLogged?>? logged}) send;
 }
 
 /// The step an Enter takes, or null when ESM has nothing to say and Enter

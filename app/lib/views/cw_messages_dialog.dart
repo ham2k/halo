@@ -443,7 +443,7 @@ class _CwMessagesHelpDialog extends StatelessWidget {
             Padding(padding: const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.md), child: Text(m.helpEsmIntro)),
             for (final (template, meaning) in esmRows) row(template, meaning),
             row(
-              'TU {% if qso.fullCall != blank %}{{ keyer.msg5 }} {{ keyer.msg2 }}{% elsif qso.partial != blank %}{{ qso.partial }}?{% endif %}',
+              'TU {% if next.fullCall != blank %}{{ next.call }} {{ keyer.msg2 }}{% elsif next.partial != blank %}{{ next.partial }}?{% endif %}',
               m.helpEsmStackThanks,
             ),
           ],

@@ -20,6 +20,9 @@ export interface TemplateRenderArgs {
   template: string
   operation?: Record<string, JSONValue>
   qso?: Record<string, JSONValue>
+  /// The contact up next, when `qso` is one just logged — see
+  /// `TemplateContextArgs.next`.
+  next?: Record<string, JSONValue>
   qsoCount?: number
   log?: Record<string, JSONValue>
   /// A CW message's own set, for `keyer.msgN`; `current` is the message
@@ -75,6 +78,7 @@ const TemplateHook = {
     const context = templateContext({
       operation: args.operation,
       qso: args.qso,
+      next: args.next,
       qsoCount: args.qsoCount,
       log: args.log,
       keyer: args.keyer,

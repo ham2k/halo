@@ -199,6 +199,19 @@ test("a namespace the surface has nothing for is absent, not blank", () => {
   assert.equal(renderTemplate("{{ app.name }}", context), "Ham2K Logger")
 })
 
+// ESM's thanks renders after the log: `qso` is the contact being thanked and
+// `next` the one it may call. Shaped apart from `qso`, a stacked call would
+// key the raw `//` field; offered where nothing asked for it, `{% if next %}`
+// would answer yes on a surface with no contact up next.
+test("next is the contact up next, shaped as a draft's qso, and absent unless given", () => {
+  const context = templateContext({
+    qso: { their: { call: "NK2Y" } },
+    next: { their: { call: "KN2//KI2D//FR" }, callField: { call: "KI2D", fullCall: "KI2D", partial: "", nextCall: "", nextPartial: "FR" } },
+  })
+  assert.equal(renderTemplate("TU {{ qso.call }} {% if next.fullCall != blank %}{{ next.call }}{% endif %}", context), "TU NK2Y KI2D")
+  assert.equal("next" in templateContext({ qso: { their: { call: "NK2Y" } } }), false)
+})
+
 test("a panel's own config is offered under config", () => {
   const context = templateContext({ config: { title: "Skeds" }, nowMillis: LATE_JULY_27 })
   assert.equal(renderTemplate("{{ config.title }} at {{ now | date: '%H:%M' }}", context), "Skeds at 23:45")

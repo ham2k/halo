@@ -136,7 +136,7 @@ class LoggingPanel extends StatefulWidget {
   /// Keys on [radio] what an Enter Sends Messages step picked, rendered
   /// against the draft handed over — see [LoggingSession.enterSends]. Null
   /// leaves ESM off whatever its switch says.
-  final void Function(String radio, List<EsmMessage> messages, Map<String, dynamic> qso, {Future<Map<String, dynamic>?>? logged})? onEnterSends;
+  final void Function(String radio, List<EsmMessage> messages, Map<String, dynamic> qso, {Future<EsmLogged?>? logged})? onEnterSends;
 
   /// What the keyer area's button labels render against — the operation
   /// and the draft contact, the same context the messages themselves get.

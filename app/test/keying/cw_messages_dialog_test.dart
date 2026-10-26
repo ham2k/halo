@@ -160,13 +160,13 @@ void main() {
 
     await openHelp();
     expect(inHelp(find.text('F5  {{qso.call}}')), findsNothing);
-    expect(inHelp(find.textContaining('keyer.msg5')), findsNothing);
+    expect(inHelp(find.textContaining('next.call')), findsNothing);
 
     await services.settings.setExperimentEnabled('esm', true);
     await tester.pumpWidget(const SizedBox());
     await openHelp();
     expect(inHelp(find.text('F5  {{qso.call}}')), findsOneWidget, reason: 'read off the ESM set: their call on F5');
-    expect(inHelp(find.textContaining('keyer.msg5')), findsOneWidget, reason: 'and the stacking thanks it suggests');
+    expect(inHelp(find.textContaining('next.call')), findsOneWidget, reason: 'and the stacking thanks it suggests');
   });
 
   testWidgets('Cancel abandons every set the operator touched, not just the one on screen', (tester) async {

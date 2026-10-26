@@ -3987,11 +3987,11 @@ class _Translations$settings$radio$cwMessages$qro extends Translations$settings$
 	@override String get helpEsmIntro => 'WITH ENTER SENDS MESSAGES ON, ENTER KEYS MESSAGES BY THEIR FUNCTION KEY, AS N1MM DOES. THE ESM MESSAGES SET STARTS WITH THESE:';
 	@override String get helpEsmCq => 'RUNNING, ENTER WITH THE CALL FIELD EMPTY CALLS CQ';
 	@override String get helpEsmExchange => 'YOUR EXCHANGE: AFTER THEIR CALL WHEN RUNNING, AFTER THEY ANSWER IN S&P';
-	@override String get helpEsmThanks => 'THANKS, ONCE THE CONTACT HAS LOGGED: ITS PLACEHOLDERS NAME THE NEXT CONTACT, NOT THIS ONE';
+	@override String get helpEsmThanks => 'THANKS, ONCE THE CONTACT HAS LOGGED: QSO IS THE CONTACT AS LOGGED, NEXT THE ONE UP NEXT';
 	@override String get helpEsmMyCall => 'IN S&P, YOUR CALL TO THE STATION YOU ARE ANSWERING';
 	@override String get helpEsmHisCall => 'RUNNING, THEIR CALL AHEAD OF YOUR EXCHANGE';
 	@override String get helpEsmAgain => 'ASKS AGAIN WHEN NOTHING OF THEIR EXCHANGE WAS COPIED';
-	@override String get helpEsmStackThanks => 'SUGGESTED F3 FOR // STACKS: TU GOES OUT AFTER THE CONTACT LOGS, SO IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU';
+	@override String get helpEsmStackThanks => 'SUGGESTED F3 FOR // STACKS: IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU';
 }
 
 // Path: settings.radio.voiceMessages
@@ -5653,11 +5653,11 @@ extension on TranslationsQro {
 			'settings.radio.cwMessages.helpEsmIntro' => 'WITH ENTER SENDS MESSAGES ON, ENTER KEYS MESSAGES BY THEIR FUNCTION KEY, AS N1MM DOES. THE ESM MESSAGES SET STARTS WITH THESE:',
 			'settings.radio.cwMessages.helpEsmCq' => 'RUNNING, ENTER WITH THE CALL FIELD EMPTY CALLS CQ',
 			'settings.radio.cwMessages.helpEsmExchange' => 'YOUR EXCHANGE: AFTER THEIR CALL WHEN RUNNING, AFTER THEY ANSWER IN S&P',
-			'settings.radio.cwMessages.helpEsmThanks' => 'THANKS, ONCE THE CONTACT HAS LOGGED: ITS PLACEHOLDERS NAME THE NEXT CONTACT, NOT THIS ONE',
+			'settings.radio.cwMessages.helpEsmThanks' => 'THANKS, ONCE THE CONTACT HAS LOGGED: QSO IS THE CONTACT AS LOGGED, NEXT THE ONE UP NEXT',
 			'settings.radio.cwMessages.helpEsmMyCall' => 'IN S&P, YOUR CALL TO THE STATION YOU ARE ANSWERING',
 			'settings.radio.cwMessages.helpEsmHisCall' => 'RUNNING, THEIR CALL AHEAD OF YOUR EXCHANGE',
 			'settings.radio.cwMessages.helpEsmAgain' => 'ASKS AGAIN WHEN NOTHING OF THEIR EXCHANGE WAS COPIED',
-			'settings.radio.cwMessages.helpEsmStackThanks' => 'SUGGESTED F3 FOR // STACKS: TU GOES OUT AFTER THE CONTACT LOGS, SO IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU',
+			'settings.radio.cwMessages.helpEsmStackThanks' => 'SUGGESTED F3 FOR // STACKS: IT THANKS, THEN CALLS THE NEXT STACKED STATION AND SENDS YOUR EXCHANGE, OR ASKS A PARTIAL BACK (TU KR?); WITH NOTHING LEFT, JUST TU',
 			'settings.radio.voiceMessages.title' => 'PHONE KEYER MESSAGES',
 			'settings.radio.voiceMessages.notSupported' => 'CURRENT RADIO DOES NOT SUPPORT PHONE MESSAGES',
 			'settings.radio.voiceMessages.description' => 'THIS USES THE RADIO\'S VOICE MEMORIES',
