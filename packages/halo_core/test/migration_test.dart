@@ -45,6 +45,7 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  17: ['DROP INDEX qsos_operation_counters', 'DROP INDEX qsos_synced_start'],
   16: ['DROP INDEX qsos_their_call_start'],
   15: ['DROP INDEX claims_qso', 'DROP INDEX claims_checklist', 'DROP TABLE claims'],
   // v14 changed no schema entities either — it reconciles the two halves of
@@ -80,7 +81,7 @@ const _undoToGetPreviousVersion = <int, List<String>>{
 /// builds its tests while the file is being declared — before `setUpAll` has
 /// read `schemaVersion` into `currentVersion`. `the upgrade-path loop reaches
 /// the newest version` is what keeps the two in step.
-const _highestUpgradeFrom = 15;
+const _highestUpgradeFrom = 16;
 
 /// The schema every fresh install must produce. Regenerate with
 /// `dart run tool/dump_schema.dart` after a deliberate schema change — and ask
@@ -726,6 +727,8 @@ void main() {
       expect(upgradedIndexes, contains('peer_events_operation_seq'));
       expect(upgradedIndexes, contains('peer_events_operation_record'));
       expect(upgradedIndexes, contains('qsos_their_call_start'));
+      expect(upgradedIndexes, contains('qsos_operation_counters'));
+      expect(upgradedIndexes, contains('qsos_synced_start'));
       expect(upgradedIndexes, freshIndexes);
     });
   });

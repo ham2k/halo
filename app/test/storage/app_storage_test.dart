@@ -458,6 +458,18 @@ void main() {
   });
 
   group('logDatabaseOptions', () {
+    test("the log is write-ahead and every commit is synced, so a contact's commits append rather than rewrite and survive a power cut", () async {
+      final file = File(p.join(target.path, '$kDatabaseName.sqlite'));
+      final db = HaLoDatabase(NativeDatabase.createInBackground(file, setup: logDatabaseOptions().setup));
+      addTearDown(db.close);
+      await db.customSelect('SELECT 1').get();
+
+      expect((await db.customSelect('PRAGMA journal_mode').get()).single.data.values.single, 'wal');
+      // 2 is FULL; a lowered level, or the pragma dropped, fails here — the
+      // system SQLite the test loads defaults a WAL connection to NORMAL.
+      expect((await db.customSelect('PRAGMA synchronous').get()).single.data.values.single, 2);
+    });
+
     // Something outside the app holding the log file for a moment must cost
     // a short wait, not a failed write: without a busy timeout SQLite gives up
     // at once, and a sync round's COMMIT fails with `database is locked`.

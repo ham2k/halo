@@ -16,6 +16,8 @@ CREATE INDEX peer_events_operation_seq ON peer_events (operation_uuid, seq, reco
 CREATE TABLE "peer_trust" ("peer_device_id" TEXT NOT NULL, "name" TEXT NOT NULL, "paired_at_millis" INTEGER NOT NULL, "last_seen_at_millis" INTEGER NULL, PRIMARY KEY ("peer_device_id"))
 CREATE TABLE "qsos" ("uuid" TEXT NOT NULL, "operation" TEXT NOT NULL, "our_call" TEXT NULL, "their_call" TEXT NULL, "band" TEXT NULL, "mode" TEXT NULL, "start_at_millis" INTEGER NULL, "data" TEXT NOT NULL DEFAULT '{}', "deleted" INTEGER NOT NULL DEFAULT 0 CHECK ("deleted" IN (0, 1)), "synced" INTEGER NOT NULL DEFAULT 0 CHECK ("synced" IN (0, 1)), "purged" INTEGER NOT NULL DEFAULT 0 CHECK ("purged" IN (0, 1)), "score_cache" TEXT NULL, "updated_at_millis" INTEGER NULL, PRIMARY KEY ("uuid"))
 CREATE TABLE "qsos_backup" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "backup_id" TEXT NOT NULL, "backup_at_millis" INTEGER NOT NULL, "uuid" TEXT NOT NULL, "operation" TEXT NOT NULL, "data" TEXT NOT NULL, "deleted" INTEGER NOT NULL DEFAULT 0 CHECK ("deleted" IN (0, 1)))
+CREATE INDEX qsos_operation_counters ON qsos (operation, deleted, band, start_at_millis)
 CREATE INDEX qsos_operation_start ON qsos (operation, start_at_millis)
+CREATE INDEX qsos_synced_start ON qsos (synced, start_at_millis)
 CREATE INDEX qsos_their_call_start ON qsos (their_call, start_at_millis)
 CREATE TABLE "sequences" ("operation" TEXT NOT NULL, "label" TEXT NOT NULL, "next_value" INTEGER NOT NULL, "start_value" INTEGER NOT NULL DEFAULT 1, "updated_at_millis" INTEGER NULL, PRIMARY KEY ("operation", "label"))

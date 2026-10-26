@@ -78,21 +78,26 @@ DriftNativeOptions logDatabaseOptions() => const DriftNativeOptions(databaseDire
 /// [_configureLogConnection]. The quit's drain budget is sized from it.
 const logBusyTimeout = Duration(seconds: 5);
 
-/// Lets a statement on the log's connection wait [logBusyTimeout] for a lock
-/// held by another connection to the file.
-///
-/// The app reaches the log through one connection only, so a lock it runs
-/// into belongs to something else — another process with the file open.
-/// SQLite's default is to give up at once, which fails the statement (a sync
-/// round's COMMIT, a saved QSO) with `database is locked` over a lock that
-/// would have cleared moments later. SQLite still fails at once where waiting
-/// could deadlock: a transaction that has read and now wants to write while
-/// the other side already holds the write lock. The bound matters too: the
-/// connection is serialized, so every query behind the waiting one waits
-/// with it.
-///
-/// Top-level because drift sends it to the isolate that opens the file.
-void _configureLogConnection(CommonDatabase db) => db.execute('PRAGMA busy_timeout = ${logBusyTimeout.inMilliseconds}');
+/// How the log's connection behaves on every native platform. A statement
+/// waits [logBusyTimeout] for a lock held by another connection — something
+/// outside the app holding the file for a moment costs a short wait, not a
+/// failed write. The journal is write-ahead: a logged contact's several
+/// commits each append to the WAL instead of rewriting a rollback journal,
+/// and a reader never waits on a writer; the `-wal` and `-shm` sidecars move
+/// with the file, and a snapshot reads through them (`VACUUM INTO`).
+/// `synchronous = FULL` syncs the WAL at every commit, so a logged contact
+/// survives a power cut as well as the app dying — one sync per commit,
+/// where the rollback journal cost two; NORMAL would sync only at
+/// checkpoints and let a power cut take the last commits. The level is
+/// written out because a WAL connection's default is a compile-time option
+/// of the engine: the bundled builds default to FULL, Apple's system
+/// library (which the tests load) to NORMAL. Web is not here: drift's wasm
+/// build keeps its own journal mode.
+void _configureLogConnection(CommonDatabase db) {
+  db.execute('PRAGMA busy_timeout = ${logBusyTimeout.inMilliseconds}');
+  db.execute('PRAGMA journal_mode = WAL');
+  db.execute('PRAGMA synchronous = FULL');
+}
 
 /// What [guardPreferencesFile] had to do to hand the plugin a file it can
 /// read. Anything but [none] is worth telling the operator about, because

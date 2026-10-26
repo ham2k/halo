@@ -5901,6 +5901,14 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     'qsos_their_call_start',
     'CREATE INDEX qsos_their_call_start ON qsos (their_call, start_at_millis)',
   );
+  late final Index qsosOperationCounters = Index(
+    'qsos_operation_counters',
+    'CREATE INDEX qsos_operation_counters ON qsos (operation, deleted, band, start_at_millis)',
+  );
+  late final Index qsosSyncedStart = Index(
+    'qsos_synced_start',
+    'CREATE INDEX qsos_synced_start ON qsos (synced, start_at_millis)',
+  );
   late final Index inboundCapturesDedupeKey = Index(
     'inbound_captures_dedupe_key',
     'CREATE UNIQUE INDEX inbound_captures_dedupe_key ON inbound_captures (dedupe_key)',
@@ -5939,6 +5947,8 @@ abstract class _$HaLoDatabase extends GeneratedDatabase {
     claims,
     qsosOperationStart,
     qsosTheirCallStart,
+    qsosOperationCounters,
+    qsosSyncedStart,
     inboundCapturesDedupeKey,
     peerEventsOperationSeq,
     peerEventsOperationRecord,

@@ -68,6 +68,14 @@ class Operations extends Table {
 @DataClassName('QsoRow')
 @TableIndex(name: 'qsos_operation_start', columns: {#operation, #startAtMillis})
 @TableIndex(name: 'qsos_their_call_start', columns: {#theirCall, #startAtMillis})
+// Covers the live counters (`refreshOperationCounters`, `_liveCount`): the
+// WHERE's columns and the aggregated one, so neither query reads a row.
+@TableIndex(name: 'qsos_operation_counters', columns: {#operation, #deleted, #band, #startAtMillis})
+// The rows sync still owes, in the order it sends them: without this the
+// unsynced batch is a scan of the whole log and a sort, three times a round.
+// Not a partial index: drift binds `synced = ?` as a variable, which SQLite
+// cannot match to an index's own WHERE at plan time.
+@TableIndex(name: 'qsos_synced_start', columns: {#synced, #startAtMillis})
 class Qsos extends Table {
   TextColumn get uuid => text()();
   TextColumn get operation => text()();
@@ -367,7 +375,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -454,6 +462,10 @@ class HaLoDatabase extends _$HaLoDatabase {
         }
         if (from < 16) {
           await m.createIndex(qsosTheirCallStart);
+        }
+        if (from < 17) {
+          await m.createIndex(qsosOperationCounters);
+          await m.createIndex(qsosSyncedStart);
         }
       });
     },

@@ -917,7 +917,7 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
 
   /// How many rows [forOperation] would read, without reading them.
   Future<int> _liveCount(String operationUuid) async {
-    final count = db.qsos.uuid.count();
+    final count = countAll();
     final query = db.selectOnly(db.qsos)
       ..addColumns([count])
       ..where(db.qsos.operation.equals(operationUuid) & db.qsos.deleted.equals(false));
@@ -1360,7 +1360,9 @@ class QsosRepository with QsoHistoryQueries, ClaimRecordQueries, LiveLogQueries,
     // `logs/logs_adif_drop.dart` is the one caller that has never had an outer
     // transaction of its own to rely on for that.
     await db.transaction(() async {
-      final count = db.qsos.uuid.count();
+      // Rows, not uuids: the counters index holds everything this query
+      // reads, so it never touches the table.
+      final count = countAll();
       final minStart = db.qsos.startAtMillis.min();
       final maxStart = db.qsos.startAtMillis.max();
       // Event pseudo-QSOs (start/break/end markers) share the qsos table but
