@@ -18,25 +18,24 @@
 // Reading the diff does not catch it either — an absent named argument is what
 // there is to notice.
 //
-// Per RENDER, not per file. Two shapes make a per-file check a rubber stamp,
-// and both are live: a file with two renders where only one is styled (the
-// other free-rides on its neighbour), and `withEmojiFallback(sheet).copyWith(
-// p: …)` — wrapped, then overridden — which drops the paragraph's fallback and
-// reads as compliant. The scan is paren-balanced from each render so that
-// "reaches the font" means this call does, and the emoji token has to sit
-// OUTSIDE any later copyWith rather than merely somewhere in the argument.
+// Block markdown is covered by construction: it renders only through
+// HaloMarkdown, which adds the font after a call site's own style
+// (no_bare_markdown_body_test.dart keeps it that way). What this scans is
+// inline markdown, whose style is the caller's.
+//
+// Per RENDER, not per file: in a file with two renders where only one is
+// styled, the other free-rides on its neighbour. The scan is paren-balanced
+// from each render so that "reaches the font" means this call does.
 
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Rendering markdown, as opposed to defining how it renders. `Markdown(` is
-/// flutter_markdown's scrolling widget — unused today and the likeliest thing
-/// a long notes pane reaches for.
-final _renders = RegExp(r'\b(?:Markdown|MarkdownBody|InlineMarkdownText|inlineMarkdownSpans)\(');
+/// Rendering inline markdown, as opposed to defining how it renders.
+final _renders = RegExp(r'\b(?:InlineMarkdownText|inlineMarkdownSpans)\(');
 
-/// Reaching the bundled emoji font, directly or through the shared helper.
-final _emojiAware = RegExp(r'\b(?:emojiFontFamily|withEmojiFallback)\b');
+/// Reaching the bundled emoji font.
+final _emojiAware = RegExp(r'\bemojiFontFamily\b');
 
 /// A style argument naming an identifier defined elsewhere in the file, e.g.
 /// `styleSheet: notesStyleSheet` or `style: _subtitleStyle(theme)` — the
@@ -168,7 +167,7 @@ String _argsAt(String source, int open) {
 }
 
 void main() {
-  test('every markdown render reaches the bundled emoji font', () {
+  test('every inline markdown render reaches the bundled emoji font', () {
     final offenders = <String>[];
     final exemptSeen = <String>{};
 
@@ -247,50 +246,11 @@ void main() {
           'that markdown is invisible on web and shows as letters on Windows:\n'
           '${offenders.map((p) => '  $p').join('\n')}\n'
           '\n'
-          'Wrap the stylesheet in withEmojiFallback() (halo_widgets/theme.dart), OUTERMOST —\n'
-          'a copyWith applied after the wrap drops the fallback again. It covers every style\n'
-          'that can hold running text; copyWith(p:) alone reaches list items and code blocks\n'
-          'but never a heading, blockquote or table cell. For a bespoke TextStyle, name\n'
-          'emojiFontFamily in its fontFamilyFallback.\n'
+          'Name emojiFontFamily in the fontFamilyFallback of every style these renders are\n'
+          'given — a span style that names a font family replaces the paragraph\'s list.\n'
           '\n'
           'If the file genuinely renders only static UI copy with no emoji path, add it to\n'
           '_exempt with the reason.',
-    );
-
-    // The wrapper has to be OUTERMOST. `withEmojiFallback(sheet).copyWith(p: …)`
-    // rebuilds the paragraph style from one that never had the fallback, so the
-    // flag goes back to invisible while every check above still reads the call
-    // as covered — the one regression this whole test would otherwise greenlight.
-    final overridden = <String>[];
-    for (final file in _sources()) {
-      final path = file.path.replaceAll(r'\', '/');
-      final source = _withoutComments(file.readAsStringSync());
-      for (final wrap in RegExp(r'\bwithEmojiFallback\s*\(').allMatches(source)) {
-        final open = wrap.end - 1;
-        var depth = 0;
-        for (var i = open; i < source.length; i++) {
-          if (source[i] == '(') depth++;
-          if (source[i] == ')') {
-            depth--;
-            if (depth == 0) {
-              if (source.substring(i + 1).trimLeft().startsWith('.copyWith')) {
-                overridden.add('$path:${'\n'.allMatches(source.substring(0, wrap.start)).length + 1}');
-              }
-              break;
-            }
-          }
-        }
-      }
-    }
-    expect(
-      overridden,
-      isEmpty,
-      reason:
-          'withEmojiFallback() is overridden by a later copyWith here, which drops the\n'
-          'fallback it just added:\n'
-          '${overridden.map((p) => '  $p').join('\n')}\n'
-          '\n'
-          'Move the copyWith inside: withEmojiFallback(sheet.copyWith(…)).',
     );
 
     // An exemption for a file that no longer renders markdown is stale, and a

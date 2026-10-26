@@ -39,7 +39,7 @@ typedef InlineMarkdownOpenLink = FormOpenLink;
 /// [_headingFontSizeDelta]) rather than a block of its own — there is no room
 /// here for a heading to sit on its own line.
 ///
-/// Use it where the text is one tidy line; keep `MarkdownBody` wherever block
+/// Use it where the text is one tidy line; use [HaloMarkdown] wherever block
 /// structure actually matters.
 ///
 /// Only parse text an extension or a data file authored. An operation title, or

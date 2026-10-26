@@ -133,10 +133,10 @@ void main() {
     // dark-mode colors onto the white band. Same contract as the release
     // and onboarding overlays.
     //
-    // This asserts the pin EXISTS, and only that. It cannot tell whether the
-    // panel actually resolved through it: every context in the tree is below
-    // the pin, so this reads light either way. The dark-app test at the
-    // bottom of this file is what covers the resolution.
+    // HaloMarkdown resolves its style sheet from `Theme.of` at its own
+    // context, which is what this reads, so a light theme here is the light
+    // markdown. Everything the panel resolves from its own `theme` is a font
+    // size or a forced color, the same in both brightnesses.
     final ambient = Theme.of(tester.element(find.byType(MarkdownBody)));
     expect(ambient.brightness, Brightness.light);
   });
@@ -173,41 +173,5 @@ void main() {
     // Unmounting releases the flag, waking the global handlers back up.
     await tester.pumpWidget(const SizedBox());
     expect(testerOverlayCovering.value, isFalse);
-  });
-
-  testWidgets('in a DARK app the panel is still built from the light theme', (tester) async {
-    // Catches the panel resolving its theme from anywhere but the pin: a
-    // helper on the State reading `State.context` (an ancestor of the pin), or
-    // a bare `buildHaLoTheme()` read. Either paints dark-mode colors onto this
-    // white band, silently, with the light-mode case still perfectly correct.
-    //
-    // What it does NOT catch, so nobody assumes otherwise: reverting the
-    // pin-above-content refactor. The shape before it was
-    // `Builder(builder: _buildPanel)` with a `BuildContext` PARAMETER, which
-    // shadows `State.context` — that already resolved below the pin, and this
-    // test passes green against it.
-    //
-    // Asserted on a value the build method RESOLVED, not on `Theme.of` at some
-    // widget in the tree: every context in the tree is below the pin already,
-    // so that reads light whether or not the panel used it.
-    // `codeblockDecoration` comes from `theme.cardColor` via
-    // MarkdownStyleSheet.fromTheme and is not overridden here.
-    final light = buildHaLoTheme(Brightness.light);
-    final dark = buildHaLoTheme(Brightness.dark);
-    // Guards against the whole assertion being vacuous — if the two themes
-    // ever agreed on cardColor this test could not fail.
-    expect(light.cardColor, isNot(dark.cardColor));
-
-    await tester.pumpWidget(
-      TranslationProvider(
-        child: MaterialApp(
-          theme: dark,
-          home: TesterOverlayView(entries: entries, release: null, onDismiss: () {}),
-        ),
-      ),
-    );
-
-    final sheet = tester.widget<MarkdownBody>(find.byType(MarkdownBody)).styleSheet!;
-    expect((sheet.codeblockDecoration as BoxDecoration).color, light.cardColor);
   });
 }

@@ -7,7 +7,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/release_notes.dart';
@@ -152,7 +151,6 @@ class _ReleaseNotesPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final markdown = _combinedReleaseNotesMarkdown(releases);
-    final styleSheet = withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(context)));
     return GestureDetector(
       key: const Key('aboutReleaseNotesPreview'),
       behavior: HitTestBehavior.opaque,
@@ -160,7 +158,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
         context,
         title: context.t.settings.about.releaseNotes,
         closeLabel: context.t.common.close,
-        builder: (context) => MarkdownBody(data: markdown, styleSheet: styleSheet),
+        builder: (context) => HaloMarkdown(data: markdown),
       ),
       child: ClipRect(
         child: ShaderMask(
@@ -176,7 +174,7 @@ class _ReleaseNotesPreview extends StatelessWidget {
             // The rows' own inset, so the notes start under the section
             // band's title rather than at an inset of their own.
             padding: ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero,
-            child: MarkdownBody(data: markdown, styleSheet: styleSheet),
+            child: HaloMarkdown(data: markdown),
           ),
         ),
       ),

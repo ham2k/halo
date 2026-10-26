@@ -27,7 +27,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'covered_route_hold.dart';
 import 'density.dart';
@@ -358,49 +357,6 @@ const String emojiFontAssetPath = 'assets/fonts/NotoColorEmoji.ttf';
 /// A `TextStyle` for rendering a single emoji glyph (e.g. a DXCC entity's
 /// flag) at [fontSize] — proportional, not `haloMonoStyle`'s monospace.
 TextStyle emojiStyle({double fontSize = 16}) => TextStyle(fontSize: fontSize, fontFamily: emojiFontFamily);
-
-/// [base] with [emojiFontFamily] added as a fallback to every style that can
-/// carry running text.
-///
-/// Any markdown a user or an extension wrote can name a country with its flag,
-/// or open with a pictograph. Body text is Roboto, which resolves no emoji at
-/// all on web — CanvasKit shapes text itself and never reaches for an OS font
-/// — so without the fallback those glyphs are simply absent, with no error and
-/// nothing in the log. On Windows the platform substitutes Segoe UI Emoji,
-/// which has no flag glyphs and draws the letters "US".
-///
-/// Takes a whole sheet rather than building one, so it composes with the call
-/// sites that style more than paragraphs: applying this LAST is what covers a
-/// bespoke `strong` or `listBullet` too.
-///
-/// Every style is listed individually on purpose: `copyWith(p:)` reaches `li`,
-/// `pre` and `table`, which share the `p` style, and NOTHING else — so a flag
-/// in a heading or a table cell goes missing while the paragraph beside it
-/// renders. `markdown_emoji_font_test.dart` is what keeps a new renderer from
-/// skipping this.
-MarkdownStyleSheet withEmojiFallback(MarkdownStyleSheet base) {
-  // Appends, like _withTabularFigures does with fontFeatures: a style that
-  // already names a fallback keeps it, and the emoji font goes last.
-  TextStyle? f(TextStyle? style) => style?.copyWith(fontFamilyFallback: [...?style.fontFamilyFallback, emojiFontFamily]);
-  return base.copyWith(
-    p: f(base.p),
-    a: f(base.a),
-    code: f(base.code),
-    h1: f(base.h1),
-    h2: f(base.h2),
-    h3: f(base.h3),
-    h4: f(base.h4),
-    h5: f(base.h5),
-    h6: f(base.h6),
-    em: f(base.em),
-    strong: f(base.strong),
-    del: f(base.del),
-    blockquote: f(base.blockquote),
-    listBullet: f(base.listBullet),
-    tableHead: f(base.tableHead),
-    tableBody: f(base.tableBody),
-  );
-}
 
 /// Height cap for dropdown overlays — [DropdownMenu.menuHeight] /
 /// [DropdownButton.menuMaxHeight]. Two limits, whichever is smaller: the
@@ -862,10 +818,10 @@ ThemeData _buildHaLoTheme(Brightness brightness) {
   // widget-level merge never enters into it. haloMonoStyle names the fallback
   // itself for exactly this reason.
   //
-  // withEmojiFallback is the other half, for markdown: flutter_markdown builds
-  // its stylesheet from `theme.textTheme` and inherits this, but a call site
-  // that overrides a block style with a hand-built TextStyle replaces it
-  // outright. markdown_emoji_font_test.dart is what keeps those covered.
+  // HaloMarkdown is the other half, for markdown: flutter_markdown builds its
+  // stylesheet from `theme.textTheme` and inherits this, but a call site that
+  // overrides a block style with a hand-built TextStyle replaces it outright,
+  // so HaloMarkdown adds the fallback back after the call site's style.
   final textTheme = _withTabularFigures(
     ThemeData(brightness: brightness).textTheme.apply(
       fontFamily: 'Roboto',

@@ -20,7 +20,6 @@ import 'panel_scene/scene_view.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -142,10 +141,9 @@ class PanelContentView extends StatelessWidget {
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),
-          child: MarkdownBody(
+          child: HaloMarkdown(
             data: content.content,
             selectable: true,
-            styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(context))),
             // The same link policy as a status-bar notice's: http(s) and
             // mailto leave for the OS browser, anything else is ignored.
             onTapLink: (text, href, title) {

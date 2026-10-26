@@ -470,6 +470,24 @@ An embedded web view is for a **pane that shows a site** (the Web Site pane,
 HTML extension panels, the MapLibre map backend), never for handing the
 operator off to somebody else's page.
 
+### Markdown
+
+Block markdown — notices, program notes, extension panels and forms, release
+notes — renders through `HaloMarkdown` (`halo_widgets`), never a bare
+`MarkdownBody`; a single line of it is `InlineMarkdownText`'s job.
+`HaloMarkdown` applies the house style sheet, then the call site's `style:`
+callback (`(base) => base.copyWith(…)`), then the emoji font:
+
+- **Tables** draw no borders, pad cells thinly (`Space.xs` by `Space.xxs`),
+  align a header left like its cells unless the column sets its own
+  alignment, and align cells to the top of a row that wraps. A call site's
+  `style:` can override any of it.
+- **The emoji font** goes on last, so a `style:` that replaces a text style
+  with a hand-built one cannot blank the flags in an extension's text.
+
+`app/test/guards/no_bare_markdown_body_test.dart` fails on a bare
+`MarkdownBody` or a style sheet built outside `HaloMarkdown`.
+
 ### Icons
 
 The app's icon language is **Material Design Icons** (Pictogrammers MDI, the

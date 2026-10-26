@@ -239,12 +239,11 @@ class _TesterPanel extends StatelessWidget {
     // tripping flutter_markdown's assertion).
     final theme = Theme.of(context);
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
-    final notesStyleSheet = withEmojiFallback(
-      MarkdownStyleSheet.fromTheme(theme).copyWith(
-        p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-        listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-        strong: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize * 1.15, fontWeight: FontWeight.bold, color: Colors.black),
-      ),
+    final notesStyle = theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black);
+    MarkdownStyleSheet notesStyleSheet(MarkdownStyleSheet base) => base.copyWith(
+      p: notesStyle,
+      listBullet: notesStyle,
+      strong: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize * 1.15, fontWeight: FontWeight.bold, color: Colors.black),
     );
 
     // The standing warning leads, then each pending build's notes, newest
@@ -338,7 +337,7 @@ class _TesterPanel extends StatelessWidget {
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
-                                          MarkdownBody(data: notesMarkdown, styleSheet: notesStyleSheet),
+                                          HaloMarkdown(data: notesMarkdown, style: notesStyleSheet),
                                           SizedBox(height: viewport.maxHeight),
                                           // A vintage-web nod to match the
                                           // tape: the classic animated
@@ -346,7 +345,7 @@ class _TesterPanel extends StatelessWidget {
                                           // native pixel size.
                                           Center(child: Image.asset('assets/images/under.gif')),
                                           const SizedBox(height: Space.md),
-                                          Text(context.t.testerOverlay.thanks, textAlign: TextAlign.center, style: notesStyleSheet.p),
+                                          Text(context.t.testerOverlay.thanks, textAlign: TextAlign.center, style: notesStyle),
                                         ],
                                       ),
                                     ),

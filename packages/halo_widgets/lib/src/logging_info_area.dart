@@ -8,12 +8,11 @@
 // what is missing) and hands it over; nothing here reads a controller.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'call_info_summary.dart';
+import 'halo_markdown.dart';
 import 'mdi_icons.g.dart';
 import 'spacing.dart';
-import 'theme.dart';
 import 'wall_clock.dart';
 
 /// The info area's content, in priority order: a command message (markdown)
@@ -135,12 +134,10 @@ class LoggingInfoArea extends StatelessWidget {
   Widget _content() {
     final message = this.message;
     if (message != null) {
-      return MarkdownBody(
+      return HaloMarkdown(
         data: message,
-        styleSheet: withEmojiFallback(
-          MarkdownStyleSheet.fromTheme(theme).copyWith(
-            p: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer, fontWeight: FontWeight.w500),
-          ),
+        style: (base) => base.copyWith(
+          p: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer, fontWeight: FontWeight.w500),
         ),
       );
     }

@@ -12,7 +12,6 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
@@ -684,10 +683,7 @@ class _AccountPaneState extends State<AccountPane> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (preface != null && preface.isNotEmpty) ...[
-                    MarkdownBody(data: preface, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme))),
-                    const SizedBox(height: Space.md),
-                  ],
+                  if (preface != null && preface.isNotEmpty) ...[HaloMarkdown(data: preface), const SizedBox(height: Space.md)],
                   if (field['type'] == 'secret')
                     SecretTextField(
                       controller: controller,
@@ -704,10 +700,7 @@ class _AccountPaneState extends State<AccountPane> {
                       decoration: poloFieldDecoration(context, field['label'] as String).copyWith(errorText: _fieldError(key, controller.text)),
                       onChanged: (_) => setState(() {}),
                     ),
-                  if (postface != null && postface.isNotEmpty) ...[
-                    const SizedBox(height: Space.md),
-                    MarkdownBody(data: postface, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme))),
-                  ],
+                  if (postface != null && postface.isNotEmpty) ...[const SizedBox(height: Space.md), HaloMarkdown(data: postface)],
                 ],
               ),
             );
@@ -741,7 +734,7 @@ class _AccountPaneState extends State<AccountPane> {
                           height: 20,
                           child: Center(child: SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))),
                         )
-                      : MarkdownBody(data: _testResult ?? '—', styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme))),
+                      : HaloMarkdown(data: _testResult ?? '—'),
                 ),
               ),
               const SizedBox(width: Space.md),

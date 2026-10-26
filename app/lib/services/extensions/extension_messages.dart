@@ -10,7 +10,6 @@
 // callback back into the extension.
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -94,7 +93,7 @@ void showExtensionMarkdownDialog({String? title, required String text, List<Map<
     builder: (dialogContext) => HaloDialog(
       wide: true,
       title: title != null ? Text(title) : null,
-      content: MarkdownBody(data: text, styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext)))),
+      content: HaloMarkdown(data: text),
       cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       actions: [
         for (final action in actions)

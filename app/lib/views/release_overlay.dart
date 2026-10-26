@@ -234,12 +234,11 @@ class _ReleaseOverlayContent extends StatelessWidget {
     // Flutter's default TextTheme picks for the (fixed, but still
     // technically light) `theme` above.
     final notesFontSize = (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2;
-    final notesStyleSheet = withEmojiFallback(
-      MarkdownStyleSheet.fromTheme(theme).copyWith(
-        p: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-        listBullet: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black),
-        strong: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize * 1.15, fontWeight: FontWeight.bold, color: Colors.black),
-      ),
+    final notesStyle = theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize, color: Colors.black);
+    MarkdownStyleSheet notesStyleSheet(MarkdownStyleSheet base) => base.copyWith(
+      p: notesStyle,
+      listBullet: notesStyle,
+      strong: theme.textTheme.bodyMedium?.copyWith(fontSize: notesFontSize * 1.15, fontWeight: FontWeight.bold, color: Colors.black),
     );
 
     // "What's new in this release" is bold via markdown's `**...**` rather
@@ -335,7 +334,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
                                     child: ClipRect(
                                       child: expanded
                                           ? SingleChildScrollView(
-                                              child: MarkdownBody(data: notesMarkdown, styleSheet: notesStyleSheet),
+                                              child: HaloMarkdown(data: notesMarkdown, style: notesStyleSheet),
                                             )
                                           // A `ShaderMask` in `dstIn` mode fades
                                           // the notes' own alpha directly
@@ -367,7 +366,7 @@ class _ReleaseOverlayContent extends StatelessWidget {
                                               // height.
                                               child: SingleChildScrollView(
                                                 physics: const NeverScrollableScrollPhysics(),
-                                                child: MarkdownBody(data: notesMarkdown, styleSheet: notesStyleSheet),
+                                                child: HaloMarkdown(data: notesMarkdown, style: notesStyleSheet),
                                               ),
                                             ),
                                     ),

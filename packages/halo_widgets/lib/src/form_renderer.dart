@@ -13,6 +13,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'category_band.dart';
 import 'collapsible_section.dart';
 import 'halo_dialog.dart';
+import 'halo_markdown.dart';
 import 'icon_resolver.dart';
 import 'keyboard_accessory.dart';
 import 'list_contents_key.dart';
@@ -928,22 +929,21 @@ class FormRendererState extends State<FormRenderer> with _ListFields {
   Widget _buildMarkdown(Map<String, dynamic> el, ThemeData theme) {
     final text = el['text'] as String? ?? '';
     final devModeColor = _devModeColor(el);
-    // Extension-authored copy, so it needs the emoji font; the dev-mode tint
-    // keeps the bare sheet it always used, with only the fallback added.
-    final styleSheet = withEmojiFallback(devModeColor == null ? MarkdownStyleSheet.fromTheme(theme) : MarkdownStyleSheet(p: TextStyle(color: devModeColor)));
+    // The dev-mode tint recolors the paragraph text only.
+    final style = devModeColor == null ? null : (MarkdownStyleSheet base) => base.copyWith(p: base.p?.copyWith(color: devModeColor));
     if (el['collapsible'] == true) {
       return _CollapsibleMarkdown(
         title: el['title'] as String? ?? '',
         color: devModeColor,
         child: Padding(
           padding: _rowContentPadding,
-          child: MarkdownBody(data: text, styleSheet: styleSheet),
+          child: HaloMarkdown(data: text, style: style),
         ),
       );
     }
     return Padding(
       padding: _rowContentPadding,
-      child: MarkdownBody(data: text, styleSheet: styleSheet),
+      child: HaloMarkdown(data: text, style: style),
     );
   }
 

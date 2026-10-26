@@ -298,36 +298,34 @@ Widget summaryHeading(BuildContext context, {required String title, String? icon
 Widget summaryTallyDetail(BuildContext context, String detail, {required bool isGrid}) {
   final theme = Theme.of(context);
   final bodyStyle = theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-  final styleSheet = withEmojiFallback(
-    MarkdownStyleSheet.fromTheme(theme).copyWith(
-      p: isGrid
-          ? bodyStyle.copyWith(
-              fontFamily: 'RobotoMono',
-              fontSize: 12,
-              // Dimmer than onSurfaceVariant alone — a code still open should
-              // all but recede next to a worked one's full-strength strikethrough.
-              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-            )
-          : bodyStyle,
-      // The codes still open are the default paragraph color, dimmed above;
-      // a worked one is struck through AND set back to full strength, so the
-      // grid reads at a glance as done versus still needed rather than
-      // everything competing at the same weight. `null` when not a grid
-      // leaves the theme's own `del` style alone (`copyWith`'s `del ?? this.del`).
-      del: isGrid
-          ? bodyStyle.copyWith(
-              fontFamily: 'RobotoMono',
-              fontSize: 12,
-              color: theme.colorScheme.onSurface,
-              fontWeight: FontWeight.w700,
-              decoration: TextDecoration.lineThrough,
-            )
-          : null,
-    ),
+  MarkdownStyleSheet style(MarkdownStyleSheet base) => base.copyWith(
+    p: isGrid
+        ? bodyStyle.copyWith(
+            fontFamily: 'RobotoMono',
+            fontSize: 12,
+            // Dimmer than onSurfaceVariant alone — a code still open should
+            // all but recede next to a worked one's full-strength strikethrough.
+            color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+          )
+        : bodyStyle,
+    // The codes still open are the default paragraph color, dimmed above;
+    // a worked one is struck through AND set back to full strength, so the
+    // grid reads at a glance as done versus still needed rather than
+    // everything competing at the same weight. `null` when not a grid
+    // leaves the theme's own `del` style alone (`copyWith`'s `del ?? this.del`).
+    del: isGrid
+        ? bodyStyle.copyWith(
+            fontFamily: 'RobotoMono',
+            fontSize: 12,
+            color: theme.colorScheme.onSurface,
+            fontWeight: FontWeight.w700,
+            decoration: TextDecoration.lineThrough,
+          )
+        : null,
   );
   return Padding(
     padding: const EdgeInsets.only(top: Space.xs),
-    child: MarkdownBody(data: detail, softLineBreak: true, styleSheet: styleSheet),
+    child: HaloMarkdown(data: detail, softLineBreak: true, style: style),
   );
 }
 

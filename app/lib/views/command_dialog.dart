@@ -18,7 +18,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
@@ -1256,18 +1255,16 @@ class _CommandDialogState extends State<CommandDialog> {
         children: [
           if (isError) ...[Icon(MdiIcons.alertCircle, size: response ? 20 : 16, color: theme.colorScheme.onErrorContainer), const SizedBox(width: Space.md)],
           Expanded(
-            child: MarkdownBody(
+            child: HaloMarkdown(
               data: message,
-              styleSheet: withEmojiFallback(
-                MarkdownStyleSheet.fromTheme(theme).copyWith(
-                  p: theme.textTheme.bodyMedium?.copyWith(
-                    // The field's own size, in plain logical pixels — UiScale
-                    // scales the whole tree (docs/design/ui-scaling.md); never
-                    // multiply by the font scale here.
-                    fontSize: response ? 17 : null,
-                    color: isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
-                    fontWeight: FontWeight.w600,
-                  ),
+              style: (base) => base.copyWith(
+                p: theme.textTheme.bodyMedium?.copyWith(
+                  // The field's own size, in plain logical pixels — UiScale
+                  // scales the whole tree (docs/design/ui-scaling.md); never
+                  // multiply by the font scale here.
+                  fontSize: response ? 17 : null,
+                  color: isError ? theme.colorScheme.onErrorContainer : theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),

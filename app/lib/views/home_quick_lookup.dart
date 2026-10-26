@@ -8,7 +8,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../services/command_actions.dart';
 import '../services/halo_services.dart';
@@ -285,14 +284,12 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                         children: [
                           if (_engine.isError) ...[Icon(MdiIcons.alertCircle, size: 16, color: theme.colorScheme.onPrimary), const SizedBox(width: Space.md)],
                           Expanded(
-                            child: MarkdownBody(
+                            child: HaloMarkdown(
                               data: commandMessage,
-                              styleSheet: withEmojiFallback(
-                                MarkdownStyleSheet.fromTheme(theme).copyWith(
-                                  p: theme.textTheme.bodyLarge?.copyWith(
-                                    color: _engine.isConfirmation ? theme.colorScheme.onPrimary : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                              style: (base) => base.copyWith(
+                                p: theme.textTheme.bodyLarge?.copyWith(
+                                  color: _engine.isConfirmation ? theme.colorScheme.onPrimary : theme.colorScheme.onPrimary.withValues(alpha: 0.85),
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
