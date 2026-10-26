@@ -814,7 +814,7 @@ void main() {
   });
 
   group('the live spots path', () {
-    Future<Map<String, Map<String, List<String>>>?> scoreWith(Map<String, dynamic> scopes, Map<String, dynamic> operation, Map<String, Object?> answers) =>
+    Future<Map<String, Map<String, dynamic>>?> scoreWith(Map<String, dynamic> scopes, Map<String, dynamic> operation, Map<String, Object?> answers) =>
         _LiveExtensions(_StubHost(answers), scopes).scoreCandidates(
           operation: operation,
           operationUuid: 'op-live',
@@ -832,7 +832,7 @@ void main() {
           },
         );
 
-    Future<Map<String, Map<String, List<String>>>?> score(Map<String, Object?> answers) => scoreWith(_potaAndCore, _parkOperationData, answers);
+    Future<Map<String, Map<String, dynamic>>?> score(Map<String, Object?> answers) => scoreWith(_potaAndCore, _parkOperationData, answers);
 
     // Per CANDIDATE: a batch is one bridge crossing carrying every spot on
     // screen, so a rule applied per batch would let one park spot decide how

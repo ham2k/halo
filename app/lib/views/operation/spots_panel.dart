@@ -66,10 +66,6 @@ List<Map<String, dynamic>> _refsOf(Map<String, dynamic> spot) {
 
 int _timeOf(Map<String, dynamic> spot) => asSpotNum(asSpotMap(spot['spot'])?['timeInMillis'])?.toInt() ?? 0;
 
-/// The SDK's `Spot` declares `icon` at the top level only. A nested
-/// `spot.icon` is a misplaced field, and reads as no icon rather than
-/// rendering by accident.
-String? _iconOf(Map<String, dynamic> spot) => asSpotString(spot['icon']);
 String? _labelOf(Map<String, dynamic> spot) => asSpotString(asSpotMap(spot['spot'])?['label']);
 
 /// Splits already-sorted `spots` into display sections, mirroring
@@ -492,7 +488,6 @@ class SpotsPanel extends StatefulWidget {
 class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
   Map<String, String> _sourceNames = {};
   int _sourceNamesRequest = 0;
-  @override
   List<Map<String, dynamic>> _activityControls = [];
   late final SpotBoardSubscription _boardView;
   bool _refreshing = false;
@@ -731,6 +726,24 @@ class _SpotsPanelState extends State<SpotsPanel> with _SpotsList {
 
   @override
   Set<String> _newRefsFor(Map<String, dynamic> spot, Set<String> notices) => spotNewRefs(spot, notices: notices, judgements: _board.judgements);
+
+  /// The most icons a row draws. A spot can carry many more — several
+  /// scorers, programs and merged sources' references — and every icon is a
+  /// fixed width the label gives up.
+  static const _maxSpotIcons = 3;
+
+  @override
+  List<SpotIcon> _iconsFor(Map<String, dynamic> spot, Set<String> notices) => spotIconsWithin(
+    spotIcons(
+      spot,
+      controls: _activityControls,
+      scoreIcons: _board.scoreIconsFor(widget.operation.uuid) ?? const {},
+      notices: notices,
+      judgements: _board.judgements,
+      programs: widget.services.chase.programs,
+    ),
+    _maxSpotIcons,
+  );
 
   /// The sort the list follows: the Chasing view keeps its own.
   @override

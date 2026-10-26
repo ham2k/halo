@@ -147,6 +147,14 @@ class SpotBoardService extends ChangeNotifier {
   /// beside them elsewhere.
   Map<String, SpotScore>? scoresFor(String operationUuid) => _scoredUuid != null && _scoredUuid == operationUuid ? _withChase : null;
   Map<String, SpotScore> _scores = {};
+
+  /// The icons the scorers gave each candidate ([SpotIcon]), by
+  /// [spotCandidateKey], for [operationUuid] as [scoresFor] is. None in the
+  /// Chasing view, whose rows show the programs' verdicts in place of the
+  /// scorers'.
+  Map<String, List<SpotIcon>>? scoreIconsFor(String operationUuid) =>
+      _scoredUuid != null && _scoredUuid == operationUuid ? (_shown?.chasing ?? false ? const {} : _scoreIcons) : null;
+  Map<String, List<SpotIcon>> _scoreIcons = {};
   String? _scoredUuid;
 
   /// Each candidate's chasing verdicts, per goal in goal order, by
@@ -240,6 +248,7 @@ class SpotBoardService extends ChangeNotifier {
     _judgedUuid = null;
     _judgedRevision = null;
     _scores = {};
+    _scoreIcons = {};
     _scoredUuid = null;
     _judgements = {};
     _withChase = {};
@@ -266,6 +275,7 @@ class SpotBoardService extends ChangeNotifier {
     _judgedChasing = shown.chasing;
     if (switched) {
       _scores = {};
+      _scoreIcons = {};
       _scoredUuid = null;
       // Judged from the station and view switched away from: merged into the
       // new scores, they would show its verdicts until the next judging.
@@ -518,6 +528,7 @@ class SpotBoardService extends ChangeNotifier {
           // Already judged empty: nothing a reader shows has moved.
           if (_scores.isNotEmpty || _judgements.isNotEmpty || _scoredUuid != operation.uuid) {
             _scores = {};
+            _scoreIcons = {};
             _judgements = {};
             _scoredUuid = operation.uuid;
             _mergeChase();
@@ -552,7 +563,12 @@ class SpotBoardService extends ChangeNotifier {
         // scorers' verdicts, empty if it was the only one, so a board never
         // keeps strikes put there by a scorer that is no longer answering.
         if (scored != null) {
-          _scores = {for (final entry in scored.entries) entry.key: (notices: entry.value['notices'] ?? const [], alerts: entry.value['alerts'] ?? const [])};
+          List<String> keys(dynamic list) => ((list as List?) ?? const []).whereType<String>().toList();
+          _scores = {for (final entry in scored.entries) entry.key: (notices: keys(entry.value['notices']), alerts: keys(entry.value['alerts']))};
+          _scoreIcons = {
+            for (final entry in scored.entries)
+              if (((entry.value['icons'] as List?) ?? const []).map(spotIconFrom).nonNulls.toList() case final icons when icons.isNotEmpty) entry.key: icons,
+          };
           _scoredUuid = operation.uuid;
           _mergeChase();
           _bump();

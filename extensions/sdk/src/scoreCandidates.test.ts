@@ -224,3 +224,29 @@ test("a station worked at another reference reports newRef, not duplicate", asyn
   assert.deepEqual(result.wc1n.alerts, [], "a different park is not a duplicate")
   assert.deepEqual(result.wc1n.notices, ["newRef"])
 })
+
+// A scorer marks the spots worth the operator's eye with an icon of its own,
+// and the batch must not lose it on the way to the host.
+test("a verdict's icon and color reach the candidate's answer", async () => {
+  const marking = contestScorer(
+    {
+      startScoresheet: () => ({}),
+      scoreQso: ({ scoresheet, qso }) => ({
+        scoresheet,
+        score: (qso.their as { call: string }).call === "K1MUL" ? { value: 1, notices: ["newMult"], icon: "star", color: "#C62828" } : { value: 1 },
+      }),
+      summarizeScore: () => ({}),
+    },
+    { scope: "always" },
+  )
+  const result = await marking.scoreCandidates!(
+    { operation, candidates: [candidate("mult", "K1MUL"), candidate("plain", "W2BBB")] },
+    { online: false, getQsos: async () => [] },
+  )
+  assert.deepEqual(result.mult, { notices: ["newMult"], alerts: [], icon: "star", color: "#C62828" })
+  assert.deepEqual(result.plain, { notices: [], alerts: [] })
+
+  // Not into the log's cached verdicts, where no row shows them.
+  const logged = await marking.scoreQsos({ operation, qsos: [qso("K1MUL")] }, { online: false, getQsos: async () => [] })
+  assert.deepEqual(Object.values(logged.qsoScores), [{ value: 1, notices: ["newMult"] }])
+})

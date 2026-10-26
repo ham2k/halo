@@ -336,13 +336,29 @@ export interface SuggestedQso {
 /// them comma-joined (`'K1ABC,W2XYZ'`). Split it before looking a call up.
 export interface BoardSpot extends Spot {
   hookKey?: string
-  /// What the Spots Panel's row shows beside the call: the activity's icon and
-  /// tint for the spot's first reference (else the source's `icon`, else a
-  /// tower) and the call's note emoji. Absent with `annotate: false`, and on
-  /// hosts before extension API 12.
-  display?: { icon: string; iconColor?: string; emoji?: string }
+  /// What the Spots Panel's row shows beside the call: `icons`, every icon
+  /// the row may show — the scorers', the alerting chasing programs' (both
+  /// only with `annotations`), then one for each kind of reference the spot
+  /// carries in the order it names them (a reference no activity handles
+  /// shows the source's `icon`, else a tower), no name twice; `icon` and
+  /// `iconColor`, the first reference's; and the call's note emoji. The panel
+  /// draws three `icons`, at least one of each kind there is; draw as many as
+  /// you have room for. Absent with `annotate: false`, and on hosts before
+  /// extension API 12; `icons` is absent on hosts from before it was added,
+  /// so fall back to `icon`.
+  display?: { icon: string; iconColor?: string; icons?: SpotDisplayIcon[]; emoji?: string }
   /// Present when the spots were judged against an operation.
   annotations?: SpotAnnotations
+}
+
+/// One of the icons a spot's `display` lists: an MDI or `fa-` name, the tint
+/// (`#RRGGBB`) its extension declares, and what put it there — a scorer's
+/// `scoreCandidates` answer, a chasing program's alerting verdict, or one of
+/// the spot's references.
+export interface SpotDisplayIcon {
+  icon: string
+  iconColor?: string
+  kind: "scoring" | "chasing" | "reference"
 }
 
 /// What the Spots Panel shows about a spot, judged against an operation.
@@ -1285,6 +1301,11 @@ export interface QsoScoreVerdict {
   dupe?: boolean
   notices?: string[]
   alerts?: string[]
+  /// As `QsoScoreNotices.icon` and `color`: `contestScorer()`'s
+  /// `scoreCandidates` passes them on, and `scoreQsos` leaves them out of
+  /// the logged contacts' verdicts.
+  icon?: string
+  color?: string
   [extra: string]: JSONValue | undefined
 }
 
@@ -1443,6 +1464,12 @@ export interface QsoScoreNotices {
   /// From `scoreQso` only: the checkpoint the request named is held, as
   /// `ScoreQsosResult.checkpointHeld`.
   checkpointHeld?: true
+  /// Read from `scoreCandidates` answers only: an icon (MDI or `fa-` name) and its tint
+  /// (`#RRGGBB`) for the candidate's Spots Panel row, shown before the
+  /// chasing programs' and the references'. Name one only where the spot is
+  /// worth the operator's eye: a row has room for few.
+  icon?: string
+  color?: string
 }
 
 /// Scores MANY not-yet-logged candidates in one call — the Spots Panel, which
@@ -1577,6 +1604,8 @@ export interface ContestScorer<S extends Scoresheet = Scoresheet> {
 /// (docs/design/claims.md §2).
 export interface ChasingProgram {
   label: string
+  /// The program's icon and `#RRGGBB` accent — also what a spot row shows
+  /// where the program's verdict alerts.
   icon?: string
   color?: string
   /// Raise it whenever the same contacts would claim something different —

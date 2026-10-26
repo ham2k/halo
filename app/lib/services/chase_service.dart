@@ -203,6 +203,9 @@ class ChaseService extends ChangeNotifier {
     if (!setEquals(before.keys.toSet(), programs.keys.toSet()) || before.values.any((p) => programs[p.key]?.version != p.version)) {
       _candidateClaims.clear();
       _changed();
+    } else if (before.values.any((p) => programs[p.key]?.icon != p.icon || programs[p.key]?.color != p.color)) {
+      // The claims still stand, but the spot rows draw the program's icon.
+      _changed();
     }
   }
 

@@ -344,8 +344,10 @@ mixin ExtensionScoring {
 
   /// The same live judgement as [scoreQso], for many not-yet-logged candidates
   /// at once — the Spots Panel annotating every spot on screen against the
-  /// operation's log. Returns `{candidateKey: {notices, alerts}}` merged across
-  /// every scorer relevant to [operation], or null when NO pass happened — the
+  /// operation's log. Returns `{candidateKey: {notices, alerts, icons?}}`
+  /// merged across every scorer relevant to [operation] — `icons` the
+  /// `{icon, color?}` each scorer that named one gave the candidate, in the
+  /// scorers' order, each name once — or null when NO pass happened — the
   /// runtime isn't up, or no scorer applies. A scorer that ran and failed is
   /// not that case: see the return below.
   ///
@@ -374,7 +376,7 @@ mixin ExtensionScoring {
   /// (`ScoringService.candidateResumesFor`). Each carries its own tail: these
   /// checkpoints are not the operation's, and stand at a different point in
   /// the log.
-  Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
+  Future<Map<String, Map<String, dynamic>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
     required Map<String, Map<String, dynamic>> candidates,
@@ -436,6 +438,11 @@ mixin ExtensionScoring {
     // nothing to report, which un-strikes the board. Null would keep verdicts
     // no scorer computes any more.
     if (batches.isEmpty) return const {};
+    // By call, read back in the batches' order: the answers land in whatever
+    // order the calls finish, and a row's icons must not trade places between
+    // refreshes. Per call rather than per scorer key, since one scorer runs
+    // once for each type of reference it covers that the operation carries.
+    final iconsByCall = [for (final _ in batches) <String, Map<String, String>>{}];
 
     final uncovered = [
       for (final batch in batches)
@@ -459,8 +466,8 @@ mixin ExtensionScoring {
           );
 
     await Future.wait(
-      batches.map((batch) async {
-        final (:scorer, :payload) = batch;
+      batches.indexed.map((entry) async {
+        final (index, (:scorer, :payload)) = entry;
         try {
           final shared = resume?.checkpoints[scorer.key];
           final ownResumes = shared == null ? await own : null;
@@ -491,6 +498,9 @@ mixin ExtensionScoring {
             final into = target.putIfAbsent(key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
             into.notices.addAll(((value['notices'] as List?) ?? const []).whereType<String>());
             into.alerts.addAll(((value['alerts'] as List?) ?? const []).whereType<String>());
+            if (value['icon'] case final String icon when icon.isNotEmpty) {
+              iconsByCall[index][key] = {'icon': icon, if (value['color'] case final String color) 'color': color};
+            }
           }
         } catch (e, stackTrace) {
           // Per-scorer, like scoreQso: a contest scorer that throws must not cost
@@ -509,19 +519,35 @@ mixin ExtensionScoring {
     // un-struck worked spot costs a glance, a struck unworked one costs the
     // contact.
     if (!any && !failed) return null;
+    // The candidates a fallback scorer yielded on outright: its icon goes
+    // with its verdict, as nothing says what else the icon was about.
+    final yielded = <String>{};
     for (final entry in fallbackMerged.entries) {
       final judged = judgedByOther.contains(entry.key);
       final notices = judged ? entry.value.notices.where((n) => !kWorkedBeforeNotices.contains(n)) : entry.value.notices;
       final alerts = judged ? entry.value.alerts.where((a) => !kWorkedBeforeAlerts.contains(a)) : entry.value.alerts;
-      if (notices.isEmpty && alerts.isEmpty) continue;
+      if (notices.isEmpty && alerts.isEmpty) {
+        if (judged) yielded.add(entry.key);
+        continue;
+      }
       final into = merged.putIfAbsent(entry.key, () => (notices: SplayTreeSet<String>(), alerts: SplayTreeSet<String>()));
       into.notices.addAll(notices);
       into.alerts.addAll(alerts);
     }
+    List<Map<String, String>> iconsOf(String key) {
+      final seen = <String>{};
+      return [
+        for (final (index, batch) in batches.indexed)
+          if (!(batch.scorer.fallback && yielded.contains(key)))
+            if (iconsByCall[index][key] case final icon? when seen.add(icon['icon']!)) icon,
+      ];
+    }
+
     return {
-      for (final entry in merged.entries)
-        if (entry.value.notices.isNotEmpty || entry.value.alerts.isNotEmpty)
-          entry.key: {'notices': entry.value.notices.toList(), 'alerts': entry.value.alerts.toList()},
+      for (final key in {...merged.keys, for (final icons in iconsByCall) ...icons.keys})
+        if ((notices: merged[key]?.notices ?? const <String>{}, alerts: merged[key]?.alerts ?? const <String>{}, icons: iconsOf(key)) case final verdict
+            when verdict.notices.isNotEmpty || verdict.alerts.isNotEmpty || verdict.icons.isNotEmpty)
+          key: {'notices': verdict.notices.toList(), 'alerts': verdict.alerts.toList(), if (verdict.icons.isNotEmpty) 'icons': verdict.icons},
     };
   }
 }

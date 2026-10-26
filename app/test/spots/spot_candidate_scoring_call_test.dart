@@ -31,6 +31,8 @@ class _RecordingHost implements ExtensionHost {
     // A hook that throws is stored as the exception itself — the failure this
     // file needs is a scorer that raises, not one that answers oddly.
     if (result is Exception) throw result;
+    // One answering by what it was sent, for a scorer called once per ref.
+    if (result is Object? Function(Object?)) return result(args);
     return result;
   }
 
@@ -254,6 +256,141 @@ void main() {
 
     expect(result?.containsKey('quiet'), isFalse);
     expect(result?.containsKey('loud'), isTrue);
+  });
+
+  // A row's icons are read off this answer on every refresh: they must come
+  // in the scorers' order, not whichever call finished first, and one icon
+  // alone is something to report.
+  test('the icons scorers name come back in the scorers\' order, each name once', () async {
+    final service = _ServiceWithHost(
+      _RecordingHost({
+        'scoring:core:scoreCandidates': {
+          'mult': {'notices': const [], 'alerts': const [], 'icon': 'star', 'color': '#C62828'},
+        },
+        'scoring:contest:scoreCandidates': {
+          'mult': {
+            'notices': const ['newMult'],
+            'alerts': const [],
+            'icon': 'trophy',
+          },
+          'marked': {'notices': const [], 'alerts': const [], 'icon': 'star'},
+          'blank': {'notices': const [], 'alerts': const [], 'icon': ''},
+        },
+      }),
+      scopes: const {'core': 'always', 'contest': 'always'},
+    );
+
+    final result = await service.scoreCandidates(
+      operation: const {'stationCall': 'N0DEV'},
+      operationUuid: 'op-1',
+      candidates: {'mult': _candidate('K1MUL'), 'marked': _candidate('W2XYZ'), 'blank': _candidate('N0BLA')},
+    );
+
+    expect(result?['mult']?['icons'], [
+      {'icon': 'star', 'color': '#C62828'},
+      {'icon': 'trophy'},
+    ]);
+    expect(result?['marked'], {
+      'notices': const <String>[],
+      'alerts': const <String>[],
+      'icons': [
+        {'icon': 'star'},
+      ],
+    });
+    expect(result?.containsKey('blank'), isFalse);
+  });
+
+  // A scorer covering two types of reference is called once for each, all
+  // at once, and its icons are read back in that order however the calls
+  // finish.
+  test('a scorer called for each of its reference types gives its icons in a fixed order', () async {
+    final answered = <String>[];
+    final service = _ServiceWithHost(
+      _RecordingHost({
+        'scoring:pota:scoreCandidates': (Object? args) async {
+          final type = (((args as Map)['ref'] as Map)['type']) as String;
+          // The first call answers last.
+          if (type == 'potaActivation') await Future<void>.delayed(const Duration(milliseconds: 5));
+          answered.add(type);
+          return {
+            'park': {'notices': const [], 'alerts': const [], 'icon': type == 'potaActivation' ? 'pine-tree' : 'tent'},
+          };
+        },
+      }),
+      scopes: const {
+        'pota': {
+          'refTypes': ['potaActivation', 'pota'],
+        },
+      },
+    );
+
+    final result = await service.scoreCandidates(
+      operation: const {
+        'stationCall': 'N0DEV',
+        'refs': [
+          {'type': 'potaActivation', 'ref': 'US-0001'},
+          {'type': 'pota', 'ref': 'US-0002'},
+        ],
+      },
+      operationUuid: 'op-1',
+      candidates: {'park': _candidate('K1ABC')},
+    );
+
+    expect(answered, ['pota', 'potaActivation']);
+    expect(result?['park']?['icons'], [
+      {'icon': 'pine-tree'},
+      {'icon': 'tent'},
+    ]);
+  });
+
+  // The core scorer's duplicate gives way to an activity's own ruling, and an
+  // icon left behind would mark the row for a verdict it no longer carries.
+  test('a fallback scorer\'s icon goes with the verdict it yields', () async {
+    final service = _ServiceWithHost(
+      _RecordingHost({
+        'scoring:core:scoreCandidates': {
+          'park': {
+            'notices': const [],
+            'alerts': const ['duplicate'],
+            'icon': 'content-duplicate',
+          },
+          'plain': {
+            'notices': const [],
+            'alerts': const ['duplicate'],
+            'icon': 'content-duplicate',
+          },
+        },
+        'scoring:pota:scoreCandidates': {
+          'park': {
+            'notices': const ['newRef'],
+            'alerts': const [],
+            'dupe': false,
+          },
+        },
+      }),
+      scopes: const {
+        'core': 'always',
+        'pota': {
+          'refTypes': ['pota'],
+        },
+      },
+    );
+
+    final result = await service.scoreCandidates(
+      operation: const {
+        'stationCall': 'N0DEV',
+        'refs': [
+          {'type': 'pota', 'ref': 'US-0001'},
+        ],
+      },
+      operationUuid: 'op-1',
+      candidates: {'park': _candidate('K1ABC'), 'plain': _candidate('W2XYZ')},
+    );
+
+    expect(result?['park']?.containsKey('icons'), isFalse);
+    expect(result?['plain']?['icons'], [
+      {'icon': 'content-duplicate'},
+    ]);
   });
 
   // The cached checkpoint lets a scorer skip folding the whole log, which is

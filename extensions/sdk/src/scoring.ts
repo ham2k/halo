@@ -330,7 +330,10 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         args,
         ctx,
         (uuid, score) => {
-          if (uuid) qsoScores[uuid] = score
+          // A logged contact's verdict is cached with the log, where no row
+          // shows the icon a spot's would carry.
+          const { icon: _icon, color: _color, ...kept } = score
+          if (uuid) qsoScores[uuid] = kept
         },
         (day, count, sheet) => {
           daySections.push({
@@ -413,6 +416,8 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
           notices: score.notices ?? [],
           alerts: score.alerts ?? [],
           ...(score.dupe !== undefined && { dupe: score.dupe }),
+          ...(typeof score.icon === "string" && { icon: score.icon }),
+          ...(typeof score.color === "string" && { color: score.color }),
         }
       }
       return result

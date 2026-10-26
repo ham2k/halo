@@ -30,7 +30,7 @@ class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
   final List<Map<String, dynamic>> board;
 
   /// Each scorer verdict, by the callsign it is about.
-  final Map<String, Map<String, List<String>>> verdicts = {};
+  final Map<String, Map<String, dynamic>> verdicts = {};
   final List<Map<String, Map<String, dynamic>>> scored = [];
 
   /// No scorer applies, so a pass answers nothing at all.
@@ -63,7 +63,7 @@ class _FakeExtensions extends ExtensionService with LookupCallsOneByOne {
       (items: board, succeeded: {for (final spot in board) spot['hookKey'] as String}.toList(), unreachable: const <String>[], failed: const <String>[]);
 
   @override
-  Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
+  Future<Map<String, Map<String, dynamic>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
     required Map<String, Map<String, dynamic>> candidates,
@@ -294,6 +294,32 @@ void main() {
       }
     });
 
+    // A panel drawing spots its own way would otherwise show a multiplier
+    // the scorer marked as one more call.
+    test('a scorer\'s icon comes with the annotations, ahead of the references\'', () async {
+      await boot([_spot('W1AW', band: '20m', mode: 'SSB', freq: 14260.0, icon: 'radio-handheld')]);
+      extensions.verdicts['W1AW'] = {
+        'notices': ['newMult'],
+        'alerts': [],
+        'icons': [
+          {'icon': 'star', 'color': '#C62828'},
+        ],
+      };
+      final operation = await showOperation();
+
+      final judged = (await getSpots({'operationUuid': operation.uuid}) as List).single as Map;
+      expect((judged['display'] as Map)['icons'], [
+        {'icon': 'star', 'iconColor': '#c62828', 'kind': 'scoring'},
+        {'icon': 'radio-handheld', 'kind': 'reference'},
+      ]);
+      // Still the first reference's, for a panel that draws only one.
+      expect((judged['display'] as Map)['icon'], 'radio-handheld');
+      final unjudged = (await getSpots({'operationUuid': 'another'}) as List).single as Map;
+      expect((unjudged['display'] as Map)['icons'], [
+        {'icon': 'radio-handheld', 'kind': 'reference'},
+      ]);
+    });
+
     // A lookup reading the board once has no repaint to correct it, so
     // "worked: false" before any verdict would be read as a verdict.
     test('wait for a verdict: none are made before the board has judged the operation', () async {
@@ -331,52 +357,102 @@ void main() {
 
   // A panel drawing spots its own way would otherwise guess at the activity
   // behind each one, and show a park the Spots Panel shows as a summit.
-  test('display carries what the Spots Panel shows beside the call: its activity\'s icon and tint, else the source\'s icon, and its note emoji', () async {
-    await boot(
-      [
-        _spot(
-          'K1ABC',
-          band: '20m',
-          mode: 'SSB',
-          freq: 14250.0,
-          refs: [
-            {'type': 'pota', 'ref': 'US-1234'},
-          ],
-          icon: 'radio-handheld',
-        ),
-        _spot('W1AW', band: '20m', mode: 'CW', freq: 14030.0, icon: 'mountain'),
-        _spot('N0XYZ', band: '20m', mode: 'FT8', freq: 14074.0),
-      ],
-      emojis: {'W1AW': '🎂'},
-    );
-    extensions.activityControls = [
-      {
-        'input': {'refType': 'pota'},
-        'icon': 'pine-tree',
-        'color': '#2E7D32',
-      },
-    ];
-    await showOperation();
-    // Opening an operation costs no fetch: only a panel drawing spots its own way needs them.
-    expect(extensions.controlFetches, 0);
-    // The first read starts it, showing the sources' own icons until it lands and the board moves.
-    final revision = services.spotBoard.revision;
-    final first = {
-      for (final spot in await getSpots({'filter': 'all'}) as List) ((spot as Map)['their'] as Map)['call']: spot['display'],
-    };
-    expect(first['K1ABC'], {'icon': 'radio-handheld'});
-    await pumpEventQueue();
-    expect(services.spotBoard.revision, greaterThan(revision));
-    expect(extensions.controlFetches, 1);
+  test(
+    'display carries what the Spots Panel shows beside the call: each kind of reference\'s icon and tint, else the source\'s icon, and its note emoji',
+    () async {
+      await boot(
+        [
+          _spot(
+            'K1ABC',
+            band: '20m',
+            mode: 'SSB',
+            freq: 14250.0,
+            refs: [
+              {'type': 'pota', 'ref': 'US-1234'},
+            ],
+            icon: 'radio-handheld',
+          ),
+          _spot('W1AW', band: '20m', mode: 'CW', freq: 14030.0, icon: 'mountain'),
+          _spot(
+            'KI2D',
+            band: '40m',
+            mode: 'CW',
+            freq: 7030.0,
+            refs: [
+              {'type': 'sota', 'ref': 'W2/GC-001'},
+              {'type': 'pota', 'ref': 'US-1234'},
+              {'type': 'pota', 'ref': 'US-5678'},
+              {'type': 'iota', 'ref': 'NA-001'},
+            ],
+          ),
+          _spot('N0XYZ', band: '20m', mode: 'FT8', freq: 14074.0),
+        ],
+        emojis: {'W1AW': '🎂'},
+      );
+      extensions.activityControls = [
+        {
+          'input': {'refType': 'pota'},
+          'icon': 'pine-tree',
+          'color': '#2E7D32',
+        },
+        {
+          'input': {'refType': 'sota'},
+          'icon': 'image-filter-hdr',
+        },
+      ];
+      await showOperation();
+      // Opening an operation costs no fetch: only a panel drawing spots its own way needs them.
+      expect(extensions.controlFetches, 0);
+      // The first read starts it, showing the sources' own icons until it lands and the board moves.
+      final revision = services.spotBoard.revision;
+      final first = {
+        for (final spot in await getSpots({'filter': 'all'}) as List) ((spot as Map)['their'] as Map)['call']: spot['display'],
+      };
+      expect(first['K1ABC'], {
+        'icon': 'radio-handheld',
+        'icons': [
+          {'icon': 'radio-handheld', 'kind': 'reference'},
+        ],
+      });
+      await pumpEventQueue();
+      expect(services.spotBoard.revision, greaterThan(revision));
+      expect(extensions.controlFetches, 1);
 
-    final display = {
-      for (final spot in await getSpots({'filter': 'all'}) as List) ((spot as Map)['their'] as Map)['call']: spot['display'],
-    };
-    expect(display['K1ABC'], {'icon': 'pine-tree', 'iconColor': '#2e7d32'});
-    expect(display['W1AW'], {'icon': 'mountain', 'emoji': '🎂'});
-    expect(display['N0XYZ'], {'icon': 'radio-tower'});
-    expect(((await getSpots({'filter': 'all', 'annotate': false}) as List).first as Map).containsKey('display'), isFalse);
-  });
+      final display = {
+        for (final spot in await getSpots({'filter': 'all'}) as List) ((spot as Map)['their'] as Map)['call']: spot['display'],
+      };
+      expect(display['K1ABC'], {
+        'icon': 'pine-tree',
+        'iconColor': '#2e7d32',
+        'icons': [
+          {'icon': 'pine-tree', 'iconColor': '#2e7d32', 'kind': 'reference'},
+        ],
+      });
+      expect(display['W1AW'], {
+        'icon': 'mountain',
+        'icons': [
+          {'icon': 'mountain', 'kind': 'reference'},
+        ],
+        'emoji': '🎂',
+      });
+      expect(display['N0XYZ'], {
+        'icon': 'radio-tower',
+        'icons': [
+          {'icon': 'radio-tower', 'kind': 'reference'},
+        ],
+      });
+      // Every kind, past the few the panel's row has room for.
+      expect(display['KI2D'], {
+        'icon': 'image-filter-hdr',
+        'icons': [
+          {'icon': 'image-filter-hdr', 'kind': 'reference'},
+          {'icon': 'pine-tree', 'iconColor': '#2e7d32', 'kind': 'reference'},
+          {'icon': 'radio-tower', 'kind': 'reference'},
+        ],
+      });
+      expect(((await getSpots({'filter': 'all', 'annotate': false}) as List).first as Map).containsKey('display'), isFalse);
+    },
+  );
 
   test('a malformed option rejects the call rather than answering the whole board', () async {
     await boot(board);

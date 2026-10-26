@@ -68,7 +68,9 @@ class _SpotTile extends StatelessWidget {
   /// When sorting by age, the age (top-right of the row) is drawn bold so the
   /// value you're ordering by stands out.
   final bool sortByAge;
-  final List<Map<String, dynamic>> activityControls;
+
+  /// The icons the label line opens with, as [spotIconsWithin] picks them.
+  final List<SpotIcon> icons;
   final VoidCallback? onTap;
 
   /// This spot reads as worked: either every operator on it has already been
@@ -122,7 +124,7 @@ class _SpotTile extends StatelessWidget {
     this.hzDigits = 0,
     this.leftWidth = 120,
     this.sortByAge = false,
-    this.activityControls = const [],
+    this.icons = const [],
     this.onTap,
     this.worked = false,
     this.logged = false,
@@ -179,7 +181,7 @@ class _SpotTile extends StatelessWidget {
     final modeAccent = notices.contains('newMode') || alerts.contains(ChaseVerdict.newMode) ? important : null;
     final callAccent = notices.contains('newMult') ? multiplier : (alerts.isNotEmpty ? important : null);
     final refs = _refsOf(spot);
-    final refIsNew = refs.isNotEmpty && newRefs.contains(asSpotString(refs.first['ref'])?.toUpperCase());
+    final refIsNew = refs.any((ref) => newRefs.contains(asSpotString(ref['ref'])?.toUpperCase()));
     final refAccent = notices.contains('newMult') ? multiplier : (notices.contains('newDay') || notices.contains('newRef') || refIsNew ? important : null);
     // An accented field is bold as well as colored — color alone is not a
     // signal an operator can rely on (docs/design/user-interface.md), and at
@@ -220,14 +222,10 @@ class _SpotTile extends StatelessWidget {
       );
     }
 
-    final refType = refs.isEmpty ? null : asSpotString(refs.first['type']);
-    final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
-    // The extension's declared accent tints its icon (the same tint the
+    // Each icon takes the accent its extension declares (the same tint the
     // Activities picker and the logging pills use), so a POTA row reads as
-    // POTA at a glance. The notice accents stay on the label text: the icon
-    // says WHAT the ref is, the text says why this row matters.
-    final extensionColor = colorForRefType(activityControls, refType);
-    final refIconColor = extensionColor != null ? faded(extensionColor) : (refAccent ?? (isSelf ? baseColor : outlineColor));
+    // POTA at a glance; one declaring none follows the label's colour.
+    final untintedIcon = refAccent ?? (isSelf ? baseColor : outlineColor);
 
     // Age sits at the top-right of the row, right-aligned, bold when it's the
     // sort key. Re-derived once a second (scoped to this label via the shared
@@ -299,8 +297,17 @@ class _SpotTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
             children: [
-              Icon(resolveIconName(refIcon), size: mono.fontSize, color: refIconColor),
-              const SizedBox(width: Space.xs),
+              for (final ref in icons) ...[
+                Icon(
+                  resolveIconName(ref.icon),
+                  size: mono.fontSize,
+                  color: switch (resolveExtensionColor(ref.color)) {
+                    final color? => faded(color),
+                    null => untintedIcon,
+                  },
+                ),
+                const SizedBox(width: Space.xs),
+              ],
               Expanded(
                 child: Text(
                   _labelOf(spot)!,

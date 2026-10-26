@@ -46,6 +46,7 @@ void main() {
   late SettingsService settings;
   late Map<String, Object?> stubs;
   late ChaseService service;
+  late ExtensionServiceWithFakeHost extensions;
   late int asked;
 
   setUp(() async {
@@ -64,6 +65,7 @@ void main() {
             'label': 'Calls',
             'version': 1,
             'editions': 'lifetime',
+            'icon': 'account-check',
             'color': '#2e7d32',
             'supersedes': ['newCall'],
           },
@@ -75,13 +77,8 @@ void main() {
         return {for (final qso in sent) qso['uuid']: _claimsOf(qso)};
       },
     };
-    service = ChaseService(
-      extensions: ExtensionServiceWithFakeHost(FakeExtensionHost(stubs)),
-      claims: claims,
-      qsos: qsos,
-      settings: settings,
-      changeDebounce: Duration.zero,
-    );
+    extensions = ExtensionServiceWithFakeHost(FakeExtensionHost(stubs));
+    service = ChaseService(extensions: extensions, claims: claims, qsos: qsos, settings: settings, changeDebounce: Duration.zero);
     await Future<void>.delayed(Duration.zero);
   });
   tearDown(() async {
@@ -105,6 +102,24 @@ void main() {
     final judged = await service.judge({'fresh': _candidate('K1ABC'), 'known': _candidate('W1AW')});
     expect(verdictOf(judged, 'fresh'), [ChaseVerdict.newRef]);
     expect(verdictOf(judged, 'known'), [ChaseVerdict.newBand]);
+  });
+
+  // A spot row draws the program's icon from the program itself, so an
+  // update that changes only the icon must still reach the rows.
+  test('a program\'s new icon alone tells readers', () async {
+    await service.judge({'a': _candidate('K1ABC')});
+    expect(service.programs['calls']?.icon, 'account-check');
+    await settle();
+    var told = 0;
+    service.addListener(() => told++);
+    ((stubs['chasing:*:program'] as List).single as Map)['value'] = {
+      ...(((stubs['chasing:*:program'] as List).single as Map)['value'] as Map),
+      'icon': 'account-star',
+    };
+    extensions.runtimeGeneration.value++;
+    await settle();
+    expect(service.programs['calls']?.icon, 'account-star');
+    expect(told, greaterThan(0));
   });
 
   // A board is judged again on every spots refresh and every checklist

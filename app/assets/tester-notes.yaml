@@ -13,6 +13,7 @@ upcoming:
     - "New: picking a band moves a CAT-connected radio to that band"
     - "New Advanced section in Operation Details: Operating Position, Assistance, Self-spotting"
     - "New iPhone Duo layout: whole display, two panes, fold-aware keyboard (feedback welcome)"
+    - "Improved spot icons: one per kind of reference, plus chasing alerts"
 
 "183":
   changes:

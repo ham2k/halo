@@ -7,12 +7,12 @@ mixin _SpotsList on State<SpotsPanel> {
   SpotsService get _spots;
   bool get _loading;
   Map<String, SpotCallInfo> get _callNotes;
-  List<Map<String, dynamic>> get _activityControls;
   SpotsFilterState get _filterState;
   String get _sortBy;
   Set<String> get _ourBaseCalls;
   ({bool worked, bool isSelf, Set<String> notices}) _flagsFor(Map<String, dynamic> spot);
   Set<String> _newRefsFor(Map<String, dynamic> spot, Set<String> notices);
+  List<SpotIcon> _iconsFor(Map<String, dynamic> spot, Set<String> notices);
   String? _noteEmojiOf(Map<String, dynamic> spot);
   ScrollController get _scrollController;
   GlobalKey get _currentRowKey;
@@ -226,7 +226,7 @@ mixin _SpotsList on State<SpotsPanel> {
                                       hzDigits: hzDigits,
                                       leftWidth: leftWidth,
                                       sortByAge: _sortBy == 'time',
-                                      activityControls: _activityControls,
+                                      icons: _iconsFor(spot, flags.notices),
                                       // A spot set aside by a slide dims like one scoring
                                       // calls worked, and a slide can equally put a scored
                                       // duplicate back on the board — but neither gesture

@@ -7,8 +7,11 @@
 // rules, so an extension's panel and the operator's own can never disagree
 // about which spots the operator's filters admit or which are worked.
 
+import 'dart:math' as math;
+
 import 'package:collection/collection.dart' show mergeSort;
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart' show controlForRef, refCodeOf;
 
 import 'settings_service.dart';
 import 'spots_service.dart';
@@ -500,6 +503,119 @@ List<Map<String, dynamic>> mergedSpotBoard(
     spots = spots.where((s) => spotPassesContinentFilter(_callOf(s), filters.disabledContinents, continentOf)).toList();
   }
   return (filtered: sortSpots(spots, filters.sortBy), total: total);
+}
+
+/// An icon a spot row shows: an MDI or `fa-` name, and the `#RRGGBB` accent
+/// that tints it, null for the row's own untinted colour.
+typedef SpotIcon = ({String icon, String? color});
+
+/// [value] read as a [SpotIcon] — `{icon, color?}`, as a scorer's answer and
+/// `getSpots`' `display` carry one — or null for anything else.
+SpotIcon? spotIconFrom(dynamic value) => switch (value) {
+  {'icon': final String icon} when icon.isNotEmpty => (icon: icon, color: asSpotString(value['color'])),
+  _ => null,
+};
+
+/// The icons a spot row shows, by what put them there: the scorers'
+/// ([spotScoreIcons]), the chasing programs' ([spotJudgementIcons]) and the
+/// references' ([spotRefIcons]). No icon name appears twice, the earlier
+/// kind keeping it.
+typedef SpotIcons = ({List<SpotIcon> scores, List<SpotIcon> judgements, List<SpotIcon> refs});
+
+/// Every icon [spot]'s row may show ([SpotIcons]). [scoreIcons] and
+/// [judgements] are keyed by [spotCandidateKey]; [notices] are the spot's
+/// own, as [spotDisplayFlags] unions them; [programs] name each program's
+/// icon. [refIcons] is [spot]'s [spotRefIcons], where the caller has it.
+SpotIcons spotIcons(
+  Map<String, dynamic> spot, {
+  required List<Map<String, dynamic>> controls,
+  Map<String, List<SpotIcon>> scoreIcons = const {},
+  Set<String> notices = const {},
+  Map<String, List<ChaseJudgement>> judgements = const {},
+  Map<String, ChasingProgram> programs = const {},
+  List<SpotIcon>? refIcons,
+}) {
+  final seen = <String>{};
+  List<SpotIcon> unseen(Iterable<SpotIcon> icons) => [
+    for (final icon in icons)
+      if (seen.add(icon.icon)) icon,
+  ];
+  return (
+    scores: unseen(spotScoreIcons(spot, scoreIcons)),
+    judgements: unseen(spotJudgementIcons(spot, notices: notices, judgements: judgements, programs: programs)),
+    refs: unseen(refIcons ?? spotRefIcons(spot, controls)),
+  );
+}
+
+/// At most [max] of [icons], in their order — scores, then judgements, then
+/// references — with at least one of each kind there is, so a row full of
+/// references still says why it matters, and one full of alerts still says
+/// what it is. The slots left over go to the earlier kinds first.
+List<SpotIcon> spotIconsWithin(SpotIcons icons, int max) {
+  final groups = [icons.scores, icons.judgements, icons.refs];
+  final counts = [for (final group in groups) group.isEmpty ? 0 : 1];
+  var left = max - counts.fold<int>(0, (sum, count) => sum + count);
+  for (var i = 0; i < groups.length && left > 0; i++) {
+    final more = math.min(groups[i].length - counts[i], left);
+    counts[i] += more;
+    left -= more;
+  }
+  return [for (var i = 0; i < groups.length; i++) ...groups[i].take(counts[i])].take(max).toList();
+}
+
+/// The icons the scorers gave [spot]'s operators ([scoreIcons], keyed by
+/// [spotCandidateKey]), in operator order, each name once.
+List<SpotIcon> spotScoreIcons(Map<String, dynamic> spot, Map<String, List<SpotIcon>> scoreIcons) {
+  final seen = <String>{};
+  return [
+    for (final call in spotOperatorCalls(spot))
+      for (final icon in scoreIcons[spotCandidateKey(call, spot)] ?? const <SpotIcon>[])
+        if (seen.add(icon.icon)) icon,
+  ];
+}
+
+/// The icons of the chasing programs ([programs]) whose verdicts on
+/// [spot]'s operators alert in [notices] ([ChaseNotice]), in goal order, each
+/// name once: what an alert for "DXCC ATNO" puts on the row beside the
+/// call's accent. A verdict that only shows, in the Chasing view, adds none,
+/// as does a program declaring no icon.
+List<SpotIcon> spotJudgementIcons(
+  Map<String, dynamic> spot, {
+  required Set<String> notices,
+  required Map<String, List<ChaseJudgement>> judgements,
+  required Map<String, ChasingProgram> programs,
+}) {
+  final alerting = {
+    for (final key in notices)
+      if (ChaseNotice.tryParse(key) case final notice? when notice.alerting) notice.program,
+  };
+  if (alerting.isEmpty) return const [];
+  final seen = <String>{};
+  return [
+    for (final call in spotOperatorCalls(spot))
+      for (final judgement in judgements[spotCandidateKey(call, spot)] ?? const <ChaseJudgement>[])
+        if (alerting.contains(judgement.program))
+          if (programs[judgement.program] case ChasingProgram(:final icon?, :final color) when seen.add(icon)) (icon: icon, color: color),
+  ];
+}
+
+/// The icons [spot] opens its label with: one for each kind of reference it
+/// carries, in the order it names them, so an activator on a park and a
+/// summit at once shows both — each the icon of the activity in [controls]
+/// that handles the reference, and the accent it declares. References no
+/// activity handles share one icon, the spot's own top-level `icon` (the
+/// SDK's `Spot` declares no other; a nested `spot.icon` is misplaced) else a
+/// tower, as does a spot with none at all. An icon name appears once, with
+/// the accent of its first reference.
+List<SpotIcon> spotRefIcons(Map<String, dynamic> spot, List<Map<String, dynamic>> controls) {
+  final fallback = asSpotString(spot['icon']) ?? 'radio-tower';
+  final icons = <SpotIcon>[];
+  for (final ref in _refsOf(spot)) {
+    final control = controlForRef(controls, type: asSpotString(ref['type']), code: refCodeOf(ref));
+    final icon = asSpotString(control?['icon']) ?? fallback;
+    if (icons.every((seen) => seen.icon != icon)) icons.add((icon: icon, color: asSpotString(control?['color'])));
+  }
+  return icons.isEmpty ? [(icon: fallback, color: null)] : icons;
 }
 
 /// The references [spot]'s operators would be new for, under each program

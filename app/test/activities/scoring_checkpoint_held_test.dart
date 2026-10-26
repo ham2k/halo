@@ -141,7 +141,7 @@ void main() {
     final calls = <Map<String, dynamic>>[];
     var lost = false;
     final extensions = ExtensionServiceWithFakeHost(_runtime(calls, missing: (args) => lost && !args.containsKey('resumeFrom')));
-    Future<Map<String, Map<String, List<String>>>?> board() =>
+    Future<Map<String, Map<String, dynamic>>?> board() =>
         extensions.scoreCandidates(operation: _operation, operationUuid: 'op-1', candidates: {'a': _qso}, resume: _resume);
 
     await board();

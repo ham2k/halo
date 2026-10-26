@@ -103,12 +103,20 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   ones the app already holds for the operation open on screen, so the call
   never waits on a scorer; another operation's spots, and that one's until
   its first verdicts land, come back unannotated rather than guessed.
-  From extension API 12 each also carries `display` — `icon` (an MDI or
-  `fa-` name), `iconColor` (`#RRGGBB`, where the activity declares one) and
-  `emoji` (the call's note emoji, where it has one): what the Spots Panel's row
-  shows beside the call, the activity's icon and tint for the spot's first
-  reference, else the source's own icon. `annotate: false` returns the spots
-  as their sources gave them.
+  From extension API 12 each also carries `display` — what the Spots Panel's
+  row shows beside the call. `icons` lists every icon the row may show, each
+  `{icon, iconColor?, kind}` — an MDI or `fa-` name, its tint (`#RRGGBB`,
+  where its extension declares one) and what put it there, in this order:
+  `scoring`, the icons scorers gave the spot; `chasing`, those of the chasing
+  programs whose verdicts alert for it; and `reference`, one for each kind of
+  reference the spot carries, in the order it names them — the handling
+  activity's icon, or the source's own for a reference no activity handles.
+  No icon appears twice. The scoring and chasing icons come only with the
+  annotations, above. The panel draws three, at least one of each kind there
+  is; draw as many as you have room for. `icon` and `iconColor` are the first
+  reference's, and all a host from before `icons` sends. `emoji` is the
+  call's note emoji, where it has one. `annotate: false` returns the spots as
+  their sources gave them.
   A panel's `'spots'` trigger fires whenever this answer may have moved: a
   refresh, new verdicts, the operator's spot filters or bands, or the radio's
   band or mode. A malformed or unknown option rejects the call. The CLI host
@@ -1587,6 +1595,15 @@ result, so no candidate can become another's duplicate and no candidate pays
 for a copy of the log. Candidates carry no uuid — a spot is not a record — so
 results come back under caller-chosen keys.
 
+A candidate's answer may name an `icon` (an MDI or `fa-` name) and a `color`
+(`#RRGGBB`) to mark its spot: the row shows it before the chasing programs'
+and the references' icons (see `getSpots`' `display.icons`), in the order the
+scorers run, each name once. Name one only where the spot is worth the
+operator's eye — a multiplier, a station a contest is after — since a row has
+room for few. A `contestScorer()` passes on the `icon` and `color` its
+`scoreQso` verdict carries to `scoreCandidates`, and leaves them out of the
+logged contacts' cached verdicts.
+
 `QsosRepository.forOperation` already filters deleted rows and orders by
 `startAtMillis`, so unlike web-lofi's `analyzeAndSectionQSOs` there's no
 `deleted`/`event` row bookkeeping on this side of the bridge.
@@ -1638,6 +1655,9 @@ registerHook("chasing", { key: "dxcc", hook: {
   `supersedes` names the scoring notices the program's verdicts stand in for
   (DXCC: `newDXCC`): wherever the program judges a call or a spot, the
   scorer's notice is dropped in favor of the verdict.
+  `icon` and `color` (`#RRGGBB`) mark a spot the program's verdict alerts
+  for: its row shows the icon, tinted, beside the references' (see
+  `getSpots`' `display.icons`). A verdict that does not alert adds none.
 - **`claimsForQsos`** answers every contact in the batch, by `uuid` — a
   caller asking about something that is not a stored contact (a spot, the
   call being typed) gives it a `uuid` of its own, and a contact without one

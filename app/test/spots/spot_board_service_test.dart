@@ -70,7 +70,7 @@ class _FakeExtensions extends ExtensionService {
   }
 
   @override
-  Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
+  Future<Map<String, Map<String, dynamic>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
     required Map<String, Map<String, dynamic>> candidates,
