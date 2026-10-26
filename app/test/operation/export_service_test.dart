@@ -399,6 +399,22 @@ void main() {
       expect((await exports.getExportOptions(operation)).single['filename'], 'N0CALL-20260715-${operation.uuid.split('-').first}.qson');
     });
 
+    test('the QSON dump takes a bare name too, whatever the station call carries', () async {
+      await settings.setDeveloperMode(true);
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL:P', userTitle: 'Odd call');
+      await qsos.add(created.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+        'startAtMillis': DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch,
+      });
+      final odd = (await operations.get(created.uuid))!;
+
+      expect((await exports.getExportOptions(odd)).single['filename'], '2026-07-15 N0CALLP ${odd.uuid.split('-').first}.qson');
+    });
+
     test('the setting reaches the hooks that list options AND the ones that generate', () async {
       final qsos = QsosRepository(db);
       final extensions = _ExtensionsWithHost(_CapturingHost());
@@ -413,6 +429,16 @@ void main() {
       ]);
       final host = extensions.host as _CapturingHost;
       expect((host.calls.single['args'] as Map)['compactFilenames'], isTrue);
+    });
+
+    test('the name the panel shows is the bare name the file gets, whatever path the hook offered', () async {
+      final service = ExportService(extensions: _HostileNamingExtensions(_CapturingHost()), qsos: QsosRepository(db), settings: settings);
+
+      final listed = await service.getExportOptions(operation);
+      expect(listed.map((o) => o['filename']), ['x.plist']);
+
+      final files = await service.generateExports(operation, listed);
+      expect(files.map((f) => f['filename']), ['x.plist']);
     });
 
     test('generation receives the stable type and each selected option key', () async {
@@ -1549,6 +1575,24 @@ class _RegisteredCountExtensions extends _ExtensionsWithHost {
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async => [
     {'exportType': 'potaActivation-adif', 'hookKey': 'pota', 'refType': 'pota', 'format': 'adif'},
     {'exportType': 'adif', 'hookKey': 'adif', 'format': 'adif'},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async => (args['options'] as List).cast<Map<String, dynamic>>();
+}
+
+/// Lists one option whose hook named a path, not a file.
+class _HostileNamingExtensions extends _ExtensionsWithHost {
+  _HostileNamingExtensions(super.mock);
+
+  @override
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String) overrides) async => [
+    {'exportType': 'adif', 'settings': <String, dynamic>{}},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async => [
+    {'exportType': 'adif', 'hookKey': 'adif', 'format': 'adif', 'filename': '../../Library/LaunchAgents/x.plist'},
   ];
 
   @override

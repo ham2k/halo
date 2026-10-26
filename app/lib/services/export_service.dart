@@ -147,7 +147,7 @@ class ExportService {
       // gets a header of its own titled "Export".
       'stationCall': operation.stationCalls.first,
       'label': 'Developer Mode: QSON Export',
-      'filename': filename,
+      'filename': safeExportFilename(filename),
       'icon': 'briefcase-upload',
       'priority': -100,
       'selectedByDefault': false,
@@ -489,7 +489,10 @@ class ExportService {
           ];
         }
         return [
-          for (final option in options) {...option, 'stationCall': call},
+          // The name shown here is the name the file gets (generateExports
+          // keeps it), so it is already the one the writers would make of it.
+          for (final option in options)
+            {...option, if (option['filename'] is String) 'filename': safeExportFilename(option['filename'] as String), 'stationCall': call},
         ];
       }),
     );
@@ -596,24 +599,6 @@ class ExportService {
     return results;
   }
 
-  /// Disambiguates filenames that collide (two selected results sharing a
-  /// name, or both missing one) before writing — a later hook's export
-  /// would otherwise silently overwrite an earlier one on disk.
-  List<String> _uniqueFilenames(List<Map<String, dynamic>> files) {
-    final seen = <String, int>{};
-    return [
-      for (final file in files)
-        () {
-          final base = (file['filename'] as String?)?.isNotEmpty == true ? file['filename'] as String : 'export.txt';
-          final count = seen.update(base, (n) => n + 1, ifAbsent: () => 1);
-          if (count == 1) return base;
-          final ext = p.extension(base);
-          final stem = base.substring(0, base.length - ext.length);
-          return '$stem-$count$ext';
-        }(),
-    ];
-  }
-
   /// Save flow: on desktop a single file opens a save dialog for that file and
   /// multiple files open a directory picker; on Android every file gets its own
   /// dialog (see below). Returns where the files went — a path, a directory,
@@ -642,7 +627,7 @@ class ExportService {
 
     if (files.length == 1) {
       final file = files.first;
-      final filename = file['filename'] as String? ?? 'export.txt';
+      final filename = safeExportFilename(file['filename'] as String?);
       final location = await getSaveLocation(
         suggestedName: filename,
         acceptedTypeGroups: [
@@ -664,7 +649,7 @@ class ExportService {
 
     final directory = await getDirectoryPath();
     if (directory == null) return null;
-    final filenames = _uniqueFilenames(files);
+    final filenames = uniqueExportFilenames(files);
     final written = <String>[];
     for (var i = 0; i < files.length; i++) {
       try {
@@ -691,7 +676,7 @@ class ExportService {
   /// disk — the operator has to be told which, in both cases, or they go
   /// looking for files that aren't there and re-export ones that are.
   Future<({String location, int count, bool namesFiles})?> _saveOnAndroid(List<Map<String, dynamic>> files) async {
-    final names = _uniqueFilenames(files);
+    final names = uniqueExportFilenames(files);
     final saved = <String>[];
     for (var i = 0; i < files.length; i++) {
       final String? name;
@@ -721,7 +706,7 @@ class ExportService {
   /// operator can answer, whereas an archive is a step they'd have to undo.
   Future<void> downloadFiles(List<Map<String, dynamic>> files) async {
     if (files.isEmpty) return;
-    final filenames = _uniqueFilenames(files);
+    final filenames = uniqueExportFilenames(files);
     for (var i = 0; i < files.length; i++) {
       downloadFile(filename: filenames[i], content: files[i]['content'] as String, mimeType: files[i]['mimeType'] as String?);
     }
@@ -753,7 +738,7 @@ class ExportService {
   /// failure marked fatal, naming every file it never tried, so [errors]
   /// always accounts for each file that did not arrive.
   Future<({int uploaded, List<String> errors})> stashFiles(List<Map<String, dynamic>> files, {String? groupTitle}) async {
-    final filenames = _uniqueFilenames(files);
+    final filenames = uniqueExportFilenames(files);
     final groupUuid = uuidGenerator.v4();
     var uploaded = 0;
     final errors = <String>[];
@@ -786,7 +771,7 @@ class ExportService {
   Future<bool> shareFiles(List<Map<String, dynamic>> files, {Rect? sharePositionOrigin}) async {
     if (files.isEmpty) return false;
     final tempDir = await getTemporaryDirectory();
-    final filenames = _uniqueFilenames(files);
+    final filenames = uniqueExportFilenames(files);
     final paths = <XFile>[];
     for (var i = 0; i < files.length; i++) {
       final path = p.join(tempDir.path, filenames[i]);
@@ -796,4 +781,73 @@ class ExportService {
     final result = await SharePlus.instance.share(ShareParams(files: paths, sharePositionOrigin: sharePositionOrigin));
     return result.status != ShareResultStatus.dismissed;
   }
+}
+
+/// The name an export lands under, from whatever a hook offered. Only the
+/// last path segment survives (the Windows style splits on either
+/// separator; a hook runs on every platform and may name a path in
+/// another's); a bare root is no name at all; control and format
+/// characters go (a right-to-left override would show one extension and
+/// save another), as do the characters Windows refuses in a name and the
+/// trailing dots and spaces it drops; a Windows device name (`NUL.adi`
+/// writes to the device and nothing lands) or a name with nothing left is
+/// `export.txt`; and a name longer than a filesystem holds is cut to fit,
+/// extension kept. Every writer joins this onto the directory the operator
+/// chose or the share cache, so an extension's filename can name a file
+/// there and nowhere else.
+String safeExportFilename(String? offered) {
+  var name = p.windows.basename(offered ?? '');
+  // `basename` hands a root back as itself: `/`, `C:\`, `\\server\share`.
+  if (name.contains('/') || name.contains('\\')) return 'export.txt';
+  name = name.replaceAll(_invisibleOrRefused, '').trim().replaceAll(_trailingDotsAndSpaces, '');
+  if (name.isEmpty || _windowsDeviceName.hasMatch(name)) return 'export.txt';
+  return _fitting(name);
+}
+
+/// Control characters (C0, C1 and DEL), format characters, the line and
+/// paragraph separators, and the characters Windows refuses in a name.
+final _invisibleOrRefused = RegExp(r'[\p{Cc}\p{Cf}\u2028\u2029<>:"|?*]', unicode: true);
+final _trailingDotsAndSpaces = RegExp(r'[. ]+$');
+
+/// The names Windows keeps for devices, with or without an extension:
+/// COM and LPT 0-9 and their superscript forms, CON, PRN, AUX, NUL.
+final _windowsDeviceName = RegExp(r'^(con|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])(\..*)?$', caseSensitive: false);
+
+/// [name] within the 255 bytes a filename may hold on every platform,
+/// keeping its extension and whole characters.
+String _fitting(String name) {
+  const maxBytes = 255;
+  if (utf8.encode(name).length <= maxBytes) return name;
+  final ext = p.extension(name);
+  final extBytes = utf8.encode(ext).length;
+  final runes = name.substring(0, name.length - ext.length).runes.toList();
+  while (runes.isNotEmpty && utf8.encode(String.fromCharCodes(runes)).length + extBytes > maxBytes) {
+    runes.removeLast();
+  }
+  return String.fromCharCodes(runes) + ext;
+}
+
+/// Disambiguates filenames that collide (two selected results sharing a
+/// name, or both missing one) before writing — a later hook's export would
+/// otherwise silently overwrite an earlier one on disk. Each name is
+/// [safeExportFilename]'s first, so two offers that differ only in the
+/// directories they named still come out distinct; names are compared
+/// case-folded, as the filesystems on macOS and Windows compare them; and
+/// a disambiguated name is itself checked against every name already
+/// given, so `log.adi`, `log.adi`, `log-2.adi` come out three.
+List<String> uniqueExportFilenames(List<Map<String, dynamic>> files) {
+  final used = <String>{};
+  return [
+    for (final file in files)
+      () {
+        final base = safeExportFilename(file['filename'] as String?);
+        final ext = p.extension(base);
+        final stem = base.substring(0, base.length - ext.length);
+        var name = base;
+        for (var n = 2; !used.add(name.toLowerCase()); n++) {
+          name = '$stem-$n$ext';
+        }
+        return name;
+      }(),
+  ];
 }
