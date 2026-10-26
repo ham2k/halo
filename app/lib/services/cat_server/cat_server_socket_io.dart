@@ -135,6 +135,12 @@ class _IoCatServerListener implements CatServerListener {
   int get clientCount => _clients.length;
 
   void _accept(Socket client) {
+    // Accepted on a socket not yet cancelled while [close] ends the clients:
+    // one let in now would outlive the server, still tuning and keying.
+    if (_closing) {
+      client.destroy();
+      return;
+    }
     final String peer;
     try {
       client.setOption(SocketOption.tcpNoDelay, true);
@@ -222,14 +228,16 @@ class _IoCatServerListener implements CatServerListener {
   @override
   Future<void> close() async {
     _closing = true;
+    // Clients first: ending one drops any PTT key it holds, and a socket
+    // close that throws must not leave a transmitter keyed behind it.
+    for (final end in [..._clients.values]) {
+      end(flush: false);
+    }
     for (final subscription in _subscriptions) {
       await subscription.cancel();
     }
     for (final socket in _sockets) {
       await socket.close();
-    }
-    for (final end in [..._clients.values]) {
-      end(flush: false);
     }
   }
 }

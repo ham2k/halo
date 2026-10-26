@@ -605,7 +605,7 @@ class HaLoServices with _TimeTravel {
   /// [maybeStartCatServer] once the settings ask for one.
   late final CatServerService catServer = CatServerService(
     settings: settings,
-    rig: StationCatServerRig(cat: cat, radio: radio, peerRadios: peerRemoteRadios),
+    rig: StationCatServerRig(cat: cat, radio: radio, peerRadios: peerRemoteRadios, settings: settings),
   );
 
   /// Starts the CAT server once the settings ask for one — at boot for one

@@ -135,8 +135,19 @@ void main() {
     expect(rig.tunes, isEmpty);
   });
 
-  test('PTT is a fault, so a client falls back to its own keying', () {
+  test('PTT is a fault unless the operator allows it, so a client falls back to its own keying', () {
     receive(hamlibRequest('rig.set_ptt', '<i4>1</i4>'));
     expect(sent.single, contains('<fault>'));
+    expect(rig.ptts, isEmpty);
+  });
+
+  test('PTT keys and unkeys once allowed, and a client gone keyed is unkeyed', () {
+    rig.transmitAllowed = true;
+    receive(hamlibRequest('rig.set_ptt', '<i4>1</i4>'));
+    receive(hamlibRequest('rig.set_ptt', '<i4>0</i4>'));
+    receive(hamlibRequest('rig.set_ptt', '<i4>1</i4>'));
+    expect(sent, everyElement(isNot(contains('<fault>'))));
+    connection.close();
+    expect(rig.ptts, [true, false, true, false]);
   });
 }

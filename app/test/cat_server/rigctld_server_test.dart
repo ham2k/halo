@@ -65,8 +65,11 @@ void main() {
       expect(plain, startsWith('1\n'), reason: 'the plain form stays bare');
     });
 
-    test('dump_state offers no CAT PTT, which HaLo cannot do', () {
+    test('dump_state offers CAT PTT while the operator allows it, radio or not: Hamlib reads it once and refuses its own T while it is 0', () {
       expect(ask(r'\dump_state'), contains('ptt_type=0x0\n'));
+      rig.transmitAllowed = true;
+      rig.radioCanKey = false;
+      expect(ask(r'\dump_state'), contains('ptt_type=0x1\n'), reason: 'a client that connects before the radio does would never offer PTT');
     });
 
     test('get_lock_mode answers a value AND a status, as the real one does', () {
@@ -166,8 +169,45 @@ void main() {
       expect(rig.tunes, isEmpty);
     });
 
-    test('PTT is refused as unavailable, so a client falls back to its own keying', () {
+    test('PTT is refused as unavailable unless the operator allows it, so a client falls back to its own keying', () {
       expect(ask('T 1'), 'RPRT -11\n');
+      expect(rig.ptts, isEmpty);
+    });
+
+    test('PTT keys and unkeys once allowed, from the mic or data jack alike', () {
+      rig.transmitAllowed = true;
+      expect(ask('T 1'), 'RPRT 0\n');
+      expect(ask('T 0'), 'RPRT 0\n');
+      expect(ask(r'\set_ptt 3'), 'RPRT 0\n', reason: 'WSJT-X asks for the data jack, and a radio here keys one way');
+      expect(ask('T x'), 'RPRT -1\n');
+      expect(rig.ptts, [true, false, true]);
+    });
+
+    test('a key the radio cannot take is refused, not reported as on the air', () {
+      rig.transmitAllowed = true;
+      rig.radioCanKey = false;
+      expect(ask('T 1'), 'RPRT -11\n');
+    });
+
+    test('an unkey goes even after the permission is withdrawn, so a client can still get off the air', () {
+      rig.transmitAllowed = true;
+      ask('T 1');
+      rig.transmitAllowed = false;
+      expect(ask('T 0'), 'RPRT 0\n');
+      expect(rig.ptts, [true, false]);
+    });
+
+    test("a client's unkey leaves a key it does not hold alone, even one it never could have keyed", () {
+      rig.pttOwner = Object(); // the operator's [']
+      expect(ask('T 0'), 'RPRT 0\n');
+      expect(rig.ptts, isEmpty, reason: "a program sending PTT off as it opens must not end the operator's over");
+    });
+
+    test('a client that goes away keyed is unkeyed: it will send nothing more', () {
+      rig.transmitAllowed = true;
+      ask('T 1');
+      connection.close();
+      expect(rig.ptts, [true, false]);
     });
 
     test('split can be turned off but not on', () {

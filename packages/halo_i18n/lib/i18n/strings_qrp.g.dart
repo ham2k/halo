@@ -2200,6 +2200,11 @@ class _Translations$settings$catServer$qrp extends Translations$settings$catServ
 	@override String get openAccess => 'open access';
 	@override String get openAccessOn => 'any computer on the local network can connect.';
 	@override String get openAccessOff => 'only apps on this computer can connect.';
+	@override String get allowTransmit => 'allow apps to transmit';
+	@override String allowTransmitOn({required Object minutes}) => 'apps can key the radio\'s ptt, for up to ${minutes} minutes at a time.';
+	@override String allowTransmitOnNetwork({required Object minutes}) => 'apps on any computer on the local network can key the radio\'s ptt, for up to ${minutes} minutes at a time.';
+	@override String get allowTransmitOff => 'apps cannot key the radio. use vox or their own ptt setup.';
+	@override String get allowTransmitUnsupported => 'the main vfo radio cannot be keyed from ham2k logger, so apps cannot transmit through it.';
 	@override String get off => 'off.';
 	@override String starting({required Object protocol}) => '${protocol}, starting…';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} on port ${port}. clients connected: ${clients}.';
@@ -5502,6 +5507,11 @@ extension on TranslationsQrp {
 			'settings.catServer.openAccess' => 'open access',
 			'settings.catServer.openAccessOn' => 'any computer on the local network can connect.',
 			'settings.catServer.openAccessOff' => 'only apps on this computer can connect.',
+			'settings.catServer.allowTransmit' => 'allow apps to transmit',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => 'apps can key the radio\'s ptt, for up to ${minutes} minutes at a time.',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => 'apps on any computer on the local network can key the radio\'s ptt, for up to ${minutes} minutes at a time.',
+			'settings.catServer.allowTransmitOff' => 'apps cannot key the radio. use vox or their own ptt setup.',
+			'settings.catServer.allowTransmitUnsupported' => 'the main vfo radio cannot be keyed from ham2k logger, so apps cannot transmit through it.',
 			'settings.catServer.off' => 'off.',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol}, starting…',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} on port ${port}. clients connected: ${clients}.',
@@ -5830,13 +5840,13 @@ extension on TranslationsQrp {
 			'settings.accounts.title' => 'accounts, services & data sources',
 			'settings.accounts.none' => 'no active extensions with accounts',
 			'settings.accounts.notConfigured' => 'not configured',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.connected' => 'connected',
 			'settings.accounts.cancelLogin' => 'cancel sign-in',
 			'settings.accounts.openInBrowser' => 'open in browser',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => 'logged in as ${identity}',
 			'settings.accounts.pressSaveToKeep' => 'press save to keep this account connected.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.connectedTo' => ({required Object label}) => 'connected to ${label}',
 			'settings.accounts.connect' => 'connect',
 			'settings.accounts.disconnect' => 'disconnect',
@@ -6344,13 +6354,13 @@ extension on TranslationsQrp {
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
 			'settings.developer.extDevServerConnect' => 'connect',
 			'settings.developer.extDevServerDisconnect' => 'disconnect',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServerConnecting' => 'connecting…',
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'serving ${count} extension: ${keys}', other: 'serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'not connected',
 			'settings.developer.extDevServerReconnect' => 'reconnect at launch',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'last reload: ${key} at ${time}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.catalog' => 'extension catalog',
 			'settings.developer.catalogDescription' => 'read the catalog from another server — a local one while working on the catalog itself. empty means catalog.ham2k.net.',

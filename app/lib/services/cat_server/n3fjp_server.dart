@@ -16,7 +16,8 @@
 // The API's logging commands (UPDATE, ACTION, ADDADIFRECORD, …) are out of
 // scope: HaLo's log is not N3FJP's, and a client told a contact was entered
 // would be wrong. They answer `CMD_NOT_FOUND`, as N3FJP does for a command
-// it does not know. PTT (`RIGTX`/`RIGRX`) is accepted and does nothing.
+// it does not know. PTT (`RIGTX`/`RIGRX`) has no reply in the API, so one
+// that may not key is ignored.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -32,9 +33,11 @@ class N3fjpServerConnection implements CatServerConnection {
   final CatServerSend send;
   final CatServerHangUp hangUp;
 
-  N3fjpServerConnection(this.rig, {required this.send, required this.hangUp}) {
+  N3fjpServerConnection(this.rig, {required this.send, required this.hangUp}) : _ptt = CatServerPtt(rig) {
     rig.changes.addListener(_onRigChanged);
   }
+
+  final CatServerPtt _ptt;
 
   var _pending = '';
 
@@ -89,6 +92,7 @@ class N3fjpServerConnection implements CatServerConnection {
   @override
   void close() {
     rig.changes.removeListener(_onRigChanged);
+    _ptt.drop();
   }
 
   bool _handling = false;
@@ -117,6 +121,7 @@ class N3fjpServerConnection implements CatServerConnection {
       case 'GETRIGPOLLINGRATE':
         return n3fjpMessage('<GETRIGPOLLINGRATERESPONSE><VALUE>500</VALUE>');
       case 'RIGTX' || 'RIGRX':
+        _ptt.set(name == 'RIGTX');
         return null;
       case 'READBMF':
         // Answered even with no radio, the way N3FJP answers with none

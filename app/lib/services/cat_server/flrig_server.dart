@@ -49,7 +49,9 @@ class FlrigServerConnection implements CatServerConnection {
   final CatServerSend send;
   final CatServerHangUp hangUp;
 
-  FlrigServerConnection(this.rig, {required this.send, required this.hangUp});
+  FlrigServerConnection(this.rig, {required this.send, required this.hangUp}) : _ptt = CatServerPtt(rig);
+
+  final CatServerPtt _ptt;
 
   final _buffer = BytesBuilder();
 
@@ -84,7 +86,7 @@ class FlrigServerConnection implements CatServerConnection {
   }
 
   @override
-  void close() {}
+  void close() => _ptt.drop();
 
   /// The `<methodResponse>` document answering one request body.
   String respond(String body) {
@@ -110,7 +112,11 @@ class FlrigServerConnection implements CatServerConnection {
     'rig.get_split': (_) => _value(_int(0)),
     'rig.set_split': (params) => params.isNotEmpty && params.first == '0' ? _value(_int(0)) : _fault('split is not supported'),
     'rig.get_ptt': (_) => _value(_int(rig.transmitting ? 1 : 0)),
-    'rig.set_ptt': (_) => _fault('PTT is not supported'),
+    'rig.set_ptt': (params) {
+      final ptt = params.isEmpty ? null : int.tryParse(params.first);
+      if (ptt == null) return _fault('PTT needs 0 or 1');
+      return _ptt.set(ptt != 0) ? _value(_int(0)) : _fault('PTT is not allowed');
+    },
     'rig.get_pwrmeter_scale': (_) => _value(_string('1')),
     for (final m in ['rig.get_bw', 'rig.get_bwA', 'rig.get_bwB']) m: (_) => _value(_array([_string(''), _string('')])),
     for (final m in ['rig.set_bw', 'rig.set_bwA', 'rig.set_bwB']) m: (_) => _value(_int(0)),

@@ -104,10 +104,21 @@ void main() {
       expect(rig.tunes, isEmpty);
     });
 
-    test('the TX button reads but cannot key the radio', () {
+    test('the TX button reads, but keys the radio only once the operator allows it', () {
       rig.transmitting = true;
       expect(ask('[1] get button-select TX'), '1');
       expect(ask('[1] set button-select TX 1'), startsWith('ERROR'));
+      expect(rig.ptts, isEmpty);
+    });
+
+    test('the TX button keys and unkeys once allowed, and a client gone keyed is unkeyed', () {
+      rig.transmitAllowed = true;
+      expect(ask('[1] set button-select TX 1'), 'OK');
+      expect(ask('[1] set button-select TX 0'), 'OK');
+      expect(ask('[1] set button-select TX 1'), 'OK');
+      expect(ask('[1] set button-select Tune 1'), startsWith('ERROR'));
+      connection.close();
+      expect(rig.ptts, [true, false, true, false]);
     });
 
     test('with no radio connected nothing is read or tuned', () {

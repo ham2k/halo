@@ -20,6 +20,10 @@
 //     A level is the exception: its value is bare (`get_level: KEYSPD`, `0`),
 //     the header line being all that names it.
 //
+// PTT (`T`) keys the Main VFO radio only while the operator allows apps to
+// transmit (CatServerSettings.allowTransmit) and that radio can be keyed;
+// otherwise it answers `RPRT -11`.
+//
 // `\chk_vfo` answers 0: commands carry no VFO argument, whatever the client
 // could send, because there is one VFO to address.
 
@@ -49,9 +53,12 @@ const _modeMask = '0x20201dff';
 /// the radio can do. Everything after the fixed-position numeric block is
 /// `key=value`, and `done` ends it.
 ///
-/// It claims nothing HaLo cannot answer: one VFO, no levels, functions or
-/// parameters, and `ptt_type=0` so a client does not offer CAT PTT.
-const _dumpState = [
+/// It claims nothing HaLo cannot answer: one VFO, and no levels, functions
+/// or parameters. `ptt_type` is 1 (CAT PTT) while the operator allows clients
+/// to transmit, whether or not a radio could be keyed this moment: Hamlib's
+/// client reads it once, at open, and refuses its own `T` for the session
+/// while it is 0.
+List<String> _dumpState({required bool ptt}) => [
   '1', // protocol version
   '2', // rig model: Hamlib's NET rigctl
   '0', // ITU region
@@ -76,7 +83,7 @@ const _dumpState = [
   '0x0', // has_get_parm
   '0x0', // has_set_parm
   'vfo_ops=0x0',
-  'ptt_type=0x0',
+  'ptt_type=0x${ptt ? 1 : 0}',
   'targetable_vfo=0x0',
   'has_set_vfo=1',
   'has_get_vfo=1',
@@ -140,7 +147,9 @@ class RigctldServerConnection implements CatServerConnection {
   /// The client sent `q`: its earlier replies are still owed to it.
   final void Function() quit;
 
-  RigctldServerConnection(this.rig, {required this.send, required this.hangUp, required this.quit});
+  RigctldServerConnection(this.rig, {required this.send, required this.hangUp, required this.quit}) : _ptt = CatServerPtt(rig);
+
+  final CatServerPtt _ptt;
 
   final _framer = LineFramer();
 
@@ -173,7 +182,7 @@ class RigctldServerConnection implements CatServerConnection {
   }
 
   @override
-  void close() {}
+  void close() => _ptt.drop();
 
   /// The reply to one command line, or null when the client asked to quit.
   String? respond(String line) {
@@ -207,7 +216,7 @@ class RigctldServerConnection implements CatServerConnection {
   _Result _handle(String name, List<String> args) {
     switch (name) {
       case 'dump_state':
-        return const _Result.raw(_dumpState);
+        return _Result.raw(_dumpState(ptt: rig.transmitAllowed));
       case 'chk_vfo':
         return const _Result([('ChkVFO', '0')], plainOnly: true);
       case 'get_powerstat':
@@ -233,7 +242,11 @@ class RigctldServerConnection implements CatServerConnection {
       case 'get_ptt':
         return _Result([('PTT', rig.transmitting ? '1' : '0')]);
       case 'set_ptt':
-        return const _Result.status(_notAvailable);
+        // Any value but 0 keys: 1, and Hamlib's 2 and 3 (from the mic, from
+        // the data jack), since a radio here keys one way.
+        final ptt = args.isEmpty ? null : int.tryParse(args.first);
+        if (ptt == null) return const _Result.status(_invalidParameter);
+        return _Result.status(_ptt.set(ptt != 0) ? _ok : _notAvailable);
       case 'get_level':
         // Asked for on open; any other level is one HaLo does not know.
         if (args.isNotEmpty && args.first.toUpperCase() == 'KEYSPD') return const _Result([('Level Value', '0')], bare: true);

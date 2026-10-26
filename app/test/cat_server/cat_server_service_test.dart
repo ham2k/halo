@@ -161,6 +161,16 @@ void main() {
     expect(bound.map((l) => (l.port, l.lan, l.closed)), [(4532, false, true), (4533, false, true), (4533, true, false)]);
   });
 
+  test("withdrawing 'Allow apps to transmit' drops a client's key at once, and changes no socket", () async {
+    await start(radio: {protocolKey: 'rigctld', CatServerSettings.allowTransmitKey: true});
+    await set({'smartVfoSnap': true});
+    expect(rig.clientPttReleases, 0);
+
+    await set({CatServerSettings.allowTransmitKey: false});
+    expect(rig.clientPttReleases, greaterThan(0), reason: 'unticking it is how the operator stops a transmission they did not start');
+    expect(bound, hasLength(1));
+  });
+
   test('an unrelated setting changing does not rebind a running server', () async {
     await start(radio: {protocolKey: 'rigctld'});
     await set({'smartVfoSnap': true});

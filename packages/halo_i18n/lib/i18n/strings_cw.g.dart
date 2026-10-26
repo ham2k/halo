@@ -2200,6 +2200,11 @@ class _Translations$settings$catServer$cw extends Translations$settings$catServe
 	@override String get openAccess => '——— ·——· · —· / ·— —·—· —·—· · ··· ···';
 	@override String get openAccessOn => '·— —· —·—— / —·—· ——— —— ·——· ··— — · ·—· / ——— —· / — ···· · / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— / —·—· ·— —· / —·—· ——— —· —· · —·—· — ·—·—·—';
 	@override String get openAccessOff => '——— —· ·—·· —·—— / ·— ·——· ·——· ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· / —·—· ·— —· / —·—· ——— —· —· · —·—· — ·—·—·—';
+	@override String get allowTransmit => '·— ·—·· ·—·· ——— ·—— / ·— ·——· ·——· ··· / — ——— / — ·—· ·— —· ··· —— ·· —';
+	@override String allowTransmitOn({required Object minutes}) => '·— ·——· ·——· ··· / —·—· ·— —· / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· — — ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ${minutes} / —— ·· —· ··— — · ··· / ·— — / ·— / — ·· —— · ·—·—·—';
+	@override String allowTransmitOnNetwork({required Object minutes}) => '·— ·——· ·——· ··· / ——— —· / ·— —· —·—— / —·—· ——— —— ·——· ··— — · ·—· / ——— —· / — ···· · / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— / —·—· ·— —· / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· — — ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ${minutes} / —— ·· —· ··— — · ··· / ·— — / ·— / — ·· —— · ·—·—·—';
+	@override String get allowTransmitOff => '·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·— / ··— ··· · / ···— ——— —··— / ——— ·—· / — ···· · ·· ·—· / ——— ·—— —· / ·——· — — / ··· · — ··— ·——· ·—·—·—';
+	@override String get allowTransmitUnsupported => '— ···· · / —— ·— ·· —· / ···— ··—· ——— / ·—· ·— —·· ·· ——— / —·—· ·— —· —· ——— — / —··· · / —·— · —·—— · —·· / ··—· ·—· ——— —— / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ——··—— / ··· ——— / ·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / — ·—· ·— —· ··· —— ·· — / — ···· ·—· ——— ··— ——· ···· / ·· — ·—·—·—';
 	@override String get off => '——— ··—· ··—· ·—·—·—';
 	@override String starting({required Object protocol}) => '${protocol} ——··—— / ··· — ·— ·—· — ·· —· ——· …';
 	@override String listening({required Object protocol, required Object port, required Object clients}) => '${protocol} / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / —·—· ·—·· ·· · —· — ··· / —·—· ——— —· —· · —·—· — · —·· ———··· / ${clients} ·—·—·—';
@@ -5502,6 +5507,11 @@ extension on TranslationsCw {
 			'settings.catServer.openAccess' => '——— ·——· · —· / ·— —·—· —·—· · ··· ···',
 			'settings.catServer.openAccessOn' => '·— —· —·—— / —·—· ——— —— ·——· ··— — · ·—· / ——— —· / — ···· · / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— / —·—· ·— —· / —·—· ——— —· —· · —·—· — ·—·—·—',
 			'settings.catServer.openAccessOff' => '——— —· ·—·· —·—— / ·— ·——· ·——· ··· / ——— —· / — ···· ·· ··· / —·—· ——— —— ·——· ··— — · ·—· / —·—· ·— —· / —·—· ——— —· —· · —·—· — ·—·—·—',
+			'settings.catServer.allowTransmit' => '·— ·—·· ·—·· ——— ·—— / ·— ·——· ·——· ··· / — ——— / — ·—· ·— —· ··· —— ·· —',
+			'settings.catServer.allowTransmitOn' => ({required Object minutes}) => '·— ·——· ·——· ··· / —·—· ·— —· / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· — — ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ${minutes} / —— ·· —· ··— — · ··· / ·— — / ·— / — ·· —— · ·—·—·—',
+			'settings.catServer.allowTransmitOnNetwork' => ({required Object minutes}) => '·— ·——· ·——· ··· / ——— —· / ·— —· —·—— / —·—· ——— —— ·——· ··— — · ·—· / ——— —· / — ···· · / ·—·· ——— —·—· ·— ·—·· / —· · — ·—— ——— ·—· —·— / —·—· ·— —· / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·————· ··· / ·——· — — ——··—— / ··—· ——— ·—· / ··— ·——· / — ——— / ${minutes} / —— ·· —· ··— — · ··· / ·— — / ·— / — ·· —— · ·—·—·—',
+			'settings.catServer.allowTransmitOff' => '·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / —·— · —·—— / — ···· · / ·—· ·— —·· ·· ——— ·—·—·— / ··— ··· · / ···— ——— —··— / ——— ·—· / — ···· · ·· ·—· / ——— ·—— —· / ·——· — — / ··· · — ··— ·——· ·—·—·—',
+			'settings.catServer.allowTransmitUnsupported' => '— ···· · / —— ·— ·· —· / ···— ··—· ——— / ·—· ·— —·· ·· ——— / —·—· ·— —· —· ——— — / —··· · / —·— · —·—— · —·· / ··—· ·—· ——— —— / ···· ·— —— ··——— —·— / ·—·· ——— ——· ——· · ·—· ——··—— / ··· ——— / ·— ·——· ·——· ··· / —·—· ·— —· —· ——— — / — ·—· ·— —· ··· —— ·· — / — ···· ·—· ——— ··— ——· ···· / ·· — ·—·—·—',
 			'settings.catServer.off' => '——— ··—· ··—· ·—·—·—',
 			'settings.catServer.starting' => ({required Object protocol}) => '${protocol} ——··—— / ··· — ·— ·—· — ·· —· ——· …',
 			'settings.catServer.listening' => ({required Object protocol, required Object port, required Object clients}) => '${protocol} / ——— —· / ·——· ——— ·—· — / ${port} ·—·—·— / —·—· ·—·· ·· · —· — ··· / —·—· ——— —· —· · —·—· — · —·· ———··· / ${clients} ·—·—·—',
@@ -5830,13 +5840,13 @@ extension on TranslationsCw {
 			'settings.accounts.title' => '·— —·—· —·—· ——— ··— —· — ··· ——··—— / ··· · ·—· ···— ·· —·—· · ··· / ·—··· / —·· ·— — ·— / ··· ——— ··— ·—· —·—· · ···',
 			'settings.accounts.none' => '—· ——— / ·— —·—· — ·· ···— · / · —··— — · —· ··· ·· ——— —· ··· / ·—— ·· — ···· / ·— —·—· —·—· ——— ··— —· — ···',
 			'settings.accounts.notConfigured' => '—· ——— — / —·—· ——— —· ··—· ·· ——· ··— ·—· · —··',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.connected' => '—·—· ——— —· —· · —·—· — · —··',
 			'settings.accounts.cancelLogin' => '—·—· ·— —· —·—· · ·—·· / ··· ·· ——· —· —····— ·· —·',
 			'settings.accounts.openInBrowser' => '——— ·——· · —· / ·· —· / —··· ·—· ——— ·—— ··· · ·—·',
 			'settings.accounts.loggedInAs' => ({required Object identity}) => '·—·· ——— ——· ——· · —·· / ·· —· / ·— ··· / ${identity}',
 			'settings.accounts.pressSaveToKeep' => '·——· ·—· · ··· ··· / ··· ·— ···— · / — ——— / —·— · · ·——· / — ···· ·· ··· / ·— —·—· —·—· ——— ··— —· — / —·—· ——— —· —· · —·—· — · —·· ·—·—·—',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.connectedTo' => ({required Object label}) => '—·—· ——— —· —· · —·—· — · —·· / — ——— / ${label}',
 			'settings.accounts.connect' => '—·—· ——— —· —· · —·—· —',
 			'settings.accounts.disconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
@@ -6344,13 +6354,13 @@ extension on TranslationsCw {
 			'settings.developer.extDevServerHint' => '·———— ————· ··——— ·—·—·— ·———— —···· ———·· ·—·—·— ·———— ·—·—·— ··——— ————— ———··· ———·· ——··· ———·· ——···',
 			'settings.developer.extDevServerConnect' => '—·—· ——— —· —· · —·—· —',
 			'settings.developer.extDevServerDisconnect' => '—·· ·· ··· —·—· ——— —· —· · —·—· —',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developer.extDevServerConnecting' => '—·—· ——— —· —· · —·—· — ·· —· ——· …',
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '··· · ·—· ···— ·· —· ——· / ${count} / · —··— — · —· ··· ·· ——— —· ———··· / ${keys}', other: '··· · ·—· ···— ·· —· ——· / ${count} / · —··— — · —· ··· ·· ——— —· ··· ———··· / ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => '—· ——— — / —·—· ——— —· —· · —·—· — · —··',
 			'settings.developer.extDevServerReconnect' => '·—· · —·—· ——— —· —· · —·—· — / ·— — / ·—·· ·— ··— —· —·—· ····',
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => '·—·· ·— ··· — / ·—· · ·—·· ——— ·— —·· ———··· / ${key} / ·— — / ${time}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('cw'))(count, one: '${count} / · —··— — · —· ··· ·· ——— —· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', other: '${count} / · —··— — · —· ··· ·· ——— —· ··· / ··—· ·— ·· ·—·· ·· —· ——· / — ——— / —··· ··— ·· ·—·· —··', ), 
 			'settings.developer.catalog' => '· —··— — · —· ··· ·· ——— —· / —·—· ·— — ·— ·—·· ——— ——·',
 			'settings.developer.catalogDescription' => '·—· · ·— —·· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ··—· ·—· ——— —— / ·— —· ——— — ···· · ·—· / ··· · ·—· ···— · ·—· / — / ·— / ·—·· ——— —·—· ·— ·—·· / ——— —· · / ·—— ···· ·· ·—·· · / ·—— ——— ·—· —·— ·· —· ——· / ——— —· / — ···· · / —·—· ·— — ·— ·—·· ——— ——· / ·· — ··· · ·—·· ··—· ·—·—·— / · —— ·——· — —·—— / —— · ·— —· ··· / —·—· ·— — ·— ·—·· ——— ——· ·—·—·— ···· ·— —— ··——— —·— ·—·—·— —· · — ·—·—·—',

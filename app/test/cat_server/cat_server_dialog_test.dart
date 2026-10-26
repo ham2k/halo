@@ -4,6 +4,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat_server/cat_server_protocol.dart';
@@ -136,6 +137,54 @@ void main() {
       expect(port()['value'], 7809);
       expect(port()['disabled'], isFalse);
       expect(element(CatServerSettings.openAccessKey)['value'], isFalse, reason: 'only this computer until the operator says otherwise');
+    });
+
+    test('apps may not transmit until the operator says so, and the switch is greyed while Disabled', () async {
+      await setUpWith();
+      expect(element(CatServerSettings.allowTransmitKey)['disabled'], isTrue);
+      expect(element(CatServerSettings.allowTransmitKey)['value'], isFalse, reason: 'it puts the transmitter on the air');
+
+      await commitCatServerSetting(settings, CatServerSettings.protocolKey, 'rigctld');
+      await commitCatServerSetting(settings, CatServerSettings.allowTransmitKey, true);
+      expect(CatServerSettings.allowTransmit(settings), isTrue);
+      expect(element(CatServerSettings.allowTransmitKey)['disabled'], isFalse);
+    });
+
+    testWidgets('the open dialog follows the Main VFO moving to a radio that cannot be keyed', (tester) async {
+      await tester.runAsync(() => setUpWith(radio: {CatServerSettings.protocolKey: 'rigctld', CatServerSettings.allowTransmitKey: true}));
+      rig.transmitAllowed = true;
+      await tester.pumpWidget(
+        TranslationProvider(
+          child: MaterialApp(
+            home: Scaffold(body: CatServerDialog(service: service)),
+          ),
+        ),
+      );
+      final s = t.settings.catServer;
+      expect(find.text(s.allowTransmitOn(minutes: 3)), findsOneWidget);
+
+      // A radio still there, so the service announces nothing: only the rig's
+      // own change can redraw the promise every client is now refused.
+      rig.radioCanKey = false;
+      rig.move();
+      await tester.pump();
+      expect(find.text(s.allowTransmitUnsupported), findsOneWidget);
+    });
+
+    test('allowing transmit says who can key, and says so when the radio cannot be keyed at all', () async {
+      await setUpWith(radio: {CatServerSettings.protocolKey: 'rigctld', CatServerSettings.allowTransmitKey: true});
+      final s = t.settings.catServer;
+      String description() => element(CatServerSettings.allowTransmitKey)['description'] as String;
+
+      rig.transmitAllowed = true;
+      expect(description(), s.allowTransmitOn(minutes: 3));
+      await commitCatServerSetting(settings, CatServerSettings.openAccessKey, true);
+      expect(description(), s.allowTransmitOnNetwork(minutes: 3), reason: 'open access widens who can put the radio on the air');
+
+      // A peer's radio, or one whose CAT has no PTT: "on" alone would promise
+      // a key every client is refused.
+      rig.radioCanKey = false;
+      expect(description(), s.allowTransmitUnsupported);
     });
 
     test('each program keeps its own port, through a switch to another and through Disabled', () async {

@@ -103,4 +103,14 @@ void main() {
     receive('<CMD><CHANGEFREQ><VALUE>21.446</VALUE></CMD>');
     expect(rig.tunes, isEmpty);
   });
+
+  test('RIGTX keys only once the operator allows it, and RIGRX unkeys; neither has a reply', () {
+    receive('<CMD><RIGTX></CMD>');
+    expect(rig.ptts, isEmpty);
+    rig.transmitAllowed = true;
+    receive('<CMD><RIGTX></CMD><CMD><RIGRX></CMD><CMD><RIGTX></CMD>');
+    expect(sent, isEmpty);
+    connection.close();
+    expect(rig.ptts, [true, false, true, false], reason: 'a client gone keyed is unkeyed');
+  });
 }

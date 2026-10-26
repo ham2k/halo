@@ -2,14 +2,16 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The CAT Server dialog, opened from its row in the Radio section: which
-// program HaLo stands in for, on which port, and whether other computers
-// may connect too (docs/design/cat.md § CAT server).
+// program HaLo stands in for, on which port, whether other computers may
+// connect too, and whether they may transmit (docs/design/cat.md § CAT
+// server).
 
 import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../services/cat_server/cat_server_protocol.dart';
+import '../services/cat_server/cat_server_rig.dart';
 import '../services/cat_server/cat_server_service.dart';
 import '../services/settings_service.dart';
 
@@ -50,6 +52,8 @@ List<Map<String, dynamic>> catServerElements(CatServerService service) {
   final settings = service.settings;
   final protocol = CatServerSettings.protocol(settings);
   final openAccess = CatServerSettings.openAccess(settings);
+  final allowTransmit = CatServerSettings.allowTransmit(settings);
+  final rig = service.rig;
   return [
     {'type': 'markdown', 'text': s.description},
     {
@@ -90,6 +94,24 @@ List<Map<String, dynamic>> catServerElements(CatServerService service) {
       'value': openAccess,
       'disabled': protocol == null,
     },
+    {
+      'type': 'field',
+      'fieldType': 'checkbox',
+      'key': CatServerSettings.allowTransmitKey,
+      'label': s.allowTransmit,
+      'icon': 'access-point',
+      'description': switch (allowTransmit) {
+        false => s.allowTransmitOff,
+        // A radio that is there and still cannot be keyed: a peer's, or one
+        // whose CAT has no PTT. Saying "on" alone would promise a key that
+        // every client is refused.
+        true when rig.available && !rig.canTransmit => s.allowTransmitUnsupported,
+        true when openAccess => s.allowTransmitOnNetwork(minutes: catServerPttTimeout.inMinutes),
+        true => s.allowTransmitOn(minutes: catServerPttTimeout.inMinutes),
+      },
+      'value': allowTransmit,
+      'disabled': protocol == null,
+    },
   ];
 }
 
@@ -100,7 +122,7 @@ Future<void> commitCatServerSetting(SettingsService settings, String key, dynami
       if (value != CatServerSettings.off && !CatServerProtocol.values.any((p) => p.key == value)) return;
       if (value == (CatServerSettings.protocol(settings)?.key ?? CatServerSettings.off)) return;
       await settings.setSettingValue(SettingsService.radioGroup, key, value);
-    case CatServerSettings.openAccessKey:
+    case CatServerSettings.openAccessKey || CatServerSettings.allowTransmitKey:
       if (value is bool) await settings.setSettingValue(SettingsService.radioGroup, key, value);
     default:
       if (CatServerSettings.protocolForPortKey(key) == null) return;
@@ -122,7 +144,9 @@ class CatServerDialog extends StatefulWidget {
 }
 
 class _CatServerDialogState extends State<CatServerDialog> {
-  late final Listenable _changes = Listenable.merge([widget.service.settings, widget.service]);
+  /// The rig's changes too: whether its radio can be keyed moves with the
+  /// Main VFO, which the service announces only when a radio comes or goes.
+  late final Listenable _changes = Listenable.merge([widget.service.settings, widget.service, widget.service.rig.changes]);
 
   @override
   void initState() {

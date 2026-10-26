@@ -53,6 +53,8 @@ abstract final class CatServerSettings {
 
   static const openAccessKey = 'catServerOpenAccess';
 
+  static const allowTransmitKey = 'catServerAllowTransmit';
+
   static const off = 'off';
 
   /// The program being emulated, or null when the server is off.
@@ -75,6 +77,10 @@ abstract final class CatServerSettings {
   /// Whether other computers on the network may connect. Off unless the
   /// operator turns it on: until then, only this computer can.
   static bool openAccess(SettingsService settings) => settings.settingValue(SettingsService.radioGroup, openAccessKey) == true;
+
+  /// Whether a client may key the Main VFO radio's PTT. Off unless the
+  /// operator turns it on: it puts their transmitter on the air.
+  static bool allowTransmit(SettingsService settings) => settings.settingValue(SettingsService.radioGroup, allowTransmitKey) == true;
 }
 
 /// The server as the settings show it.
@@ -212,6 +218,9 @@ class CatServerService extends ChangeNotifier {
   }
 
   void _onSettingsChanged() {
+    // Unticking the permission is how the operator stops a client's
+    // transmission, so it takes effect at once.
+    if (!CatServerSettings.allowTransmit(settings)) rig.releaseClientPtt();
     final wanted = _wanted;
     // Switching off is not delayed: a server the operator turned off must not
     // go on answering for most of a second.

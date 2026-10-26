@@ -134,7 +134,7 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
 
   /// ['] in a Phone mode (cat_ptt.dart) — this station's radios, never a peer's.
   late final _ptt = CatPtt()..held.addListener(notifyListeners);
-  late final pttKeys = PttKeyboard(held: _ptt.held, release: _ptt.release, escape: stopKeying, toggle: togglePtt);
+  late final pttKeys = PttKeyboard(held: _ptt.held, release: () => _ptt.owner == null && _ptt.release(), escape: stopKeying, toggle: togglePtt);
   PttSession? _pttSession(String? uuid) => switch (uuid == null ? null : connectedSession(uuid)) {
     final PttSession session => session,
     _ => null,
@@ -149,13 +149,46 @@ mixin _KeyingSurface on ChangeNotifier implements KeyingStation {
   void togglePtt(String radio) {
     final session = _pttSession(radio);
     if (session == null) return;
+    if (_ptt.heldOn(session)) {
+      _ptt.release();
+      return;
+    }
+    _keyPtt(radio, session);
+  }
+
+  /// Keys [session], [radio]'s, after ending this operator's own keying —
+  /// which a key already on it has done.
+  bool _keyPtt(String radio, PttSession session, {Duration timeout = pttTimeout, Object? owner}) {
     if (!_ptt.heldOn(session)) {
       final keyer = _keyerForNode(radio);
       keyer.stopAll();
       keyer.quietOthers(radio);
     }
-    _ptt.toggle(session);
+    return _ptt.key(session, timeout: timeout, owner: owner);
   }
+
+  /// Whether the Main VFO radio can be keyed from here — a local one; a
+  /// peer's never is.
+  bool get canPttRadio1 => _pttSession(_localRadio1) != null;
+
+  /// Who holds the station's PTT key (CatPtt.owner): null for the operator,
+  /// and for no key at all.
+  Object? get pttOwner => _ptt.owner;
+
+  /// Keys the Main VFO radio for [owner], a CAT server client
+  /// (cat_server_rig.dart). False when it did not key.
+  bool keyRadio1Ptt(Object owner, {required Duration timeout}) {
+    final radio = _localRadio1;
+    final session = _pttSession(radio);
+    // Asked before [_keyPtt] ends the operator's own keying: a key refused
+    // must change nothing.
+    if (radio == null || session == null || !_ptt.mayKey(owner)) return false;
+    return _keyPtt(radio, session, timeout: timeout, owner: owner);
+  }
+
+  /// Drops [owner]'s key, on whichever radio it went to — the Main VFO may
+  /// have moved since. A key anyone else holds stays.
+  bool releasePtt(Object owner) => _ptt.release(owner: owner);
 
   /// One transmitter at a time, whoever asks: before a CW message or a voice
   /// memory goes out on [radio], the app's PTT key drops — on any radio, the

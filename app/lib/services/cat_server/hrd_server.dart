@@ -40,7 +40,9 @@ class HrdServerConnection implements CatServerConnection {
   final CatServerSend send;
   final CatServerHangUp hangUp;
 
-  HrdServerConnection(this.rig, {required this.send, required this.hangUp});
+  HrdServerConnection(this.rig, {required this.send, required this.hangUp}) : _ptt = CatServerPtt(rig);
+
+  final CatServerPtt _ptt;
 
   final _buffer = BytesBuilder();
 
@@ -73,7 +75,7 @@ class HrdServerConnection implements CatServerConnection {
   }
 
   @override
-  void close() {}
+  void close() => _ptt.drop();
 
   static ({int consumed, String command})? _takeFrame(Uint8List pending) {
     final frame = takeHrdFrame(pending, maxLength: catServerMaxPending);
@@ -127,8 +129,11 @@ class HrdServerConnection implements CatServerConnection {
           return '';
       }
     } else if (verb == 'set' && what == 'button-select') {
-      // PTT, and HaLo cannot key the radio.
-      return 'ERROR: not supported';
+      // `set button-select TX 1`: PTT. No other button is offered.
+      if (args.length < 2 || _name(args.first) != 'TX') return 'ERROR: unknown button';
+      final ptt = int.tryParse(args[1]);
+      if (ptt == null) return 'ERROR: invalid value';
+      return _ptt.set(ptt != 0) ? 'OK' : 'ERROR: not allowed';
     }
 
     if (!rig.available) return 'ERROR: no radio';

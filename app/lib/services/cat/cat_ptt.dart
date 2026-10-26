@@ -16,6 +16,13 @@
 // (its own time-out timer, the operator's mic switch), and the app's key goes
 // with it, so the next ['] keys again rather than sending an unkey for a key
 // nobody holds.
+//
+// A key has an owner: null for the operator, and a CAT server client for a
+// key that client asked for (cat_server_rig.dart). A client neither keys
+// while anyone else holds the key nor drops a key it does not hold, so it
+// never ends the operator's over, nor one another client started. Escape
+// drops any key; ['] keys and unkeys where it is the PTT key, whoever holds
+// it, and drops only the operator's own from anywhere else.
 
 import 'dart:async';
 
@@ -38,39 +45,61 @@ class CatPtt {
   /// The session the key went to. Always a live one: the service [forget]s
   /// a session as it closes.
   PttSession? _keyed;
+  Object? _owner;
   bool _confirmed = false;
   Timer? _timeout;
 
   /// Whether the app's key is on [session].
   bool heldOn(EquipmentSession? session) => session != null && identical(_keyed, session);
 
-  /// ['] on [target]: unkeys it when the app holds its key, keys it
-  /// otherwise — dropping a key held on any other radio first.
-  void toggle(PttSession target) {
+  /// Who holds the key: null for the operator, and for no key at all.
+  Object? get owner => _keyed == null ? null : _owner;
+
+  /// Whether [owner] may key: the operator always may, and a client only
+  /// while no one else holds the key.
+  bool mayKey(Object? owner) => owner == null || _keyed == null || identical(_owner, owner);
+
+  /// Keys [target] for [owner] (null: the operator) for at most [timeout],
+  /// dropping a key held on any other radio first. False when the key did
+  /// not go out — refused ([mayKey]), or failed.
+  ///
+  /// A key already on [target] is not sent again. Its owner asking again
+  /// does not extend it; the operator keying over a client's key takes it,
+  /// with [timeout] from now.
+  bool key(PttSession target, {Duration timeout = pttTimeout, Object? owner}) {
+    if (!mayKey(owner)) return false;
     if (heldOn(target)) {
-      release();
-      return;
+      if (identical(_owner, owner)) return true;
+      _owner = owner;
+      _timeout?.cancel();
+      _timeout = Timer(timeout, release);
+      return true;
     }
     release();
     // Held before the command goes: a radio that reports TX as it keys
     // answers from inside setPtt, and a key not yet held would not hear it.
     _keyed = target;
+    _owner = owner;
     _confirmed = false;
     held.value = true;
     try {
       target.setPtt(true);
     } catch (e, st) {
       _clear();
-      return ErrorReportingService.report(e, st, context: 'cat:ptt');
+      ErrorReportingService.report(e, st, context: 'cat:ptt');
+      return false;
     }
-    _timeout = Timer(pttTimeout, release);
+    _timeout = Timer(timeout, release);
+    return true;
   }
 
-  /// Unkeys, when the app holds a key. False when it did not, so Escape
-  /// keeps its usual meaning.
-  bool release() {
+  /// Unkeys, when the app holds a key — only [owner]'s key, when one is
+  /// named. False when nothing was released, so Escape keeps its usual
+  /// meaning.
+  bool release({Object? owner}) {
     final target = _keyed;
     if (target == null) return false;
+    if (owner != null && !identical(_owner, owner)) return false;
     _clear();
     try {
       target.setPtt(false);
@@ -104,7 +133,7 @@ class CatPtt {
 
   void _clear() {
     _timeout?.cancel();
-    _timeout = _keyed = null;
+    _timeout = _keyed = _owner = null;
     held.value = false;
   }
 
@@ -124,16 +153,19 @@ typedef PttKeyTarget = String? Function();
 /// however many surfaces can key, so two of them never disagree about
 /// whether the key is held.
 ///
-/// While a key is held, the PTT key or Escape drops it from anywhere — another
-/// field, a dialog, Settings — because the transmitter is on and the key that
-/// put it there has to take it off. Only keying asks the surfaces.
+/// While a key is held, Escape drops it from anywhere — another field, a
+/// dialog, Settings — because the transmitter is on and has to come off. The
+/// PTT key does too while the OPERATOR holds the key, being the key that put
+/// it there. A CAT server client's key it drops only where it is the PTT key:
+/// a client running FT8 transmits half of every minute, and would otherwise
+/// take every apostrophe typed into a note. Only keying asks the surfaces.
 class PttKeyboard {
   PttKeyboard({required this.held, required this.release, required this.escape, required this.toggle});
 
   /// Whether a key is held, on any radio.
   final ValueListenable<bool> held;
 
-  /// Drops the held key; false when nothing was held.
+  /// Drops the operator's own key; false when they hold none.
   final bool Function() release;
 
   /// Escape while a key is held: stops it the way Escape stops a message, so

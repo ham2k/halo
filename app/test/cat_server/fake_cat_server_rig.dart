@@ -19,7 +19,25 @@ class FakeCatServerRig extends ChangeNotifier implements CatServerRig {
   @override
   bool transmitting = false;
 
+  @override
+  bool transmitAllowed = false;
+
+  /// Unless set, follows [transmitAllowed]: a radio that can be keyed.
+  bool? radioCanKey;
+
+  @override
+  bool get canTransmit => transmitAllowed && (radioCanKey ?? true);
+
   final tunes = <({double? freqKHz, String? mode})>[];
+
+  /// Every key that went out and every unkey, in order.
+  final ptts = <bool>[];
+
+  /// Who holds the key, as CatPtt keeps it: a client's unkey drops only its
+  /// own.
+  Object? pttOwner;
+
+  var clientPttReleases = 0;
 
   FakeCatServerRig({this.available = true, this.freqKHz = 14074, this.mode = 'USB'});
 
@@ -30,6 +48,24 @@ class FakeCatServerRig extends ChangeNotifier implements CatServerRig {
     if (mode != null) this.mode = mode;
     notifyListeners();
   }
+
+  @override
+  bool keyPtt(Object owner) {
+    if (!canTransmit) return false;
+    if (pttOwner == null) ptts.add(true);
+    pttOwner = owner;
+    return true;
+  }
+
+  @override
+  void releasePtt(Object owner) {
+    if (!identical(pttOwner, owner)) return;
+    pttOwner = null;
+    ptts.add(false);
+  }
+
+  @override
+  void releaseClientPtt() => clientPttReleases++;
 
   /// Moves as a radio's own knob would: without a tune.
   void move({double? freqKHz, String? mode}) {

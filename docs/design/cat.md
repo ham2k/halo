@@ -2101,7 +2101,8 @@ logging fields `'` never keys while the operator types — and with no field foc
 `PttSession` (driver.dart) is a capability like the keyers, on every protocol with a documented PTT
 set: CI-V `0x1C 0x00 01/00`, Yaesu `TX1;`/`TX0;` and the FT-8x7's binary `0x08`/`0x88`, Kenwood and
 Elecraft `TX;`/`RX;`, FlexRadio `xmit 1/0`, flrig `rig.set_ptt`, rigctld `T 1/0`, the Guohetec
-radios, and Ten-Tec `*TK`/`*TU`. HRD, Commander and N3FJP document none and are not keyed. A session that keyed unkeys in its
+radios, and Ten-Tec `*TK`/`*TU`. HRD, Commander and N3FJP document none and are not keyed. (HaLo's own
+CAT server, § CAT server, does answer PTT in those protocols; that is the other direction.) A session that keyed unkeys in its
 teardown, ahead of anything queued: no protocol here has a dead-man's switch, and only the driver can
 put the unkey ahead of its own queue. A driver marks itself keyed BEFORE a key goes out and clears the
 mark only AFTER an unkey has: either command throwing leaves the teardown an unkey to send. PTT on a serial line (RTS/DTR, § RTS and DTR) is not offered;
@@ -2705,8 +2706,8 @@ The other direction: HaLo as the thing other programs connect to. Ham Radio Delu
 and N3FJP's loggers all offer a TCP port through which WSJT-X, fldigi, GridTracker and friends read
 and tune the radio. HaLo can stand in for any of them, so those programs follow the Main VFO radio
 while HaLo holds the connection to it. It lives in `app/lib/services/cat_server/`, and its settings
-are one row in the Radio section (behind `EXP SERVER`), opening a dialog: the protocol (or Disabled), the port, and
-"Open access" (off by default).
+are one row in the Radio section (behind `EXP SERVER`), opening a dialog: the protocol (or Disabled), the port,
+"Open access" and "Allow apps to transmit" (both off by default).
 
 | Protocol | Default port | Pinned against |
 |---|---|---|
@@ -2740,9 +2741,33 @@ offering. A client that saw a frequency with nothing behind it would believe it 
 refuses in its own protocol's words (`RPRT -6`, an XML-RPC fault, `ERROR:`), and N3FJP answers
 `READBMF` the way N3FJP does with no rig attached.
 
-**No PTT.** HaLo's drivers cannot key a transmitter, so every protocol says so: rigctld's `dump_state`
-claims `ptt_type=0` and `T` answers `RPRT -11`, flrig faults `rig.set_ptt`, HRD errors on the `TX`
-button, and N3FJP ignores `RIGTX`. A client falls back to its own keying (VOX, a serial line).
+**PTT only when the operator allows it** ("Allow apps to transmit", `CatServerSettings.allowTransmit`).
+With the setting off, or with a Main VFO radio that cannot be keyed (a peer's, or a protocol with no
+`PttSession`), every protocol refuses a key in its own words. rigctld's `T` answers `RPRT -11`, flrig
+faults `rig.set_ptt`, HRD errors on the `TX` button, and N3FJP ignores `RIGTX`, whose API has no reply.
+A client then falls back to its own keying (VOX, a serial line). A key that did not go out is refused
+the same way, because a client told OK believes it is on the air. rigctld's `dump_state` claims
+`ptt_type=1` whenever the setting is on, whether or not a radio could be keyed at that moment.
+Hamlib's client reads it once, at open, and refuses its own `T` for the whole session while it is 0,
+so a client that connects before the radio does would otherwise never offer PTT.
+
+A client's key is the station's one key (`CatPtt`, § PTT), set rather than toggled, and the client
+owns it (`CatServerPtt`). Keying ends the operator's own keying first, the same as `'` does. A client
+is refused while anyone else holds the key, the operator or another client, so it never takes over a
+transmission it did not start. A refused key changes nothing. Escape drops a client's key from
+anywhere. `'` drops it only where `'` is the PTT key: a client running FT8 transmits half of every
+minute, and would otherwise take every apostrophe typed into a note. A CW message or voice memory
+takes over from a client's key. Its cap is `catServerPttTimeout`,
+three minutes rather than the operator's one, because a JS8 or fldigi text transmission runs longer
+than a minute. A client's unkey drops only its own key, on whichever radio it went to. The Main VFO
+may have moved since, and the unkey still reaches the radio that was keyed. An unkey never ends the
+operator's over, or another client's. That matters most for a program that sends PTT off as it
+opens: it is accepted whatever the setting, and changes nothing it does not own. A client that keyed
+and then disconnected sends no unkey, so its connection drops its key as it closes. Server shutdown
+ends the clients before anything else, so a socket that fails to close cannot leave a key behind, and refuses a client that connects while it closes.
+Unticking the setting drops any client's key at once, because that is how the operator stops a
+transmission they did not start. Open access does not narrow any of this: a client on the network
+may key the same as a local one, and the checkbox's description says so.
 
 Three things the captures showed, each of which fails a client with nothing on screen but a timeout:
 
