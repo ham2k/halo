@@ -581,47 +581,144 @@ class _HostCore {
   }
 
   Future<Map<String, Object?>> _hostFetch(Map<String, dynamic> params) async {
-    _checkFetchAllowed(params['extensionKey'] as String?, Uri.parse(params['url'] as String).host);
-    final uri = extensionFetchUri(Uri.parse(params['url'] as String), onWeb: runningOnWeb);
-    if (uri.scheme != 'https') {
-      throw ExtensionHostException("fetch refused: '${params['url']}' is not https");
-    }
-    final method = (params['method'] as String? ?? 'GET').toUpperCase();
+    final extensionKey = params['extensionKey'] as String?;
+    // The URL as the extension named it, before any proxy rewrite: the
+    // allowlist is judged on it, and a redirect's relative Location resolves
+    // against it.
+    var target = Uri.parse(params['url'] as String);
+    var uri = _fetchTarget(extensionKey, target);
+    var method = (params['method'] as String? ?? 'GET').toUpperCase();
     final headers = ((params['headers'] ?? const <String, dynamic>{}) as Map).cast<String, String>();
 
     // Set last so it wins over anything addAll put in: http.Request.headers
     // is case-insensitive, so this stamps HaLo's canonical UA on every call —
     // except for whitelisted extensions that supplied their own (see
     // resolveFetchUserAgent and docs/design/network.md).
-    final effectiveUA = resolveFetchUserAgent(
-      canonical: userAgent,
-      extensionKey: params['extensionKey'] as String?,
-      overrides: userAgentOverrides,
-      callerHeaders: headers,
-    );
-    final body = params['body'] as String?;
+    final effectiveUA = resolveFetchUserAgent(canonical: userAgent, extensionKey: extensionKey, overrides: userAgentOverrides, callerHeaders: headers);
+    var body = params['body'] as String?;
 
-    // The caller's ask is ONE budget for the whole call — both phases and the
-    // retry below — so it is measured, not handed out per phase. See
-    // `remainingFetchTimeout`. The host's own defaults stay per-phase: they
-    // were chosen that way, and waiting for headers is not the same thing as
-    // reading a slow body.
+    // The caller's ask is ONE budget for the whole call — every hop, both
+    // phases and the retry — so it is measured, not handed out per phase.
+    // See `remainingFetchTimeout`. The host's own defaults stay per-phase:
+    // they were chosen that way, and waiting for headers is not the same
+    // thing as reading a slow body.
     final requested = (params['timeout'] as num?)?.toInt();
     final spent = Stopwatch()..start();
     Duration remaining(Duration ceiling) => remainingFetchTimeout(requested: requested, elapsed: spent.elapsed, ceiling: ceiling);
 
-    for (var attempt = 0; ; attempt++) {
-      final request = http.Request(method, uri)..headers.addAll(headers);
-      if (effectiveUA != null) request.headers['User-Agent'] = effectiveUA;
-      if (body != null) request.body = body;
+    // The host's own header ceiling covers the whole walk, not each hop: a
+    // chain of slow redirects would otherwise hold the fetch for the ceiling
+    // times the hops before the body phase even starts.
+    Duration headerBudget() {
+      final left = fetchHeaderTimeout - spent.elapsed;
+      return remaining(left.isNegative ? const Duration(milliseconds: 1) : left);
+    }
 
+    // Redirects followed by hand. A client following them inside one send()
+    // walks an allowed host into any other — the allowlist was judged on the
+    // host asked for, not on the one answering — and https into http. Each
+    // hop is held to both checks as the first was, and to a count. On web
+    // the browser follows them itself and exposes no hop, so what it allows
+    // there is CORS's, the allowlist holds the first host only, and a 3xx
+    // never reaches this loop.
+    var hopHeaders = Map<String, String>.of(headers);
+    for (var hop = 0; ; hop++) {
+      final streamed = await _sendOnce(method, uri, hopHeaders, effectiveUA, body, headerBudget);
+      final location = streamed.headers['location'];
+      if (_redirectStatuses.contains(streamed.statusCode) && location != null) {
+        // The body is dropped, and the socket with it; the next hop opens
+        // its own.
+        await streamed.stream.listen(null).cancel();
+        if (hop >= kMaxFetchRedirects) {
+          throw ExtensionHostException("fetch refused: '${params['url']}' redirected more than $kMaxFetchRedirects times");
+        }
+        final next = target.resolve(location);
+        final otherHost = next.host != target.host;
+        target = next;
+        uri = _fetchTarget(extensionKey, target);
+        // Credentials were meant for the host they were sent to, as a
+        // browser treats them on a cross-origin redirect.
+        if (otherHost) hopHeaders = _withoutCredentials(hopHeaders);
+        // A 303, or a 301 or 302 answering anything but a GET or HEAD,
+        // continues as a GET with no body — and without the headers that
+        // described one; a 307 or 308 repeats the request as it was.
+        if (streamed.statusCode == 303 || ((streamed.statusCode == 301 || streamed.statusCode == 302) && method != 'GET' && method != 'HEAD')) {
+          method = 'GET';
+          body = null;
+          hopHeaders = _withoutContentHeaders(hopHeaders);
+        }
+        continue;
+      }
+      return {'status': streamed.statusCode, 'body': await _readBody(streamed, target, remaining(fetchBodyTimeout))};
+    }
+  }
+
+  /// The answers a client follows; a 300 or a 304 carrying a Location is an
+  /// answer in its own right.
+  static const _redirectStatuses = {301, 302, 303, 307, 308};
+
+  static Map<String, String> _withoutCredentials(Map<String, String> headers) => {
+    for (final MapEntry(:key, :value) in headers.entries)
+      if (!const {'authorization', 'proxy-authorization', 'cookie'}.contains(key.toLowerCase())) key: value,
+  };
+
+  static Map<String, String> _withoutContentHeaders(Map<String, String> headers) => {
+    for (final MapEntry(:key, :value) in headers.entries)
+      if (!key.toLowerCase().startsWith('content-')) key: value,
+  };
+
+  /// [streamed]'s body, counted as it arrives and refused past the cap — a
+  /// cap measured after the whole body is in has already let what it refuses
+  /// into memory — with [budget] for the whole read. `await for` cancels the
+  /// subscription when the cap throws; a read the budget cuts short keeps
+  /// its subscription until the server sends more or closes, as it did when
+  /// the body was read whole.
+  Future<String> _readBody(http.StreamedResponse streamed, Uri target, Duration budget) async {
+    final bytes = BytesBuilder(copy: false);
+    await () async {
+      await for (final chunk in streamed.stream) {
+        bytes.add(chunk);
+        if (bytes.length > kMaxFetchBodyBytes) {
+          throw ExtensionHostException("fetch refused: '${target.host}' answered with more than $kMaxFetchBodyBytes bytes");
+        }
+      }
+    }().timeout(budget);
+    return http.Response.bytes(bytes.takeBytes(), streamed.statusCode, headers: streamed.headers, request: streamed.request).body;
+  }
+
+  /// [target] as this hop must fetch it: checked against the extension's
+  /// allowlist, rewritten for this build (the proxy, on web or for an
+  /// http-only host), and held to https. Every hop of a fetch passes here.
+  Uri _fetchTarget(String? extensionKey, Uri target) {
+    _checkFetchAllowed(extensionKey, target.host);
+    final uri = extensionFetchUri(target, onWeb: runningOnWeb);
+    if (uri.scheme != 'https') {
+      throw ExtensionHostException("fetch refused: '$target' is not https");
+    }
+    return uri;
+  }
+
+  /// One hop of a fetch: the request sent once, with a single retry when
+  /// the host's name failed to resolve.
+  Future<http.StreamedResponse> _sendOnce(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    String? userAgent,
+    String? body,
+    Duration Function() headerBudget,
+  ) async {
+    for (var attempt = 0; ; attempt++) {
+      // Followed by hand natively (see the loop above). The browser's client
+      // turns `false` into a fetch that fails on any redirect, so on web it
+      // follows them itself.
+      final request = http.Request(method, uri)
+        ..followRedirects = runningOnWeb
+        ..headers.addAll(headers);
+      if (userAgent != null) request.headers['User-Agent'] = userAgent;
+      if (body != null) request.body = body;
       try {
-        final streamed = await _http.send(request).timeout(remaining(fetchHeaderTimeout));
-        // Headers arriving is no guarantee the body ever finishes: a server
-        // stalling mid-body would otherwise hang the calling hook indefinitely
-        // (the timeout above only covers up to the response headers).
-        final response = await http.Response.fromStream(streamed).timeout(remaining(fetchBodyTimeout));
-        return {'status': response.statusCode, 'body': response.body};
+        return await _http.send(request).timeout(headerBudget());
       } on http.ClientException catch (e) {
         // A resolver hiccup during a network handover, sleep/wake or VPN
         // toggle surfaces as "Failed host lookup: '<host>'" (package:http's
@@ -631,12 +728,9 @@ class _HostCore {
         // clears it without troubling the caller. Anything else (timeout,
         // connection refused, HTTP error) still surfaces at once.
         //
-        // The message must name this call's OWN target host: dart:io follows
-        // redirects inside the same send(), so a lookup failure can name a
-        // redirect's target host after the original host has already fully
-        // received this request's body — retrying would then resend a
-        // non-idempotent request (e.g. a sync POST) a second time. Only the
-        // original hop is safe to retry.
+        // The message must name THIS hop's host. With redirects followed by
+        // hand a send reaches one host only, so a lookup failure means
+        // nothing was sent, and the retry resends nothing twice.
         if (attempt > 0 || !e.message.startsWith("Failed host lookup: '${uri.host}'")) rethrow;
         await Future<void>.delayed(Duration(milliseconds: 300 + _retryJitter.nextInt(200)));
       }

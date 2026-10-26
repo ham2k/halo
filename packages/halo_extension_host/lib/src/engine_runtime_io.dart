@@ -81,12 +81,13 @@ class _IoEngineRuntime implements EngineRuntime {
     // that is safe everywhere rather than tune per platform.
     js.maxStackSize = 512 * 1024;
 
-    // Android-only, deliberately: Android is the platform where one runaway
-    // extension OOMing the app is a real, observed risk. Extending a ceiling
-    // to desktop is a behaviour change on platforms that have never had one
-    // and do the largest imports (~181k SOTA summits), so it belongs with the
-    // untrusted-extension work.
-    if (Platform.isAndroid) js.memoryLimit = 256 * 1024 * 1024;
+    // A ceiling on every platform: an extension that allocates without end
+    // fails inside the engine, with an error the host reports, instead of
+    // taking the app down — on a phone the OS kills the whole process first.
+    // 256 MB on mobile, where the app's own footprint is tightest, holds the
+    // largest data-file import (~181k SOTA summits, mapped a chunk at a time)
+    // on Android today; desktop gets 512 MB.
+    js.memoryLimit = debugMemoryLimitOverride ?? memoryCeilingBytes(mobile: Platform.isAndroid || Platform.isIOS);
 
     // Without an interrupt handler a runaway hook wedges the extension-host
     // isolate permanently: the host's own 10s timeout reports the failed
@@ -299,3 +300,11 @@ Duration extensionEvalBudget = const Duration(seconds: 15);
 double Function()? extensionTimerClock;
 
 EngineRuntime createEngineRuntime() => _IoEngineRuntime();
+
+/// The engine's heap ceiling: 256 MB on a phone, 512 MB on a desktop.
+int memoryCeilingBytes({required bool mobile}) => (mobile ? 256 : 512) * 1024 * 1024;
+
+/// A ceiling for a test to set in place of the platform's, read by a runtime
+/// created in this isolate afterwards.
+@visibleForTesting
+int? debugMemoryLimitOverride;

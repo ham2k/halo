@@ -64,6 +64,16 @@ Uri extensionFetchUri(Uri uri, {required bool onWeb}) {
 const fetchHeaderTimeout = Duration(seconds: 15);
 const fetchBodyTimeout = Duration(seconds: 30);
 
+/// The most a fetch may answer with, counted as it arrives: a body is held
+/// whole in the host's memory and handed to the extension as one string, so
+/// a server, or a redirect's target, answering without end would take the
+/// runtime with it. Sixteen megabytes clears every API an extension reads.
+const kMaxFetchBodyBytes = 16 * 1024 * 1024;
+
+/// How many redirects a fetch follows before refusing; each hop is held to
+/// the allowlist and to https as the first was.
+const kMaxFetchRedirects = 5;
+
 /// How long this phase of a fetch may still take: what remains of the
 /// caller's [requested] millisecond budget after [elapsed], capped at the
 /// host's [ceiling] for the phase.

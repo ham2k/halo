@@ -35,6 +35,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:http/http.dart' as http;
@@ -79,6 +80,10 @@ class ExtensionHost {
   /// many debounced lookup/control calls) — this is diagnostic data for the
   /// spike screen, not something worth unbounded memory for.
   static const _maxSamples = 2000;
+
+  /// Caps [logLines] the same way: a runtime that logs on every hook call
+  /// would otherwise fill an all-day session's memory with its own chatter.
+  static const _maxLogLines = 2000;
 
   final _logs = StreamController<String>.broadcast();
   final _fatalErrors = StreamController<String>.broadcast();
@@ -778,6 +783,7 @@ class ExtensionHost {
 
   void _log(String message) {
     logLines.add(message);
+    if (logLines.length > _maxLogLines) logLines.removeRange(0, logLines.length - _maxLogLines);
     _logs.add(message);
   }
 

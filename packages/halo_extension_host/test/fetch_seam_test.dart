@@ -173,12 +173,11 @@ void main() {
     expect(sent, hasLength(2));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
-  test('a lookup failure for a different host (a followed redirect) is not retried', () async {
-    // dart:io follows redirects inside a single send() call, so a lookup
-    // failure can name a host other than the one this call actually targeted
-    // — by which point a POST body may already be sitting on the ORIGINAL
-    // server. Retrying then would resend it a second time, so only a failure
-    // naming this call's own host may be retried.
+  test('a lookup failure naming another host is not retried', () async {
+    // The retry exists for a resolver hiccup on THIS hop's host, and only a
+    // failure naming it is one. Redirects are followed by hand, a hop at a
+    // time, so a failure naming any other host is not this hop's, whatever
+    // produced it, and is not retried.
     final sent = <http.Request>[];
     final client = MockClient((request) async {
       sent.add(request);

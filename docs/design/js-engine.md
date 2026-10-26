@@ -232,10 +232,11 @@ the outstanding request when eval returns non-zero rather than waiting for a
 JS-side result that can never arrive. `_evaluate` throws on an error result,
 which is the shape this depends on — keep that property.
 
-**The memory ceiling is Android-only, deliberately** (256 MB): Android is where
-one runaway extension most readily takes the app down, and desktop values have
-not been measured. Extending it to desktop, which does the largest imports,
-belongs with the untrusted-extension work rather than here.
+**The memory ceiling is set on every native platform**: 256 MB on a phone,
+where the OS kills the whole app first and where the largest data-file import
+(~181k SOTA summits, mapped a chunk at a time) already fits, and 512 MB on a
+desktop. A hook that crosses it fails with an error the host reports, and the
+runtime answers afterwards. The browser engine on web has no such knob.
 
 ### Engine load
 
