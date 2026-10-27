@@ -17,7 +17,7 @@
 //
 // What this sample leaves out: the spot feed and spot posting, which need an
 // API key the program issues, and the export hooks that submit a log. See
-// `docs/hooks.md` §`spots` and §`export`.
+// `docs/spots.md` and `docs/import-export.md` §`export`.
 
 import { activityScorer, contestScorer, defineExtension, referenceActivity } from "@ham2k/extension-sdk"
 import type { DataFileDefinition, HookContext } from "@ham2k/extension-sdk"

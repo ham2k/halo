@@ -16,7 +16,7 @@
 //
 // What this sample leaves out: the country-file cross-checks, the
 // already-know-enough short circuits, and the per-call caching a production
-// source wants. Read `docs/hooks.md` §`lookup` before shipping one.
+// source wants. Read `docs/lookups.md` §`lookup` before shipping one.
 
 import { defineExtension, host } from "@ham2k/extension-sdk"
 import type { AnnotatedCallInfo, CallInfoLookup, HookContext, JSONValue, LookupResult } from "@ham2k/extension-sdk"

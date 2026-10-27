@@ -36,7 +36,10 @@
 
 - [extensions/README.md](extensions/README.md) — what extensions are, anatomy,
   host API, build and dev loop.
-- [extensions/hooks.md](extensions/hooks.md) — reference for every hook category.
+- [extensions/hooks.md](extensions/hooks.md) — the hook reference, linking a page
+  per group of hook categories.
+- [extensions/scenes.md](extensions/scenes.md) — panel scenes.
+- [extensions/radio.md](extensions/radio.md) — radio control.
 - [extensions/forms.md](extensions/forms.md) — the form description schema.
 - [extensions/settings.md](extensions/settings.md) — settings panel hooks.
 

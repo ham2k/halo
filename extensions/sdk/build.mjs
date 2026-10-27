@@ -163,7 +163,23 @@ await writeFile(dts, `// @ham2k/extension-sdk ${version}\n${declared}`)
 /// Curated, because this repo's own inner loop is not an author's. The dev
 /// server and `halo-ext` need a checkout, `mise` and the app's built bundles —
 /// documented, they would send a reader after tooling they cannot run.
-const shippedDocs = ["hooks.md", "forms.md", "templates.md", "settings.md", "distribution.md"]
+const shippedDocs = [
+  "hooks.md",
+  "lookups.md",
+  "spots.md",
+  "activities.md",
+  "import-export.md",
+  "scoring.md",
+  "commands.md",
+  "panels.md",
+  "scenes.md",
+  "radio.md",
+  "accounts.md",
+  "forms.md",
+  "templates.md",
+  "settings.md",
+  "distribution.md",
+]
 
 const docsSrc = join(here, "../../docs/extensions")
 const docsOut = join(here, "docs")

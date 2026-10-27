@@ -320,7 +320,7 @@ does so dynamically rather than by static declaration: an extension's
 `command` hook returns `expectsParams` (a recognized prefix still awaiting
 its parameters) or `mixedCase` (a parameter that is free prose), and either
 switches the field to free-text entry. See
-[extensions/hooks.md](../extensions/hooks.md) § `command` for the hook
+[extensions/commands.md](../extensions/commands.md) § `command` for the hook
 contract.
 
 One consequence on iOS: the system's "double space inserts a period"
@@ -772,7 +772,7 @@ as un-loggable would strand the operator on a key they had just expanded.
 **A note key expands into calls** — `//KEY` looks up a Callsign Notes entry
 whose note reads as a plain comma list of calls and replaces the field with
 it (the `call-notes` extension's `command` hook; see
-[extensions/hooks.md](../extensions/hooks.md)). The same works on one segment
+[extensions/commands.md](../extensions/commands.md)). The same works on one segment
 of a stack: `KI2D//1AB` expands to `KI2D//W1AB,W1AC`, leaving the calls
 already stacked ahead of it untouched. A key can also lead the stack —
 `//1AB//W1AW` is both syntaxes at once, and gets both, one Enter at a time:

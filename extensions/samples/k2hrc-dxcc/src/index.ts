@@ -16,7 +16,7 @@
 //
 // The rules here are DXCC's, simplified: the catalog's `ham2k-dxcc` adds
 // deleted entities, maritime mobile, satellites and the DXCC Challenge. See
-// `docs/hooks.md` §`chasing`.
+// `docs/scoring.md` §`chasing`.
 
 import { defineExtension, entityForCall } from "@ham2k/extension-sdk"
 import type { ChasingHook, JSONValue, QsoClaim } from "@ham2k/extension-sdk"

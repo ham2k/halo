@@ -761,7 +761,7 @@ the user types is monospaced, since it's a callsign or a command.
 One field, four kinds of result:
 
 - **Commands** extensions advertise through their `catalog` hook
-  ([hooks.md](../extensions/hooks.md#catalog--advertising-commands-to-the-k-dialog)),
+  ([hooks.md](../extensions/commands.md#catalog--advertising-commands-to-the-k-dialog)),
   narrowed as the user types by what **starts a word** in the command's name
   or its `keywords` — never mid-word, and never in its description, whose
   prose matches whatever its words happen to start with ("dev" finding

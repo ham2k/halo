@@ -53,7 +53,7 @@ and `onShow`/`onHide`, and from 3 the build rewrites a bare `setTimeout` into
 the SDK's (README's "Timers"); 4 lets `host.fetch` reach a plain-`http://` host
 the app fronts with its https proxy (README's `host.fetch`); 5 adds panel
 scenes' `scene` kind, native controls, `strings`, `layout`, `after` and control
-`opacity` (hooks.md's `panel`); 6 adds the scene's `spectrum` control and
+`opacity` ([scenes.md](scenes.md)); 6 adds the scene's `spectrum` control and
 `host.setRadioSpectrum`; 7 adds `host.setRadio`, the keying calls
 (`sendRadioCw`, `playRadioVoice`, `setRadioPtt`, `stopRadioTransmit`), what
 `readRadio` adds with them, and the scene's host-fed `radio` values, scale

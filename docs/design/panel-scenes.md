@@ -142,7 +142,7 @@ not a claim that a radio emitted individual activity events.
 The drawn controls are hit areas over artwork the extension paints; the
 `native…` kinds are Material widgets the app paints and themes, so a panel that
 needs a form — a callsign to spot, a band to pick — does not have to draw one.
-The public contract is in [the panel hook](../extensions/hooks.md) and
+The public contract is in [panel scenes](../extensions/scenes.md) and
 `PanelSceneControl`; the choices behind it:
 
 - **String state is a second map.** `strings` beside `values`, with a key in one
@@ -199,7 +199,7 @@ host from sweeps that never reach the extension
 an older app does not know the kind and would refuse the whole scene, so a
 bundle using it declares `"api": 6` and is refused at install there instead;
 `follow`, `span` and label `decimals` are API 7. The public contract
-is in [the panel hook](../extensions/hooks.md) and `PanelSceneSpectrum`. The
+is in [panel scenes](../extensions/scenes.md#spectrum) and `PanelSceneSpectrum`. The
 `k2hrc-panafall` sample uses all of it but those three.
 
 - **A control, not a layer.** It takes clicks, sends events and fills space in
@@ -396,7 +396,7 @@ successfully; these checks do not constitute cross-platform performance profilin
 ## Render environment
 
 `PanelRenderArgs.environment` and `clock` are documented in
-[the panel hook contract](../extensions/hooks.md). The renderer is domain-neutral:
+[the panel scene contract](../extensions/scenes.md). The renderer is domain-neutral:
 all weather fetching, caching, units, condition labels and geometry for **KI2D’s
 Weather Panel** live in TypeScript. Font names describe fonts available in the host;
 scene text layers render them natively with OS accessibility scaling. SVG artwork

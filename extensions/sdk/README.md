@@ -77,7 +77,7 @@ When updating an exporter from SDK 0.3, keep a reference-specific identifier
 in `exportKey`, register a stable `exportType`, and forward `exportSettings`,
 `exportData`, `exportTitle`, and `includeLookupData` when delegating generation.
 Per-type custom templates override inherited defaults only when enabled.
-See `docs/hooks.md` §`export` for the complete contract and `docs/forms.md`
+See `docs/import-export.md` §`export` for the complete contract and `docs/forms.md`
 for the `textTemplate` form field.
 
 ## About the peer dependencies

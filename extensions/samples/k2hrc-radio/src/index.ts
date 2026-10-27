@@ -22,7 +22,7 @@
 // theme, font scale and density, and costs no web view. This panel earns the
 // escape hatch because a readout is about type size and nothing else.
 //
-// See `docs/hooks.md` §`panel` for the whole contract, including `form`,
+// See `docs/panels.md` for the whole contract, including `form`,
 // `multiple` and every trigger name.
 
 import { defineExtension } from "@ham2k/extension-sdk"

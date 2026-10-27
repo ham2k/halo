@@ -82,17 +82,20 @@ will actually call.
 | Doing this | Read |
 | --- | --- |
 | Anything, before the reference — a whole worked extension of that shape | `samples/`: `k2hrc-hello-world` (the smallest panel), `k2hrc-hamqth` (lookup + credentials), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-radio` (HTML panel), `k2hrc-panel-scenes` (experimental interactive panel scene), `k2hrc-panafall` (panadapter and waterfall scene) |
-| Any hook at all — what the category is, what it's handed, what it must return | `docs/hooks.md`, the section named for the category |
-| A pane in a view: `getPanels`, `render`, panel content kinds | `docs/hooks.md` §`panel` |
-| Callsign lookups, spot sources, exporters, reference types (POTA-style) | `docs/hooks.md` §`lookup`, §`spots`, §`export`, §`ref:<type>` |
-| Contest or award scoring, and the UI an activity contributes | `docs/hooks.md` §`scoring`, §`activity` |
+| Any hook at all — how hooks are invoked, what every hook is handed, and which page holds each category | `docs/hooks.md` |
+| A pane in a view: `getPanels`, `render`, panel content kinds | `docs/panels.md` |
+| An interactive panel: layers, bindings, controls, layout, a panadapter and waterfall | `docs/scenes.md` |
+| Reading or commanding the operator's radio | `docs/radio.md` |
+| Callsign lookups, spot sources, exporters, reference types (POTA-style) | `docs/lookups.md`, `docs/spots.md`, `docs/import-export.md`, `docs/activities.md` §`ref:<type>` |
+| Contest or award scoring, and the UI an activity contributes | `docs/scoring.md`, `docs/activities.md` §`activity` |
+| Commands typed in the call field, accounts, sync | `docs/commands.md`, `docs/accounts.md` |
 | A settings screen for your extension | `docs/settings.md` |
 | Any form, dialog or field the user fills in | `docs/forms.md` |
 | Panel text, export filenames, ADIF fields — anything with `{{ }}` in it | `docs/templates.md` |
 | Packaging, the `.h2kext` format, keys, using the host's libraries | `docs/distribution.md` |
 
-`docs/hooks.md` is long. Read the section for the category you are registering,
-not the file.
+Each hook page is long. Read the section for the category you are registering,
+not the page.
 
 ## What the sandbox is
 

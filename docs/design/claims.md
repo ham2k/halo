@@ -57,7 +57,7 @@ after the first contact either came.
 ## 2. The hook
 
 A hook category, `chasing`, registered once per program and keyed by the
-program's key ([hooks.md](../extensions/hooks.md) has the full contract):
+program's key ([scoring.md](../extensions/scoring.md) has the full contract):
 
 ```ts
 interface ChasingHook {
@@ -353,7 +353,7 @@ does not reach yet, and a feature leaves core scoring only once chasing
 ships without the experiment. A notice names the reference by what the
 program calls one (`refLabel`: "New POTA Park"), or by the program's label
 ("New DXCC") — unless the program words it itself (`notices`: "DXCC ATNO",
-"DXCC in 80m", "DXCC in CW"; [hooks.md](../extensions/hooks.md)).
+"DXCC in 80m", "DXCC in CW"; [scoring.md](../extensions/scoring.md)).
 
 **Alerts.** The operator picks which verdicts alert; new ref, new band and
 new mode until they do. An alerting spot's callsign takes the green accent

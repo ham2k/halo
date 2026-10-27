@@ -137,7 +137,7 @@ program's hunted `SIG` pair, a contest's exchange, the satellite's `SAT_NAME` â€
 because a submitted file is one program's log. The full ADIF export, which
 claims nothing, names no main handler and gets the hooks of every program the
 contact carries a reference for (polo's `includeOtherRefs`;
-docs/extensions/hooks.md, `adifFields`). Contest exports name themselves the
+docs/extensions/import-export.md, `adifFields`). Contest exports name themselves the
 same way.
 
 What a program says it ALSO reads is a list on the rules, `includeFieldsFrom`:
@@ -474,7 +474,7 @@ Two details worth knowing before adding the seventh program:
   its manifest: the scope WORD comes from each `ref:` type it declares
   (`ref:wcaActivation` -> `wca`) and from its own key, and the hook asked is
   the extension that returned the control, never the control key's prefix
-  ([hooks.md](../extensions/hooks.md)). A program that leaves its type out of
+  ([activities.md](../extensions/activities.md)). A program that leaves its type out of
   `hooks` is still scoped by the type its control lists, but is not offered
   from the search while switched off.
 

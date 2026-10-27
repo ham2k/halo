@@ -285,7 +285,7 @@ show them the message — `custom-text` renders it in the pane.
 derived from the namespaces it names: `qso` → `qso` + `lookup`, `qsoCount` →
 `qsoLogged`, `op` → `operation`, `now` → `tick:30`. A panel rendering
 operator-written text passes these back as `PanelContent.triggers`
-(hooks.md, `panel`), so each pane pays only for what its own text asks for.
+([panels.md](panels.md)), so each pane pays only for what its own text asks for.
 
 Only `{{ … }}` and `{% … %}` spans are read, never the prose around them —
 "Goal: 100 qso today" is a note, not a request to be woken per keystroke.
@@ -302,7 +302,7 @@ will jump rather than count. Show HH:MM.
 | Panel documents | `custom-text`'s content and tab name | by the operator, in the panel's config form |
 | Export filenames and titles | Registered export types and `sdk/src/exportSettings.ts` | Settings → Exports, globally and per type |
 | ADIF NOTES / COMMENT / QSLMSG | Export type settings, consumed by `core/adif` | Settings → Exports; empty templates suppress a field |
-| CW messages | Radio settings `cwMessage1..8`, keyed on F1-F8 through the radio (docs/design/cat.md § CW keying) — rendered by the `template` hook (hooks.md) | by the operator, in the CW Keyer dialog (Settings → Radio, or the Station dialog's keyer row) |
+| CW messages | Radio settings `cwMessage1..8`, keyed on F1-F8 through the radio (docs/design/cat.md § CW keying) — rendered by the `template` hook (commands.md) | by the operator, in the CW Keyer dialog (Settings → Radio, or the Station dialog's keyer row) |
 
 NOTES and COMMENT default to QSO notes and are withheld when private data
 is off. QSLMSG defaults to empty for program exports, and for the whole-log

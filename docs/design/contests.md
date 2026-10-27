@@ -398,7 +398,7 @@ fast-path, never truth**:
   the request. `ExtensionScoring` keeps track of what the running runtime has
   said it holds, forgets it all when the runtime's generation ticks, and
   answers a `resume-missing` refusal by sending the sheet once more
-  (docs/extensions/hooks.md, the scoring section, is the wire contract).
+  (docs/extensions/scoring.md, the scoring section, is the wire contract).
 - A scorer the spots board selects only through a spot's reference type —
   SOTA on a POTA hunter's board — is not one the operation's passes run, so it
   has no checkpoint in `local_data`. `ScoringService.candidateResumesFor`
@@ -689,7 +689,7 @@ deferred**:
 | Question | What answers it |
 |---|---|
 | Whole log, or only the segments carrying my reference? | `ExportOption.refType`. Set it and the core slices the QSOs to the segments carrying that type (§5.1.4), narrowed by `ExportOption.ref` to the segments carrying one reference; omit it — core ADIF — and the file covers the whole log. Every contest and activity export sets it. Nothing has asked for "my type, but every segment anyway", which is all the flag would have added. |
-| May other extensions add fields to my records? | `ExportRequest.mainHandler` and `includeFieldsFrom`. An export names itself and LISTS the contributors it accepts — POTA takes `satellites`, because a park worked through a bird is still a park activation. Omitted — the full ADIF — every program the contact carries a reference for contributes, which is polo's `includeOtherRefs` (docs/extensions/hooks.md, `adifFields`). A named list beats the boolean: POTA wants the satellite fields and not the lighthouse ones, and a yes/no cannot say so. |
+| May other extensions add fields to my records? | `ExportRequest.mainHandler` and `includeFieldsFrom`. An export names itself and LISTS the contributors it accepts — POTA takes `satellites`, because a park worked through a bird is still a park activation. Omitted — the full ADIF — every program the contact carries a reference for contributes, which is polo's `includeOtherRefs` (docs/extensions/import-export.md, `adifFields`). A named list beats the boolean: POTA wants the satellite fields and not the lighthouse ones, and a yes/no cannot say so. |
 | What was true for THIS contact — a rover's county, the grid at the key? | `ExportRequest.segments` and the SDK's `operationForQso` (above). A per-segment *value*, which neither flag expressed. |
 
 Of the four cases this section expected to stress the flags, the VHF rover

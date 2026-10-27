@@ -2620,7 +2620,7 @@ of its own (§ Drivers never touch app state): `AntennaTunerSession.setTuner(inl
 `PassbandSession.setPassband` and `RadioAntennaSession.setAntenna(rx:, tx:)`. `CatService`'s
 `setNodeTuner`, `setNodePassband` and `setNodeAntenna` address one node and do nothing for a session
 without the capability. Their caller is an extension's `setRadio`
-([hooks.md](../extensions/hooks.md)), and what it reads back is `EquipmentState.tuner`, `.passband`
+([radio.md](../extensions/radio.md)), and what it reads back is `EquipmentState.tuner`, `.passband`
 and `.antennas`.
 
 | driver | tuner | passband | antenna ports |

@@ -6,7 +6,15 @@ sources, exporters, and eventually sync transports and commands. The Flutter
 core knows nothing about any of them — it invokes **hooks** and renders
 **declarative UI contributions** (see [DESIGN.md](../../DESIGN.md) §2–§5).
 
-- **[hooks.md](hooks.md)** — reference for every hook category.
+- **[hooks.md](hooks.md)** — the hook reference: how hooks are registered and
+  invoked, what every hook is handed, and one page per group of categories —
+  [lookups](lookups.md), [spots](spots.md), [activities](activities.md),
+  [import & export](import-export.md), [scoring & chasing](scoring.md),
+  [commands & templates](commands.md), [panels](panels.md) and
+  [accounts, settings & sync](accounts.md).
+- **[scenes.md](scenes.md)** — panel scenes: layers, bindings, controls,
+  layout, the spectrum control and live radio values.
+- **[radio.md](radio.md)** — reading and commanding the operator's radios.
 - **[templates.md](templates.md)** — the templating engine and the values a
   template can name, for panels, filenames and ADIF fields.
 - **[cli.md](cli.md)** — `halo-ext`, which runs these hooks outside the app.
@@ -55,7 +63,7 @@ that imports it and calls `defineExtension`:
   "adifFieldsScope": "always", // rare. The full ADIF export asks this
                                // extension's adifFields about EVERY contact,
                                // not only those carrying a reference it
-                               // handles (hooks.md, `adifFields`).
+                               // handles (import-export.md, `adifFields`).
   "domains": ["api.pota.app", "pota.app"],  // host.fetch allowlist
   "webSockets": ["stream.example.com"],     // host.webSocket allowlist, rare;
                                // see "WebSockets" below
@@ -188,7 +196,7 @@ has to be pulled — without shipping a build. That argues for the check living 
 the host rather than in each extension's own code, so an extension cannot forget
 it and a flag cannot be ignored.
 
-Worth reading first: this file, `hooks.md`, `docs/design/activities.md` §3.4,
+Worth reading first: this file, `hooks.md`, `activities.md`, `docs/design/activities.md` §3.4,
 and `app/lib/services/flags_service.dart`.
 
 ```ts
@@ -300,7 +308,7 @@ Available via `import { host } from "@ham2k/extension-sdk"`:
 |---|---|
 | `host.fetch(url, options?)` | HTTPS requests, executed by the Dart host. Returns `{status, body}`. A plain `http://` URL is refused unless its host serves http only and `services.ham2k.net` fronts it (`servicesHttpOnlyHosts` in `halo_extension_host`'s `fetch_policy.dart` — the QSO Party Hub), in which case it goes out over https through that proxy on every build; `domains` still names the original host, and the bundle declares `"api": 4`, the first API that does this. Per-extension domain allowlists are planned. The host stamps HaLo's canonical `User-Agent` on every call — don't set your own unless your extension declares `allowUserAgentOverride` ([docs/design/network.md](../design/network.md)). `options.timeout` (ms) bounds the whole request, and is clamped downward only — you may declare a request not worth the host's default wait, not award yourself a longer one. Worth setting on anything optional, per the hanging-hook note above. |
 | `host.webSocket(url, options?)` | A live connection to a host the manifest's `webSockets` lists, shaped like the browser's `WebSocket`. See [WebSockets](#websockets). |
-| `host.clusterStatus()` / `host.clusterLines({after?, limit?})` / `host.clusterSubscribe()` / `host.clusterUnsubscribe()` / `host.clusterPostSpot({freq, call, comment?})` / `host.clusterSend(command)` | The app's one DX cluster connection, logged in as the operator; behind the `requiresClusterRead` / `requiresClusterSpot` / `requiresClusterCommand` grants and extension API 10. See the [`cluster` hook](hooks.md#-cluster--the-dx-cluster-connection) and [docs/design/cluster.md](../design/cluster.md). |
+| `host.clusterStatus()` / `host.clusterLines({after?, limit?})` / `host.clusterSubscribe()` / `host.clusterUnsubscribe()` / `host.clusterPostSpot({freq, call, comment?})` / `host.clusterSend(command)` | The app's one DX cluster connection, logged in as the operator; behind the `requiresClusterRead` / `requiresClusterSpot` / `requiresClusterCommand` grants and extension API 10. See the [`cluster` hook](spots.md#-cluster--the-dx-cluster-connection) and [docs/design/cluster.md](../design/cluster.md). |
 | `host.setTimeout(fn, ms, ...args)` / `host.setInterval(…)` / `host.clearTimeout(id)` / `host.clearInterval(id)` | Timers, shaped like the browser's, on real time and held to a budget. A bundle built for extension API 3 gets them as plain `setTimeout` and friends too. See [Timers](#timers). |
 | `host.kvGet(key)` / `host.kvSet(key, value)` | Key-value storage, automatically namespaced to your extension (currently in-memory; keychain-backed persistence planned for credentials). |
 | `host.statusBar.setMessage(params)` / `.setProgress(params)` | Transient single-line message or progress bar in the app's footer, keyed and namespaced to your extension the same way as `kvGet`/`kvSet`. |
@@ -481,7 +489,7 @@ const entries = await hooks.invokeForRefs('adifFields', 'fieldsForOneQSO', { qso
 `invokeForRefs` asks only the extensions claiming one of those references (and,
 for `adifFields`, any that opt into every contact) — what a file combining
 several programs wants, since a program the contact has nothing to do with
-then writes nothing into it ([hooks.md](hooks.md), `adifFields`).
+then writes nothing into it ([import-export.md](import-export.md), `adifFields`).
 `invokeAll(category, method, args)` asks every hook in the category, the
 caller's own included; `invokeOne(category, key, method, args)` asks one
 extension by key.

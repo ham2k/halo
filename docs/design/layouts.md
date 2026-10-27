@@ -585,7 +585,7 @@ constant in the view. Two sources write into it:
   it can only be a table of numbers. Its fetch, cache and refresh are
   ordinary Dart besides: no bridge call per render, and no tick floor at all.
 - **Extension panels.** Every `panel` hook contributes its own
-  ([hooks.md](../extensions/hooks.md)). An extension panel is a *document* —
+  ([panels.md](../extensions/panels.md)). An extension panel is a *document* —
   markdown, SVG, or sandboxed HTML — rendered by `PanelContentView`, never
   widgets, the same UI-catalog seam every other declarative hook sits behind.
   Its id is `ext:<hookKey>:<panelKey>`, and that id is what a saved layout
