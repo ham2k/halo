@@ -15,8 +15,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../services/settings_service.dart';
 import 'map_zoom_controller.dart';
 
-/// The box for a map's bottom-right corner, placed by the map at
-/// [MapInfoBox.right]/[MapInfoBox.bottom] (over the backend's own credit),
+/// The box for the corner holding a map's credit, bottom-right unless the
+/// host moves it, placed by the map at [MapInfoBox.right]/[MapInfoBox.bottom]
+/// (over the backend's own credit),
 /// when [SettingsService.devMapInfo] is on — nothing at all otherwise. [camera] is the backend's last
 /// settled report: a notifier rather than a rebuild of the pane, because
 /// flutter_map reports every frame of a drag.

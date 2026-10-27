@@ -90,6 +90,10 @@ class MapboxWebviewMapView extends StatefulWidget {
   /// that offers no layers, which then never sends any.
   final MapOverlays? overlays;
 
+  /// Whether the credits sit in the bottom-left corner rather than the
+  /// bottom-right, for a host whose own controls hold that one.
+  final bool creditsLeft;
+
   /// The instant whose night side the map shades — see map_grayline.dart.
   /// Null for none. A new instant is a new payload, so a host hands it
   /// [graylineInstant]'s minute rather than the clock's every reading.
@@ -121,6 +125,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     this.zoomFades,
     this.frame,
     this.overlays,
+    this.creditsLeft = false,
     this.graylineAt,
     this.spreadOverlaps = false,
     this.focus,
@@ -224,6 +229,7 @@ class MapboxWebviewMapView extends StatefulWidget {
     window.poloSetSpread = handle.setSpread;
     window.poloSetFocus = handle.setFocus;
     window.poloSetCreditLabels = handle.setCreditLabels;
+    window.poloSetCreditsSide = handle.setCreditsSide;
     window.poloFetchText = function (url) {
       return window.flutter_inappwebview.callHandler('poloFetchText', url).then(function (answer) {
         if (answer && answer.missing) return null;
@@ -480,6 +486,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     super.didUpdateWidget(oldWidget);
     if (!_mapReady) return;
     if (oldWidget.projection != widget.projection) _applyProjection();
+    if (oldWidget.creditsLeft != widget.creditsLeft) _applyCreditsSide();
     // A pinned-style change takes precedence over isDark: applying both
     // would swap the style twice for one operator action.
     if (oldWidget.styleUrl != widget.styleUrl || oldWidget.styleUrlDark != widget.styleUrlDark) {
@@ -570,6 +577,10 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     await _controller?.evaluateJavascript(source: 'window.poloSetCreditLabels(${jsonEncode(mapCreditLabels(context.t))});');
   }
 
+  Future<void> _applyCreditsSide() async {
+    await _controller?.evaluateJavascript(source: "window.poloSetCreditsSide('${widget.creditsLeft ? 'left' : 'right'}');");
+  }
+
   Future<void> _applySpread() async {
     await _controller?.evaluateJavascript(source: 'window.poloSetSpread(${widget.spreadOverlaps});');
   }
@@ -654,6 +665,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
             _applySpread();
             _applyFocus();
             _applyCreditLabels();
+            if (widget.creditsLeft) _applyCreditsSide();
             _applyMarkers();
             _applyLines();
             _applyShapes();

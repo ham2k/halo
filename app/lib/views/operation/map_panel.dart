@@ -21,6 +21,8 @@
 // gets one QTH circle per spot, each QSO tethered to the right one —
 // today HaLo never writes `our.grid`, so this collapses to a single QTH.
 
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/material.dart';
@@ -403,6 +405,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // so turning it on keeps the map that is up rather than building a new
     // one.
     final grayline = widget.settings.mapShowGrayline;
+    final lowerCorner = lowerCornerClearanceOf(context);
     final contactAt = grayline && widget.graylineAtContact ? graylineAtContact(widget.qsos, selected: widget.selectedQsoUuid) : null;
     final map = isMobilePlatform && !paneEverVisible
         ? const SizedBox.expand()
@@ -421,12 +424,18 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
               onCameraChanged: _onCameraChanged,
               zoomFades: _zoomFades,
               graylineAt: grayline ? contactAt ?? graylineInstant(nowUtc()) : null,
+              creditsLeft: lowerCorner != null,
             ),
           );
 
     // Mobile already zooms by pinch with no room to spare in the pane; the
     // buttons are for the platforms where a mouse/trackpad is the norm.
     final hasZoomButtons = !isMobilePlatform;
+    // On a foldable's display the buttons stand in the lower right, and
+    // the credits and info box move to the lower left. The device's right
+    // inset there is held for the status bar, in the top corner, so a pane
+    // at that edge keeps off it by the corners' clearance alone.
+    final buttonsRight = 8.0 + (lowerCorner == null ? PaneSafeArea.rightOf(context) : math.min(PaneSafeArea.rightOf(context), lowerCorner));
 
     return Stack(
       children: [
@@ -435,8 +444,9 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           // Clears the device's real top/right insets (notch, camera
           // cutout) so the toggle isn't drawn under them — the map tiles
           // themselves stay edge-to-edge.
-          top: 8 + PaneSafeArea.topOf(context),
-          right: 8 + PaneSafeArea.rightOf(context),
+          top: lowerCorner == null ? 8 + PaneSafeArea.topOf(context) : null,
+          bottom: lowerCorner == null ? null : 8 + PaneSafeArea.bottomOf(context),
+          right: buttonsRight,
           // Rebuilt only as the compass comes and goes, not on every frame of
           // a turn: the needle follows the turn by itself.
           child: ValueListenableBuilder(
@@ -444,6 +454,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
             builder: (context, turned, _) => Column(
               mainAxisSize: MainAxisSize.min,
               spacing: Space.md,
+              verticalDirection: lowerCorner == null ? VerticalDirection.down : VerticalDirection.up,
               children: [
                 if (hasGlobe)
                   _MapProjectionButton(
@@ -462,16 +473,18 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           ),
         ),
         Positioned(
-          right: MapInfoBox.right + PaneSafeArea.rightOf(context),
+          left: lowerCorner == null ? null : MapInfoBox.right + PaneSafeArea.leftOf(context),
+          right: lowerCorner == null ? MapInfoBox.right + PaneSafeArea.rightOf(context) : null,
           bottom: MapInfoBox.bottom + PaneSafeArea.bottomOf(context),
           child: MapInfoBox(settings: widget.settings, camera: _cameraReport),
         ),
         // The zoom pill and the outline notice share the bottom-left corner,
-        // side by side, so neither covers the other.
+        // side by side, so neither covers the other; above the credit where
+        // it has moved there.
         Positioned(
-          bottom: 8 + PaneSafeArea.bottomOf(context),
+          bottom: (lowerCorner == null ? 8 : MapInfoBox.bottom) + PaneSafeArea.bottomOf(context),
           left: 8 + PaneSafeArea.leftOf(context),
-          right: 8 + PaneSafeArea.rightOf(context),
+          right: lowerCorner == null ? 8 + PaneSafeArea.rightOf(context) : buttonsRight + kMinInteractiveDimension + Space.sm,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             spacing: Space.sm,
@@ -534,6 +547,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     ValueChanged<MapCameraSettled>? onCameraChanged,
     MapZoomFades? zoomFades,
     DateTime? graylineAt,
+    bool creditsLeft = false,
   }) => switch (backend) {
     _MapBackend.web => MapboxWebMapView(
       markers: markers,
@@ -564,6 +578,7 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
       onCameraChanged: onCameraChanged,
       zoomFades: zoomFades,
       graylineAt: graylineAt,
+      creditsLeft: creditsLeft,
     ),
     _MapBackend.osm => OsmMapView(
       markers: markers,

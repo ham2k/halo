@@ -110,6 +110,7 @@ void main() {
   late double strip;
   late StatusBandHeader? header;
   late EdgeInsets bottomBar;
+  late double? lowerCorner;
 
   Widget app({Widget? field}) => MaterialApp(
     builder: (context, child) => DisplayRegionInsets(child: child!),
@@ -125,6 +126,7 @@ void main() {
                 strip = stripBelowFoldOf(context);
                 header = statusBandHeaderOf(context);
                 bottomBar = bottomBarPaddingOf(context);
+                lowerCorner = lowerCornerClearanceOf(context);
               },
             ),
           ),
@@ -167,7 +169,12 @@ void main() {
       expect(header, isNull, reason: 'the status bar is a column at the side; there is no band to rise into');
       expect(seen.padding.left, 16, reason: "iOS reports no left inset, and the corner cuts into the header's leading edge");
       expect(seen.padding.right, 84);
-      expect(bottomBar, const EdgeInsets.fromLTRB(16, 0, 84, 12));
+      expect(bottomBar, const EdgeInsets.fromLTRB(16, 0, 16, 12), reason: 'the footer runs along the bottom, clear of the status bar in the top corner');
+      expect(
+        lowerCorner,
+        16,
+        reason: "the right inset is held for the status bar, in the top corner; a control in the lower one kept 84pt off the edge wastes the map's side",
+      );
     });
   });
 
@@ -183,6 +190,7 @@ void main() {
       expect(seen.padding.top, 82);
       expect(header, isNull);
       expect(bottomBar, seen.padding);
+      expect(lowerCorner, isNull, reason: 'a control kept to the lower corner there keeps to the safe area');
     });
   });
 
@@ -219,6 +227,20 @@ void main() {
 
       await _push(tester, _portrait(halfFolded: true));
       expect(seen.viewInsets.bottom, 396, reason: 'folding changes no inset; the push alone has to carry it');
+    });
+  });
+
+  testWidgets('folded with the flat keyboard still reported, its inset is left alone', (tester) async {
+    await _onIOS(() async {
+      // The tallest keyboard drawn flat, reported before iOS announces the
+      // half-folded one. Taken for that one animating in, the content would
+      // shrink short of keys that are still the flat keyboard's.
+      _portraitView(tester, keyboard: 350);
+      _reporter(tester, () => _portrait(halfFolded: true));
+      await tester.pumpWidget(app(field: const TextField(autofocus: true, autocorrect: false)));
+      await tester.pump();
+      expect(seen.viewInsets.bottom, 350);
+      expect(strip, 0);
     });
   });
 

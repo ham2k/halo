@@ -251,7 +251,8 @@ List<MapShapeData> refShapes(
 ///
 /// Bottom-left, and at most 60% of the width it is given, so the backend's
 /// own credit in the bottom-right corner is never covered — flutter_map's
-/// strip and MapLibre's control both sit there.
+/// strip and MapLibre's control both sit there. A host that moves the credit
+/// to the bottom left places this above it.
 class MapOutlinesNotice extends StatelessWidget {
   const MapOutlinesNotice({super.key, required this.shapes, this.camera, this.onReportIssue});
 

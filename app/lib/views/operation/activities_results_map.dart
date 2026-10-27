@@ -150,6 +150,12 @@ class ActivitiesResultsMap extends StatefulWidget {
   /// layers.
   final MapOverlays? overlays;
 
+  /// How far in from the map's right edge a column of the host's own
+  /// controls reaches, standing up from its bottom-right corner; zero for
+  /// none. The map leaves that corner to them: its credits and info box move
+  /// to the bottom left, and the outlines notice ends short of the column.
+  final double lowerRightControls;
+
   /// The basemap, where the view picks its own rather than following the
   /// operator's Map Style setting.
   final MapStyle? mapStyle;
@@ -194,6 +200,7 @@ class ActivitiesResultsMap extends StatefulWidget {
     this.currentLocationIconColor,
     this.currentLocationIsGps = false,
     this.overlays,
+    this.lowerRightControls = 0,
     this.mapStyle,
     this.picksColumn = false,
     this.selection,
@@ -978,6 +985,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         focus: focus,
         onMapTap: _onMapTap,
         overlays: widget.overlays,
+        creditsLeft: widget.lowerRightControls > 0,
         spreadOverlaps: true,
       );
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) && webviewSupported) {
@@ -995,6 +1003,7 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         focus: focus,
         onMapTap: _onMapTap,
         overlays: widget.overlays,
+        creditsLeft: widget.lowerRightControls > 0,
         spreadOverlaps: true,
       );
     } else {
@@ -1015,6 +1024,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
     }
 
     final selected = _markerEntry(_selectedMarkerId);
+    // The map reaches the pane's edges; what is laid over it keeps clear of
+    // any of them that is the device's.
+    final safe = PaneSafeArea.paddingOf(context);
 
     return Stack(
       children: [
@@ -1041,9 +1053,10 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
           child: ExcludeSemantics(child: PlatformViewShield(child: map)),
         ),
         Positioned(
-          left: Space.sm,
-          right: Space.sm,
-          bottom: Space.sm,
+          left: Space.sm + safe.left,
+          right: Space.sm + math.max(safe.right, widget.lowerRightControls),
+          // Above the credit where it has moved to the bottom left.
+          bottom: (widget.lowerRightControls > 0 ? MapInfoBox.bottom : Space.sm) + safe.bottom,
           child: MapOutlinesNotice(
             shapes: shapes,
             camera: _cameraReport,
@@ -1058,16 +1071,18 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
             ),
           ),
         ),
+        // Over the credit, in whichever corner the credit is.
         Positioned(
-          right: MapInfoBox.right,
-          bottom: MapInfoBox.bottom,
+          left: widget.lowerRightControls > 0 ? MapInfoBox.right + safe.left : null,
+          right: widget.lowerRightControls > 0 ? null : MapInfoBox.right + safe.right,
+          bottom: MapInfoBox.bottom + safe.bottom,
           child: MapInfoBox(settings: widget.settings, camera: _cameraReport),
         ),
         if (selected != null && widget.picksColumn && ShirtSize.of(context).isTwoPane)
           Positioned(
-            left: Space.md,
-            top: Space.md,
-            bottom: Space.md,
+            left: Space.md + safe.left,
+            top: Space.md + safe.top,
+            bottom: Space.md + safe.bottom,
             width: _picksColumnWidth,
             child: Align(
               alignment: Alignment.topLeft,
@@ -1078,9 +1093,9 @@ class _ActivitiesResultsMapState extends State<ActivitiesResultsMap> with Webvie
         // the bottom edge.
         else if (selected != null)
           Positioned(
-            left: Space.md,
-            right: Space.md,
-            top: Space.md,
+            left: Space.md + safe.left,
+            right: Space.md + safe.right,
+            top: Space.md + safe.top,
             child: _CardDeck(
               behind: _picks.contains(_selectedMarkerId) ? math.min(_picks.length - 1, _CardDeck.maxBehind) : 0,
               child: _RevealCard(

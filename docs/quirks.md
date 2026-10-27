@@ -449,7 +449,7 @@ churn on every filter keystroke and should come out together.
 
 ## iPhone Duo: Flutter sees one inset per edge, and no fold
 
-**Breaks:** three ways on the inner display, none of them Flutter's
+**Breaks:** four ways on the inner display, none of them Flutter's
 arithmetic.
 
 - **The top band.** Held portrait, iOS reports an 82pt top safe area across
@@ -465,6 +465,12 @@ arithmetic.
   suggestion bar is up. UIKit's own `keyboardLayoutGuide` reports the same
   frame. Laid out against it, the app leaves an empty strip between the fold
   and the keyboard.
+- **The keyboard, across the hinge.** Half-folding or unfolding with the
+  keyboard up, iOS redraws it for the new state but at times posts no
+  keyboard frame change for it — seen on the first unfold after the keyboard
+  came up half-folded, though not every time. Flutter learns the keyboard's
+  height only from those notifications, so it keeps the old inset until the
+  next one, and the content stays sized for the other keyboard.
 
 **Carried for it:** iOS 27.1 reports the display's shape to native code, and
 `DisplayRegions` in `app/ios/Runner/SceneDelegate.swift` sends it over
@@ -486,8 +492,20 @@ below:
   `stripBelowFoldOf` gives the strip up to the fold, which the numbers row
   stretches over so the fields above it end at the fold.
 - The status footer (`BottomBarSafeArea`, `bottomBarPaddingOf`) sits 12pt
-  off the bottom edge instead of the 34pt safe area, clear of the corners at
-  its sides by the corner-adapted insets.
+  off the bottom edge instead of the 34pt safe area, and off its sides by
+  the corners' clearance alone (`lowerCornerClearanceOf`, 16pt): the larger
+  side inset held landscape (84pt) is for the status bar, in the top corner.
+- The maps' buttons (the Maps view's column, the Map pane's) stand in the
+  lower right by the same clearance, with the Maps view's panels opening
+  beside them. The credits and the info box move to the lower left to make
+  room, and the outlines notice rises above the credits.
+
+The missing keyboard notification is repaired natively, by
+`FoldKeyboardFrames` beside the reporter: the `keyboardLayoutGuide` does
+follow the redraw, and when it settles on a docked keyboard the last
+notification did not announce, a quarter-second later, the change is posted
+as iOS would have posted it, and Flutter takes it like any other. Each
+repair logs a `[fold-keyboard]` line to the device console.
 
 All of it only on a display that reports a fold; what the same calls answer
 on other phones and tablets is unverified. A report measured at another size
@@ -501,7 +519,7 @@ safe area. And iOS reports no drawn keyboard height half-folded, so the
 two heights (445pt with the suggestion bar, 396pt without) were measured on
 the iOS 27.1 simulator. Which applies is told by the focused field, the
 taller one wherever iOS might show its suggestion or Passwords bar. Reports
-between the tallest unfolded keyboard (311pt) and the half-folded one are
+between the tallest unfolded keyboard (350pt) and the half-folded one are
 taken for the keyboard animating, and the correction scales with them so
 nothing jumps. A keyboard of any other height (a number pad, a third-party
 keyboard) gets the wrong figure.

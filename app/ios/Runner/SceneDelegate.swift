@@ -60,6 +60,9 @@ final class DisplayRegions {
     view.insertSubview(watcher, at: 0)
     self.watcher = watcher
     update()
+    #if compiler(>=6.4)
+      if #available(iOS 27.1, *) { FoldKeyboardFrames.shared.watch(view) }
+    #endif
   }
 
   private func update() {
@@ -135,3 +138,108 @@ final class DisplayRegions {
     }
   }
 }
+
+#if compiler(>=6.4)
+  /// The keyboard frame change iOS leaves out when it redraws the keyboard
+  /// across a fold. Half-folded and back, iOS draws the keyboard for the new
+  /// state but at times posts no frame change for it, and Flutter, which
+  /// learns the keyboard's height only from those notifications, keeps the
+  /// old inset until the next one: the content stays sized for the taller
+  /// half-folded keyboard, or sinks under the keys of the taller one.
+  ///
+  /// The keyboard layout guide follows the redraw either way. A docked
+  /// keyboard that settles somewhere the last notification did not put it is
+  /// announced here, as iOS would have announced it. On a display without a
+  /// fold, the notifications are taken as complete.
+  @available(iOS 27.1, *)
+  final class FoldKeyboardFrames {
+    static let shared = FoldKeyboardFrames()
+
+    /// Long enough for iOS's own notification, which reaches the guide and
+    /// observers within a few milliseconds of each other, to land first.
+    private static let settle: TimeInterval = 0.25
+
+    private weak var view: UIView?
+    private var probe: Probe?
+    private var announced: CGRect?
+    private var pending: DispatchWorkItem?
+
+    private init() {
+      for name in [UIResponder.keyboardWillChangeFrameNotification, UIResponder.keyboardWillHideNotification] {
+        NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+          if let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect { self?.announced = end }
+        }
+      }
+    }
+
+    func watch(_ view: UIView) {
+      self.view = view
+      probe?.removeFromSuperview()
+      // A hidden keyboard then leaves the guide empty, rather than the
+      // height of the bottom safe area.
+      view.keyboardLayoutGuide.usesBottomSafeArea = false
+      let probe = Probe()
+      probe.onResize = { [weak self] in self?.schedule() }
+      view.insertSubview(probe, at: 0)
+      NSLayoutConstraint.activate([
+        probe.topAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor),
+        probe.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+        probe.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+        probe.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      ])
+      self.probe = probe
+    }
+
+    private func schedule() {
+      pending?.cancel()
+      let check = DispatchWorkItem { [weak self] in self?.check() }
+      pending = check
+      DispatchQueue.main.asyncAfter(deadline: .now() + Self.settle, execute: check)
+    }
+
+    private func check() {
+      guard let view, let screen = view.window?.windowScene?.screen, let announced,
+        !view.reservedRegions(kind: .division, options: .includeInactive).isEmpty
+      else { return }
+      let bottom = screen.bounds.maxY
+      let drawn = view.convert(view.keyboardLayoutGuide.layoutFrame, to: screen.coordinateSpace)
+      // Docked, both as announced and as drawn: a keyboard hidden, or
+      // floating clear of the bottom edge, is never re-announced.
+      guard announced.height > 0, announced.minY < bottom, abs(announced.maxY - bottom) < 1,
+        drawn.height > 0, abs(drawn.maxY - bottom) < 1, abs(drawn.minY - announced.minY) >= 1
+      else { return }
+      NSLog("[fold-keyboard] iOS posted no frame change for the keyboard drawn at %@; announcing it over %@", NSCoder.string(for: drawn), NSCoder.string(for: announced))
+      NotificationCenter.default.post(
+        name: UIResponder.keyboardWillChangeFrameNotification, object: nil,
+        userInfo: [
+          UIResponder.keyboardFrameBeginUserInfoKey: NSValue(cgRect: announced),
+          UIResponder.keyboardFrameEndUserInfoKey: NSValue(cgRect: drawn),
+          UIResponder.keyboardAnimationDurationUserInfoKey: 0.0,
+          UIResponder.keyboardAnimationCurveUserInfoKey: UIView.AnimationCurve.easeInOut.rawValue,
+          UIResponder.keyboardIsLocalUserInfoKey: true,
+        ])
+    }
+
+    /// A transparent, untouchable view spanning the keyboard layout guide,
+    /// for the layout pass UIKit gives a view whose size changes.
+    private final class Probe: UIView {
+      var onResize: (() -> Void)?
+
+      init() {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        isUserInteractionEnabled = false
+        isAccessibilityElement = false
+        accessibilityElementsHidden = true
+        backgroundColor = .clear
+      }
+
+      required init?(coder: NSCoder) { nil }
+
+      override func layoutSubviews() {
+        super.layoutSubviews()
+        onResize?()
+      }
+    }
+  }
+#endif

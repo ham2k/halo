@@ -50,19 +50,31 @@ double stripBelowFoldOf(BuildContext context) => (context.dependOnInheritedWidge
 /// The safe area a bar along the window's bottom edge holds — the status
 /// footer, which covers the home indicator for the whole window — in
 /// [context]'s units. On a foldable's display it sits lower than the safe
-/// area, and clears the rounded corners at its sides instead; everywhere
-/// else it is the safe area.
+/// area, and clears the rounded corners at its sides instead
+/// ([lowerCornerClearanceOf]); everywhere else it is the safe area.
 EdgeInsets bottomBarPaddingOf(BuildContext context) {
   final padding = MediaQuery.paddingOf(context);
-  final corners = context.dependOnInheritedWidgetOfExactType<_BottomBarScope>()?.corners;
-  if (corners == null) return padding;
-  final scale = UiScale.of(context);
+  final clearance = lowerCornerClearanceOf(context);
+  if (clearance == null) return padding;
   return padding.copyWith(
-    left: math.max(padding.left, corners.left / scale),
-    right: math.max(padding.right, corners.right / scale),
+    left: clearance,
+    right: clearance,
     // Never more than the safe area: with the keyboard up it is zero.
-    bottom: math.min(padding.bottom, _bottomBarBottomInset / scale),
+    bottom: math.min(padding.bottom, _bottomBarBottomInset / UiScale.of(context)),
   );
+}
+
+/// On a foldable's display, how far a control kept to the lower part of
+/// either side edge stays off it, in [context]'s units: the rounded corners'
+/// own clearance. The safe area's side inset can be far larger, held for the
+/// status bar or the camera in a top corner alone. Null everywhere else,
+/// where such a control keeps to the safe area.
+double? lowerCornerClearanceOf(BuildContext context) {
+  final corners = context.dependOnInheritedWidgetOfExactType<_BottomBarScope>()?.corners;
+  if (corners == null) return null;
+  // The corners are alike at both ends of the display: the larger of the two
+  // side insets is the one widened for what sits beside the top corner.
+  return math.min(corners.left, corners.right) / UiScale.of(context);
 }
 
 /// What iOS reports about the display, in the root MediaQuery's logical
@@ -147,9 +159,9 @@ const double _headerExtent = 58;
 const double _statusBandHeaderHeight = 46;
 
 /// Above the tallest keyboard the iPhone Duo's inner display draws unfolded
-/// (311pt, with the suggestion bar), and below what it reports half-folded:
+/// (350pt on the iOS 27.1 simulator), and below what it reports half-folded:
 /// a report past it, half-folded, is the keyboard settled or on its way.
-const double _openKeyboardMax = 320;
+const double _openKeyboardMax = 360;
 
 /// How tall the keyboard is actually drawn half-folded, with and without the
 /// suggestion bar, measured off the iOS 27.1 simulator's iPhone Duo. iOS

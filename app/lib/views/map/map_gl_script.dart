@@ -11,7 +11,7 @@
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks, frame)` returning a handle with `setMarkersJson`,
 // `setLinesJson`, `setShapesJson`, `setOverlaysJson`, `setGraylineJson`, `setCreditLabelsJson`, `patchMarkersJson`, `patchLinesJson`,
-// `setProjection`, `moveTo`, `fitToJson`, `refit`, `resetNorth`, `camera`, `snapshot`, `reload`/`cancelReload`
+// `setCreditsSide`, `setProjection`, `moveTo`, `fitToJson`, `refit`, `resetNorth`, `camera`, `snapshot`, `reload`/`cancelReload`
 // (the host's word that the app is back online, or offline again), and
 // `remove`. Data crosses as JSON strings —
 // both callers already have the payload serialized, and strings keep the
@@ -338,6 +338,14 @@ window.poloMapGl = {
     function setCreditLabels(labels) {
       creditLabels = labels;
       renderCredits();
+    }
+
+    // The bottom corner the credits sit in: 'left' for a host whose own
+    // controls hold the bottom-right one, 'right' (MapLibre's own) otherwise.
+    function setCreditsSide(side) {
+      if (!attribution) return;
+      const corner = host.querySelector(side === 'left' ? '.maplibregl-ctrl-bottom-left' : '.maplibregl-ctrl-bottom-right');
+      if (corner && attribution.parentElement !== corner) corner.appendChild(attribution);
     }
 
     // MapLibre's globe has no style-level fog property ('space-color'/
@@ -1190,6 +1198,7 @@ $mapGlSnapshotScript
       setZoomFades: setZoomFades,
       setFocus: setFocus,
       setCreditLabels: setCreditLabels,
+      setCreditsSide: setCreditsSide,
       // JSON-string variants for callers on the far side of an interop
       // boundary (Flutter web's js_interop), where a string is the cheapest
       // thing to pass.

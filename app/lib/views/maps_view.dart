@@ -27,6 +27,7 @@ import 'map/map_overlays.dart';
 import 'map/map_zoom_controller.dart';
 import '../tools/distance_format.dart';
 import '../tools/operation_title.dart';
+import 'app_shell/home_rail_state.dart';
 import 'operation_view.dart';
 import 'operation/activities_results_map.dart';
 import 'operation/activity_rows.dart' show activityRowDetail, activityRowTitle, allowsMultipleRefsOfType, refsKeptWhenAdding;
@@ -358,6 +359,13 @@ class _MapsViewState extends State<MapsView> {
       for (final refs in [_search.suggestions, _search.exploredSuggestions])
         refs: _shownLists[refs] ?? (_hiddenActivities.isEmpty ? refs : refs.where(_shows).toList()),
     };
+    // The rail never reaches the right edge, so the device's inset there is
+    // the map's own. On a foldable's display the buttons stand in the lower
+    // right instead, off the edge by the corners' clearance alone: the safe
+    // area's right inset there is held for the status bar, in the top corner.
+    final safe = MediaQuery.paddingOf(context);
+    final lowerCorner = lowerCornerClearanceOf(context);
+    final buttonsRight = Space.md + (lowerCorner ?? safe.right);
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
@@ -390,105 +398,122 @@ class _MapsViewState extends State<MapsView> {
         actions: [windowsCaptionSpacer(context)],
       ),
       body: BesideRail(
-        child: Focus(
-          focusNode: _mapFocus,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: ActivitiesResultsMap(
-                  suggestions: _shownLists[_search.suggestions]!,
-                  exploredSuggestions: _shownLists[_search.exploredSuggestions]!,
-                  controls: _controls,
-                  refs: const [],
-                  settings: widget.services.settings,
-                  geoshapes: widget.services.geoshapes,
-                  outlineGrid: widget.services.outlineGrid,
-                  camera: _camera,
-                  linkFor: _linkFor,
-                  onExplore: _search.explore,
-                  fitKey: '${_search.answeredSearches}',
-                  currentLocation: here,
-                  currentLocationIsGps: true,
-                  overlays: _overlays,
-                  // The imagery's labels: the light basemap, whatever the setting
-                  // or the app's theme would pick.
-                  mapStyle: _overlays.imagery ? MapStyle.liberty : null,
-                  picksColumn: true,
-                  selection: _selection,
-                  onStartOperation: _startOperation,
-                  hintsWhenEmpty: false,
+        // The device's insets for the map's overlays, as Home publishes them
+        // for its panes: the left one only with no rail, which otherwise
+        // takes it by widening.
+        child: ListenableBuilder(
+          listenable: homeRail,
+          builder: (context, child) => PaneSafeArea.root(
+            context,
+            left: HomeNavigationRail.presentIn(context, expanded: homeRail.expanded) ? 0 : null,
+            child: child!,
+          ),
+          child: Focus(
+            focusNode: _mapFocus,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ActivitiesResultsMap(
+                    suggestions: _shownLists[_search.suggestions]!,
+                    exploredSuggestions: _shownLists[_search.exploredSuggestions]!,
+                    controls: _controls,
+                    refs: const [],
+                    settings: widget.services.settings,
+                    geoshapes: widget.services.geoshapes,
+                    outlineGrid: widget.services.outlineGrid,
+                    camera: _camera,
+                    linkFor: _linkFor,
+                    onExplore: _search.explore,
+                    fitKey: '${_search.answeredSearches}',
+                    currentLocation: here,
+                    currentLocationIsGps: true,
+                    overlays: _overlays,
+                    // The imagery's labels: the light basemap, whatever the setting
+                    // or the app's theme would pick.
+                    mapStyle: _overlays.imagery ? MapStyle.liberty : null,
+                    picksColumn: true,
+                    selection: _selection,
+                    onStartOperation: _startOperation,
+                    hintsWhenEmpty: false,
+                    lowerRightControls: lowerCorner == null ? 0 : buttonsRight + kMinInteractiveDimension,
+                  ),
                 ),
-              ),
-              // Down the right edge: zoom and the compass, the activities and
-              // layers, then back to where the operator is.
-              Positioned(
-                top: Space.md,
-                right: Space.md,
-                // Rebuilt only as the compass comes and goes, not on every
-                // frame of a turn: the needle follows the turn by itself.
-                child: ValueListenableBuilder(
-                  valueListenable: _camera.turned,
-                  builder: (context, turned, _) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: Space.md,
-                    children: [
-                      MapZoomButtons(controller: _camera),
-                      if (turned) MapCompassButton(controller: _camera),
-                      if (leadActivity != null)
+                // Down the right edge: zoom and the compass, the activities and
+                // layers, then back to where the operator is. Up it from the
+                // bottom, in the lower right, in the same order.
+                Positioned(
+                  top: lowerCorner == null ? Space.md : null,
+                  bottom: lowerCorner == null ? null : Space.md + safe.bottom,
+                  right: buttonsRight,
+                  // Rebuilt only as the compass comes and goes, not on every
+                  // frame of a turn: the needle follows the turn by itself.
+                  child: ValueListenableBuilder(
+                    valueListenable: _camera.turned,
+                    builder: (context, turned, _) => Column(
+                      mainAxisSize: MainAxisSize.min,
+                      spacing: Space.md,
+                      verticalDirection: lowerCorner == null ? VerticalDirection.down : VerticalDirection.up,
+                      children: [
+                        MapZoomButtons(controller: _camera),
+                        if (turned) MapCompassButton(controller: _camera),
+                        if (leadActivity != null)
+                          MapRoundButton(
+                            icon: resolveIconName(leadActivity.control['icon'] as String?),
+                            semanticLabel: t.activities,
+                            onPressed: () => _toggle(_Panel.activities),
+                          ),
                         MapRoundButton(
-                          icon: resolveIconName(leadActivity.control['icon'] as String?),
-                          semanticLabel: t.activities,
-                          onPressed: () => _toggle(_Panel.activities),
+                          icon: _panel == _Panel.layers ? MdiIcons.layers : MdiIcons.layersOutline,
+                          semanticLabel: t.layers,
+                          onPressed: () => _toggle(_Panel.layers),
                         ),
-                      MapRoundButton(
-                        icon: _panel == _Panel.layers ? MdiIcons.layers : MdiIcons.layersOutline,
-                        semanticLabel: t.layers,
-                        onPressed: () => _toggle(_Panel.layers),
-                      ),
-                      MapRoundButton(
-                        icon: MdiIcons.crosshairsGps,
-                        semanticLabel: t.currentLocation,
-                        onPressed: here == null ? null : () => _camera.moveTo(here.latitude, here.longitude),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Beside the buttons rather than over them.
-              if (_panel == _Panel.activities)
-                Positioned(
-                  top: Space.md,
-                  right: Space.md + kMinInteractiveDimension + Space.md,
-                  child: PlatformViewShield(
-                    child: _ActivitiesPanel(
-                      controls: _controls,
-                      activities: activities,
-                      hidden: _hiddenActivities,
-                      onShown: _setActivityShown,
-                      onClose: () => setState(() => _panel = null),
-                      theme: theme,
+                        MapRoundButton(
+                          icon: MdiIcons.crosshairsGps,
+                          semanticLabel: t.currentLocation,
+                          onPressed: here == null ? null : () => _camera.moveTo(here.latitude, here.longitude),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              if (_panel == _Panel.layers)
-                Positioned(
-                  top: Space.md,
-                  right: Space.md + kMinInteractiveDimension + Space.md,
-                  child: PlatformViewShield(
-                    child: _LayersPanel(
-                      style: widget.services.settings.mapStyle,
-                      overlays: _overlays,
-                      onStyle: (style) {
-                        if (_overlays.imagery) _setOverlays(_overlays.copyWith(imagery: false));
-                        unawaited(widget.services.settings.setMapStyle(style));
-                      },
-                      onOverlays: _setOverlays,
-                      onClose: () => setState(() => _panel = null),
-                      theme: theme,
+                // Beside the buttons rather than over them, at the same end.
+                if (_panel == _Panel.activities)
+                  Positioned(
+                    top: lowerCorner == null ? Space.md : null,
+                    bottom: lowerCorner == null ? null : Space.md + safe.bottom,
+                    right: buttonsRight + kMinInteractiveDimension + Space.md,
+                    child: PlatformViewShield(
+                      child: _ActivitiesPanel(
+                        controls: _controls,
+                        activities: activities,
+                        hidden: _hiddenActivities,
+                        onShown: _setActivityShown,
+                        onClose: () => setState(() => _panel = null),
+                        theme: theme,
+                      ),
                     ),
                   ),
-                ),
-            ],
+                if (_panel == _Panel.layers)
+                  Positioned(
+                    top: lowerCorner == null ? Space.md : null,
+                    bottom: lowerCorner == null ? null : Space.md + safe.bottom,
+                    right: buttonsRight + kMinInteractiveDimension + Space.md,
+                    child: PlatformViewShield(
+                      child: _LayersPanel(
+                        style: widget.services.settings.mapStyle,
+                        overlays: _overlays,
+                        onStyle: (style) {
+                          if (_overlays.imagery) _setOverlays(_overlays.copyWith(imagery: false));
+                          unawaited(widget.services.settings.setMapStyle(style));
+                        },
+                        onOverlays: _setOverlays,
+                        onClose: () => setState(() => _panel = null),
+                        theme: theme,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
