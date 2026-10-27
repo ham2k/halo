@@ -33,6 +33,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+import '../os_error_detail_io.dart';
 import '../transport.dart';
 import 'icom_network_protocol.dart';
 import 'icom_network_transport_config.dart';
@@ -319,11 +320,12 @@ class _IcomSession {
   /// rather than trusting a stale frequency into a logged QSO.
   static const _maxPingsUnanswered = 3;
 
-  /// Fires once when the radio has gone quiet for too long. Set only once
-  /// this session is part of a live [_IcomConnection] — before that,
-  /// [onSetupLost] is what a socket error still in _attempt's setup phase
-  /// reaches instead.
-  void Function()? onLost;
+  /// Fires once when the radio has gone quiet for too long, ended the
+  /// session, or the socket failed — with which of those it was, for the
+  /// traffic log. Set only once this session is part of a live
+  /// [_IcomConnection] — before that, [onSetupLost] is what a socket error
+  /// still in _attempt's setup phase reaches instead.
+  void Function(String reason)? onLost;
 
   /// Fires once, with the real cause, for a socket error that arrives after
   /// this session's own handshake is done but before _attempt has built an
@@ -393,7 +395,7 @@ class _IcomSession {
     _pingTimer = Timer.periodic(_pingInterval, (_) {
       if (_closed) return;
       if (_pingsUnanswered >= _maxPingsUnanswered) {
-        _declareLost();
+        _declareLost('no reply from the radio to $_maxPingsUnanswered pings');
         return;
       }
       _pingsUnanswered++;
@@ -427,13 +429,13 @@ class _IcomSession {
       setupLost(error);
       return;
     }
-    _declareLost();
+    _declareLost('socket error: ${osErrorDetail(error) ?? error.runtimeType}');
   }
 
-  void _declareLost() {
+  void _declareLost(String reason) {
     final lost = onLost;
     onLost = null;
-    lost?.call();
+    lost?.call('$reason, on the $_label channel');
   }
 
   void _onEvent(RawSocketEvent event) {
@@ -497,10 +499,7 @@ class _IcomSession {
     if (onLost != null && bytes.length == 80 && icomPrefixIs(bytes, [0x50, 0, 0, 0, 0, 0])) {
       final answer = readStreamAnswer(bytes);
       if (answer == IcomStreamAnswer.authFailed || answer == IcomStreamAnswer.radioDisconnected) {
-        debugPrint('[cat] icom $_label: the radio ended the session (${answer.name})');
-        final lost = onLost;
-        onLost = null;
-        lost?.call();
+        _declareLost('the radio ended the session (${answer.name})');
         return;
       }
     }
@@ -788,7 +787,7 @@ class _IcomSession {
   }
 }
 
-class _IcomConnection implements EquipmentConnection {
+class _IcomConnection implements EquipmentConnection, ExplainsClose {
   final _IcomSession control;
   final _IcomSession serial;
   final RawDatagramSocket audio;
@@ -798,6 +797,9 @@ class _IcomConnection implements EquipmentConnection {
   final _closedCompleter = Completer<void>();
   int _civSeq = 1;
   var _open = true;
+
+  @override
+  String? closeReason;
 
   _IcomConnection({required this.control, required this.serial, required this.audio, required this.authId}) {
     serial.onMessage((bytes) {
@@ -813,13 +815,14 @@ class _IcomConnection implements EquipmentConnection {
     serial.onLost = _markLost;
   }
 
-  /// The radio stopped answering. Completes `closed` so CatService sees a
-  /// disconnect and the row stops claiming a live frequency — the thing UDP
-  /// gives us no FIN for.
-  void _markLost() {
+  /// The session is gone without our asking. Completes `closed` so CatService
+  /// sees a disconnect and the row stops claiming a live frequency — the
+  /// thing UDP gives us no FIN for.
+  void _markLost(String reason) {
     if (!_open) return;
     _open = false;
-    debugPrint('[cat] icom: radio stopped answering, treating as disconnected');
+    closeReason = reason;
+    debugPrint('[cat] icom: $reason, treating as disconnected');
     if (!_closedCompleter.isCompleted) _closedCompleter.complete();
     unawaited(_dataController.close());
     // Best-effort: the radio is very likely gone, but if it is merely

@@ -20,7 +20,7 @@
 
 import 'dart:async';
 import 'dart:ffi' as ffi;
-import 'dart:io' show Platform;
+import 'dart:io' show OSError, Platform;
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
@@ -28,6 +28,7 @@ import 'package:flutter/services.dart' show MethodChannel, MissingPluginExceptio
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:usb_serial/usb_serial.dart' as usb;
 
+import '../os_error_detail_io.dart';
 import '../transport.dart';
 import 'serial_transport_config.dart';
 
@@ -291,9 +292,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     // for want of the device.serial entitlement. All three want saying out
     // loud rather than a bare false.
     if (!port.openReadWrite()) {
-      final reason = SerialPort.lastError?.message;
+      final error = SerialPort.lastError;
       port.dispose();
-      throw SerialPortUnavailable.fromSystem(name, reason);
+      throw SerialPortUnavailable.fromSystem(name, error?.message, osError: error);
     }
 
     try {
@@ -321,7 +322,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     } catch (e) {
       port.close();
       port.dispose();
-      throw SerialPortUnavailable(name, '$e');
+      throw SerialPortUnavailable(name, '$e', osError: e is OSError ? e : null);
     }
 
     // Read the lines back rather than trusting the write. libserialport can
@@ -498,16 +499,21 @@ class SerialPortUnavailable implements SerialPortProblem {
   final String portName;
   final String? reason;
 
+  /// libserialport's own error, when the failure came from it: the part of
+  /// this exception `osErrorDetail` may quote, since [reason] sits beside a
+  /// [portName] that carries the adapter's serial number.
+  final OSError? osError;
+
   @override
   final SerialFailure failure;
 
-  const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other});
+  const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other, this.osError});
 
   /// libserialport hands back the OS's own wording rather than a code, so the
   /// kind has to be read out of it. Matched case-insensitively on the
   /// substrings POSIX and Windows agree on; anything else stays
   /// [SerialFailure.other] and keeps its own words.
-  factory SerialPortUnavailable.fromSystem(String portName, String? reason) {
+  factory SerialPortUnavailable.fromSystem(String portName, String? reason, {OSError? osError}) {
     final text = (reason ?? '').toLowerCase();
     final failure = text.contains('busy')
         ? SerialFailure.busy
@@ -516,34 +522,38 @@ class SerialPortUnavailable implements SerialPortProblem {
         : text.contains('no such file') || text.contains('no such device') || text.contains('cannot find')
         ? SerialFailure.missing
         : SerialFailure.other;
-    return SerialPortUnavailable(portName, reason, failure: failure);
+    return SerialPortUnavailable(portName, reason, failure: failure, osError: osError);
   }
 
   @override
   String toString() => reason == null ? 'Could not open $portName' : 'Could not open $portName: $reason';
 }
 
-class _SerialConnection implements EquipmentConnection {
+class _SerialConnection implements EquipmentConnection, ExplainsClose {
   final SerialPort _port;
   late final SerialPortReader _reader;
   final _dataController = StreamController<Uint8List>();
   final _closedCompleter = Completer<void>();
   bool _open = true;
 
+  @override
+  String? closeReason;
+
   _SerialConnection(this._port) {
     _reader = SerialPortReader(_port);
     _reader.stream.listen(
       _dataController.add,
       // A USB-serial adapter unplugged mid-session surfaces here.
-      onError: (Object _) => _markClosed(),
-      onDone: _markClosed,
+      onError: (Object e) => _markClosed('read error: ${osErrorDetail(e) ?? e.runtimeType}'),
+      onDone: () => _markClosed('the port stopped reading'),
       cancelOnError: true,
     );
   }
 
-  void _markClosed() {
+  void _markClosed([String? reason]) {
     if (!_open) return;
     _open = false;
+    closeReason = reason;
     if (!_closedCompleter.isCompleted) _closedCompleter.complete();
     unawaited(_dataController.close());
     try {
@@ -578,19 +588,22 @@ class _SerialConnection implements EquipmentConnection {
   Future<void> close() async => _markClosed();
 }
 
-class _AndroidSerialConnection implements EquipmentConnection {
+class _AndroidSerialConnection implements EquipmentConnection, ExplainsClose {
   final usb.UsbPort _port;
   StreamSubscription<Uint8List>? _sub;
   final _dataController = StreamController<Uint8List>();
   final _closedCompleter = Completer<void>();
   bool _open = true;
 
+  @override
+  String? closeReason;
+
   _AndroidSerialConnection(this._port) {
     _sub = _port.inputStream?.listen(
       _dataController.add,
       // A USB-serial adapter unplugged mid-session surfaces here.
-      onError: (Object _) => unawaited(_markClosed()),
-      onDone: () => unawaited(_markClosed()),
+      onError: (Object e) => unawaited(_markClosed('read error: ${osErrorDetail(e) ?? e.runtimeType}')),
+      onDone: () => unawaited(_markClosed('the USB port stopped reading')),
       cancelOnError: true,
     );
   }
@@ -600,9 +613,10 @@ class _AndroidSerialConnection implements EquipmentConnection {
   /// same still-claimed USB interface before `port.close()`'s MethodChannel
   /// round-trip lands would lose that race — same reasoning as the web
   /// transport's `_markClosed`.
-  Future<void> _markClosed() async {
+  Future<void> _markClosed([String? reason]) async {
     if (!_open) return;
     _open = false;
+    closeReason = reason;
     unawaited(_dataController.close());
     unawaited(_sub?.cancel());
     try {

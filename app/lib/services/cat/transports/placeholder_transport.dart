@@ -33,7 +33,7 @@ class PlaceholderUnreachable implements CatUnreachable {
   String toString() => t.settings.station.placeholderConnectFailure;
 }
 
-class _PlaceholderConnection implements EquipmentConnection {
+class _PlaceholderConnection implements EquipmentConnection, ExplainsClose {
   /// Never emits: the placeholder radio's state lives in its session, not on a
   /// wire. Present because [EquipmentConnection] promises a stream and
   /// `CatService` subscribes to it.
@@ -41,8 +41,16 @@ class _PlaceholderConnection implements EquipmentConnection {
   final _closed = Completer<void>();
   Timer? _dropTimer;
 
+  @override
+  String? closeReason;
+
   _PlaceholderConnection({required Duration? dropAfter}) {
-    if (dropAfter != null) _dropTimer = Timer(dropAfter, close);
+    if (dropAfter != null) {
+      _dropTimer = Timer(dropAfter, () {
+        closeReason = 'the placeholder dropped as configured';
+        unawaited(close());
+      });
+    }
   }
 
   @override

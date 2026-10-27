@@ -114,7 +114,8 @@ List<Map<String, dynamic>> _icomLanNotes() => [
     'title': t.settings.station.troubleshootingNotes,
     'text':
         '**${t.settings.station.ic705TroubleshootingTitle}**\n\n'
-        '${t.settings.station.icomLanTroubleshooting}',
+        '${t.settings.station.icomLanTroubleshooting}'
+        '${_icomTransceiveSection()}',
   },
 ];
 
@@ -164,9 +165,15 @@ List<Map<String, dynamic>> _icomGenericSerialNotes({String extra = ''}) => [
     'title': t.settings.station.troubleshootingNotes,
     'text':
         '**${t.settings.station.icomCivTroubleshootingTitle}**\n\n'
-        '${t.settings.station.icomCivTroubleshooting}$extra',
+        '${t.settings.station.icomCivTroubleshooting}$extra'
+        '${_icomTransceiveSection()}',
   },
 ];
+
+/// Every Icom has a CI-V Transceive setting, and with it off the driver sees
+/// a change made on the radio only at its next poll. Not on the Xiegus that
+/// speak CI-V: their menus are not known to carry the setting.
+String _icomTransceiveSection() => '\n\n**${t.settings.station.civTransceiveTitle}**\n\n${t.settings.station.civTransceive}';
 
 /// Icom IC-7300 over its built-in USB CI-V port.
 ///
@@ -204,14 +211,15 @@ String _ic7300Name() => t.settings.station.models.ic7300;
 ///
 /// An entry pinned to [_icomUsbBaud] passes [fixedSpeed] — the bullet that
 /// replaces "match the number shown here", since it shows no number.
-List<Map<String, dynamic>> _civSerialNotes({String extra = '', String? fixedSpeed}) => [
+List<Map<String, dynamic>> _civSerialNotes({String extra = '', String? fixedSpeed, bool icom = true}) => [
   {
     'type': 'markdown',
     'collapsible': true,
     'title': t.settings.station.troubleshootingNotes,
     'text':
         '**${t.settings.station.civAddressTroubleshootingTitle}**\n\n'
-        '${fixedSpeed == null ? t.settings.station.civAddressTroubleshooting : t.settings.station.civAddressFixedSpeedTroubleshooting(speed: fixedSpeed)}$extra',
+        '${fixedSpeed == null ? t.settings.station.civAddressTroubleshooting : t.settings.station.civAddressFixedSpeedTroubleshooting(speed: fixedSpeed)}$extra'
+        '${icom ? _icomTransceiveSection() : ''}',
   },
 ];
 
@@ -604,7 +612,7 @@ const ic7851Model = EquipmentModel(
 
 String _ic7851Name() => t.settings.station.models.ic7851;
 
-List<Map<String, dynamic>> _x6100SerialNotes() => _civSerialNotes(extra: t.settings.station.x6100PortNote);
+List<Map<String, dynamic>> _x6100SerialNotes() => _civSerialNotes(extra: t.settings.station.x6100PortNote, icom: false);
 
 /// Xiegu X6100 — a Xiegu radio that happens to speak Icom's CI-V, not the
 /// Kenwood protocol its documentation and much of the community suggest.
@@ -678,12 +686,14 @@ const g90Model = EquipmentModel(
         cwKeyerConfigKey: false,
         voiceMemoriesConfigKey: 0,
       },
-      notes: _civSerialNotes,
+      notes: _g90SerialNotes,
     ),
   ],
 );
 
 String _g90Name() => t.settings.station.models.g90;
+
+List<Map<String, dynamic>> _g90SerialNotes() => _civSerialNotes(icom: false);
 
 /// An IC-705 over WiFi, using Icom's RS-BA1 network protocol.
 ///
@@ -791,6 +801,7 @@ List<Map<String, dynamic>> _ic705NetworkNotes() => [
     'title': t.settings.station.troubleshootingNotes,
     'text':
         '**${t.settings.station.ic705TroubleshootingTitle}**\n\n'
-        '${t.settings.station.ic705Troubleshooting}',
+        '${t.settings.station.ic705Troubleshooting}'
+        '${_icomTransceiveSection()}',
   },
 ];

@@ -2201,6 +2201,8 @@
       "civAddressFixedSpeedTroubleshooting": "- **the ci-v address must match** the radio's menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.",
       "icomUsbSpeedFollows": "- **there is no speed to set.** over usb this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.",
       "ic7610UsbSpeed": "- **set ci-v usb baud rate to 115200**, the speed this entry always uses, since the scope needs it — **not auto**. a radio set to any other speed answers with silence.",
+      "civTransceiveTitle": "if the app is slow to follow the radio",
+      "civTransceive": "if the app takes several seconds to show a frequency or mode change made on the radio, turn on the radio's **ci-v transceive** setting (on most current models, under set > connectors > ci-v). with it on, the radio reports each change the moment it happens. with it off, the app only sees a change the next time it asks, every few seconds.",
       "ic7300Mk2Note": "\n- the **ic-7300 mk2** ships on address `B6`, not the `94` prefilled here — pick the ic-7300 mk2 entry instead.",
       "ic705PortNote": "\n- the **ic-705** presents two usb serial ports, both named after the radio. ci-v is on the **first** of them, which the picker points at wherever it can tell the two apart.",
       "ic7760PortNote": "\n- the **ic-7760** speaks ci-v on **port a** of the two usb serial ports it presents.",

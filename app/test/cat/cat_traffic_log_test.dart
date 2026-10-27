@@ -20,6 +20,7 @@ import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/ble_serial_transport.dart';
+import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -81,9 +82,18 @@ class _MemoryFile implements CatTrafficFile {
       _disk.failClose ? throw const FileSystemException('Input/output error') : Uint8List.fromList(utf8.encode(_buffer.toString()));
 }
 
-class _Connection implements EquipmentConnection {
+class _Connection implements EquipmentConnection, ExplainsClose {
   final _data = StreamController<Uint8List>();
   final _closed = Completer<void>();
+
+  @override
+  String? closeReason;
+
+  /// The link going down on its own, for [reason].
+  void drop(String reason) {
+    closeReason = reason;
+    if (!_closed.isCompleted) _closed.complete();
+  }
 
   @override
   Stream<Uint8List> get data => _data.stream;
@@ -104,10 +114,23 @@ class _Transport extends EquipmentTransport {
   /// The latest connection made — one per connect, as a real port gives.
   var connection = _Connection();
 
+  /// Thrown by every connect while set.
+  Object? failWith;
+
   @override
   String get key => 'fake';
   @override
-  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async => connection = _Connection();
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
+    if (failWith case final error?) throw error;
+    return connection = _Connection();
+  }
+}
+
+/// A serial open failure as both serial transports word one: naming the port,
+/// whose path carries the adapter's serial number.
+class _PortNamingFailure implements CatUnreachable {
+  @override
+  String toString() => 'Could not open /dev/cu.usbserial-FTB6SPL3: Resource busy';
 }
 
 /// Asks once on start; reports a frequency for any chunk at all, and a
@@ -322,6 +345,50 @@ void main() {
       expect(text, contains('$radio -- nothing heard for'));
       expect(text, contains('$radio < FE FE E0 94 03 FD'));
       expect(text.indexOf('marked not responding'), lessThan(text.indexOf('answering again')));
+    });
+
+    test('says why the transport closed, which is what tells the phone\'s network from the radio', () async {
+      // Whether the radio went quiet or this device's own network vanished
+      // is the whole diagnosis, and only the transport knows which: a log
+      // that drops its reason shows a healthy link and then a bare "closed".
+      await log.start();
+      final node = await cat.addNode(typeKey: 'fake-type', config: {});
+      await cat.connect(node.uuid);
+      transport.connection.drop('socket error: Network is unreachable (errno 101), on the control channel');
+      await until('closed by the transport');
+
+      expect(
+        await recorded(),
+        contains('${label(node)} -- connection closed by the transport: socket error: Network is unreachable (errno 101), on the control channel'),
+      );
+    });
+
+    test('a failed connect carries the OS\'s own words, and never the address or the port path', () async {
+      // "Network is unreachable" is what says this device has no network at
+      // all, where the exception type alone says nothing. The rest of the
+      // error stays out: the log leaves the device, a SocketException names
+      // the address, and a serial error names the adapter.
+      await log.start();
+      final node = await cat.addNode(typeKey: 'fake-type', config: {});
+      transport.failWith = SocketException(
+        'Connection failed',
+        osError: const OSError('Network is unreachable', 101),
+        address: InternetAddress('192.0.2.17'),
+        port: 50001,
+      );
+      await cat.connect(node.uuid);
+      transport.failWith = _PortNamingFailure();
+      await cat.connect(node.uuid);
+      transport.failWith = const SerialPortUnavailable('/dev/cu.usbserial-FTB6SPL3', 'Input/output error', osError: OSError('Input/output error', 5));
+      await cat.connect(node.uuid);
+
+      final text = await recorded();
+      expect(text, contains('${label(node)} -- connect failed: network (SocketException: Network is unreachable (errno 101))'));
+      expect(text, contains('${label(node)} -- connect failed: other (_PortNamingFailure)'));
+      expect(text, contains('${label(node)} -- connect failed: serial:other (SerialPortUnavailable: Input/output error (errno 5))'));
+      expect(text, isNot(contains('192.0.2.17')));
+      expect(text, isNot(contains('50001')));
+      expect(text, isNot(contains('usbserial')));
     });
 
     test('two radios of the same model are told apart', () async {

@@ -6130,6 +6130,12 @@ class Translations$settings$station$en {
 	/// en: '- **Set CI-V USB Baud Rate to 115200**, the speed this entry always uses, since the scope needs it — **not Auto**. A radio set to any other speed answers with silence.'
 	String get ic7610UsbSpeed => '- **Set CI-V USB Baud Rate to 115200**, the speed this entry always uses, since the scope needs it — **not Auto**. A radio set to any other speed answers with silence.';
 
+	/// en: 'If the app is slow to follow the radio'
+	String get civTransceiveTitle => 'If the app is slow to follow the radio';
+
+	/// en: 'If the app takes several seconds to show a frequency or mode change made on the radio, turn on the radio's **CI-V Transceive** setting (on most current models, under SET > Connectors > CI-V). With it on, the radio reports each change the moment it happens. With it off, the app only sees a change the next time it asks, every few seconds.'
+	String get civTransceive => 'If the app takes several seconds to show a frequency or mode change made on the radio, turn on the radio\'s **CI-V Transceive** setting (on most current models, under SET > Connectors > CI-V). With it on, the radio reports each change the moment it happens. With it off, the app only sees a change the next time it asks, every few seconds.';
+
 	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.'
 	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.';
 
@@ -11210,6 +11216,8 @@ extension on Translations {
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **The CI-V address must match** the radio\'s menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **Another app may hold the port**: WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.icomUsbSpeedFollows' => '- **There is no speed to set.** Over USB this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.',
 			'settings.station.ic7610UsbSpeed' => '- **Set CI-V USB Baud Rate to 115200**, the speed this entry always uses, since the scope needs it — **not Auto**. A radio set to any other speed answers with silence.',
+			'settings.station.civTransceiveTitle' => 'If the app is slow to follow the radio',
+			'settings.station.civTransceive' => 'If the app takes several seconds to show a frequency or mode change made on the radio, turn on the radio\'s **CI-V Transceive** setting (on most current models, under SET > Connectors > CI-V). With it on, the radio reports each change the moment it happens. With it off, the app only sees a change the next time it asks, every few seconds.',
 			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
 			'settings.station.ic705PortNote' => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them, which the picker points at wherever it can tell the two apart.',
 			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
@@ -11404,10 +11412,10 @@ extension on Translations {
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
-			'settings.developer.extDevServerConnect' => 'Connect',
-			'settings.developer.extDevServerDisconnect' => 'Disconnect',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.extDevServerConnect' => 'Connect',
+			'settings.developer.extDevServerDisconnect' => 'Disconnect',
 			'settings.developer.extDevServerConnecting' => 'Connecting…',
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Serving ${count} extension: ${keys}', other: 'Serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'Not connected',

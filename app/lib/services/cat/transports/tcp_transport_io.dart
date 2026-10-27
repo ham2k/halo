@@ -10,6 +10,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import '../os_error_detail_io.dart';
 import '../transport.dart';
 import 'mdns_io.dart';
 import 'tcp_transport_config.dart';
@@ -82,22 +83,31 @@ class TcpTransport extends EquipmentTransport with TcpTransportConfig {
   }
 }
 
-class _TcpConnection implements EquipmentConnection {
+class _TcpConnection implements EquipmentConnection, ExplainsClose {
   final Socket _socket;
   final _dataController = StreamController<Uint8List>();
   final _closedCompleter = Completer<void>();
   bool _open = true;
 
+  @override
+  String? closeReason;
+
   _TcpConnection(this._socket) {
-    _socket.listen(_dataController.add, onError: (Object _) => _markClosed(), onDone: _markClosed, cancelOnError: true);
+    _socket.listen(
+      _dataController.add,
+      onError: (Object e) => _markClosed('socket error: ${osErrorDetail(e) ?? e.runtimeType}'),
+      onDone: () => _markClosed('the other end closed the connection'),
+      cancelOnError: true,
+    );
     // A failed write surfaces here rather than at the `add` call, and an
     // unhandled error on `done` would escape into the zone.
     unawaited(_socket.done.then((_) {}, onError: (Object _) {}));
   }
 
-  void _markClosed() {
+  void _markClosed([String? reason]) {
     if (!_open) return;
     _open = false;
+    closeReason = reason;
     if (!_closedCompleter.isCompleted) _closedCompleter.complete();
     unawaited(_dataController.close());
   }

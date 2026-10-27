@@ -164,9 +164,7 @@ extension _Connection on CatService {
       final reason = connectFailureReason(e);
       final friendly = friendlyConnectError(reason, e);
       final raw = '$e';
-      // The classified reason, not the error's text: a serial open failure
-      // names the port, and the port carries the adapter's serial number.
-      trafficLog?.note(_logLabel(uuid), 'connect failed: $reason (${e.runtimeType})');
+      trafficLog?.note(_logLabel(uuid), connectFailedNote(reason, e));
       _setState(uuid, EquipmentState(status: EquipmentStatus.error, error: friendly, errorDetail: friendly == raw ? null : raw));
       _trackFailure(node, reason, extra: _baudExtra(config));
       if (e is SerialPortProblem && e.failure == SerialFailure.lines) runtime.linesRefused = true;
@@ -388,7 +386,7 @@ extension _Connection on CatService {
       connection.closed.then((_) {
         // A stale connection's close must not clobber a live one's status.
         if (runtime.connection != connection) return;
-        trafficLog?.note(_logLabel(uuid), 'connection closed by the transport');
+        trafficLog?.note(_logLabel(uuid), transportClosedNote(connection));
         // NOTE on deliberate disconnects: there is no guard for them here, and
         // none is needed. _teardown calls _closeSession FIRST, which sets
         // runtime.connection = null, and only then closes the connection — so a

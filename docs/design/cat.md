@@ -352,7 +352,7 @@ could change it is reading.
 
 For a rig nobody here has, the field has to record what it emits: `DEVLOGCAT` logs every chunk
 each way, timestamped in real time, beside what `CatService` decided about the link (connecting,
-connected, not responding, answering again, closed) and what the driver reported as a diagnostic,
+connected, not responding, answering again, closed and the transport's reason) and what the driver reported as a diagnostic,
 then sends the file — see [telemetry.md](telemetry.md) § The traffic recording. It is fed in
 `CatService` and `_NodeSink.send`, so every transport and driver is covered without either knowing.
 

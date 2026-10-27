@@ -2788,6 +2788,8 @@ class _Translations$settings$station$qrp extends Translations$settings$station$e
 	@override String civAddressFixedSpeedTroubleshooting({required Object speed}) => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.';
 	@override String get icomUsbSpeedFollows => '- **there is no speed to set.** over usb this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.';
 	@override String get ic7610UsbSpeed => '- **set ci-v usb baud rate to 115200**, the speed this entry always uses, since the scope needs it — **not auto**. a radio set to any other speed answers with silence.';
+	@override String get civTransceiveTitle => 'if the app is slow to follow the radio';
+	@override String get civTransceive => 'if the app takes several seconds to show a frequency or mode change made on the radio, turn on the radio\'s **ci-v transceive** setting (on most current models, under set > connectors > ci-v). with it on, the radio reports each change the moment it happens. with it off, the app only sees a change the next time it asks, every few seconds.';
 	@override String get ic7300Mk2Note => '\n- the **ic-7300 mk2** ships on address `B6`, not the `94` prefilled here — pick the ic-7300 mk2 entry instead.';
 	@override String get ic705PortNote => '\n- the **ic-705** presents two usb serial ports, both named after the radio. ci-v is on the **first** of them, which the picker points at wherever it can tell the two apart.';
 	@override String get ic7760PortNote => '\n- the **ic-7760** speaks ci-v on **port a** of the two usb serial ports it presents.';
@@ -6158,6 +6160,8 @@ extension on TranslationsQrp {
 			'settings.station.civAddressFixedSpeedTroubleshooting' => ({required Object speed}) => '- **the ci-v address must match** the radio\'s menu. this entry prefills the address the model ships with, but a rig sharing a ci-v bus is exactly where that gets changed. a frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n${speed}\n- **another app may hold the port**: wsjt-x, fldigi and rigctld all keep it open.',
 			'settings.station.icomUsbSpeedFollows' => '- **there is no speed to set.** over usb this radio talks at whatever speed the computer uses, and this entry always uses 115200, the speed the scope needs.',
 			'settings.station.ic7610UsbSpeed' => '- **set ci-v usb baud rate to 115200**, the speed this entry always uses, since the scope needs it — **not auto**. a radio set to any other speed answers with silence.',
+			'settings.station.civTransceiveTitle' => 'if the app is slow to follow the radio',
+			'settings.station.civTransceive' => 'if the app takes several seconds to show a frequency or mode change made on the radio, turn on the radio\'s **ci-v transceive** setting (on most current models, under set > connectors > ci-v). with it on, the radio reports each change the moment it happens. with it off, the app only sees a change the next time it asks, every few seconds.',
 			'settings.station.ic7300Mk2Note' => '\n- the **ic-7300 mk2** ships on address `B6`, not the `94` prefilled here — pick the ic-7300 mk2 entry instead.',
 			'settings.station.ic705PortNote' => '\n- the **ic-705** presents two usb serial ports, both named after the radio. ci-v is on the **first** of them, which the picker points at wherever it can tell the two apart.',
 			'settings.station.ic7760PortNote' => '\n- the **ic-7760** speaks ci-v on **port a** of the two usb serial ports it presents.',
@@ -6352,10 +6356,10 @@ extension on TranslationsQrp {
 			'settings.developer.extDevServerDescription' => 'load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'server address',
 			'settings.developer.extDevServerHint' => '192.168.1.20:8787',
-			'settings.developer.extDevServerConnect' => 'connect',
-			'settings.developer.extDevServerDisconnect' => 'disconnect',
 			_ => null,
 		} ?? switch (path) {
+			'settings.developer.extDevServerConnect' => 'connect',
+			'settings.developer.extDevServerDisconnect' => 'disconnect',
 			'settings.developer.extDevServerConnecting' => 'connecting…',
 			'settings.developer.extDevServerConnected' => ({required num count, required Object keys}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('qrp'))(count, one: 'serving ${count} extension: ${keys}', other: 'serving ${count} extensions: ${keys}', ), 
 			'settings.developer.extDevServerDisconnected' => 'not connected',

@@ -419,4 +419,52 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     expect(closedFired, isFalse, reason: 'an audio-socket error must not be read as the radio going quiet');
   });
+  group('a session that ends on its own says why', () {
+    // A DEVLOGCAT capture records the CI-V stream and nothing of this
+    // transport's own traffic, so the reason handed up with `closed` is the
+    // only thing in it that can tell the phone losing its network from the
+    // radio going quiet or letting go. Each cause has its own words, and
+    // each names the channel, because control and serial fail separately.
+    String? reasonOf(EquipmentConnection connection) => (connection as ExplainsClose).closeReason;
+
+    test('a socket error gives the OS\'s words and the channel, never the address', () async {
+      _wireSession(control);
+      _wireSession(serial);
+      final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+      addTearDown(() => connection.close());
+
+      control.emitSocketError(SocketException('Read failed', osError: const OSError('Network is unreachable', 101), address: loopback, port: 50001));
+      await connection.closed.timeout(const Duration(seconds: 1));
+
+      expect(reasonOf(connection), 'socket error: Network is unreachable (errno 101), on the control channel');
+    });
+
+    test('the radio ending the session is told apart from a socket failure', () async {
+      _wireSession(control);
+      _wireSession(serial);
+      final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+      addTearDown(() => connection.close());
+
+      serial.queueReply(_packet(80, {0: 0x50, 64: 0x01}));
+      await connection.closed.timeout(const Duration(seconds: 1));
+
+      expect(reasonOf(connection), 'the radio ended the session (radioDisconnected), on the serial channel');
+    });
+
+    test(
+      'silence says how many pings went unanswered',
+      () => runOnFakeClock((async) async {
+        bindFakeSockets();
+        _wireSession(control);
+        _wireSession(serial);
+        final connection = await const IcomNetworkTransport().connect(_target(), cancel: CatCancelToken());
+
+        // Nothing answers the pings from here on: the radio switched off,
+        // or out of range.
+        await connection.closed;
+
+        expect(reasonOf(connection), startsWith('no reply from the radio to 3 pings, on the '));
+      }),
+    );
+  });
 }

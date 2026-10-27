@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // What a failed connect is called: the bounded class that telemetry and a
-// DEVLOGCAT recording carry, and the words the equipment row shows for it.
+// DEVLOGCAT recording carry, and the words the equipment row shows for it —
+// and, for the recording, what it says when a live connection ends.
 
 import 'dart:async';
 
 import 'package:halo_i18n/halo_i18n.dart';
 
+import 'os_error_detail.dart';
 import 'transport.dart';
 
 /// A bounded classification, never the exception's text: `'$e'` routinely
@@ -57,3 +59,20 @@ String friendlyConnectError(String reason, Object error) {
       return '$error';
   }
 }
+
+/// The DEVLOGCAT line for a failed connect: [reason] (see
+/// [connectFailureReason]) and the exception's type, never its text — a serial
+/// open failure names the port, and the port carries the adapter's serial
+/// number. The OS's own words are kept: they are what tell a network that is
+/// gone ("Network is unreachable") from a radio that refused.
+String connectFailedNote(String reason, Object error) {
+  final os = osErrorDetail(error);
+  return 'connect failed: $reason (${error.runtimeType}${os == null ? '' : ': $os'})';
+}
+
+/// The DEVLOGCAT line for a connection that closed on its own, with the
+/// transport's reason when it has one — see [ExplainsClose].
+String transportClosedNote(EquipmentConnection connection) => switch (connection) {
+  ExplainsClose(closeReason: final why?) => 'connection closed by the transport: $why',
+  _ => 'connection closed by the transport',
+};

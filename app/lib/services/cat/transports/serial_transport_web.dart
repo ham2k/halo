@@ -216,7 +216,7 @@ class SerialPortUnavailable implements SerialPortProblem {
   String toString() => 'Could not open $portName: $reason';
 }
 
-class _WebSerialConnection implements EquipmentConnection {
+class _WebSerialConnection implements EquipmentConnection, ExplainsClose {
   final SerialPort _port;
   final String _name;
   late final web.ReadableStreamDefaultReader _reader;
@@ -225,6 +225,9 @@ class _WebSerialConnection implements EquipmentConnection {
   final _closedCompleter = Completer<void>();
   bool _open = true;
 
+  @override
+  String? closeReason;
+
   _WebSerialConnection(this._port, this._name) {
     _reader = _port.readable!.getReader() as web.ReadableStreamDefaultReader;
     _writer = _port.writable!.getWriter();
@@ -232,10 +235,14 @@ class _WebSerialConnection implements EquipmentConnection {
   }
 
   Future<void> _pump() async {
+    String? reason;
     try {
       while (true) {
         final result = await _reader.read().toDart;
-        if (result.done) break;
+        if (result.done) {
+          reason = 'the browser ended the port\'s stream';
+          break;
+        }
         final value = result.value;
         if (value != null) _dataController.add((value as JSUint8Array).toDart);
       }
@@ -244,8 +251,12 @@ class _WebSerialConnection implements EquipmentConnection {
       // adapter unplugged, same event `_Socket.done` erroring reports for
       // the io transport.
       debugPrint('[cat] web serial $_name dropped: $e');
+      // The error's own text, unlike on io: Web Serial's errors ("NetworkError:
+      // The device has been lost.") name no device, since a browser never
+      // exposes a port's path.
+      reason = 'read error: $e';
     } finally {
-      await _markClosed();
+      await _markClosed(reason);
     }
   }
 
@@ -261,9 +272,10 @@ class _WebSerialConnection implements EquipmentConnection {
   /// before: `CatService` starts its own reconnect attempt — reopening
   /// this very [_port] — the moment [closed] fires. Completing it early
   /// would race that reopen against this teardown, and lose.
-  Future<void> _markClosed() async {
+  Future<void> _markClosed([String? reason]) async {
     if (!_open) return;
     _open = false;
+    closeReason = reason;
     unawaited(_dataController.close());
     try {
       _reader.releaseLock();

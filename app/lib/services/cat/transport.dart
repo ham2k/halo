@@ -134,6 +134,25 @@ abstract class EquipmentConnection {
   Future<void> close();
 }
 
+/// A connection that can say why it closed, for the CAT traffic log — which
+/// otherwise records that a session ended and nothing about whether the
+/// equipment, the cable or this device's own network ended it.
+///
+/// Apart from [EquipmentConnection] so a test double need not answer it;
+/// every real connection but Bluetooth serial's does. Read once
+/// [EquipmentConnection.closed] has completed. Null when the connection was
+/// closed by [EquipmentConnection.close]
+/// or the transport cannot tell.
+///
+/// The log leaves the device, so a reason never quotes an error's own text:
+/// a serial error names its port, and a port name carries the adapter's
+/// serial number. `osErrorDetail` is the part of an error that is safe to keep.
+/// The one exception is Web Serial, whose errors name no device because a
+/// browser never exposes a port's path.
+abstract interface class ExplainsClose {
+  String? get closeReason;
+}
+
 abstract class EquipmentTransport {
   const EquipmentTransport();
 
