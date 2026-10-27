@@ -1063,6 +1063,12 @@ class _LoggingPanelState extends State<LoggingPanel> with _LoggingPanelSo2r {
               hasConfiguredRadio: _hasConfiguredRadio,
               radioConnected: _radioConnected,
               radioTransmitting: so2r == null ? _radioTransmitting : _so2rTransmitting.value.a,
+              readStatus: () => (
+                connected: widget.services.radio1IsLive,
+                transmitting: so2r == null
+                    ? widget.services.cat.radio1IsTransmitting || widget.services.cat.pttKeys.held.value
+                    : widget.services.cat.isTransmitting('A'),
+              ),
               // Offered with no radio configured too: the dialog is where
               // one gets configured.
               onOpenStationConfig: () => _openStationConfigDialog(context),

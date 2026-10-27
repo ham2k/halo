@@ -843,10 +843,12 @@ void main() {
     await tester.tap(find.widgetWithText(TextField, 'Frequency'));
     await tester.pumpAndSettle();
 
-    fakeRadio.setVfo('vfoA', freq: 21050, mode: 'CW');
+    // Inside the entry's tolerance: a QSY would wipe the spot's entry, and
+    // the wipe's reseed would fill the field whether follow was on or not.
+    fakeRadio.setVfo('vfoA', freq: 14074.15);
     await tester.pumpAndSettle();
 
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '21050');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074.15');
   });
 
   testWidgets('the suggestion push does not notify listeners during the build phase', (tester) async {

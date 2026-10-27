@@ -55,7 +55,9 @@ extension _ActionDispatch on _LoggingControlsState {
           });
         });
         if (params['freq'] is num || params['band'] is String || params['mode'] is String) {
-          _radio.pushVfo();
+          // Not the entry's own move: a command goes somewhere else, so it
+          // QSYs an entry composed beside it like the radio would.
+          _radio.pushVfo(adopt: false);
         }
         // The command changed band/mode/freq under [QsoDraft.populate], which
         // suppressed the field listeners' own rescore — refresh the call-info

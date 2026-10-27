@@ -242,6 +242,22 @@ extension _Submit on _LoggingControlsState {
   /// [fromEnter] marks the keyboard's Enter, the only submit Enter Sends
   /// Messages speaks for.
   Future<void> _log({bool focusCall = true, bool fromEnter = false}) async {
+    // The outermost Enter holds it: a repeat inside its awaits must not let
+    // go while the first is still logging.
+    if (_logPending) return _logEntry(focusCall: focusCall, fromEnter: fromEnter);
+    _logPending = true;
+    try {
+      await _logEntry(focusCall: focusCall, fromEnter: fromEnter);
+    } finally {
+      _logPending = false;
+      // What the radio did meanwhile, now: followed, or a QSY of an entry
+      // the Enter left standing.
+      if (_vfoMovedWhileLogging && mounted) _onRadioVfoChanged();
+      _vfoMovedWhileLogging = false;
+    }
+  }
+
+  Future<void> _logEntry({required bool focusCall, required bool fromEnter}) async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
     // The write policy specifically, NOT `_fieldsLocked`: this method is also
     // how a staged delete is committed and a deleted QSO saved, both of which

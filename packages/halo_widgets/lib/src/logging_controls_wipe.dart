@@ -106,7 +106,11 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// that ends a gesture made on another surface, where pulling focus here
   /// would raise the mobile keyboard over the list they are actually working.
   ///
-  void _wipe({bool focusCall = true}) {
+  /// [inPlace] also leaves an open control open and the command line's
+  /// message standing — for a wipe nothing in this panel asked for (a QSY),
+  /// which must not close the control being read or eat the confirmation of
+  /// the command that moved the radio.
+  void _wipe({bool focusCall = true, bool inPlace = false}) {
     // The draft is gone, and so is its hold on a number. After a commit this
     // is a no-op — the log path released with the committed numbers already.
     widget.log.serialNumbers?.release(widget.log.operation.uuid);
@@ -125,12 +129,15 @@ extension _WipeAndUndo on _LoggingControlsState {
     _exchange.clear();
     _notesController.clear();
     _time.manualStartAtMillis = null;
-    _selectedControlKey = null;
+    if (!inPlace) _selectedControlKey = null;
     _radio.clearPowerEntry();
     // The VFO's power is ambient, not composed — a wipe drops what the entry
     // stated and goes back to mirroring it, the way the Radio control does.
     _seedFromRadioService();
     if (focusCall) _callFocus.requestFocus();
+    // Only the message stands: what the command line kept about the text
+    // typed is the wiped entry's, as it is in every other wipe.
+    if (inPlace) return _setStateFromPart(_command.forgetRetained);
     _setStateFromPart(_command.reset);
     _command.keystroke();
   }
@@ -139,20 +146,49 @@ extension _WipeAndUndo on _LoggingControlsState {
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
   /// wipes the form.
   void _handleWipeTap() {
+    _stashForUndo(_draft.toData());
+    _time.leaveForWipe();
+    _wipe();
+  }
+
+  /// The VFO left the one the entry was started on
+  /// ([RadioControlModel.qsyFromStart]) — at the radio, or from anything but
+  /// the entry's own Radio control and More pane: a spot row, a program on
+  /// the CAT server, a command. The entry was for the station back there, so
+  /// it is wiped, with the wipe button's undo offer; the undo tunes back to
+  /// [startedOn] with it.
+  ///
+  /// Unlike the operator's own wipe it leaves manual time entry, focus and
+  /// the open control alone: the gesture was made at the radio, not this
+  /// panel.
+  void _wipeOnQsy(Vfo startedOn) {
+    // Dropped, not flushed: a frequency still being typed belongs to the
+    // entry being wiped, and flushing it would tune the radio back off where
+    // it was just taken.
+    _radio.cancelPendingPush();
+    // This stash replaces any earlier wipe's without expiring it, and undo
+    // would otherwise resume that wipe's manual time on this entry.
+    _time.forgetWipe();
+    _stashForUndo({..._draft.toData(), 'freq': startedOn.freq, 'band': startedOn.band, 'mode': startedOn.mode});
+    // As a seed, not an edit: the wipe writes the VFO's new frequency into
+    // the field, which read as typed stops the panel following the radio and
+    // pushes that frequency back at it five seconds on.
+    _draft.populate(() => _wipe(focusCall: false, inPlace: true));
+  }
+
+  void _stashForUndo(Map<String, dynamic> data) {
     // Beside the draft, never inside it: [QsoDraft.toData] writes the refs
-    // and not which of them a lookup proposed, and the wipe below is what
-    // forgets that.
+    // and not which of them a lookup proposed, and the wipe after this is
+    // what forgets that.
     _undoGuesses = _refs.takeGuessSnapshot();
     _draft.undoSlot.set(
-      _draft.toData(),
+      data,
       onExpire: () {
         _undoGuesses = null;
         _time.forgetWipe();
         if (mounted) _setStateFromPart(() {});
       },
     );
-    _time.leaveForWipe();
-    _wipe();
   }
 
   void _restoreFromUndoSlot() {
@@ -162,6 +198,10 @@ extension _WipeAndUndo on _LoggingControlsState {
     _undoGuesses = null;
     _time.undoWipe();
     _restoreDraft(data, guesses: guesses);
+    // The entry's frequency, band and mode come back with it, and the radio
+    // is tuned back to them: an entry is for the station where it was
+    // started, and one restored onto another frequency would be logged there.
+    _radio.pushVfo();
   }
 
   /// Puts one of the draft's own records ([QsoDraft.toData]) back — a wipe

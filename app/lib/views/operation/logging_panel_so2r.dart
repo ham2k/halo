@@ -147,6 +147,7 @@ mixin _LoggingPanelSo2r on State<LoggingPanel> {
       hasConfiguredRadio: radioB.configured,
       radioConnected: radioB.connected,
       radioTransmitting: _so2rTransmitting.value.b,
+      readStatus: () => (connected: _radioBSignature().connected, transmitting: cat.isTransmitting('B')),
       onOpenStationConfig: () => _openStationConfigDialog(context),
       onConnectRadio: switch (cat.radio2) {
         final uuid? when !radioB.connected => localRadioConnectAction(cat, uuid),

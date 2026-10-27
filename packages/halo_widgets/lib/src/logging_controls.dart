@@ -374,6 +374,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   GuessProvenance? _undoGuesses;
   GuessProvenance? _composingGuesses;
 
+  /// The VFO the draft parked by a detour was started on, parked beside it:
+  /// the panel's own frequency, band and mode are the entry's, and need not
+  /// read as the VFO does (a mode the VFO never named, a resolved sideband).
+  Vfo? _composingStart;
+
   /// Why this operation may not be written right now, or null when it may —
   /// a travelled clock over a non-test operation today, a shared operation
   /// this device only reads later (`WritePolicy`).
@@ -431,6 +436,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Guards against double-logging: Enter is bound both as a keyboard
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
   bool _isLogging = false;
+
+  /// An Enter is on its way to logging the entry — set before its first
+  /// await, unlike [_isLogging]. See [_onRadioVfoChanged].
+  bool _logPending = false;
+  bool _vfoMovedWhileLogging = false;
+  bool _confirmingQsy = false;
 
   /// The submit button's rendered diameter, measured post-frame (its own
   /// size comes from IntrinsicHeight/AspectRatio further down the tree, so
@@ -747,11 +758,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// recorded values always take priority ([QsoDraft.applyData]); an
   /// event's freq/mode are sentinels instead of a record, so
   /// `_populateFromEditingQso` calls this for one anyway, same as composing.
-  void _seedFromRadioService({bool skipFrequency = false}) => _radio.seedFromVfo(skipFrequency: skipFrequency);
+  ///
+  /// Every caller starts the form over, so the VFO it seeds from is the one
+  /// the next entry starts on ([RadioControlModel.qsyFromStart]). Following
+  /// the radio is not a seed of that kind, and calls the model itself.
+  void _seedFromRadioService() {
+    _radio.seedFromVfo();
+    _radio.adoptVfo();
+  }
 
   /// The VFO moved underneath us — a connected radio was tuned, or
   /// something else in the app wrote to it. Mirror it into the Radio
-  /// control, but never over the operator.
+  /// control, but never over the operator — unless it took the operator to
+  /// another station, which wipes the entry they were composing for the one
+  /// they left ([_wipeOnQsy]).
   void _onRadioVfoChanged() {
     if (!mounted) return;
     // Ahead of the editing guard: a self-spot is about the VFO, whatever QSO
@@ -762,26 +782,51 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // freq/mode are sentinels, not a record — its Radio control keeps
     // following the live VFO the whole time it's open, same as composing.
     if (widget.session.editingQso != null && !widget.session.editingQso!.isEvent) return;
+    // Held until the Enter is through ([_log]): the entry is being logged
+    // where it was, and wiping it under the save loses it.
+    if (_logPending) {
+      _vfoMovedWhileLogging = true;
+      return;
+    }
     final previousBand = _radio.band;
     final previousMode = _radio.mode;
-    setState(() {
-      // Suppresses the frequency listener's push-back. Without it, seeding a
-      // value the radio just reported arms the 5s debounce and sends it
-      // straight back at the radio, forever.
-      _draft.populate(() {
-        // Skip only the frequency, never the whole seed: suppressing it
-        // entirely would drop a mode the rig reported meanwhile, and the
-        // pending push would then send the panel's stale mode back — taking a
-        // rig the operator had just put into CW back out of it, and logging
-        // USB at 59.
-        _seedFromRadioService(skipFrequency: _radio.freqTouched);
+    final startedOn = _radio.qsyFromStart(composing: widget.session.editingQso == null && _draft.hasComposedValues);
+    if (startedOn != null && !_confirmingQsy) {
+      // Asked again once the packet that carried the reading is through: a
+      // driver can report the frequency ahead of the transmit flag beside it,
+      // and working split that frequency is no QSY.
+      scheduleMicrotask(() {
+        if (!mounted) return;
+        _confirmingQsy = true;
+        try {
+          _onRadioVfoChanged();
+        } finally {
+          _confirmingQsy = false;
+        }
       });
-    });
-    // [QsoDraft.populate] above suppressed the frequency listener's own rescore, and the
-    // mode never had one. The dupe / New Band / New Mode pills are scored
-    // against band and mode, so without this a rig retuned at its own front
-    // panel left them describing the band the operator has left. Debounced
-    // and gated on a plausible callsign, so a spun VFO knob costs nothing.
+      return;
+    }
+    if (startedOn != null) {
+      _wipeOnQsy(startedOn);
+    } else {
+      setState(() {
+        // Suppresses the frequency listener's push-back. Without it, seeding a
+        // value the radio just reported arms the 5s debounce and sends it
+        // straight back at the radio, forever.
+        _draft.populate(() {
+          // Skip only the frequency, never the whole seed: suppressing it
+          // entirely would drop a mode the rig reported meanwhile, and the
+          // pending push would then send the panel's stale mode back — taking a
+          // rig the operator had just put into CW back out of it, and logging
+          // USB at 59.
+          _radio.seedFromVfo(skipFrequency: _radio.freqTouched);
+        });
+      });
+    }
+    // [QsoDraft.populate] above suppressed the frequency listener's own
+    // rescore, and the mode never had one. A move inside the QSY tolerance can
+    // still cross a band edge, or settle a guessed mode. Debounced and gated
+    // on a plausible callsign, so a spun VFO knob costs nothing.
     if (_radio.band != previousBand || _radio.mode != previousMode) {
       _radio.resyncDropdownFields();
       _lookup.scheduleScore();

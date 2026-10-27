@@ -826,40 +826,6 @@ void main() {
     expect(fakeRadio.vfoA.mode, 'CW', reason: 'the push must not undo the mode change');
   });
 
-  testWidgets('a live radio band change rescores the dupe and New Band pills', (tester) async {
-    fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    final scoredBands = <String?>[];
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: LoggingControls(
-            log: baseLog(),
-            radio: RadioHookup(radioService: fakeRadio, radioUpdates: fakeRadio),
-            lookups: LookupHooks(
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-                scoredBands.add(qso['band'] as String?);
-                return {'notices': <String>[], 'alerts': <String>[]};
-              },
-              scoreNoticeLabel: (key) => key,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(scoredBands, ['20m']);
-
-    // The rig moves to another band on its own. The pills are scored
-    // against band and mode, and the seed runs under the populate bracket — which
-    // suppressed the rescore, leaving them describing a band the operator
-    // has left.
-    fakeRadio.setVfo('vfoA', freq: 7040, mode: 'CW');
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(scoredBands.last, '40m');
-  });
-
   testWidgets('a partial frequency entry does not switch live follow off for good', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
     await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));

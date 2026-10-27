@@ -185,6 +185,26 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 
   bool _bound = false;
 
+  /// The VFO the entry being composed was started on — what a QSY is
+  /// measured from ([qsyFromStart]), and what undoing the wipe it causes
+  /// tunes back to. Taken again whenever nothing is composed, whenever the
+  /// panel seeds from the VFO ([adoptVfo]), and on every write the entry
+  /// makes itself ([_writeVfo]).
+  Vfo? _startVfo;
+
+  /// True while the entry is writing the VFO itself, whose notification
+  /// [VfoStore.setVfo] sends before it returns: the move is the entry's
+  /// own, not a QSY.
+  bool _writingVfo = false;
+
+  /// Running for a while after the entry's own write, and after the radio
+  /// connects: what the rig reports meanwhile is taken as the start, never
+  /// as a QSY. A rig answers a write in its own terms — FT8 as USB on one
+  /// with no data mode, a band's remembered mode before the one sent, a poll
+  /// reply that left before the write landed — and connecting, it reports
+  /// wherever its knob was left, which is the station being typed for.
+  Timer? _settling;
+
   // ---- What the panel reads ----
 
   double? get freq => parseFreq(freqController.text);
@@ -308,6 +328,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   @override
   void dispose() {
     _vfoDebounce?.cancel();
+    _settling?.cancel();
     _freqDecimals.dispose();
     freqController.dispose();
     bandController.dispose();
@@ -405,7 +426,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     mode = resolveMode(picked);
     notify();
     final cfg = config();
-    if (cfg.editingQso == null) cfg.radio.radioService?.setVfo('vfoA', mode: mode);
+    if (cfg.editingQso == null) _writeVfo((store) => store.setVfo('vfoA', mode: mode));
     // New Mode / New Band notices depend on the mode — rescore the candidate.
     onRescore();
   }
@@ -540,13 +561,89 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     pushVfo();
   }
 
-  /// Pushes the current freq/band/mode to the VFO as `vfoA`.
-  void pushVfo() {
-    config().radio.radioService?.setVfo('vfoA', freq: freq, band: band, mode: mode);
+  /// Pushes the current freq/band/mode to the VFO as `vfoA`, as the entry's
+  /// own move. [adopt] false is a push the entry does not own — a command
+  /// typed into the call field — which [qsyFromStart] then measures like any
+  /// other move.
+  void pushVfo({bool adopt = true}) {
+    void push(VfoStore store) => store.setVfo('vfoA', freq: freq, band: band, mode: mode);
+    if (adopt) {
+      _writeVfo(push);
+    } else if (config().radio.radioService case final store?) {
+      push(store);
+    }
     // The field and the VFO agree again: not a pending edit, and the
     // baseline moves with it.
     _freqTouched = false;
     recordFreqText();
+  }
+
+  /// Writes the VFO as the entry's own move, and takes the result as the VFO
+  /// the entry is on — also when the store saw nothing to notify about.
+  void _writeVfo(void Function(VfoStore store) write) {
+    final store = config().radio.radioService;
+    if (store == null) return;
+    _writingVfo = true;
+    try {
+      write(store);
+    } finally {
+      _writingVfo = false;
+    }
+    _startVfo = store.vfoA;
+    settle();
+  }
+
+  /// Takes the VFO as it stands as the one the next entry starts on.
+  void adoptVfo() => _startVfo = config().radio.radioService?.vfoA;
+
+  /// The VFO the entry was started on, for parking it with the entry.
+  Vfo? get startedOn => _startVfo;
+
+  /// Takes [vfo] as the one the entry was started on — an entry put back
+  /// from somewhere it was parked, measured from where it was left.
+  void startOn(Vfo? vfo) => _startVfo = vfo;
+
+  /// Starts [_settling] over. The same three seconds as CAT's band-pick
+  /// grace, the time a rig is given to settle on a band.
+  void settle() {
+    _settling?.cancel();
+    _settling = Timer(const Duration(seconds: 3), () => _settling = null);
+  }
+
+  /// The VFO the entry was started on, when the VFO has since moved off it —
+  /// a QSY, which takes the operator to another station: another mode,
+  /// another band, or a frequency more than 1 kHz away in a phone mode and
+  /// 200 Hz in CW or a digital one. Null when it has not. With nothing
+  /// [composing], while the entry is writing the VFO itself, or while the rig
+  /// is settling ([_settling]), the VFO is taken as the start instead. While
+  /// transmitting it is neither: working split, a rig reports the frequency
+  /// it is sending on, and the reading after it unkeys says where it went.
+  ///
+  /// The tolerance is the dial being nudged on the same station: to clear up
+  /// a voice, or to zero-beat a narrow signal. Measured from the start, never
+  /// from the last reading, so a caller zero-beaten in steps adds up to the
+  /// same QSY one turn of the knob would.
+  Vfo? qsyFromStart({required bool composing}) {
+    final radio = config().radio;
+    final vfo = radio.radioService?.vfoA;
+    final status = radio.readStatus?.call() ?? (connected: radio.radioConnected, transmitting: radio.radioTransmitting);
+    // Ahead of the rebuild that says so: the rig has just come on line.
+    if (status.connected && !radio.radioConnected) settle();
+    if (vfo == null || status.transmitting) return null;
+    final start = _startVfo;
+    if (!composing || _writingVfo || _settling != null || start == null) {
+      _startVfo = vfo;
+      return null;
+    }
+    if (vfo.mode != start.mode) return start;
+    final (from, to) = (start.freq, vfo.freq);
+    if (from == null || to == null) return vfo.band != start.band ? start : null;
+    final toleranceHz = switch (superModeForMode(start.mode)) {
+      'CW' || 'Digital' => 200,
+      _ => 1000,
+    };
+    // In whole hertz: kHz doubles land a hair either side of 200 Hz.
+    return ((to - from).abs() * 1000).round() > toleranceHz ? start : null;
   }
 
   /// Re-baselines the frequency edit detector. Call wherever the field is
@@ -653,7 +750,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
       // Clearing the field is unambiguous — push it immediately rather than
       // debouncing, so dependents reading radioService.vfoA (e.g. the
       // Spotting control) drop the stale frequency right away.
-      cfg.radio.radioService?.setVfo('vfoA', clearFreq: true, band: manualBand, mode: mode);
+      _writeVfo((store) => store.setVfo('vfoA', clearFreq: true, band: manualBand, mode: mode));
       _freqTouched = false;
     }
   }
@@ -962,7 +1059,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     manualBand = value;
     freqController.clear();
     notify();
-    if (cfg.editingQso == null) cfg.radio.radioService?.setVfo('vfoA', band: value);
+    if (cfg.editingQso == null) _writeVfo((store) => store.setVfo('vfoA', band: value));
   }
 
   /// A pick from the Band menu. A pick is a selection, never a filter.

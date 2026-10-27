@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "New: tuning the radio away from a contact being entered wipes it (Undo returns it)"
+
 "184":
   changes:
     - "New control and serial port fields on Icom network connections"

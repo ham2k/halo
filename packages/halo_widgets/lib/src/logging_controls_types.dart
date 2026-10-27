@@ -426,6 +426,7 @@ class RadioHookup {
     this.hasConfiguredRadio = false,
     this.radioConnected = false,
     this.radioTransmitting = false,
+    this.readStatus,
     this.onOpenStationConfig,
     this.onConnectRadio,
     this.radioName,
@@ -471,6 +472,13 @@ class RadioHookup {
   /// app holds on any radio — which turns the Radio chip's glyph into a red
   /// dot.
   final bool radioTransmitting;
+
+  /// [radioConnected] and [radioTransmitting] as they stand right now. Those
+  /// two arrive with a rebuild, and a reading arrives through [radioUpdates]
+  /// ahead of it — so a decision about the reading itself (is this a QSY?)
+  /// asks here, or it is made against the status from before the packet that
+  /// carried the reading. Null reads the two fields.
+  final ({bool connected, bool transmitting}) Function()? readStatus;
 
   /// Opens the Station Configuration quick-access dialog (current radio pick
   /// plus the equipment inventory) from inside the expanded Radio control.
@@ -534,6 +542,7 @@ class RadioHookup {
     bool? hasConfiguredRadio,
     bool? radioConnected,
     bool? radioTransmitting,
+    ({bool connected, bool transmitting}) Function()? readStatus,
     VoidCallback? onOpenStationConfig,
     VoidCallback? onConnectRadio,
     String? radioName,
@@ -548,6 +557,7 @@ class RadioHookup {
     hasConfiguredRadio: hasConfiguredRadio ?? this.hasConfiguredRadio,
     radioConnected: radioConnected ?? this.radioConnected,
     radioTransmitting: radioTransmitting ?? this.radioTransmitting,
+    readStatus: readStatus ?? this.readStatus,
     onOpenStationConfig: onOpenStationConfig ?? this.onOpenStationConfig,
     onConnectRadio: onConnectRadio ?? this.onConnectRadio,
     radioName: radioName ?? this.radioName,

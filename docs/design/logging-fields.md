@@ -975,6 +975,41 @@ keystroke, not the whole record. A staged delete disables every field, so
 the panel above forwards the chords to the controls
 (`LoggingControlsController.handleChord`), the same way it catches Escape.
 
+**A QSY wipes the entry.** An entry is for the station on the frequency it
+was started on, so the panel keeps the VFO — frequency, band and mode — as it
+stood when the entry was started (`RadioControlModel.qsyFromStart`). When the
+VFO leaves it with something composed, the entry is wiped with the same undo
+offer, and the undo puts the entry back *and tunes the radio back* to where
+it was started, since an entry restored onto another frequency would be
+logged there (so does undoing the operator's own wipe, for the same reason). Leaving means another mode, another band, or a frequency more
+than 1 kHz away in a phone mode and 200 Hz in CW or a digital one — the
+tolerance is the dial nudged on the same station, to clear up a voice or
+zero-beat a caller, and it is measured from the start rather than the last
+reading, so a walk in small steps adds up. It wipes whatever moved the VFO:
+the radio's own dial, a spot row tuning it, another program
+through the CAT server, a frequency, band or mode command typed into the call
+field. The entry's own surfaces are the exception — the Radio control's
+Frequency, Band and Mode and the More pane edit the contact, so they move
+where it is measured from instead, as does a spot that fills the entry and
+tunes the radio for it. Unlike the operator's own wipe, it leaves manual time
+entry, focus, an open control and the command line's message alone: the
+gesture was made at the radio, not the panel.
+
+What the radio reports is not always a move. For three seconds after the
+entry's own write, and after the radio connects, whatever it reports becomes
+the start: a rig answers in its own terms (FT8 as USB on one without a data
+mode, a band's remembered mode, a poll reply that left before the write
+landed), and one coming on line is wherever its knob was left — the station
+an entry typed meanwhile is for. While it transmits its readings count for
+neither, since working split it reports the frequency it sends on. Both are
+read as they stand when the reading arrives (`RadioHookup.readStatus`), not as
+the panel last rebuilt with them, and the verdict waits a microtask: a driver
+can report a packet's frequency ahead of the transmit flag beside it. While an
+Enter is logging the entry, the panel holds off until the save is through:
+the contact is logged where it was worked, and what the radio did meanwhile
+is applied after. And a QSY made while an earlier contact was open still
+wipes the entry on the way back, measured from where it was parked.
+
 ### The composing draft
 
 Stepping away from a QSO being composed — Up into the list, or a click on an

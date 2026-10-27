@@ -168,6 +168,9 @@ extension _WidgetUpdates on _LoggingControlsState {
       oldWidget.radio.radioUpdates?.removeListener(_onRadioVfoChanged);
       widget.radio.radioUpdates?.addListener(_onRadioVfoChanged);
     }
+    // A rig coming on line reports wherever its knob was left, which is the
+    // station an entry typed meanwhile is for.
+    if (widget.radio.radioConnected && !oldWidget.radio.radioConnected) _radio.settle();
   }
 
   /// A QSO opened for editing, or the edit ended. True when that was the
@@ -182,6 +185,7 @@ extension _WidgetUpdates on _LoggingControlsState {
         // Parked with it, for the reason given at [_handleWipeTap]: the
         // reset below forgets which refs were a lookup's.
         _composingGuesses = _refs.takeGuessSnapshot();
+        _composingStart = _radio.startedOn;
       }
       _resetEditingSessionState();
       if (widget.session.editingQso != null) {
@@ -190,10 +194,19 @@ extension _WidgetUpdates on _LoggingControlsState {
         final composingSnapshot = _draft.takeComposingSnapshot();
         final composingGuesses = _composingGuesses;
         _composingGuesses = null;
+        final composingStart = _composingStart;
+        _composingStart = null;
         _resetLocalFields();
         // Overlaid back on top of the blank fields _resetLocalFields just
         // seeded.
-        if (composingSnapshot != null) _restoreDraft(composingSnapshot, guesses: composingGuesses);
+        if (composingSnapshot != null) {
+          _restoreDraft(composingSnapshot, guesses: composingGuesses);
+          // Measured from where it was parked: the radio was not followed
+          // while the earlier contact was open, and the seed above took
+          // wherever it went as the start.
+          _radio.startOn(composingStart);
+          _onRadioVfoChanged();
+        }
       }
       // Self- vs other-spot eligibility can differ per extension (e.g. only
       // self-spotting an operation with an activation ref) — re-fetch
