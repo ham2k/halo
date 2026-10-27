@@ -223,6 +223,12 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
   /// of which changes the count.
   String? _itemSignature;
 
+  /// What the two live statuses follow (see [_permaStatuses]). Held rather
+  /// than merged in `build`, so the footer's builders keep one subscription
+  /// instead of resubscribing on every rebuild of the chrome.
+  late final Listenable _peerChanges = Listenable.merge([widget.services.peerService, widget.services.settings]);
+  late final Listenable _radioChanges = Listenable.merge([widget.services.cat, widget.services.peerRemoteRadios]);
+
   @override
   void initState() {
     super.initState();
@@ -237,6 +243,16 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
     super.dispose();
   }
 
+  /// The listener above and the two merges below are bound to the services
+  /// this was mounted with, and nothing here re-binds them: a chrome handed a
+  /// different graph would go on following the old one while rendering the
+  /// new. The app mounts the chrome once, over one graph.
+  @override
+  void didUpdateWidget(StatusBarOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    assert(identical(oldWidget.services, widget.services), 'StatusBarOverlay follows the services it was mounted with');
+  }
+
   /// The permanent statuses, in the order they take the trailing edge of the
   /// bar.
   ///
@@ -244,7 +260,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
   /// only place that can see them all, and their ORDER is a property of the
   /// bar. Connectivity comes first because it is the one that answers "why is
   /// nothing updating?".
-  List<StatusBarPermaData> _permaStatuses(BuildContext context, bool offline) {
+  List<StatusBarPerma> _permaStatuses(BuildContext context, bool offline) {
     return [
       StatusBarPermaData(
         key: 'connectivity',
@@ -261,40 +277,60 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
       // linked a device is not told "0 devices" — the feature is one they do
       // not use — and a status whose action lands on a panel Settings is
       // hiding is worse than no status.
-      if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ )
-        for (final linked in [widget.services.peerService.linkedDeviceIds])
-          if (linked.isNotEmpty)
-            for (final connected in [linked.where(widget.services.peerService.hasSession).length])
-              StatusBarPermaData(
-                key: 'peers',
-                icon: MdiIcons.lanConnect,
-                // The badge is the LIVE count and the line is both numbers: at a
-                // glance the question is "is my other device reachable right
-                // now", and the total is what makes a 0 mean something.
-                badge: '$connected',
-                // Nothing reaching anything is a true state worth showing — a
-                // peer dropping off is exactly when the operator looks — but it
-                // is not one to draw at full strength beside a live one.
-                muted: connected == 0,
-                text: context.t.settings.peers.statusPerma(connected: connected, linked: linked.length),
-                onTap: () {
-                  final navigatorContext = navigatorKey.currentContext;
-                  if (navigatorContext == null) {
-                    // Two gestures deep — the menu opened, an entry chosen — so
-                    // a silent no-op is the operator's action disappearing.
-                    debugPrint('[status-bar] no navigator for the peers status');
-                    return;
-                  }
-                  showPeersDialog(navigatorContext, widget.services);
-                },
-              ),
+      //
+      // A source: it follows both halves of the count — the linked devices,
+      // which the service caches, and the live sessions, which change on
+      // their own as a link comes up or drops — and the experiment, and the
+      // footer resolves it under a builder of its own, so none of them
+      // rebuilds the chrome.
+      StatusBarPermaSource(
+        changes: _peerChanges,
+        resolve: (context) {
+          if (!widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ) return null;
+          final linked = widget.services.peerService.linkedDeviceIds;
+          if (linked.isEmpty) return null;
+          final connected = linked.where(widget.services.peerService.hasSession).length;
+          return StatusBarPermaData(
+            key: 'peers',
+            icon: MdiIcons.lanConnect,
+            // The badge is the LIVE count and the line is both numbers: at a
+            // glance the question is "is my other device reachable right
+            // now", and the total is what makes a 0 mean something.
+            badge: '$connected',
+            // Nothing reaching anything is a true state worth showing — a
+            // peer dropping off is exactly when the operator looks — but it
+            // is not one to draw at full strength beside a live one.
+            muted: connected == 0,
+            text: context.t.settings.peers.statusPerma(connected: connected, linked: linked.length),
+            onTap: () {
+              final navigatorContext = navigatorKey.currentContext;
+              if (navigatorContext == null) {
+                // Two gestures deep — the menu opened, an entry chosen — so
+                // a silent no-op is the operator's action disappearing.
+                debugPrint('[status-bar] no navigator for the peers status');
+                return;
+              }
+              showPeersDialog(navigatorContext, widget.services);
+            },
+          );
+        },
+      ),
       // Whatever drives the VFO, local rig or peer's: the bar is where
       // "is it talking to me" is answered, and a peer pick going blank
       // here is that question left unanswered for the one radio the
       // operator is actually working through.
-      for (final name in [widget.services.radio1Name])
-        if (name != null)
-          StatusBarPermaData(
+      //
+      // A source, because CatService notifies on every reading that moves
+      // the VFO — several times a second while the rig is tuned — and a
+      // peer's rig going away or coming back is peerRemoteRadios' news
+      // alone, which CatService hears nothing of: the row would keep saying
+      // "Not available" about a rig that is back.
+      StatusBarPermaSource(
+        changes: _radioChanges,
+        resolve: (context) {
+          final name = widget.services.radio1Name;
+          if (name == null) return null;
+          return StatusBarPermaData(
             key: 'radio1',
             icon: MdiIcons.cat,
             // Name AND state, in the Station panel's own words
@@ -325,7 +361,9 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
               }
               showStationConfigDialog(navigatorContext, widget.services);
             },
-          ),
+          );
+        },
+      ),
     ];
   }
 
@@ -423,15 +461,11 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         homeRail,
         // The open list's scrim stands down while a dialog is up — see it.
         modalBarrierIsVisible,
-        // Both halves of the peer status: the linked devices it counts against
-        // (this service caches them) and the live sessions the badge counts,
-        // which change on their own as a link comes up or drops.
-        widget.services.peerService,
-        widget.services.cat,
-        // A peer's rig going away or coming back is this notifier's news
-        // alone — CatService hears nothing of it, so the radio row would
-        // keep saying "Not available" about a rig that is back.
-        widget.services.peerRemoteRadios,
+        // NOT the CAT or peer services. The two statuses that read them
+        // follow them on their own (see [_permaStatuses]), and nothing the
+        // budget below decides depends on them — a radio reporting a reading
+        // several times a second while it is tuned must not rebuild the
+        // chrome and the rail for a glyph that does not change.
       ]),
       builder: (context, _) {
         final statusBar = widget.services.statusBar;
@@ -524,7 +558,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         // The perma icons go with the items: over a keyboard the whole band
         // is borrowed space, and a row of icons is no more entitled to it
         // than a message is.
-        final perma = footerHidden ? const <StatusBarPermaData>[] : _permaStatuses(context, offline);
+        final perma = footerHidden ? const <StatusBarPerma>[] : _permaStatuses(context, offline);
 
         final accessory = widget.services.keyboardAccessory.value;
         // Half-folded, the row stretches over the whole strip between the

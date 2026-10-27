@@ -6,8 +6,9 @@
 //
 // A real CatService only ever reaches `connected` through hardware, so a
 // widget test of anything gated on it needs a transport that says yes.
-// Deliberately minimal: no command recording, no gated/refusing variants, no
-// radio-reports-back path — cat_vfo_wiring_test.dart owns those, and owns
+// Deliberately minimal: no command recording, no gated/refusing variants, and
+// one way for the radio to speak ([FakeRadio.reports], a VFO reading with
+// nothing behind it) — cat_vfo_wiring_test.dart owns the rest, and owns
 // testing the CAT layer. This exists so a caller can write
 // `services.cat.stateFor(...)` is connected and get on with its own subject.
 
@@ -66,15 +67,22 @@ class _SilentSession implements TransceiverSession {
 }
 
 class _SilentDriver extends EquipmentDriver {
+  final FakeRadio owner;
+
+  _SilentDriver(this.owner);
+
   @override
   String get key => 'fake-driver';
   @override
   String get name => 'Fake Radio';
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => _SilentSession();
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
+    owner._sinks.add(sink);
+    return _SilentSession();
+  }
 }
 
-EquipmentRegistry _fakeRegistry() {
+EquipmentRegistry _fakeRegistry(FakeRadio owner) {
   final transport = _AlwaysConnectingTransport();
   return EquipmentRegistry(
     models: [
@@ -82,16 +90,38 @@ EquipmentRegistry _fakeRegistry() {
         key: 'fake',
         category: kCategoryTransceiver,
         name: () => 'Fake Radio',
-        variants: [EquipmentVariant(key: 'fake-type', driver: _SilentDriver(), transport: transport)],
+        variants: [EquipmentVariant(key: 'fake-type', driver: _SilentDriver(owner), transport: transport)],
       ),
     ],
     transports: {'fake': transport},
   );
 }
 
+/// The fake radio's own end: the CatService that reaches it, and a way to
+/// speak as the radio.
+class FakeRadio {
+  /// One per session the driver was asked for — a connected node's.
+  final _sinks = <EquipmentSink>[];
+
+  late final EquipmentRegistry _registry = _fakeRegistry(this);
+
+  /// A CatService over a transport that always connects. Nothing is connected
+  /// yet — call [connectFakeRadio1] for that.
+  CatService catService(SettingsService settings, RadioService radio) => CatService(settings, radio: radio, registry: _registry);
+
+  /// Every connected session reports [freqKHz] and [mode], the way a radio's
+  /// status stream does — the one path a reading takes into CatService, which
+  /// notifies for a reading that moves the VFO.
+  void reports({double? freqKHz, String? mode}) {
+    for (final sink in _sinks) {
+      sink.report(VfoReading(freqKHz: freqKHz, mode: mode));
+    }
+  }
+}
+
 /// A CatService over a transport that always connects. Nothing is connected
 /// yet — call [connectFakeRadio1] for that.
-CatService fakeCatService(SettingsService settings, RadioService radio) => CatService(settings, radio: radio, registry: _fakeRegistry());
+CatService fakeCatService(SettingsService settings, RadioService radio) => FakeRadio().catService(settings, radio);
 
 /// Adds a fake transceiver to [cat], connects it, and makes it `radio1` — the
 /// state a feature gated on "a radio is connected" is waiting for.

@@ -59,7 +59,14 @@ class StatusBarItemData {
 /// fixed set of standing facts, and a surface anchored to the icons that asked
 /// for it says so — while the band stays what it is for, a message that needs
 /// the width (a progress bar) and a stack of them to scroll.
-class StatusBarPermaData {
+/// One standing fact at the trailing edge of the bar: a value
+/// ([StatusBarPermaData]), or one that follows a [Listenable] and is read
+/// inside the footer ([StatusBarPermaSource]).
+sealed class StatusBarPerma {
+  const StatusBarPerma();
+}
+
+class StatusBarPermaData extends StatusBarPerma {
   final String key;
 
   /// Required: this is what the operator sees in the collapsed bar, so a
@@ -95,6 +102,25 @@ class StatusBarPermaData {
   final VoidCallback? onTap;
 
   const StatusBarPermaData({required this.key, required this.icon, required this.text, this.badge, this.muted = false, this.onTap});
+}
+
+/// A permanent status that follows [changes]: the footer resolves it under a
+/// builder of its own, so what it follows rebuilds this status and nothing
+/// around it. The footer's parent is the window's bottom-chrome budget and
+/// the rail, and a radio reports a reading several times a second while it
+/// is being tuned — every one of those would rebuild both for a glyph that
+/// does not change.
+///
+/// [resolve] runs inside that builder, with its context, so it may read the
+/// ambient translations and theme; it answers null while the status is not
+/// shown. The footer counts a source as present without resolving it: the
+/// band's own presence is decided by the caller's list, not by what the
+/// sources say at the moment.
+class StatusBarPermaSource extends StatusBarPerma {
+  final Listenable changes;
+  final StatusBarPermaData? Function(BuildContext context) resolve;
+
+  const StatusBarPermaSource({required this.changes, required this.resolve});
 }
 
 class StatusBarActionData {
@@ -158,12 +184,14 @@ class StatusBarFooter extends StatefulWidget {
   final void Function(String key) onDismiss;
 
   /// The permanent statuses, pinned as icons to the TRAILING edge of the bar
-  /// and outside the item list — see [StatusBarPermaData]. In the order the
-  /// caller gives, which is the order they appear in.
+  /// and outside the item list — see [StatusBarPerma]: a value, or a source
+  /// the footer follows on its own. In the order the caller gives, which is
+  /// the order they appear in.
   ///
   /// They also open the bar on their own: a caller that passes one gets a
-  /// visible footer with no items at all.
-  final List<StatusBarPermaData> perma;
+  /// visible footer with no items at all — a source included, whatever it
+  /// resolves to.
+  final List<StatusBarPerma> perma;
 
   /// Drawn at the trailing edge of the collapsed bar, before the [perma]
   /// icons — a small readout that is neither a message nor a status with a
@@ -579,7 +607,7 @@ const double _permaIconSize = 16;
 /// the icons that asked for it. It also costs nothing to be modal — the menu
 /// route brings its own barrier, dismissal and focus handling.
 class _PermaIcons extends StatefulWidget {
-  final List<StatusBarPermaData> perma;
+  final List<StatusBarPerma> perma;
   final Color color;
 
   /// The bar's own fill, which the menu is tinted from — see [_menuFill].
@@ -603,6 +631,21 @@ class _PermaIconsState extends State<_PermaIcons> {
   /// A muted status's glyph and badge, held back from the bar's own colour
   /// without being lost against it.
   Color _permaColor(StatusBarPermaData status) => status.muted ? widget.color.withValues(alpha: 0.5) : widget.color;
+
+  /// [build]s one status — under a builder of its own when it is a
+  /// [StatusBarPermaSource], so that what the source follows rebuilds this
+  /// glyph or line and not the footer, and as nothing while the source
+  /// resolves to null.
+  Widget _resolved(BuildContext context, StatusBarPerma perma, Widget Function(BuildContext context, StatusBarPermaData status) build) => switch (perma) {
+    final StatusBarPermaData status => build(context, status),
+    StatusBarPermaSource(:final changes, :final resolve) => ListenableBuilder(
+      listenable: changes,
+      builder: (context, _) => switch (resolve(context)) {
+        null => const SizedBox.shrink(),
+        final status => build(context, status),
+      },
+    ),
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -679,15 +722,19 @@ class _PermaIconsState extends State<_PermaIcons> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    for (final status in widget.perma)
-                      MenuItemButton(
-                        leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
-                        style: MenuItemButton.styleFrom(foregroundColor: widget.color),
-                        // Straight through, null included: a status that only reports
-                        // renders as a disabled entry, which is honest. A `?? () {}` would
-                        // make an entry whose action went missing look live and do nothing.
-                        onPressed: status.onTap,
-                        child: Text(status.text),
+                    for (final perma in widget.perma)
+                      _resolved(
+                        context,
+                        perma,
+                        (context, status) => MenuItemButton(
+                          leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
+                          style: MenuItemButton.styleFrom(foregroundColor: widget.color),
+                          // Straight through, null included: a status that only reports
+                          // renders as a disabled entry, which is honest. A `?? () {}` would
+                          // make an entry whose action went missing look live and do nothing.
+                          onPressed: status.onTap,
+                          child: Text(status.text),
+                        ),
                       ),
                   ],
                 ),
@@ -698,37 +745,41 @@ class _PermaIconsState extends State<_PermaIcons> {
         builder: (context, controller, child) => Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final status in widget.perma)
-              Semantics(
-                container: true,
-                button: true,
-                label: status.text,
-                child: InkResponse(
-                  onTap: () => controller.isOpen ? controller.close() : controller.open(),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(status.icon, size: _permaIconSize, color: _permaColor(status)),
-                        if (status.badge case final badge?) ...[
-                          const SizedBox(width: Space.xxs),
-                          // The count is already in [status.text], which is this
-                          // button's accessible name — left in, a screen reader
-                          // reads the whole line and then a bare "0".
-                          ExcludeSemantics(
-                            child: Text(
-                              badge,
-                              // Sized against the glyph rather than off a text
-                              // style: this reads as part of the icon, and a
-                              // body style set by the theme would tower over a
-                              // 16pt one at some densities and vanish at
-                              // others.
-                              style: TextStyle(fontSize: _permaIconSize * 0.8, height: 1, color: _permaColor(status)),
+            for (final perma in widget.perma)
+              _resolved(
+                context,
+                perma,
+                (context, status) => Semantics(
+                  container: true,
+                  button: true,
+                  label: status.text,
+                  child: InkResponse(
+                    onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(status.icon, size: _permaIconSize, color: _permaColor(status)),
+                          if (status.badge case final badge?) ...[
+                            const SizedBox(width: Space.xxs),
+                            // The count is already in [status.text], which is this
+                            // button's accessible name — left in, a screen reader
+                            // reads the whole line and then a bare "0".
+                            ExcludeSemantics(
+                              child: Text(
+                                badge,
+                                // Sized against the glyph rather than off a text
+                                // style: this reads as part of the icon, and a
+                                // body style set by the theme would tower over a
+                                // 16pt one at some densities and vanish at
+                                // others.
+                                style: TextStyle(fontSize: _permaIconSize * 0.8, height: 1, color: _permaColor(status)),
+                              ),
                             ),
-                          ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),

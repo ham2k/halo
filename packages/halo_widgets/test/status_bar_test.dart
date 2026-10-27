@@ -345,6 +345,72 @@ void main() {
     expect(tester.widget<Text>(find.text('2')).style!.color!.a, live.a);
   });
 
+  testWidgets('a status that follows a listenable re-reads itself under its own builder, and the bar stays put', (tester) async {
+    // The chrome around the footer is the window's bottom budget and the rail,
+    // and a radio reports a reading several times a second while it is tuned.
+    // A source's change has to end at the glyph and the menu line it belongs
+    // to: a footer that rebuilt for it would pass every other test in this
+    // file while taking the rail down with it.
+    final state = ValueNotifier<String?>('Connected');
+    addTearDown(state.dispose);
+    var footerBuilds = 0;
+    final previous = debugOnRebuildDirtyWidget;
+    debugOnRebuildDirtyWidget = (element, _) {
+      if (element.widget is StatusBarFooter) footerBuilds++;
+    };
+    addTearDown(() => debugOnRebuildDirtyWidget = previous);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [],
+              onDismiss: _noop,
+              perma: [
+                const StatusBarPermaData(key: 'net', icon: Icons.cloud_off, text: 'Offline'),
+                StatusBarPermaSource(
+                  changes: state,
+                  resolve: (_) => switch (state.value) {
+                    null => null,
+                    final label => StatusBarPermaData(key: 'radio', icon: Icons.radio, text: 'Rig: $label', badge: label == 'Connected' ? null : '!'),
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.radio), findsOneWidget);
+    // The mount is the positive control: the hook counts this footer, so a
+    // zero below is a footer that was not rebuilt, not a count that never ran.
+    expect(footerBuilds, greaterThan(0));
+    footerBuilds = 0;
+
+    state.value = 'Not responding';
+    await tester.pump();
+    expect(find.text('!'), findsOneWidget, reason: 'the glyph followed the source');
+    expect(footerBuilds, 0, reason: 'the footer rebuilt for a status that follows its own listenable');
+
+    // The menu line follows the same source.
+    await tester.tap(find.byIcon(Icons.radio));
+    await tester.pumpAndSettle();
+    expect(find.text('Rig: Not responding'), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.text('Rig: Not responding'), findsNothing, reason: 'the menu closed');
+
+    // Null is "not shown": the glyph goes and the other status stays, still
+    // without the footer rebuilding.
+    state.value = null;
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.radio), findsNothing);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
+    expect(footerBuilds, 0);
+  });
+
   testWidgets('the icons open the menu and the bar opens the message list, never each other', (tester) async {
     // Two surfaces, two gestures. The bar must not open the statuses and the
     // icons must not open the messages — and the icons ride ON the bar, so

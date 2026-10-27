@@ -26,6 +26,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'covered_route_hold.dart';
@@ -222,6 +223,41 @@ class HaLoColors extends ThemeExtension<HaLoColors> {
 
   @override
   HaLoColors lerp(HaLoColors? other, double t) => t < 0.5 ? this : (other ?? this);
+
+  /// By value, because [ThemeData]'s own equality compares its extensions
+  /// with `==`: without this, a theme that differs from the last build's only
+  /// by a fresh copy of these colours reads as changed, and `Theme` rebuilds
+  /// everything under it that reads the theme — which `LoggingControls`'
+  /// editing accent would do on every keystroke.
+  @override
+  bool operator ==(Object other) =>
+      other is HaLoColors &&
+      other.important == important &&
+      other.notice == notice &&
+      other.onNotice == onNotice &&
+      other.tertiaryLight == tertiaryLight &&
+      other.secondaryLight == secondaryLight &&
+      other.devMode == devMode &&
+      other.tabIndicator == tabIndicator &&
+      other.onSurfaceAccent == onSurfaceAccent &&
+      other.spotMultiplier == spotMultiplier &&
+      other.listBackground == listBackground &&
+      mapEquals(other.bands, bands);
+
+  @override
+  int get hashCode => Object.hash(
+    important,
+    notice,
+    onNotice,
+    tertiaryLight,
+    secondaryLight,
+    devMode,
+    tabIndicator,
+    onSurfaceAccent,
+    spotMultiplier,
+    listBackground,
+    Object.hashAllUnordered(bands.entries.map((band) => Object.hash(band.key, band.value))),
+  );
 
   /// The fallback follows the ambient brightness rather than always being
   /// [light]: a subtree that loses the extension is exactly where a wrong

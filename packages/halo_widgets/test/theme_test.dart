@@ -797,4 +797,24 @@ void main() {
       expect(constraints.maxHeight, 0.0);
     }, variant: desktop);
   });
+
+  group('HaLoColors', () {
+    test('compares by value, so a theme rebuilt around a fresh copy reads as unchanged', () {
+      // ThemeData's own equality compares its extensions with ==. Without
+      // this, LoggingControls' editing accent — a copyWith that puts a fresh
+      // HaLoColors into the theme on every build — makes `Theme` notify every
+      // dependent under it on every keystroke.
+      final a = HaLoColors.light.copyWith(tertiaryLight: HaLoColors.light.secondaryLight);
+      final b = HaLoColors.light.copyWith(tertiaryLight: HaLoColors.light.secondaryLight);
+      expect(a, equals(b));
+      expect(a.hashCode, b.hashCode);
+      expect(a, isNot(equals(HaLoColors.light)));
+      expect(a.copyWith(bands: {...a.bands, '2m': const Color(0xFF123456)}), isNot(equals(a)), reason: 'the band map is part of the value');
+
+      final theme = buildHaLoTheme(Brightness.light);
+      final colors = theme.extension<HaLoColors>()!;
+      ThemeData accent() => theme.copyWith(extensions: [colors.copyWith(tertiaryLight: colors.secondaryLight)]);
+      expect(accent(), equals(accent()));
+    });
+  });
 }
