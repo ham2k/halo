@@ -2,6 +2,12 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+"26.11.0":
+  name: "November '26"
+  photoCaption: "LB4FH at NO-2598"
+  changes:
+    - "Release notes for November are on their way"
+
 "26.10.0":
   name: "October '26"
   photoCaption: "M1SDH at GB-4724"
