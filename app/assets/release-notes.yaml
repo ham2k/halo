@@ -2,12 +2,14 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-"26.9.0":
-  name: "September '26"
+"26.10.0":
+  name: "October '26"
   photoCaption: "M1SDH at GB-4724"
   changes:
     - "Welcome to Ham2K Logger — HaLo – the first release of our next-generation logging app for amateur radio operators."
     - "All the features you love in Ham2K Portable Logger, now on Windows, macOS, Linux and Web as Power Logger — yes, still PoLo"
     - "POTA, SOTA, WWFF, LLOTA and dozens of other activities."
     - "ARRL Field Day, Winter Field Day, QSO Parties, CQ Contests, NAQP, ARRL Contests and many more"
-    - "Coming soon: CAT control and customizable layouts"
+    - "CAT Control!"
+    - "Customizable layouts"
+    - "Third-party extensions for activities, spotting, dashboard panels and more"
