@@ -244,11 +244,11 @@ class AppClock {
   /// that drives timers on fake time drives every [nowUtc] and [realNowUtc]
   /// read along with them (docs/design/time.md §7).
   ///
-  /// Opt-in, and never in a widget test: `testWidgets` runs every test on a
-  /// fake clock fixed at 2015, while `tester.runAsync` bodies read the real
-  /// one. Followed there, a fixture written in `runAsync` and a save the
-  /// widgets make would be stamped a decade apart, and the save dropped as
-  /// stale.
+  /// Opt-in, and in a widget test never alongside `tester.runAsync`:
+  /// `testWidgets` runs every test on a fake clock fixed at 2015, while a
+  /// `runAsync` body reads the real one. Followed there, a fixture written in
+  /// `runAsync` and a save the widgets make would be stamped a decade apart,
+  /// and the save dropped as stale.
   @visibleForTesting
   static bool followZoneClock = false;
 

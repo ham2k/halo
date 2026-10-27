@@ -11,6 +11,7 @@ import 'package:drift/drift.dart' show Value, driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:test/test.dart';
+import 'support/fake_clock.dart';
 
 const _program = 'dxcc';
 
@@ -450,9 +451,7 @@ void main() {
     // the rewrite carries the same reading as the revision that went out, and
     // a stamp taken from the clock alone would mark it synced.
     test('a row rewritten while its push was in flight stays dirty, within the same millisecond too', () async {
-      final followed = AppClock.followZoneClock;
-      AppClock.followZoneClock = true;
-      addTearDown(() => AppClock.followZoneClock = followed);
+      followFakeClock();
       await withClock(Clock.fixed(DateTime.utc(2026, 10, 13)), () async {
         await claims.applyUpgrades([_claim(qso: 'worked')]);
         final sent = await claims.unsyncedBatch(10);

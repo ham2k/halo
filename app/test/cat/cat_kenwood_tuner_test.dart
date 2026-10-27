@@ -12,12 +12,12 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import '../support/fake_clock.dart';
 
 class _FakeSink implements EquipmentSink, TunerSink {
   final sent = <String>[];
@@ -153,9 +153,7 @@ void main() {
     // A `?;` names no command: a raw command the radio refuses, counted, would
     // twice in a row cost a read that happened to be out.
     test('a refusal just after an extension\'s raw command is no strike — and one after that is', () {
-      final followed = AppClock.followZoneClock;
-      AppClock.followZoneClock = true;
-      addTearDown(() => AppClock.followZoneClock = followed);
+      followFakeClock();
       fakeAsync((async) {
         session.startUpdates();
         for (var i = 0; i < 3; i++) {

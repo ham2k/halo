@@ -420,9 +420,12 @@ fakeAsync((async) {
 });
 ```
 
-Each test package has a `runOnFakeClock` driver in `test/support/fake_clock.dart`
-that does this for an async test body, stepping the clock until the body
-finishes. Only work in this isolate can progress while it steps, and a drift
+Each test package has a `test/support/fake_clock.dart`. Its `followFakeClock()`
+puts one test on the fake clock and registers the way back, the follow
+restored and the clock `reset`, as that test's teardowns; a `setUp` can call
+it too. Where a package drives async bodies it also has a `runOnFakeClock`
+driver that does this for an async test body, stepping the clock until the
+body finishes. Only work in this isolate can progress while it steps, and a drift
 stream is not such work: under the Flutter test binding its emissions arrive
 through the real event loop, so a body on the fake clock reads the database
 with a one-off query (`.get()`) rather than a stream's `.first`.
@@ -431,8 +434,9 @@ It is opt-in because `testWidgets` is a `fakeAsync` zone too, with a clock
 fixed at 2015-01-01, while a `tester.runAsync` body reads the real time.
 Followed there, a fixture written in `runAsync` and a save the widgets make
 would be stamped a decade apart, and the save would be dropped as stale. So
-widget tests, like production, read the system clock whatever zone they run
-in. `app_clock_test.dart` pins both.
+widget tests, like production, read the system clock by default, and one that
+follows the fake clock — to drive a real-time throttle exactly — has no
+`runAsync` body in it. `app_clock_test.dart` pins both.
 
 What it does NOT reach is any clock that is not the app's: a `Stopwatch`, a
 `DateTime.now()` in third-party code, a native engine's own deadline

@@ -190,8 +190,8 @@ void main() {
     });
   });
 
-  // The default is the contract: production, and every widget test, read the
-  // system clock whatever zone they run in.
+  // The default is the contract: production, and a widget test that has not
+  // opted in, read the system clock whatever zone they run in.
   test('by default neither clock follows a fake one', () {
     fakeAsync((async) {
       final real = realNowUtc();

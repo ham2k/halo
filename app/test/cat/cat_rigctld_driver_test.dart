@@ -13,7 +13,6 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
@@ -22,6 +21,7 @@ import 'package:ham2k_logger/services/cat/drivers/rigctld_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/voice_activity_tracker.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import '../support/fake_clock.dart';
 
 class _FakeSink implements EquipmentSink {
   final problems = <String?>[];
@@ -646,9 +646,7 @@ void main() {
       // A raw `\get_level SWR 1` is refused under the same header as the
       // driver's own SWR read: counted, it would end the SWR meter for the
       // connection.
-      final followed = AppClock.followZoneClock;
-      AppClock.followZoneClock = true;
-      addTearDown(() => AppClock.followZoneClock = followed);
+      followFakeClock();
       fakeAsync((async) {
         final sink = _FakeSink();
         final session = watching(sink);

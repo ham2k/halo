@@ -5,9 +5,9 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/drivers/k4_spectrum_presenter.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
+import '../support/fake_clock.dart';
 
 class _Sink implements SpectrumSink {
   final frames = <SpectrumFrame>[];
@@ -31,15 +31,12 @@ void main() {
   late K4SpectrumPresenter presenter;
 
   setUp(() {
-    AppClock.followZoneClock = true;
+    followFakeClock();
     sink = _Sink();
     presenter = K4SpectrumPresenter(sink: sink);
   });
 
-  tearDown(() {
-    presenter.stop();
-    AppClock.followZoneClock = false;
-  });
+  tearDown(() => presenter.stop());
 
   for (final (speed, expectedFrames) in [(SpectrumSpeed.slow, 15), (SpectrumSpeed.mid, 30), (SpectrumSpeed.fast, 60)]) {
     test('${speed.name} renders a distinct cadence from the native 15 Hz stream', () {

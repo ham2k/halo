@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import 'support/fake_clock.dart';
 import 'support/logging_controls_harness.dart';
 
 void main() {
@@ -189,9 +190,8 @@ void main() {
       accept = true;
       // Respots are timed on the real clock, which the widget-test zone only
       // moves when followed.
-      AppClock.followZoneClock = true;
+      followFakeClock();
     });
-    tearDown(() => AppClock.followZoneClock = false);
 
     // The command must drive the Spotting control's own auto-respotting, not
     // a second one beside it: otherwise the chip would not say so, its Stop

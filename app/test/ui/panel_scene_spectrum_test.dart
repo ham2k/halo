@@ -9,12 +9,14 @@ import 'dart:typed_data';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show AppClock;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_model.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_spectrum.dart';
 import 'package:ham2k_logger/views/operation/panel_scene/scene_view.dart';
+import '../support/fake_clock.dart';
 
 class _Source extends ChangeNotifier implements SceneSpectrumSource {
   int listening = 0;
@@ -410,6 +412,11 @@ void main() {
   testWidgets('follow scrolls the window just far enough to put the dial on its margin', (tester) async {
     // Centring instead would jump the picture on every step of the dial; not
     // moving at all leaves the tuned frequency off the display.
+    //
+    // The move limit is real time, which the app clock reads off the wall
+    // unless told to follow the test's fake one — and on the wall, two pumps
+    // on a loaded machine can be a quarter second apart.
+    followFakeClock();
     final source = _Source();
     await _show(tester, source: source, spectrum: {'follow': .15});
     // The VFO (14.074) sits at 74% of 14.000–14.100: inside the margins.
@@ -420,13 +427,17 @@ void main() {
     source.controller.add(_frame(20, 14080000));
     await tester.pump();
     expect(source.recentered, [14109000]);
-    // At most four moves a second while the radio's window catches up.
+    // At most four moves a second while the radio's window catches up: the
+    // next sweep, a tenth of a second on, moves nothing. Real seconds, and
+    // only those — measured on the app clock, a hop of the clock would move
+    // the window on the sweep after it, and a sped-up clock on every sweep.
+    await tester.pump(const Duration(milliseconds: 100));
+    AppClock.instance.travel(delta: const Duration(days: 3));
     source.controller.add(_frame(20, 14080000));
     await tester.pump();
     expect(source.recentered, hasLength(1));
     // Past the right margin (14.074 at 89% of 13.985–14.085): it sits at 85%.
-    // The limit is on the real clock, which a pump does not move.
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 300)));
+    await tester.pump(const Duration(milliseconds: 300));
     source.controller.add(_frame(20, 13985000));
     await tester.pump();
     expect(source.recentered.last, 14039000);
@@ -455,6 +466,25 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text('waiting'), findsNothing);
+  });
+
+  testWidgets('a display goes quiet on real seconds of silence, not on a travelled clock', (tester) async {
+    // The silence watch measures the real clock. Swapped for the app clock,
+    // a hop of the clock would mark every live display as waiting on its
+    // next tick, and the swap reads as an ordinary application of the
+    // app-clock rule — nothing but this notices.
+    followFakeClock();
+    final source = _Source();
+    await _show(tester, source: source);
+    source.controller.add(_frame());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('waiting'), findsNothing);
+    AppClock.instance.travel(delta: const Duration(days: 3));
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('waiting'), findsNothing, reason: 'three days of travel are not three seconds of silence');
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text('waiting'), findsOneWidget, reason: 'four seconds without a sweep');
   });
 
   group('averaging', () {

@@ -16,6 +16,7 @@ import 'package:halo_widgets/src/icon_resolver.dart';
 import 'package:halo_widgets/src/mdi_icons.g.dart';
 import 'package:halo_widgets/src/secondary_control_row.dart' show SecondaryControlSpec;
 import 'package:halo_widgets/src/theme.dart';
+import 'support/fake_clock.dart';
 
 class _FakeVfoStore implements VfoStore {
   _FakeVfoStore(this.vfoA);
@@ -244,8 +245,7 @@ void main() {
   group('auto-respotting', () {
     // Each source's respot is timed from when it last took one, on the real
     // clock, which the widget-test zone only moves when followed.
-    setUp(() => AppClock.followZoneClock = true);
-    tearDown(() => AppClock.followZoneClock = false);
+    setUp(followFakeClock);
 
     List<String> keysOf(Map<String, dynamic> sent) => [for (final source in sent['sources'] as List) (source as Map)['hookKey'] as String];
 
@@ -820,11 +820,7 @@ void main() {
     });
 
     testWidgets('the chip glows only in the last minute, on the real clock', (tester) async {
-      AppClock.followZoneClock = true;
-      addTearDown(() {
-        AppClock.followZoneClock = false;
-        AppClock.instance.reset();
-      });
+      followFakeClock();
       final h = await spotted(tester);
       await h.model.press();
       expect(h.model.respotGlow, 0);
@@ -989,8 +985,7 @@ void main() {
   group('chip feedback', () {
     // Faded on the real clock, which the widget-test zone only moves when
     // followed.
-    setUp(() => AppClock.followZoneClock = true);
-    tearDown(() => AppClock.followZoneClock = false);
+    setUp(followFakeClock);
 
     Future<_Harness> selfSpot(WidgetTester tester, {required bool pota, required bool sota}) async {
       final h = _Harness();
@@ -1359,8 +1354,7 @@ void main() {
   });
 
   group('settings', () {
-    setUp(() => AppClock.followZoneClock = true);
-    tearDown(() => AppClock.followZoneClock = false);
+    setUp(followFakeClock);
 
     Future<_Harness> ready() async {
       final h = _Harness();

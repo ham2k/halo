@@ -41,6 +41,7 @@ import 'package:ham2k_logger/views/map/map_gl_script.dart' show mapDefaultStyleU
 import 'package:ham2k_logger/views/map/map_marker_data.dart' show MapProjection;
 import 'package:ham2k_logger/views/map/map_ready_watchdog.dart';
 import 'package:ham2k_logger/views/map/mapbox_webview_map_view.dart';
+import '../support/fake_clock.dart';
 
 class _RecordingBackend implements ErrorReportingBackend {
   final exceptions = <Object>[];
@@ -115,8 +116,6 @@ void main() {
     late int unavailableCalls;
     late MapReadyWatchdog watchdog;
 
-    late bool followed;
-
     setUp(() {
       unavailableCalls = 0;
       // The visible-time arithmetic and the timers have to come off ONE
@@ -124,15 +123,11 @@ void main() {
       // would read the wall clock while the timers ran on fake time, every
       // elapsed span would compute as zero, and the accumulation tests would
       // pass without exercising anything (docs/design/time.md §7).
-      followed = AppClock.followZoneClock;
-      AppClock.followZoneClock = true;
+      followFakeClock();
       watchdog = MapReadyWatchdog(onUnavailable: () => unavailableCalls++);
     });
 
-    tearDown(() {
-      watchdog.dispose();
-      AppClock.followZoneClock = followed;
-    });
+    tearDown(() => watchdog.dispose());
 
     test('a map that arrives late is reported as late, never as never-ready', () {
       fakeAsync((async) {
@@ -266,13 +261,7 @@ void main() {
     // session expiring every horizon at once. On the app clock, three days of
     // travel while the map is on screen would be three days of visible time,
     // past the give-up horizon the moment it is counted.
-    final followed = AppClock.followZoneClock;
-    AppClock.followZoneClock = true;
-    addTearDown(() => AppClock.followZoneClock = followed);
-    // `reset`, never `travel(delta: Duration.zero)` — a delta is CUMULATIVE,
-    // so a zero one is a no-op that reads like a reset and leaves this
-    // process-wide singleton three days out for every test after it.
-    addTearDown(AppClock.instance.reset);
+    followFakeClock();
 
     fakeAsync((async) {
       final watchdog = MapReadyWatchdog(onUnavailable: () {});

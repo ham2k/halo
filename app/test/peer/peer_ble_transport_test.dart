@@ -27,6 +27,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_gateway.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 
+import '../support/fake_clock.dart';
 import '../support/peer_ble_fakes.dart';
 import '../support/wait_for.dart';
 
@@ -239,10 +240,7 @@ void main() {
     // dropped every BLE link on the network at once, mid-field-day, for
     // reasons nothing would explain. On the app clock, three days of travel
     // read as three days of silence at the next keepalive tick.
-    final followed = AppClock.followZoneClock;
-    AppClock.followZoneClock = true;
-    addTearDown(() => AppClock.followZoneClock = followed);
-    addTearDown(AppClock.instance.reset);
+    followFakeClock();
     fakeAsync((async) {
       late PeerBleLink linkA;
       late PeerBleLink linkB;
@@ -287,9 +285,7 @@ void main() {
     // app clock following the fake one `elapse` advances, they move in
     // lockstep and every gap below is exact rather than a bet on scheduler
     // latency.
-    final followed = AppClock.followZoneClock;
-    AppClock.followZoneClock = true;
-    addTearDown(() => AppClock.followZoneClock = followed);
+    followFakeClock();
     fakeAsync((async) {
       // Link-level, wired directly — the death being detected is the one the
       // radio cannot report.

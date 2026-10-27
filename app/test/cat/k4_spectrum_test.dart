@@ -12,6 +12,7 @@ import 'package:ham2k_logger/services/cat/drivers/k4_spectrum.dart';
 import 'package:ham2k_logger/services/cat/drivers/k4_spectrum_codec.dart';
 import 'package:ham2k_logger/services/cat/spectrum.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import '../support/fake_clock.dart';
 
 class _Sink implements SpectrumSink {
   final frames = <SpectrumFrame>[];
@@ -99,18 +100,13 @@ void main() {
   late K4Spectrum spectrum;
 
   setUp(() {
-    AppClock.followZoneClock = true;
-    AppClock.instance.reset();
+    followFakeClock();
     sink = _Sink();
     transport = _Transport();
     spectrum = K4Spectrum(host: 'radio.example', sink: sink, transport: transport);
   });
 
-  tearDown(() {
-    spectrum.teardown();
-    AppClock.instance.reset();
-    AppClock.followZoneClock = false;
-  });
+  tearDown(() => spectrum.teardown());
 
   test('opening is demand-driven and cancellation closes a late socket without adopting it', () {
     fakeAsync((async) {

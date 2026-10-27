@@ -26,7 +26,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart' show AppClock;
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -41,6 +40,7 @@ import 'package:ham2k_logger/views/command_dialog.dart';
 import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 
+import '../support/fake_clock.dart';
 import '../support/halo_test_support.dart';
 
 class _CannedExtensions extends ExtensionService {
@@ -1595,9 +1595,7 @@ void main() {
   testWidgets('reopening soon after a response puts it back; reopening later does not', (tester) async {
     // The window is real time, which the app clock reads off the wall unless
     // told to follow the test's fake one.
-    final followed = AppClock.followZoneClock;
-    AppClock.followZoneClock = true;
-    addTearDown(() => AppClock.followZoneClock = followed);
+    followFakeClock();
 
     final services = await _services(tester);
     await _pumpDialog(tester, services);
