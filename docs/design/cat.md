@@ -2424,6 +2424,39 @@ counter would keep a dead serial radio green (the `stale` doc on
 `EquipmentState` and the sink method carry the contract). The watchdog's
 window is `catStaleAfter`, public so both drivers' tests derive from it.
 
+**A designated radio that stays silent is reconnected.** The stale mark only
+reports a silence; a link that stays open while the radio answers nothing never
+closes, so nothing else fires. The Icom network session is the known case: its
+keepalives keep flowing after the radio stops answering CI-V. So radio1 and
+radio2, once they have kept answering for a whole `silentDropAfter` (60 s,
+twice the stale window), are dropped after that long without a word. The stale
+mark arms the drop, so the row reads "not responding" for half a minute first.
+They go through the same path as a connection that closed on its own: a
+teardown that releases the radio's login, the cooldown-limited burst, then the
+idle retry.
+
+What a reconnect cannot fix, it must not loop on. A radio silent since its
+connect is misconfigured (a wrong CI-V address, the wrong port), and one that
+answers once and then stops (a Yaesu with CAT RTS on) does the same after
+every reconnect, so neither is ever armed: a successful connect resets the
+idle retry's backoff, and the drop would come back every minute for good. A
+radio that works for a while after each connect and then goes silent (an
+IC-7300 with its CI-V speed on Auto) is armed, so it gets three drops in a row,
+each ending a session shorter than ten windows, and the fourth silence is left
+as "not responding". A Connect by hand starts the count again. A keyer device
+is never covered, since it reports nothing while idle.
+
+Transmitting holds the drop off, because RF in the CAT cable silences a radio
+exactly while it transmits. A radio the app is keying is not judged until the
+key drops, and the release gives every pending drop a whole window again: the
+radio's next poll may be seconds after the unkey. A radio whose last word was
+that it went on the air (its own mic, a footswitch, VOX) is held off for five
+windows, not forever, since a radio switched off mid-over says the same. A
+radio un-designated while its silence runs is left alone, since nothing would
+reconnect it. And the burst is skipped when anything else touched the node
+during the teardown, so a Connect the operator pressed then is not cancelled
+part-way by a second login.
+
 **The routing lives in the equipment's editor, not on its row.** The equipment
 list is what the station is made OF; a control surface there would make the
 switch the one row in it that does something. So the editor grows a **Current

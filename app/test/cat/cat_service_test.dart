@@ -456,7 +456,11 @@ void main() {
   late RadioService radio;
   late _QueuedDriver queued;
 
-  Future<CatService> makeService({void Function(String event, [Map<String, Object?> properties])? onTrack, Duration? idleRetryFirst}) async {
+  Future<CatService> makeService({
+    void Function(String event, [Map<String, Object?> properties])? onTrack,
+    Duration? idleRetryFirst,
+    Duration? silentDropAfter,
+  }) async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
     transport = _FakeTransport();
@@ -497,6 +501,9 @@ void main() {
       // accident while pumping the queue, short enough to wait out on
       // purpose.
       staleAfter: const Duration(milliseconds: 40),
+      // The real window is a minute. Longer than [staleAfter] where a test
+      // passes it, as in production: the stale mark is what arms the drop.
+      silentDropAfter: silentDropAfter ?? const Duration(minutes: 1),
     );
   }
 
@@ -1177,6 +1184,221 @@ void main() {
       await pumpEventQueue();
 
       expect(transport.attempts.length, attemptsBefore);
+    });
+
+    group('a radio that answered and then went silent', () {
+      // The trap: a link that stays open while the radio answers nothing —
+      // the Icom network session keeps its keepalives flowing after the
+      // radio stops answering CI-V — never closes, so nothing above ever
+      // fires and the row reads "not responding" until someone presses
+      // Connect.
+
+      /// A timer fires late, never early: wait for what the service did, not
+      /// for a guess at how long the silence takes.
+      Future<void> untilAttempts(int count) async {
+        for (var i = 0; i < 500 && transport.attempts.length < count; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      }
+
+      Future<void> untilStale(String uuid) async {
+        for (var i = 0; i < 500 && !cat.stateFor(uuid).stale; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+      }
+
+      /// Answers, then answers again once [span] has passed: a radio that
+      /// has kept answering across the window, which is what arms the drop.
+      Future<void> answerAcross(_FakeConnection connection, Duration span) async {
+        connection.push('14074 USB\n');
+        await Future<void>.delayed(span + const Duration(milliseconds: 10));
+        connection.push('14074 USB\n');
+        await pumpEventQueue();
+      }
+
+      test('is closed and reconnected, after the row has read "not responding"', () async {
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 60));
+        final node = await addRadio();
+        final connection = await connectAndLand(node);
+        await answerAcross(connection, const Duration(milliseconds: 60));
+        final attemptsBefore = transport.attempts.length;
+
+        await untilAttempts(attemptsBefore + 1);
+
+        expect(transport.attempts.length, attemptsBefore + 1, reason: 'a silent radio must be reconnected');
+        expect(connection.closeCalled, isTrue, reason: 'the silent session is closed, so the radio releases its login');
+        transport.attempts.last.completer.complete(_FakeConnection('c-back', log));
+        await pumpEventQueue();
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+      });
+
+      /// Waits out the silence window past the stale mark. Waiting longer
+      /// can only make a drop more likely, never less.
+      Future<void> pastTheWindow(String uuid) async {
+        await untilStale(uuid);
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+
+      test('a radio that never answered is left connected', () async {
+        // A radio silent since its connect is misconfigured — a wrong CI-V
+        // address, the wrong port — and reconnecting it every minute changes
+        // nothing.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 60));
+        final node = await addRadio();
+        await connectAndLand(node);
+        final attemptsBefore = transport.attempts.length;
+
+        await pastTheWindow(node.uuid);
+
+        expect(cat.stateFor(node.uuid).stale, isTrue);
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore);
+      });
+
+      test('a radio that answered once and then stopped is left connected', () async {
+        // A Yaesu with CAT RTS on answers at the open and never again. Every
+        // reconnect brings back the same single answer, so dropping it would
+        // reopen the port once a minute for good.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 60));
+        final node = await addRadio();
+        final connection = await connectAndLand(node);
+        connection.push('14074 USB\n');
+        await pumpEventQueue();
+        final attemptsBefore = transport.attempts.length;
+
+        await pastTheWindow(node.uuid);
+
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore);
+      });
+
+      test('a radio that is not designated is left alone', () async {
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 60));
+        final a = await addRadio(host: 'a.local');
+        await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
+        final ca = await connectAndLand(a);
+        expect(cat.isRadio1(a.uuid), isFalse);
+        await answerAcross(ca, const Duration(milliseconds: 60));
+        final attemptsBefore = transport.attempts.length;
+
+        await pastTheWindow(a.uuid);
+
+        expect(cat.stateFor(a.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore);
+      });
+
+      test('a radio un-designated while its silence runs is left connected', () async {
+        // Nothing reconnects a radio that is no longer designated, so a drop
+        // armed while it still was would leave it off for good.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 300));
+        final node = await addRadio();
+        final connection = await connectAndLand(node);
+        await answerAcross(connection, const Duration(milliseconds: 300));
+        await cat.setRadio1(null);
+
+        // Waiting can only make a drop more likely, never less.
+        await Future<void>.delayed(const Duration(milliseconds: 900));
+
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+      });
+
+      test('a radio the app is keying is judged once the key is released', () async {
+        // RF in the CAT cable silences a radio exactly while it transmits.
+        // Dropping it mid-over would reconnect into the carrier; giving up
+        // instead would leave it "not responding" once the over ends.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 60));
+        final node = await addRadio();
+        final connection = await connectAndLand(node);
+        await answerAcross(connection, const Duration(milliseconds: 60));
+        final owner = Object();
+        expect(cat.keyRadio1Ptt(owner, timeout: const Duration(seconds: 30)), isTrue);
+        final attemptsBefore = transport.attempts.length;
+
+        await pastTheWindow(node.uuid);
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore, reason: 'keyed by the app, so its silence proves nothing');
+
+        cat.releasePtt(owner);
+        await untilAttempts(attemptsBefore + 1);
+        expect(transport.attempts.length, attemptsBefore + 1, reason: 'released, the silence counts again');
+      });
+
+      test('a released key gives the radio a whole window to answer again', () async {
+        // The radio's next poll after the unkey can be seconds away. Judged at
+        // a deadline set before the release, a healthy radio is dropped for
+        // not having answered in time.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 400));
+        final node = await addRadio();
+        final connection = await connectAndLand(node);
+        await answerAcross(connection, const Duration(milliseconds: 400));
+        final owner = Object();
+        expect(cat.keyRadio1Ptt(owner, timeout: const Duration(seconds: 30)), isTrue);
+        final attemptsBefore = transport.attempts.length;
+        await untilStale(node.uuid);
+        // Past the first deadline, which is re-armed while keyed, and close
+        // to the second.
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+
+        cat.releasePtt(owner);
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore, reason: 'judged by a deadline set while the key was down');
+      });
+
+      test('a radio that said it was transmitting is held off, but not forever', () async {
+        // Keyed by its own mic, a footswitch or VOX, the radio's last word is
+        // that it went on the air, and RF in the CAT cable silences it for the
+        // whole over. A radio switched off mid-over says the same, so the
+        // hold-off ends.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 100));
+        final node = await addRadio();
+        final connection = await connectAndLand(node);
+        await answerAcross(connection, const Duration(milliseconds: 100));
+        driver.sessions.last.sink.reportTransmitting(true);
+        final attemptsBefore = transport.attempts.length;
+
+        await untilStale(node.uuid);
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore, reason: 'dropped mid-over');
+
+        await untilAttempts(attemptsBefore + 1);
+        expect(transport.attempts.length, attemptsBefore + 1, reason: 'a radio gone mid-over must still come back');
+      });
+
+      test('a radio that keeps going silent after each reconnect is left alone after three', () async {
+        // An IC-7300 with its CI-V speed on Auto can answer for a minute or
+        // so and then go silent, after every connect. Without the cap, it is
+        // reconnected every couple of minutes for as long as the app runs.
+        cat = await makeService(silentDropAfter: const Duration(milliseconds: 60));
+        final node = await addRadio();
+        var connection = await connectAndLand(node);
+        Future<void> dropAndReconnect() async {
+          await answerAcross(connection, const Duration(milliseconds: 60));
+          final attemptsBefore = transport.attempts.length;
+          await untilAttempts(attemptsBefore + 1);
+          expect(transport.attempts.length, attemptsBefore + 1, reason: 'each of the first three silences is reconnected');
+          connection = _FakeConnection('c${transport.attempts.length}', log);
+          transport.attempts.last.completer.complete(connection);
+          await pumpEventQueue();
+        }
+
+        for (var i = 0; i < 3; i++) {
+          await dropAndReconnect();
+        }
+        await answerAcross(connection, const Duration(milliseconds: 60));
+        final attemptsBefore = transport.attempts.length;
+        await pastTheWindow(node.uuid);
+
+        expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected);
+        expect(transport.attempts.length, attemptsBefore, reason: 'the fourth silence in a row is left to the operator');
+
+        // Connect by hand starts the count again.
+        await cat.disconnect(node.uuid);
+        connection = await connectAndLand(node);
+        await dropAndReconnect();
+      });
     });
   });
 

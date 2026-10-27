@@ -92,6 +92,22 @@ const _storageVersion = 3;
 /// Generous enough that a busy rig or a lost datagram never trips it.
 const catStaleAfter = Duration(seconds: 30);
 
+/// How long a designated radio that has answered may then say nothing before
+/// it is dropped and reconnected. Twice [catStaleAfter], so the row reads "not
+/// responding" for half a minute before anything is done about it.
+const _silentDropAfter = Duration(seconds: 60);
+
+/// How many [CatService.silentDropAfter] windows a radio whose last report
+/// said it was transmitting may stay silent before it is dropped. Five
+/// minutes: past a long over, and past most radios' own transmit time-out.
+const _silentWhileKeyedWindows = 5;
+
+/// How many silent drops in a row, each ending a session that answered for
+/// less than [_healthySessionWindows] windows, before the next silence is left
+/// as "not responding" for the operator.
+const _silentDropsInARow = 3;
+const _healthySessionWindows = 10;
+
 /// How long either auto-connect mark may take to reach disk.
 ///
 /// Bounded like the quit path's own breadcrumb (main.dart's `_markBudget`), and
@@ -234,6 +250,11 @@ class CatService extends ChangeNotifier
   /// half a minute to watch it.
   final Duration staleAfter;
 
+  /// How long a designated radio that has answered may then say nothing
+  /// before it is dropped and reconnected. Injectable for the same reason
+  /// [staleAfter] is.
+  final Duration silentDropAfter;
+
   Timer? _idleRetryTimer;
   late Duration _idleRetryDelay = idleRetryFirst;
 
@@ -319,6 +340,7 @@ class CatService extends ChangeNotifier
     this.now = realNowUtc,
     this.idleRetryFirst = _idleRetryFirst,
     this.staleAfter = catStaleAfter,
+    this.silentDropAfter = _silentDropAfter,
   }) : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
        assert(sdrRetryDelay > Duration.zero, 'a zero delay retries an absent SDR in a tight loop'),
        registry = registry ?? EquipmentRegistry() {
@@ -336,6 +358,7 @@ class CatService extends ChangeNotifier
     _lastSeenVfoPower = _radio?.vfoA.power;
     _radio?.addListener(_onVfoChanged);
     _startSo2r();
+    _ptt.held.addListener(_restartSilentDrops);
   }
 
   @override
@@ -1040,6 +1063,7 @@ class CatService extends ChangeNotifier
     _runtimeFor(uuid)
       ..userDisconnected = false
       ..linesRefused = false
+      ..shortSilentDrops = 0
       ..sdrPinned = isSdr(uuid);
     // And it is the way back from a held auto-connect: the operator asking for
     // this node by hand is both the deliberate act the hold waits for and the

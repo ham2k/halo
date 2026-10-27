@@ -60,6 +60,20 @@ class _NodeRuntime {
   /// [EquipmentState.stale].
   Timer? staleTimer;
 
+  /// Watches a designated radio that has gone silent long enough to be
+  /// reconnected — see [CatService.silentDropAfter].
+  Timer? silenceTimer;
+
+  /// When this session's radio first and last answered, in real milliseconds
+  /// — what [silenceTimer] waits on before it may be armed. Null until it
+  /// answers.
+  int? answeringSinceMillis;
+  int? lastHeardMillis;
+
+  /// Silent drops in a row that each ended a short session. Kept across
+  /// reconnects; cleared by [CatService.connect].
+  int shortSilentDrops = 0;
+
   /// The operator pressed Disconnect. Distinct from every other route to
   /// `disconnected`, and the distinction is the whole safety of the idle
   /// retry: without it, "off because I said so" and "off because the radio

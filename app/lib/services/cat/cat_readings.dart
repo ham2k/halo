@@ -15,7 +15,13 @@ extension _Readings on CatService {
   /// switch restating its routing is a switch with a live socket.
   void _noteAlive(String uuid, _NodeRuntime runtime) {
     _armStaleWatch(uuid, runtime);
+    // Real time: this measures how long a real radio kept answering.
+    final now = realNowMillis();
+    runtime.answeringSinceMillis ??= now;
+    runtime.lastHeardMillis = now;
     if (!runtime.state.stale) return;
+    runtime.silenceTimer?.cancel();
+    runtime.silenceTimer = null;
     trafficLog?.note(_logLabel(uuid), 'answering again');
     _setState(uuid, runtime.state.copyWith(stale: false));
   }
@@ -32,7 +38,92 @@ extension _Readings on CatService {
       if (current.state.stale) return;
       trafficLog?.note(_logLabel(uuid), 'nothing heard for ${staleAfter.inSeconds} s: marked not responding');
       _setState(uuid, current.state.copyWith(stale: true));
+      _armSilentDrop(uuid, current, silentDropAfter - staleAfter);
     });
+  }
+
+  /// Drops and reconnects a designated radio that answered and then went
+  /// silent for [silentDropAfter], the way a connection that closed on its
+  /// own is reconnected. Armed by the stale mark, so the row reads "not
+  /// responding" first.
+  ///
+  /// The stale mark alone never brings it back. A link can stay open while
+  /// the radio answers nothing — the Icom network session keeps its
+  /// keepalives flowing after the radio stops answering CI-V — and the row
+  /// then reads "not responding" until the operator reconnects by hand.
+  ///
+  /// Armed only for a radio that kept answering for a whole
+  /// [silentDropAfter]. A radio silent since its connect is misconfigured (a
+  /// wrong CI-V address, the wrong port), and one that answers once and then
+  /// stops (a Yaesu with CAT RTS on, which answers at the open and never
+  /// again) comes back the same way; dropping either reconnects it once a
+  /// minute for good while changing nothing. A radio that does work for a
+  /// while after each connect gets [_silentDropsInARow] drops before it is
+  /// left to the operator. Only radio1 and radio2: a keyer device reports
+  /// nothing while idle, so silence there is not a dead link.
+  void _armSilentDrop(String uuid, _NodeRuntime runtime, Duration after) {
+    runtime.silenceTimer?.cancel();
+    runtime.silenceTimer = null;
+    if (!isRadio1(uuid) && !isRadio2(uuid)) return;
+    final connection = runtime.connection;
+    final since = runtime.answeringSinceMillis, heard = runtime.lastHeardMillis;
+    if (connection == null || since == null || heard == null) return;
+    if (heard - since < silentDropAfter.inMilliseconds) return;
+    runtime.silenceTimer = Timer(after.isNegative ? Duration.zero : after, () {
+      runtime.silenceTimer = null;
+      if (_disposed || runtime.connection != connection || !runtime.state.stale) return;
+      if (stateFor(uuid).status != EquipmentStatus.connected) return;
+      // Designation can move while the timer runs, and a radio that is no
+      // longer designated is never reconnected: dropping it would leave it
+      // off for good.
+      if (!isRadio1(uuid) && !isRadio2(uuid)) return;
+      // RF in the CAT cable silences a radio exactly while it transmits, so
+      // a radio the app is keying is not judged by its silence until the
+      // key is released — [_restartSilentDrops] then gives it a whole window.
+      if (_nodeTransmitting(uuid)) return _armSilentDrop(uuid, runtime, silentDropAfter);
+      // Keyed some other way (its mic, a footswitch, VOX), all the radio said
+      // was that it went on the air. Held off longer, not forever: a radio
+      // switched off mid-over says the same.
+      final silentFor = realNowMillis() - heard;
+      final keyedLimit = (silentDropAfter * _silentWhileKeyedWindows).inMilliseconds;
+      if (runtime.state.telemetry.isTransmitting && silentFor < keyedLimit) {
+        return _armSilentDrop(uuid, runtime, Duration(milliseconds: keyedLimit - silentFor));
+      }
+      final shortSession = heard - since < (silentDropAfter * _healthySessionWindows).inMilliseconds;
+      if (shortSession && runtime.shortSilentDrops >= _silentDropsInARow) {
+        trafficLog?.note(_logLabel(uuid), 'nothing heard for ${silentFor ~/ 1000} s: left alone after $_silentDropsInARow reconnects in a row');
+        return;
+      }
+      runtime.shortSilentDrops = shortSession ? runtime.shortSilentDrops + 1 : 0;
+      trafficLog?.note(_logLabel(uuid), 'nothing heard for ${silentFor ~/ 1000} s: reconnecting');
+      unawaited(_dropSilent(uuid, runtime));
+    });
+  }
+
+  /// A released key gives every pending silent drop a whole window from
+  /// now: the radio's next poll after the unkey may be seconds away, and the
+  /// timer's own deadline may fall before it.
+  void _restartSilentDrops() {
+    if (_ptt.held.value) return;
+    for (final uuid in [?_localRadio1, ?radio2]) {
+      final runtime = _runtimes[uuid];
+      if (runtime?.silenceTimer != null) _armSilentDrop(uuid, runtime!, silentDropAfter);
+    }
+  }
+
+  /// Not marked as the operator's: a Disconnect they pressed stops every
+  /// retry, and this is the case the retries exist for.
+  ///
+  /// The reconnect is skipped when anything else touched the node during the
+  /// teardown, which is most of a second on an Icom network link. A Connect
+  /// pressed in that window would otherwise be cancelled part-way by the
+  /// burst, leaving two logins back to back against the radio.
+  Future<void> _dropSilent(String uuid, _NodeRuntime runtime) async {
+    final ours = runtime.attemptSeq + 1;
+    await disconnect(uuid, byUser: false);
+    if (runtime.attemptSeq != ours) return;
+    _autoReconnectAfterDrop(uuid);
+    _scheduleIdleRetry();
   }
 
   /// Fires [onRadioProven] on the reading that completes the pair. [reading]
