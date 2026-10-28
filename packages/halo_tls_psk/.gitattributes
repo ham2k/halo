@@ -1,0 +1,5 @@
+# Patch hashes are byte-exact; Windows checkouts must preserve LF endings.
+# Blank unified-diff context lines contain one space.
+patches/*.patch text eol=lf whitespace=-blank-at-eol
+# Manifest bytes also identify shared cache entries.
+UPSTREAM.json text eol=lf

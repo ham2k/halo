@@ -1,0 +1,5 @@
+build/
+.build/
+.dart_tool/
+pubspec.lock
+.cxx/

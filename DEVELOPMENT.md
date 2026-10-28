@@ -25,6 +25,13 @@ runtime — so **the extensions must be built before the app will run**.
   Dart is not pinned separately — it comes with Flutter.
 - **Node.js** — for building the extensions. Not pinned by mise; CI uses
   **Node 22**, so match that locally.
+- **OpenSSL 3** — the independent loopback peer for the TLS tests, never a
+  production runtime dependency. On macOS, use `brew install openssl@3`;
+  `/usr/bin/openssl` is LibreSSL and cannot run these tests. On current
+  Debian/Ubuntu, use `sudo apt-get install openssl` and check `openssl version`
+  reports `OpenSSL 3.x`. On Windows or with a custom installation, put OpenSSL
+  3 on `PATH` or set `HALO_TLS_TEST_OPENSSL` to its executable. The test helper
+  also finds the standard Apple Silicon and Intel Homebrew locations.
 - **Platform toolchains** for whatever targets you build:
   - macOS/iOS → Xcode, plus `brew install automake libtool` — CocoaPods
     builds libserialport (the serial CAT transport) from source, and
@@ -51,7 +58,9 @@ mise run setup                 # scripts/setup.sh — everything below, idempote
 cd app && flutter run -d macos
 ```
 
-`setup` does, in order: points git at the tracked hooks (`.githooks/`, the
+`setup` first checks its tools, including OpenSSL 3 (installing `openssl@3`
+through Homebrew on macOS if needed and Homebrew is available). Missing tools
+on other hosts fail with installation instructions. It then points git at the tracked hooks (`.githooks/`, the
 guard on pushes to `main`); copies the blank `secrets.dart` template if none
 exists (optional — every consumer degrades without its key, and the Map tab
 needs none: MapLibre and OpenFreeMap take no token); runs `npm ci` and
@@ -65,6 +74,12 @@ Notes:
 - **Extension bundles are gitignored** (`app/assets/extensions/`) and only
   regenerate on an explicit `npm run build`. Re-run it after changing anything
   under `extensions/`.
+- **K4 TLS native builds** use Dart build hooks to fetch pinned, hash-verified
+  Mbed TLS source and compile it with the target toolchain. Native runs, tests
+  and builds prepare it automatically; web builds skip it. A cold cache needs
+  network access, including when starting a native replay tool. For prefetch,
+  custom caches and offline builds, see
+  [halo_tls_psk](packages/halo_tls_psk/README.md#native-builds-and-source-cache).
 - **macOS/iOS local signing:** ad-hoc signing re-prompts for keychain access on
   every rebuild. To sign consistently, copy
   `app/macos/Runner/Configs/Local.xcconfig.sample` → `Local.xcconfig` and set
